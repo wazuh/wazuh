@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "hlpDetails.hpp"
-#include "logQLParser.hpp"
+#include "logParser.hpp"
 #include "specificParsers.hpp"
 
 #include <hlp/hlp.hpp>
@@ -45,8 +45,7 @@ void configureParserMappings(const std::string& config)
         {"quoted", ParserType::QuotedString},
         {"boolean", ParserType::Boolean},
         {"xml", ParserType::Xml},
-        {"ignore", ParserType::Ignore}
-    };
+        {"ignore", ParserType::Ignore}};
 
     if (config.empty())
     {
@@ -96,7 +95,7 @@ static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     {"ignore", ParserType::Ignore},
     {"xml", ParserType::Xml},
     {"csv", ParserType::CSV},
-    //TODO add missing parsers
+    // TODO add missing parsers
 };
 
 /**
@@ -214,7 +213,7 @@ std::vector<Parser> getParserList(ExpressionList const& expressions)
             default:
             {
                 throw std::runtime_error(
-                    "[HLP]Invalid expression parsed from LogQL expression");
+                    "[HLP]Invalid expression parsed from Logpar expression");
             }
         }
     }
@@ -280,19 +279,19 @@ static ExecuteResult executeParserList(std::string_view const& event,
     return ExecuteResult {isOk, trace};
 }
 
-ParserFn getParserOp(std::string_view const& logQl)
+ParserFn getParserOp(std::string_view const& logpar)
 {
     WAZUH_TRACE_FUNCTION;
-    if (logQl.empty())
+    if (logpar.empty())
     {
-        throw std::invalid_argument("[HLP]Empty LogQL expression");
+        throw std::invalid_argument("[HLP]Empty Logpar expression");
     }
 
-    ExpressionList expressions = parseLogQlExpr(logQl.data());
+    ExpressionList expressions = parseLogExpr(logpar.data());
     if (expressions.empty())
     {
         throw std::runtime_error(
-            "[HLP]Empty expression output obtained from LogQL parsing");
+            "[HLP]Empty expression output obtained from Logpar parsing");
     }
 
     auto parserList = getParserList(expressions);
@@ -302,8 +301,7 @@ ParserFn getParserOp(std::string_view const& logQl)
     }
 
     ParserFn parseFn = [parserList = std::move(parserList)](std::string_view const& event,
-                                                            ParseResult& result)
-    {
+                                                            ParseResult& result) {
         return executeParserList(event, parserList, result);
     };
 

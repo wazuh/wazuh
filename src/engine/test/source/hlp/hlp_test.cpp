@@ -9,10 +9,10 @@ using namespace hlp;
 // TODO: this test shouldn't be failing
 TEST(hlpTests_URL, url_wrong_format)
 {
-    const char* logQl = "the temp param has an [<_temp/url>] type";
+    const char* logpar = "the temp param has an [<_temp/url>] type";
     const char* event = "the temp param has an [incorrect] type";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -21,13 +21,13 @@ TEST(hlpTests_URL, url_wrong_format)
 
 TEST(hlpTests_URL, url_success)
 {
-    static const char* logQl = "this is an url <_url/url> in text";
+    static const char* logpar = "this is an url <_url/url> in text";
     static const char* event =
         "this is an url "
         "https://user:password@wazuh.com:8080/"
         "path?query=%22a%20query%20with%20a%20space%22#fragment in text";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -48,10 +48,10 @@ TEST(hlpTests_URL, url_success)
 
 TEST(hlpTests_IPaddress, IPV4_success)
 {
-    const char* logQl = "<_ip/ip> - <_ip2/ip> -- <_ip3/ip> \"-\" \"-\"";
+    const char* logpar = "<_ip/ip> - <_ip2/ip> -- <_ip3/ip> \"-\" \"-\"";
     const char* event = "127.0.0.1 - 192.168.100.25 -- 255.255.255.0 \"-\" \"-\"";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -63,10 +63,10 @@ TEST(hlpTests_IPaddress, IPV4_success)
 
 TEST(hlpTests_IPaddress, IPV4_failed)
 {
-    const char* logQl = "<_ip/ip> -";
+    const char* logpar = "<_ip/ip> -";
     const char* event = "..100.25 -";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -76,10 +76,10 @@ TEST(hlpTests_IPaddress, IPV4_failed)
 
 TEST(hlpTests_IPaddress, IPV6_success)
 {
-    const char* logQl = " - <_ip/ip>";
+    const char* logpar = " - <_ip/ip>";
     const char* event = " - 2001:db8:3333:AB45:1111:00A:4:1";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -90,10 +90,10 @@ TEST(hlpTests_IPaddress, IPV6_success)
 
 TEST(hlpTests_IPaddress, IPV6_failed)
 {
-    const char* logQl = "<_ip/ip>";
+    const char* logpar = "<_ip/ip>";
     const char* event = "2001:db8:#:$:CCCC:DDDD:EEEE:FFFF";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -104,8 +104,8 @@ TEST(hlpTests_IPaddress, IPV6_failed)
 // Test: domain parsing
 TEST(hlpTests_domain, success)
 {
-    const char* logQl = "<_my_domain/domain>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char* logpar = "<_my_domain/domain>";
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
@@ -164,8 +164,8 @@ TEST(hlpTests_domain, success)
 
 TEST(hlpTests_domain, FQDN_validation)
 {
-    const char* logQl = "<_my_domain/domain/FQDN>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char* logpar = "<_my_domain/domain/FQDN>";
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
@@ -198,8 +198,8 @@ TEST(hlpTests_domain, FQDN_validation)
 
 TEST(hlpTests_domain, host_route)
 {
-    const char* logQl = "<_my_domain/domain>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char* logpar = "<_my_domain/domain>";
+    ParserFn parseOp = getParserOp(logpar);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     const char* event1 = "ftp://www.wazuh.com/route.txt";
@@ -215,8 +215,8 @@ TEST(hlpTests_domain, host_route)
 
 TEST(hlpTests_domain, valid_content)
 {
-    const char* logQl = "<_my_domain/domain>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char* logpar = "<_my_domain/domain>";
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
@@ -236,8 +236,8 @@ TEST(hlpTests_domain, valid_content)
 
 TEST(hlpTests_filepath, windows_path)
 {
-    const char* logQl = "<_file/filepath>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char* logpar = "<_file/filepath>";
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
@@ -296,8 +296,8 @@ TEST(hlpTests_filepath, windows_path)
 
 TEST(hlpTests_filepath, unix_path)
 {
-    const char* logQl = "<_file/filepath>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char* logpar = "<_file/filepath>";
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
@@ -328,8 +328,8 @@ TEST(hlpTests_filepath, unix_path)
 
 TEST(hlpTests_filepath, force_unix_format)
 {
-    const char* logQl = "<_file/filepath/UNIX>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char* logpar = "<_file/filepath/UNIX>";
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
@@ -352,11 +352,11 @@ TEST(hlpTests_filepath, force_unix_format)
 
 TEST(hlpTests_UserAgent, user_agent_firefox)
 {
-    const char* logQl = "[<_userAgent/useragent>] <_>";
+    const char* logpar = "[<_userAgent/useragent>] <_>";
     const char* userAgent = "[Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; "
                             "rv:42.0) Gecko/20100101 Firefox/42.0] the rest of the log";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     auto ret = parseOp(userAgent, result);
 
@@ -367,12 +367,12 @@ TEST(hlpTests_UserAgent, user_agent_firefox)
 
 TEST(hlpTests_UserAgent, user_agent_chrome)
 {
-    const char* logQl = "[<_userAgent/useragent>] <_>";
+    const char* logpar = "[<_userAgent/useragent>] <_>";
     const char* userAgent =
         "[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like "
         "Gecko) Chrome/51.0.2704.103 Safari/537.36] the rest of the log";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     auto ret = parseOp(userAgent, result);
 
@@ -383,13 +383,13 @@ TEST(hlpTests_UserAgent, user_agent_chrome)
 
 TEST(hlpTests_UserAgent, user_agent_edge)
 {
-    const char* logQl = "[<_userAgent/useragent>] <_>";
+    const char* logpar = "[<_userAgent/useragent>] <_>";
     const char* userAgent =
         "[Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, "
         "like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59] the "
         "rest of the log";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     auto ret = parseOp(userAgent, result);
 
@@ -400,13 +400,13 @@ TEST(hlpTests_UserAgent, user_agent_edge)
 
 TEST(hlpTests_UserAgent, user_agent_opera)
 {
-    const char* logQl = "[<_userAgent/useragent>] <_>";
+    const char* logpar = "[<_userAgent/useragent>] <_>";
     const char* userAgent =
         "[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like "
         "Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41] the rest "
         "of the log";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     auto ret = parseOp(userAgent, result);
 
@@ -417,13 +417,13 @@ TEST(hlpTests_UserAgent, user_agent_opera)
 
 TEST(hlpTests_UserAgent, user_agent_safari)
 {
-    const char* logQl = "[<_userAgent/useragent>] <_>";
+    const char* logpar = "[<_userAgent/useragent>] <_>";
     const char* userAgent =
         "[Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) "
         "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 "
         "Safari/604.1] the rest of the log";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     auto ret = parseOp(userAgent, result);
 
@@ -435,10 +435,10 @@ TEST(hlpTests_UserAgent, user_agent_safari)
 
 TEST(hlpTests_ParseAny, success)
 {
-    const char* logQl = "{<_toend/toend> }";
+    const char* logpar = "{<_toend/toend> }";
     const char* anyMessage = "{Lorem ipsum dolor sit amet, consectetur adipiscing elit }";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(anyMessage, result);
 
@@ -448,11 +448,11 @@ TEST(hlpTests_ParseAny, success)
 
 TEST(hlpTests_ParseAny, failed)
 {
-    const char* logQl = "{ <_toend/toend> }";
+    const char* logpar = "{ <_toend/toend> }";
     const char* anyMessage =
         "{ Lorem {ipsum} dolor sit [amet], consectetur adipiscing elit }";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(anyMessage, result);
 
@@ -462,10 +462,10 @@ TEST(hlpTests_ParseAny, failed)
 
 TEST(hlpTests_ParseKeyword, success)
 {
-    const char* logQl = "{<keyword> }";
+    const char* logpar = "{<keyword> }";
     const char* anyMessage = "{Lorem ipsum dolor sit amet, consectetur adipiscing elit }";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(anyMessage, result);
 
@@ -474,10 +474,10 @@ TEST(hlpTests_ParseKeyword, success)
 
 TEST(hlpTests_ParseKeyword, success_end_token)
 {
-    const char* logQl = "{<client.registered_domain> }";
+    const char* logpar = "{<client.registered_domain> }";
     const char* anyMessage = "{Loremipsumdolorsitamet,consecteturadipiscingelit}";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(anyMessage, result);
 
@@ -487,10 +487,10 @@ TEST(hlpTests_ParseKeyword, success_end_token)
 
 TEST(hlpTests_ParseNumber, success_long)
 {
-    const char* logQl = " <_n1/number> <_n2/number>";
+    const char* logpar = " <_n1/number> <_n2/number>";
     const char* event = " 125 -125";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -501,10 +501,10 @@ TEST(hlpTests_ParseNumber, success_long)
 
 TEST(hlpTests_ParseNumber, success_float)
 {
-    const char* logQl = " <_float/number> ";
+    const char* logpar = " <_float/number> ";
     const char* event = " 125.256 ";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -514,10 +514,10 @@ TEST(hlpTests_ParseNumber, success_float)
 
 TEST(hlpTests_ParseNumber, failed_long)
 {
-    const char* logQl = " <_size/number> ";
+    const char* logpar = " <_size/number> ";
     const char* event = " 10E2 ";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -532,10 +532,10 @@ TEST(hlpTests_ParseNumber, failed_long)
 
 TEST(hlpTests_ParseNumber, failed_float)
 {
-    const char* logQl = " <_float/number> ";
+    const char* logpar = " <_float/number> ";
     const char* event = " .125.256 ";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -551,10 +551,10 @@ TEST(hlpTests_ParseNumber, failed_float)
 
 TEST(hlpTests_QuotedString, success)
 {
-    const char* logQl = " ASRTR <_val/quoted> STRINGS ";
+    const char* logpar = " ASRTR <_val/quoted> STRINGS ";
     const char* event = " ASRTR \"this is some quoted string \" STRINGS ";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -563,11 +563,11 @@ TEST(hlpTests_QuotedString, success)
 
 TEST(hlpTests_QuotedString, success_START_END)
 {
-    const char* logQl = " ASRTR <_val/quoted/START STRING / END STRING> STRINGS ";
+    const char* logpar = " ASRTR <_val/quoted/START STRING / END STRING> STRINGS ";
     const char* event =
         " ASRTR START STRING this is some quoted string END STRING STRINGS ";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -576,10 +576,10 @@ TEST(hlpTests_QuotedString, success_START_END)
 
 TEST(hlpTests_QuotedString, success_simple_char)
 {
-    const char* logQl = " ASRTR <_val/quoted/'> STRINGS ";
+    const char* logpar = " ASRTR <_val/quoted/'> STRINGS ";
     const char* event = " ASRTR \'this is some quoted string \' STRINGS ";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -588,10 +588,10 @@ TEST(hlpTests_QuotedString, success_simple_char)
 
 TEST(hlpTests_QuotedString, failed)
 {
-    const char* logQl = " ASRTR <_val/quoted> STRINGS ";
+    const char* logpar = " ASRTR <_val/quoted> STRINGS ";
     const char* event = " ASRTR \"this is some quoted string STRINGS ";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 

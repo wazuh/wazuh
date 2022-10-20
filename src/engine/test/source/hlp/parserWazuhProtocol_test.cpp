@@ -8,12 +8,12 @@ using namespace hlp;
 
 TEST(parseWazuhProtocol, wazuhProtocolCaseI)
 {
-    const char* logQl =
+    const char* logpar =
         "<_queue/number>:[<_agentId>] (<_agentName>) <_registerIP>-><_route>:<_log>";
     const char* event =
         "3:[678] (someAgentName) any->/some/route:Some : random -> ([)] log ";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -27,12 +27,12 @@ TEST(parseWazuhProtocol, wazuhProtocolCaseI)
 
 TEST(parseWazuhProtocol, wazuhProtocolCaseII)
 {
-    const char* logQl =
+    const char* logpar =
         "<_queue/number>:[<_agentId>] (<_agentName>) <_registerIP>-><_route>:<_log>";
     const char* event =
         "3:[678] (someAgentName) 122.250.116.99->/some/route:Some : random -> ([)] log ";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -46,12 +46,12 @@ TEST(parseWazuhProtocol, wazuhProtocolCaseII)
 
 TEST(parseWazuhProtocol, wazuhProtocolCaseIII)
 {
-    const char* logQl =
+    const char* logpar =
         "<_queue/number>:[<_agentId>] (<_agentName>) <_registerIP>-><_route>:<_log>";
     const char* event = "3:[678] (someAgentName) :AB68:::1::7C8:A0->/some/route:Some : "
                         "random -> ([)] log ";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -65,10 +65,10 @@ TEST(parseWazuhProtocol, wazuhProtocolCaseIII)
 
 TEST(parseWazuhProtocol, wazuhProtocolCaseIV)
 {
-    const char* logQl = "<_queue/number>:<_registerIP/ip>:<_log>";
+    const char* logpar = "<_queue/number>:<_registerIP/ip>:<_log>";
     const char* event = "3:1.50.255.0:Some : random -> ([)] log ";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -81,10 +81,10 @@ TEST(parseWazuhProtocol, wazuhProtocolCaseIV)
 TEST(parseWazuhProtocol, wazuhProtocolCaseV)
 {
     GTEST_SKIP();
-    const char* logQl = "<_queue/number>:<_registerIP/ip>:<_log>";
+    const char* logpar = "<_queue/number>:<_registerIP/ip>:<_log>";
     const char* event = "3:2AAC:AB68:0:0:1D:0:7C8:A0:Some : random -> ([)] log ";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
