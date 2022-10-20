@@ -4993,255 +4993,325 @@ checks:
     rules:
       - "c:apt -s upgrade -> r:0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded"
 
-  ########### WIP
-
-  ############################################################
   # 2 Services
-  ############################################################
-
   # 2.1 Special Purpose Services
   # 2.1.1 Time Synchronization
 
-  - id: 19049
+  # 2.1.1.1 Ensure time synchronization is in use (Automated)
+  - id: 19051
     title: "Ensure time synchronization is in use."
-    description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them."
+    description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them. Notes: - If access to a physical host's clock is available and configured according to site policy, this section can be skipped. - Only one time synchronization method should be in use on the system. - If access to a physical host's clock is available and configured according to site policy, systemd-timesyncd should be stopped and masked."
     rationale: "Time synchronization is important to support time sensitive security mechanisms like Kerberos and also ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
-    remediation: 'On systems where host based time synchronization is not available, configure systemd-timesyncd. If "full featured" and/or encrypted time synchronization is required, install chrony or NTP. To install chrony: # apt install chrony To install ntp: # apt install ntp On virtual systems where host based time synchronization is available consult your virtualization software documentation and setup host based synchronization.'
+    remediation: 'On systems where host based time synchronization is not available, configure systemd- timesyncd. If "full featured" and/or encrypted time synchronization is required, install chrony or NTP. To install chrony: # apt install chrony To install ntp: # apt install ntp On virtual systems where host based time synchronization is available consult your virtualization software documentation and setup host based synchronization.'
     compliance:
       - cis: ["2.1.1.1"]
       - cis_csc_v7: ["6.1"]
-      - pci_dss: ["10.4"]
-      - nist_800_53: ["AU.8"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cmmc_v2.0: ["AU.2.043"]
+      - iso_27001-2013: ["A.12.4.4"]
+      - nist_sp_800-53: ["AU-8"]
+      - pci_dss_v3.2.1: ["10.4"]
     condition: any
     rules:
       - "c:dpkg -s ntp -> r:install ok installed"
       - "c:dpkg -s chrony -> r:install ok installed"
-      - "c:systemctl is-enabled systemd-timesyncd -> enabled"
+      - "c:systemctl is-enabled systemd-timesyncd -> r:enabled"
 
-  - id: 19050
+  # 2.1.1.2 Ensure systemd-timesyncd is configured (Automated)
+  - id: 19052
     title: "Ensure systemd-timesyncd is configured."
-    description: 'systemd-timesyncd is a daemon that has been added for synchronizing the system clock across the network. It implements an SNTP client. In contrast to NTP implementations such as chrony or the NTP reference server this only implements a client side, and does not bother with the full NTP complexity, focusing only on querying time from one remote server and synchronizing the local clock to it. The daemon runs with minimal privileges, and has been hooked up with networkd to only operate when network connectivity is available. The daemon saves the current clock to disk every time a new NTP sync has been acquired, and uses this to possibly correct the system clock early at bootup, in order to accommodate for systems that lack an RTC such as the Raspberry Pi and embedded devices, and make sure that time monotonically progresses on these systems, even if it is not always correct. To make use of this daemon a new system user and group "systemd-timesync" needs to be created on installation of systemd. Note: The systemd-timesyncd service specifically implements only SNTP. This minimalistic service will set the system clock for large offsets or slowly adjust it for smaller deltas. More complex use cases are not covered by systemd-timesyncd. This recommendation only applies if timesyncd is in use on the system.'
-    rationale: "Proper configuration is vital to ensuring time synchronization is working properly. This recommendation only applies if timesyncd is in use on the system."
-    remediation: "Run the following command to enable systemd-timesyncd   # systemctl enable systemd-timesyncd.service  ||  Edit the file /etc/systemd/timesyncd.conf and add/modify the following lines in accordance with local site policy:    (1) NTP=0.ubuntu.pool.ntp.org 1.ubuntu.pool.ntp.org 2.ubuntu.pool.ntp.org        (2) FallbackNTP=ntp.ubuntu.com 3.ubuntu.pool.ntp.org        (3) RootDistanceMaxSec=1    || Run the following commands to start systemd-timesyncd.service   # systemctl start systemd-timesyncd.service   # timedatectl set-ntp true  || Notes: Servers listed and RootDistanceMax should be In Accordance With Local Policy some versions of systemd have been compiled without systemd-timesycnd. On these distributions, chrony or NTP should be used instead of systemd-timesycnd. Not all options are available on all versions of systemd-timesyncd"
+    description: 'systemd-timesyncd is a daemon that has been added for synchronizing the system clock across the network. It implements an SNTP client. In contrast to NTP implementations such as chrony or the NTP reference server this only implements a client side, and does not bother with the full NTP complexity, focusing only on querying time from one remote server and synchronizing the local clock to it. The daemon runs with minimal privileges, and has been hooked up with networkd to only operate when network connectivity is available. The daemon saves the current clock to disk every time a new NTP sync has been acquired, and uses this to possibly correct the system clock early at bootup, in order to accommodate for systems that lack an RTC such as the Raspberry Pi and embedded devices, and make sure that time monotonically progresses on these systems, even if it is not always correct. To make use of this daemon a new system user and group "systemd-timesync" needs to be created on installation of systemd. Note: - If chrony or ntp are used, systemd-timesyncd should be stopped and masked, and this section skipped. - This recommendation only applies if timesyncd is in use on the system. - Only one time synchronization method should be in use on the system.'
+    rationale: "Proper configuration is vital to ensuring time synchronization is working properly."
+    remediation: "- Remove additional time synchronization methods: Run the following commands to remove ntp and chrony: # apt purge ntp # apt purge chrony - Configure systemd-timesyncd: Run the following command to enable systemd-timesyncd: # systemctl enable systemd-timesyncd.service. Edit the file /etc/systemd/timesyncd.conf and add/modify the following lines: NTP=0.debian.pool.ntp.org 1.debian.pool.ntp.org #Servers listed should be In Accordence With Local Policy FallbackNTP=2.debian.pool.ntp.org 3.debian.pool.ntp.org #Servers listed should be In Accordence With Local Policy. RootDistanceMax=1 #should be In Accordence With Local Policy. Run the following commands to start systemd-timesyncd.service: # systemctl start systemd-timesyncd.service # timedatectl set-ntp true"
     compliance:
       - cis: ["2.1.1.2"]
       - cis_csc_v7: ["6.1"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AU.2.043"]
+      - iso_27001-2013: ["A.12.4.4"]
+      - nist_sp_800-53: ["AU-8"]
+      - pci_dss_v3.2.1: ["10.4"]
     condition: all
     rules:
-      - "c:systemctl is-enabled systemd-timesyncd.service -> enabled"
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
+      - "c:dpkg -s ntp -> r:package 'ntp' is not installed"
+      - "c:dpkg -s chrony -> r:package 'chrony' is not installed"
 
-  - id: 19051
+  # 2.1.1.3 Ensure chrony is configured (Automated)
+  - id: 19053
     title: "Ensure chrony is configured."
-    description: "chrony is a daemon which implements the Network Time Protocol (NTP) is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on chrony can be found at http://chrony.tuxfamily.org/. chrony can be configured to be a client and/or a server."
-    rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly. This recommendation only applies if chrony is in use on the system."
-    remediation: "Add or edit server or pool lines to /etc/chrony/chrony.conf as appropriate: server <remote-server> Configure chrony to run as the chrony user by configuring the appropriate startup script for your distribution. Startup scripts are typically stored in /etc/init.d or /etc/systemd ."
+    description: "chrony is a daemon which implements the Network Time Protocol (NTP) and is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on chrony can be found at: http://chrony.tuxfamily.org/. chrony can be configured to be a client and/or a server. Notes: - If ntp or systemd-timesyncd are used, chrony should be removed and this section skipped. - This recommendation only applies if chrony is in use on the system. - Only one time synchronization method should be in use on the system."
+    rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
+    remediation: "Remove and/or disable additional time synchronization methods: Run the following command to remove ntp: # apt purge ntp Run the following command to stop and mask systemd-timesyncd: # systemctl --now mask systemd-timesyncd Configure chrony: Add or edit server or pool lines to /etc/chrony/chrony.conf as appropriate: server <remote-server> Add or edit the user line to /etc/chrony/chrony.conf: user _chrony"
     compliance:
       - cis: ["2.1.1.3"]
       - cis_csc_v7: ["6.1"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AU.2.043"]
+      - iso_27001-2013: ["A.12.4.4"]
+      - nist_sp_800-53: ["AU-8"]
+      - pci_dss_v3.2.1: ["10.4"]
     condition: all
     rules:
+      - "c:dpkg -s chrony -> r:^Status: install ok installed"
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:masked"
+      - "c:dpkg -s ntp -> r:package 'ntp' is not installed"
       - 'f:/etc/chrony/chrony.conf -> r:^server\.+|^pool\.+'
+      - "c:ps -ef -> r:^_chrony && r:/chronyd"
 
-  - id: 19052
+  # 2.1.1.4 Ensure ntp is configured (Automated)
+  - id: 19054
     title: "Ensure ntp is configured."
-    description: "ntp is a daemon which implements the Network Time Protocol (NTP). It is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on NTP can be found at http://www.ntp.org. ntp can be configured to be a client and/or a server. This recommendation only applies if ntp is in use on the system."
+    description: "ntp is a daemon which implements the Network Time Protocol (NTP). It is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on NTP can be found at http://www.ntp.org. ntp can be configured to be a client and/or a server. Notes: - If chrony or systemd-timesyncd are used, ntp should be removed and this section skipped. - This recommendation only applies if ntp is in use on the system. - Only one time synchronization method should be in use on the system."
     rationale: "If ntp is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
-    remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod nomodify notrap nopeer noquery restrict -6 default kod nomodify notrap nopeer noquery Add or edit server or pool lines to /etc/ntp.conf as appropriate: server <remote-server> Configure ntp to run as the ntp user by adding or editing the /etc/init.d/ntp file: RUNASUSER=ntp"
+    remediation: "- Remove and/or disable additional time synchronization methods: Run the following command to remove chrony: # apt purge chrony Run the following command to stop and mask systemd-timesyncd: # systemctl --now mask systemd-timesyncd - Configure ntp: Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod nomodify notrap nopeer noquery restrict -6 default kod nomodify notrap nopeer noquery. Add or edit server or pool lines to /etc/ntp.conf as appropriate: server <remote-server> Configure ntp to run as the ntp user by adding or editing the /etc/init.d/ntp file: RUNASUSER=ntp."
     compliance:
       - cis: ["2.1.1.4"]
       - cis_csc_v7: ["6.1"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    references:
-      - http://www.ntp.org/
+      - cmmc_v2.0: ["AU.2.043"]
+      - iso_27001-2013: ["A.12.4.4"]
+      - nist_sp_800-53: ["AU-8"]
+      - pci_dss_v3.2.1: ["10.4"]
     condition: all
     rules:
+      - "c:dpkg -s ntp -> r:^Status: install ok installed"
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:masked"
+      - "c:dpkg -s chrony -> r:package 'chrony' is not installed"
       - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default|^restrict\s+default && r:\s+kod\s+ && r:\s+nomodify\s+ && r:\s+notrap\s+ && r:\s+nopeer\s+ && r:\s+noquery'
       - 'f:/etc/ntp.conf -> r:^restrict\s+-6\s+default && r:\s+kod\s+ && r:\s+nomodify\s+ && r:\s+notrap\s+ && r:\s+nopeer\s+ && r:\s+noquery'
       - 'f:/etc/ntp.conf -> r:^server\.+|^pool\.+'
       - 'f:/etc/init.d/ntp -> r:^RUNASUSER\s*\t*=\s*\t*ntp'
 
-  # 2.2.2 Ensure the X Window system is not installed (Scored)
-  - id: 19053
+  # 2.1.2 Ensure X Window System is not installed (Automated)
+  - id: 19055
     title: "Ensure the X Window system is not installed."
     description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
     rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
+    impact: 'Many Linux systems run applications which require a Java runtime. Some Linux Java packages have a dependency on specific X Windows xorg-x11-fonts. One workaround to avoid this dependency is to use the "headless" Java packages for your specific Java runtime, if provided by your distribution.'
     remediation: "Remove the X Windows System packages: apt purge xserver-xorg*"
     compliance:
       - cis: ["2.1.2"]
       - cis_csc_v7: ["2.6"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
+      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073"]
+      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+      - mitre_techniques:
+          [
+            "T1191",
+            "T1092",
+            "T1175",
+            "T1173",
+            "T1519",
+            "T1052",
+            "T1210",
+            "T1133",
+            "T1118",
+            "T1171",
+            "T1170",
+            "T1046",
+            "T1137",
+            "T1086",
+            "T1164",
+            "T1121",
+            "T1076",
+            "T1091",
+            "T1180",
+            "T1064",
+            "T1184",
+            "T1221",
+            "T1127",
+            "T1028",
+          ]
+      - nist_sp_800-53: ["CM-11"]
     condition: none
     rules:
       - 'c:dpkg -l xserver-xorg-core* -> r:^\wi\s*xserver-xorg'
 
-  - id: 19054
+  # 2.1.3 Ensure Avahi Server is not installed (Automated)
+  - id: 19056
     title: "Ensure Avahi Server is not installed."
     description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
-    rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to disable the service to reduce the potential attach surface."
-    remediation: "Run the following command to remove avahi-daemon: # systemctl --now disable avahi-daemon # systemctl stop avahi-daemon.socket  # apt purge avahi-daemon"
+    rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to remove this package to reduce the potential attack surface."
+    remediation: "Run the following commands to remove avahi-daemon: # systemctl stop avahi-daaemon.service # systemctl stop avahi-daemon.socket # apt purge avahi-daemon"
     compliance:
       - cis: ["2.1.3"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s avahi-daemon -> r:install ok installed"
+      - "c:dpkg -s avahi-daemon -> r:package 'avahi-daemon' is not installed"
 
-  - id: 19055
+  # 2.1.4 Ensure CUPS is not installed (Automated)
+  - id: 19057
     title: "Ensure CUPS is not installed."
     description: "The Common Unix Print System (CUPS) provides the ability to print to both local and network printers. A system running CUPS can also accept print jobs from remote systems and print them to local printers. It also provides a web based remote administration capability."
-    rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be disabled to reduce the potential attack surface."
-    remediation: "Run the following command to remove cups: # apt purge cups"
+    rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be removed to reduce the potential attack surface."
+    impact: "Removing CUPS will prevent printing from the system, a common task for workstation systems."
+    remediation: "Run one of the following commands to remove cups: # apt purge cups"
+    references:
+      - https://www.cups.org
     compliance:
       - cis: ["2.1.4"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    references:
-      - https://www.cups.org
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s cups -> r:install ok installed"
+      - "c:dpkg -s cups -> r:package 'cups' is not installed"
 
-  - id: 19056
+  # 2.1.5 Ensure DHCP Server is not installed (Automated)
+  - id: 19058
     title: "Ensure DHCP Server is not installed."
     description: "The Dynamic Host Configuration Protocol (DHCP) is a service that allows machines to be dynamically assigned IP addresses."
-    rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that this service be disabled to reduce the potential attack surface."
-    remediation: "Run the following commands to remove dhcpd: # apt purge isc-dhcp-server"
+    rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that this package be removed to reduce the potential attack surface."
+    remediation: "Run the following command to remove isc-dhcp-server: # apt purge isc-dhcp-server"
     references:
       - https://www.isc.org/dhcp/
     compliance:
       - cis: ["2.1.5"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s isc-dhcp-server -> r:install ok installed"
+      - "c:dpkg -s isc-dhcp-server -> r:package 'isc-dhcp-server' is not installed"
 
-  - id: 19057
+  # 2.1.6 Ensure LDAP server is not installed (Automated)
+  - id: 19059
     title: "Ensure LDAP server is not installed."
     description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
-    rationale: "If the system will not need to act as an LDAP server, it is recommended that the software be disabled to reduce the potential attack surface."
-    remediation: "Run the following command to remove slapd: # apt purge slapd"
+    rationale: "If the system will not need to act as an LDAP server, it is recommended that the software be removed to reduce the potential attack surface."
+    remediation: "Run one of the following commands to remove slapd: # apt purge slapd"
     compliance:
       - cis: ["2.1.6"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     references:
       - https://www.openldap.org
-    condition: none
+    condition: all
     rules:
-      - "c:dpkg -s slapd -> r:install ok installed"
+      - "c:dpkg -s slapd -> r:package 'slapd' is not installed"
 
-  - id: 19058
+  # 2.1.7 Ensure NFS is not installed (Automated)
+  - id: 19060
     title: "Ensure NFS is not installed."
     description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
-    rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
-    remediation: "Run the following commands to remove nfs: # apt purge nfs-kernel-server"
+    rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be removed to reduce the remote attack surface."
+    remediation: "Run the following command to remove nfs: # apt purge nfs-kernel-server"
     compliance:
       - cis: ["2.1.7"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s nfs-kernel-server -> r:install ok installed"
+      - "c:dpkg -s nfs-kernel-server -> r:package 'nfs-kernel-server' is not installed"
 
-  - id: 19059
+  # 2.1.8 Ensure DNS Server is not installed (Automated)
+  - id: 19061
     title: "Ensure DNS Server is not installed."
     description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network."
     rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the package be deleted to reduce the potential attack surface."
-    remediation: "Run the following command to disable dns server: # apt purge bind9"
+    remediation: "Run the following commands to disable DNS server: # apt purge bind9"
     compliance:
       - cis: ["2.1.8"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s bind9 -> r:install ok installed"
+      - "c:dpkg -s bind9 -> r:package 'bind9' is not installed"
 
-  - id: 19060
+  # 2.1.9 Ensure FTP Server is not installed (Automated)
+  - id: 19062
     title: "Ensure FTP Server is not installed."
     description: "The File Transfer Protocol (FTP) provides networked computers with the ability to transfer files."
-    rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended sftp be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be deleted to reduce the potential attack surface."
+    rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended SFTP be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be deleted to reduce the potential attack surface."
     remediation: "Run the following command to remove vsftpd: # apt purge vsftpd"
     compliance:
       - cis: ["2.1.9"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s vsftpd -> r:install ok installed"
+      - "c:dpkg -s vsftpd -> r:package 'vsftpd' is not installed"
 
-  - id: 19061
+  # 2.1.10 Ensure HTTP server is not installed (Automated)
+  - id: 19063
     title: "Ensure HTTP Server is not installed."
     description: "HTTP or web servers provide the ability to host web site content."
     rationale: "Unless there is a need to run the system as a web server, it is recommended that the package be deleted to reduce the potential attack surface."
-    remediation: "Run the following command to remove apache2: # apt purge apache2"
+    remediation: "Run the following command to remove apache: # apt purge apache2"
     compliance:
       - cis: ["2.1.10"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s apache2 -> r:install ok installed"
+      - "c:dpkg -s apache2 -> r:package 'apache2' is not installed"
 
-  - id: 19062
+  # 2.1.11 Ensure IMAP and POP3 server are not installed (Automated)
+  - id: 19064
     title: "Ensure IMAP and POP3 server are not installed."
     description: "dovecot-imapd and dovecot-pop3d are an open source IMAP and POP3 server for Linux based systems."
     rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface."
-    remediation: "Run one of the following commands to remove dovecot-imapd and dovecot-pop3d :# apt purge dovecot-imapd dovecot-pop3d"
+    remediation: "Run one of the following commands to remove dovecot-imapd and dovecot-pop3d: # apt purge dovecot-imapd dovecot-pop3d"
     compliance:
       - cis: ["2.1.11"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s dovecot-imapd dovecot-pop3d -> r:install ok installed"
+      - "c:dpkg -s dovecot-imapd -> r:package 'dovecot-imapd' is not installed"
+      - "c:dpkg -s dovecot-pop3d -> r:package 'dovecot-pop3d' is not installed"
 
-  - id: 19063
+  # 2.1.12 Ensure Samba is not installed (Automated)
+  - id: 19065
     title: "Ensure Samba is not installed."
-    description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Small Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
-    rationale: "If there is no need to mount directories and file systems to Windows systems, then this service can be deleted to reduce the potential attack surface."
-    remediation: "Run the following command to remove smbd: # apt purge samba"
+    description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Server Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
+    rationale: "If there is no need to mount directories and file systems to Windows systems, then this service should be deleted to reduce the potential attack surface."
+    remediation: "Run the following command to remove samba: # apt purge samba"
     compliance:
       - cis: ["2.1.12"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: none
-    rules:
-      - "c:dpkg -s samba -> r:install ok installed"
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+      - "c:dpkg -s samba -> r:package 'samba' is not installed"
 
-  - id: 19064
+  # 2.1.13 Ensure HTTP Proxy Server is not installed (Automated)
+  - id: 19066
     title: "Ensure HTTP Proxy Server is not installed."
     description: "Squid is a standard proxy server used in many distributions and environments."
     rationale: "If there is no need for a proxy server, it is recommended that the squid proxy be deleted to reduce the potential attack surface."
@@ -5249,167 +5319,350 @@ checks:
     compliance:
       - cis: ["2.1.13"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s squid -> r:install ok installed"
+      - "c:dpkg -s squid -> r:package 'squid' is not installed"
 
-  - id: 19065
+  # 2.1.14 Ensure SNMP Server is not installed (Automated)
+  - id: 19067
     title: "Ensure SNMP Server is not installed."
-    description: "The Simple Network Management Protocol (SNMP) server is used to listen for SNMP commands from an SNMP management system, execute the commands or collect the information and then send results back to the requesting system."
-    rationale: "The SNMP server can communicate using SNMP v1, which transmits data in the clear and does not require authentication to execute commands. Unless absolutely necessary, it is recommended that the SNMP service not be used. If SNMP is required the server should be configured to disallow SNMP v1."
+    description: 'Simple Network Management Protocol (SNMP) is a widely used protocol for monitoring the health and welfare of network equipment, computer equipment and devices like UPSs. Net-SNMP is a suite of applications used to implement SNMPv1 (RFC 1157), SNMPv2 (RFCs 1901-1908), and SNMPv3 (RFCs 3411-3418) using both IPv4 and IPv6. Support for SNMPv2 classic (a.k.a. "SNMPv2 historic" - RFCs 1441-1452) was dropped with the 4.0 release of the UCD-snmp package. The Simple Network Management Protocol (SNMP) server is used to listen for SNMP commands from an SNMP management system, execute the commands or collect the information and then send results back to the requesting system.'
+    rationale: "The SNMP server can communicate using SNMPv1, which transmits data in the clear and does not require authentication to execute commands. SNMPv3 replaces the simple/clear text password sharing used in SNMPv2 with more securely encoded parameters. If the the SNMP service is not required, the net-snmp package should be removed to reduce the attack surface of the system. Note: If SNMP is required: - The server should be configured for SNMP v3 only. User Authentication and Message Encryption should be configured. - If SNMP v2 is absolutely necessary, modify the community strings' values."
     remediation: "Run the following command to remove snmpd: # apt purge snmpd"
     compliance:
       - cis: ["2.1.14"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s snmpd -> r:install ok installed"
+      - "c:dpkg -s snmpd -> r:package 'snmpd' is not installed"
 
-  - id: 19066
+  # 2.1.15 Ensure mail transfer agent is configured for local-only mode (Automated)
+  - id: 19068
     title: "Ensure mail transfer agent is configured for local-only mode."
     description: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
-    rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems."
-    remediation: "Edit /etc/postfix/main.cf and add thefollowing line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below:   inet_interfaces = loopback-only   Restart postfix:    # systemctl restart postfix"
+    rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems. Note: This recommendation is designed around the exim4 mail server, depending on your environment you may have an alternative MTA installed such as sendmail. If this is the case consult the documentation for your installed MTA to configure the recommended state."
+    remediation: "Edit /etc/exim4/update-exim4.conf.conf and and or modify following lines to look like the lines below: dc_eximconfig_configtype='local' dc_local_interfaces='127.0.0.1 ; ::1' dc_readhost='' dc_relay_domains='' dc_minimaldns='false' dc_relay_nets='' dc_smarthost='' dc_use_split_config='false' dc_hide_mailname='' dc_mailname_in_oh='true' dc_localdelivery='mail_spool' Restart exim4: # systemctl restart exim4"
     compliance:
       - cis: ["2.1.15"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1", "AC.4", "SC.7"]
-      - tsc: ["CC5.2", "CC6.4", "CC6.6", "CC6.7"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - 'c:ss -lntu -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.+LISTEN|::1:25\.*LISTEN'
+      - 'not c:ss -lntu -> r:\.*:25\s && r:127.0.0.1:25\s+|::1]:25\s+'
 
-  - id: 19067
+  # 2.1.16 Ensure rsync service is not installed (Automated)
+  - id: 19069
     title: "Ensure rsync service is not installed."
-    description: "The rsyncd service can be used to synchronize files between systems over network links."
-    rationale: "The rsyncd service presents a security risk as it uses unencrypted protocols for communication."
+    description: "The rsync service can be used to synchronize files between systems over network links."
+    rationale: "The rsync service presents a security risk as it uses unencrypted protocols for communication. The rsync package should be removed to reduce the attack area of the system."
     remediation: "Run the following command to remove rsync: # apt purge rsync"
     compliance:
       - cis: ["2.1.16"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s rsync -> r:install ok installed"
+      - "c:dpkg -s rsync -> r:package 'rsync' is not installed"
 
-  - id: 19068
+  # 2.1.17 Ensure NIS Server is not installed (Automated)
+  - id: 19070
     title: "Ensure NIS Server is not installed."
     description: "The Network Information Service (NIS) (formally known as Yellow Pages) is a client-server directory service protocol for distributing system configuration files. The NIS server is a collection of programs that allow for the distribution of configuration files."
-    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be disabled and other, more secure services be used"
+    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed and other, more secure services be used."
     remediation: "Run the following command to remove nis: # apt purge nis"
     compliance:
       - cis: ["2.1.17"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s nis -> r:install ok installed"
+      - "c:dpkg -s nis -> r:package 'nis' is not installed"
 
   # 2.2 Service Clients
 
-  - id: 19069
+  # 2.2.1 Ensure NIS Client is not installed (Automated)
+  - id: 19071
     title: "Ensure NIS Client is not installed."
-    description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files."
+    description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client was used to bind a machine to an NIS server and receive the distributed configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
-    remediation: "Uninstall nis : apt purge nis"
+    impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Uninstall nis: # apt purge nis"
     compliance:
       - cis: ["2.2.1"]
       - cis_csc_v7: ["2.6"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073"]
+      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+      - mitre_techniques:
+          [
+            "T1191",
+            "T1092",
+            "T1175",
+            "T1173",
+            "T1519",
+            "T1052",
+            "T1210",
+            "T1133",
+            "T1118",
+            "T1171",
+            "T1170",
+            "T1046",
+            "T1137",
+            "T1086",
+            "T1164",
+            "T1121",
+            "T1076",
+            "T1091",
+            "T1180",
+            "T1064",
+            "T1184",
+            "T1221",
+            "T1127",
+            "T1028",
+          ]
+      - nist_sp_800-53: ["CM-11"]
+    condition: all
     rules:
-      - "c:dpkg -s nis -> r:install ok installed"
+      - "c:dpkg -s nis -> r:package 'nis' is not installed"
 
-  - id: 19070
+  # 2.2.2 Ensure rsh client is not installed (Automated)
+  - id: 19072
     title: "Ensure rsh client is not installed."
-    description: "The rsh-client package contains the client commands for the rsh services."
-    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin ."
-    remediation: "Uninstall rsh : apt remove rsh-client"
+    description: The rsh-client package contains the client commands for the rsh services."
+    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh, rcp and rlogin."
+    impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Uninstall rsh: # apt purge rsh-client"
     compliance:
       - cis: ["2.2.2"]
       - cis_csc_v7: ["4.5"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["IA.3.083"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques:
+          [
+            "T1176",
+            "T1501",
+            "T1098",
+            "T1017",
+            "T1110",
+            "T1136",
+            "T1530",
+            "T1114",
+            "T1133",
+            "T1040",
+            "T1076",
+            "T1021",
+            "T1539",
+            "T1072",
+            "T1078",
+            "T1134",
+            "T1067",
+            "T1088",
+            "T1175",
+            "T1003",
+            "T1214",
+            "T1190",
+            "T1210",
+            "T1495",
+            "T1525",
+            "T1208",
+            "T1215",
+            "T1075",
+            "T1097",
+            "T1086",
+            "T1055",
+            "T1053",
+            "T1505",
+            "T1035",
+            "T1051",
+            "T1218",
+            "T1184",
+            "T1169",
+            "T1206",
+            "T1100",
+            "T1077",
+            "T1047",
+            "T1084",
+            "T1028",
+          ]
+      - pci_dss_v3.2.1: ["2.3", "8.3", "8.3.1", "8.3.2"]
+    condition: all
     rules:
-      - "c:dpkg -s rsh-client -> r:install ok installed"
+      - "c:dpkg -s rsh-client -> r:package 'rsh-client' is not installed"
 
-  - id: 19071
+  # 2.2.3 Ensure talk client is not installed (Automated)
+  - id: 19073
     title: "Ensure talk client is not installed."
-    description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talkclient, which allows initialization of talk sessions, is installed by default."
+    description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talk client, which allows initialization of talk sessions, is installed by default."
     rationale: "The software presents a security risk as it uses unencrypted protocols for communication."
-    remediation: "Uninstall talk : apt remove talk"
+    impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Uninstall talk: # apt purge talk"
     compliance:
       - cis: ["2.2.3"]
       - cis_csc_v7: ["2.6"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073"]
+      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+      - mitre_techniques:
+          [
+            "T1191",
+            "T1092",
+            "T1175",
+            "T1173",
+            "T1519",
+            "T1052",
+            "T1210",
+            "T1133",
+            "T1118",
+            "T1171",
+            "T1170",
+            "T1046",
+            "T1137",
+            "T1086",
+            "T1164",
+            "T1121",
+            "T1076",
+            "T1091",
+            "T1180",
+            "T1064",
+            "T1184",
+            "T1221",
+            "T1127",
+            "T1028",
+          ]
+      - nist_sp_800-53: ["CM-11"]
+    condition: all
     rules:
-      - "c:dpkg -s talk -> r:install ok installed"
+      - "c:dpkg -s talk -> r:package 'talk' is not installed"
 
-  - id: 19072
+  # 2.2.4 Ensure telnet client is not installed (Automated)
+  - id: 19074
     title: "Ensure telnet client is not installed."
     description: "The telnet package contains the telnet client, which allows users to start connections to other systems via the telnet protocol."
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow an unauthorized user to steal credentials. The ssh package provides an encrypted session and stronger security and is included in most Linux distributions."
-    remediation: "Uninstall telnet : # apt purge telnet"
+    impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Uninstall telnet: # apt purge telnet"
     compliance:
       - cis: ["2.2.4"]
       - cis_csc_v7: ["4.5"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["IA.3.083"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques:
+          [
+            "T1176",
+            "T1501",
+            "T1098",
+            "T1017",
+            "T1110",
+            "T1136",
+            "T1530",
+            "T1114",
+            "T1133",
+            "T1040",
+            "T1076",
+            "T1021",
+            "T1539",
+            "T1072",
+            "T1078",
+            "T1134",
+            "T1067",
+            "T1088",
+            "T1175",
+            "T1003",
+            "T1214",
+            "T1190",
+            "T1210",
+            "T1495",
+            "T1525",
+            "T1208",
+            "T1215",
+            "T1075",
+            "T1097",
+            "T1086",
+            "T1055",
+            "T1053",
+            "T1505",
+            "T1035",
+            "T1051",
+            "T1218",
+            "T1184",
+            "T1169",
+            "T1206",
+            "T1100",
+            "T1077",
+            "T1047",
+            "T1084",
+            "T1028",
+          ]
+      - pci_dss_v3.2.1: ["2.3", "8.3", "8.3.1", "8.3.2"]
+    condition: all
     rules:
-      - "c:dpkg -s telnet -> r:install ok installed"
+      - "c:dpkg -s telnet -> r:package 'telnet' is not installed"
 
-  - id: 19073
+  # 2.2.5 Ensure LDAP client is not installed (Automated)
+  - id: 19075
     title: "Ensure LDAP client is not installed."
     description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
     rationale: "If the system will not need to act as an LDAP client, it is recommended that the software be removed to reduce the potential attack surface."
-    remediation: "Uninstall ldap-utils : # apt purge ldap-utils"
+    impact: "Removing the LDAP client will prevent or inhibit using LDAP for authentication in your environment."
+    remediation: "Uninstall ldap-utils: # apt purge ldap-utils"
     compliance:
       - cis: ["2.2.5"]
       - cis_csc_v7: ["2.6"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073"]
+      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+      - mitre_techniques:
+          [
+            "T1191",
+            "T1092",
+            "T1175",
+            "T1173",
+            "T1519",
+            "T1052",
+            "T1210",
+            "T1133",
+            "T1118",
+            "T1171",
+            "T1170",
+            "T1046",
+            "T1137",
+            "T1086",
+            "T1164",
+            "T1121",
+            "T1076",
+            "T1091",
+            "T1180",
+            "T1064",
+            "T1184",
+            "T1221",
+            "T1127",
+            "T1028",
+          ]
+      - nist_sp_800-53: ["CM-11"]
+    condition: all
     rules:
-      - "c:dpkg -s ldap-utils -> r:install ok installed"
+      - "c:dpkg -s ldap-utils -> r:package 'ldap-utils' is not installed"
 
+  # 2.2.6 Ensure RPC is not installed (Automated)
   - id: 19074
     title: "Ensure RPC is not installed."
     description: "Remote Procedure Call (RPC) is a method for creating low level client server applications across different system architectures. It requires an RPC compliant client listening on a network port. The supporting package is rpcbind."
@@ -5418,15 +5671,17 @@ checks:
     compliance:
       - cis: ["2.2.6"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s rpcbind -> r:install ok installed"
+      - "c:dpkg -s rpcbind -> r:package 'rpcbind' is not installed"
+
+  # 2.3 Ensure nonessential services are removed or masked (Manual) - Not implemented
+  ########### WIP
 
   ############################################################
   # 3 Network Configuration
