@@ -95,7 +95,7 @@ CONF_SECTIONS = MappingProxyType({
     },
     'vulnerability-detector': {
         'type': 'merge',
-        'list_options': ['feed']
+        'list_options': ['feed', 'provider']
     },
     'osquery': {
         'type': 'merge',
@@ -251,7 +251,14 @@ def _read_option(section_name: str, opt: str) -> tuple:
             if list(opt):
                 for child in opt:
                     child_section, child_config = _read_option(child.tag.lower(), child)
-                    opt_value[child_section] = child_config
+                    if not (section_name, opt_name, child_section) == ('vulnerability-detector', 'provider', 'os'):
+                        opt_value[child_section] = child_config
+                    else:
+                        if opt_value.get(child_section):
+                            opt_value[child_section].append(child_config)
+                        else:
+                            opt_value[child_section] = [child_config]
+
             else:
                 opt_value['item'] = opt.text
         else:
