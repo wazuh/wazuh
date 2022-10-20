@@ -74,21 +74,21 @@ def test_insert_section(json_dst, section_name, section_data):
 
 def test_read_option():
     """Checks insert_section function."""
-    # with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options.conf')) as f:
-    #     data = fromstring(f.read())
-    #     assert configuration._read_option('open-scap', data)[0] == 'directories'
-    #     assert configuration._read_option('syscheck', data)[0] == 'directories'
-    #     assert configuration._read_option('labels', data)[0] == 'directories'
-    #
-    # with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options1.conf')) as f:
-    #     data = fromstring(f.read())
-    #     assert configuration._read_option('labels', data)[0] == 'label'
-    #     assert configuration._read_option('test', data) == ('label', {'name': 'first', 'item': 'test'})
-    #
-    # with open(os.path.join(parent_directory, tmp_path, 'configuration/default/synchronization.conf')) as f:
-    #     data = fromstring(f.read())
-    #     assert configuration._read_option('open-scap', data)[0] == 'synchronization'
-    #     assert configuration._read_option('syscheck', data)[0] == 'synchronization'
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options.conf')) as f:
+        data = fromstring(f.read())
+        assert configuration._read_option('open-scap', data)[0] == 'directories'
+        assert configuration._read_option('syscheck', data)[0] == 'directories'
+        assert configuration._read_option('labels', data)[0] == 'directories'
+
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options1.conf')) as f:
+        data = fromstring(f.read())
+        assert configuration._read_option('labels', data)[0] == 'label'
+        assert configuration._read_option('test', data) == ('label', {'name': 'first', 'item': 'test'})
+
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/synchronization.conf')) as f:
+        data = fromstring(f.read())
+        assert configuration._read_option('open-scap', data)[0] == 'synchronization'
+        assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detector.conf')) as f:
         data = fromstring(f.read())
