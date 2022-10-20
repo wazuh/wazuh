@@ -6,8 +6,7 @@
 
 #include <hlp/hlp.hpp>
 
-static bool
-printAny(std::string const& name, std::any const& anyVal)
+static bool printAny(std::string const& name, std::any const& anyVal)
 {
     auto& type = anyVal.type();
     if (type == typeid(void))
@@ -36,9 +35,7 @@ printAny(std::string const& name, std::any const& anyVal)
     }
     else if (type == typeid(std::string))
     {
-        printf("%30s | %s\n",
-               name.c_str(),
-               std::any_cast<std::string>(anyVal).c_str());
+        printf("%30s | %s\n", name.c_str(), std::any_cast<std::string>(anyVal).c_str());
     }
     else if (type == typeid(hlp::JsonString))
     {
@@ -54,15 +51,15 @@ printAny(std::string const& name, std::any const& anyVal)
     return true;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
-    std::vector<std::string> logql_expressions = {};
+    std::vector<std::string> logparExpressions = {};
     std::vector<std::string> events = {};
     if (argc < 2)
     {
         printf("Usage:\n");
         printf(" %s  \"FILENAME\"\n", argv[0]);
-        printf(" %s  \"LOGQL_EXPRESSION\" \"EVENT\"", argv[0]);
+        printf(" %s  \"LOGPAR_EXPRESSION\" \"EVENT\"", argv[0]);
     }
     else if (argc == 2)
     {
@@ -71,12 +68,12 @@ int main(int argc, char *argv[])
             YAML::Node inputs = YAML::LoadFile(argv[1]);
             for (auto input : inputs)
             {
-                logql_expressions.emplace_back(
-                    input["logql_expression"].as<std::string>());
+                logparExpressions.emplace_back(
+                    input["logpar_expression"].as<std::string>());
                 events.emplace_back(input["event"].as<std::string>());
             }
         }
-        catch (const std::exception &e)
+        catch (const std::exception& e)
         {
             printf("Error reading file %s. Error: %s\n", argv[1], e.what());
             return 0;
@@ -84,7 +81,7 @@ int main(int argc, char *argv[])
     }
     else if (argc == 3)
     {
-        logql_expressions.emplace_back(argv[1]);
+        logparExpressions.emplace_back(argv[1]);
         events.emplace_back(argv[2]);
     }
     else
@@ -92,23 +89,23 @@ int main(int argc, char *argv[])
         printf("Error, too many arguments\n");
     }
 
-    auto exp_it = logql_expressions.begin();
+    auto exp_it = logparExpressions.begin();
     auto event_it = events.begin();
-    while (exp_it != logql_expressions.end() && event_it != events.end())
+    while (exp_it != logparExpressions.end() && event_it != events.end())
     {
         auto parseOp = hlp::getParserOp(exp_it->c_str());
         ParseResult result;
         bool ret = parseOp(event_it->c_str(), result);
 
         printf("----------\n");
-        printf("LOGQL_EXPRESSION:\n");
+        printf("LOGPAR_EXPRESSION:\n");
         printf("%s\n", exp_it->c_str());
         printf("EVENT:\n");
         printf("%s\n", event_it->c_str());
         printf("RESULT:\n");
         printf("%30s | %s\n", "Key", "Val");
         printf("-------------------------------|------------\n");
-        for (auto const &r : result)
+        for (auto const& r : result)
         {
             printAny(r.first, r.second);
         }

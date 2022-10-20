@@ -66,7 +66,7 @@ void test(const std::string& kvdbPath,
 
     auto fileStore = std::make_shared<store::FileDriver>(fileStorage);
 
-    auto hlpParsers = fileStore->get({"schema/wazuh-logql-types/0"});
+    auto hlpParsers = fileStore->get({"schema/wazuh-logpar-types/0"});
     if (std::holds_alternative<base::Error>(hlpParsers))
     {
         WAZUH_LOG_ERROR("Error while getting hlp parsers: [{}]",

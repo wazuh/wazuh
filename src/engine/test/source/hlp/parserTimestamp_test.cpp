@@ -9,11 +9,11 @@ using namespace hlp;
 TEST(parseTimestamp, ansic)
 {
     GTEST_SKIP();
-    static const char* logQl = "[<_ts/timestamp/ANSIC>]";
+    static const char* logpar = "[<_ts/timestamp/ANSIC>]";
     static const char* ansicTs = "[Mon Jan 2 15:04:05 2006]";
     static const char* ansimTs = "[Mon Jan 2 15:04:05.123456 2006]";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(ansicTs, result);
 
@@ -38,10 +38,10 @@ TEST(parseTimestamp, ansic)
 TEST(parseTimestamp, apache)
 {
     GTEST_SKIP();
-    static const char* logQl = "[<_ts/timestamp/APACHE>]";
+    static const char* logpar = "[<_ts/timestamp/APACHE>]";
     static const char* apacheTs = "[Tue Feb 11 15:04:05 2020]";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(apacheTs, result);
 
@@ -57,12 +57,12 @@ TEST(parseTimestamp, apache)
 TEST(parseTimestamp, rfc1123)
 {
     GTEST_SKIP();
-    static const char* logQl = "[<_ts/timestamp/RFC1123>]";
-    static const char* logQlz = "[<_ts/timestamp/RFC1123Z>]";
+    static const char* logpar = "[<_ts/timestamp/RFC1123>]";
+    static const char* logparz = "[<_ts/timestamp/RFC1123Z>]";
     static const char* rfc1123Ts = "[Mon, 02 Jan 2006 15:04:05 MST]";
     static const char* rfc1123zTs = "[Mon, 02 Jan 2006 15:04:05 -0700]";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(rfc1123Ts, result);
 
@@ -74,7 +74,7 @@ TEST(parseTimestamp, rfc1123)
     ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
     ASSERT_EQ(5, std::any_cast<double>(result["_ts.seconds"]));
 
-    auto parseOpz = getParserOp(logQlz);
+    auto parseOpz = getParserOp(logparz);
     ASSERT_EQ(true, static_cast<bool>(parseOpz));
 
     ParseResult resultz;
@@ -91,11 +91,11 @@ TEST(parseTimestamp, rfc1123)
 TEST(parseTimestamp, rfc3339)
 {
     GTEST_SKIP();
-    static const char* logQl = "[<_ts/timestamp/RFC3339>]";
+    static const char* logpar = "[<_ts/timestamp/RFC3339>]";
     static const char* rfc3339Ts = "[2006-01-02T15:04:05Z07:00]";
     static const char* rfc3339nanoTs = "[2006-01-02T15:04:05.999999999Z07:00]";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(rfc3339Ts, result);
 
@@ -121,12 +121,12 @@ TEST(parseTimestamp, rfc3339)
 TEST(parseTimestamp, rfc822)
 {
     GTEST_SKIP();
-    static const char* logQl = "[<_ts/timestamp/RFC822>]";
-    static const char* logQlz = "[<_ts/timestamp/RFC822Z>]";
+    static const char* logpar = "[<_ts/timestamp/RFC822>]";
+    static const char* logparz = "[<_ts/timestamp/RFC822Z>]";
     static const char* rfc822Ts = "[02 Jan 06 15:04 MST]";
     static const char* rfc822zTs = "[02 Jan 06 15:04 -0700]";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(rfc822Ts, result);
 
@@ -139,7 +139,7 @@ TEST(parseTimestamp, rfc822)
     ASSERT_EQ(0, std::any_cast<double>(result["_ts.seconds"]));
     ASSERT_EQ("MST", std::any_cast<std::string>(result["_ts.timezone"]));
 
-    auto parseOpz = getParserOp(logQlz);
+    auto parseOpz = getParserOp(logparz);
     ASSERT_EQ(true, static_cast<bool>(parseOpz));
 
     ParseResult resultz;
@@ -157,10 +157,10 @@ TEST(parseTimestamp, rfc822)
 TEST(parseTimestamp, rfc850)
 {
     GTEST_SKIP();
-    static const char* logQl = "[<_ts/timestamp/RFC850>]";
+    static const char* logpar = "[<_ts/timestamp/RFC850>]";
     static const char* rfc850Ts = "[Monday, 02-Jan-06 15:04:05 MST]";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(rfc850Ts, result);
 
@@ -177,10 +177,10 @@ TEST(parseTimestamp, rfc850)
 TEST(parseTimestamp, ruby)
 {
     GTEST_SKIP();
-    static const char* logQl = "[<_ts/timestamp/RubyDate>]";
+    static const char* logpar = "[<_ts/timestamp/RubyDate>]";
     static const char* rubyTs = "[Mon Jan 02 15:04:05 -0700 2006]";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(rubyTs, result);
 
@@ -197,13 +197,13 @@ TEST(parseTimestamp, ruby)
 TEST(parseTimestamp, stamp)
 {
     GTEST_SKIP();
-    static const char* logQl = "[<_ts/timestamp/Stamp>]";
+    static const char* logpar = "[<_ts/timestamp/Stamp>]";
     static const char* stampTs = "[Jan 2 15:04:05]";
     static const char* stampmilliTs = "[Jan 2 15:04:05.000]";
     static const char* stampmicroTs = "[Jan 2 15:04:05.000000]";
     static const char* stampnanoTs = "[Jan 2 15:04:05.000000000]";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(stampTs, result);
 
@@ -242,10 +242,10 @@ TEST(parseTimestamp, stamp)
 TEST(parseTimestamp, Unix)
 {
     GTEST_SKIP();
-    static const char* logQl = "[<_ts/timestamp/UnixDate>]";
+    static const char* logpar = "[<_ts/timestamp/UnixDate>]";
     static const char* unixTs = "[Mon Jan 2 15:04:05 MST 2006]";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(unixTs, result);
 
@@ -261,10 +261,10 @@ TEST(parseTimestamp, Unix)
 TEST(parseTimestamp, Unix_fail)
 {
     GTEST_SKIP();
-    static const char* logQl = "[<_ts/timestamp/UnixDate>]";
+    static const char* logpar = "[<_ts/timestamp/UnixDate>]";
     static const char* unixTs = "[Mon Jan 2 15:04:05 MST 1960]";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ASSERT_EQ(true, static_cast<bool>(parseOp));
 
     ParseResult result;
@@ -275,16 +275,16 @@ TEST(parseTimestamp, Unix_fail)
 TEST(parseTimestamp, specific_format)
 {
     GTEST_SKIP();
-    static const char* logQl = "[<_ts/timestamp>] - "
-                               "[<_ansicTs/timestamp>] - "
-                               "[<_unixTs/timestamp>] - "
-                               "[<_stampTs/timestamp>]";
+    static const char* logpar = "[<_ts/timestamp>] - "
+                                "[<_ansicTs/timestamp>] - "
+                                "[<_unixTs/timestamp>] - "
+                                "[<_stampTs/timestamp>]";
     static const char* event = "[Mon Jan 02 15:04:05 -0700 2006] - "
                                "[Mon Jan 2 15:04:05 2006] - "
                                "[Mon Jan 2 15:04:05 MST 2006] - "
                                "[Jan 2 15:04:05]";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -321,9 +321,9 @@ TEST(parseTimestamp, specific_format)
 TEST(parseTimestamp, kitchen)
 {
     GTEST_SKIP();
-    static const char* logQl = "[<_ts/timestamp/Kitchen>]";
+    static const char* logpar = "[<_ts/timestamp/Kitchen>]";
     static const char* kitchenTs = "[3:04AM]";
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(kitchenTs, result);
 
@@ -342,7 +342,7 @@ TEST(parseTimestamp, kitchen)
 // {"POSTGRES", {"%Y-%m-%d %T %Z", "2021-02-14 10:45:33.257 UTC"}},
 TEST(parseTimestamp, POSTGRES)
 {
-    const char* logQl =
+    const char* logpar =
         "[<timestamp/POSTGRES>] - [<_t/timestamp/POSTGRES_MS>] - "
         "(<postgresql.log.session_start_time/POSTGRES>) - "
         "[<_stamp/timestamp/POSTGRES_MS>] [<postgresql.log.session_start_time/POSTGRES>]";
@@ -350,7 +350,7 @@ TEST(parseTimestamp, POSTGRES)
         "[2021-02-14 10:45:14 UTC] - [2021-02-14 10:45:14.123 UTC] - (2021-02-14 "
         "10:45:14 UTC) - [2021-02-14 10:45:14.123456 UTC] [2021-02-14 10:45:14 UTC]";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 

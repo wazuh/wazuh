@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "baseTypes.hpp"
-#include "builder/builders/opBuilderLogqlParser.hpp"
+#include "builder/builders/opBuilderLogParser.hpp"
 #include "builder/builders/stageBuilderParse.hpp"
 #include "builder/registry.hpp"
 
@@ -15,13 +15,10 @@ class StageBuilderParseTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        Registry::registerBuilder(opBuilderLogqlParser, "parser.logpar");
+        Registry::registerBuilder(opBuilderLogParser, "parser.logpar");
     }
 
-    void TearDown() override
-    {
-        Registry::clear();
-    }
+    void TearDown() override { Registry::clear(); }
 };
 
 TEST_F(StageBuilderParseTest, Builds)

@@ -14,12 +14,10 @@ struct ExecuteResult
 };
 
 using ParseResult = std::unordered_map<std::string, std::any>;
-using ParserFn = std::function<ExecuteResult(std::string_view const &, ParseResult &)>;
-
+using ParserFn = std::function<ExecuteResult(std::string_view const&, ParseResult&)>;
 
 namespace hlp
 {
-
 
 struct JsonString
 {
@@ -29,16 +27,16 @@ struct JsonString
     std::string jsonString;
 };
 
-void configureParserMappings(const std::string &config);
+void configureParserMappings(const std::string& config);
 /*
- * @brief Gets a parser operator from a logQL expression.
- *        This method parse a complete logQL expression to create and bind all
+ * @brief Gets a parser operator from a logpar expression.
+ *        This method parse a complete logpar expression to create and bind all
  * the different specific parsers capables to resolve an event matching with
  * that expression.
  *
  * @return ParserFn A Parser Function capable to parse an event.
  */
-ParserFn getParserOp(std::string_view const &logQl);
+ParserFn getParserOp(std::string_view const& logpar);
 
 } // namespace hlp
 #endif // _HLP_H

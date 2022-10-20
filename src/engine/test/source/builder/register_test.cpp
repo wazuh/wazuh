@@ -25,7 +25,7 @@ TEST_F(RegisterTest, AllBuildersRegistered)
     ASSERT_NO_THROW(Registry::getBuilder("stage.normalize"));
 
     ASSERT_NO_THROW(Registry::getBuilder("stage.parse"));
-    ASSERT_NO_THROW(Registry::getBuilder("parser.logql"));
+    ASSERT_NO_THROW(Registry::getBuilder("parser.logpar"));
 
     ASSERT_NO_THROW(Registry::getBuilder("stage.outputs"));
     ASSERT_NO_THROW(Registry::getBuilder("output.file"));
@@ -35,7 +35,7 @@ TEST_F(RegisterTest, AllBuildersRegistered)
     ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_match"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_not_match"));
 
-    ASSERT_NO_THROW(Registry::getBuilder("helper.exists"));
+    ASSERT_NO_THROW(Registry::getBuilder("helper.ef_exists"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.ef_not_exists"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.i_eq"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.i_ne"));

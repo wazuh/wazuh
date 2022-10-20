@@ -11,8 +11,8 @@ CUSTOM_ECS_TEMPLATE = "custom-ecs-field.template.json"
 CUSTOM_ECS_OUTPUT = "custom-ecs-field.json"
 ECS_URL = 'https://raw.githubusercontent.com/elastic/ecs/main/generated/ecs/ecs_flat.yml'
 
-LOGQL_TYPES_TEMPLATE = "wazuh-logql-types.template.json"
-LOGQL_TYPES_OUTPUT = "wazuh-logql-types.json"
+LOGPAR_TYPES_TEMPLATE = "wazuh-logpar-types.template.json"
+LOGPAR_TYPES_OUTPUT = "wazuh-logpar-types.json"
 
 # ECS integrations
 INTEGRATIONS = [
@@ -117,28 +117,28 @@ def main():
         json.dump(custom_ecs_field, f, indent=2)
     print("Success.")
 
-    # Generate logql types
-    print("Generating logql types...")
+    # Generate logpar types
+    print("Generating logpar types...")
     # Load template
-    print(f"Loading json schema template [{LOGQL_TYPES_TEMPLATE}]...")
-    with open(LOGQL_TYPES_TEMPLATE, "r") as f:
-        logql_types = json.load(f)
+    print(f"Loading json schema template [{LOGPAR_TYPES_TEMPLATE}]...")
+    with open(LOGPAR_TYPES_TEMPLATE, "r") as f:
+        logpar_types = json.load(f)
 
-    if not logql_types:
-        make_error("Failed to load logql_types template.")
+    if not logpar_types:
+        make_error("Failed to load logpar_types template.")
         return
     else:
         print("Loaded.")
 
-    # Add custom_ecs_field to logql_types
-    print("Adding ECS field types to logql_types...")
+    # Add custom_ecs_field to logpar_types
+    print("Adding ECS field types to logpar_types...")
     # Only add fields that have ecs_type set
-    logql_types = {**logql_types, **{field: value['ecs_type'] for field, value in custom_ecs_field['properties'].items() if value.get('ecs_type')}}
+    logpar_types = {**logpar_types, **{field: value['ecs_type'] for field, value in custom_ecs_field['properties'].items() if value.get('ecs_type')}}
     print("Success.")
-    # Write logql_types to file
-    print(F"Writing logql_types to file [{LOGQL_TYPES_OUTPUT}]...")
-    with open(LOGQL_TYPES_OUTPUT, "w") as f:
-        json.dump(logql_types, f, indent=2)
+    # Write logpar_types to file
+    print(F"Writing logpar_types to file [{LOGPAR_TYPES_OUTPUT}]...")
+    with open(LOGPAR_TYPES_OUTPUT, "w") as f:
+        json.dump(logpar_types, f, indent=2)
     print("Success.")
 
     ecs_types = list({field['ecs_type'] for field in custom_ecs_field['properties'].values() if field.get('ecs_type')})

@@ -158,8 +158,7 @@ static void getting_parser_from_expression(benchmark::State& state)
 }
 BENCHMARK(getting_parser_from_expression)->Range(8, 8 << 10);
 
-static void
-getting_parser_from_variable_length_expression(benchmark::State& state)
+static void getting_parser_from_variable_length_expression(benchmark::State& state)
 {
     auto expr = getRandomCapExprVariable(state.range(0));
     for (auto _ : state)
@@ -196,7 +195,7 @@ static void getting_result_from_defined_parser(benchmark::State& state)
 {
     // TODO Probably need a way to mix-match a variable number of all our
     // parsers
-    const char* logQL_expression =
+    const char* logparExpression =
         "<source.address> - <JSON> - [<timestamp/APACHE>]"
         " \"<http.request.method> <url> HTTP/<http.version>\" "
         "<http.response.status_code> <http.response.body.bytes> \"-\" "
@@ -208,7 +207,7 @@ static void getting_result_from_defined_parser(benchmark::State& state)
         "HTTP/1.1\" 200 612 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0)"
         " Gecko/20120716 Firefox/15.0a2\"";
 
-    auto parseOp = getParserOp(logQL_expression);
+    auto parseOp = getParserOp(logparExpression);
     for (auto _ : state)
     {
         ParseResult result;
@@ -219,7 +218,7 @@ BENCHMARK(getting_result_from_defined_parser);
 
 static void getting_result_from_defined_expression(benchmark::State& state)
 {
-    const char* logQL_expression =
+    const char* logparExpression =
         "<source.address> - <JSON> - [<timestamp/APACHE>]"
         " \"<http.request.method> <url> HTTP/<http.version>\" "
         "<http.response.status_code> <http.response.body.bytes> \"-\" "
@@ -233,7 +232,7 @@ static void getting_result_from_defined_expression(benchmark::State& state)
 
     for (auto _ : state)
     {
-        auto parseOp = getParserOp(logQL_expression);
+        auto parseOp = getParserOp(logparExpression);
         ParseResult result;
         bool ret = parseOp(event, result);
     }
@@ -450,8 +449,7 @@ BENCHMARK(filepath_parse)->Range(8, 8 << 8);
 
 static void filepath_variable_length_parse(benchmark::State& state)
 {
-    std::string ev =
-        createRandomFilepath(state.range(0), false, state.range(0));
+    std::string ev = createRandomFilepath(state.range(0), false, state.range(0));
 
     Parser p;
     p.name = "filepath";
