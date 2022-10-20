@@ -26,10 +26,11 @@
 #include "register.hpp"
 #include "stackExecutor.hpp"
 
-cmd::StackExecutor g_exitHanlder {};
-
 namespace
 {
+cmd::StackExecutor g_exitHanlder {};
+
+constexpr auto DEFAULT_ENVIRONMENT_NAME {"environment/wazuh/0"};
 
 void sigint_handler(const int signum)
 {
@@ -145,6 +146,19 @@ void run(const std::string& kvdbPath,
         WAZUH_LOG_INFO("Environment manager initialized");
         // Register the API command
         server->getRegistry()->registerCommand("env", envManager->apiCallback());
+
+        // Up default environment
+        auto error = envManager->addEnvironment(DEFAULT_ENVIRONMENT_NAME);
+        if (!error)
+        {
+            envManager->startEnvironment(DEFAULT_ENVIRONMENT_NAME);
+        }
+        else
+        {
+            WAZUH_LOG_WARN("Error creating default environment [{}]: {}",
+                           DEFAULT_ENVIRONMENT_NAME,
+                           error.value().message);
+        }
     }
     catch (const std::exception& e)
     {
