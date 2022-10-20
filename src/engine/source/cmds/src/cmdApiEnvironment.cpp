@@ -17,12 +17,10 @@ constexpr auto API_ENVIRONMENT_COMMAND {"env"};
 
 void setEnv(const std::string& socketPath, const std::string& target)
 {
-    // split
-    const auto parts = utils::string::split(target, '/');
-    if (parts.size() != 4 || parts[0] != "" || parts[1] != "env")
+    // target must be start with a '/'
+    if (target.empty())
     {
-        std::cerr << "Invalid target, expected [/env/env-id/version] but got [" << target
-                  << "]" << std::endl;
+        std::cerr << "Target is empty" << std::endl;
         return;
     }
 
@@ -30,8 +28,7 @@ void setEnv(const std::string& socketPath, const std::string& target)
     json::Json data {};
     data.setObject();
     data.setString("set", "/action");
-    data.setString(parts[2], "/name");
-    data.setString(parts[3], "/version");
+    data.setString(target, "/name"); // Skip the first '/'
 
     auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, "api", data);
 
@@ -40,8 +37,6 @@ void setEnv(const std::string& socketPath, const std::string& target)
     try
     {
         auto responseStr = apiclnt::connection(socketPath, req.toStr());
-        responseStr =
-            responseStr.data() + sizeof(int); // TODO delete this after change conneccion
         response = json::Json {responseStr.c_str()};
     }
     catch (const std::exception& e)
@@ -75,8 +70,6 @@ void getEnv(const std::string& socketPath, const std::string& target)
     try
     {
         auto responseStr = apiclnt::connection(socketPath, req.toStr());
-        responseStr =
-            responseStr.data() + sizeof(int); // TODO delete this after change conneccion
         response = json::Json {responseStr.c_str()};
     }
     catch (const std::exception& e)
@@ -107,8 +100,48 @@ void getEnv(const std::string& socketPath, const std::string& target)
     for (const auto& env : *envs)
     {
         std::cout << "Active environment: "
-                  << env.getString("/").value_or("** Unexpected Error **") << std::endl;
+                  << env.getString().value_or("** Unexpected Error **") << std::endl;
     }
+}
+
+
+void deleteEnv(const std::string& socketPath, const std::string& target)
+{
+    // target must be start with a '/'
+    if (target.empty())
+    {
+        std::cerr << "Target is empty" << std::endl;
+    }
+
+    // Create a request
+    json::Json data {};
+    data.setObject();
+    data.setString("delete", "/action");
+    data.setString(target, "/name"); // Skip the first '/'
+
+    auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, "api", data);
+
+    // Send the request
+    json::Json response {};
+    try
+    {
+        auto responseStr = apiclnt::connection(socketPath, req.toStr());
+        response = json::Json {responseStr.c_str()};
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Error sending request: " << e.what() << std::endl;
+        return;
+    }
+
+    if (response.getInt("/error").value_or(-1) != 0)
+    {
+        std::cerr << "Error deleting environment: "
+                  << response.getString("/message").value_or("-") << std::endl;
+        return;
+    }
+
+    std::cout << response.getString("/message").value_or("OK");
 }
 
 } // namespace
@@ -126,6 +159,10 @@ void environment(const std::string& socketPath,
     else if (action == "get")
     {
         getEnv(socketPath, target);
+    }
+    else if (action == "delete")
+    {
+        deleteEnv(socketPath, target);
     }
     else
     {

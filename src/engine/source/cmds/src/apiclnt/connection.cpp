@@ -44,7 +44,8 @@ void client(uvw::Loop& loop,
             //std::cout << "API Client DataEvent" << std::endl;
             // std::cout << "API Client received response: "
             //           << std::string(event.data.get(), event.length) << std::endl;
-            response = std::string(event.data.get(), event.length);
+            response =
+                std::string(event.data.get() + sizeof(int), event.length - sizeof(int));
             handle.close();
         });
 
@@ -160,7 +161,6 @@ std::string connection(const std::string& socketPath, const std::string& request
     auto loop = uvw::Loop::getDefault();
     client(*loop, socketPath, requestWithHeader, response);
     loop->run();
-
     return response;
 }
 
