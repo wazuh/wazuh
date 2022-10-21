@@ -13,23 +13,23 @@ Vagrant.configure("2") do |config|
 
     config.vm.define :engine do |engine|
         engine.vm.box = "msi/ubuntu-jammy"
-        engine.vm.network :private_network, ip: "10.0.0.28"
+        engine.vm.network :private_network, ip: "192.168.56.28"
         engine.vm.hostname = "vm-engine"
         engine.ssh.username = 'vagrant'
         engine.ssh.password = 'vagrant'
         engine.ssh.insert_key = 'true'
         engine.vm.synced_folder "./engine", "/vagrant"
         engine.vm.provider "virtualbox" do |pmv|
-        pmv.memory = 6144
+        pmv.memory = 8192
         pmv.cpus   = 6
-        engine.vm.provision "shell", inline: <<-SHELL
+        engine.vm.provision "engineFirstRun", type: "shell", inline: <<-SHELL
         #Dependencies
         sudo apt-get update
         sudo apt-get install gcc g++ make libc6-dev curl policycoreutils automake autoconf gnupg apt-transport-https libtool libssl-dev -y
 
         #CMake 3.24 installation from sources
-        sudo apt-get install libssl-dev libcurl4-gnutls-dev
-        sudo apt-get install cmake
+        sudo apt-get -y install libssl-dev libcurl4-gnutls-dev
+        sudo apt-get -y install cmake
 
         #Download the Wazuh installation assistant.
         curl -sO https://packages.wazuh.com/4.3/wazuh-install.sh
@@ -38,25 +38,34 @@ Vagrant.configure("2") do |config|
         sed -E -i 's/ ip: <wazuh-manager-ip>/ ip: 192.168.56.28/gm' config.yml
         sed -E -i 's/ ip: <dashboard-node-ip>/ ip: 192.168.56.28/gm' config.yml
         sudo bash wazuh-install.sh --generate-config-files
-        #Change password to wazuh/wazuh
+        sudo bash wazuh-install.sh -a
+        #Change password to admin/wazuhEngine5+ -> must use lower, uper, numbers and symbol
+        touch new_pass.txt
+        echo "indexer_username: 'admin'" > new_pass.txt
+        echo "indexer_password: 'wazuhEngine+5'" >> new_pass.txt
+        sudo /usr/share/wazuh-indexer/plugins/opensearch-security/tools/wazuh-passwords-tool.sh -f new_pass.txt
 
         #Download engine
+        sudo apt-get update
         mkdir engine &&	cd engine
         git clone https://github.com/wazuh/wazuh.git
         cd wazuh && git checkout 11334-dev-new-wazuh-engine
         cd src/engine && mkdir build
         cmake -S . -B build/
-        /usr/local/bin/cmake --build build/ --config Debug --target main -j 2
-        git checkout 14738-filebeat-mappings-ecs-engine # TODO : Remove this line when 14738-filebeat-mappings-ecs-engine is merged
+        ulimit -s unlimited
+        ulimit -a # TODO: delete later
+        cmake --build build/ --config Debug --target main -j 1
 
-        #Remplace filebeat & elastic for engine
+        #Replace filebeat & elastic for engine
+        git checkout 14738-filebeat-mappings-ecs-engine # TODO : Remove this line when 14738-filebeat-mappings-ecs-engine is merged
         sudo cp extension/elasticsearch/7.x/wazuh-template.json /etc/filebeat/
-        sudo cp -r extension/filebeat/7.x/wazuh/wazuh-module/ /usr/share/filebeat/module/wazuh/
+        rm -rf /usr/share/filebeat/module/wazuh/
+        sudo cp -r /home/vagrant/engine/wazuh/src/engine/extension/filebeat/7.x/wazuh-module/ /usr/share/filebeat/module/wazuh/
         sudo systemctl restart wazuh-indexer
         sudo systemctl restart filebeat.service
 
-        #Remplace engine for analysisd
-        rm /var/ossec/queue/sockets/queue #Remove queue of Analysisd
+        #Replace engine for analysisd
+        sudo rm /var/ossec/queue/sockets/queue #Remove queue of Analysisd
         sudo mkdir -p /var/ossec/engine/store #Path to store the catalog
         sudo mkdir /var/ossec/etc/kvdb/ #Path to store the kvdb
         sudo cp -r ruleset/store/schema/ /var/ossec/engine/store/ #Copy schema
@@ -67,9 +76,11 @@ Vagrant.configure("2") do |config|
         build./main env -a /var/ossec/queue/sockets/engine-api set environment/wazuh/0.1
         sudo chown wazuh /var/ossec/queue/
         sudo chmod 660 /var/ossec/queue/
+
+        #TODO: uncomment once full replacement works
         sudo pkill -e analysisd #Kill analysisd
 
-        #Remplace wazuh-control for engine
+        #Replace wazuh-control for engine
 
         SHELL
         end
