@@ -1869,8 +1869,6 @@ checks:
       - "not c:modprobe -n -v tipc -> r:install /bin/true|install /bin/false"
       - "c:lsmod -> r:tipc"
 
-  ########### WIP
-
   # 3.5 Firewall configuration
   ## 3.5.1 Configure UncomplicatedFirewall
 
@@ -2203,57 +2201,71 @@ checks:
       - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
       - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
 
-  - id: 19109
-    title: "Ensure default deny firewall policy."
-    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
+  # 3.5.3.2.2 Ensure iptables outbound and established connections are configured (Manual) - Not implemented
+
+  # 3.5.3.2.3 Ensure iptables default deny firewall policy (Automated)
+  - id: 19110
+    title: "Ensure iptables default deny firewall policy."
+    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected. Notes: - Changing firewall settings while connected over network can result in being locked out of the system. - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
-    remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP; # iptables -P OUTPUT DROP; # iptables -P FORWARD DROP"
+    remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP # iptables -P OUTPUT DROP # iptables -P FORWARD DROP"
     compliance:
       - cis: ["3.5.3.2.3"]
       - cis_csc_v7: ["9.4"]
-      - pci_dss: ["1.2.1"]
-      - tsc: ["CC6.6"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
       - 'c:iptables -L -> r:Chain INPUT \(policy DROP\)|Chain INPUT \(policy REJECT\)'
       - 'c:iptables -L -> r:Chain FORWARD \(policy DROP\)|Chain FORWARD \(policy REJECT\)'
       - 'c:iptables -L -> r:Chain OUTPUT \(policy DROP\)|Chain OUTPUT \(policy REJECT\)'
 
-  #########################################################################
-  # 3.5.3.3 Configure IPv6 ip6tables
-  #########################################################################
+  # 3.5.3.2.4 Ensure iptables firewall rules exist for all open ports (Automated) - Not implemented
 
-  - id: 19107
-    title: "Ensure IPv6 default deny firewall policy."
-    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
+  # 3.5.3.3 Configure IPv6 ip6tables
+
+  # 3.5.3.3.1 Ensure ip6tables loopback traffic is configured (Automated)
+  - id: 19111
+    title: "Ensure ip6tables loopback traffic is configured."
+    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (::1). Note: - Changing firewall settings while connected over network can result in being locked out of the system. - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (::1) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
+    remediation: "Run the following commands to implement the loopback rules: # ip6tables -A INPUT -i lo -j ACCEPT # ip6tables -A OUTPUT -o lo -j ACCEPT # ip6tables -A INPUT -s ::1 -j DROP"
+    compliance:
+      - cis: ["3.5.3.3.1"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
+    rules:
+      - 'c:ip6tables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*::/0\.*::/0'
+      - 'c:ip6tables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*::1\.*::/0'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*::/0\.*::/0'
+
+  # 3.5.3.3.2 Ensure ip6tables outbound and established connections are configured (Manual) - Not implemented
+
+  # 3.5.3.3.3 Ensure ip6tables default deny firewall policy (Automated)
+  - id: 19112
+    title: "Ensure ip6tables default deny firewall policy."
+    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected. Note: - Changing firewall settings while connected over network can result in being locked out of the system. - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
-    remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP # ip6tables -P OUTPUT DROP # ip6tables -P FORWARD DROP. Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+    remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP # ip6tables -P OUTPUT DROP # ip6tables -P FORWARD DROP"
     compliance:
       - cis: ["3.5.3.3.3"]
       - cis_csc_v7: ["9.4"]
-      - pci_dss: ["1.2.1"]
-      - tsc: ["CC8.1"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
       - "c:ip6tables -L -> r:^Chain INPUT && r:policy DROP"
       - "c:ip6tables -L -> r:^Chain FORWARD && r:policy DROP"
       - "c:ip6tables -L -> r:^Chain OUTPUT && r:policy DROP"
 
-  - id: 19108
-    title: "Ensure IPv6 loopback traffic is configured."
-    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (::1)."
-    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (::1) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
-    remediation: "Run the following commands to implement the loopback rules: # ip6tables -A INPUT -i lo -j ACCEPT # ip6tables -A OUTPUT -o lo -j ACCEPT # ip6tables -A INPUT -s ::1 -j DROP"
-    compliance:
-      - cis: ["3.5.3.3.1"]
-      - cis_csc_v7: ["9.4"]
-      - pci_dss: ["1.2.1"]
-      - tsc: ["CC8.1"]
-    condition: all
-    rules:
-      - 'c:ip6tables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*::/0\.*::/0'
-      - 'c:ip6tables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*::1\.*::/0'
-      - 'c:ip6tables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*::/0\.*::/0'
+  # 3.5.3.3.4 Ensure ip6tables firewall rules exist for all open ports (Automated) - Not implemented
+
+  ########### WIP
 
   ############################################################
   # 4 Logging and Auditing
