@@ -30,8 +30,6 @@ namespace
 {
 cmd::StackExecutor g_exitHanlder {};
 
-constexpr auto DEFAULT_ENVIRONMENT_NAME {"environment/wazuh/0"};
-
 void sigint_handler(const int signum)
 {
     g_exitHanlder.execute();
@@ -148,15 +146,15 @@ void run(const std::string& kvdbPath,
         server->getRegistry()->registerCommand("env", envManager->apiCallback());
 
         // Up default environment
-        auto error = envManager->addEnvironment(DEFAULT_ENVIRONMENT_NAME);
+        auto error = envManager->addEnvironment(environment);
         if (!error)
         {
-            envManager->startEnvironment(DEFAULT_ENVIRONMENT_NAME);
+            envManager->startEnvironment(environment);
         }
         else
         {
             WAZUH_LOG_WARN("Error creating default environment [{}]: {}",
-                           DEFAULT_ENVIRONMENT_NAME,
+                           environment,
                            error.value().message);
         }
     }

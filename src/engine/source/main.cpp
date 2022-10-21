@@ -76,6 +76,13 @@ std::string catalogContent;
 std::string catalogPath;
 std::string environmentTarget;
 
+// Default values
+constexpr auto ENGINE_EVENT_SOCK = "/var/ossec/queue/sockets/queue";
+constexpr auto ENGINE_API_SOCK = "/var/ossec/queue/sockets/engine-api";
+constexpr auto ENGINE_STORE_PATH = "/var/ossec/engine/store";
+constexpr auto ENGINE_KVDB_PATH = "/var/ossec/etc/kvdb/";
+constexpr auto ENGINE_ENVIRONMENT = "environment/wazuh/0";
+
 void configureSubcommandRun(std::shared_ptr<CLI::App> app)
 {
     CLI::App* run =
@@ -84,10 +91,10 @@ void configureSubcommandRun(std::shared_ptr<CLI::App> app)
     // Endpoints
     run->add_option(
            "-e, --event_endpoint", args::eventEndpoint, "Event server socket address.")
-        ->default_val("${WAZUH_PATH}/queue/ossec/queue");
+        ->default_val(ENGINE_EVENT_SOCK);
 
     run->add_option("-a, --api_endpoint", args::apiEndpoint, "API server socket address.")
-        ->default_val("${WAZUH_PATH}/queue/ossec/analysis");
+        ->default_val(ENGINE_API_SOCK);
 
     // Threads
     run->add_option("-t, --threads",
@@ -99,7 +106,7 @@ void configureSubcommandRun(std::shared_ptr<CLI::App> app)
     run->add_option("-f, --file_storage",
                     args::file_storage,
                     "Path to folder where assets are located.")
-        ->required()
+        ->default_val(ENGINE_STORE_PATH)
         ->check(CLI::ExistingDirectory);
 
     // Queue size
@@ -110,12 +117,12 @@ void configureSubcommandRun(std::shared_ptr<CLI::App> app)
 
     // KVDB path
     run->add_option("-k, --kvdb_path", args::kvdb_path, "Path to KVDB folder.")
-        ->default_val("/var/ossec/queue/db/kvdb/")
+        ->default_val(ENGINE_KVDB_PATH)
         ->check(CLI::ExistingDirectory);
 
     // Environment
     run->add_option("--environment", args::environment, "Environment name.")
-        ->default_val("environment/wazuh/0");
+        ->default_val(ENGINE_ENVIRONMENT);
 
     // Log level
     run->add_option("-l, --log_level",
@@ -127,11 +134,11 @@ void configureSubcommandRun(std::shared_ptr<CLI::App> app)
 
 void configureSubcommandLogtest(std::shared_ptr<CLI::App> app)
 {
-    CLI::App* logtest = app->add_subcommand(args::SUBCOMMAND_LOGTEST,
-                                            "Utility to test the ruleset");
+    CLI::App* logtest =
+        app->add_subcommand(args::SUBCOMMAND_LOGTEST, "Utility to test the ruleset");
     // KVDB path
     logtest->add_option("-k, --kvdb_path", args::kvdb_path, "Path to KVDB folder.")
-        ->default_val("/var/ossec/queue/db/kvdb/")
+        ->default_val(ENGINE_KVDB_PATH)
         ->check(CLI::ExistingDirectory);
 
     // File storage
@@ -139,12 +146,12 @@ void configureSubcommandLogtest(std::shared_ptr<CLI::App> app)
         ->add_option("-f, --file_storage",
                      args::file_storage,
                      "Path to folder where assets are located.")
-        ->required()
+        ->default_val(ENGINE_STORE_PATH)
         ->check(CLI::ExistingDirectory);
 
     // Environment
     logtest->add_option("--environment", args::environment, "Environment name.")
-        ->required();
+        ->default_val(ENGINE_ENVIRONMENT);
 
     // Protocol queue
     logtest
@@ -187,12 +194,11 @@ void configureSubcommandLogtest(std::shared_ptr<CLI::App> app)
 void configureSubcommandGraph(std::shared_ptr<CLI::App> app)
 {
     CLI::App* graph = app->add_subcommand(
-        args::SUBCOMMAND_GRAPH,
-        "Generates a dot description of an environment");
+        args::SUBCOMMAND_GRAPH, "Generates a dot description of an environment");
 
     // KVDB path
     graph->add_option("-k, --kvdb_path", args::kvdb_path, "Path to KVDB folder.")
-        ->default_val("/var/ossec/queue/db/kvdb/")
+        ->default_val(ENGINE_KVDB_PATH)
         ->check(CLI::ExistingDirectory);
 
     // File storage
@@ -200,12 +206,12 @@ void configureSubcommandGraph(std::shared_ptr<CLI::App> app)
         ->add_option("-f, --file_storage",
                      args::file_storage,
                      "Path to folder where assets are located.")
-        ->required()
+        ->default_val(ENGINE_STORE_PATH)
         ->check(CLI::ExistingDirectory);
 
     // Environment
     graph->add_option("--environment", args::environment, "Environment name.")
-        ->required();
+        ->default_val(ENGINE_ENVIRONMENT);
 
     // Graph dir
     graph
@@ -216,11 +222,12 @@ void configureSubcommandGraph(std::shared_ptr<CLI::App> app)
 
 void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
 {
-    CLI::App* kvdb = app->add_subcommand(args::SUBCOMMAND_KVDB, "Operates the key-value databases");
+    CLI::App* kvdb =
+        app->add_subcommand(args::SUBCOMMAND_KVDB, "Operates the key-value databases");
 
     // KVDB path
     kvdb->add_option("-p, --path", args::kvdb_path, "Path to KVDB folder.")
-        ->default_val("/var/ossec/queue/db/kvdb/")
+        ->default_val(ENGINE_KVDB_PATH)
         ->check(CLI::ExistingDirectory);
 
     // KVDB name
@@ -243,13 +250,13 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
 
 void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
 {
-    CLI::App* catalog = app->add_subcommand(args::SUBCOMMAND_CATALOG,
-                                            "Operates the engine catalog");
+    CLI::App* catalog =
+        app->add_subcommand(args::SUBCOMMAND_CATALOG, "Operates the engine catalog");
     catalog->require_subcommand();
 
     // Endpoint
-    catalog->add_option("-e, --engine", args::apiEndpoint, "engine api address")
-        ->default_val("$WAZUH/socket");
+    catalog->add_option("-a, --api_socket", args::apiEndpoint, "engine api address")
+        ->default_val(ENGINE_API_SOCK);
 
     // format
     catalog->add_flag(
@@ -340,20 +347,18 @@ void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
 
 void configureSubCommandEnvironment(std::shared_ptr<CLI::App> app)
 {
-    CLI::App* environment = app->add_subcommand(
-        args::SUBCOMMAND_ENVIRONMENT, "Operates the running environments");
+    CLI::App* environment = app->add_subcommand(args::SUBCOMMAND_ENVIRONMENT,
+                                                "Operates the running environments");
     environment->require_subcommand();
 
     // Endpoint
-    environment
-        ->add_option("-e, --engine", args::apiEndpoint, "engine api address")
-        ->default_val("/var/ossec/queue/sockets/analysis");
-
+    environment->add_option("-a, --api_socket", args::apiEndpoint, "engine api address")
+        ->default_val(ENGINE_API_SOCK);
 
     // Subcommands
     // Action: get
-    auto get_subcommand = environment->add_subcommand(
-        args::SUBCOMMAND_ENVIRONMENT_GET, "get: Get active environments.");
+    auto get_subcommand = environment->add_subcommand(args::SUBCOMMAND_ENVIRONMENT_GET,
+                                                      "get: Get active environments.");
 
     // Action: set
     auto set_subcommand = environment->add_subcommand(
@@ -377,7 +382,8 @@ std::shared_ptr<CLI::App> configureCliApp()
         "remote endpoints and all the integrations. This integrated console application "
         "allows the management of all the engine components.\n");
 
-    app->add_flag("-v, --version", args::engineVersion, "Prints version information and exits");
+    app->add_flag(
+        "-v, --version", args::engineVersion, "Prints version information and exits");
 
     // Add subcommands
     configureSubcommandRun(app);
@@ -545,21 +551,25 @@ int main(int argc, char* argv[])
             auto environmentSubcommand =
                 app->get_subcommand(args::SUBCOMMAND_ENVIRONMENT);
             std::string action;
-            if(environmentSubcommand->get_subcommand(args::SUBCOMMAND_ENVIRONMENT_GET)->parsed())
+            if (environmentSubcommand->get_subcommand(args::SUBCOMMAND_ENVIRONMENT_GET)
+                    ->parsed())
             {
                 action = args::SUBCOMMAND_ENVIRONMENT_GET;
             }
-            else if(environmentSubcommand->get_subcommand(args::SUBCOMMAND_ENVIRONMENT_DELETE)->parsed())
+            else if (environmentSubcommand
+                         ->get_subcommand(args::SUBCOMMAND_ENVIRONMENT_DELETE)
+                         ->parsed())
             {
                 action = args::SUBCOMMAND_ENVIRONMENT_DELETE;
             }
-            else if(environmentSubcommand->get_subcommand(args::SUBCOMMAND_ENVIRONMENT_SET)->parsed())
+            else if (environmentSubcommand
+                         ->get_subcommand(args::SUBCOMMAND_ENVIRONMENT_SET)
+                         ->parsed())
             {
                 action = args::SUBCOMMAND_ENVIRONMENT_SET;
             }
 
-            cmd::environment(
-                args::apiEndpoint, action, args::environmentTarget);
+            cmd::environment(args::apiEndpoint, action, args::environmentTarget);
         }
         else
         {
