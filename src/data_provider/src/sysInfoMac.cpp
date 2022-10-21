@@ -283,6 +283,11 @@ nlohmann::json SysInfo::getOsInfo() const
     parser.parseSwVersion(Utils::exec("sw_vers"), ret);
     parser.parseUname(Utils::exec("uname -r"), ret);
 
+    if (!parser.parseSystemProfiler(Utils::exec("system_profiler SPSoftwareDataType"), ret))
+    {
+        ret["os_name"] = "macOS";
+    }
+
     if (uname(&uts) >= 0)
     {
         ret["sysname"] = uts.sysname;
