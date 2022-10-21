@@ -1853,9 +1853,9 @@ checks:
   # 3.4.4 Ensure TIPC is disabled (Scored)
   - id: 19092
     title: "Ensure TIPC is disabled."
-    description: "The Reliable Datagram Sockets (RDS) protocol is a transport layer protocol designed to provide low-latency, high-bandwidth communications between cluster nodes. It was developed by the Oracle Corporation."
+    description: "The Transparent Inter-Process Communication (TIPC) protocol is designed to provide communication between cluster nodes."
     rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/rds.conf and add the following line: install rds /bin/true"
+    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/tipc.conf and add the following line: install tipc /bin/true"
     compliance:
       - cis: ["3.4.4"]
       - cis_csc_v7: ["9.2"]
