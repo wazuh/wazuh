@@ -38,13 +38,7 @@ Vagrant.configure("2") do |config|
         sed -E -i 's/ ip: <wazuh-manager-ip>/ ip: 192.168.56.28/gm' config.yml
         sed -E -i 's/ ip: <dashboard-node-ip>/ ip: 192.168.56.28/gm' config.yml
         sudo bash wazuh-install.sh --generate-config-files
-        sudo bash wazuh-install.sh -a
-
-        # filebeat & elastic
-        # Change manifest.yml (/usr/share/filebeat/module/wazuh/alerts/manifest.yml)
-        sudo curl -o /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/14738-filebeat-  mappings-ecs-engine/src/engine/extension/elasticsearch/7.x/wazuh-template.json
-        sudo systemctl restart wazuh-indexer
-        sudo systemctl restart filebeat.service
+        #Change password to wazuh/wazuh
 
         #Download engine
         mkdir engine &&	cd engine
@@ -53,18 +47,29 @@ Vagrant.configure("2") do |config|
         cd src/engine && mkdir build
         cmake -S . -B build/
         /usr/local/bin/cmake --build build/ --config Debug --target main -j 2
+        git checkout 14738-filebeat-mappings-ecs-engine # TODO : Remove this line when 14738-filebeat-mappings-ecs-engine is merged
+
+        #Remplace filebeat & elastic for engine
+        sudo cp extension/elasticsearch/7.x/wazuh-template.json /etc/filebeat/
+        sudo cp -r extension/filebeat/7.x/wazuh/wazuh-module/ /usr/share/filebeat/module/wazuh/
+        sudo systemctl restart wazuh-indexer
+        sudo systemctl restart filebeat.service
 
         #Remplace engine for analysisd
         rm /var/ossec/queue/sockets/queue #Remove queue of Analysisd
-        mkdir --file_storage /var/ossec/engine/store
+        sudo mkdir -p /var/ossec/engine/store #Path to store the catalog
+        sudo mkdir /var/ossec/etc/kvdb/ #Path to store the kvdb
+        sudo cp -r ruleset/store/schema/ /var/ossec/engine/store/ #Copy schema
         build/main start --event_endpoint /var/ossec/queue/sockets/queue --api_endpoint /var/ossec/queue/sockets/engine-api --threads 1 --file_storage /var/ossec/engine/store </dev/null &>/dev/null & # Inicialize engine
-        build/main catalog -e /var/ossec/queue/sockets/engine-api -y load decoder ruleset/decoders/
-        build/main catalog -e /var/ossec/queue/sockets/engine-api -y load output ruleset/outputs/
-        build/main catalog -e /var/ossec/queue/sockets/engine-api -y load environment ruleset/environments/
-        build./main env -e /var/ossec/queue/sockets/engine-api set environment/wazuh/0.1
+        build/main catalog -a /var/ossec/queue/sockets/engine-api -y load decoder ruleset/decoders/
+        build/main catalog -a /var/ossec/queue/sockets/engine-api -y load output ruleset/outputs/
+        build/main catalog -a /var/ossec/queue/sockets/engine-api -y load environment ruleset/environments/
+        build./main env -a /var/ossec/queue/sockets/engine-api set environment/wazuh/0.1
         sudo chown wazuh /var/ossec/queue/
         sudo chmod 660 /var/ossec/queue/
         sudo pkill -e analysisd #Kill analysisd
+
+        #Remplace wazuh-control for engine
 
         SHELL
         end
