@@ -226,12 +226,13 @@
   <order>user, srcip, srcport</order>
 </decoder>
 
-<!-- Dissconected from user -->
+<!-- Disconnected from user -->
 <!-- 2020-03-24 08:38:47.230409-0700  localhost sshd[2531]: Disconnected from user user 172.18.1.100 port 43042 -->
 <!-- 2020-03-24 08:38:47.230409-0700  localhost sshd[2531]: Disconnected from invalid user root 172.18.1.100 port 43042 -->
+<!-- 2020-03-24 08:38:47.230409-0700  localhost sshd[2531]: Disconnecting invalid user root 172.18.1.100 port 43042 -->
 <decoder name="sshd-disconnect">
   <parent>sshd</parent>
-  <prematch type="pcre2">Disconnected from (invalid )?user </prematch>
+  <prematch type="pcre2">Disconnect(?:ed|ing) (?:from )?(?:invalid )?user </prematch>
   <regex offset="after_prematch">^(\S+) (\S+) port (\d+)</regex>
   <order>srcuser,srcip,srcport</order>
 </decoder>
