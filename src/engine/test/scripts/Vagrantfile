@@ -56,7 +56,7 @@ Vagrant.configure("2") do |config|
 
         #Remplace engine for analysisd
         rm /var/ossec/queue/sockets/queue #Remove queue of Analysisd
-        rm /var/ossec/queue/sockets/queue #Remove queue
+        mkdir --file_storage /var/ossec/engine/store
         build/main start --event_endpoint /var/ossec/queue/sockets/queue --api_endpoint /var/ossec/queue/sockets/engine-api --threads 1 --file_storage /var/ossec/engine/store </dev/null &>/dev/null & # Inicialize engine
         build/main catalog -e /var/ossec/queue/sockets/engine-api -y load decoder ruleset/decoders/
         build/main catalog -e /var/ossec/queue/sockets/engine-api -y load output ruleset/outputs/

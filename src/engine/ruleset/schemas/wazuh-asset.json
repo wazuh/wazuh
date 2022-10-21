@@ -118,13 +118,13 @@
         },
         "parse": {
             "type": "object",
-            "description": "Parse the event using the specified parser engine. Suports `logql` parser.",
+            "description": "Parse the event using the specified parser engine. Suports `logpar` parser.",
             "additionalProperties": false,
             "minProperties": 1,
             "properties": {
-                "logql": {
+                "logpar": {
                     "type": "array",
-                    "description": "Try to parse a field of the event. Terminates once a parser expression matches. If no parser expression matches, this asset will not continue processing the event. Parser expressions are defined using the `field`: `logql_expression`, where `field` is the field name and `logql_expression` is the LogQL expression to be evaluated.",
+                    "description": "Try to parse a field of the event. Terminates once a parser expression matches. If no parser expression matches, this asset will not continue processing the event. Parser expressions are defined using the `field`: `logpar_expression`, where `field` is the field name and `logpar_expression` is the Logpar expression to be evaluated.",
                     "minItems": 1,
                     "items": {
                         "allOf": [
