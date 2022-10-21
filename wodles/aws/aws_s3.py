@@ -2230,8 +2230,43 @@ class AWSCustomBucket(AWSBucket):
 class AWSGuardDutyBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
-        db_table_name = 'guardduty'
-        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+        self.db_table_name = 'guardduty'
+        AWSCustomBucket.__init__(self, self.db_table_name, **kwargs)
+        self.service = 'GuardDuty'
+        if self.check_AWSLogs_type():
+            self.type = "GuardDutyNative"
+        else:
+            self.type = "GuardDutyKinesis"
+
+    def check_AWSLogs_type(self):
+        return self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/')['CommonPrefixes'][0]['Prefix'] == self.prefix + 'AWSLogs/'
+
+    def get_service_prefix(self, account_id):
+        return '{base_prefix}{aws_account_id}/{aws_service}/'.format(
+            base_prefix=self.get_base_prefix(),
+            aws_account_id=account_id,
+            aws_service=self.service)
+
+    def get_full_prefix(self, account_id, account_region):
+        if self.type == "GuardDutyNative":
+            return AWSLogsBucket.get_full_prefix(self, account_id, account_region)
+        else:
+            return self.prefix
+
+    def get_base_prefix(self):
+        if self.type == "GuardDutyNative":
+            return AWSLogsBucket.get_base_prefix(self)
+        else:
+            return self.prefix
+
+    def iter_regions_and_accounts(self, account_id, regions):
+        if self.type == "GuardDutyNative":
+            AWSBucket.iter_regions_and_accounts(self, account_id, regions)
+        else:
+            debug("+++ WARNING: The GuardDuty + Kinesis integration will be deprecated in future releases. GuardDuty "
+                  "native support should be used instead", 2)
+            self.check_prefix = True
+            AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)
 
     def send_event(self, event):
         # Send the message (splitted if it is necessary)
@@ -2253,6 +2288,14 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         else:
             AWSBucket.reformat_msg(self, event)
             yield event
+
+    def load_information_from_file(self, log_key):
+        if log_key.split('.', 1)[1] == 'jsonl.gz':
+            with self.decompress_file(log_key=log_key) as f:
+                json_list = list(f)
+                return [dict(json.loads(x), source=json.loads(x)['service']['serviceName']) for x in json_list]
+        else:
+            return AWSCustomBucket.load_information_from_file(self, log_key)
 
 
 class CiscoUmbrella(AWSCustomBucket):
