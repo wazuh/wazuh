@@ -109,14 +109,13 @@ char* get_extra_args_from_json(const cJSON *input);
 char* get_keys_from_json(const cJSON *input);
 
 /**
- * @brief this function split string
+ * @brief This function splits a string using a delimiter
  * @param output_buf buffer output
- * @param delimiter  delimiter with which want to split string
- * @param strBefore  buffer to store split string
- * @param strAfter   buffer to store split string
- * @return pointer to delimiter or NULL if no found
+ * @param delimiter  delimiter used to split the string
+ * @param strBefore  buffer to store split string before delimiter
+ * @param strAfter   buffer to store split string after delimiter
 */
-char* splitStrFromCharDelimiter(const char * output_buf, const char delimiter, char * strBefore, char *strAfter);
+void splitStrFromCharDelimiter(const char * output_buf, const char delimiter, char * strBefore, char * strAfter);
 
 /**
  * @brief It looks for a string that matches pattern 1, if it finds it, it looks again for pattern 2, there should be spaces in the middle between the patterns.
@@ -131,7 +130,6 @@ char* splitStrFromCharDelimiter(const char * output_buf, const char delimiter, c
  *            find only by "Status"
 */
 int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2);
-
 
 #ifndef WIN32
 
