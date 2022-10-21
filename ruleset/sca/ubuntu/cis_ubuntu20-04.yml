@@ -1993,7 +1993,7 @@ checks:
     rules:
       - "c:dpkg -s nftables -> r:Status: install ok installed"
       - "c:dpkg -s iptables -> r:package 'iptables' is not installed"
-      - 'not c:ufw status -> r:Status:\s*\t*active'
+      - "c:dpkg -s ufw -> r:package 'ufw' is not installed"
 
   # 3.5.2.2 Ensure ufw is uninstalled or disabled with nftables (Automated)
   - id: 19099
@@ -2109,7 +2109,7 @@ checks:
       - "c:nft list ruleset -> r:hook output && r:policy drop"
 
   # 3.5.2.9 Ensure nftables service is enabled (Automated)
-  - id: 19102
+  - id: 19105
     title: "Ensure nftables service is enabled."
     description: "The nftables service allows for the loading of nftables rulesets during boot, or starting on the nftables service."
     rationale: "The nftables service restores the nftables rules from the rules files referenced in the /etc/nftables.conf file during boot or the starting of the nftables service."
@@ -2127,46 +2127,83 @@ checks:
 
   # 3.5.2.10 Ensure nftables rules are permanent (Automated) - Not implemented
 
-  #######################################################################
   # 3.5.3 Configure iptables
-  #######################################################################
-  #######################################################################
   # 3.5.3.1 Configure software
-  #######################################################################
 
-  - id: 19103
-    title: "Ensure nftables is not installed if iptables is installed."
+  # 3.5.3.1.1 Ensure iptables packages are installed (Automated)
+  - id: 19106
+    title: "Ensure iptables packages are installed."
+    description: "iptables is a utility program that allows a system administrator to configure the tables provided by the Linux kernel firewall, implemented as different Netfilter modules, and the chains and rules it stores. Different kernel modules and programs are used for different protocols; iptables applies to IPv4, ip6tables to IPv6, arptables to ARP, and ebtables to Ethernet frames."
+    rationale: "A method of configuring and maintaining firewall rules is necessary to configure a Host Based Firewall."
+    remediation: "Run the following command to install iptables and iptables-persistent # apt install iptables iptables-persistent"
+    compliance:
+      - cis: ["3.5.3.1.1"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
+    rules:
+      - "c:dpkg -s iptables -> r:Status: install ok installed"
+      - "c:dpkg -s nftables -> r:package 'nftables' is not installed"
+      - "c:dpkg -s ufw -> r:package 'ufw' is not installed"
+
+  # 3.5.3.1.2 Ensure nftables is not installed with iptables (Automated)
+  - id: 19107
+    title: "Ensure nftables is not installed with iptables."
     description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames and is the successor to iptables."
-    rationale: "Running both iptablesand nftablesmay lead to conflict"
-    remediation: "RRun the following command to remove nftables:: # apt purge nftables"
+    rationale: "Running both iptables and nftables may lead to conflict."
+    remediation: "Run the following command to remove nftables: # apt purge nftables"
     compliance:
       - cis: ["3.5.3.1.2"]
       - cis_csc_v7: ["9.4"]
-      - pci_dss: ["1.2.1"]
-      - tsc: ["CC6.6"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
-      - "not c:dpkg -s nftables -> r:Status: install ok installed"
       - "c:dpkg -s iptables -> r:Status: install ok installed"
+      - "c:dpkg -s nftables -> r:package 'nftables' is not installed"
 
-  - id: 19104
-    title: "Ensure Uncomplicated Firewall is not installed or disabled if iptables is installed."
-    description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use."
-    rationale: "Running iptables.persistentwith ufw enabled may lead to conflict and unexpected results."
-    remediation: "Run the following command to remove ufw:# apt purge ufw  OR Run the following commands to disable ufw:# ufw disable"
+  # 3.5.3.1.3 Ensure ufw is uninstalled or disabled with iptables (Automated)
+  - id: 19108
+    title: "Ensure ufw is uninstalled or disabled with iptables."
+    description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use. - Uses a command-line interface consisting of a small number of simple commands. - Uses iptables for configuration."
+    rationale: "Running iptables.persistent with ufw enabled may lead to conflict and unexpected results."
+    remediation: "Run one of the following commands to either remove ufw or stop and mask ufw Run the following command to remove ufw: # apt purge ufw OR Run the following commands to disable ufw: # ufw disable"
     compliance:
       - cis: ["3.5.3.1.3"]
       - cis_csc_v7: ["9.4"]
-      - pci_dss: ["1.2.1"]
-      - tsc: ["CC6.6"]
-    condition: all
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: any
     rules:
-      - "c:dpkg -s iptables -> r:Status: install ok installed"
-      - 'not c: ufw status -> Status:\s*\t*active'
+      - "c:ufw status -> r:Status:\\s*inactive"
+      - "c:dpkg -s ufw -> r:package 'ufw' is not installed"
+      - "systemctl isenabled ufw -> r:masked"
 
   # 3.5.3.2 Configure IPv4 iptables
 
-  - id: 19105
+  # 3.5.3.2.1 Ensure iptables loopback traffic is configured (Automated)
+  - id: 19109
+    title: "Ensure iptables loopback traffic is configured."
+    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8). Notes: - Changing firewall settings while connected over network can result in being locked out of the system. - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
+    remediation: "Run the following commands to implement the loopback rules: # iptables -A INPUT -i lo -j ACCEPT # iptables -A OUTPUT -o lo -j ACCEPT # iptables -A INPUT -s 127.0.0.0/8 -j DROP"
+    compliance:
+      - cis: ["3.5.3.2.1"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
+    rules:
+      - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
+      - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
+
+  - id: 19109
     title: "Ensure default deny firewall policy."
     description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
@@ -2181,23 +2218,6 @@ checks:
       - 'c:iptables -L -> r:Chain INPUT \(policy DROP\)|Chain INPUT \(policy REJECT\)'
       - 'c:iptables -L -> r:Chain FORWARD \(policy DROP\)|Chain FORWARD \(policy REJECT\)'
       - 'c:iptables -L -> r:Chain OUTPUT \(policy DROP\)|Chain OUTPUT \(policy REJECT\)'
-
-  # 3.5.4.1.2 Ensure loopback traffic is configured (Scored)
-  - id: 19106
-    title: "Ensure loopback traffic is configured."
-    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8)."
-    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
-    remediation: "Run the following commands to implement the loopback rules: # iptables -A INPUT -i lo -j ACCEPT # iptables -A OUTPUT -o lo -j ACCEPT # iptables -A INPUT -s 127.0.0.0/8 -j DROP"
-    compliance:
-      - cis: ["3.5.3.2.1"]
-      - cis_csc_v7: ["9.4"]
-      - pci_dss: ["1.2.1"]
-      - tsc: ["CC6.6"]
-    condition: all
-    rules:
-      - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
-      - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
-      - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
 
   #########################################################################
   # 3.5.3.3 Configure IPv6 ip6tables
