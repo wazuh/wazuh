@@ -3,12 +3,14 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
+import datetime
+
 from wazuh.core.agent import Agent, get_agents_info
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
+from wazuh.core.exception import WazuhException, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.stats import get_daemons_stats_, hourly_, totals_, weekly_
-from wazuh.core.exception import WazuhException, WazuhResourceNotFound
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
@@ -17,12 +19,12 @@ node_id = get_node().get('node') if cluster_enabled else None
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def totals(date):
+def totals(date: datetime.date) -> AffectedItemsWazuhResult:
     """Retrieve statistical information for the current or specified date.
 
     Parameters
     ----------
-    date: date
+    date : datetime.date
         Date object with the date value of the stats.
 
     Returns
@@ -43,7 +45,7 @@ def totals(date):
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def hourly():
+def hourly() -> AffectedItemsWazuhResult:
     """Compute hourly averages.
 
     Returns
@@ -63,7 +65,7 @@ def hourly():
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def weekly():
+def weekly() -> AffectedItemsWazuhResult:
     """Compute weekly averages.
 
     Returns
@@ -83,7 +85,7 @@ def weekly():
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def get_daemons_stats(filename):
+def get_daemons_stats(filename: str) -> AffectedItemsWazuhResult:
     """Get daemons stats from an input file.
 
     Parameters
@@ -100,7 +102,7 @@ def get_daemons_stats(filename):
         all_msg='Statistical information for each node was successfully read',
         some_msg='Could not read statistical information for some nodes',
         none_msg='Could not read statistical information for any node'
-        )
+    )
     result.affected_items = get_daemons_stats_(filename)
     result.total_affected_items = len(result.affected_items)
 
@@ -108,7 +110,7 @@ def get_daemons_stats(filename):
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_agents_component_stats_json(agent_list=None, component=None):
+def get_agents_component_stats_json(agent_list: list = None, component: str = None) -> AffectedItemsWazuhResult:
     """Get statistics of an agent's component.
 
     Parameters

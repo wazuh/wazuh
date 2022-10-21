@@ -156,7 +156,7 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
                             previous_status={path_join_mock.return_value: {'mod_time': 35}}) == {
 
                '/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'TYPE',
-                                 'merge_name': '/mock/foo/bar', 'blake2_hash': 'hash'}}
+                                 'merge_name': '/mock/foo/bar', 'hash': 'hash'}}
 
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
     path_join_mock.assert_has_calls([call(common.WAZUH_PATH, '/foo/bar'),
@@ -174,7 +174,7 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
                             previous_status={path_join_mock.return_value: {'mod_mock_time': 35}}) == {
 
                '/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'TYPE',
-                                 'merge_name': '/mock/foo/bar', 'blake2_hash': 'hash'}}
+                                 'merge_name': '/mock/foo/bar', 'hash': 'hash'}}
 
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
     path_join_mock.assert_has_calls([call(common.WAZUH_PATH, '/foo/bar'),
@@ -250,6 +250,49 @@ def test_get_files_status(mock_get_cluster_items):
         with patch.object(wazuh.core.cluster.cluster.logger, "warning") as logger_mock:
             cluster.get_files_status()
             logger_mock.assert_called_once_with(f"Error getting file status: .")
+
+
+@patch('wazuh.core.cluster.cluster.get_cluster_items', return_value={
+    'files': {
+        'etc/': {'permissions': 416, 'source': 'master', 'files': ['client.keys'], 'recursive': False, 'restart': False,
+                 'remove_subdirs_if_empty': False, 'extra_valid': False, 'description': 'client keys file database'},
+        'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': True, 'restart': False,
+                        'remove_subdirs_if_empty': True, 'extra_valid': False,
+                        'description': 'shared configuration files'},
+        'var/multigroups/': {'permissions': 432, 'source': 'master', 'files': ['merged.mg'], 'recursive': True,
+                             'restart': False, 'remove_subdirs_if_empty': True, 'extra_valid': False,
+                             'description': 'shared configuration files'},
+        'etc/rules/': {'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': True, 'restart': True,
+                       'remove_subdirs_if_empty': False, 'extra_valid': False, 'description': 'user rules'},
+        'etc/decoders/': {'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': True, 'restart': True,
+                          'remove_subdirs_if_empty': False, 'extra_valid': False, 'description': 'user decoders'},
+        'etc/lists/': {'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': True, 'restart': True,
+                       'remove_subdirs_if_empty': False, 'extra_valid': False, 'description': 'user CDB lists'},
+        'excluded_files': ['ar.conf', 'ossec.conf'], 'excluded_extensions': ['~', '.tmp', '.lock', '.swp']}
+})
+def test_get_ruleset_status(mock_get_cluster_items):
+    """Verify that walk_dir is called only for custom ruleset folders."""
+
+    test_dict = {"path": {"hash": "test"}}
+    expected_calls = [
+        call('etc/rules/', True, ['all'], ['ar.conf', 'ossec.conf'],
+             ['~', '.tmp', '.lock', '.swp'], 'etc/rules/', {}, True),
+        call('etc/decoders/', True, ['all'], ['ar.conf', 'ossec.conf'],
+             ['~', '.tmp', '.lock', '.swp'], 'etc/decoders/', {}, True),
+        call('etc/lists/', True, ['all'], ['ar.conf', 'ossec.conf'],
+             ['~', '.tmp', '.lock', '.swp'], 'etc/lists/', {}, True)
+    ]
+
+    with patch("wazuh.core.cluster.cluster.walk_dir", return_value=test_dict) as walk_dir_mock:
+        result = cluster.get_ruleset_status({})
+        assert isinstance(result, dict)
+        assert result["path"] == test_dict["path"]["hash"]
+        assert walk_dir_mock.call_args_list == expected_calls
+
+    with patch("wazuh.core.cluster.cluster.walk_dir", side_effect=Exception):
+        with patch.object(wazuh.core.cluster.cluster.logger, "warning") as logger_mock:
+            cluster.get_ruleset_status({})
+            logger_mock.assert_has_calls([call('Error getting file status: .')]*3)
 
 
 @pytest.mark.parametrize('failed_item, exists, expected_result', [
@@ -401,15 +444,14 @@ async def test_decompress_files_ko(mkdir_with_mode_mock, zlib_mock, rmtree_mock)
 
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items')
-@patch('wazuh.core.cluster.cluster.WazuhDBQueryAgents')
-def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
+def test_compare_files(mock_get_cluster_items):
     """Check the different outputs of the compare_files function."""
     mock_get_cluster_items.return_value = {'files': {'key': {'extra_valid': True}}}
 
-    seq = {'some/path3/': {'cluster_item_key': 'key', 'blake2_hash': 'blake2_hash value'},
-           'some/path2/': {'cluster_item_key': "key", 'blake2_hash': 'blake2_hash value'}}
-    condition = {'some/path2/': {'cluster_item_key': 'key', 'blake2_hash': 'blake2_hash def value'},
-                 'some/path4/': {'cluster_item_key': "key", 'blake2_hash': 'blake2_hash value'}}
+    seq = {'some/path3/': {'cluster_item_key': 'key', 'hash': 'blake2_hash value'},
+           'some/path2/': {'cluster_item_key': "key", 'hash': 'blake2_hash value'}}
+    condition = {'some/path2/': {'cluster_item_key': 'key', 'hash': 'blake2_hash def value'},
+                 'some/path4/': {'cluster_item_key': "key", 'hash': 'blake2_hash value'}}
 
     # First condition
     with patch('wazuh.core.cluster.cluster.merge_info', return_values=[1, "random/path/"]):
@@ -419,9 +461,9 @@ def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
         assert len(files["shared"]) == 1
 
     # Second condition
-    condition = {'some/path5/': {'cluster_item_key': 'key', 'blake_hash': 'blake2_hash def value'},
-                 'some/path4/': {'cluster_item_key': "key", 'blake_hash': 'blake2_hash value'},
-                 'PATH': {'cluster_item_key': "key", 'blake_hash': 'blake2_hash value'}}
+    condition = {'some/path5/': {'cluster_item_key': 'key', 'hash': 'blake2_hash def value'},
+                 'some/path4/': {'cluster_item_key': "key", 'hash': 'blake2_hash value'},
+                 'PATH': {'cluster_item_key': "key", 'hash': 'blake2_hash value'}}
 
     files = cluster.compare_files(seq, condition, 'worker1')
     assert len(files["missing"]) == 2
@@ -431,8 +473,7 @@ def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items')
 @patch.object(wazuh.core.cluster.cluster.logger, "error")
-@patch('wazuh.core.cluster.cluster.WazuhDBQueryAgents', side_effect=Exception())
-def test_compare_files_ko(wazuh_db_query_mock, logger_mock, mock_get_cluster_items):
+def test_compare_files_ko(logger_mock, mock_get_cluster_items):
     """Check the different outputs of the compare_files function."""
     mock_get_cluster_items.return_value = {'files': {'key': {'extra_valid': True}}}
 

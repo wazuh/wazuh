@@ -28,7 +28,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate win32 tests
 list(APPEND win32_names "test_win_utils")
-list(APPEND win32_flags "-Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArraySize \
+list(APPEND win32_flags "-Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArraySize -Wl,--wrap,send_msg \
                         -Wl,--wrap,cJSON_GetArrayItem -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,time \
                         -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_run_integrity -Wl,--wrap,fim_db_remove_path \
                         -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \ -Wl,--wrap=is_fim_shutdown \

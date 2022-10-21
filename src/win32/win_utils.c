@@ -18,6 +18,10 @@
 #include "sym_load.h"
 #include "../os_net/os_net.h"
 
+#ifdef WAZUH_UNIT_TESTING
+#include "unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
+#endif
+
 HANDLE hMutex;
 int win_debug_level;
 
@@ -295,7 +299,7 @@ int local_start()
 /* SendMSGAction for Windows */
 int SendMSGAction(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc)
 {
-    const char *pl;
+    char loc_buff[OS_SIZE_8192 + 1] = {0};
     char tmpstr[OS_MAXSTR + 2];
     DWORD dwWaitResult;
     int retval = -1;
@@ -324,16 +328,12 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
         }
     }   /* end - while for mutex... */
 
-    /* locmsg cannot have the C:, as we use it as delimiter */
-    pl = strchr(locmsg, ':');
-    if (pl) {
-        /* Set pl after the ":" if it exists */
-        pl++;
-    } else {
-        pl = locmsg;
+    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '|', ':')) {
+        merror(FORMAT_ERROR);
+        return retval;
     }
 
-    snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, pl, message);
+    snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, loc_buff, message);
 
     /* Send events to the manager across the buffer */
     if (!agt->buffer){

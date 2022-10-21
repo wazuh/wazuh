@@ -25,8 +25,10 @@
 #   16 - Throttling error
 #   17 - Invalid key format
 #   18 - Invalid prefix
+#   19 - The server datetime and datetime of the AWS environment differ
 
 import argparse
+import configparser
 import signal
 import socket
 import sqlite3
@@ -64,11 +66,23 @@ if sys.version_info[0] == 3:
 ################################################################################
 
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
+RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/considerations.html#Connection-configuration-for-retries'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
+DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
 
 # Enable/disable debug mode
 debug_level = 0
+INVALID_CREDENTIALS_ERROR_CODE = "SignatureDoesNotMatch"
+INVALID_REQUEST_TIME_ERROR_CODE = "RequestTimeTooSkewed"
+THROTTLING_EXCEPTION_ERROR_CODE = "ThrottlingException"
+
+INVALID_CREDENTIALS_ERROR_MESSAGE = "Invalid credentials to access S3 Bucket"
+INVALID_REQUEST_TIME_ERROR_MESSAGE = "The server datetime and datetime of the AWS environment differ"
+THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to request throttling. If the problem persists" \
+                                     " check the following link to learn how to use the Retry configuration to avoid it: " \
+                                     f"'{RETRY_CONFIGURATION_URL}'"
+
 
 ################################################################################
 # Classes
@@ -217,7 +231,7 @@ class WazuhIntegration:
     @staticmethod
     def default_config():
         args = {}
-        if not path.exists(path.join(path.expanduser('~'), '.aws', 'config')):
+        if not path.exists(DEFAULT_AWS_CONFIG_PATH):
             args['config'] = botocore.config.Config(
                 retries={
                     'max_attempts': 10,
@@ -735,8 +749,8 @@ class AWSBucket(WazuhIntegration):
             return accounts
 
         except botocore.exceptions.ClientError as err:
-            if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "find_account_ids" request was denied due to request throttling. ', 2)
+            if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_CODE:
+                debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_account_ids")}.', 2)
                 sys.exit(16)
             else:
                 debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
@@ -760,8 +774,8 @@ class AWSBucket(WazuhIntegration):
                 return []
 
         except botocore.exceptions.ClientError as err:
-            if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "find_regions" request was denied due to request throttling. ', 2)
+            if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_CODE:
+                debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_regions")}. ', 2)
                 sys.exit(16)
             else:
                 debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
@@ -1058,7 +1072,9 @@ class AWSBucket(WazuhIntegration):
 
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "iter_files_in_bucket" request was denied due to request throttling. ', 2)
+                debug('Error: The "iter_files_in_bucket" request was denied due to request throttling. If the problem '
+                      'persists check the following link to learn how to use the Retry configuration to avoid it: '
+                      f'{RETRY_CONFIGURATION_URL}', 2)
                 sys.exit(16)
             else:
                 debug(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
@@ -1083,14 +1099,24 @@ class AWSBucket(WazuhIntegration):
             else:
                 print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
-        except botocore.exceptions.ClientError as err:
-            if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "check_bucket" request was denied due to request throttling. ', 2)
-                sys.exit(16)
-            else:
-                print("ERROR: Invalid credentials to access S3 Bucket")
-                exit(3)
 
+        except botocore.exceptions.ClientError as error:
+            error_message = "Unknown"
+            exit_number = 1
+            error_code = error.response.get("Error", {}).get("Code")
+
+            if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
+                error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='check_bucket')}: {error}"
+                exit_number = 16
+            elif error_code == INVALID_CREDENTIALS_ERROR_CODE:
+                error_message = INVALID_CREDENTIALS_ERROR_MESSAGE
+                exit_number = 3
+            elif error_code == INVALID_REQUEST_TIME_ERROR_CODE:
+                error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
+                exit_number = 19
+
+            print(f"ERROR: {error_message}")
+            exit(exit_number)
         except botocore.exceptions.EndpointConnectionError as e:
             print(f"ERROR: {str(e)}")
             exit(15)
@@ -1598,7 +1624,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 flow_log_id,
                 log_key,
                 processed_date,
-                created_date) 
+                created_date)
             VALUES (
                 :bucket_path,
                 :aws_account_id,
@@ -2005,7 +2031,7 @@ class AWSCustomBucket(AWSBucket):
                 aws_account_id,
                 log_key,
                 processed_date,
-                created_date) 
+                created_date)
             VALUES (
                 :bucket_path,
                 :aws_account_id,
@@ -2562,9 +2588,23 @@ class AWSServerAccess(AWSCustomBucket):
             if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Delimiter='/'):
                 print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
-        except botocore.exceptions.ClientError as err:
-            debug(f'ERROR: The "check_bucket" request failed: {err}', 1)
-            sys.exit(16)
+        except botocore.exceptions.ClientError as error:
+            error_message = "Unknown"
+            exit_number = 1
+            error_code = error.response.get("Error", {}).get("Code")
+
+            if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
+                error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='check_bucket')}: {error}"
+                exit_number = 16
+            elif error_code == INVALID_CREDENTIALS_ERROR_CODE:
+                error_message = INVALID_CREDENTIALS_ERROR_MESSAGE
+                exit_number = 3
+            elif error_code == INVALID_REQUEST_TIME_ERROR_CODE:
+                error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
+                exit_number = 19
+
+            print(f"ERROR: {error_message}")
+            exit(exit_number)
 
     def load_information_from_file(self, log_key):
         """Load data from a S3 access log file."""
@@ -3125,21 +3165,23 @@ class AWSCloudWatchLogs(AWSService):
             parameters['nextToken'] = token
 
             # Send events to Analysisd
-            for event in response['events']:
+            if response['events']:
                 debug('+++ Sending events to Analysisd...', 1)
-                debug('The message is "{}"'.format(event['message']), 2)
-                debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
-                self.send_msg(event['message'], dump_json=False)
+                for event in response['events']:
+                    debug('The message is "{}"'.format(event['message']), 3)
+                    debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
+                    self.send_msg(event['message'], dump_json=False)
 
-                if min_start_time is None:
-                    min_start_time = event['timestamp']
-                elif event['timestamp'] < min_start_time:
-                    min_start_time = event['timestamp']
+                    if min_start_time is None:
+                        min_start_time = event['timestamp']
+                    elif event['timestamp'] < min_start_time:
+                        min_start_time = event['timestamp']
 
-                if max_end_time is None:
-                    max_end_time = event['timestamp']
-                elif event['timestamp'] > max_end_time:
-                    max_end_time = event['timestamp']
+                    if max_end_time is None:
+                        max_end_time = event['timestamp']
+                    elif event['timestamp'] > max_end_time:
+                        max_end_time = event['timestamp']
+                debug(f"+++ Sent {len(response['events'])} events to Analysisd", 1)
 
         return {'token': token, 'start_time': min_start_time, 'end_time': max_end_time}
 
@@ -3410,6 +3452,19 @@ def arg_valid_iam_role_duration(arg_string):
         raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
     return int(arg_string)
 
+def get_aws_config_params() -> configparser.RawConfigParser:
+    """Read and retrieve parameters from aws config file
+
+    Returns
+    -------
+    configparser.RawConfigParser
+        the parsed config
+    """
+    config = configparser.RawConfigParser()
+    config.read(DEFAULT_AWS_CONFIG_PATH)
+
+    return config
+
 def get_script_arguments():
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
                                      description="Wazuh wodle for monitoring AWS",
@@ -3553,10 +3608,17 @@ def main(argv):
                 raise Exception("Invalid type of service")
 
             if not options.regions:
-                debug("+++ Warning: No regions were specified, trying to get events from all regions", 1)
-                options.regions = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2',
-                                   'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-2', 'ap-south-1',
-                                   'eu-central-1', 'eu-west-1']
+                aws_config = get_aws_config_params()
+
+                aws_profile = options.aws_profile or "default"
+
+                if aws_config.has_option(aws_profile, "region"):
+                    options.regions.append(aws_config.get(aws_profile, "region"))
+                else:
+                    debug("+++ Warning: No regions were specified, trying to get events from all regions", 1)
+                    options.regions = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2',
+                                       'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-2', 'ap-south-1',
+                                       'eu-central-1', 'eu-west-1']
 
             for region in options.regions:
                 debug('+++ Getting alerts from "{}" region.'.format(region), 1)

@@ -210,6 +210,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=active-response\bin\netsh.exe netsh.exe
     File /oname=libwinpthread-1.dll libwinpthread-1.dll
     File /oname=libgcc_s_dw2-1.dll libgcc_s_dw2-1.dll
+    File /oname=libstdc++-6.dll libstdc++-6.dll
     File agent-auth.exe
     File /oname=wpk_root.pem ..\..\etc\wpk_root.pem
     File /oname=libwazuhext.dll ..\libwazuhext.dll
@@ -219,7 +220,6 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=sysinfo.dll ..\data_provider\build\bin\sysinfo.dll
     File /oname=syscollector.dll ..\wazuh_modules\syscollector\build\bin\syscollector.dll
     File /oname=queue\syscollector\norm_config.json ..\wazuh_modules\syscollector\norm_config.json
-    File /oname=ruleset\sca\sca_win_audit.yml ..\..\ruleset\sca\windows\sca_win_audit.yml
     File VERSION
     File REVISION
 

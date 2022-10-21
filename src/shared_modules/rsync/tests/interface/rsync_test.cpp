@@ -224,7 +224,6 @@ TEST_F(RSyncTest, startSyncWithIntegrityClear)
                 }
             })"
     };
-
     const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
     std::atomic<uint64_t> messageCounter { 0 };
     constexpr auto TOTAL_EXPECTED_MESSAGES { 1ull };
@@ -312,7 +311,6 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
                 }
             })"
     };
-
     const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
     std::atomic<uint64_t> messageCounter { 0 };
     constexpr auto TOTAL_EXPECTED_MESSAGES { 1ull };

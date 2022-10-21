@@ -1177,11 +1177,14 @@ class Handler(asyncio.Protocol):
             await asyncio.wait_for(file.wait(),
                                    timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
         except Exception as e:
+            if isinstance(e, asyncio.TimeoutError):
+                exc = exception.WazuhClusterError(3039)
+            else:
+                exc = exception.WazuhClusterError(3040, extra_message=str(e))
             # Notify the sending node to stop its task.
-            exc = exception.WazuhClusterError(3039)
-            await self.send_request(command=b'cancel_task',
-                                    data=task_id.encode() + b' ' + json.dumps(exc, cls=WazuhJSONEncoder).encode())
-            raise exc from e
+            await self.send_request(command=b"cancel_task",
+                                    data=f"{task_id} {json.dumps(exc, cls=WazuhJSONEncoder)}".encode())
+            raise exc
 
 
 class WazuhCommon:
@@ -1551,7 +1554,7 @@ class SyncWazuhdb(SyncTask):
             get_chunks_start_time = perf_counter()
             while status != 'ok':
                 command = self.get_data_command + json.dumps(self.get_payload)
-                result = self.data_retriever(command=command)
+                result = await self.data_retriever(command=command)
                 status = result[0]
                 if result[1] not in ['[]', '[{"data":[]}]']:
                     chunks.append(result[1])
@@ -1562,7 +1565,7 @@ class SyncWazuhdb(SyncTask):
                     except (IndexError, KeyError):
                         pass
         except exception.WazuhException as e:
-            self.logger.error(f"Error obtaining data from wazuh-db: {e}")
+            self.logger.error(f"Could not obtain data from wazuh-db: {e}")
             return []
 
         self.logger.debug(f"Obtained {len(chunks)} chunks of data in {(perf_counter() - get_chunks_start_time):.3f}s.")

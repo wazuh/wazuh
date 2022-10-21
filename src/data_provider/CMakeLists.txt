@@ -52,10 +52,6 @@ include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
 include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
 endif(NOT CMAKE_CHECK_CENTOS5)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-  link_directories(${INSTALL_PREFIX}/lib)
-endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
@@ -140,29 +136,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(sysinfo PROPERTIES
       PREFIX ""
       SUFFIX ".dll"
-      LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++"
+      LINK_FLAGS "-Wl,--add-stdcall-alias"
       POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
       # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  if(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
-    set_target_properties(sysinfo PROPERTIES
-      LINK_FLAGS "-static-libstdc++")
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-    # Do nothing for HP-UX
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   else()
-    set_target_properties(sysinfo PROPERTIES
-      LINK_FLAGS "-static-libgcc -static-libstdc++")
-  endif(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
-  if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
     string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
     target_link_libraries(sysinfo -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-    # Do nothing for HP-UX
-  else()
-    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
-  endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 elseif(APPLE)
   target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")

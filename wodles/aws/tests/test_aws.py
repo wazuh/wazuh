@@ -366,6 +366,6 @@ def test_custom_get_creation_date(log_file: dict, expected_date: int, aws_custom
     expected_date : int
         The date that the method should return.
     aws_custom_bucket : aws_s3.AWSCustomBucket
-        Instance of the AWSCustomBucket class.  
+        Instance of the AWSCustomBucket class.
     """
     assert aws_custom_bucket.get_creation_date(log_file) == expected_date

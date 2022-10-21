@@ -33,6 +33,7 @@ static const char *XML_CONTAINER = "container";
 static const char *XML_CONTAINER_NAME = "name";
 static const char *XML_CONTAINER_BLOBS = "blobs";
 static const char *XML_CONTAINER_TYPE="content_type";
+static const char *XML_PATH = "path";
 
 static const char *XML_REQUEST_QUERY = "query";
 static const char *XML_TIME_OFFSET = "time_offset";
@@ -203,7 +204,7 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         } else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing
         } else {
-            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_AZURE_CONTEXT.name);	
+            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_AZURE_CONTEXT.name);
             return OS_INVALID;
         }
     }
@@ -534,6 +535,7 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
     container->blobs = NULL;
     container->time_offset = NULL;
     container->content_type = NULL;
+    container->path = NULL;
 
     for (i = 0; nodes[i]; i++) {
 
@@ -577,6 +579,15 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
                 merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
                 return OS_INVALID;
             }
+
+        } else if (!strcmp(nodes[i]->element, XML_PATH)) {
+            if (strlen(nodes[i]->content) != 0) {
+                os_strdup(nodes[i]->content, container->path);
+            } else if (strlen(nodes[i]->content) == 0) {
+                merror("Empty content for tag '%s' at module '%s'", XML_PATH, WM_AZURE_CONTEXT.name);
+                return OS_INVALID;
+            }
+
         } else {
             merror(XML_INVELEM, nodes[i]->element);
             return OS_INVALID;

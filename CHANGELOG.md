@@ -153,6 +153,26 @@ All notable changes to this project will be documented in this file.
 - Prevented the Ruleset test suite from restarting the manager. ([#10773](https://github.com/wazuh/wazuh/pull/10773))
 
 
+## [v4.3.9] - 2022-10-13
+
+### Agent
+
+#### Fixed
+
+- Fixed remote policy detection in SCA. ([#15007](https://github.com/wazuh/wazuh/pull/15007))
+- Fixed agent upgrade module settings parser to set a default CA file. ([#15023](https://github.com/wazuh/wazuh/pull/15023))
+
+#### Removed
+
+- Removed obsolete Windows Audit SCA policy file. ([#14497](https://github.com/wazuh/wazuh/issues/14497))
+
+### Other
+
+#### Changed
+
+- Updated external protobuf python dependency to 3.19.6. ([#15067](https://github.com/wazuh/wazuh/pull/15067))
+
+
 ## [v4.3.8] - 2022-09-19
 
 ### Manager

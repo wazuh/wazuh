@@ -100,14 +100,14 @@ void test_send_msg_invalid_agent(void ** state) {
 
     remoted_state.queued_msgs = 0;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
 
     // Setup invalid agent error
     will_return(__wrap_OS_IsAllowedID, -1);
 
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     expect_string(__wrap__merror, formatted_msg, "(1320): Agent '555' not found.");
 
@@ -132,18 +132,18 @@ void test_send_msg_disconnected_agent(void ** state) {
 
     remoted_state.queued_msgs = 0;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
-    
+
     expect_function_call(__wrap_pthread_mutex_lock);
 
     will_return(__wrap_time, now);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(1245): Sending message to disconnected agent '001'.");
 
@@ -164,7 +164,7 @@ void test_send_msg_encryption_error(void ** state) {
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
@@ -178,7 +178,7 @@ void test_send_msg_encryption_error(void ** state) {
     expect_string(__wrap_CreateSecMSG, msg, msg);
     expect_value(__wrap_CreateSecMSG, msg_length, msg_length);
     expect_value(__wrap_CreateSecMSG, id, key);
-    
+
     // Setup message encryption error
     const char *const crypto_msg = "";
     const ssize_t crypto_size = 0;
@@ -189,10 +189,10 @@ void test_send_msg_encryption_error(void ** state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     expect_string(__wrap__merror,formatted_msg,"(1217): Error creating encrypted message.");
-    
+
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, -1);
@@ -213,7 +213,7 @@ void test_send_msg_tcp_ok(void ** state) {
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
@@ -242,7 +242,7 @@ void test_send_msg_tcp_ok(void ** state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     int ret = send_msg(agent_id, msg, msg_length);
 
@@ -264,7 +264,7 @@ void test_send_msg_tcp_err(void ** state) {
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
@@ -290,7 +290,7 @@ void test_send_msg_tcp_err(void ** state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     int ret = send_msg(agent_id, msg, msg_length);
 
@@ -315,7 +315,7 @@ void test_send_msg_tcp_err_closed_socket(void ** state) {
     // Setup closed socket
     keys.keyentries[0]->sock=-1;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
@@ -335,7 +335,7 @@ void test_send_msg_tcp_err_closed_socket(void ** state) {
     expect_function_call(__wrap_pthread_mutex_lock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Send operation cancelled due to closed socket.");
 
@@ -355,11 +355,11 @@ void test_send_msg_udp_ok(void ** state) {
 
     const char *const crypto_msg = "!@#123abc";
     const ssize_t crypto_size = strlen(crypto_msg);
-    
+
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
@@ -384,7 +384,7 @@ void test_send_msg_udp_ok(void ** state) {
     expect_function_call(__wrap_rem_add_send);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     int ret = send_msg(agent_id, msg, msg_length);
 
@@ -406,7 +406,7 @@ void test_send_msg_udp_error(void ** state) {
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
@@ -432,7 +432,7 @@ void test_send_msg_udp_error(void ** state) {
     expect_string(__wrap__mwarn,formatted_msg,"(1218): Unable to send message to '001': A message could not be delivered completely. [15]");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     int ret = send_msg(agent_id, msg, msg_length);
 
@@ -454,7 +454,7 @@ void test_send_msg_udp_error_connection_reset(void ** state) {
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
@@ -480,7 +480,7 @@ void test_send_msg_udp_error_connection_reset(void ** state) {
     expect_string(__wrap__mdebug1,formatted_msg,"(1218): Unable to send message to '001': Agent may have disconnected. [15]");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     int ret = send_msg(agent_id, msg, msg_length);
 
@@ -502,7 +502,7 @@ void test_send_msg_udp_error_agent_not_responding(void ** state) {
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
@@ -528,7 +528,7 @@ void test_send_msg_udp_error_agent_not_responding(void ** state) {
     expect_string(__wrap__mwarn,formatted_msg,"(1218): Unable to send message to '001': Agent is not responding. [15]");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     int ret = send_msg(agent_id, msg, msg_length);
 
@@ -550,7 +550,7 @@ void test_send_msg_udp_error_generic(void ** state) {
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
@@ -576,7 +576,7 @@ void test_send_msg_udp_error_generic(void ** state) {
     expect_string(__wrap__merror,formatted_msg,"(1218): Unable to send message to '001': Permission denied [15]");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     int ret = send_msg(agent_id, msg, msg_length);
 
@@ -590,12 +590,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_send_msg_invalid_agent, test_setup_keys, test_teardown_keys),
         cmocka_unit_test_setup_teardown(test_send_msg_disconnected_agent, test_setup_keys, test_teardown_keys),
         cmocka_unit_test_setup_teardown(test_send_msg_encryption_error, test_setup_keys, test_teardown_keys),
-        
+
         // TCP tests
         cmocka_unit_test_setup_teardown(test_send_msg_tcp_ok, test_setup_tcp, test_teardown_tcp),
         cmocka_unit_test_setup_teardown(test_send_msg_tcp_err, test_setup_tcp, test_teardown_tcp),
         cmocka_unit_test_setup_teardown(test_send_msg_tcp_err_closed_socket, test_setup_tcp, test_teardown_tcp),
-        
+
         // UDP tests
         cmocka_unit_test_setup_teardown(test_send_msg_udp_ok, test_setup_udp, test_teardown_udp),
         cmocka_unit_test_setup_teardown(test_send_msg_udp_error, test_setup_udp, test_teardown_udp),

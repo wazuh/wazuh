@@ -272,9 +272,7 @@ def runCppCheck(moduleName):
                       headerKey="cppcheck")
 
     currentDir = utils.moduleDirPath(moduleName)
-    cppcheckCommand = "cppcheck --force --std=c++14 --quiet \
-                       --suppressions-list={0}/cppcheckSuppress.txt \
-                       {0}".format(currentDir)
+    cppcheckCommand = "cppcheck --force --std=c++14 --quiet {}".format(currentDir)
 
     out = subprocess.run(cppcheckCommand,
                          stdout=subprocess.PIPE,
@@ -499,12 +497,16 @@ def runTestToolForWindows(moduleName, testToolConfig):
                                path=utils.rootPath())
         dbsync = utils.findFile(name="dbsync.dll",
                                 path=utils.rootPath())
+        stdcpp = utils.findFile(name="libstdc++-6.dll",
+                                path=utils.rootPath())
         shutil.copyfile(libgcc,
                         os.path.join(rootPath, "libgcc_s_dw2-1.dll"))
         shutil.copyfile(rsync,
                         os.path.join(rootPath, "rsync.dll"))
         shutil.copyfile(dbsync,
                         os.path.join(rootPath, "dbsync.dll"))
+        shutil.copyfile(stdcpp,
+                        os.path.join(rootPath, "libstdc++-6.dll"))
     for element in module:
         path = os.path.join(rootPath, element['test_tool_name'])
         args = " ".join(element['args'])
@@ -552,6 +554,19 @@ def runTests(moduleName):
         for test in tests:
             path = os.path.join(currentDir, test)
             if ".exe" in test:
+                if moduleName == "data_provider":
+                    rootPath = os.path.join(utils.moduleDirPathBuild(moduleName),
+                                            "bin")
+                    stdcpp = utils.findFile(name="libstdc++-6.dll",
+                                            path=utils.rootPath())
+                    libgcc = utils.findFile(name="libgcc_s_dw2-1.dll",
+                                            path=utils.rootPath())
+                    shutil.copyfile(libgcc,
+                                    os.path.join(rootPath,
+                                                 "libgcc_s_dw2-1.dll"))
+                    shutil.copyfile(stdcpp,
+                                    os.path.join(rootPath,
+                                                 "libstdc++-6.dll"))
                 command = f'WINEPATH="/usr/i686-w64-mingw32/lib;\
                             {utils.currentPath()}" \
                             WINEARCH=win64 /usr/bin/wine {path}'

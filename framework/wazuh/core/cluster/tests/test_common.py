@@ -35,7 +35,7 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.core.cluster.common as cluster_common
         import wazuh.core.results as wresults
         from wazuh.core import common
-        from wazuh.core.wdb import WazuhDBConnection
+        from wazuh.core.wdb import AsyncWazuhDBConnection
 
 # Globals
 
@@ -1187,14 +1187,25 @@ async def test_handler_wait_for_file(wait_for_mock):
 
 
 @pytest.mark.asyncio
+@patch("asyncio.wait_for")
 @patch('wazuh.core.cluster.common.Handler.send_request')
-async def test_handler_wait_for_file_ko(send_request_mock):
+async def test_handler_wait_for_file_ko(send_request_mock, wait_for_mock):
     """Check if expected exception is raised."""
     handler = cluster_common.Handler(fernet_key, cluster_items)
     with pytest.raises(exception.WazuhClusterError, match='.* 3039 .*'):
         with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError):
             await handler.wait_for_file(asyncio.Event(), 'test')
     send_request_mock.assert_called_once_with(command=b'cancel_task', data=ANY)
+
+    wait_for_mock.side_effect = asyncio.TimeoutError
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3039 .*"):
+        await handler.wait_for_file(asyncio.Event(), "task_id")
+    send_request_mock.assert_called_with(command=b'cancel_task', data=ANY)
+
+    wait_for_mock.side_effect = Exception
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3040 .*"):
+        await handler.wait_for_file(asyncio.Event(), "task_id")
+    send_request_mock.assert_called_with(command=b'cancel_task', data=ANY)
 
 # Test 'WazuhCommon' class methods
 
@@ -1394,7 +1405,7 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
         else:
             return 'ok', {'id': counter}
 
-    wdb_conn = WazuhDBConnection()
+    wdb_conn = AsyncWazuhDBConnection()
     logger = logging.getLogger("wazuh")
     handler = cluster_common.Handler(fernet_key, cluster_items)
     sync_object = cluster_common.SyncWazuhdb(manager=handler, logger=logger, cmd=b'syn_a_w_m',
@@ -1424,7 +1435,7 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
         with patch.object(sync_object.logger, 'error') as logger_error_mock:
             assert await sync_object.retrieve_information() == []
             logger_error_mock.assert_called_with(
-                'Error obtaining data from wazuh-db: Error 1000 - Wazuh Internal Error')
+                'Could not obtain data from wazuh-db: Error 1000 - Wazuh Internal Error')
 
 
 @pytest.mark.asyncio

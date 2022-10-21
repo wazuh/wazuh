@@ -212,6 +212,15 @@ else()
 endif()
 
 if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_json_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,w_get_file_content -Wl,--wrap,cJSON_ParseWithOpts \
+                                -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,fopen \
+                                -Wl,--wrap,fwrite -Wl,--wrap,fclose \
+                                -Wl,--wrap,fflush -Wl,--wrap,fgets \
+                                -Wl,--wrap,fgetpos -Wl,--wrap,fgetc \
+                                -Wl,--wrap,fread -Wl,--wrap,remove \
+                                -Wl,--wrap,fseek ${DEBUG_OP_WRAPPERS}")
+                                
 list(APPEND shared_tests_names "test_audit_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,audit_send \
                                 -Wl,--wrap,select -Wl,--wrap,audit_get_reply -Wl,--wrap,wpopenv -Wl,--wrap,fgets \
@@ -227,7 +236,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getg
 
 list(APPEND shared_tests_names "test_mq_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep \
-                                -Wl,--wrap,OS_getsocketsize ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,OS_SendUnix -Wl,--wrap,OS_getsocketsize ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_remoted_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
@@ -280,6 +289,9 @@ else()
                                 -Wl,--wrap,sysinfo_os -Wl,--wrap,sysinfo_processes -Wl,--wrap,sysinfo_free_result \
                                 -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetStringValue")
 endif()
+
+list(APPEND shared_tests_names "test_rwlock_op")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
 # Compiling tests
 list(LENGTH shared_tests_names count)

@@ -1,7 +1,7 @@
 /*
  * Wazuh shared modules utils
  * Copyright (C) 2015, Wazuh Inc.
- * May 17, 2022.
+ * September 27, 2022.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

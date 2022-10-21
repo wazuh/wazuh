@@ -14,12 +14,12 @@
 
 #include "fimCommonDefs.h"
 #include "commonDefs.h"
+#include "syscheck.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "syscheck.h"
 #include <openssl/evp.h>
 
 #define FIM_DB_MEMORY_PATH  ":memory:"

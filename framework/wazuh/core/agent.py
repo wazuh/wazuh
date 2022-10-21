@@ -36,10 +36,43 @@ agent_regex = re.compile(r"^(\d{3,}) [^!].* .* .*$", re.MULTILINE)
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
+    """Class used to query Wazuh agents."""
 
-    def __init__(self, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None, count=True,
-                 get_data=True, query='', filters=None, default_sort_field='id', min_select_fields=None,
-                 remove_extra_fields=True, distinct=False, rbac_negate=True):
+    def __init__(self, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None, search: dict = None,
+                 select: list = None, count: bool = True, get_data: bool = True, query: str = '', filters: dict = None,
+                 default_sort_field: str = 'id', min_select_fields: set = None, remove_extra_fields: bool = True,
+                 distinct: bool = False, rbac_negate: bool = True):
+        """Class constructor.
+
+        Parameters
+        ----------
+        offset : int
+            First item to return.
+        limit : int
+            Maximum number of items to return.
+        sort : dict
+            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        select : list
+            Select fields to return. Format: ["field1","field2"].
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        query : str
+            Query to filter in database. Format: field operator value.
+        search : dict
+            Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        default_sort_field : str
+            By default, return elements sorted by this field
+        min_select_fields : set
+            Fields that must be always be selected because they're necessary to compute other fields.
+        count : bool
+            Whether to compute totalItems or not.
+        get_data : bool
+            Whether to return data or not.
+        distinct : bool
+            Look for distinct values.
+        rbac_negate : bool
+            Whether to use IN or NOT IN on RBAC resources.
+        """
         if filters is None:
             filters = {}
         unify_wazuh_version_format(filters)
@@ -54,18 +87,29 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                               distinct=distinct, rbac_negate=rbac_negate)
         self.remove_extra_fields = remove_extra_fields
 
-    def _filter_date(self, date_filter, filter_db_name):
+    def _filter_date(self, date_filter: dict, filter_db_name: str):
+        """Add date filter to the Wazuh query."""
         WazuhDBQuery._filter_date(self, date_filter, filter_db_name)
         self.query += ' AND id != 0'
 
-    def _sort_query(self, field):
+    def _sort_query(self, field: str) -> str:
+        """Generate sort string with specific casts to sort correctly.
+
+        Returns
+        -------
+        str
+            String corresponding to the sort part of the query.
+        """
         if field == 'os.version':
             # Order by os major version and os minor version
             return "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(self.sort['order'])
         return WazuhDBQuery._sort_query(self, field)
 
     def _add_search_to_query(self):
-        # since id are stored in database as integers, id searches must be turned into integers to work as expected.
+        """Add search to the Wazuh query with the specific implications.
+
+        Since IDs are stored in the database as integers, id searches must be turned into integers to work as expected.
+        """
         if self.search:
             del self.fields['id']
             WazuhDBQuery._add_search_to_query(self)
@@ -74,11 +118,17 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             self.request['search_id'] = int(self.search['value']) if self.search['value'].isdigit() \
                 else re.sub(f"[{self.special_characters}]", '_', self.search['value'])
 
-    def _format_data_into_dictionary(self):
+    def _format_data_into_dictionary(self) -> dict:
+        """Compute 'status' field, format id with zero padding and remove non-user-requested fields. Also, remove extra
+        fields (internal key and registration IP).
+
+        Returns
+        -------
+        dict
+            Formatted data.
+        """
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        # compute 'status' field, format id with zero padding and remove non-user-requested fields.
-        # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
         selected_fields |= self.min_select_fields
         aux = list()
@@ -100,6 +150,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         return super()._format_data_into_dictionary()
 
     def _parse_legacy_filters(self):
+        """Parse legacy filters."""
         if 'older_than' in self.legacy_filters and self.legacy_filters['older_than'] != '0s':
             if self.legacy_filters['older_than']:
                 self.q = (self.q + ';' if self.q else '') + \
@@ -107,7 +158,6 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                              self.legacy_filters['older_than'])
             del self.legacy_filters['older_than']
 
-        """Parses legacy filters."""
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
         self.legacy_filters.get('older_than', None) == '0s' and self.legacy_filters.pop('older_than')
         legacy_filters_as_list = {
@@ -150,7 +200,14 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             # if only traditional filters have been defined, remove last AND from the query.
             self.query_filters[-1]['separator'] = '' if not self.q else 'AND'
 
-    def _process_filter(self, field_name, field_filter, q_filter):
+    def _process_filter(self, field_name: str, field_filter: str, q_filter: dict):
+        """Process filters for specific fields.
+
+        Raises
+        ------
+        WazuhError(1409)
+            If the operator of the filter is not valid.
+        """
         if field_name == 'group' and q_filter['value'] is not None:
             valid_group_operators = {'=', '!=', '~'}
 
@@ -171,9 +228,41 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
 
 class WazuhDBQueryGroup(WazuhDBQuery):
-    def __init__(self, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
-                 get_data=True, query='', filters=None, count=True, default_sort_field='name', min_select_fields=None,
-                 remove_extra_fields=True, rbac_negate=True):
+    """Class used to query Wazuh groups."""
+
+    def __init__(self, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None, search: dict = None,
+                 select: list = None, get_data: bool = True, query: str = '', filters: dict = None, count: bool = True,
+                 default_sort_field: str = 'name', min_select_fields: set = None, remove_extra_fields: bool = True,
+                 rbac_negate: bool = True):
+        """Class constructor.
+
+        Parameters
+        ----------
+        offset : int
+            First item to return.
+        limit : int
+            Maximum number of items to return.
+        sort : dict
+            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        select : list
+            Select fields to return. Format: ["field1","field2"].
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        query : str
+            Query to filter in database. Format: field operator value.
+        search : dict
+            Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        default_sort_field : str
+            By default, return elements sorted by this field
+        min_select_fields : set
+            Fields that must be always be selected because they're necessary to compute other fields.
+        count : bool
+            Whether to compute totalItems or not.
+        get_data : bool
+            Whether to return data or not.
+        rbac_negate : bool
+            Whether to use IN or NOT IN on RBAC resources.
+        """
         if filters is None:
             filters = {}
         if min_select_fields is None:
@@ -191,28 +280,39 @@ class WazuhDBQueryGroup(WazuhDBQuery):
         pass
 
     def _add_sort_to_query(self):
-        # Consider the option to sort by count
+        """Consider the option to sort by count."""
         self.fields['count'] = 'count(id_group)'
         super()._add_sort_to_query()
 
     def _add_search_to_query(self):
+        """Add search to the Wazuh query with the specific implications."""
         super()._add_search_to_query()
         self.query = self.query.replace('WHERE  AND', 'WHERE')
         if 'search' not in self.query:
             self.query = self.query.rstrip('WHERE ')
         self.query += ' GROUP BY name'
 
-    def _default_query(self):
+    def _default_query(self) -> str:
+        """Get default query.
+
+        Returns
+        -------
+        str
+            Default query.
+        """
         return "SELECT name, count(id_group) AS count from `group` LEFT JOIN `belongs` on id=id_group WHERE "
 
     def _get_total_items(self):
+        """Get total items."""
         total_items_query = "SELECT COUNT(*) FROM ({}) AS total_groups".format(self.query)
         self.total_items = self.backend.execute(total_items_query, self.request, True)
 
     def _execute_data_query(self):
+        """Execute the query in the backend."""
         self._data = self.backend.execute(self.query, self.request)
 
     def _parse_legacy_filters(self):
+        """Parses legacy filters."""
         if 'older_than' in self.legacy_filters and self.legacy_filters['older_than'] != '0s':
             if self.legacy_filters['older_than']:
                 self.q = (self.q + ';' if self.q else '') + \
@@ -220,7 +320,6 @@ class WazuhDBQueryGroup(WazuhDBQuery):
                              self.legacy_filters['older_than'])
             del self.legacy_filters['older_than']
 
-        """Parses legacy filters."""
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
         self.legacy_filters.get('older_than', None) == '0s' and self.legacy_filters.pop('older_than')
         legacy_filters_as_list = {
@@ -269,15 +368,30 @@ class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents):
 
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
-    def __init__(self, filter_fields, *args, **kwargs):
+    """Class used to query grouping by agents."""
 
+    def __init__(self, filter_fields: dict, *args: dict, **kwargs: dict):
+        """Class constructor.
+
+        Parameters
+        ----------
+        filter_fields : dict
+            Fields to filter by.
+        """
         WazuhDBQueryAgents.__init__(self, *args, **kwargs)
         WazuhDBQueryGroupBy.__init__(self, *args, table=self.table, fields=self.fields, filter_fields=filter_fields,
                                      default_sort_field=self.default_sort_field, backend=self.backend, **kwargs)
         self.remove_extra_fields = True
 
-    def _format_data_into_dictionary(self):
-        # Add <field>: 'unknown' when filter field is not within the response.
+    def _format_data_into_dictionary(self) -> str:
+        """Add <field>: 'unknown' when filter field is not within the response. Compute 'status' field, format id with
+        zero padding and remove non-user-requested fields. Also remove, extra fields (internal key and registration IP).
+
+        Returns
+        -------
+        str
+            Formatted data.
+        """
         for result in self._data:
             for field in self.filter_fields['fields']:
                 if field not in result.keys():
@@ -285,8 +399,6 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        # compute 'status' field, format id with zero padding and remove non-user-requested fields.
-        # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
 
         aux = list()
@@ -305,26 +417,51 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 
 
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
-    def __init__(self, group_id, query='', *args, **kwargs):
+    """Class used to query agents with multigroups."""
+
+    def __init__(self, group_id: str, query: str = '', *args: dict, **kwargs: dict):
+        """Class constructor.
+
+        Parameters
+        ----------
+        group_id : str
+            ID of the group.
+        query : str
+            Query.
+        """
         self.group_id = group_id
         query = 'group={}'.format(group_id) + (';' + query if query else '')
         WazuhDBQueryAgents.__init__(self, query=query, *args, **kwargs)
 
-    def _default_query(self):
+    def _default_query(self) -> str:
+        """Get default query.
+
+        Returns
+        -------
+        str
+            Default query.
+        """
         return "SELECT {0} FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent" if self.group_id != "null" \
             else "SELECT {0} FROM agent a"
 
-    def _default_count_query(self):
+    def _default_count_query(self) -> str:
+        """Get count part for the default query.
+
+        Returns
+        -------
+        str
+            String representing the count part for the default query.
+        """
         return 'COUNT(DISTINCT a.id)'
 
     def _get_total_items(self):
+        """Get total items."""
         self.total_items = self.backend.execute(self.query.format(self._default_count_query()), self.request, True)
         self.query += ' GROUP BY a.id '
 
 
 class Agent:
-    """Wazuh Agent object.
-    """
+    """Wazuh Agent object."""
     fields = {'id': 'id', 'name': 'name', 'ip': 'coalesce(ip,register_ip)', 'status': 'connection_status',
               'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
               'version': 'version', 'manager': 'manager_host', 'dateAdd': 'date_add',
@@ -335,7 +472,7 @@ class Agent:
               'registerIP': 'register_ip', 'disconnection_time': 'disconnection_time',
               'group_config_status': 'group_config_status'}
 
-    def __init__(self, id=None, name=None, ip=None, key=None, force=None):
+    def __init__(self, id: str = None, name: str = None, ip: str = None, key: str = None, force: dict = None):
         """Initialize an agent.
 
         `id` when the agent exists.
@@ -382,10 +519,10 @@ class Agent:
         if name is not None and ip is not None:
             self._add(name=name, ip=ip, id=id, key=key, force=force)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.to_dict())
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os,
                       'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive,
                       'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum,
@@ -394,8 +531,18 @@ class Agent:
 
         return dictionary
 
-    def load_info_from_db(self, select=None):
+    def load_info_from_db(self, select: list = None):
         """Gets attributes of existing agent.
+
+        Parameters
+        ----------
+        select : list
+            Select fields to return. Format: ["field1","field2"].
+
+        Raises
+        ------
+        WazuhResourceNotFound(1701)
+            Agent does not exist.
         """
         with WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=select,
                                 query="id={}".format(self.id), count=False, get_data=True,
@@ -407,22 +554,42 @@ class Agent:
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
-    def get_basic_information(self, select=None):
+    def get_basic_information(self, select: list = None):
         """Gets public attributes of existing agent.
+
+        Parameters
+        ----------
+        select : list
+            Select fields to return. Format: ["field1","field2"].
         """
         self.load_info_from_db(select)
         fields = set(self.fields.keys()) & set(select) if select is not None \
             else set(self.fields.keys()) - {'internal_key'}
         return {field: getattr(self, field) for field in map(lambda x: x.split('.')[0], fields) if getattr(self, field)}
 
-    def compute_key(self):
+    def compute_key(self) -> str:
+        """Compute agent key.
+
+        Returns
+        -------
+        str
+            Agent key.
+        """
         str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.registerIP, self.internal_key)
         return b64encode(str_key.encode()).decode()
 
-    def get_key(self):
-        """Gets agent key.
+    def get_key(self) -> str:
+        """Get agent key.
 
-        :return: Agent key.
+        Returns
+        -------
+        str
+            Agent key.
+
+        Raises
+        ------
+        WazuhError(1703)
+            Action not available for manager (000).
         """
         self.load_info_from_db()
         if self.id != "000":
@@ -442,8 +609,6 @@ class Agent:
 
         Raises
         ------
-        WazuhError(1750)
-            If the agent has active response disabled.
         WazuhError(1707)
             If the agent to be reconnected is not active.
 
@@ -474,13 +639,12 @@ class Agent:
         ------
         WazuhError(1726)
             Authd is not running.
-
         WazuhInternalError(1757)
             Unhandled exception.
 
         Returns
         -------
-        data : str
+        str
             Message generated by Wazuh.
         """
         # Check that wazuh-authd is running
@@ -504,11 +668,18 @@ class Agent:
         except Exception as e:
             raise WazuhInternalError(1757, extra_message=str(e))
 
-    def _remove_authd(self, purge=False):
-        """Deletes the agent.
+    def _remove_authd(self, purge: bool = False) -> dict:
+        """Delete the agent.
 
-        :param purge: Delete definitely from key store.
-        :return: Message.
+        Parameters
+        ----------
+        purge : bool
+            Delete definitely from key store.
+
+        Returns
+        -------
+        dict
+            Message.
         """
         msg = {"function": "remove", "arguments": {"id": str(self.id).zfill(3), "purge": purge}}
 
@@ -519,7 +690,7 @@ class Agent:
 
         return data
 
-    def _add(self, name, ip, id=None, key=None, force=None):
+    def _add(self, name: str, ip: str, id: str = None, key: str = None, force: bool = None):
         """Add an agent to Wazuh.
         2 uses:
             - name and ip [force]: Add an agent like manage_agents (generate id and key).
@@ -584,7 +755,7 @@ class Agent:
         except Exception as e:
             raise WazuhInternalError(1725, extra_message=str(e))
 
-    def _add_authd(self, name, ip, id=None, key=None, force=None):
+    def _add_authd(self, name: str, ip: str, id: str = None, key: str = None, force: bool = None):
         """Add an agent to Wazuh using authd.
         2 uses:
             - name and ip [force]: Add an agent like manage_agents (generate id and key).
@@ -656,11 +827,18 @@ class Agent:
         self.key = self.compute_key()
 
     @staticmethod
-    def delete_single_group(group_id):
-        """Delete a group
+    def delete_single_group(group_id: str) -> dict:
+        """Delete a group.
 
-        :param group_id: Group ID.
-        :return: Confirmation message.
+        Parameters
+        ----------
+        group_id : str
+            Group ID.
+
+        Returns
+        -------
+        dict
+            Confirmation message.
         """
         # Delete group directory
         group_path = path.join(common.SHARED_PATH, group_id)
@@ -671,9 +849,8 @@ class Agent:
 
         return {'message': msg}
 
-    def get_agent_os_name(self):
-        """Returns a string with an agent's os name
-        """
+    def get_agent_os_name(self) -> str:
+        """Return a string with the agent's os name."""
         query = WazuhDBQueryAgents(select=['os.name'], filters={'id': [self.id]})
 
         try:
@@ -682,8 +859,8 @@ class Agent:
             return 'null'
 
     @staticmethod
-    def get_agents_overview(offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
-                            filters=None, q=""):
+    def get_agents_overview(offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None, search: str = None,
+                            select: str = None, filters: dict = None, q: str = "") -> dict:
         """Gets a list of available agents with basic attributes.
 
         Parameters
@@ -692,12 +869,12 @@ class Agent:
             First item to return.
         limit : int
             Maximum number of items to return.
-        sort : str
+        sort : dict
             Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         search : str
             Looks for items with the specified string. Format: {"fields": ["field1","field2"]}.
         select : str
-            Select fields to return. Format: {"fields":["field1","field2"]}.
+            Select fields to return.
         filters : dict
             Defines required field filters.
         q : str
@@ -705,7 +882,8 @@ class Agent:
 
         Returns
         -------
-        Information gathered from the database query
+        dict
+            Information gathered from the database query.
         """
         pfilters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=filters.pop('id'),
                                     filters=filters) if filters and 'id' in filters else {'filters': filters}
@@ -716,7 +894,7 @@ class Agent:
         return data
 
     @staticmethod
-    def add_group_to_agent(group_id, agent_id, replace=False, replace_list=None):
+    def add_group_to_agent(group_id: str, agent_id: str, replace: bool = False, replace_list: list = None) -> str:
         """Add an existing group to an agent.
         
         Parameters
@@ -729,6 +907,15 @@ class Agent:
             Whether to append new group to current agent's group or replace it.
         replace_list: list
             List of group names that can be replaced.
+
+        Raises
+        ------
+        WazuhInternalError(2007)
+            Body is empty.
+        WazuhError(1752)
+            Could not force single group for the agent.
+        WazuhError(1737)
+            Maximum number of groups reached.
 
         Returns
         -------
@@ -762,12 +949,20 @@ class Agent:
         return f"Agent {agent_id} assigned to {group_id}"
 
     @staticmethod
-    def check_if_delete_agent(id, seconds):
+    def check_if_delete_agent(id: str, seconds: int) -> bool:
         """Check if we should remove an agent: if time from last connection is greater than <seconds>.
 
-        :param id: id of the new agent.
-        :param seconds: Number of seconds.
-        :return: True if time from last connection is greater thant <seconds>.
+        Parameters
+        ----------
+        id : str
+            ID of the new agent.
+        seconds : int
+            Number of seconds.
+
+        Returns
+        -------
+        bool
+            True if time from last connection is greater thant <seconds>.
         """
         remove_agent = False
 
@@ -791,11 +986,23 @@ class Agent:
         return remove_agent
 
     @staticmethod
-    def group_exists(group_id):
-        """Checks if the group exists
+    def group_exists(group_id: str) -> bool:
+        """Check if the group exists
 
-        :param group_id: Group ID.
-        :return: True if group exists, False otherwise
+        Parameters
+        ----------
+        group_id : str
+            Group ID.
+
+        Raises
+        ------
+        WazuhError(1722)
+            Incorrect format for group_id.
+
+        Returns
+        -------
+        bool
+            True if group exists, False otherwise.
         """
         # Input Validation of group_id
         if not InputValidator().group(group_id):
@@ -807,12 +1014,12 @@ class Agent:
             return False
 
     @staticmethod
-    def get_agent_groups(agent_id):
+    def get_agent_groups(agent_id: str) -> list:
         """Return all agent's groups.
 
         Parameters
         ----------
-        agent_id: str
+        agent_id : str
             Agent ID.
 
         Returns
@@ -822,13 +1029,27 @@ class Agent:
         """
         wdb = WazuhDBConnection()
         try:
-            _, payload = wdb.run_wdb_command(f'global select-group-belong {agent_id}')
+            _, payload = wdb.send(f'global select-group-belong {agent_id}', raw=True)
             return json.loads(payload)
         finally:
             wdb.close()
 
     @staticmethod
-    def set_agent_group_relationship(agent_id, group_id, remove=False, override=False):
+    def set_agent_group_relationship(agent_id: str, group_id: str, remove: bool = False, override: bool = False):
+        """Set a relationship between an agent and a group.
+
+        Parameters
+        ----------
+        agent_id : str
+            ID of the agent.
+        group_id : str
+            ID of the group.
+        remove : bool
+            Set the relationship with the remove mode.
+        override : bool
+            Set the relationship with the override mode. This option only works if remove is False. If both override and
+            remove are False, the mode used is append.
+        """
         if remove:
             mode = 'remove'
         else:
@@ -839,22 +1060,33 @@ class Agent:
 
         wdb = WazuhDBConnection()
         try:
-            wdb.run_wdb_command(command)
+            wdb.send(command, raw=True)
         finally:
             wdb.close()
 
     @staticmethod
-    def unset_single_group_agent(agent_id, group_id, force=False):
+    def unset_single_group_agent(agent_id: str, group_id: str, force: bool = False) -> str:
         """Unset the agent group. If agent has multigroups, it will preserve all previous groups except the last one.
         
         Parameters
         ----------
-        agent_id: str
+        agent_id : str
             Agent ID.
-        group_id: str
+        group_id : str
             Group ID.
-        force: bool
+        force : bool
             Do not check if agent or group exists.
+
+        Raises
+        ------
+        WazuhError(1703)
+            Action not available for manager.
+        WazuhResourceNotFound(1710)
+            The group was not found.
+        WazuhError(1734)
+            Error removing agent from group.
+        WazuhError(1745)
+            Agent only belongs to 'default' and it cannot be unassigned from this group.
 
         Returns
         -------
@@ -917,17 +1149,24 @@ class Agent:
 
         return configuration.get_active_configuration(self.id, component, config)
 
-    def get_stats(self, component):
+    def get_stats(self, component: str) -> dict:
         """Read the agent's component stats.
 
         Parameters
         ----------
-        component : string
+        component : str
             Name of the component to get stats from.
+
+        Raises
+        ------
+        WazuhInternalError(1015)
+            Agent version is null.
+        WazuhInternalError(1735)
+            Agent version is not compatible with this feature.
 
         Returns
         -------
-        Dict
+        dict
             Object with component's stats.
         """
         # Check if agent version is compatible with this feature
@@ -942,7 +1181,7 @@ class Agent:
         return stats.get_daemons_stats_from_socket(self.id, component)
 
 
-def unify_wazuh_upgrade_version_format(upgrade_version):
+def unify_wazuh_upgrade_version_format(upgrade_version: str) -> str:
     """Format the specified upgrade version into the 'vX.Y.Z' standard.
 
     Parameters
@@ -960,7 +1199,7 @@ def unify_wazuh_upgrade_version_format(upgrade_version):
         return f'v{upgrade_version}'
 
 
-def unify_wazuh_version_format(filters):
+def unify_wazuh_version_format(filters: dict):
     """Verify and format the specified wazuh version into the 'wazuh vX.Y.Z' standard.
 
     Parameters
@@ -976,7 +1215,16 @@ def unify_wazuh_version_format(filters):
             filters['version'] = f"{wv.replace(' ', ' v')}"
 
 
-def format_fields(field_name, value):
+def format_fields(field_name: str, value: str) -> str:
+    """Give format to values of specific fields.
+
+    Parameters
+    ----------
+    field_name : str
+        Name of the field to be formatted.
+    value : str
+        Value of the field.
+    """
     if field_name == 'id':
         return str(value).zfill(3)
     elif field_name == 'group':
@@ -1015,8 +1263,14 @@ def send_restart_command(agent_id: str = '', agent_version: str = '', wq: WazuhQ
 
 
 @common.context_cached('system_agents')
-def get_agents_info():
-    """Get all agent IDs in the system."""
+def get_agents_info() -> set:
+    """Get all agent IDs in the system.
+
+    Returns
+    -------
+    set
+        IDs of all agents in the system.
+    """
     with open(common.CLIENT_KEYS, 'r') as f:
         file_content = f.read()
 
@@ -1027,10 +1281,13 @@ def get_agents_info():
 
 
 @common.context_cached('system_groups')
-def get_groups():
-    """Get all groups in the system
+def get_groups() -> set:
+    """Get all groups in the system.
 
-    :return: List of group names
+    Returns
+    -------
+    set
+        Names of all groups in the system.
     """
     groups = set()
     for shared_file in listdir(common.SHARED_PATH):
@@ -1040,12 +1297,12 @@ def get_groups():
 
 
 @common.context_cached('system_expanded_groups')
-def expand_group(group_name):
+def expand_group(group_name: str) -> set:
     """Expand a certain group or all (*) of them.
 
     Parameters
     ----------
-    group_name: str
+    group_name : str
         Name of the group to be expanded.
 
     Returns
@@ -1063,7 +1320,7 @@ def expand_group(group_name):
             else:
                 command = f'global get-group-agents {group_name} last_id {last_id}'
 
-            status, payload = wdb_conn.run_wdb_command(command)
+            status, payload = wdb_conn.send(command, raw=True)
             agents = json.loads(payload)
 
             for agent in agents[0]['data'] if group_name == '*' else agents:
@@ -1082,8 +1339,14 @@ def expand_group(group_name):
 
 
 @lru_cache()
-def get_manager_name():
-    """This function read the manager name from global.db"""
+def get_manager_name() -> str:
+    """This function read the manager name from global.db.
+
+    Returns
+    -------
+    str
+        Manager name.
+    """
     wdb_conn = WazuhDBConnection()
     manager_name = wdb_conn.execute("global sql SELECT name FROM agent WHERE (id = 0)")[0]['name']
     wdb_conn.close()
@@ -1091,21 +1354,22 @@ def get_manager_name():
     return manager_name
 
 
-def get_rbac_filters(system_resources=None, permitted_resources=None, filters=None):
-    """This function calculate the list of allowed or denied depending on the list size
+def get_rbac_filters(system_resources: set = None, permitted_resources: list = None, filters: dict = None) -> dict:
+    """This function calculate the list of allowed or denied depending on the list size.
 
     Parameters
     ----------
     system_resources : set
-        System resources for the current request
+        System resources for the current request.
     permitted_resources : list
-        Resources granted by RBAC
+        Resources granted by RBAC.
     filters : dict
-        Dictionary with additional filters for the current request
+        Dictionary with additional filters for the current request.
 
     Returns
     -------
-    Dictionary with the original filters plus those added by RBAC
+    dict
+        Dictionary with the original filters plus those added by RBAC.
     """
     if not filters:
         filters = dict()
@@ -1121,16 +1385,17 @@ def get_rbac_filters(system_resources=None, permitted_resources=None, filters=No
     return {'filters': filters, 'rbac_negate': negate}
 
 
-def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, version=None,
-                        force=False, use_http=False, file_path=None, installer=None, get_result=False):
-    """Send command to upgrade module / task module
+def core_upgrade_agents(agents_chunk: list, command: str = 'upgrade_result', wpk_repo: str = None, version: str = None,
+                        force: bool = False, use_http: bool = False, file_path: str = None, installer: str = None,
+                        get_result: bool = False) -> dict:
+    """Send command to upgrade module / task module.
 
     Parameters
     ----------
     agents_chunk : list
         List of agents ID's.
     command : str
-        Command sent to the socket.
+        Command sent to the socket. Default: 'upgrade_result'
     wpk_repo : str
         URL for WPK download.
     version : str
@@ -1148,7 +1413,8 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
 
     Returns
     -------
-    Message received from the socket (Task module or Upgrade module)
+    dict
+        Message received from the socket (Task module or Upgrade module)
     """
     msg = create_wazuh_socket_message(origin={'module': 'api'},
                                       command=command,

@@ -1,5 +1,0 @@
-*:*src/syscheckd/src/db/src/file.cpp:88
-*:*src/syscheckd/src/db/src/file.cpp:378
-*:*src/db/testtool/action.h:378
-*:*src/syscheckd/src/db/src/db.cpp:92
-*:*src/syscheckd/src/create_db.c:866

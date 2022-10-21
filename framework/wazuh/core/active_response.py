@@ -113,6 +113,8 @@ def send_ar_message(agent_id: str = '', wq: WazuhQueue = None, command: str = ''
     ------
     WazuhError(1707)
         If the agent with ID agent_id is not active.
+    WazuhError(1750)
+        If active response is disabled in the specified agent.
     """
     # Agent basic information
     agent_info = Agent(agent_id).get_basic_information()

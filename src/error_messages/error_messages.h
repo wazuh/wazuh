@@ -107,6 +107,15 @@
 #define TCP_EPIPE       "(1248): Unable to send message. Connection has been closed by remote server."
 #define CONN_REF        "(1249): Unable to send message. Connection with remote server refused."
 #define ACCESS_ERROR    "(1250): Error trying to execute \"%s\": %s (%d)."
+#define MUTEX_INIT      "(1330) Cannot initialize mutex: %s (%d)."
+#define MUTEX_DESTROY   "(1331) Cannot destroy mutex: %s (%d)."
+#define MUTEX_LOCK      "(1332) Cannot lock mutex: %s (%d)."
+#define MUTEX_UNLOCK    "(1333) Cannot unlock mutex: %s (%d)."
+#define RWLOCK_INIT     "(1334) Cannot initialize rwlock: %s (%d)."
+#define RWLOCK_DESTROY  "(1335) Cannot destroy rwlock: %s (%d)."
+#define RWLOCK_LOCK_RD  "(1336) Cannot lock rwlock for reading: %s (%d)."
+#define RWLOCK_LOCK_WR  "(1337) Cannot lock rwlock for writing: %s (%d)."
+#define RWLOCK_UNLOCK   "(1338) Cannot unlock rwlock: %s (%d)."
 
 /* Mail errors */
 #define CHLDWAIT_ERROR  "(1261): Waiting for child process. (status: %d)."

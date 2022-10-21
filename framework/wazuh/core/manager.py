@@ -7,7 +7,7 @@ import json
 import re
 import socket
 from collections import OrderedDict
-from os.path import exists, join
+from os.path import exists
 from typing import Dict
 
 from api import configuration
@@ -20,13 +20,25 @@ from wazuh.core.wazuh_socket import WazuhSocket
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
 
-def status():
-    """ Returns the Manager processes that are running. """
+def status() -> dict:
+    """Return the Manager processes that are running."""
 
     return get_manager_status()
 
 
-def get_ossec_log_fields(log):
+def get_ossec_log_fields(log: str) -> tuple:
+    """Get ossec.log log fields.
+
+    Parameters
+    ----------
+    log : str
+        Log example.
+
+    Returns
+    -------
+    tuple
+        Log fields: timestamp, tag, level, and description.
+    """
     regex_category = re.compile(
         r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
 
@@ -47,13 +59,18 @@ def get_ossec_log_fields(log):
     return get_utc_strptime(date, '%Y/%m/%d %H:%M:%S'), tag, level.lower(), description
 
 
-def get_ossec_logs(limit=2000):
+def get_ossec_logs(limit: int = 2000) -> list:
     """Return last <limit> lines of ossec.log file.
+
+    Parameters
+    ----------
+    limit : int
+        Number of lines to return. Default: 2000
 
     Returns
     -------
-        logs : list
-            List of dictionaries with requested logs
+    list
+        List of dictionaries with requested logs.
     """
     logs = []
 
@@ -70,18 +87,18 @@ def get_ossec_logs(limit=2000):
     return logs
 
 
-def get_logs_summary(limit=2000):
+def get_logs_summary(limit: int = 2000) -> dict:
     """Get the number of alerts of each tag.
 
     Parameters
     ----------
     limit : int
-        Number of lines to process.
+        Number of lines to return. Default: 2000
 
     Returns
     -------
-    tags : dict
-        Number of logs for every tag
+    dict
+        Number of logs for every tag.
     """
     tags = dict()
     logs = get_ossec_logs(limit)
@@ -96,7 +113,7 @@ def get_logs_summary(limit=2000):
     return tags
 
 
-def validate_ossec_conf():
+def validate_ossec_conf() -> str:
     """Check if Wazuh configuration is OK.
 
     Raises
@@ -153,10 +170,17 @@ def validate_ossec_conf():
 
 
 def parse_execd_output(output: str) -> Dict:
-    """
-    Parses output from execd socket to fetch log message and remove log date, log daemon, log level, etc.
-    :param output: Raw output from execd
-    :return: Cleaned log message in a dictionary structure
+    """Parse output from execd socket to fetch log message and remove log date, log daemon, log level, etc.
+
+    Parameters
+    ----------
+    output : str
+        Raw output from execd.
+
+    Returns
+    -------
+    dict
+        Cleaned log message in a dictionary structure.
     """
     json_output = json.loads(output)
     error_flag = json_output['error']
@@ -175,6 +199,12 @@ def parse_execd_output(output: str) -> Dict:
     return response
 
 
-def get_api_conf():
-    """Return current API configuration."""
+def get_api_conf() -> dict:
+    """Return current API configuration.
+
+    Returns
+    -------
+    dict
+        API configuration.
+    """
     return copy.deepcopy(configuration.api_conf)

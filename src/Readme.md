@@ -18,7 +18,7 @@ There are several modules needed in order to the tool to work correctly.
   - lcov
   - gcov
   - astyle
-  - scan-build-10
+  - scan-build-12
 
 ## Compile Wazuh
 In order to run unit tests on a specific wazuh target, the project needs to be built with the `DEBUG` and `TEST` options as shown below:
