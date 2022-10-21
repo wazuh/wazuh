@@ -35,26 +35,25 @@ decoders:
   - decoder/suricata-http/0
   - decoder/suricata-stats/0
   - decoder/syscollector-base/0
-  # TODO: Add to environment once the duplicated keys are fixed
-  # - decoder/syscollector-dbsync-network-protocol/0
-  # - decoder/syscollector-dbsync-osinfo/0
-  # - decoder/syscollector-dbsync-osinfo-inserted/0
-  # - decoder/syscollector-dbsync-ports/0
-  # - decoder/syscollector-dbsync-ports-inserted/0
-  # - decoder/syscollector-dbsync-processes/0
-  # - decoder/syscollector-dbsync-processes-inserted/0
+  - decoder/syscollector-dbsync-network-protocol/0
+  - decoder/syscollector-dbsync-osinfo/0
+  - decoder/syscollector-dbsync-osinfo-inserted/0
+  - decoder/syscollector-dbsync-ports/0
+  - decoder/syscollector-dbsync-ports-inserted/0
+  - decoder/syscollector-dbsync-processes/0
+  - decoder/syscollector-dbsync-processes-inserted/0
   - decoder/syscollector-dbsync-base/0
-  # - decoder/syscollector-dbsync-hotfixes/0
-  # - decoder/syscollector-dbsync-hotfixes-inserted/0
-  # - decoder/syscollector-dbsync-hwinfo/0
-  # - decoder/syscollector-dbsync-hwinfo-inserted/0
-  # - decoder/syscollector-dbsync-network-address/0
-  # - decoder/syscollector-dbsync-network-address-inserted/0
-  # - decoder/syscollector-dbsync-network-iface/0
-  # - decoder/syscollector-dbsync-network-iface-inserted/0
-  # - decoder/syscollector-dbsync-network-protocol-inserted/0
-  # - decoder/syscollector-dbsync-packages/0
-  # - decoder/syscollector-dbsync-packages-inserted/0
+  - decoder/syscollector-dbsync-hotfixes/0
+  - decoder/syscollector-dbsync-hotfixes-inserted/0
+  - decoder/syscollector-dbsync-hwinfo/0
+  - decoder/syscollector-dbsync-hwinfo-inserted/0
+  - decoder/syscollector-dbsync-network-address/0
+  - decoder/syscollector-dbsync-network-address-inserted/0
+  - decoder/syscollector-dbsync-network-iface/0
+  - decoder/syscollector-dbsync-network-iface-inserted/0
+  - decoder/syscollector-dbsync-network-protocol-inserted/0
+  - decoder/syscollector-dbsync-packages/0
+  - decoder/syscollector-dbsync-packages-inserted/0
   - decoder/syscollector-hardware/0
   - decoder/syscollector-hotfix/0
   - decoder/syscollector-netinfo/0
