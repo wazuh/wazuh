@@ -1,0 +1,8 @@
+name: decoder/syscollector-program/0
+
+parents:
+  - decoder/syscollector-base/0
+
+check:
+  - _json.type: +s_starts/program
+  - _json.ID: +ef_exists
