@@ -23,25 +23,28 @@ Vagrant.configure("2") do |config|
         pmv.memory = 6144
         pmv.cpus   = 6
         engine.vm.provision "shell", inline: <<-SHELL
-        #Dependencias
+        #Dependencies
         sudo apt-get update
-        sudo apt-get install python gcc g++ make libc6-dev curl policycoreutils automake autoconf libtool libssl-dev -y
+        sudo apt-get install gcc g++ make libc6-dev curl policycoreutils automake autoconf gnupg apt-transport-https libtool libssl-dev -y
 
-        #CMake 3.18 installation from sources
+        #CMake 3.24 installation from sources
         sudo apt-get install libssl-dev libcurl4-gnutls-dev
-        curl -OL https://github.com/Kitware/CMake/releases/download/v3.24.2/cmake-3.24.2.tar.gz && tar -zxf cmake-3.24.2.tar.gz && cd cmake-3.24.2 && ./bootstrap --no-system-curl && make -j$(nproc) && make install
-        cd .. && rm -rf cmake-*
+        sudo apt-get install cmake
 
         #Download the Wazuh installation assistant.
         curl -sO https://packages.wazuh.com/4.3/wazuh-install.sh
         curl -sO https://packages.wazuh.com/4.3/config.yml
-        sed -E -i 's/ ip: <indexer-node-ip>/ ip: 10.0.0.28/gm' config.yml
-        sed -E -i 's/ ip: <wazuh-manager-ip>/ ip: 10.0.0.28/gm' config.yml
-        sed -E -i 's/ ip: <dashboard-node-ip>/ ip: 10.0.0.28/gm' config.yml
+        sed -E -i 's/ ip: <indexer-node-ip>/ ip: 192.168.56.28/gm' config.yml
+        sed -E -i 's/ ip: <wazuh-manager-ip>/ ip: 192.168.56.28/gm' config.yml
+        sed -E -i 's/ ip: <dashboard-node-ip>/ ip: 192.168.56.28/gm' config.yml
         sudo bash wazuh-install.sh --generate-config-files
+        sudo bash wazuh-install.sh -a
 
-        #Install Wazuh
-        sudo bash wazuh-install.sh --wazuh-server wazuh-1
+        # filebeat & elastic
+        # Change manifest.yml (/usr/share/filebeat/module/wazuh/alerts/manifest.yml)
+        sudo curl -o /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/14738-filebeat-  mappings-ecs-engine/src/engine/extension/elasticsearch/7.x/wazuh-template.json
+        sudo systemctl restart wazuh-indexer
+        sudo systemctl restart filebeat.service
 
         #Download engine
         mkdir engine &&	cd engine
@@ -52,13 +55,15 @@ Vagrant.configure("2") do |config|
         /usr/local/bin/cmake --build build/ --config Debug --target main -j 2
 
         #Remplace engine for analysisd
-        sed -E -i 's/ path: \/tmp\/filepath.txt/ path: \/var\/ossec\/logs\/alerts\/alerts.json/gm' test/assets/outputs/file-output.yml #Change fileoutput to alerts.json
-        cd build
-        ./main kvdb -p /tmp/ -n win-security-categorization -i ../test/kvdb_input_files/windows/win-security-categorization.json -t json #Create KVDB
+        rm /var/ossec/queue/sockets/queue #Remove queue of Analysisd
         rm /var/ossec/queue/sockets/queue #Remove queue
-        ./main run -f ../test/assets/ -e tcp:localhost:5054 -t 1 -k /tmp/ --environment demo-environment </dev/null &>/dev/null & #Launch engine
+        build/main start --event_endpoint /var/ossec/queue/sockets/queue --api_endpoint /var/ossec/queue/sockets/engine-api --threads 1 --file_storage /var/ossec/engine/store </dev/null &>/dev/null & # Inicialize engine
+        build/main catalog -e /var/ossec/queue/sockets/engine-api -y load decoder ruleset/decoders/
+        build/main catalog -e /var/ossec/queue/sockets/engine-api -y load output ruleset/outputs/
+        build/main catalog -e /var/ossec/queue/sockets/engine-api -y load environment ruleset/environments/
+        build./main env -e /var/ossec/queue/sockets/engine-api set environment/wazuh/0.1
         sudo chown wazuh /var/ossec/queue/
-        sudo chmod 777 /var/ossec/queue/
+        sudo chmod 660 /var/ossec/queue/
         sudo pkill -e analysisd #Kill analysisd
 
         SHELL

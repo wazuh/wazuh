@@ -1,0 +1,7 @@
+name: decoder/syscollector-base/0
+
+parents:
+  - decoder/syscollector-queue/0
+
+check:
+  - _json.type: +t_is_string

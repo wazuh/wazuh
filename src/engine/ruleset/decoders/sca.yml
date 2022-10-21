@@ -1,0 +1,14 @@
+---
+name: decoder/sca/0
+
+parents:
+  - decoder/json/0
+
+check:
+  - wazuh.queue: 112
+
+normalize:
+  - check:
+      - _json.type: +ef_exists
+    map:
+      - decode_result: +sca_decoder/$_json/$agent.id

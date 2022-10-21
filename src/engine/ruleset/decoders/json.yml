@@ -1,0 +1,9 @@
+---
+name: decoder/json/0
+
+check:
+  - event.original: +s_starts/{
+
+parse:
+  logpar:
+    - event.original: <_json/json>

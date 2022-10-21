@@ -1,0 +1,7 @@
+name: file_output
+check:
+  - event.original: +exists
+
+outputs:
+  - file:
+      path: /var/ossec/logs/alerts/alerts-ECS.json
