@@ -2265,83 +2265,85 @@ checks:
 
   # 3.5.3.3.4 Ensure ip6tables firewall rules exist for all open ports (Automated) - Not implemented
 
-  ########### WIP
-
-  ############################################################
   # 4 Logging and Auditing
-  ############################################################
   # 4.1.1 Ensure auditing is enabled
 
-  - id: 19109
+  # 4.1.1.1 Ensure auditd is installed (Automated)
+  - id: 19113
     title: "Ensure auditd is installed."
-    description: "auditd is the userspace component to the Linux Auditing System. It's responsible for writing audit records to the disk"
+    description: "auditd is the userspace component to the Linux Auditing System. It's responsible for writing audit records to the disk."
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
-    remediation: "Run the following command to enable auditd: # apt install auditd audispd-plugins"
+    remediation: "Run the following command to Install auditd: # apt install auditd audispd-plugins"
     compliance:
       - cis: ["4.1.1.1"]
       - cis_csc_v7: ["6.2", "6.3"]
-      - pci_dss: ["10.1"]
-      - nist_800_53: ["AU.2"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1", "CC6.2", "CC6.3", "CC7.2", "CC7.3", "CC7.4"]
-    condition: none
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055", "CM.2.065"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.1", "10.2", "10.3"]
+    condition: all
     rules:
-      - "c:dpkg -s auditd audispd-plugins -> r:is not installed and no information is available"
+      - "c:dpkg -s auditd -> r:Status: install ok installed"
+      - "c:dpkg -s audispd-plugins -> r:Status: install ok installed"
 
-  - id: 19110
+  # 4.1.1.2 Ensure auditd service is enabled (Automated)
+  - id: 19114
     title: "Ensure auditd service is enabled."
     description: "Enable and start the auditd daemon to record system events."
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
-    remediation: "Run the following command to enable auditd: # systemctl --now enable auditd"
+    remediation: "Run the following command to enable auditd : # systemctl --now enable auditd"
     compliance:
       - cis: ["4.1.1.2"]
       - cis_csc_v7: ["6.2", "6.3"]
-      - pci_dss: ["10.1", "10.7"]
-      - nist_800_53: ["AU.2"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1", "CC6.2", "CC6.3", "CC7.2", "CC7.3", "CC7.4"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055", "CM.2.065"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.1", "10.2", "10.3"]
     condition: all
     rules:
-      - "c:systemctl is-enabled auditd -> enabled"
+      - "c:systemctl is-enabled auditd -> r:enabled"
 
-  - id: 19111
+  # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled (Automated)
+  - id: 19115
     title: "Ensure auditing for processes that start prior to auditd is enabled."
-    description: "Configure grub so that processes that are capable of being audited can be audited even if they start up prior to auditd startup."
-    rationale: "Audit events need to be captured on processes that start up prior to auditd, so that potential malicious activity cannot go undetected."
-    remediation: 'Edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: GRUB_CMDLINE_LINUX="audit=1" Run the following command to update the grub2 configuration: # update-grub Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings.'
+    description: "Configure grub so that processes that are capable of being audited can be audited even if they start up prior to auditd startup. Note: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment."
+    rationale: "Audit events need to be captured on processes that start up prior to auditd , so that potential malicious activity cannot go undetected."
+    remediation: 'Edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: GRUB_CMDLINE_LINUX="audit=1" Run the following command to update the grub2 configuration: # update-grub'
     compliance:
       - cis: ["4.1.1.3"]
       - cis_csc_v7: ["6.2", "6.3"]
-      - pci_dss: ["10.2.6", "10.7"]
-      - nist_800_53: ["AU.2"]
-      - gpg_13: ["7.9"]
-      - gdpr_IV: ["35.7.d", "32.2"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055", "CM.2.065"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.1", "10.2", "10.3"]
     condition: none
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:audit=1 && !r:/boot/memtest86+.bin'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:audit=1'
+
+  # 4.1.1.4 Ensure audit_backlog_limit is sufficient (Automated) - Not implemented
 
   # 4.1.2 Configure Data Retention
 
-  - id: 19112
+  # 4.1.2.1 Ensure audit log storage size is configured (Automated)
+  - id: 19116
     title: "Ensure audit log storage size is configured."
-    description: "Configure the maximum size of the audit log file. Once the log reaches the maximum size, it will be rotated and a new log file will be started."
+    description: "Configure the maximum size of the audit log file. Once the log reaches the maximum size, it will be rotated and a new log file will be started. Notes: - The max_log_file parameter is measured in megabytes. - Other methods of log rotation may be appropriate based on site policy. One example is time-based rotation strategies which don't have native support in auditd configurations. - Manual audit of custom configurations should be evaluated for effectiveness and completeness."
     rationale: "It is important that an appropriate size is determined for log files so that they do not impact the system and audit data is not lost."
-    remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB> Notes: The max_log_file parameter is measured in megabytes."
+    remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB>"
     compliance:
       - cis: ["4.1.2.1"]
       - cis_csc_v7: ["6.4"]
-      - pci_dss: ["10.7"]
-      - nist_800_53: ["AU.4"]
-      - hipaa: ["164.312.b"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-4"]
+      - pci_dss_v3.2.1: ["10.7"]
     condition: all
     rules:
       - "d:/etc/audit"
       - "f:/etc/audit/auditd.conf"
-      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file\s*\t*=\s*\t*\d+'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file\s*=\s*\d+'
 
-  - id: 19113
+  # 4.1.2.2 Ensure audit logs are not automatically deleted (Automated)
+  - id: 19117
     title: "Ensure audit logs are not automatically deleted."
     description: "The max_log_file_action setting determines how to handle the audit log file reaching the max file size. A value of keep_logs will rotate the logs but never delete old logs."
     rationale: "In high security contexts, the benefits of maintaining a long audit history exceed the cost of storing the audit history."
@@ -2349,16 +2351,17 @@ checks:
     compliance:
       - cis: ["4.1.2.2"]
       - cis_csc_v7: ["6.4"]
-      - pci_dss: ["10.7"]
-      - nist_800_53: ["AU.9"]
-      - hipaa: ["164.312.b"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-4"]
+      - pci_dss_v3.2.1: ["10.7"]
     condition: all
     rules:
       - "d:/etc/audit"
       - "f:/etc/audit/auditd.conf"
-      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file_action\s*\t*=\s*\t*keep_logs'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file_action\s*=\s*keep_logs'
 
-  - id: 19114
+  # 4.1.2.3 Ensure system is disabled when audit logs are full (Automated)
+  - id: 19118
     title: "Ensure system is disabled when audit logs are full."
     description: "The auditd daemon can be configured to halt the system when the audit logs are full."
     rationale: "In high security contexts, the risk of detecting unauthorized access or nonrepudiation exceeds the benefit of the system's availability."
@@ -2366,51 +2369,58 @@ checks:
     compliance:
       - cis: ["4.1.2.3"]
       - cis_csc_v7: ["6.4"]
-      - pci_dss: ["10.7"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-4"]
+      - pci_dss_v3.2.1: ["10.7"]
     condition: all
     rules:
       - "d:/etc/audit"
       - "f:/etc/audit/auditd.conf"
-      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*action_mail_acct\s*\t*=\s*\t*root'
-      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*space_left_action\s*\t*=\s*\t*email'
-      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*admin_space_left_action\s*\t*=\s*\t*halt'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*action_mail_acct\s*=\s*root'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*space_left_action\s*=\s*email'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*admin_space_left_action\s*=\s*halt'
 
-  - id: 19115
+  # 4.1.3 Ensure events that modify date and time information are collected (Automated)
+  - id: 19119
     title: "Ensure events that modify date and time information are collected."
-    description: 'Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the adjtimex (tune kernel clock), settimeofday (Set time, using timeval and timezone structures) stime (using seconds since 1/1/1970) or clock_settime (allows for the setting of several internal clocks and timers) system calls have been executed and always write an audit record to the /var/log/audit.log file upon exit, tagging the records with the identifier "time-change"'
+    description: 'Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the adjtimex (tune kernel clock), settimeofday (Set time, using timeval and timezone structures) stime (using seconds since 1/1/1970) or clock_settime (allows for the setting of several internal clocks and timers) system calls have been executed and always write an audit record to the /var/log/audit.log file upon exit, tagging the records with the identifier "time-change" Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Unexpected changes in system date and/or time could be a sign of malicious activity on the system."
-    remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change | -a always,exit -F arch=b32 -S clock_settime -k time-change | -w /etc/localtime -p wa -k time-change. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change | -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change | -a always,exit -F arch=b64 -S clock_settime -k time-change -a always,exit -F arch=b32 -S clock_settime -k time-change | -w /etc/localtime -p wa -k time-change"
+    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-time-change.rules Add the following lines: -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time- change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-time-change.rules Add the following lines: -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time- change -a always,exit -F arch=b64 -S clock_settime -k time-change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change"
     compliance:
       - cis: ["4.1.3"]
       - cis_csc_v7: ["5.5"]
-      - pci_dss: ["10.4.2", "10.2.7"]
-      - nist_800_53: ["AU.14", "AU.6"]
-      - gpg_13: ["7.9"]
-      - gdpr_IV: ["32.2", "35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - iso_27001-2013: ["A.12.1.2"]
+      - mitre_techniques: ["T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
+      - nist_sp_800-53: ["CM-6"]
+      - pci_dss_v3.2.1: ["11.5"]
     condition: all
     rules:
       - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S adjtimex && r:-S settimeofday && r:-S stime && r:-k time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S adjtimex && r:-S settimeofday && r:-k time-change'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-k time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S clock_settime && r:-k time-change'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:stime && r:-F key=time-change"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex && r:settimeofday &&  r:-F key=time-change"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-F key=time-change"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S clock_settime && r:-F key=time-change"
+      - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change"
 
-  - id: 19116
+  # 4.1.4 Ensure events that modify user/group information are collected (Automated)
+  - id: 19120
     title: "Ensure events that modify user/group information are collected."
-    description: 'Record events affecting the group , passwd (user IDs), shadow and gshadow (passwords) or /etc/security/opasswd (old passwords, based on remember parameter in the PAM configuration) files. The parameters in this section will watch the files to see if they have been opened for write or have had attribute changes (e.g. permissions) and tag them with the identifier "identity" in the audit log file.'
+    description: 'Record events affecting the group , passwd (user IDs), shadow and gshadow (passwords) or /etc/security/opasswd (old passwords, based on remember parameter in the PAM configuration) files. The parameters in this section will watch the files to see if they have been opened for write or have had attribute changes (e.g. permissions) and tag them with the identifier "identity" in the audit log file. Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Unexpected changes to these files could be an indication that the system has been compromised and that an unauthorized user is attempting to hide their activities or compromise additional accounts."
-    remediation: "edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /etc/group -p wa -k identity | -w /etc/passwd -p wa -k identity | -w /etc/gshadow -p wa -k identity | -w /etc/shadow -p wa -k identity | -w /etc/security/opasswd -p wa -k identity Notes: Reloading the auditd config to set active settings may require a system reboot."
+    remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules: Example: vi /etc/audit/rules.d/50-identity.rules Add the following lines: -w /etc/group -p wa -k identity -w /etc/passwd -p wa -k identity -w /etc/gshadow -p wa -k identity -w /etc/shadow -p wa -k identity -w /etc/security/opasswd -p wa -k identity"
     compliance:
       - cis: ["4.1.4"]
       - cis_csc_v7: ["4.8"]
-      - pci_dss: ["10.2.5"]
-      - hipaa: ["164.312.b"]
-      - nist_800_53: ["AU.14", "AC.7"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7", "32.2"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - iso_27001-2013: ["A.12.4.3"]
+      - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
@@ -2419,227 +2429,279 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity'
+      - "c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity"
 
-  - id: 19117
+  # 4.1.5 Ensure events that modify the system's network environment are collected (Automated)
+  - id: 19121
     title: "Ensure events that modify the system's network environment are collected."
-    description: "Record changes to network environment files or system calls. The below parameters monitor the sethostname (set the systems host name) or setdomainname (set the systems domainname) system calls, and write an audit event on system call exit. The other parameters monitor the /etc/issue and /etc/issue.net files (messages displayed pre-login), /etc/hosts (file containing host names and associated IP addresses) and /etc/sysconfig/network (directory containing network interface scripts and configurations) files."
+    description: "Record changes to network environment files or system calls. The below parameters monitor the sethostname (set the systems host name) or setdomainname (set the systems domainname) system calls, and write an audit event on system call exit. The other parameters monitor the /etc/issue and /etc/issue.net files (messages displayed pre- login), /etc/hosts (file containing host names and associated IP addresses) and /etc/network (directory containing network interface scripts and configurations) files. Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot."
     rationale: 'Monitoring sethostname and setdomainname will identify potential unauthorized changes to host and domainname of a system. The changing of these names could potentially break security parameters that are set based on those names. The /etc/hosts file is monitored for changes in the file that can indicate an unauthorized intruder is trying to change machine associations with IP addresses and trick users and processes into connecting to unintended machines. Monitoring /etc/issue and /etc/issue.net is important, as intruders could put disinformation into those files and trick users into providing information to the intruder. Monitoring /etc/network is important as it can show if network interfaces or scripts are being modified in a way that can lead to the machine becoming unavailable or compromised. All audit records will be tagged with the identifier "system-locale."'
-    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/system-locale.rules and add the following lines: -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale      -w /etc/issue -p wa -k system-locale      -w /etc/issue.net -p wa -k system-locale     -w /etc/hosts -p wa -k system-locale-w /etc/network -p wa -k system-locale     For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/system-locale.rules   and add the following lines:  -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale   -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale       -w /etc/issue -p wa -k system-locale          -w /etc/issue.net -p wa -k system-locale           -w /etc/hosts -p wa -k system-locale         -w /etc/network -p wa -k system-locale"
+    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-system-locale.rules Add the following lines: -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/network -p wa -k system-locale For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-system-locale.rules Add the following lines: -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/network -p wa -k system-locale"
     compliance:
       - cis: ["4.1.5"]
       - cis_csc_v7: ["5.5"]
-      - pci_dss: ["10.2.5"]
-      - hipaa: ["164.312.b"]
-      - nist_800_53: ["AU.14", "AC.7"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7", "32.2"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - iso_27001-2013: ["A.12.1.2"]
+      - mitre_techniques: ["T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
+      - nist_sp_800-53: ["CM-6"]
+      - pci_dss_v3.2.1: ["11.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S sethostname && r:-S setdomainname && r:-k system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S sethostname && r:-S setdomainname && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r: -S && r:sethostname && r:setdomainname && r:-F key=system-locale"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r: -S && r:sethostname && r:setdomainname && r:-F key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale"
 
-  - id: 19118
+  # 4.1.6 Ensure events that modify the system's Mandatory Access Controls are collected (Automated)
+  - id: 19122
     title: "Ensure events that modify the system's Mandatory Access Controls are collected."
-    description: "Monitor AppArmor mandatory access control. The parameters below monitor any write access (potential additional, deletion or modification of files in the directory) or attribute changes to the /etc/apparmor and /etc/apparmor.d directories."
+    description: "Monitor AppArmor mandatory access controls. The parameters below monitor any write access (potential additional, deletion or modification of files in the directory) or attribute changes to /etc/apparmor and /etc/apparmor.d directories. Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot. "
     rationale: "Changes to files in these directories could indicate that an unauthorized user is attempting to modify access controls and change security contexts, leading to a compromise of the system."
-    remediation: "On systems using AppArmor add the following line to the /etc/audit/audit.rules file: -w /etc/apparmor/ -p wa -k MAC-policy | -w /etc/apparmor.d/ -p wa -k MAC-policy. Notes: Reloading the auditd config to set active settings may require a system reboot."
+    remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-MAC-policy.rules Add the following lines: -w /etc/apparmor/ -p wa -k MAC-policy -w /etc/apparmor.d/ -p wa -k MAC-policy"
     compliance:
       - cis: ["4.1.6"]
       - cis_csc_v7: ["5.5"]
-      - pci_dss: ["10.2.5"]
-      - hipaa: ["164.312.b"]
-      - nist_800_53: ["AU.14", "AC.7"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7", "32.2"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - iso_27001-2013: ["A.12.1.2"]
+      - mitre_techniques: ["T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
+      - nist_sp_800-53: ["CM-6"]
+      - pci_dss_v3.2.1: ["11.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy'
+      - "c:auditctl -l -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy"
+      - "c:auditctl -l -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy"
 
-  - id: 19119
+  # 4.1.7 Ensure login and logout events are collected (Automated)
+  - id: 19123
     title: "Ensure login and logout events are collected."
-    description: "Monitor login and logout events. The parameters below track changes to files associated with login/logout events. The file /var/log/faillog tracks failed events from login. The file /var/log/lastlog maintain records of the last time a user successfully logged in. The file /var/log/tallylog maintains records of failures via the pam_tally2 module"
+    description: "Monitor login and logout events. The parameters below track changes to files associated with login/logout events. The file /var/log/faillog tracks failed events from login. The file /var/log/lastlog maintain records of the last time a user successfully logged in. The file /var/log/tallylog maintains records of failures via the pam_tally2 module. Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot."
     rationale: "Monitoring login/logout events could provide a system administrator with information associated with brute force attacks against user logins."
-    remediation: "edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /var/log/faillog -p wa -k logins | -w /var/log/lastlog -p wa -k logins | -w /var/log/tallylog -p wa -k logins. Notes: Reloading the auditd config to set active settings may require a system reboot."
+    remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules: Example: vi /etc/audit/rules.d/50-logins.rules Add the following lines: -w /var/log/faillog -p wa -k logins -w /var/log/lastlog -p wa -k logins -w /var/log/tallylog -p wa -k logins"
     compliance:
       - cis: ["4.1.7"]
       - cis_csc_v7: ["4.9", "16.11", "16.13"]
-      - pci_dss: ["10.2.1", "10.2.4", "10.3"]
-      - nist_800_53: ["AC.7", "AU.14"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["32.2", "35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - iso_27001-2013: ["A.9.4.2", "AC.2.010", "AC.3.019", "IA.3.086", "SI.5.223", "AC.4.032"]
+      - mitre_techniques: ["T1110", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1527", "T1176", "T1213", "T1038", "T1482", "T1114", "T1484", "T1161", "T1031", "T1528", "T1197", "T1538", "T1044", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1050", "T1163", "T1021", "T1489", "T1023", "T1537", "T1004"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["8.1.8", "10.2.4", "10.2.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/faillog && r:-p wa && r:-k logins'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/tallylog && r:-p wa && r:-k logins'
+      - "c:auditctl -l -> r:^-w && r:/var/log/faillog && r:-p wa && r:-k logins"
+      - "c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins"
+      - "c:auditctl -l -> r:^-w && r:/var/log/tallylog && r:-p wa && r:-k logins"
 
-  - id: 19120
+  # 4.1.8 Ensure session initiation information is collected (Automated)
+  - id: 19124
     title: "Ensure session initiation information is collected."
-    description: 'Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp file tracks all currently logged in users. All audit records will be tagged with the identifier "session." The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp . All audit records will be tagged with the identifier "logins."'
+    description: 'Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp tracks all currently logged in users. All audit records will be tagged with the identifier "session." The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp . All audit records will be tagged with the identifier "logins.". Note: - The last command can be used to read /var/log/wtmp (last with no parameters) and /var/run/utmp (last -f /var/run/utmp). - Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Monitoring these files for changes could alert a system administrator to logins occurring at unusual hours, which could indicate intruder activity (i.e. a user logging in at a time when they do not normally log in)."
-    remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /var/run/utmp -p wa -k session | -w /var/log/wtmp -p wa -k logins | -w /var/log/btmp -p wa -k logins. Notes: The last command can be used to read /var/log/wtmp (last with no parameters) and /var/run/utmp (last -f /var/run/utmp). Reloading the auditd config to set active settings may require a system reboot."
+    remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules: Example: vi /etc/audit/rules.d/50-session.rules Add the following lines: -w /var/run/utmp -p wa -k session -w /var/log/wtmp -p wa -k logins -w /var/log/btmp -p wa -k logins"
     compliance:
       - cis: ["4.1.8"]
       - cis_csc_v7: ["4.9", "16.11", "16.13"]
-      - pci_dss: ["10.3"]
-      - nist_800_53: ["AC.7", "AU.14"]
-      - hipaa: ["164.312.b"]
+      - iso_27001-2013: ["A.9.4.2", "AC.2.010", "AC.3.019", "IA.3.086", "SI.5.223", "AC.4.032"]
+      - mitre_techniques: ["T1110", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1527", "T1176", "T1213", "T1038", "T1482", "T1114", "T1484", "T1161", "T1031", "T1528", "T1197", "T1538", "T1044", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1050", "T1163", "T1021", "T1489", "T1023", "T1537", "T1004"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["8.1.8", "10.2.4", "10.2.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k logins'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k logins'
+      - "c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k logins"
+      - "c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k logins"
 
-  - id: 19121
+  # 4.1.9 Ensure discretionary access control permission modification events are collected (Automated)
+  - id: 19125
     title: "Ensure discretionary access control permission modification events are collected."
-    description: 'Monitor changes to file permissions, attributes, ownership and group. The parameters in this section track changes for system calls that affect file permissions and attributes. The chmod , fchmod and fchmodat system calls affect the permissions associated with a file. The chown , fchown , fchownat and lchown system calls affect owner and group attributes on a file. The setxattr , lsetxattr , fsetxattr (set extended file attributes) and removexattr , lremovexattr , fremovexattr (remove extended file attributes) control extended file attributes. In all cases, an audit record will only be written for non-system user ids (auid >= 1000) and will ignore Daemon events (auid = 4294967295). All audit records will be tagged with the identifier "perm_mod."'
+    description: 'Monitor changes to file permissions, attributes, ownership and group. The parameters in this section track changes for system calls that affect file permissions and attributes. The chmod , fchmod and fchmodat system calls affect the permissions associated with a file. The chown , fchown , fchownat and lchown system calls affect owner and group attributes on a file. The setxattr , lsetxattr , fsetxattr (set extended file attributes) and removexattr , lremovexattr , fremovexattr (remove extended file attributes) control extended file attributes. In all cases, an audit record will only be written for non-system user ids (auid >= 1000) and will ignore Daemon events (auid = 4294967295). All audit records will be tagged with the identifier "perm_mod.". Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Monitoring for changes in file attributes could alert a system administrator to activity that could indicate intruder activity or policy violation."
-    remediation: "For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod. Notes: Reloading the auditd config to set active settings may require a system reboot."
+    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules: Example: vi /etc/audit/rules.d/50-perm_mod.rules Add the following lines: -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-perm_mod.rules Add the following lines: -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod"
     compliance:
       - cis: ["4.1.9"]
       - cis_csc_v7: ["5.5"]
-      - pci_dss: ["10.2.5"]
-      - hipaa: ["164.312.b"]
-      - nist_800_53: ["AU.14", "AC.7"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7", "32.2"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - iso_27001-2013: ["A.12.1.2"]
+      - mitre_techniques: ["T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
+      - nist_sp_800-53: ["CM-6"]
+      - pci_dss_v3.2.1: ["11.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chown && r:-S fchown && r:-S fchownat && r:-S lchown && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S chown && r:-S fchown && r:-S fchownat && r:-S lchown && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S setxattr && r:-S lsetxattr && r:-S fsetxattr && r:-S removexattr && r:-S lremovexattr && r:-S fremovexattr && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S setxattr && r:-S lsetxattr && r:-S fsetxattr && r:-S removexattr && r:-S lremovexattr && r:-S fremovexattr && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-F key=perm_mod"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-F key=perm_mod"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:chown && r:fchown && r:fchownat && r:lchown && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chown && r:fchown && r:fchownat && r:lchown && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
 
-  - id: 19122
+  # 4.1.10 Ensure unsuccessful unauthorized file access attempts are collected (Automated)
+  - id: 19126
     title: "Ensure unsuccessful unauthorized file access attempts are collected."
-    description: 'Monitor for unsuccessful attempts to access files. The parameters below are associated with system calls that control creation ( creat ), opening ( open , openat ) and truncation ( truncate , ftruncate ) of files. An audit log record will only be written if the user is a non-privileged user (auid > = 1000), is not a Daemon event (auid=4294967295) and if the system call returned EACCES (permission denied to the file) or EPERM (some other permanent error associated with the specific system call). All audit records will be tagged with the identifier "access."'
+    description: 'Monitor for unsuccessful attempts to access files. The parameters below are associated with system calls that control creation ( creat ), opening ( open , openat ) and truncation ( truncate , ftruncate ) of files. An audit log record will only be written if the user is a non- privileged user (auid > = 1000), is not a Daemon event (auid=4294967295) and if the system call returned EACCES (permission denied to the file) or EPERM (some other permanent error associated with the specific system call). All audit records will be tagged with the identifier "access.". Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Failed attempts to open, create or truncate files could be an indication that an individual or process is trying to gain unauthorized access to the system."
-    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/directory ending in .rules  Example: vi /etc/audit/rules.d/audit.rules and add the following lines:    -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access    |    -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access                    For 64 bit systems Edit or create a file in the /etc/audit/rules.d/directory ending in .rules Example: vi /etc/audit/rules.d/access.rules and add the following lines:                -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access     |  -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access     |    -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access   |  -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access          Notes: Reloading the auditd config toset active settings requires the auditd service to be restarted, and may require a system reboot."
+    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-access.rules Add the following lines: -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-access.rules Add the following lines: -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access"
     compliance:
       - cis: ["4.1.10"]
       - cis_csc_v7: ["14.9"]
-      - pci_dss: ["10.2.4"]
-      - nist_800_53: ["AC.7"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["32.2", "35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cmmc_v2.0: ["AU.3.050"]
+      - iso_27001-2013: ["A.12.4.3"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.1", "11.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
 
-  - id: 19123
+  # 4.1.11 Ensure use of privileged commands is collected (Automated) - Not implemented
+
+  # 4.1.12 Ensure successful file system mounts are collected (Automated)
+  - id: 19127
     title: "Ensure successful file system mounts are collected."
-    description: "Monitor the use of the mount system call. The mount (and umount ) system call controls the mounting and unmounting of file systems. The parameters below configure the system to create an audit record when the mount system call is used by a non-privileged user."
-    rationale: "It is highly unusual for a non privileged user to mount file systems to the system. While tracking mount commands gives the system administrator evidence that external media may have been mounted (based on a review of the source of the mount and confirming it's an external media type), it does not conclusively indicate that data was exported to the media. System administrators who wish to determine if data were exported, would also have to track successful open , creat and truncate system calls requiring write access to a file under the mount point of the external media file system. This could give a fair indication that a write occurred. The only way to truly prove it, would be to track successful writes to the external media. Tracking write system calls could quickly fill up the audit log and is not recommended. Recommendations on configuration options to track data export to media is beyond the scope of this document."
-    remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts | -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts. Notes: This tracks successful and unsuccessful mount commands. File system mounts do not have to come from external media and this action still does not verify write (e.g. CD ROMS). Reloading the auditd config to set active settings may require a system reboot."
+    description: "Monitor the use of the mount system call. The mount (and umount ) system call controls the mounting and unmounting of file systems. The parameters below configure the system to create an audit record when the mount system call is used by a non-privileged user. Note: - This tracks successful and unsuccessful mount commands. File system mounts do not have to come from external media and this action still does not verify write (e.g. CD ROMS). - Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot."
+    rationale: "It is highly unusual for a non privileged user to mount file systems to the system. While tracking mount commands gives the system administrator evidence that external media may have been mounted (based on a review of the source of the mount and confirming it's an external media type), it does not conclusively indicate that data was exported to the media. System administrators who wish to determine if data were exported, would also have to track successful open, creat and truncate system calls requiring write access to a file under the mount point of the external media file system. This could give a fair indication that a write occurred. The only way to truly prove it, would be to track successful writes to the external media. Tracking write system calls could quickly fill up the audit log and is not recommended. Recommendations on configuration options to track data export to media is beyond the scope of this document."
+    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-mounts.rules Add the following lines: -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-mounts.rules Add the following lines: -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts"
     compliance:
       - cis: ["4.1.12"]
-      - cis_csc_v7: ["13"]
-      - pci_dss: ["10.2.7"]
-      - nist_800_53: ["AU.14", "AU.6"]
-      - gpg_13: ["7.9"]
-      - gdpr_IV: ["32.2", "35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cis_csc_v7: ["5.1"]
+  - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+  - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+  - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+  - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+  - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
       - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=mounts"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=mounts"
 
-  - id: 19124
+  # 4.1.13 Ensure file deletion events by users are collected (Automated)
+  - id: 19128
     title: "Ensure file deletion events by users are collected."
-    description: 'Monitor the use of system calls associated with the deletion or renaming of files and file attributes. This configuration statement sets up monitoring for the unlink (remove a file), unlinkat (remove a file attribute), rename (rename a file) and renameat (rename a file attribute) system calls and tags them with the identifier "delete".'
+    description: 'Monitor the use of system calls associated with the deletion or renaming of files and file attributes. This configuration statement sets up monitoring for the unlink (remove a file), unlinkat (remove a file attribute), rename (rename a file) and renameat (rename a file attribute) system calls and tags them with the identifier "delete". Note: - At a minimum, configure the audit system to collect file deletion events for all users and root. - Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Monitoring these calls from non-privileged users could provide a system administrator with evidence that inappropriate removal of files and file attributes associated with protected files is occurring. While this audit option will look at all events, system administrators will want to look for specific privileged files that are being deleted or altered."
-    remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete | -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete. Notes: At a minimum, configure the audit system to collect file deletion events for all users and root. Reloading the auditd config to set active settings may require a system reboot."
+    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-delete.rules Add the following lines: -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-delete.rules Add the following lines: -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete"
     compliance:
       - cis: ["4.1.13"]
-      - cis_csc_v7: ["13"]
-      - pci_dss: ["10.5.5"]
-      - nist_800_53: ["AU.14"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["PI1.4", "PI1.5", "CC7.1", "CC7.2", "CC7.3", "CC8.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
-      - "c:auditctl -l -> r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=delete"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
+      - "c:auditctl -l -> r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=delete"
+      - "c:auditctl -l -> r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=delete"
 
-  - id: 19125
+  # 4.1.14 Ensure changes to system administration scope (sudoers) is collected (Automated)
+  - id: 19129
     title: "Ensure changes to system administration scope (sudoers) is collected."
-    description: 'Monitor scope changes for system administrations. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers will be written to when the file or its attributes have changed. The audit records will be tagged with the identifier "scope."'
+    description: 'Monitor scope changes for system administrations. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers will be written to when the file or its attributes have changed. The audit records will be tagged with the identifier "scope.". Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Changes in the /etc/sudoers file can indicate that an unauthorized change has been made to scope of system administrator activity."
-    remediation: "Add the following line to the /etc/audit/audit.rules file: -w /etc/sudoers -p wa -k scope | -w /etc/sudoers.d/ -p wa -k scope. Notes: Reloading the auditd config to set active settings may require a system reboot."
+    remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-scope.rules Add the following lines: -w /etc/sudoers -p wa -k scope -w /etc/sudoers.d/ -p wa -k scope"
     compliance:
       - cis: ["4.1.14"]
       - cis_csc_v7: ["4.8"]
-      - pci_dss: ["10.5.5"]
-      - nist_800_53: ["AU.14"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["PI1.4", "PI1.5", "CC7.1", "CC7.2", "CC7.3", "CC8.1"]
+      - iso_27001-2013: ["A.12.4.3"]
+      - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d/ && r:-p wa && r:-k scope'
+      - "c: auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope"
       - "c: auditctl -l -> r:^-w && r:/etc/sudoers.d/ && r:-p wa && r:-k scope"
 
-  - id: 19126
+  # 4.1.15 Ensure system administrator command executions (sudo) are collected (Automated)
+  - id: 19130
     title: "Ensure system administrator command executions (sudo) are collected."
-    description: "sudoprovides users with temporary elevated privileges to perform operations. Monitor the administrator with temporary elevated privileges and the operation(s) they performed."
+    description: "sudo provides users with temporary elevated privileges to perform operations. Monitor the administrator with temporary elevated privileges and the operation(s) they performed. Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot."
     rationale: "Creating an audit log of administrators with temporary elevated privileges and the operation(s) they performed is essential to reporting. Administrators will want to correlate the events written to the audit trail with the records written to sudo logfile to verify if unauthorized commands have been executed."
+    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules: Example: `vi /etc/audit/rules.d/50-actions.rules Add the following line: -a exit,always -F arch=b32 -C euid!=uid -F euid=0 -Fauid>=1000 -F auid!=4294967295 -S execve -k actions For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules: Example: vi /etc/audit/rules.d/50-actions.rules Add the following lines: -a always,exit -F arch=b64 -C euid!=uid -F euid=0 -Fauid>=1000 -F auid!=4294967295 -S execve -k actions -a always,exit -F arch=b32 -C euid!=uid -F euid=0 -Fauid>=1000 -F auid!=4294967295 -S execve -k actions"
     compliance:
       - cis: ["4.1.15"]
       - cis_csc_v7: ["4.9"]
-      - pci_dss: ["10.2.2"]
-      - nist_800_53: ["AU.14", "AC.6", "AC.7"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["32.2", "35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - iso_27001-2013: ["A.9.4.2"]
+      - mitre_techniques: ["T1110", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.4"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w \.+ && r:-S execve && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k actions'
-      - 'c:auditctl -l -> r:^-w \.+ && r:always,exit|exit,always && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=actions'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:always,exit|exit,always && r:-F arch=b64 && r:-C euid!=uid && r:-F euid=0 && r:-S execve && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k actions'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:always,exit|exit,always && r:-F arch=b32 && r:-C euid!=uid && r:-F euid=0 && r:-S execve && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k actions'
+      - 'c:auditctl -l -> r:^-w \.+ && r:always,exit|exit,always && r:-F arch=b64 && r:-S execve && r:-C euid!=uid && r:-F euid=0 && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=actions'
+      - 'c:auditctl -l -> r:^-w \.+ && r:always,exit|exit,always && r:-F arch=b32 && r:-S execve && r:-C euid!=uid && r:-F euid=0 && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=actions'
 
-  - id: 19127
+  # 4.1.16 Ensure kernel module loading and unloading is collected (Automated)
+  - id: 19131
     title: "Ensure kernel module loading and unloading is collected."
-    description: 'Monitor the loading and unloading of kernel modules. The programs insmod (install a kernel module), rmmod (remove a kernel module), and modprobe (a more sophisticated program to load and unload modules, as well as some other features) control loading and unloading of modules. The init_module (load a module) and delete_module (delete a module) system calls control loading and unloading of modules. Any execution of the loading and unloading module programs and system calls will trigger an audit record with an identifier of "modules".'
+    description: 'Monitor the loading and unloading of kernel modules. The programs insmod (install a kernel module), rmmod (remove a kernel module), and modprobe (a more sophisticated program to load and unload modules, as well as some other features) control loading and unloading of modules. The init_module (load a module) and delete_module (delete a module) system calls control loading and unloading of modules. Any execution of the loading and unloading module programs and system calls will trigger an audit record with an identifier of "modules". Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Monitoring the use of insmod, rmmod and modprobe could provide system administrators with evidence that an unauthorized user loaded or unloaded a kernel module, possibly compromising the security of the system. Monitoring of the init_module and delete_module system calls would reflect an unauthorized user attempting to use a different program to load and unload modules."
-    remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /sbin/insmod -p x -k modules | -w /sbin/rmmod -p x -k modules | -w /sbin/modprobe -p x -k modules | -a always,exit -F arch=b32 -S init_module -S delete_module -k modules. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /sbin/insmod -p x -k modules | -w /sbin/rmmod -p x -k modules | -w /sbin/modprobe -p x -k modules | -a always,exit -F arch=b64 -S init_module -S delete_module -k modules. Notes: Reloading the auditd config to set active settings may require a system reboot."
+    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-modules.rules Add the following lines: -w /sbin/insmod -p x -k modules -w /sbin/rmmod -p x -k modules -w /sbin/modprobe -p x -k modules -a always,exit -F arch=b32 -S init_module -S delete_module -k modules For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-modules.rules Add the following lines: -w /sbin/insmod -p x -k modules -w /sbin/rmmod -p x -k modules -w /sbin/modprobe -p x -k modules -a always,exit -F arch=b64 -S init_module -S delete_module -k modules"
     compliance:
       - cis: ["4.1.16"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["10.2.7"]
-      - nist_800_53: ["AU.14", "AU.6"]
-      - gpg_13: ["7.9"]
-      - gdpr_IV: ["32.2", "35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S init_module && r:-S delete_module && r:-k modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S init_module && r:-S delete_module && r:-k modules'
+      - "c:auditctl -l -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules"
+      - "c:auditctl -l -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules"
+      - "c:auditctl -l -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-F key=modules"
+
+  # 4.1.17 Ensure the audit configuration is immutable (Automated) - Not implemented
+
+  ########### WIP
 
   # 4.2 Configure Logging
   # 4.2,1 Configure rsyslog
