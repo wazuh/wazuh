@@ -1,8 +1,0 @@
-name: default_router_filter
-parents:
-  - rule_test
-allow:
-  # - queue: +exists
-  # - location: +exists
-  # - message: +exists
-  - nonexistentfield: +exists
