@@ -6685,8 +6685,8 @@ checks:
     condition: all
     rules:
       - "c:dpkg -s ufw -> r:Status: install ok installed"
-  #      - "c:dpkg -s nftables -> r:Status: install ok installed"
-  #      - "c:dpkg -s iptables -> r:Status: install ok installed"
+      - "c:dpkg -s nftables -> r:package 'nftables' is not installed"
+      - "c:dpkg -s iptables -> r:package 'iptables' is not installed"
 
   # 3.5.1.2 Ensure iptables-persistent is not installed with ufw (Automated)
   - id: 19094
@@ -6771,102 +6771,157 @@ checks:
       - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(outgoing\)|reject\s+\(outgoing\)'
       - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(routed\)|reject\s+\(routed\)|disabled\s+\(routed\)'
 
-  ######################################################################
   # 3.5.2 Configure nftables
-  ######################################################################
 
-  - id: 19097
-    title: "Ensure Uncomplicated Firewall is not installed or disabled if nftables is installed."
-    description: "The iptables-persistentis a boot-time loader for netfilter rules, iptables plugin"
-    rationale: "Running both ufwand the services included in theiptables-persistent package may lead to conflict"
-    remediation: "Run the following command to install Uncomplicated Firewall (UFW): # apt install ufw OR #  apt install nftables OR # apt install iptables"
+  # 3.5.2.1 Ensure nftables is installed (Automated)
+  - id: 19098
+    title: "Ensure nftables is installed."
+    description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem. Notes: - nftables is available in Linux kernel 3.13 and newer. - Only one firewall utility should be installed and configured. - Changing firewall settings while connected over the network can result in being locked out of the system."
+    rationale: "nftables is a subsystem of the Linux kernel that can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host."
+    remediation: "Run the following command to install nftables: # apt install nftables"
     compliance:
-      - cis: ["3.5.2.2"]
+      - cis: ["3.5.2.1"]
       - cis_csc_v7: ["9.4"]
-      - pci_dss: ["1.2.1"]
-      - tsc: ["CC8.1"]
-    reference:
-      - "http://manpages.ubuntu.com/manpages/precise/en/man8/ufw.8.html"
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
       - "c:dpkg -s nftables -> r:Status: install ok installed"
+      - "c:dpkg -s iptables -> r:package 'iptables' is not installed"
       - 'not c:ufw status -> r:Status:\s*\t*active'
 
-  - id: 19098
-    title: "Ensure a table exists."
+  # 3.5.2.2 Ensure ufw is uninstalled or disabled with nftables (Automated)
+  - id: 19099
+    title: "Ensure ufw is uninstalled or disabled with nftables."
+    description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use."
+    rationale: "Running both the nftables service and ufw may lead to conflict and unexpected results."
+    remediation: "Run one of the following commands to either remove ufw or disable ufw Run the following command to remove ufw: # apt purge ufw Run the following command to disable ufw: # ufw disable"
+    compliance:
+      - cis: ["3.5.2.2"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
+    rules:
+      - "c:dpkg -s ufw -> r:package 'ufw' is not installed"
+      - 'c:ufw status -> r:Status:\s*inactive'
+
+  #3.5.2.3 Ensure iptables are flushed with nftables (Manual)
+  - id: 19100
+    title: "Ensure iptables are flushed with nftables."
+    description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use."
+    rationale: "It is possible to mix iptables and nftables. However, this increases complexity and also the chance to introduce errors. For simplicity flush out all iptables rules, and ensure it is not loaded."
+    remediation: "Run the following commands to flush iptables: For iptables: # iptables -F For ip6tables: # ip6tables -F"
+    compliance:
+      - cis: ["3.5.2.3"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
+    rules:
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
+      - "not c:iptables -L -> r:^ACCEPT|^DROP|^REJECT"
+
+  # 3.5.2.4 Ensure a nftables table exists (Automated)
+  - id: 19101
+    title: "Ensure a nftables table exists."
     description: "Tables hold chains. Each table only has one address family and only applies to packets of this family. Tables can have one of five families."
     rationale: "nftables doesn't have any default tables. Without a table being build, nftables will not filter network traffic."
-    remediation: "Run the following command to create a table in nftables: # nft create table inet <table name> .Example: # nft create table inet filter"
+    impact: "Adding rules to a running nftables can cause loss of connectivity to the system."
+    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter"
     compliance:
       - cis: ["3.5.2.4"]
       - cis_csc_v7: ["9.4"]
-      - pci_dss: ["1.2"]
-      - tsc: ["CC6.6"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
       - 'c:nft list tables -> r:\w+'
 
-  - id: 19099
-    title: "Ensure base chains exist."
+  # 3.5.2.5 Ensure nftables base chains exist (Automated)
+  - id: 19102
+    title: "Ensure nftables base chains exist."
     description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
     rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
-    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \\; } . Example: # nft create chain inet filter input { type filter hook input priority 0 \\; } # nft create chain inet filter forward { type filter hook forward priority 0\\; } # nft create chain inet filter output { type filter hook output priority 0 \\; }"
+    impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
+    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \\; } Example: # nft create chain inet filter input { type filter hook input priority 0 \\; } # nft create chain inet filter forward { type filter hook forward priority 0 \\; } # nft create chain inet filter output { type filter hook output priority 0 \\; }"
     compliance:
       - cis: ["3.5.2.5"]
       - cis_csc_v7: ["9.4"]
-      - pci_dss: ["1.2"]
-      - tsc: ["CC6.6"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
       - "c:nft list ruleset -> r:hook input"
       - "c:nft list ruleset -> r:hook forward"
       - "c:nft list ruleset -> r:hook output"
 
-  - id: 19100
-    title: "Ensure loopback traffic is configured."
+  # 3.5.2.6 Ensure nftables loopback traffic is configured (Automated)
+  - id: 19103
+    title: "Ensure nftables loopback traffic is configured."
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
-    remediation: "Run the following commands to implement the loopback rules: # nft add rule inet filter input iif lo accept   # nft create rule inet filter input ip saddr 127.0.0.0/8 counter drop   If IPv6 is enabled on the system: Run the following command to implement the IPv6 loopback rule: # nft add rule inet filter input ip6 saddr ::1 counter drop"
+    remediation: "Run the following commands to implement the loopback rules: # nft add rule inet filter input iif lo accept # nft create rule inet filter input ip saddr 127.0.0.0/8 counter drop IF IPv6 is enabled on the system: Run the following command to implement the IPv6 loopback rule: # nft add rule inet filter input ip6 saddr ::1 counter drop"
     compliance:
       - cis: ["3.5.2.6"]
       - cis_csc_v7: ["9.4"]
-      - pci_dss: ["1.2"]
-      - tsc: ["CC6.6"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
-      - 'c:nft list ruleset -> r:iif "lo" accept'
-      - "c:nft list ruleset -> r:ip saddr 127.0.0.0/8"
-      - "c:nft list ruleset -> r:ip6 saddr ::1 counter packets"
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
+      - 'c:nft list ruleset -> r:hook input && r:iif "lo" accept'
+      - "c:nft list ruleset -> r:hook input && r:ip saddr 127.0.0.0/8"
+      - "c:nft list ruleset -> r:hook input && r:ip6 saddr ::1 counter packets"
 
-  - id: 19101
-    title: "Ensure default deny firewall policy."
+  # 3.5.2.7 Ensure nftables outbound and established connections are configured (Manual) - Not implemented
+
+  # 3.5.2.8 Ensure nftables default deny firewall policy (Automated)
+  - id: 19104
+    title: "Ensure nftables default deny firewall policy."
     description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
-    rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept , the firewall will accept any packet that is not configured to be denied and the packet will continue transversing the network stack. It is easier to white list acceptable usage than to black list unacceptable usage."
-    remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \\; } . Example: # nft chain inet filter input { policy drop \\; } ; # nft chain inet filter forward { policy drop \\; } and # nft chain inet filter output { policy drop \\; }"
+    rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue transversing the network stack. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
+    impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
+    remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \\; } Example: # nft chain inet filter input { policy drop \\; } # nft chain inet filter forward { policy drop \\; } # nft chain inet filter output { policy drop \\; }"
     compliance:
       - cis: ["3.5.2.8"]
       - cis_csc_v7: ["9.4"]
-      - pci_dss: ["1.2.1"]
-      - tsc: ["CC6.6"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
       - "c:nft list ruleset -> r:hook input && r:policy drop"
       - "c:nft list ruleset -> r:hook forward && r:policy drop"
       - "c:nft list ruleset -> r:hook output && r:policy drop"
 
+  # 3.5.2.9 Ensure nftables service is enabled (Automated)
   - id: 19102
     title: "Ensure nftables service is enabled."
-    description: "The nftables service allows for the loading of nftables rulesets during boot, or starting of the nftables service."
-    rationale: "The nftables service restores the nftables rules from the rules files referenced in the /etc/sysconfig/nftables.conf file during boot or the starting of the nftables service."
+    description: "The nftables service allows for the loading of nftables rulesets during boot, or starting on the nftables service."
+    rationale: "The nftables service restores the nftables rules from the rules files referenced in the /etc/nftables.conf file during boot or the starting of the nftables service."
     remediation: "Run the following command to enable the nftables service: # systemctl enable nftables"
     compliance:
       - cis: ["3.5.2.9"]
       - cis_csc_v7: ["9.4"]
-      - pci_dss: ["1.2"]
-      - tsc: ["CC6.6"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
       - "c:systemctl is-enabled nftables -> enabled"
+
+  # 3.5.2.10 Ensure nftables rules are permanent (Automated) - Not implemented
 
   #######################################################################
   # 3.5.3 Configure iptables
