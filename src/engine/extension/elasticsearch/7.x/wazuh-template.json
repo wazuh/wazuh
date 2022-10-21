@@ -1,6 +1,6 @@
 {
     "index_patterns": [
-      "try-ecs-*"
+      "wazuh-alerts-5.x-*"
     ],
     "mappings": {
       "_meta": {
