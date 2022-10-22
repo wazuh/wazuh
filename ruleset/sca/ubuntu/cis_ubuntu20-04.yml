@@ -910,7 +910,7 @@ checks:
     title: "Ensure permissions on /etc/issue.net are configured."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
     rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
-    remediation: "Run the following commands to set permissions on /etc/issue.net:  # chown root:root $(readlink -e /etc/issue.net) # chmod u-x,go-wx $(readlink -e /etc/issue.net)"
+    remediation: "Run the following commands to set permissions on /etc/issue.net: # chown root:root $(readlink -e /etc/issue.net) # chmod u-x,go-wx $(readlink -e /etc/issue.net)"
     compliance:
       - cis: ["1.7.6"]
       - cis_csc_v7: ["5.1"]
@@ -1541,7 +1541,7 @@ checks:
     title: "Ensure packet redirect sending is disabled."
     description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
     rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0 Run the following commands to set the active kernel parameters:  # sysctl -w net.ipv4.conf.all.send_redirects=0 # sysctl -w net.ipv4.conf.default.send_redirects=0 # sysctl -w net.ipv4.route.flush=1"
+    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0 # sysctl -w net.ipv4.conf.default.send_redirects=0 # sysctl -w net.ipv4.route.flush=1"
     compliance:
       - cis: ["3.2.1"]
       - cis_csc_v7: ["5.1"]
@@ -2704,157 +2704,142 @@ checks:
   ########### WIP
 
   # 4.2 Configure Logging
-  # 4.2,1 Configure rsyslog
+  # 4.2.1 Configure rsyslog
 
-  - id: 19128
+  # 4.2.1.1 Ensure rsyslog is installed (Automated)
+  - id: 19132
     title: "Ensure rsyslog is installed."
-    description: "The rsyslog software are recommended replacements to the original syslogd daemon which provide improvements over syslogd , such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server."
-    rationale: "The security enhancements of rsyslogsuch as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
+    description: "The rsyslog software is a recommended replacement to the original syslogd daemon which provide improvements over syslogd, such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server."
+    rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
     remediation: "Install rsyslog: # apt install rsyslog"
     compliance:
       - cis: ["4.2.1.1"]
-      - cis_csc_v7: ["6.2"]
-      - pci_dss: ["10.1"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2", "CC6.1", "CC6.2", "CC6.3", "CC7.2", "CC7.3", "CC7.4"]
-      - hipaa: ["164.312.b"]
-    condition: any
+      - cis_csc_v7: ["6.2", "6.3"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055", "CM.2.065"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.1", "10.2", "10.3"]
+    condition: all
     rules:
       - "c:dpkg -s rsyslog -> r:install ok installed"
 
-  - id: 19129
+  # 4.2.1.2 Ensure rsyslog Service is enabled (Automated)
+  - id: 19133
     title: "Ensure rsyslog Service is enabled."
     description: "Once the rsyslog package is installed it needs to be activated."
-    rationale: "If the rsyslog service is not activated the system will not have a syslog service running."
-    remediation: "Run the following command to enable rsyslog: # systemctl --now enable rsyslog"
+    rationale: "If the rsyslog service is not activated the system may default to the syslogd service or lack logging instead."
+    remediation: "Run the following commands to enable rsyslog: # systemctl --now enable rsyslog"
     compliance:
       - cis: ["4.2.1.2"]
       - cis_csc_v7: ["6.2", "6.3"]
-      - pci_dss: ["10.1"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2", "CC6.1", "CC6.2", "CC6.3", "CC7.2", "CC7.3", "CC7.4"]
-      - hipaa: ["164.312.b"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055", "CM.2.065"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.1", "10.2", "10.3"]
     condition: all
     rules:
-      - "c:systemctl is-enabled rsyslog -> enabled"
+      - "c:systemctl is-enabled rsyslog -> r:enabled"
 
-  - id: 19130
+  # 4.2.1.3 Ensure logging is configured (Manual) - Not implemented
+
+  # 4.2.1.4 Ensure rsyslog default file permissions configured (Automated)
+  - id: 19134
     title: "Ensure rsyslog default file permissions configured."
     description: "rsyslog will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
-    remediation: "Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and set $FileCreateMode to 0640 or more restrictive:   $FileCreateMode 0640"
+    remediation: "Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and set every instance of $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640"
     compliance:
       - cis: ["4.2.1.4"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["10.5.1", "10.5.2"]
-      - nist_800_53: ["CM.1", "AU.9"]
-      - tsc: ["CC5.2", "CC6.1", "CC7.2", "CC.7.3", "CC7.4"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: any
     rules:
-      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
-      - 'd:/etc/rsyslog.d/ -> r:\. -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
+      - 'f:/etc/rsyslog.conf -> r:^\s*\$FileCreateMode 06\d0|^\s*\$FileCreateMode 04\d0|^\s*\$FileCreateMode 02\d0|^\s*\$FileCreateMode 00\d0 && r:^\s*\$FileCreateMode 0\d40|^\s*\$FileCreateMode 0\d00'
+      - 'd:/etc/rsyslog.d/ -> r:\. -> r:^\s*\$FileCreateMode 06\d0|^\s*\$FileCreateMode 04\d0|^\s*\$FileCreateMode 02\d0|^\s*\$FileCreateMode 00\d0 && r:^\s*\$FileCreateMode 0\d40|^\s*\$FileCreateMode 0\d00'
 
-  - id: 19131
+  # 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host (Automated)
+  - id: 19135
     title: "Ensure rsyslog is configured to send logs to a remote log host."
     description: "The rsyslog utility supports the ability to send logs it gathers to a remote log host running syslogd(8) or to receive messages from remote hosts, reducing administrative overhead."
-    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
-    remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add one of the following lines: Newer syntax: <files to sent to the remote log server> action(type="omfwd" target="<FQDN or ip of loghost>" port="<port number>" protocol="tcp" ction.resumeRetryCount="<number of re-tries>"  queue.type="linkList" queue.size=<number of messages to queue>") Example: *.* action(type="omfwd" target="192.168.2.100" port"514" protocol="tcp" action.resumeRetryCount="100" queue.type="linkList" queue.size="1000") Older syntax: *.* @@<FQDN or ip of loghost>'
+    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system Note: Ensure that the selection of logfiles being sent follows local site policy."
+    remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add one of the following lines: Newer syntax: <files to sent to the remote log server> action(type="omfwd" target="<FQDN or ip of loghost>" port="<port number>" protocol="tcp" action.resumeRetryCount="<number of re-tries>" queue.size=<number of messages to queue>") Example: *.* action(type="omfwd" target="192.168.2.100" port="514" protocol="tcp" action.resumeRetryCount="100" queue.type="LinkedList" queue.size="1000") Older syntax: *.* @@<FQDN or ip of loghost> Example: *.* @@192.168.2.100 Run the following command to reload the rsyslog configuration: # systemctl restart rsyslog'
     compliance:
       - cis: ["4.2.1.5"]
       - cis_csc_v7: ["6.6", "6.8"]
-      - pci_dss: ["10.5.3"]
-      - nist_800_53: ["CM.1", "AU.4"]
-      - tsc: ["CC5.2"]
-    references:
-      - rsyslog.conf(5) man page
-    condition: all
+      - cmmc_v2.0: ["AU.3.051", "AU.3.052", "AU.4.053", "SI.2.214"]
+      - pci_dss_v3.2.1: ["10.5.3", "10.6.1"]
+    condition: any
     rules:
-      - 'c:grep -Rh ^*.* /etc/rsyslog.conf /etc/rsyslog.d/ -> r:^*.* action\.+target='
+      - 'f:/etc/rsyslog.conf -> r:^\s*\w && r:action && r:target="\d|target="\w'
+      - 'd:/etc/rsyslog.d/ -> r:\. -> r:^\s*\w && r:action && r:target="\d|target="\w'
+      - 'f:/etc/rsyslog.conf -> r:^\s*\* && r:@\d|@\w'
+      - 'd:/etc/rsyslog.d/ -> r:\. -> r:^\s*\* && r:@\d|@\w'
 
-  - id: 19132
-    title: "Ensure remote rsyslog messages are only accepted on designated log hosts."
-    description: "By default, rsyslog does not listen for log messages coming in from remote systems. The ModLoad tells rsyslog to load the imtcp.so module so it can listen over a network via TCP. The InputTCPServerRun option instructs rsyslogd to listen on the specified TCP port."
-    rationale: "The guidance in the section ensures that remote log hosts are configured to only accept rsyslog data from hosts within the specified domain and that those systems that are not designed to be log hosts do not accept any remote rsyslog messages. This provides protection from spoofed log data and ensures that system administrators are reviewing reasonably complete syslog data in a central location."
-    remediation: "For hosts that are designated as log hosts, edit the /etc/rsyslog.conf file and un-comment or add the following lines: $ModLoad imtcp        $InputTCPServerRun 514. For hosts that are not designated as log hosts, edit the /etc/rsyslog.conf file and comment or remove the following lines: # $ModLoad imtcp # $InputTCPServerRun 514. Run the following command to reload the rsyslogd configuration: # pkill -HUP rsyslogd"
-    compliance:
-      - cis: ["4.2.1.6"]
-      - cis_csc_v7: ["9.2"]
-      - pci_dss: ["10.5.1"]
-    references:
-      - rsyslog.conf(8) man page
-    condition: all
-    rules:
-      - 'c:grep -Rh ^\$ModLoad[[:space:]]*imtcp /etc/rsyslog.conf /etc/rsyslog.d/ -> r:^\$ModLoad\s*\t*imtcp'
-      - 'c:grep -Rh ^\$InputTCPServerRun /etc/rsyslog.conf /etc/rsyslog.d/ -> r:^\$InputTCPServerRun\s*\t*514'
+  # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Manual) - Not implemented
 
   # 4.2.2 Configure journald
 
-  - id: 19133
+  # 4.2.2.1 Ensure journald is configured to send logs to rsyslog (Automated)
+  - id: 19136
     title: "Ensure journald is configured to send logs to rsyslog."
-    description: "Data from journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of journald logs, however, use of the rsyslog service provides a consistent means of log collection and export."
+    description: 'Data from journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of journald logs, however, use of the rsyslog service provides a consistent means of log collection and export. Notes: - This recommendation assumes that recommendation 4.2.1.5, "Ensure rsyslog is configured to send logs to a remote log host" has been implemented. - As noted in the journald man pages, journald logs may be exported to rsyslog either through the process mentioned here, or through a facility like systemd- journald.service. There are trade-offs involved in each implementation, where ForwardToSyslog will immediately capture all events (and forward to an external log server, if properly configured), but may not capture all boot-up activities. Mechanisms such as systemd-journald.service, on the other hand, will record bootup events, but may delay sending the information to rsyslog, leading to the potential for log manipulation prior to export. Be aware of the limitations of all tools employed to secure a system. - The main configuration file /etc/systemd/journald.conf is read before any of the custom *.conf files. If there are custom configs present, they override the main configuration parameters.'
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes"
     compliance:
       - cis: ["4.2.2.1"]
       - cis_csc_v7: ["6.5"]
-      - pci_dss: ["10.5.3"]
-      - nist_800_53: ["CM.1", "AU.9", "AU.4"]
-      - tsc: ["CC5.2", "CC7.2"]
+      - cmmc_v2.0: ["AU.3.048"]
+      - pci_dss_v3.2.1: ["10.5.3", "10.5.4"]
     references:
       - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     condition: all
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
-  - id: 19134
+  # 4.2.2.2 Ensure journald is configured to compress large log files (Automated)
+  - id: 19137
     title: "Ensure journald is configured to compress large log files."
-    description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large."
+    description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large. Note: The main configuration file /etc/systemd/journald.conf is read before any of the custom *.conf files. If there are custom configs present, they override the main configuration parameters."
     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
-    remediation: "Edit the /etc/systemd/journald.conf file and add the following line:   Compress=yes"
+    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes"
     compliance:
       - cis: ["4.2.2.2"]
       - cis_csc_v7: ["6.4"]
-      - pci_dss: ["10.7"]
-      - nist_800_53: ["CM.1", "AU.4"]
-      - tsc: ["CC5.2"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-4"]
+      - pci_dss_v3.2.1: ["10.7"]
     references:
       - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     condition: all
     rules:
-      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Compress\s*=\s*yes'
+      - 'f:/etc/systemd/journald.conf -> r:^\s*Compress\s*=\s*yes'
 
-  - id: 19135
+  # 4.2.2.3 Ensure journald is configured to write logfiles to persistent disk (Automated)
+  - id: 19138
     title: "Ensure journald is configured to write logfiles to persistent disk."
-    description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss."
+    description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss. Note: The main configuration file /etc/systemd/journald.conf is read before any of the custom *.conf files. If there are custom configs present, they override the main configuration parameters."
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
-    remediation: "Edit the /etc/systemd/journald.conf file and add the following line:   Storage=persistent"
+    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent"
     compliance:
       - cis: ["4.2.2.3"]
       - cis_csc_v7: ["6.2", "6.3"]
-      - pci_dss: ["10.7"]
-      - nist_800_53: ["CM.1", "AU.4"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055", "CM.2.065"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.1", "10.2", "10.3"]
     references:
       - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     condition: all
     rules:
-      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Storage\s*=\s*persistent'
+      - 'f:/etc/systemd/journald.conf -> r:^\s*Storage\s*=\s*persistent'
 
-  # 4.2.3 Ensure permissions on all logfiles are configured (Scored)
-  - id: 19136
-    title: "Ensure permissions on all logfiles are configured."
-    description: "Log files stored in /var/log/ contain logged information from many services on the system, or on log hosts others as well."
-    rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitivebdata is archived and protected."
-    remediation: 'Run the following command to set permissions on all existing log files: find /var/log -type f -exec chmod g-wx,o-rwx "{}" + -o -type d -exec chmod g-w,o-rwx "{}" +'
-    compliance:
-      - cis: ["4.2.3"]
-      - cis_csc_v7: ["5.1"]
-      - pci_dss: ["10.5.1", "10.5.2"]
-      - nist_800_53: ["CM.1", "AU.9"]
-      - tsc: ["CC5.2", "CC7.2"]
-    condition: none
-    rules:
-      - 'c:find /var/log -type f -ls -> r:-\w\w\w\ww\w\w\w\w|-\w\w\w\w\wx\w\w\w|-\w\w\w\w\w\w\ww\w|-\w\w\w\w\w\wr\w\w|-\w\w\w\w\w\w\w\wx'
+  # 4.2.3 Ensure permissions on all logfiles are configured (Automated) - Not implemented
+  # 4.3 Ensure logrotate is configured (Manual) - Not implemented
+  # 4.4 Ensure logrotate assigns appropriate permissions (Automated) - Not implemented
 
   ############################################################
   # 5 Access, Authentication and Authorization
@@ -3052,7 +3037,7 @@ checks:
     title: "Ensure sudo log file exists."
     description: "sudo can use a custom log file"
     rationale: "A sudo log file simplifies auditing of sudo commands"
-    remediation: 'edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line:   Defaults logfile="<PATH TO CUSTOM LOG FILE>"   Example    Defaults logfile="/var/log/sudo.log"'
+    remediation: 'edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line: Defaults logfile="<PATH TO CUSTOM LOG FILE>"   Example    Defaults logfile="/var/log/sudo.log"'
     compliance:
       - cis: ["5.2.3"]
       - cis_csc_v7: ["6.3"]
