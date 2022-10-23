@@ -70,7 +70,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -182,7 +182,7 @@
                 "full_name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -215,7 +215,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -527,13 +527,13 @@
         "data_stream": {
           "properties": {
             "dataset": {
-              "type": "constant_keyword"
+              "type": "keyword"
             },
             "namespace": {
-              "type": "constant_keyword"
+              "type": "keyword"
             },
             "type": {
-              "type": "constant_keyword"
+              "type": "keyword"
             }
           }
         },
@@ -553,7 +553,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -665,7 +665,7 @@
                 "full_name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -698,7 +698,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -1037,7 +1037,7 @@
               "type": "keyword"
             },
             "message_id": {
-              "type": "wildcard"
+              "type": "keyword"
             },
             "origination_timestamp": {
               "type": "date"
@@ -1061,7 +1061,7 @@
             "subject": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
@@ -1092,15 +1092,15 @@
               "type": "keyword"
             },
             "message": {
-              "type": "match_only_text"
+              "type": "text"
             },
             "stack_trace": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
-              "type": "wildcard"
+              "type": "keyword"
             },
             "type": {
               "ignore_above": 1024,
@@ -1325,7 +1325,7 @@
                   "type": "date"
                 },
                 "exports": {
-                  "type": "flattened"
+                  "type": "object"
                 },
                 "header": {
                   "properties": {
@@ -1363,7 +1363,7 @@
                   }
                 },
                 "imports": {
-                  "type": "flattened"
+                  "type": "object"
                 },
                 "sections": {
                   "properties": {
@@ -1498,7 +1498,7 @@
             "path": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
@@ -1546,7 +1546,7 @@
             "target_path": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
@@ -1827,7 +1827,7 @@
                 "full": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -1840,7 +1840,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -1909,10 +1909,10 @@
                     "content": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
-                      "type": "wildcard"
+                      "type": "keyword"
                     }
                   }
                 },
@@ -1947,10 +1947,10 @@
                     "content": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
-                      "type": "wildcard"
+                      "type": "keyword"
                     }
                   }
                 },
@@ -2056,7 +2056,7 @@
                   }
                 },
                 "structured_data": {
-                  "type": "flattened"
+                  "type": "object"
                 },
                 "version": {
                   "ignore_above": 1024,
@@ -2068,7 +2068,7 @@
           }
         },
         "message": {
-          "type": "match_only_text"
+          "type": "text"
         },
         "network": {
           "properties": {
@@ -2291,7 +2291,7 @@
                 "full": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -2304,7 +2304,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -2422,7 +2422,7 @@
             "name": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
@@ -2532,10 +2532,10 @@
             "command_line": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
-              "type": "wildcard"
+              "type": "keyword"
             },
             "elf": {
               "properties": {
@@ -2555,7 +2555,7 @@
                   "type": "date"
                 },
                 "exports": {
-                  "type": "flattened"
+                  "type": "object"
                 },
                 "header": {
                   "properties": {
@@ -2593,7 +2593,7 @@
                   }
                 },
                 "imports": {
-                  "type": "flattened"
+                  "type": "object"
                 },
                 "sections": {
                   "properties": {
@@ -2687,7 +2687,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -2698,10 +2698,10 @@
                 "command_line": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
-                  "type": "wildcard"
+                  "type": "keyword"
                 },
                 "entity_id": {
                   "ignore_above": 1024,
@@ -2725,7 +2725,7 @@
                 "executable": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -2749,7 +2749,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -2807,7 +2807,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -2839,7 +2839,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -2886,7 +2886,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -2897,7 +2897,7 @@
                 "working_directory": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -2912,7 +2912,7 @@
             "executable": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
@@ -2933,10 +2933,10 @@
                 "command_line": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
-                  "type": "wildcard"
+                  "type": "keyword"
                 },
                 "entity_id": {
                   "ignore_above": 1024,
@@ -2945,7 +2945,7 @@
                 "executable": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -2969,7 +2969,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -2999,7 +2999,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -3031,7 +3031,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -3078,7 +3078,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -3089,7 +3089,7 @@
                 "working_directory": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -3137,10 +3137,10 @@
                 "bytes_skipped": {
                   "properties": {
                     "length": {
-                      "type": "number"
+                      "type": "long"
                     },
                     "offset": {
-                      "type": "number"
+                      "type": "long"
                     }
                   },
                   "type": "object"
@@ -3149,13 +3149,13 @@
                   "type": "boolean"
                 },
                 "text": {
-                  "type": "wildcard"
+                  "type": "keyword"
                 },
                 "total_bytes_captured": {
-                  "type": "number"
+                  "type": "long"
                 },
                 "total_bytes_skipped": {
-                  "type": "number"
+                  "type": "long"
                 },
                 "type": {
                   "ignore_above": 1024,
@@ -3167,7 +3167,7 @@
             "name": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
@@ -3221,10 +3221,10 @@
                 "command_line": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
-                  "type": "wildcard"
+                  "type": "keyword"
                 },
                 "elf": {
                   "properties": {
@@ -3244,7 +3244,7 @@
                       "type": "date"
                     },
                     "exports": {
-                      "type": "flattened"
+                      "type": "object"
                     },
                     "header": {
                       "properties": {
@@ -3282,7 +3282,7 @@
                       }
                     },
                     "imports": {
-                      "type": "flattened"
+                      "type": "object"
                     },
                     "sections": {
                       "properties": {
@@ -3353,7 +3353,7 @@
                 "executable": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -3426,7 +3426,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -3495,7 +3495,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -3524,7 +3524,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -3561,7 +3561,7 @@
                 "title": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -3594,7 +3594,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -3605,7 +3605,7 @@
                 "working_directory": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -3667,7 +3667,7 @@
                 "executable": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -3696,7 +3696,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -3725,7 +3725,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -3745,10 +3745,10 @@
                 "command_line": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
-                  "type": "wildcard"
+                  "type": "keyword"
                 },
                 "entity_id": {
                   "ignore_above": 1024,
@@ -3757,7 +3757,7 @@
                 "executable": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -3781,7 +3781,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -3839,7 +3839,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -3871,7 +3871,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -3918,7 +3918,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -3929,7 +3929,7 @@
                 "working_directory": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -3966,7 +3966,7 @@
             "title": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
@@ -4005,7 +4005,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -4016,7 +4016,7 @@
             "working_directory": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
@@ -4033,7 +4033,7 @@
                   "type": "keyword"
                 },
                 "strings": {
-                  "type": "wildcard"
+                  "type": "keyword"
                 },
                 "type": {
                   "ignore_above": 1024,
@@ -4138,7 +4138,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -4250,7 +4250,7 @@
                 "full_name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -4283,7 +4283,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -4469,7 +4469,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -4581,7 +4581,7 @@
                 "full_name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -4614,7 +4614,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -4656,7 +4656,7 @@
                             "name": {
                               "fields": {
                                 "text": {
-                                  "type": "match_only_text"
+                                  "type": "text"
                                 }
                               },
                               "ignore_above": 1024,
@@ -4763,7 +4763,7 @@
                               "type": "date"
                             },
                             "exports": {
-                              "type": "flattened"
+                              "type": "object"
                             },
                             "header": {
                               "properties": {
@@ -4801,7 +4801,7 @@
                               }
                             },
                             "imports": {
-                              "type": "flattened"
+                              "type": "object"
                             },
                             "sections": {
                               "properties": {
@@ -4936,7 +4936,7 @@
                         "path": {
                           "fields": {
                             "text": {
-                              "type": "match_only_text"
+                              "type": "text"
                             }
                           },
                           "ignore_above": 1024,
@@ -4984,7 +4984,7 @@
                         "target_path": {
                           "fields": {
                             "text": {
-                              "type": "match_only_text"
+                              "type": "text"
                             }
                           },
                           "ignore_above": 1024,
@@ -5197,7 +5197,7 @@
                               "type": "keyword"
                             },
                             "strings": {
-                              "type": "wildcard"
+                              "type": "keyword"
                             },
                             "type": {
                               "ignore_above": 1024,
@@ -5250,25 +5250,25 @@
                         "full": {
                           "fields": {
                             "text": {
-                              "type": "match_only_text"
+                              "type": "text"
                             }
                           },
-                          "type": "wildcard"
+                          "type": "keyword"
                         },
                         "original": {
                           "fields": {
                             "text": {
-                              "type": "match_only_text"
+                              "type": "text"
                             }
                           },
-                          "type": "wildcard"
+                          "type": "keyword"
                         },
                         "password": {
                           "ignore_above": 1024,
                           "type": "keyword"
                         },
                         "path": {
-                          "type": "wildcard"
+                          "type": "keyword"
                         },
                         "port": {
                           "type": "long"
@@ -5494,7 +5494,7 @@
                         "name": {
                           "fields": {
                             "text": {
-                              "type": "match_only_text"
+                              "type": "text"
                             }
                           },
                           "ignore_above": 1024,
@@ -5601,7 +5601,7 @@
                           "type": "date"
                         },
                         "exports": {
-                          "type": "flattened"
+                          "type": "object"
                         },
                         "header": {
                           "properties": {
@@ -5639,7 +5639,7 @@
                           }
                         },
                         "imports": {
-                          "type": "flattened"
+                          "type": "object"
                         },
                         "sections": {
                           "properties": {
@@ -5774,7 +5774,7 @@
                     "path": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -5822,7 +5822,7 @@
                     "target_path": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -6031,7 +6031,7 @@
                           "type": "keyword"
                         },
                         "strings": {
-                          "type": "wildcard"
+                          "type": "keyword"
                         },
                         "type": {
                           "ignore_above": 1024,
@@ -6084,25 +6084,25 @@
                     "full": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
-                      "type": "wildcard"
+                      "type": "keyword"
                     },
                     "original": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
-                      "type": "wildcard"
+                      "type": "keyword"
                     },
                     "password": {
                       "ignore_above": 1024,
                       "type": "keyword"
                     },
                     "path": {
-                      "type": "wildcard"
+                      "type": "keyword"
                     },
                     "port": {
                       "type": "long"
@@ -6294,7 +6294,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -6313,7 +6313,7 @@
                     "name": {
                       "fields": {
                         "text": {
-                          "type": "match_only_text"
+                          "type": "text"
                         }
                       },
                       "ignore_above": 1024,
@@ -6724,25 +6724,25 @@
             "full": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
-              "type": "wildcard"
+              "type": "keyword"
             },
             "original": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
-              "type": "wildcard"
+              "type": "keyword"
             },
             "password": {
               "ignore_above": 1024,
               "type": "keyword"
             },
             "path": {
-              "type": "wildcard"
+              "type": "keyword"
             },
             "port": {
               "type": "long"
@@ -6788,7 +6788,7 @@
                 "full_name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -6821,7 +6821,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -6850,7 +6850,7 @@
                 "full_name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -6883,7 +6883,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -6902,7 +6902,7 @@
             "full_name": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
@@ -6935,7 +6935,7 @@
             "name": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
@@ -6982,7 +6982,7 @@
                 "full_name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -7015,7 +7015,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -7046,7 +7046,7 @@
             "original": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
@@ -7061,7 +7061,7 @@
                 "full": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -7074,7 +7074,7 @@
                 "name": {
                   "fields": {
                     "text": {
-                      "type": "match_only_text"
+                      "type": "text"
                     }
                   },
                   "ignore_above": 1024,
@@ -7113,7 +7113,7 @@
             "description": {
               "fields": {
                 "text": {
-                  "type": "match_only_text"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
