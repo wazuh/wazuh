@@ -2701,8 +2701,6 @@ checks:
 
   # 4.1.17 Ensure the audit configuration is immutable (Automated) - Not implemented
 
-  ########### WIP
-
   # 4.2 Configure Logging
   # 4.2.1 Configure rsyslog
 
@@ -2841,175 +2839,186 @@ checks:
   # 4.3 Ensure logrotate is configured (Manual) - Not implemented
   # 4.4 Ensure logrotate assigns appropriate permissions (Automated) - Not implemented
 
-  ############################################################
   # 5 Access, Authentication and Authorization
-  ############################################################
-  ############################################################
   # 5.1 Configure time-based job schedulers
-  ############################################################
 
-  - id: 19137
+  # 5.1.1 Ensure cron daemon is enabled and running (Automated)
+  - id: 19139
     title: "Ensure cron daemon is enabled and running."
-    description: "The cron daemon is used to execute batch jobs on the system."
+    description: "The cron daemon is used to execute batch jobs on the system. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "While there may not be user jobs that need to be run on the system, the system does have maintenance jobs that may include security monitoring that have to run, and cron is used to execute them."
-    remediation: "Run the following command to enable cron: systemctl --now enable cron"
+    remediation: "Run the following command to enable and start cron: # systemctl --now enable cron"
     compliance:
       - cis: ["5.1.1"]
       - cis_csc_v7: ["6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
     condition: all
     rules:
       - "c:systemctl is-enabled cron -> enabled"
       - 'c:systemctl status cron -> r:Active: active \(running\)'
 
-  # 5.1.2 Ensure permissions on /etc/crontab are configured (Scored)
-  - id: 19138
+  # 5.1.2 Ensure permissions on /etc/crontab are configured (Automated)
+  - id: 19140
     title: "Ensure permissions on /etc/crontab are configured."
-    description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file."
+    description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges. Read access to these files could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
-    remediation: "Run the following commands to set ownership and permissions on /etc/crontab : chown root:root /etc/crontab and chmod og-rwx /etc/crontab"
+    remediation: "Run the following commands to set ownership and permissions on /etc/crontab: # chown root:root /etc/crontab # chmod og-rwx /etc/crontab"
     compliance:
       - cis: ["5.1.2"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - hipaa: ["164.312.b"]
-      - nist_800_53: ["AU.14", "AC.7"]
-      - tsc: ["CC7.2", "CC6.1"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7", "32.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/crontab -> r:^Access: \(0600/-rw-------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
 
-  # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Scored)
-  - id: 19139
+  # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
+  - id: 19141
     title: "Ensure permissions on /etc/cron.hourly are configured."
-    description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
+    description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
-    remediation: "Run the following commands to set ownership and permissions on /etc/cron.hourly : chown root:root /etc/cron.hourly and chmod og-rwx /etc/cron.hourly"
+    remediation: "Run the following commands to set ownership and permissions on the /etc/cron.hourly directory: # chown root:root /etc/cron.hourly/ # chmod og-rwx /etc/cron.hourly/"
     compliance:
       - cis: ["5.1.3"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.hourly -> r:^Access: \(0700/drwx------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
 
-  # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Scored)
-  - id: 19140
+  # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
+  - id: 19142
     title: "Ensure permissions on /etc/cron.daily are configured."
-    description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
+    description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
-    remediation: "Run the following commands to set ownership and permissions on /etc/cron.daily : chown root:root /etc/cron.daily and chmod og-rwx /etc/cron.daily"
+    remediation: "Run the following commands to set ownership and permissions on the /etc/cron.daily directory: # chown root:root /etc/cron.daily/ # chmod og-rwx /etc/cron.daily/"
     compliance:
       - cis: ["5.1.4"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.daily -> r:^Access: \(0700/drwx------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
 
-  # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Scored)
-  - id: 19141
+  # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
+  - id: 19143
     title: "Ensure permissions on /etc/cron.weekly are configured."
-    description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
+    description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.weekly : chown root:root /etc/cron.weekly and chmod og-rwx /etc/cron.weekly"
     compliance:
       - cis: ["5.1.5"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.weekly -> r:^Access: \(0700/drwx------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
 
-  # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Scored)
-  - id: 19142
+  # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
+  - id: 19144
     title: "Ensure permissions on /etc/cron.monthly are configured."
-    description: "The /etc/cron.monthly directory contains system cron jobs that need to run on a monthly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
+    description: "The /etc/cron.monthly directory contains system cron jobs that need to run on a monthly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
-    remediation: "Run the following commands to set ownership and permissions on /etc/cron.monthly : chown root:root /etc/cron.monthly and chmod og-rwx /etc/cron.monthly"
+    remediation: "Run the following commands to set ownership and permissions on the /etc/cron.monthly directory: # chown root:root /etc/cron.monthly/ # chmod og-rwx /etc/cron.monthly/"
     compliance:
       - cis: ["5.1.6"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
 
-  # 5.1.7 Ensure permissions on /etc/cron.d are configured (Scored)
-  - id: 19143
+  # 5.1.7 Ensure permissions on /etc/cron.d are configured (Automated)
+  - id: 19145
     title: "Ensure permissions on /etc/cron.d are configured."
-    description: "Configure /etc/cron.allow and /etc/at.allow to allow specific users to use these services. If /etc/cron.allow or /etc/at.allow do not exist, then /etc/at.deny and /etc/cron.deny are checked. Any user not specifically defined in those files is allowed to use at and cron. By removing the files, only users in /etc/cron.allow and /etc/at.allow are allowed to use at and cron. Note that even though a given user is not listed in cron.allow , cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
-    rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: "Run the following commands to remove /etc/cron.deny and /etc/at.deny and create and set permissions and ownership for /etc/cron.allow and /etc/at.allow: rm /etc/cron.deny;rm /etc/at.deny;touch /etc/cron.allow; touch /etc/at.allow; chmod og-rwx /etc/cron.allow; chmod og-rwx /etc/at.allow; chown root:root /etc/cron.allow and chown root:root /etc/at.allow"
+    description: "The /etc/cron.d directory contains system cron jobs that need to run in a similar manner to the hourly, daily weekly and monthly jobs from /etc/crontab, but require more granular control as to when they run. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
+    rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
+    remediation: "Run the following commands to set ownership and permissions on the /etc/cron.d directory: # chown root:root /etc/cron.d/ # chmod og-rwx /etc/cron.d/"
     compliance:
       - cis: ["5.1.7"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.d -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.d -> r:^Access: \(0700/drwx------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
 
-  # 5.1.8 Ensure at/cron is restricted to authorized users (Scored)
-  - id: 19144
-    title: "Ensure at/cron is restricted to authorized users."
-    description: "Configure /etc/cron.allow and /etc/at.allow to allow specific users to use these services. If /etc/cron.allow or /etc/at.allow do not exist, then /etc/at.deny and /etc/cron.deny are checked. Any user not specifically defined in those files is allowed to use at and cron. By removing the files, only users in /etc/cron.allow and /etc/at.allow are allowed to use at and cron. Note that even though a given user is not listed in cron.allow, cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
-    rationale: "On many systems, only the system administrator is authorized to schedule cronjobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: "Run the following commands to remove /etc/cron.deny and create and set permissions and ownership for /etc/cron.allow: # rm /etc/cron.deny # touch /etc/cron.allow # chmod og-rwx /etc/cron.allow # chown root:root /etc/cron.allow"
+  # 5.1.8 Ensure cron is restricted to authorized users (Automated)
+  - id: 19146
+    title: "Ensure cron is restricted to authorized users."
+    description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Notes: - Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy. - Even though a given user is not listed in cron.allow, cron jobs can still be run as that user. - The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
+    rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
+    remediation: "Run the following commands to remove /etc/cron.deny: # rm /etc/cron.deny Run the following command to create /etc/cron.allow # touch /etc/cron.allow Run the following commands to set permissions and ownership for /etc/cron.allow: # chmod g-wx,o-rwx /etc/cron.allow # chown root:root /etc/cron.allow"
     compliance:
       - cis: ["5.1.8"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
       - "f:/etc/cron.allow"
-      - "f:/etc/at.allow"
       - "not f:/etc/cron.deny"
-      - 'c:stat /etc/cron.allow -> r:^Access: \(0\d\d0/\w\w\w\w\w-----\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.allow -> r:^Access: \(0640/-rw-r-----\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
 
-  - id: 19145
+  # 5.1.9 Ensure at is restricted to authorized users (Automated)
+  - id: 19147
     title: "Ensure at is restricted to authorized users."
-    description: "Configure /etc/at.allow to allow specific users to use this service. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not specifically defined in this file is allowed to use at. By removing the file, only users in /etc/at.allow are allowed to use at."
+    description: "Configure /etc/at.allow to allow specific users to use this service. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not specifically defined in this file is allowed to use at. By removing the file, only users in /etc/at.allow are allowed to use at. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, at should be removed, and the alternate method should be secured in accordance with local site policy"
     rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: "Run the following commands to remove /etc/at.deny and create and set permissions and ownership for/etc/at.allow: # rm /etc/at.deny # touch /etc/at.allow # chmod og-rwx /etc/at.allow # chown root:root /etc/at.allow"
+    remediation: "Run the following commands to remove /etc/at.deny: # rm /etc/at.deny Run the following command to create /etc/at.allow # touch /etc/at.allow Run the following commands to set permissions and ownership for /etc/at.allow:# chmod g-wx,o-rwx /etc/at.allow # chown root:root /etc/at.allow"
     compliance:
       - cis: ["5.1.9"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
       - "f:/etc/at.allow"
       - "not f:/etc/at.deny"
-      - 'c:stat /etc/at.allow -> r:^Access: \(0\d\d0/\w\w\w\w\w-----\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/at.allow -> r:^Access: \(0640/-rw-r-----\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
 
-  - id: 19025
+  # 5.2 Configure sudo
+
+  # 5.2.1 Ensure sudo is installed (Automated)
+  - id: 19048
     title: "Ensure sudo is installed."
-    description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
+    description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy. Note: Use the sudo-ldap package if you need LDAP support for sudoers."
     rationale: "sudo supports a plugin architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plugins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
     remediation: "Install sudo using the following command. # apt install sudo OR # apt install sudo-ldap"
     compliance:
       - cis: ["5.2.1"]
       - cis_csc_v7: ["4.3"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.008", "IA.1.076", "IA.1.077", "SC.3.181"]
+      - iso_27001-2013: ["A.9.2.3"]
+      - mitre_techniques: ["T1176", "T1501", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     references:
       - http://www.sudo.ws/
     condition: any
@@ -3017,42 +3026,45 @@ checks:
       - "c:dpkg -s sudo -> r:install ok installed"
       - "c:dpkg -s sudo-ldap -> r:install ok installed"
 
-  - id: 19026
+  # 5.2.2 Ensure sudo commands use pty (Automated)
+  - id: 19049
     title: "Ensure sudo commands use pty."
-    description: "sudo can be configured to run only froma pseudo-pty"
+    description: "sudo can be configured to run only from a pseudo-pty. Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks or parse errors. If the sudoers file is currently being edited you will receive a message to try again later."
     rationale: "Attackers can run a malicious program using sudo, which would again fork a background process that remains even when the main program has finished executing."
-    remediation: "edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line: Defaults use_pty"
+    remediation: "Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line: Defaults use_pty"
     compliance:
       - cis: ["5.2.2"]
       - cis_csc_v7: ["4.3"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.008", "IA.1.076", "IA.1.077", "SC.3.181"]
+      - iso_27001-2013: ["A.9.2.3"]
+      - mitre_techniques: ["T1176", "T1501", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: any
     rules:
-      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*use_pty'
-      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*use_pty'
+      - 'f:/etc/sudoers -> r:^\s*Defaults\s*use_pty'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*Defaults\s*use_pty'
 
-  - id: 19027
+  # 5.2.3 Ensure sudo log file exists (Automated)
+  - id: 19050
     title: "Ensure sudo log file exists."
-    description: "sudo can use a custom log file"
-    rationale: "A sudo log file simplifies auditing of sudo commands"
-    remediation: 'edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line: Defaults logfile="<PATH TO CUSTOM LOG FILE>"   Example    Defaults logfile="/var/log/sudo.log"'
+    description: "sudo can use a custom log file. Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks or parse errors. If the sudoers file is currently being edited you will receive a message to try again later."
+    rationale: "A sudo log file simplifies auditing of sudo commands."
+    remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line: and add the following line: Defaults logfile="<PATH TO CUSTOM LOG FILE>" Example: Defaults logfile="/var/log/sudo.log"'
     compliance:
       - cis: ["5.2.3"]
       - cis_csc_v7: ["6.3"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["CM.2.065"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12"]
+      - pci_dss_v3.2.1: ["10.1", "10.3"]
     condition: any
     rules:
-      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile='
-      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
+      - 'f:/etc/sudoers -> r:^\s*Defaults\s*logfile="\.+"'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*Defaults\s*\logfile="\.+"'
 
-  ######################################################
-  # 5.3 SSH Server Configuration
-  ######################################################
+  # 5.3 Configure SSH Server
 
+  # 5.3.1 Ensure permissions on /etc/ssh/sshd_config are configured (Automated)
   - id: 19146
     title: "Ensure permissions on /etc/ssh/sshd_config are configured."
     description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
@@ -3409,6 +3421,8 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -> n:^MaxSessions\s+(\d+) compare <= 10'
+
+  ########### WIP
 
   ######################################################
   # 5.4 Configure PAM
