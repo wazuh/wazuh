@@ -3065,204 +3065,233 @@ checks:
   # 5.3 Configure SSH Server
 
   # 5.3.1 Ensure permissions on /etc/ssh/sshd_config are configured (Automated)
-  - id: 19146
+  - id: 19151
     title: "Ensure permissions on /etc/ssh/sshd_config are configured."
     description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
-    rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non-privileged users."
+    rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non- privileged users."
     remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config: # chown root:root /etc/ssh/sshd_config # chmod og-rwx /etc/ssh/sshd_config"
     compliance:
       - cis: ["5.3.1"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/sshd_config -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
 
-  - id: 19147
+  # 5.3.2 Ensure permissions on SSH private host key files are configured (Automated)
+  - id: 19152
     title: "Ensure permissions on SSH private host key files are configured."
     description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, The possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
-    rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated"
-    remediation: "Run the following commands to set ownership and permissions on the private SSH host key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:root {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod 0600 {} \\;"
+    rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated."
+    remediation: "Run the following commands to set permissions, ownership, and group on the private SSH host key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:root {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod u-x,go-rwx {} \\;"
     compliance:
       - cis: ["5.3.2"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ed25519_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0600/-rw-------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$|Access: \(0400/-r--------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0600/-rw-------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$|Access: \(0400/-r--------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/ssh/ssh_host_ed25519_key -> r:^Access: \(0600/-rw-------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$|Access: \(0400/-r--------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
 
-  - id: 19148
+  # 5.3.3 Ensure permissions on SSH public host key files are configured (Automated)
+  - id: 19153
     title: "Ensure permissions on SSH public host key files are configured."
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: "Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod 0644 {} \\; #find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;"
+    remediation: "Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,go- wx {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;"
     compliance:
       - cis: ["5.3.3"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0644/-rw-r--r--)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0644/-rw-r--r--)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0644/-rw-r--r--)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
 
-  - id: 19149
+  # 5.3.4 Ensure SSH access is limited (Automated) - Not implemented
+
+  # 5.3.5 Ensure SSH LogLevel is appropriate (Automated)
+  - id: 19154
     title: "Ensure SSH LogLevel is appropriate."
     description: "INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel VERBOSE or LogLevel INFO"
+    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf to set the parameter as follows: LogLevel VERBOSE OR LogLevel INFO"
     references:
       - https://www.ssh.com/ssh/sshd_config/
     compliance:
       - cis: ["5.3.5"]
       - cis_csc_v7: ["6.2", "6.3"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.7"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055", "CM.2.065"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.1", "10.2", "10.3"]
     condition: all
     rules:
       - 'c:sshd -T -> r:loglevel\s+INFO|loglevel\s+VERBOSE'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*loglevel && !r:INFO|VERBOSE'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\s*loglevel && !r:INFO|VERBOSE'
 
-  - id: 19150
+  # 5.3.6 Ensure SSH X11 forwarding is disabled (Automated)
+  - id: 19155
     title: "Ensure SSH X11 forwarding is disabled."
-    description: "The X11Forwarding parameter provides the ability to tunnel X11 traffic through the connection to enable remote graphic connections."
+    description: "The X11Forwarding parameter provides the ability to tunnel X11 traffic through an existing SSH shell session to enable remote graphic connections."
     rationale: "Disable X11 forwarding unless there is an operational requirement to use X11 applications directly. There is a small risk that the remote X11 servers of users who are logged in via SSH with X11 forwarding could be compromised by other users on the X11 server. Note that even if X11 forwarding is disabled, users can always install their own forwarders."
-    remediation: "Edit the /etc/ssh/sshd_configfile to set the parameter as follows: X11Forwarding no"
+    impact: "X11 programs on the server will not be able to be forwarded to a ssh-client display."
+    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf to set the parameter as follows: X11Forwarding no"
     compliance:
       - cis: ["5.3.6"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - 'c:sshd -T -> r:x11forwarding\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*X11Forwarding\s+yes'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\s*X11Forwarding\s+yes'
 
-  - id: 19151
+  # 5.3.7 Ensure SSH MaxAuthTries is set to 4 or less (Automated)
+  - id: 19156
     title: "Ensure SSH MaxAuthTries is set to 4 or less."
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4"
+    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf to set the parameter as follows: MaxAuthTries 4"
     compliance:
       - cis: ["5.3.7"]
       - cis_csc_v7: ["16.13"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["SI.5.223", "AC.4.032"]
+      - mitre_techniques: ["T1134", "T1197", "T1538", "T1530", "T1213", "T1089", "T1157", "T1044", "T1484", "T1054", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1034", "T1163", "T1076", "T1021", "T1053", "T1489", "T1051", "T1023", "T1165", "T1528", "T1501", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^maxauthtries\s*\t*(\d+) compare <= 4'
+      - 'c:sshd -T -> n:^\s*maxauthtries\s*(\d+) compare <= 4'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxAuthTries\s*(\d+) compare > 4'
+      - 'not d:/etc/ssh/sshd_config.d -> n:^\s*MaxAuthTries\s*(\d+) compare > 4'
 
-  - id: 19152
+  # 5.3.8 Ensure SSH IgnoreRhosts is enabled (Automated)
+  - id: 19157
     title: "Ensure SSH IgnoreRhosts is enabled."
-    description: "The IgnoreRhosts parameter specifies that .rhostsand .shostsfiles will not be used in RhostsRSAAuthenticationor HostbasedAuthentication."
+    description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
+    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf to set the parameter as follows: IgnoreRhosts yes"
     compliance:
       - cis: ["5.3.8"]
       - cis_csc_v7: ["9.2"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.7"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - 'c:sshd -T -> r:ignorerhosts\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*IgnoreRhosts\s+yes'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\s*IgnoreRhosts\s+yes'
 
-  # 5.2.9 Ensure SSH HostbasedAuthentication is disabled (Scored)
-  - id: 19153
+  # 5.3.9 Ensure SSH HostbasedAuthentication is disabled (Automated)
+  - id: 19158
     title: "Ensure SSH HostbasedAuthentication is disabled."
-    description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
+    description: " The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no"
+    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf to set the parameter as follows: HostbasedAuthentication no"
     compliance:
       - cis: ["5.3.9"]
       - cis_csc_v7: ["16.3"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.7"]
+      - mitre_techniques: ["T1110", "T1098", "T1017", "T1136", "T1530", "T1114", "T1133", "T1040", "T1076", "T1021", "T1539", "T1072", "T1078", "T1134", "T1197", "T1538", "T1213", "T1089", "T1157", "T1044", "T1484", "T1054", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1034", "T1163", "T1053", "T1489", "T1051", "T1023", "T1165", "T1528", "T1501", "T1537", "T1047", "T1084", "T1004"]
+      - pci_dss_v3.2.1: ["8.3"]
     condition: all
     rules:
       - 'c:sshd -T -> r:hostbasedauthentication\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*HostbasedAuthentication\s+yes'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\s*HostbasedAuthentication\s+yes'
 
-  - id: 19154
+  # 5.3.10 Ensure SSH root login is disabled (Automated)
+  - id: 19159
     title: "Ensure SSH root login is disabled."
-    description: "The PermitRootLogin parameter specifies if the root user can log in using ssh(1). The default is no."
-    rationale: "Disallowing root logins over SSH requires server admins to authenticate using their own individual account, then escalating to root via sudo or su. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
+    description: "The PermitRootLogin parameter specifies if the root user can log in using ssh."
+    rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no"
     compliance:
       - cis: ["5.3.10"]
       - cis_csc_v7: ["4.3"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.7"]
+      - cmmc_v2.0: ["AC.2.008", "IA.1.076", "IA.1.077", "SC.3.181"]
+      - iso_27001-2013: ["A.9.2.3"]
+      - mitre_techniques: ["T1176", "T1501", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
       - 'c:sshd -T -> r:permitrootlogin\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitRootLogin\s+yes'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\s*PermitRootLogin\s+yes'
 
-  - id: 19155
+  # 5.3.11 Ensure SSH PermitEmptyPasswords is disabled (Automated)
+  - id: 19160
     title: "Ensure SSH PermitEmptyPasswords is disabled."
-    description: "The PermitEmptyPasswords parameter specifies if the server allows login to accounts with empty password strings."
-    rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system"
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no"
+    description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
+    rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
+    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf to set the parameter as follows: PermitEmptyPasswords no"
     compliance:
       - cis: ["5.3.11"]
       - cis_csc_v7: ["16.3"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.7"]
+      - mitre_techniques: ["T1110", "T1098", "T1017", "T1136", "T1530", "T1114", "T1133", "T1040", "T1076", "T1021", "T1539", "T1072", "T1078", "T1134", "T1197", "T1538", "T1213", "T1089", "T1157", "T1044", "T1484", "T1054", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1034", "T1163", "T1053", "T1489", "T1051", "T1023", "T1165", "T1528", "T1501", "T1537", "T1047", "T1084", "T1004"]
+      - pci_dss_v3.2.1: ["8.3"]
     condition: all
     rules:
       - 'c:sshd -T -> r:permitemptypasswords\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitEmptyPasswords\s+yes'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\s*PermitEmptyPasswords\s+yes'
 
-  - id: 19156
+  # 5.3.12 Ensure SSH PermitUserEnvironment is disabled (Automated)
+  - id: 19161
     title: "Ensure SSH PermitUserEnvironment is disabled."
     description: "The PermitUserEnvironment option allows users to present environment options to the ssh daemon."
-    rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing trojan'd programs)"
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no"
+    rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing a Trojan’s programs)."
+    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf to set the parameter as follows: PermitUserEnvironment no"
     compliance:
       - cis: ["5.3.12"]
-      - cis_csc_v7: ["14.6"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.7", "CC6.1", "CC7.2"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:sshd -T -> r:permituserenvironment\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitUserEnvironment\s+yes'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\s*PermitUserEnvironment\s+yes'
 
-  - id: 19157
-    title: "Ensure only strong ciphers are used."
-    description: "This variable limits the ciphers that SSH can use during communication."
-    rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised The DES, Triple DES, and Blowfish ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain cleartext data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack The RC4 algorithm, as used in the TLS protocol and SSL protocol, does not properly combine state data with key data during the initialization phase, which makes it easier for remote attackers to conduct plaintext-recovery attacks against the initial bytes of a stream by sniffing network traffic that occasionally relies on keys affected by the Invariance Weakness, and then using a brute-force approach involving LSB values, aka the "Bar Mitzvah" issue The passwords used during an SSH session encrypted with RC4 can be recovered by an attacker who is able to capture and replay the session Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plaintext data from an arbitrary block of ciphertext in an SSH session via unknown vectors The mm_newkeys_from_blob function in monitor_wrap.c, when an AES-GCM cipher is used, does not properly initialize memory for a MAC context data structure, which allows remote authenticated users to bypass intended ForceCommand and login-shell restrictions via packet data that provides a crafted callback address'
-    remediation: "Edit the /etc/ssh/sshd_config file add/modify the Ciphers line to contain a comma separated list of the site approved ciphers Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
+  # 5.3.13 Ensure only strong Ciphers are used (Automated)
+  - id: 19162
+    title: "Ensure only strong Ciphers are used."
+    description: "This variable limits the ciphers that SSH can use during communication. Note: Some organizations may have stricter requirements for approved ciphers. Ensure that ciphers used are in compliance with site policy."
+    rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. - The DES, Triple DES, and Blowfish ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain cleartext data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack. - The RC4 algorithm, as used in the TLS protocol and SSL protocol, does not properly combine state data with key data during the initialization phase, which makes it easier for remote attackers to conduct plaintext-recovery attacks against the initial bytes of a stream by sniffing network traffic that occasionally relies on keys affected by the Invariance Weakness, and then using a brute-force approach involving LSB values, aka the "Bar Mitzvah" issue. - The passwords used during an SSH session encrypted with RC4 can be recovered by an attacker who is able to capture and replay the session. - Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plaintext data from an arbitrary block of ciphertext in an SSH session via unknown vectors.'
+    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf and add or modify the Ciphers line to contain a comma separated list of the site approved ciphers Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128- gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
     compliance:
       - cis: ["5.3.13"]
       - cis_csc_v7: ["14.4"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.7", "CC6.1", "CC7.2"]
+      - cmmc_v2.0: ["SC.3.177", "SC.3.185"]
+      - iso_27001-2013: ["A.13.1.1", "A.10.1.1"]
+      - mitre_techniques: ["T1527", "T1119", "T1530", "T1114", "T1070", "T1208", "T1040", "T1145", "T1492", "T1493"]
+      - pci_dss_v3.2.1: ["4.1"]
     reference:
       - "https://nvd.nist.gov/vuln/detail/CVE-2016-2183"
       - "https://nvd.nist.gov/vuln/detail/CVE-2015-2808"
-      - "https://www.kb.cert.org/vuls/id/565052"
-      - "https://www.openssh.com/txt/cbc.adv"
       - "https://nvd.nist.gov/vuln/detail/CVE-2008-5161"
       - "https://nvd.nist.gov/vuln/detail/CVE-2013-4548"
       - "https://www.kb.cert.org/vuls/id/565052"
@@ -3270,8 +3299,10 @@ checks:
     condition: none
     rules:
       - "c:sshd -T -> r:ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
+      - "f:/etc/ssh/sshd_config -> r:ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
+      - 'd:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se'
 
-  - id: 19158
+  - id: 19163
     title: "Ensure only strong MAC algorithms are used."
     description: "This variable limits the types of MAC algorithms that SSH can use during communication."
     rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information"
@@ -3289,7 +3320,7 @@ checks:
     rules:
       - "c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
-  - id: 19159
+  - id: 19164
     title: "Ensure only strong Key Exchange algorithms are used."
     description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received"
     rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks"
@@ -3305,7 +3336,7 @@ checks:
     rules:
       - "c:sshd -T -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
-  - id: 19160
+  - id: 19165
     title: "Ensure SSH Idle Timeout Interval is configured."
     description: "The two options ClientAliveInterval and ClientAliveCountMax control the timeout of ssh sessions. When the ClientAliveInterval variable is set, ssh sessions that have no activity for the specified length of time are terminated. When the ClientAliveCountMax variable is set, sshd will send client alive messages at every ClientAliveInterval interval. When the number of consecutive client alive messages are sent with no response from the client, the ssh session is terminated. For example, if the ClientAliveInterval is set to 15 seconds and the ClientAliveCountMax is set to 3, the client ssh session will be terminated after 45 seconds of idle time."
     rationale: "Having no timeout value associated with a connection could allow an unauthorized user access to another user's ssh session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value at least reduces the risk of this happening. While the recommended setting is 300 seconds (5 minutes), set this timeout value based on site policy. The recommended setting for ClientAliveCountMax is 0. In this case, the client session will be terminated after 5 minutes of idle time and no keepalive messages will be sent."
@@ -3319,7 +3350,7 @@ checks:
       - 'c:sshd -T -> n:clientaliveinterval\s*\t*(\d+) compare <= 300 && n:clientaliveinterval\s*\t*(\d+) compare != 0'
       - 'c:sshd -T -> n:clientalivecountmax\s*\t*(\d+) compare <= 3'
 
-  - id: 19161
+  - id: 19166
     title: "Ensure SSH LoginGraceTime is set to one minute or less."
     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
@@ -3333,7 +3364,7 @@ checks:
     rules:
       - 'c:sshd -T -> n:logingracetime\s*\t*(\d+) compare <= 60 && n:logingracetime\s*\t*(\d+) compare >= 1'
 
-  - id: 19162
+  - id: 19167
     title: "Ensure SSH access is limited."
     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: AllowUsers, AllowGroups, DenyUsers, DenyGroups."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
@@ -3347,7 +3378,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:allowusers\s+\w+|allowgroups\s+\w+|denyusers\s+\w+|denygroups\s+\w+'
 
-  - id: 19163
+  - id: 19168
     title: "Ensure SSH warning banner is configured."
     description: "The Banner parameter specifies a file whose contents must be sent to the remote user before authentication is permitted. By default, no banner is displayed."
     rationale: "Banners are used to warn connecting users of the particular site's policy regarding connection. Presenting a warning message prior to the normal user login may assist the prosecution of trespassers on the computer system."
@@ -3362,7 +3393,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:banner\s*\t*/etc/issue.net'
 
-  - id: 19164
+  - id: 19169
     title: "Ensure SSH PAM is enabled."
     description: "UsePAM Enables the Pluggable Authentication Module interface. If set to “yes” this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types."
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
@@ -3377,7 +3408,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:^\s*usepam\s+yes'
 
-  - id: 19165
+  - id: 19170
     title: "Ensure SSH AllowTcpForwarding is disabled."
     description: "SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines."
     rationale: "Leaving port forwarding enabled can expose the organization to security risks and back-doors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
@@ -3395,7 +3426,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:^\s*allowtcpforwarding\s+no'
 
-  - id: 19166
+  - id: 19171
     title: "Ensure SSH MaxStartups is configured."
     description: "The MaxStartups parameter specifies the maximum number of concurrent unauthenticated connections to the SSH daemon."
     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
@@ -3407,13 +3438,13 @@ checks:
     rules:
       - 'c:sshd -T -> r:^\s*maxstartups\s+10:30:60'
 
-  - id: 19167
+  - id: 19172
     title: "Ensure SSH MaxSessions is limited."
     description: "The MaxSessionsparameter specifies the maximum number of open sessions permitted from a given connection."
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10"
     compliance:
-      - cis: ["5.3.21"]
+      - cis: ["5.3.22"]
       - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
