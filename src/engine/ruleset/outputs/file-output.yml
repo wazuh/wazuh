@@ -1,6 +1,6 @@
 name: output/file-output/0
 check:
-  - event.original: +exists
+  - event.original: +ef_exists
 
 outputs:
   - file:
