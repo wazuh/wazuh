@@ -1,0 +1,47 @@
+# Wazuh - Filebeat configuration file
+output.elasticsearch.hosts:
+        - 127.0.0.1:9200
+
+output.elasticsearch:
+  protocol: https
+  username: ${username}
+  password: ${password}
+  ssl.certificate_authorities:
+    - /etc/filebeat/certs/root-ca.pem
+  ssl.certificate: "/etc/filebeat/certs/wazuh-server.pem"
+  ssl.key: "/etc/filebeat/certs/wazuh-server-key.pem"
+  index: "wazuh-alerts-5.x-%{+yyyy.MM.dd}"
+
+setup.template.name: 'wazuh-5'
+setup.template.pattern: 'wazuh-alerts-5-*'
+setup.template.json.enabled: true
+setup.template.json.path: '/etc/filebeat/wazuh-template.json'
+setup.template.json.name: 'wazuh-5'
+setup.ilm.overwrite: true
+setup.ilm.enabled: false
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+logging.metrics.enabled: false
+
+seccomp:
+  default_action: allow
+  syscalls:
+  - action: allow
+    names:
+    - rseq
+
+filebeat.inputs:
+  - type: log
+    paths:
+      - /var/ossec/logs/alerts/alerts-ECS.json
+    json.overwrite_keys: true
+    json.keys_under_root: true
+    json.expand_keys: true
+
