@@ -2,83 +2,97 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
+    config.vm.box = "generic/ubuntu2004"
+    config.vm.hostname = "engine"
+    config.vm.network "public_network"
+    config.vm.synced_folder ".", "/vagrant", disabled: true
 
-    if Vagrant.has_plugin?("vagrant-vbguest")
-      config.vbguest.auto_update = false # don't auto-update the guest additions
+    config.vm.provider "libvirt" do |vm|
+        vm.cpus = 8
+        vm.memory = 8192
     end
-
-    config.vm.provider "virtualbox" do |v|
-      v.customize ["modifyvm", :id, "--memory", 1024]
+  
+    config.vm.provider "virtualbox" do |vm|
+        vm.name = "engine"
+        vm.check_guest_additions = false
+        vm.memory = 8192
+        vm.cpus = 8
+        vm.customize ["modifyvm", :id, "--vram", "128"]
     end
+  
+    config.vm.provider "hyperv" do |h|
+        h.vmname = "engine"
+        h.enable_checkpoints = true
+        h.enable_automatic_checkpoints = true
+        h.enable_enhanced_session_mode = true
+        h.memory = 8192
+        h.maxmemory = 8192
+        h.cpus = 8
+    end
+  
+    config.ssh.forward_agent = true
+    
+    config.vm.provision "engineFirstRun", type: "shell", inline: <<-SHELL
+        echo "Installing dependencies to build the engine"
 
-    config.vm.define :engine do |engine|
-        engine.vm.box = "msi/ubuntu-jammy"
-        engine.vm.network :private_network, ip: "192.168.56.28"
-        engine.vm.hostname = "vm-engine"
-        engine.ssh.username = 'vagrant'
-        engine.ssh.password = 'vagrant'
-        engine.ssh.insert_key = 'true'
-        engine.vm.synced_folder "./engine", "/vagrant"
-        engine.vm.provider "virtualbox" do |pmv|
-        pmv.memory = 8192
-        pmv.cpus   = 6
-
-        engine.vm.provision "engineFirstRun", type: "shell", inline: <<-SHELL
         #Dependencies
         sudo apt-get update
-        sudo apt-get install gcc g++ make libc6-dev curl policycoreutils automake autoconf gnupg apt-transport-https libtool libssl-dev -y
+        sudo apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev libcurl4-openssl-dev policycoreutils automake autoconf gnupg apt-transport-https libtool libssl-dev jq -y
+  
+        #CMake 3.24 installation from its release page
+        curl -sL https://github.com/Kitware/CMake/releases/download/v3.24.2/cmake-3.24.2-linux-x86_64.tar.gz | sudo tar -xz -C /usr/local --strip-components=1
+        export PATH=$PATH:/usr/local/bin
 
-        #CMake 3.24 installation from sources
-        sudo apt-get -y install libssl-dev libcurl4-gnutls-dev
-        sudo apt-get -y install cmake
+ 
+        echo "Downlading the engine from github"
+        sudo apt-get update
+        mkdir engine &&	cd engine
+        git clone  https://github.com/wazuh/wazuh.git
+        cd wazuh
+        git checkout 11334-dev-new-wazuh-engine
+        cd src/engine && mkdir build 
+        ENGINE_SRC_DIR=$(pwd)
 
+        echo "Building the engine from its source code"
+        ulimit -s unlimited
+        cmake -S . -B build/
+        cmake --build build/ --config Debug --target main -j $(nproc)
+  
+        #check if main was built, if not throw error
+        if [ ! -f ./build/main ]; then
+            echo "* ERROR BUILDING ENGINE *"
+            exit -1
+        fi
+
+        git checkout 14738-filebeat-mappings-ecs-engine
+
+        # Get IP Address
+        ip="127.0.0.1"
+        echo "Setting up Wazuh in $ip"
         #Download the Wazuh installation assistant.
         curl -sO https://packages.wazuh.com/4.3/wazuh-install.sh
         curl -sO https://packages.wazuh.com/4.3/config.yml
-        sed -E -i 's/ ip: <indexer-node-ip>/ ip: 192.168.56.28/gm' config.yml
-        sed -E -i 's/ ip: <wazuh-manager-ip>/ ip: 192.168.56.28/gm' config.yml
-        sed -E -i 's/ ip: <dashboard-node-ip>/ ip: 192.168.56.28/gm' config.yml
+        sed -E -i "s/ ip: <indexer-node-ip>/ ip: $ip/gm" config.yml
+        sed -E -i "s/ ip: <wazuh-manager-ip>/ ip: $ip/gm" config.yml
+        sed -E -i "s/ ip: <dashboard-node-ip>/ ip: $ip/gm" config.yml
         sudo bash wazuh-install.sh --generate-config-files
         sudo bash wazuh-install.sh -a
-
+    
         #Change password to admin/wazuhEngine5+ because it must have lower, uper, numbers and symbol
-        sudo /usr/share/wazuh-indexer/plugins/opensearch-security/tools/wazuh-passwords-tool.sh -u admin -p "wazuhEngine+5"
-
-        #Download engine
-        sudo apt-get update
-        mkdir engine &&	cd engine
-        git clone https://github.com/wazuh/wazuh.git
-        cd wazuh && git checkout 11334-dev-new-wazuh-engine
-        cd src/engine && mkdir build
-
-        ulimit -s unlimited
-        # retry build proccess at least 5 times due to compiler error
-        while [ ! -f /build/main ]
-        do
-          cmake -S . -B build/
-          cmake --build build/ --config Debug --target main -j 3
-          ((c++)) && ((c==5)) && break # Limits the amount of tries to 5
-        done
-
-        #check if main was built, if not throw error
-        if [ ! -f /build/main ]; then
-          echo "* ERROR BUILDING ENGINE *"
-        fi
+        sudo /usr/share/wazuh-indexer/plugins/opensearch-security/tools/wazuh-passwords-tool.sh -u admin -p "wazuhEngine5+"
 
         #Replace filebeat & elastic for engine
-        git checkout 14738-filebeat-mappings-ecs-engine # TODO : Remove this line when 14738-filebeat-mappings-ecs-engine is merged
         sudo cp extension/elasticsearch/7.x/wazuh-template.json /etc/filebeat/
-        rm -rf /usr/share/filebeat/module/wazuh/
-        sudo cp -r /home/vagrant/engine/wazuh/src/engine/extension/filebeat/7.x/wazuh-module/ /usr/share/filebeat/module/wazuh/
+        sudo cp extension/filebeat/7.x/filebeat.yml /etc/filebeat/
         sudo systemctl restart wazuh-indexer
         sudo systemctl restart filebeat.service
-
+  
         #Replace engine for analysisd
         WAZUH_DIR=/var/ossec
         ENGINE_DIR=$WAZUH_DIR/engine
-        ENGINE_SRC_DIR=/root/engine/wazuh/src/engine # Engine source code path
-
-        sytemctl stop wazuh-manager
+  
+        echo "Setting up the engine"
+        sudo systemctl stop wazuh-manager
         sudo rm $WAZUH_DIR/queue/sockets/queue #Remove queue of Analysisd
         sudo mkdir -p $ENGINE_DIR/store #Path to store the catalog
         sudo mkdir $WAZUH_DIR/etc/kvdb/ #Path to store the kvdb
@@ -89,13 +103,17 @@ Vagrant.configure("2") do |config|
         build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load decoder ruleset/decoders/
         build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load output ruleset/outputs/
         build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load environment ruleset/environments/
-        build./main env -a $WAZUH_DIR/queue/sockets/engine-api set environment/wazuh/0.1
+        build/main env -a $WAZUH_DIR/queue/sockets/engine-api set environment/wazuh/0
+        echo 
         sleep 1
         kill $main_pid
-
+  
+        echo "Enabling the engine"
         #TODO: uncomment once full replacement works
         sudo cp $ENGINE_SRC_DIR/build/main $ENGINE_DIR/wazuh-engine
+        sudo chmod 755 $ENGINE_DIR/wazuh-engine
         sudo cp $ENGINE_SRC_DIR/test/scripts/wazuh-bin-engine.sh $WAZUH_DIR/bin/wazuh-engine
+        sudo chmod 755 $WAZUH_DIR/bin/wazuh-engine
         sudo chown -R wazuh:wazuh $ENGINE_DIR
         sudo chown wazuh:wazuh $WAZUH_DIR/bin/wazuh-engine
         sudo sed -e "s/'wazuh-analysisd', //g" -i $(find $WAZUH_DIR -name dapi.py | grep python)
@@ -104,10 +122,12 @@ Vagrant.configure("2") do |config|
         sudo systemctl restart wazuh-indexer
         sudo systemctl restart wazuh-dashboard
 
-        #Replace wazuh-control for engine
+        # wait for elastic to be ready
+        sleep 10s
+        # create index pattern
+        sudo filebeat setup
 
-        SHELL
-        end
-    end
+    SHELL
 
-  end
+end
+
