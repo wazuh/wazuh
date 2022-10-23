@@ -12,8 +12,15 @@ output.elasticsearch:
   ssl.key: "/etc/filebeat/certs/wazuh-server-key.pem"
   index: "wazuh-alerts-5.x-%{+yyyy.MM.dd}"
 
+setup.kibana.host: "https://127.0.0.1:443"
+setup.kibana.protocol: "https"
+setup.kibana.ssl.enabled: true
+setup.kibana.ssl.certificate_authorities: ["/etc/filebeat/certs/root-ca.pem"]
+setup.kibana.ssl.certificate: "/etc/wazuh-dashboard/certs/wazuh-dashboard.pem"
+setup.kibana.ssl.key: "/etc/wazuh-dashboard/certs/wazuh-dashboard-key.pem"
+
 setup.template.name: 'wazuh-5'
-setup.template.pattern: 'wazuh-alerts-5-*'
+setup.template.pattern: 'wazuh-alerts-5.x-*'
 setup.template.json.enabled: true
 setup.template.json.path: '/etc/filebeat/wazuh-template.json'
 setup.template.json.name: 'wazuh-5'
