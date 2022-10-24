@@ -8,7 +8,7 @@ from wazuh.core import common
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
-from wazuh.core.exception import WazuhError, WazuhClusterError
+from wazuh.core.exception import WazuhError
 from wazuh.core.utils import filter_array_by_query
 
 

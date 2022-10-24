@@ -551,8 +551,8 @@ async def test_handler_send_request_ok(msg_build_mock, next_counter_mock, wait_f
     assert next_counter_mock.return_value not in handler.box
 
     wait_for_mock.side_effect = asyncio.TimeoutError
-    assert (await handler.send_request(b'some bytes', b'some data') == b'Error sending request: '
-                                                                       b'timeout expired.')
+    with pytest.raises(exception.WazuhClusterError, match=r'\b3020\b'):
+        await handler.send_request(b'some bytes', b'some data')
     assert handler.box[next_counter_mock.return_value] is None
 
     msg_build_mock.assert_called_with(b'some bytes', 30, b'some data')
@@ -757,11 +757,12 @@ async def test_handler_send_string():
     with patch('wazuh.core.cluster.common.Handler.send_request', return_value=b"some data"):
         assert (await handler.send_string(b"something") == b"some data")
 
-    with patch('wazuh.core.cluster.common.Handler.send_request', return_value=b"Error"):
+    with patch('wazuh.core.cluster.common.Handler.send_request', side_effect=exception.WazuhClusterError(3020)):
         with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
-            assert (await handler.send_string(b"something") == b"Error")
-            logger_mock.assert_called_once_with(f'There was an error while trying to send a string: {b"Error"}',
-                                                exc_info=False)
+            assert exception.WazuhClusterError(3020).message.encode() in await handler.send_string(b"something")
+            logger_mock.assert_called_once_with(
+                f'There was an error while trying to send a string: Error 3020 - Timeout sending request',
+                exc_info=False)
 
 
 def test_handler_get_manager():
@@ -1214,7 +1215,6 @@ def test_wazuh_common_init():
 
     wazuh_common_test = cluster_common.WazuhCommon()
     assert wazuh_common_test.sync_tasks == {}
-    assert wazuh_common_test.logger_tag == ""
 
 
 def test_wazuh_common_get_logger():
@@ -1335,47 +1335,6 @@ def test_wazuh_common_get_node():
         manager_mock.assert_called_once()
 
 
-# Test SyncTask class methods
-
-def test_sync_task_init():
-    """Test '__init__' method from the SyncTask class."""
-    sync_task = cluster_common.SyncTask(b"cmd", logging.getLogger("wazuh"),
-                                        cluster_common.Handler(fernet_key, cluster_items))
-
-    assert sync_task.cmd == b"cmd"
-    assert sync_task.logger == logging.getLogger("wazuh")
-    assert isinstance(sync_task.server, cluster_common.Handler)
-
-
-@pytest.mark.asyncio
-@patch('wazuh.core.cluster.common.Handler.send_request', return_value=Exception())
-async def test_sync_task_request_permission(send_request_mock):
-    """Check if a True value is returned once a permission to start synchronization is granted or a False when it
-    is not."""
-
-    sync_task = cluster_common.SyncTask(b"cmd", logging.getLogger("wazuh"),
-                                        cluster_common.Handler(fernet_key, cluster_items))
-
-    # Test first condition
-    with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
-        assert await sync_task.request_permission() is False
-        send_request_mock.assert_called_with(command=b"cmd" + b"_p", data=b"")
-        logger_mock.assert_called_once_with(f"Error asking for permission: {Exception()}")
-
-    with patch.object(logging.getLogger("wazuh"), "debug") as logger_mock:
-        # Test second condition
-        send_request_mock.return_value = b"True"
-        assert await sync_task.request_permission() is True
-        send_request_mock.assert_called_with(command=b"cmd" + b"_p", data=b"")
-        logger_mock.assert_called_once_with("Permission to synchronize granted.")
-
-        # Test third condition
-        send_request_mock.return_value = b"False"
-        assert await sync_task.request_permission() is False
-        send_request_mock.assert_called_with(command=b"cmd" + b"_p", data=b"")
-        logger_mock.assert_called_with("Master didn't grant permission to start a new synchronization: b'False'")
-
-
 # Test SyncWazuhdb class
 
 def test_sync_wazuh_db_init():
@@ -1441,7 +1400,7 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
 @pytest.mark.asyncio
 @freeze_time('1970-01-01')
 @patch("json.dumps", return_value="")
-@patch('wazuh.core.cluster.common.perf_counter', return_value=0)
+@patch('wazuh.core.cluster.common.time.perf_counter', return_value=0)
 async def test_sync_wazuh_db_sync_ok(perf_counter_mock, json_dumps_mock):
     """Check if the information is being properly sent to the master/worker node."""
 
@@ -1475,7 +1434,7 @@ async def test_sync_wazuh_db_sync_ok(perf_counter_mock, json_dumps_mock):
 
 
 @patch("json.loads", return_value={"updated_chunks": 10, "error_messages": None})
-@patch('wazuh.core.cluster.common.perf_counter', return_value=0)
+@patch('wazuh.core.cluster.common.time.perf_counter', return_value=0)
 def test_end_sending_agent_information(perf_counter_mock, json_loads_mock):
     """Check the correct output message when a command "syn_m_a_e", "syn_m_g_e" or "syn_w_g_e" takes place."""
 
@@ -1697,7 +1656,7 @@ def test_sync_task_init():
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.cluster.common.Handler.send_request', return_value=Exception())
+@patch('wazuh.core.cluster.common.Handler.send_request', side_effect=Exception())
 async def test_sync_task_request_permission(send_request_mock):
     """Check if a True value is returned once a permission to start synchronization is granted or a False when it
     is not."""
@@ -1711,6 +1670,7 @@ async def test_sync_task_request_permission(send_request_mock):
 
     with patch.object(logging.getLogger("wazuh"), "debug") as logger_mock:
         # Test second condition
+        send_request_mock.side_effect = None
         send_request_mock.return_value = b"True"
         assert await sync_task.request_permission() is True
         send_request_mock.assert_called_with(command=b"cmd" + b"_p", data=b"")
@@ -1758,21 +1718,21 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
         async def send_request(self, command, data):
             """Decide with will be the right output depending on the scenario."""
             if command == b"cmd" and data == b"" and self.count == 1:
-                return b"Error"
+                raise exception.WazuhClusterError(3020, extra_message=command.decode())
             elif command == b"cmd" and data == b"" and self.count == 2:
                 return b"OK"
             elif command == b"cmd_e" and b"OK path" and self.count == 2:
-                return Exception()
+                raise Exception()
             elif command == b"cmd" and data == b"" and self.count == 3:
                 return b"OK"
             elif command == b"cmd_e" and b"OK path" and self.count == 3:
-                return b"Error"
+                raise exception.WazuhClusterError(3016, extra_message=command.decode())
             elif command == b"cmd" and data == b"" and self.count == 4:
                 return b"OK"
             elif command == b"cmd_e" and b"OK path" and self.count == 4:
                 return b"OK"
 
-        async def send_file(self, filename):
+        async def send_file(self, filename, task_id):
             """Auxiliary method."""
             pass
 
@@ -1783,9 +1743,9 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
     with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
         await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
         json_dumps_mock.assert_called_once_with(
-            exception.WazuhClusterError(code=3016, extra_message=str(b"Error")),
+            exception.WazuhClusterError(code=3020, extra_message="cmd"),
             cls=cluster_common.WazuhJSONEncoder)
-        logger_mock.assert_called_once_with("Error sending zip file: Error 3016 - Received an error response: b'Error'")
+        logger_mock.assert_called_once_with("Error sending zip file: Error 3020 - Timeout sending request: cmd")
 
     worker_mock.count = 2
     with patch.object(WorkerMock, "send_file", return_value=1000) as send_file_mock:
@@ -1818,7 +1778,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
                     f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of 1 files."),
                     call("Sending zip file."), call("Zip file sent."), call('Increasing sync size limit to 37.50 MB.')])
                 logger_error_mock.assert_called_once_with(
-                    f"Error sending zip file: {exception.WazuhException(3016, 'Error')}")
+                    f"Error sending zip file: {exception.WazuhException(3016, 'cmd_e')}")
                 compress_files_mock.assert_called_once_with('Testing', {'path1': 'metadata1'},
                                                             {'path2': 'metadata2'}, None)
                 unlink_mock.assert_called_once_with("files/path/")
@@ -1833,7 +1793,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
 
             # Test return
             worker_mock.count = 4
-            assert await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None) is True
+            await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
             send_file_mock.assert_called_once_with('files/path/', b'OK')
             logger_debug_mock.assert_has_calls([call(
                 f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of 1 files."),
@@ -1846,7 +1806,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.cluster.common.Handler.send_request", return_value=Exception())
+@patch("wazuh.core.cluster.common.Handler.send_request", side_effect=Exception())
 async def test_sync_files_sync_ko(send_request_mock):
     """Test if the right exceptions are being risen when necessary."""
     files_to_sync = {"path1": "metadata1"}

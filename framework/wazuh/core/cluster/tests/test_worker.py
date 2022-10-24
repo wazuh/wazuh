@@ -451,11 +451,11 @@ def test_worker_handler_process_request_ok(logger_mock):
 def test_worker_handler_process_request_ko(create_task_mock, logger_mock):
     """Test the correct exception raise at method 'process_request'."""
 
-    with pytest.raises(exception.WazuhClusterError, match=r".* 3025 .*"):
+    with pytest.raises(exception.WazuhClusterError, match=r".* 1001 .*"):
         worker_handler.process_request(command=b"dapi_err", data=b"data 2")
     logger_mock.assert_called_with("Command received: 'b'dapi_err''")
 
-    with pytest.raises(exception.WazuhClusterError, match=r".* 3025 .*"):
+    with pytest.raises(exception.WazuhClusterError, match=r".* 1001 .*"):
         worker_handler.process_request(command=b"sendsyn_err", data=b"data 2")
     logger_mock.assert_called_with("Command received: 'b'sendsyn_err''")
 
@@ -499,7 +499,7 @@ def test_worker_handler_end_receiving_integrity(end_receiving_file_mock):
     """Test if a task was notified about some information reception."""
 
     assert worker_handler.end_receiving_integrity("file_name") == (b"OK", b"OK")
-    end_receiving_file_mock.assert_called_once_with("file_name")
+    end_receiving_file_mock.assert_called_once_with(task_and_file_names="file_name", logger_tag="Integrity sync")
 
 
 @patch("wazuh.core.cluster.common.WazuhCommon.error_receiving_file", return_value=(b"error", b"error"))
@@ -507,7 +507,8 @@ def test_worker_handler_error_receiving_integrity(error_receiving_file_mock):
     """Check if a task was notified about some error that had place during the process."""
 
     assert worker_handler.error_receiving_integrity("file_name_and_errors") == (b"error", b"error")
-    error_receiving_file_mock.assert_called_once_with("file_name_and_errors")
+    error_receiving_file_mock.assert_called_once_with(task_id_and_error_details="file_name_and_errors",
+                                                      logger_tag="Integrity sync")
 
 
 @freeze_time('1970-01-01')

@@ -582,34 +582,24 @@ async def test_APIRequestQueue_run(loop_mock, import_module_mock):
                                             "not connected or does not exist: 'wazuh'.")
 
         node = NodeMock()
-        with patch.object(node, "send_string", return_value=b"noerror"):
-            with patch.object(node, "send_request", return_value=b"Error"):
+        with patch.object(node, "send_request", side_effect=WazuhClusterError(3020, extra_message="test")):
+            with patch.object(node, "send_string", return_value=b"noerror"):
                 with patch("wazuh.core.cluster.dapi.dapi.DistributedAPI", return_value=DistributedAPI_mock()):
                     server.clients = {"wazuh": node}
                     with pytest.raises(Exception):
                         await apirequest.run()
 
-        with patch.object(node, "send_string", return_value=b"noerror"):
-            with patch.object(node, "send_request", return_value=WazuhError(1000)):
+            with patch.object(node, "send_string", Exception("break while true")):
                 with patch("wazuh.core.cluster.dapi.dapi.DistributedAPI", return_value=DistributedAPI_mock()):
-                    server.clients = {"wazuh": node}
-                    with pytest.raises(Exception):
-                        await apirequest.run()
-
-        with patch.object(node, "send_string", Exception("break while true")):
-            with patch("wazuh.core.cluster.dapi.dapi.DistributedAPI", return_value=DistributedAPI_mock()):
-                apirequest.logger = logging.getLogger("apirequest")
-                with pytest.raises(Exception):
-                    await apirequest.run()
-
-        with patch.object(node, "send_string", return_value=b"noerror"):
-            with patch("wazuh.core.cluster.dapi.dapi.DistributedAPI", return_value=DistributedAPI_mock()):
-                with pytest.raises(Exception):
-                    await apirequest.run()
+                    with patch("wazuh.core.cluster.dapi.dapi.contextlib.suppress", side_effect=Exception()):
+                        apirequest.logger = logging.getLogger("apirequest")
+                        with pytest.raises(Exception):
+                            await apirequest.run()
 
 
+@patch("wazuh.core.cluster.dapi.dapi.contextlib.suppress", side_effect=Exception())
 @patch("asyncio.get_event_loop")
-async def test_SendSyncRequestQueue_run(loop_mock):
+async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
     """Test `SendSyncRequestQueue.run` function."""
 
     class NodeMock:
@@ -647,10 +637,4 @@ async def test_SendSyncRequestQueue_run(loop_mock):
 
             with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect="noerror"):
                 with pytest.raises(Exception):
-                    await sendsync.run()
-
-        with patch.object(node, "send_request", return_value=WazuhError(1000)):
-            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", return_value="valid"):
-                sendsync.logger = logger
-                with pytest.raises(Exception, match=".*break while true.*"):
                     await sendsync.run()

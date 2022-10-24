@@ -695,7 +695,7 @@ class APIRequestQueue(WazuhRequestQueue):
                 task_id = await node.send_string(json.dumps(result, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 self.logger.error(f"Error in distributed API: {e}", exc_info=True)
-                with contextlib.suppress(WazuhException):
+                with contextlib.suppress(Exception):
                     await node.send_request(b"dapi_err", f"{name_2}{str(e)}".encode())
             else:
                 try:
@@ -737,7 +737,7 @@ class SendSyncRequestQueue(WazuhRequestQueue):
                 task_id = await node.send_string(result.encode())
             except Exception as e:
                 self.logger.error(f"Error in SendSync (parameters {request}): {str(e)}", exc_info=False)
-                with contextlib.suppress(WazuhException):
+                with contextlib.suppress(Exception):
                     await node.send_request(b"sendsyn_err", f"{name_2}{str(e)}".encode())
             else:
                 try:

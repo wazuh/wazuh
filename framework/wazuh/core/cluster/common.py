@@ -553,13 +553,13 @@ class Handler(asyncio.Protocol):
             received_string = self.in_str[task_id].payload
             data = json.loads(received_string.decode())
         except KeyError as e:
-            with contextlib.suppress(exception.WazuhClusterError):
+            with contextlib.suppress(Exception):
                 await self.send_request(command=error_command,
                                         data=f'error while trying to access string under task_id {str(e)}.'.encode())
             raise exception.WazuhClusterError(3035, extra_message=f"it should be under task_id {str(e)}, "
                                                                   f"but it's empty.")
         except ValueError as e:
-            with contextlib.suppress(exception.WazuhClusterError):
+            with contextlib.suppress(Exception):
                 await self.send_request(command=error_command,
                                         data=f'error while trying to load JSON: {str(e)}'.encode())
             raise exception.WazuhClusterError(3036, extra_message=str(e))
@@ -593,7 +593,7 @@ class Handler(asyncio.Protocol):
                                                timeout, info_type=info_type)
         except Exception as e:
             print(f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
-            with contextlib.suppress(exception.WazuhClusterError):
+            with contextlib.suppress(Exception):
                 await self.send_request(command=error_command,
                                         data=f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
             raise exception.WazuhClusterError(3037, extra_message=str(e))
@@ -791,7 +791,7 @@ class Handler(asyncio.Protocol):
                 exc = json.dumps(e, cls=WazuhJSONEncoder)
             else:
                 exc = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)), cls=WazuhJSONEncoder)
-            with contextlib.suppress(exception.WazuhClusterError):
+            with contextlib.suppress(Exception):
                 await self.send_request(b'dapi_err', exc.encode())
         finally:
             # Remove the string after using it
@@ -815,7 +815,7 @@ class Handler(asyncio.Protocol):
                 exc = json.dumps(e, cls=WazuhJSONEncoder)
             else:
                 exc = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)), cls=WazuhJSONEncoder)
-            with contextlib.suppress(exception.WazuhClusterError):
+            with contextlib.suppress(Exception):
                 await self.send_request(b'sendsync_err', exc.encode())
         finally:
             # Remove the string after using it
@@ -1203,7 +1203,7 @@ class Handler(asyncio.Protocol):
             else:
                 exc = exception.WazuhClusterError(3040, extra_message=str(e))
             # Notify the sending node to stop its task.
-            with contextlib.suppress(exception.WazuhClusterError):
+            with contextlib.suppress(Exception):
                 await self.send_request(command=b"cancel_task",
                                         data=f"{task_id} {json.dumps(exc, cls=WazuhJSONEncoder)}".encode())
             raise exc
@@ -1498,7 +1498,7 @@ class SyncFiles(SyncTask):
                 exc = json.dumps(e, cls=WazuhJSONEncoder).encode()
             else:
                 exc = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)), cls=WazuhJSONEncoder).encode()
-            with contextlib.suppress(exception.WazuhClusterError):
+            with contextlib.suppress(Exception):
                 # Notify error to master and delete its received file.
                 await self.server.send_request(command=self.cmd + b'_r', data=task_id + b' ' + exc)
         finally:
