@@ -74,9 +74,9 @@ public function config()
 
         If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_PROTOCOL <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
             If WAZUH_PROTOCOL <> "" and InStr(WAZUH_PROTOCOL,",") Then
-                protocol_list=Split(WAZUH_PROTOCOL,",")
+                protocol_list=Split(LCase(WAZUH_PROTOCOL),",")
             Else
-                protocol_list=Array(WAZUH_PROTOCOL)
+                protocol_list=Array(LCase(WAZUH_PROTOCOL))
             End If
             If WAZUH_MANAGER <> "" Then 
                 Set re = new regexp
@@ -96,6 +96,7 @@ public function config()
                 not_replaced = True
                 formatted_list = vbCrLf
                 for i=0 to UBound(ip_list)
+                    If ip_list(i) <> "" Then
                         formatted_list = formatted_list & "    <server>" & vbCrLf
                         formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
                         formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
@@ -113,6 +114,7 @@ public function config()
                         Else
                             formatted_list = formatted_list & "    </server>" & vbCrLf
                         End If
+                    End If
                 next
                 strText = re.Replace(strText, formatted_list)
             Else
