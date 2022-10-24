@@ -11,10 +11,10 @@
 # Center for Internet Security Benchmark for HP-UX 11i from 09-17-2009
 
 policy:
-  id: "cis_hpux"
+  id: "cis_hpux_bastille"
   file: "cis_hpux_11i_bastille.yml"
   name: "CIS HP-UX 11i Benchmark"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for HPUX version 11i. This guide was tested against HPUX using Bastille"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for HPUX version 11i. This guide was tested against HP-UX using Bastille"
   references:
     - https://www.cisecurity.org/cis-benchmarks/
     - https://myenterpriselicense.hpe.com/cwp-ui/free-software/B6849AA
@@ -34,9 +34,9 @@ checks:
 
   - id: 21001
     title: "Install and configure HP-UX Secure Shell."
-    description: "OpenSSH is a popular free distribution of the standards-track SSH protocols  which allows secure encrypted network logins and file transfers.   HP-UX Secure Shell is HP’s pre-compiled and supported version of OpenSSH."
-    rationale: "Common login and file transfer services such as telnet, FTP, rsh, rlogin, and rcp use insecure, clear-text protocols that are vulnerable to attack.  OpenSSH provides a secure, encrypted replacement for these services.   Security is improved by further constraining services in the default configuration. "
-    remediation: "Perform the following to install and securely configure Secure Shell (SSH) 1. Download and install HP-UX Secure Shell if not already installed on the system.  2. Perform the following post-installation actions to secure the SSH service: a. Change to the /opt/ssh/etc directory b. Open sshd_config c. Set the Protocol token to 2.  If it is absent, add and set it. d. Set the X11Forwarding token to yes.  If it is absent, add and set it. e. Set the IgnoreRhosts token to yes.  If itis absent, add and set it. f. Set the RhostsAuthentication token to no.  If it is absent, add and set it. g. Set the RhostsRSAAuthentication token to no. If it is absent, add and set it. h. Set the PermitRootLogin token to no. If it is absent, add and set it. i. Set the PermitEmptyPasswords token to no. If it is absent, add and set it. j. Set the Banner token to /etc/issue. If it is absent, add and set it. k. Set root as the owner of sshd_config and ssh_config. l. Set sys as the groupowner of sshd_config and ssh_config. m.  Restrict write access to sshd_config and ssh_config to the file owner."
+    description: "OpenSSH is a popular free distribution of the standards-track SSH protocols which allows secure encrypted network logins and file transfers. HP-UX Secure Shell is HP's pre-compiled and supported version of OpenSSH."
+    rationale: "Common login and file transfer services such as telnet, FTP, rsh, rlogin, and rcp use insecure, clear-text protocols that are vulnerable to attack. OpenSSH provides a secure, encrypted replacement for these services. Security is improved by further constraining services in the default configuration."
+    remediation: 'Perform the following to install and securely configure Secure Shell (SSH) 1. Download and install HP-UX Secure Shell if not already installed on the system. 2. Perform the following post-installation actions to secure the SSH service: a. Change to the /opt/ssh/etc directory b. Open sshd_config c. Set the Protocol token to 2. If it is absent, add and set it. d. Set the X11Forwarding token to yes. If it is absent, add and set it. e. Set the IgnoreRhosts token to yes. If it is absent, add and set it. f. Set the RhostsAuthentication token to no. If it is absent, add and set it. g. Set the RhostsRSAAuthentication token to no. If it is absent, add and set it. h. Set the PermitRootLogin token to no. If it is absent, add and set it. i. Set the PermitEmptyPasswords token to no. If it is absent, add and set it. j. Set the Banner token to /etc/issue. If it is absent, add and set it. k. Set root as the owner of sshd_config and ssh_config. l. Set sys as the group owner of sshd_config and ssh_config. m. Restrict write access to sshd_config and ssh_config to the file owner. The following script will perform the above procedure: 13 | P a g e cd /opt/ssh/etc cp -p sshd_config sshd_config.tmp awk '' /^Protocol/ /^IgnoreRhosts/ /^RhostsAuthentication/ /^RhostsRSAAuthentication/ { $2 ="no" }; /(^#|^)PermitRootLogin/    { $1 = "PermitRootLogin"; $2 = "no" }; /^PermitEmptyPasswords/    { $2 = "no" }; /^#Banner/                 { $1 = "Banner"; $2 = "/etc/issue" } { print }'' sshd_config.tmp > sshd_config { $2 ="2"}; { $2 = "yes" }; { $2 = "no" }; rm -f sshd_config.tmp chown root:sys ssh_config sshd_config chmod go-w ssh_config sshd_config'
     compliance:
       - cis: ["1.1.2"]
       - cis_level: ["1"]
