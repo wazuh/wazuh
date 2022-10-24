@@ -116,9 +116,12 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
         // Extract header: "\.*type=\.* msg=audit(.*):"
         //                                        --
 
-        if (!((id = strstr(buffer, "type=")) && (id = strstr(id + 5, " msg=audit(")) && (p = strstr(id += 11, "): ")))) {
+        if (!((id = strstr(buffer, "type=")) && (id = strstr(id + 5, " msg=audit(")))) {
             merror("Discarding audit message because of invalid syntax.");
             break;
+        } else if (!(p = strstr(id += 11, "): "))) {
+            mdebug2("Read audit message in '%s' with empty payload. Dropping line.", lf->file);
+            continue;
         }
 
         z = p - id;
