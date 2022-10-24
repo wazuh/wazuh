@@ -1971,7 +1971,7 @@ checks:
       - "c:dpkg -s ufw -> r:Status: install ok installed"
       - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(incoming\)|reject\s+\(incoming\)'
       - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(outgoing\)|reject\s+\(outgoing\)'
-      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(routed\)|reject\s+\(routed\)|disabled\s+\(routed\)'
+      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(routed\)|reject\s+\(routed\)'
 
   # 3.5.2 Configure nftables
 
@@ -2007,13 +2007,14 @@ checks:
       - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
       - "c:dpkg -s ufw -> r:package 'ufw' is not installed"
       - 'c:ufw status -> r:Status:\s*inactive'
 
-  #3.5.2.3 Ensure iptables are flushed with nftables (Manual)
+  # 3.5.2.3 Ensure iptables are flushed with nftables (Manual)
   - id: 19100
     title: "Ensure iptables are flushed with nftables."
-    description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use."
+    description: "nftables is a replacement for iptables, ip6tables, ebtables and arptables."
     rationale: "It is possible to mix iptables and nftables. However, this increases complexity and also the chance to introduce errors. For simplicity flush out all iptables rules, and ensure it is not loaded."
     remediation: "Run the following commands to flush iptables: For iptables: # iptables -F For ip6tables: # ip6tables -F"
     compliance:
@@ -2026,6 +2027,7 @@ checks:
     rules:
       - "c:dpkg -s nftables -> r:Status: install ok installed"
       - "not c:iptables -L -> r:^ACCEPT|^DROP|^REJECT"
+      - "not c:ip6tables -L -> r:^ACCEPT|^DROP|^REJECT"
 
   # 3.5.2.4 Ensure a nftables table exists (Automated)
   - id: 19101
@@ -2143,6 +2145,7 @@ checks:
     condition: all
     rules:
       - "c:dpkg -s iptables -> r:Status: install ok installed"
+      - "c:dpkg -s iptables-persistent -> r:Status: install ok installed"
       - "c:dpkg -s nftables -> r:package 'nftables' is not installed"
       - "c:dpkg -s ufw -> r:package 'ufw' is not installed"
 
@@ -2179,7 +2182,7 @@ checks:
     rules:
       - "c:ufw status -> r:Status:\\s*inactive"
       - "c:dpkg -s ufw -> r:package 'ufw' is not installed"
-      - "systemctl isenabled ufw -> r:masked"
+      - "c:systemctl isenabled ufw -> r:masked"
 
   # 3.5.3.2 Configure IPv4 iptables
 
