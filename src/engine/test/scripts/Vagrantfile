@@ -1,6 +1,5 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
-
 Vagrant.configure("2") do |config|
     config.vm.box = "generic/ubuntu2004"
     config.vm.hostname = "engine"
@@ -11,15 +10,14 @@ Vagrant.configure("2") do |config|
         vm.cpus = 8
         vm.memory = 8192
     end
-  
+
     config.vm.provider "virtualbox" do |vm|
         vm.name = "engine"
         vm.check_guest_additions = false
         vm.memory = 8192
         vm.cpus = 8
-        vm.customize ["modifyvm", :id, "--vram", "128"]
     end
-  
+
     config.vm.provider "hyperv" do |h|
         h.vmname = "engine"
         h.enable_checkpoints = true
@@ -29,35 +27,35 @@ Vagrant.configure("2") do |config|
         h.maxmemory = 8192
         h.cpus = 8
     end
-  
+
     config.ssh.forward_agent = true
-    
+
     config.vm.provision "engineFirstRun", type: "shell", inline: <<-SHELL
         echo "Installing dependencies to build the engine"
 
         #Dependencies
         sudo apt-get update
-        sudo apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev libcurl4-openssl-dev policycoreutils automake autoconf gnupg apt-transport-https libtool libssl-dev jq -y
-  
+        sudo apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev libcurl4-openssl-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq -y
+
         #CMake 3.24 installation from its release page
         curl -sL https://github.com/Kitware/CMake/releases/download/v3.24.2/cmake-3.24.2-linux-x86_64.tar.gz | sudo tar -xz -C /usr/local --strip-components=1
         export PATH=$PATH:/usr/local/bin
 
- 
+
         echo "Downlading the engine from github"
         sudo apt-get update
         mkdir engine &&	cd engine
         git clone  https://github.com/wazuh/wazuh.git
         cd wazuh
         git checkout 11334-dev-new-wazuh-engine
-        cd src/engine && mkdir build 
+        cd src/engine && mkdir build
         ENGINE_SRC_DIR=$(pwd)
 
         echo "Building the engine from its source code"
         ulimit -s unlimited
         cmake -S . -B build/
         cmake --build build/ --config Debug --target main -j $(nproc)
-  
+
         #check if main was built, if not throw error
         if [ ! -f ./build/main ]; then
             echo "* ERROR BUILDING ENGINE *"
@@ -77,20 +75,19 @@ Vagrant.configure("2") do |config|
         sed -E -i "s/ ip: <dashboard-node-ip>/ ip: $ip/gm" config.yml
         sudo bash wazuh-install.sh --generate-config-files
         sudo bash wazuh-install.sh -a
-    
+
         #Change password to admin/wazuhEngine5+ because it must have lower, uper, numbers and symbol
         sudo /usr/share/wazuh-indexer/plugins/opensearch-security/tools/wazuh-passwords-tool.sh -u admin -p "wazuhEngine5+"
 
         #Replace filebeat & elastic for engine
         sudo cp extension/elasticsearch/7.x/wazuh-template.json /etc/filebeat/
         sudo cp extension/filebeat/7.x/filebeat.yml /etc/filebeat/
-        sudo systemctl restart wazuh-indexer
         sudo systemctl restart filebeat.service
-  
+
         #Replace engine for analysisd
         WAZUH_DIR=/var/ossec
         ENGINE_DIR=$WAZUH_DIR/engine
-  
+
         echo "Setting up the engine"
         sudo systemctl stop wazuh-manager
         sudo rm $WAZUH_DIR/queue/sockets/queue #Remove queue of Analysisd
@@ -104,10 +101,10 @@ Vagrant.configure("2") do |config|
         build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load output ruleset/outputs/
         build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load environment ruleset/environments/
         build/main env -a $WAZUH_DIR/queue/sockets/engine-api set environment/wazuh/0
-        echo 
+        echo
         sleep 1
         kill $main_pid
-  
+
         echo "Enabling the engine"
         #TODO: uncomment once full replacement works
         sudo cp $ENGINE_SRC_DIR/build/main $ENGINE_DIR/wazuh-engine
@@ -119,8 +116,7 @@ Vagrant.configure("2") do |config|
         sudo sed -e "s/'wazuh-analysisd', //g" -i $(find $WAZUH_DIR -name dapi.py | grep python)
         sudo sed -e "s/wazuh-analysisd /wazuh-engine /g" -i $WAZUH_DIR/bin/wazuh-control
         sudo systemctl restart wazuh-manager
-        sudo systemctl restart wazuh-indexer
-        sudo systemctl restart wazuh-dashboard
+
 
         # wait for elastic to be ready
         sleep 10s
