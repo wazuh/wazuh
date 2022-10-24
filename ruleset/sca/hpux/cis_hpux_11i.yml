@@ -32,7 +32,7 @@ checks:
   # 1.1  Install patches and supplementary software
   #################################################################
 
-  - id: 21001
+  - id: 25001
     title: "Install and configure HP-UX Secure Shell."
     description: "OpenSSH is a popular free distribution of the standards-track SSH protocols which allows secure encrypted network logins and file transfers. HP-UX Secure Shell is HP's pre-compiled and supported version of OpenSSH."
     rationale: "Common login and file transfer services such as telnet, FTP, rsh, rlogin, and rcp use insecure, clear-text protocols that are vulnerable to attack. OpenSSH provides a secure, encrypted replacement for these services. Security is improved by further constraining services in the default configuration."
@@ -59,7 +59,7 @@ checks:
   # 1.2 Minimize inetd network services
   #################################################################
 
-  - id: 21003
+  - id: 25003
     title: "Disable Standard Services."
     description: "The stock /etc/inetd.conf file shipped with HP-UX contains many services which are rarely used, or which have more secure alternatives. Indeed, after enabling SSH (see item 1.1.2) it may be possible to completely do away with all inetd-based services, since SSH provides both a secure login mechanism and a means of transferring files to and from the system.  The steps articulated in the Remediation section will disable all services normally enabled in the HP-UX inetd.conf file."
     rationale: "The stock /etc/inetd.conf file shipped with HP-UX contains services that are rarely used or have more secure alternatives.  Removing these from inetd will avoid exposure to possible security vulnerability in those services."
@@ -86,7 +86,7 @@ checks:
       - 'not f:/etc/inetd.conf -> r:^\s*shell'
       - 'not f:/etc/inetd.conf -> r:^\s*login'
 
-  - id: 21004
+  - id: 25004
     title: "Only enable telnet if absolutely necessary."
     description: "Re-enable telnet. Telnet uses an unencrypted network protocol, which means data from the login session (such as passwords and all other data transmitted during the session) can be stolen by eavesdroppers on the network, and also that the session can be hijacked by outsiders to gain access to the remote system.  HP-UX Secure Shell (OpenSSH) provides an encrypted alternative to telnet (and other utilities) and should be used instead."
     rationale: "There is a mission-critical reason that requires users to access the system via telnet instead of the more secure SSH protocol."
@@ -97,7 +97,7 @@ checks:
     rules:
       - 'not f:/etc/inetd.conf -> r:^\s*telnet'
 
-  - id: 21005
+  - id: 25005
     title: "Only enable FTP if absolutely necessary."
     description: "Re-enable ftp. Like telnet, the FTP protocol is unencrypted, which means passwords and other data transmitted during the session can be captured by sniffing the network, and that the FTP session itself can be hijacked by an external attacker. SSH provides two alternative, encrypted file transfer mechanisms, scp and sftp, which should be used instead of FTP.  Even if FTP is required because the local system is an anonymous FTP server, consider requiring authenticated users onthe system to transfer files via SSH-based protocols.  For further information on restricting FTP access to the system, see item 1.6.2.  Sites may also consider augmenting the “ftpd -l” below with '-v' (10.x and 11.x) or '-L' (11.x only) for additional logging of FTP transactions, or with '-a' (11.x only) for fine grain FTP access control through the use of a configuration file - see the ftpd(1M) man page on your systems for details."
     rationale: "This machine serves as an (anonymous) FTP server or other mission-critical role where data must be transferred via FTP instead of the more secure alternatives."
@@ -108,7 +108,7 @@ checks:
     rules:
       - 'not f:/etc/inetd.conf -> r:^\s*ftp'
 
-  - id: 21006
+  - id: 25006
     title: "Only enable rlogin/remsh/rcp if absolutely necessary."
     description: "SSH was designed to be a drop-in replacement for these protocols.  Given the wide availability of free SSH implementations, there are few cases where these tools cannot be replaced with SSH (again, see item 1.2.1 - Install SSH)."
     rationale: "There is a mission-critical reason to use rlogin/remsh/rcp instead of the more secure ssh/scp."
@@ -120,7 +120,7 @@ checks:
       - 'not f:/etc/inetd.conf -> r:^\s*shell'
       - 'not f:/etc/inetd.conf -> r:^\s*login'
 
-  - id: 21007
+  - id: 25007
     title: "Only enable TFTP if absolutely necessary."
     description: "TFTP is typically used for network booting of diskless workstations, X-terminals, and other similar devices.  TFTP is also used during network installs of systems via the HP-UX Ignite facility.  Routers and other network devices may copy configuration data to remote systems via TFTP for backup"
     rationale: "This system serves as a boot server or has other mission-critical roles where data must be transferred to and from this system via TFTP."
@@ -131,7 +131,7 @@ checks:
     rules:
       - 'not f:/etc/inetd.conf -> r:^\s*TFTP'
 
-  - id: 21008
+  - id: 25008
     title: "Only enable printer service if absolutely necessary."
     description: "rlpdaemon provides a BSD-compatible print server interface.  Even machines that are print servers may wish to leave this service disabled if they do not need to support BSD-style printing."
     rationale: "This machine a print server for your network."
@@ -142,7 +142,7 @@ checks:
     rules:
       - 'not f:/etc/inetd.conf -> r:^\s*printer'
 
-  - id: 21009
+  - id: 25009
     title: "Only enable rquotad if absolutely necessary."
     description: "rquotad allows NFS clients to enforce disk quotas on file systems that are mounted from the local system.  If your site does not use disk quotas, then you may leave the rquotad service disabled."
     rationale: "This system an NFS file server that requires the use of disk quotas"
@@ -153,7 +153,7 @@ checks:
     rules:
       - 'not f:/etc/inetd.conf -> r:^\s*rquotad'
 
-  - id: 21010
+  - id: 25010
     title: "Only enable CDE-related daemons if absolutely necessary."
     description: "The rpc.ttdbserver service supports HP's CDE windowing environment.  This service has a history of security problems.  Not only is it vital to keep up to date on vendor patches, but also never enable this service on any system which is not well protected by a complete network security infrastructure (including network and host-based firewalls, packet filters, and intrusion detection infrastructure).  Note that since this service uses ONC RPC mechanisms, it is important that the system's RPC portmapper (rpcbind) also be enabled when this service is turned on."
     rationale: "There a mission-critical reason to run a CDE GUI on this system."
@@ -164,7 +164,7 @@ checks:
     rules:
       - 'not f:/etc/inetd.conf -> r:^\s*rpc.ttdbserver'
 
-  - id: 21011
+  - id: 25011
     title: "Only enable Kerberos-related daemons if absolutely necessary."
     description: "Kerberized rlogin/remsh offers a higher degree of security than traditional rlogin, remsh, or telnet by eliminating many clear-text password exchanges from the network.  However it is still not as secure as SSH, which encrypts all traffic.  Given the wide availability of free SSH implementations, there are few cases where these tools cannot be replaced with SSH."
     rationale: "The Kerberos security system is in use at this site and there is a mission-critical reason that requires users to access this system via Kerberized rlogin/remsh, rather than the more secure SSH protocol"
@@ -176,7 +176,7 @@ checks:
       - 'not f:/etc/inetd.conf -> r:^\s*klogin'
       - 'not f:/etc/inetd.conf -> r:^\s*kshell'
 
-  - id: 21012
+  - id: 25012
     title: "Only enable BOOTP/DHCP daemon if absolutely necessary."
     description: "BOOTP/DHCP is a popular protocol for dynamically assigning IP addresses and other network information to systems on the network (rather than having administrators manually manage this information on each host).  However, if this system is not a BOOTP/DHCP server for the network, there is no need to be running this service"
     rationale: "This server a BOOTP/DHCP server for the network"
@@ -191,7 +191,7 @@ checks:
   # 1.3 Minimize boot services
   #################################################################
 
-  - id: 21013
+  - id: 25013
     title: "Disable login: prompts on serial ports."
     description: "Disable the login: prompt on the system serial devices to make it more difficult for unauthorized users to attach modems, terminals, and other remote access devices to these ports."
     rationale: "If there is not a mission-critical need to provide login capability from any serial ports (such as for a modem) then disabling the login: prompt on the system serial devices reduces the risk of unauthorized access via these ports."
@@ -203,7 +203,7 @@ checks:
     rules:
       - "not f:/etc/inittab -> !r:^# && r:getty"
 
-  - id: 21014
+  - id: 25014
     title: "Disable NIS/NIS+ related processes, if possible."
     description: "Disable NIS/NIS+ related processes. Network Information Service (NIS) is a distributed database providing centralized control of names, addresses, services, and key configuration files throughout a network of servers and clients.  NIS was formerly known as Yellow Pages (YP).  NIS+ is a replacement for NIS services, and is more scalable, flexible, and secure.  It adds a security system with authentication and authorization services to validate users on the network and todetermine if they allowed to access or modify the information requested.  However, both systems have known security vulnerabilities, and have been an entry point for security attacks."
     rationale: "Eliminate exposure to NIS/NIS+ vulnerabilities by not running related daemons on hosts that are not NIS/NIS+ servers or clients."
@@ -217,7 +217,7 @@ checks:
       - "f:/etc/rc.config.d/namesvrs -> r:^NIS_CLIENT=0"
       - "f:/etc/rc.config.d/namesvrs -> r:^NIS_SLAVE_SERVER=0"
 
-  - id: 21015
+  - id: 25015
     title: "Disable printer daemons, if possible."
     description: "Disable printer daemons. The Technical Print Service (TPS) is a printer service used in the X-Windows and/or CDE environment.  It is recommended that this service be disabled if the hosting system does not participate in print services The administrator may wish to consider converting to the LPRng print system (see http://www.lprng.org/) which was designed with security in mind and is widely portable across many different Unix platforms.  Note, however, that LPRng is notsupported by Hewlett-Packard."
     rationale: "Disabling unused services, such as TPS, will reduce the remote and local attack surfaces of the hosting system."
@@ -229,7 +229,7 @@ checks:
     rules:
       - "f:/etc/rc.config.d/lp -> r:^LP=0"
 
-  - id: 21115
+  - id: 25115
     title: "Disable printer daemons, if possible."
     description: "Disable printer daemons. The Technical Print Service (TPS) is a printer service used in the X-Windows and/or CDE environment.  It is recommended that this service be disabled if the hosting system does not participate in print services The administrator may wish to consider converting to the LPRng print system (see http://www.lprng.org/) which was designed with security in mind and is widely portable across many different Unix platforms.  Note, however, that LPRng is notsupported by Hewlett-Packard."
     rationale: "Disabling unused services, such as TPS, will reduce the remote and local attack surfaces of the hosting system."
@@ -242,7 +242,7 @@ checks:
       - "f:/etc/rc.config.d/tps"
       - 'f:/etc/rc.config.d/tps -> r:^XPRINTSERVERS=""'
 
-  - id: 21016
+  - id: 25016
     title: "Disable the CDE GUI login, if possible."
     description: "CDE stands for Common Desktop Environment, and is an environment for logging on to and interacting with your system via an X-windows type GUI interface from the console. Intended for use with workstation or desktop systems, this service is not commonly used with the server-class systems or in large enterprise environments.  The X Windows-based CDE GUI services were developed with a different set of security expecations from those expected in many enterprise deployments, and have had a history of security issues.  Unless there is a mission-critical need for a CDE GUI login to the system, this service should not be run to further reduce opportunities for security attacks."
     rationale: "The X Windows-based CDE GUI on HP-UX systems has had a history of security issues, and should be disabled if unused."
@@ -255,7 +255,7 @@ checks:
       - "not f:/etc/rc.config.d/desktop"
       - "f:/etc/rc.config.d/desktop -> r:DESKTOP=$"
 
-  - id: 21017
+  - id: 25017
     title: "Disable email server, if possible."
     description: "Disable the sendmail daemon to avoid processing incoming email.  It is possible to run a Unix system with the Sendmail daemon disabled and still allow users on that system to send email out from that machine.  Running Sendmail in daemon mode (with the -bd command-line option) is only required on machines that act as mail servers, receiving and processing email from other hosts on the network.  The remediation below will result in a machine that can send email but not receiveit.  Note that after disabling the -bd option on the local mail server on systems running Sendmail v8.12 or later (8.13 is currently shipped as part of HP-UX 11iv3), it is also necessary to modify the /etc/mail/submit.cf file.  Find the line that reads 'D{MTAHost}localhost' and change localhost to the name of some other local mail server for the organization.  This will cause email generated on the local system to be relayed to that mail server for further processing and delivery.  Note that if the system is an email server, the administrator is encouraged to search the Web for additional documentation on Sendmail security issues."
     rationale: "Avoid potential vulnerabilities in the sendmail server if incoming email service is not used."
@@ -270,7 +270,7 @@ checks:
     rules:
       - "f:/etc/rc.config.d/mailservs -> r:SENDMAIL_SERVER=0"
 
-  - id: 21018
+  - id: 25018
     title: "Disable SNMP and OpenView Agents, if remote management or monitoring are not needed.."
     description: "Disable SNMP and OpenView agents if they are not needed. Note: If SNMP is used, it is recommended to change the default SNMP community string by modifying the get-community and set-community parameters in the SNMP configuration file /etc/SnmpAgent.d/snmpd.conf"
     rationale: "If SNMP and OpenView agents are not needed, avoid potential security vulnerabilities in these programs by disabling them."
@@ -288,7 +288,7 @@ checks:
       - "f:/etc/rc.config.d/netdaemons -> r:OSPFMIB=0"
       - "f:/etc/rc.config.d/opcagt -> r:OPCAGT=0"
 
-  - id: 21019
+  - id: 25019
     title: "Disable rarely used standard boot services."
     description: "Setting these variables in the /etc/rc.config.d configuration files will effectively disable a wide variety of infrequently used subsystems.  Variables are merely set (rather than renaming or removing startup scripts) so that the local administrator can easily 'restore' any of these services if they discover a mission-critical need to have it.  Additionally, HP-UX patches tend to supply fresh copies of the startup scripts, so they may get inadvertently re-enabled, whereassetting configuration variables usually survives patch installs.  Finally, setting configuration variables is the method recommended and supported by HP. Note that not all of the configuration files listed above will exist on all systems (some are only valid for certain releases, others only exist if certain OEM vendor software is installed). The rest of the actions in this section give the administrator the option of re-enabling certain services - in particular, the services thataredisabled in the second block of the remediation section below.  Rather than disabling and then re-enabling these services, experienced administrators may wish to simply disable only those services that they know are unnecessary for their systems."
     rationale: "Avoid potential security vulnerabilities in infrequently used subsystems by disabling them."
@@ -321,7 +321,7 @@ checks:
       - "f:/etc/rc.config.d/hpws_apacheconf -> r:HPWS_APACHE_START=0"
       - "f:/etc/rc.config.d/hpws_nfsconf -> r:NFS_CORE=0"
 
-  - id: 21020
+  - id: 25020
     title: "Only enable Windows-compatibility server processes if absolutely necessary."
     description: "HP-UX 11i includes the popular Open Source Samba server (HP-UX CIFS Server) for providing file and print services to Windows-based systems.  This allows an HP-UX system to act as a file or print server on a Windows network, and even act as a Domain Controller (authentication server) to older Windows operating systems.  However, if this functionality is not required by the site, this service should be disabled."
     rationale: "This machine provides authentication, file sharing, or printer sharing services to systems running Microsoft Windows operating systems."
@@ -332,7 +332,7 @@ checks:
     rules:
       - "f:/etc/rc.config.d/samba -> r:RUN_SAMBA=0"
 
-  - id: 21021
+  - id: 25021
     title: "Only enable Windows-compatibility client processes if absolutely necessary."
     description: "Re-enable the HP CIFS Client service."
     rationale: "This system requires access to file systems from remote servers via the Windows (SMB) file services."
@@ -343,7 +343,7 @@ checks:
     rules:
       - "f:/etc/rc.config.d/cifsclient -> r:RUN_CIFSCLIENT=0"
 
-  - id: 21022
+  - id: 25022
     title: "Only enable NFS server processes if absolutely necessary."
     description: "NFS is frequently exploited to gain unauthorized access to files and systems.  Clearly there is no need to run the NFS server-related daemons on hosts that are not NFS servers. If the system is an NFS server, the admin should take reasonable precautions when exporting file systems, including restricting NFS access to a specific range of local IP addresses and exporting file systems 'read-only' and 'nosuid' where appropriate.  For more information consult the exportfs(1M) manual page.  Much higher levels of security can be achieved by combining NFS with secure RPC or Kerberos, although there is significant administrative overhead involved in this transition."
     rationale: "This machine is a NFS file server."
@@ -354,7 +354,7 @@ checks:
     rules:
       - "f:/etc/rc.config.d/nfsconf -> r:NFS_SERVER=0"
 
-  - id: 21023
+  - id: 25023
     title: "Only enable NFS client processes if absolutely necessary."
     description: "Again, unless there is a significant need for this system to acquire data via NFS, administrators should disable NFS-related services.  Note that other file transfer schemes (such as rdist via SSH) can often be more secure than NFS for certain applications, although again the use of secure RPC or Kerberos can significantly improve NFS security. Also note that if the machine will be an NFS client, then the rpcbind process must be running (see Item 3.12 below)."
     rationale: "This system must access file systems from remote servers via NFS."
@@ -365,7 +365,7 @@ checks:
     rules:
       - "f:/etc/rc.config.d/nfsconf -> r:NFS_CLIENT=0"
 
-  - id: 21024
+  - id: 25024
     title: "Only enable RPC-based services if absolutely necessary."
     description: "RPC-based services typically use very weak or non-existent authentication and yet may share very sensitive information.  Unless one of the services listed above is required on this machine, it is best to disable RPC-based tools completely.  If you are unsure whether or not a particular third-party application requires RPC services, consult with the application vendor. Note that disabling this service by renaming the startup file may not survive the install of RPC-related patches."
     rationale: "RPC-based services are used such as: This machine is an NFS client or server  This machine is an NIS (YP) or NIS+ client or server  This machine runs a GUI or GUI-based administration tool  The machine runs a third-party software application which is dependent on RPC support (example: FlexLM License managers)"
@@ -376,7 +376,7 @@ checks:
     rules:
       - "f:/etc/rc.config.d/nfsconf -> r:NFS_CORE=0"
 
-  - id: 21025
+  - id: 25025
     title: "Only enable Web server if absolutely necessary."
     description: "Even if this machine is a Web server, the local site may choose not to use the Web server provided with HP-UX in favor of a locally developed and supported Web environment. If the machine is a Web server, the administrator is encouraged to search the Web for additional documentation on Web server security.  A good starting point is http://httpd.apache.org/docs-2.0/misc/security_tips.html."
     rationale: "There is a mission-critical reason why this system must run a Web server. "
@@ -391,7 +391,7 @@ checks:
       - "f:/etc/rc.config.d/ns-ftrack -> r:NS_FTRACK=0"
       - "f:/etc/rc.config.d/hpws_webminconf -> r:HPWS_WEBMIN_START=0"
 
-  - id: 21026
+  - id: 25026
     title: "Only enable BIND DNS server if absolutely necessary."
     description: "The BIND DNS server, or named, maps IP addresses to hostnames across the Internet and supplies these services to other hosts on the local local network. Though it has been widely implemented, BIND has a long history of security flaws, especially in the BIND 8.x release tree generally shipped with HP-UX 11.x systems. Therefore, if you are going to run BIND, you should strongly consider moving to the BIND 9.x release-tree. HP has supported BIND 9 packages available from http://software.hp.com/portal/swdepot/displayProductInfo.do?productNumber=BIND9.2. Or it is available directly from the Internet Software Consortium (the developers of BIND), whose website is at http://www.isc.org."
     rationale: "There exists a mission-critical reason why this system must run a DNS server."
@@ -406,7 +406,7 @@ checks:
   # 1.4 Kernel Tuning
   #################################################################
 
-  - id: 21027
+  - id: 25027
     title: "Enable stack protection."
     description: "Enabling stack protection prevents certain classes of buffer overflow attacks and is a significant security enhancement.    Note that HP-UX 11i is much more capable in this and other security areas than older releases; therefore, administrators should strongly consider upgrading from older releases."
     rationale: "Buffer overflow exploits have been the basis for many of the recent highly publicized compromises and defacements of large numbers of Internet connected systems.  Many of the automated tools in use by system crackers exploit well-known buffer overflow problems in vendor-supplied and third-party software.  Enabling stack protection prevents certain classes of buffer overflow attacks and is a significant security enhancement."
@@ -418,7 +418,7 @@ checks:
     rules:
       - 'c:sh -c "kctune | grep executable_stack" -> r:executable_stack\s+0'
 
-  - id: 21028
+  - id: 25028
     title: "Network parameter modifications."
     description: "Modify the network parameter boot configuration file to meet current best practices.  Note: HP-UX 11.11 systems require patch PHNE_25644 for ndd to set arp_cleanup_interval from /etc/rc.config.d/nddconf  Bastille Note: Bastille performs a similar action but does not support the exact same changes."
     rationale: "Network parameter default values should align with current best practices unless there is a specific need to use other values."
@@ -437,7 +437,7 @@ checks:
       - "c:ndd -get /dev/ip ip_respond_to_address_mask_broadcast -> r:0"
       - "c:ndd -get /dev/ip ip_respond_to_echo_broadcast -> r:0"
 
-  - id: 21029
+  - id: 25029
     title: "Use more random TCP sequence numbers."
     description: "Generate initial TCP sequence numbers that comply with RFC1948. Note: In HP-UX 11i v1 and later,  an algorithm largely compliant with RFC1948 is already used.  However, setting the isn passphrase closes the small remaining gap, and adds entropy to the seed."
     rationale: "Makes remote off-net session hijacking attacks more difficult."
@@ -449,7 +449,7 @@ checks:
     rules:
       - "c:ndd -get /dev/tcp tcp_isn_passphrase -> r:1"
 
-  - id: 21030
+  - id: 25030
     title: "Additional network parameter modifications."
     description: "Configure networking to NOT forward TCP/IP packets between multiple networks, even if the machine has multiple network adapters connected to multiple networks."
     rationale: "System is not going to be used as a firewall or gateway to pass network traffic between different networks."
@@ -467,7 +467,7 @@ checks:
   #################################################################
 
   # List of find folders command may need to be configured to work in a customized HP-UX deployment
-  - id: 21133
+  - id: 25133
     title: "Resolve “unowned” files and directories."
     description: "Evaluate ownership of any files that are not owned by a locally defined user, and consider reassignment to an active user."
     rationale: "Sometimes when administrators delete users from the system they neglect to remove all files owned by those users from the system. A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended.   It is a good idea to locate files that are owned by users or groups not listed in the system configuration files, and make sure to reset the ownership of these files to some active user onthe system (in this example, 'bin') as appropriate"
@@ -496,7 +496,7 @@ checks:
   # 1.6 System Access, Authentication, and Authorization
   #################################################################
 
-  - id: 21034
+  - id: 25034
     title: "Enable Hidden Passwords."
     description: "Enable hidden passwords by converting the system to a Trusted System or to use Shadow Passwords. Note: do not perform this if the system runs applications that read the encrypted password entries in /etc/passwd directly."
     rationale: "Without hidden passwords, an intruder could use any user’s account to obtain hashed passwords and use crack or similar utilities to find easily guessed passwords.  Password aging (covered in item 1.8.3) ensures that users change their passwords on a regular basis and helps stop the use of stolen passwords."
@@ -508,7 +508,7 @@ checks:
     rules:
       - "f:/etc/shadow"
 
-  - id: 21035
+  - id: 25035
     title: "Restrict users who can access to FTP."
     description: "Configure FTP to prevent certain users from accessing the system via FTP.  The file ftpusers contains a list of users who are not allowed to access the system via FTP.  Generally, only normal users should ever access the system via FTP - there should be no reason for 'system' type accounts to be transferring information via this mechanism.  Certainly, the root account should never be allowed to transfer files directly via FTP."
     rationale: "Privileged users such as root and other 'system' type accounts should never be transferring information via such an insecure service as FTP."
@@ -521,7 +521,7 @@ checks:
       - "f:/etc/ftpd/ftpusers"
       - "f:/etc/initd.conf -> r:^ftp"
 
-  - id: 21036
+  - id: 25036
     title: "Prevent Syslog from accepting messages from the network."
     description: "Prevent syslogd from accepting messages from the network.  By default the system logging daemon, syslogd, listens for log messages from other systems on network port 514/udp. Unfortunately, the protocol used to transfer these messages does not include any form of authentication, so a malicious outsider could simply barrage the local system's Syslog port with spurious traffic—either as a denial-of-service attack on the system, or to fill up the local system's logging filesystems so that subsequent attacks will not be logged."
     rationale: "Disabling unused network services will reduce the remote attack surfaces of the hosting system."
@@ -533,7 +533,7 @@ checks:
     rules:
       - "f:/etc/rc.config.d/syslogd -> r:^SYSLOGD_OPTS && r:-N"
 
-  - id: 21037
+  - id: 25037
     title: "Disable XDMCP port."
     description: "Disable the XDMCP port for remote login services. The standard GUI login provided on most Unix systems can act as a remote login server to other devices (including X terminals and other workstations).  Access control is handled via the Xaccess file—by default under HP-UX, this file allows any system on the network to get a remote login screen from the local system.  This behavior can be overridden in the /etc/dt/config/Xaccess file."
     rationale: "XDMCP is an unencrypted protocol that may reduce the confidentiality and integrity of data that traverses it."
@@ -546,7 +546,7 @@ checks:
       - "f:/etc/dt/config/Xconfig"
       - 'f:/etc/dt/config/Xconfig -> r:Dtlogin.requestPort:\s*0'
 
-  - id: 21039
+  - id: 25039
     title: "Configure IPFilter to allow only select communication."
     description: "HP-UX IPFilter (B9901AA) is a stateful system firewall that controls IP packet flow in or out of a machine.  It is installed by default on HP-UX 11iv2 (11.23) and later.  On older systems, IPFilter can be obtained from http://www.hp.com/go/ipfilter.  The rules below will work in an otherwise-empty ipf.conf file, or, if there are rules already present, it will block all that were not passed earlier in the ruleset.  This is less likely to break things, but will allow more traffic through.  Alternatively, you can instead take the pass lines below  (not using the block rule), and change them into 'block in quick' rules, and place those at the top of the file.  This will error on the side of blocking traffic.  See ipf(5) for detail.  Your ruleset can be tested using ipftest(1). Bastille note: if using to change and monitor the IPFilter firewall, ensure that rules are added to /etc/opt/sec_mgmt/bastille/ipf.customrules, and that Bastille is rerun with the last config file, so they will not be overwritten in a subsequent lockdown."
     rationale: "Restricting incoming network traffic to explicitly allowed hosts will help prevent unauthorized access the system."
@@ -559,7 +559,7 @@ checks:
       - "c:ipfilter -e -> r:IPFilter Enabled"
       - "c:ipfstat -io -> r:block in from any to any"
 
-  - id: 21040
+  - id: 25040
     title: "Restrict at/cron to authorized users."
     description: "The cron.allow and at.allow files are a list of users who are allowed to run the crontab and at commands to submit jobs to be run at scheduled intervals. "
     rationale: "On many systems, only the system administrator needs the ability to schedule jobs."
@@ -576,7 +576,7 @@ checks:
       - "f:/var/adm/cron/cron.allow -> r:root"
       - "f:/var/adm/cron/at.allow -> r:root"
 
-  - id: 21041
+  - id: 25041
     title: "Restrict crontab file permissions."
     description: "The system crontab files are only accessed by the cron daemon (which runs with superuser privileges) and the crontab command (which is set-UID to root)."
     rationale: "Allowing unprivileged users to read or (even worse) modify system crontab files can create the potential for a local user on the system to gain elevated privileges."
@@ -588,7 +588,7 @@ checks:
     rules:
       - 'c: sh -c "ls -la /var/spool/cron/crontabs | grep -v  -e ^-.*root.*sys | grep -v -e ^d | grep -v total" -> r:^$'
 
-  - id: 21042
+  - id: 25042
     title: "Restrict root logins to system console."
     description: "Anonymous root logins should never be allowed except on the system console in emergency situations.  At all other times, the administrator should access the system via an unprivileged account and use some authorized mechanism to gain additional privilege, such as the su command, the freely-available sudo package discussed in item SN.6, or the HP Role Based Authorization system also discussed in item SN.6.  These mechanisms provide at least a limited audit trail in the event of problems."
     rationale: "Anonymous root logins do not provide an audit trail, nor are subject to additional authorization provisions."
@@ -602,7 +602,7 @@ checks:
       - "f:/etc/securetty -> r:console"
       - 'c: sh -c "ls -la /etc/securetty | grep  -e ^-.*root.*sys | grep -v total" -> r:/etc/securetty'
 
-  - id: 21044
+  - id: 25044
     title: "Disable nobody access for secure RPC."
     description: "The keyserv process stores user keys that are utilized with the ONC secure RPC mechanism.  The action below prevents keyserv from using default keys for the 'nobody' user, effectively stopping this user from accessing information via secure RPC."
     rationale: "The default 'nobody' user should not be accessing information via secure RPC."
@@ -618,7 +618,7 @@ checks:
   # 1.7 Logging
   #################################################################
 
-  - id: 21046
+  - id: 25046
     title: "Enable logging from inetd."
     description: "If inetd is running, it is a good idea to make use of the 'logging' (-l) feature of the HP-UX inetd that logs information about the source of any network connections seen by the daemon, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd‟s /var/adm/inetd.sec configuration file. This information is logged via Syslog and by default HP-UX systemsdeposit this logging information in var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination. IPFilter, which comes with HP-UX, can log inetd and other connections or attempted connections with its “ipmon” daemon as either a compliment or alternative to inetd logging."
     rationale: "Logging information about the source of inetd network connections assists in the detection and identification of unusual activity that may be associated with security intrusions."
@@ -630,7 +630,7 @@ checks:
     rules:
       - "f:/etc/rc.config.d/netdaemons -> r:INETD_ARGS=-l"
 
-  - id: 21146
+  - id: 25146
     title: "Turn on additional logging for FTP daemon."
     description: "If the FTP daemon is left on, it is recommended that the command logging (-L) and connection logging (-l) flags also be enabled to track FTP activity on the system, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd’s /var/adm/inetd.sec configuration file. Note that this setting has no effect if the FTP daemon remains de-activated from item 2.1. Also note that enabling command logging on the FTP daemon (HP-UX 11.x only) can cause user passwords to appear in clear-text form in the system logs, if the user accidentally types their password at the username prompt. Information about FTP sessions will be logged to Syslog and by default HP-UX systems deposit this logging information in /var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination."
     rationale: "Logging information about the source of ftp network connections assists in the detection and identification of unusual activity that may be associated with security intrusions."
@@ -647,7 +647,7 @@ checks:
   # 1.8 User Accounts and Environment
   #################################################################
 
-  - id: 21048
+  - id: 25048
     title: "Block system accounts."
     description: "Accounts that are not being used by regular users should be locked.  Not only should the password field for the account be set to an invalid string, but the shell field in the password file should contain an invalid shell. Access to the uucp and nuucp accounts is only needed when the deprecated Unix to Unix Copy (UUCP) service is in use.  The other listed accounts should never require direct access.  The actions below locks the passwords to these accounts (on systems converted to Trusted Mode only) and sets the login shell to /bin/false. Note that the above is not an exhaustive list of possible system/application accounts that could be installed on the system. An audit of all users on the system is the only way to be sure that only authorized accounts are in place."
     rationale: "System accounts are not used by regular users, and almost never require direct access; thus, they should be locked to prevent accidental or malicious usage."
@@ -672,7 +672,7 @@ checks:
       - "f:/etc/passwd -> r:^bin && r:/bin/false"
       - "f:/etc/passwd -> r:^lp && r:/bin/false"
 
-  - id: 21049
+  - id: 25049
     title: "Verify that there are no accounts with empty password fields."
     description: "An account with an empty password field means that anybody may log in as that user without providing a password at all.  All accounts should have strong passwords or should be locked by using a password string like '*', 'NP', or '*LOCKED*' "
     rationale: "User accounts should have passwords, or be locked."
@@ -684,7 +684,7 @@ checks:
     rules:
       - "c:logins -p -> r:^$"
 
-  - id: 21050
+  - id: 25050
     title: "Set account expiration parameters on active accounts."
     description: "The commands below will set all active accounts (except the root account) to force password changes every 90 days (91 days when not running in HP-UX Trusted Mode) and then prevent password changes for seven days (one week) thereafter.  Users will begin receiving warnings 30 days (28 days when not running in HP-UX Trusted Mode) before their password expires.  Sites also have the option of expiring idle accounts after a certain number of days (see the on-line manual page for the usermod command, particularly the -f option)."
     rationale: "It is a good idea to force users to change passwords on a regular basis."
@@ -698,7 +698,7 @@ checks:
       - 'f:/etc/default/security -> r:^\s*PASSWORD_WARNDAYS='
       - 'f:/etc/default/security -> r:^\s*PASSWORD_MINDAYS='
 
-  - id: 21051
+  - id: 25051
     title: "Set strong password enforcement policies."
     description: "The policies set here are designed to force users to make better password choices when changing their passwords.  Sites often have differing opinions on the optimal value of the MIN_PASSWORD_LENGTH and PASSWORD_HISTORY_DEPTH parameters. A minimum password length of seven is in line with industry standards, especially the Payment Card Industry (PCI) Security Standard; however, a longer value may be warranted if account locks are not enabled (item 1.6.10). A password history depth of ten combined with passwords that expire four times per year (item 1.8.3) means users will typically not re-use the same password in any given year.   Requiring an upper/lowercase and special character password will dramatically increase the password search space and lower the chances for brute-force attack significantly."
     rationale: "All users should use strong passwords."
@@ -715,7 +715,7 @@ checks:
       - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_SPECIAL_CHARS='
       - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_LOWER_CASE_CHARS='
 
-  - id: 21052
+  - id: 25052
     title: "Verify no legacy '+' entries exist in passwd and group files."
     description: "'+' entries in various passwd and group files served as markers for systems to insert data from NIS maps at a certain point in a system configuration file.  HP-UX does not use these markers, but they may exist in files that have been imported from other platforms.  They should be deleted if they exist."
     rationale: "Legacy ‘+’ entries are no longer required on HP-UX systems, and may provide an avenue for attackers to gain privileged access on the system."
@@ -728,7 +728,7 @@ checks:
       - "not f:/etc/passwd -> r:^+"
       - "not f:/etc/group -> r:^+"
 
-  - id: 21057
+  - id: 25057
     title: "Set default umask for users."
     description: "Set the default umask to 077 so that files created by users will not be readable by any other user on the system.  A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
     rationale: "Restricting access to files and directories created by a user from any other user on the system reduces the possibility of an unauthorized account accessing that user’s files.  The user creating the file has the discretion of making their files and directories readable by others via the chmod command.  Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files (.profile, .cshrc, etc.) in their home directories."
@@ -740,7 +740,7 @@ checks:
     rules:
       - 'f:/etc/default/security -> r:^\s*UMASK=077'
 
-  - id: 21058
+  - id: 25058
     title: "Set 'mesg n' as default for all users."
     description: "Block the use of write or talk commands to contact the user at their terminal in order to slightly strengthen permissions on the user's tty device.  Note that this setting is the default on HP-UX 11i."
     rationale: "Since write and talk are no longer widely used at most sites, the incremental security increase is worth the loss of functionality."
@@ -759,7 +759,7 @@ checks:
   # 1.9 Warning Banners
   #################################################################
 
-  - id: 21059
+  - id: 25059
     title: "Create warning banners for terminal-session logins."
     description: "The contents of the /etc/issue file are displayed prior to the login prompt on the system's console and serial devices, as well as for remote terminal-session logins such as through SSH or Telnet.  /etc/motd is generally displayed after all successful logins, no matter where the user is logging in from, but is thought to be less useful because it only provides notification to the user after the machine has been accessed."
     rationale: "Presenting some sort of statutory warning message prior to the normal user logon may assist the prosecution of trespassers on the computer system. Changing some of these login banners also has the side effect of hiding OS version information and other detailed system information from attackers attempting to target specific attacks at a system."
@@ -772,7 +772,7 @@ checks:
       - "f:/etc/motd"
       - "f:/etc/issue"
 
-  - id: 21061
+  - id: 25061
     title: "Create warning banners for FTP daemon."
     description: "The FTP daemon in HP-UX 11 is based on the popular Washington University FTP daemon (WU-FTPD), which is an Open Source program widely distributed on the Internet. Note that this setting has no effect if the FTP daemon remains de-activated from item 1.2.1."
     rationale: "Presenting some sort of statutory warning message prior to the normal user logon may assist the prosecution of trespassers on the computer system. Changing some of these login banners also has the side effect of hiding OS version information and other detailed system information from attackers attempting to target specific attacks at a system."
