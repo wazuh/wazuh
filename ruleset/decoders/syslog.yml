@@ -1,0 +1,30 @@
+---
+name: decoder/syslog/0
+
+metadata:
+  description: Syslog header
+  references: [ https://datatracker.ietf.org/doc/html/rfc3164, https://datatracker.ietf.org/doc/html/rfc5424 ]
+  product.name: Syslog
+  formats: [ rfc3164, rfc5424 ]
+  json_event_name: syslog
+
+parents:
+  - decoder/queue-syslog/0
+  - decoder/queue-localfile/0
+
+parse:
+  logpar:
+    # BSD Syslog RFC 3164 standard
+    - event.original: "<timestamp/SYSLOG> <host.hostname> <process.name>[<process.pid>]:<_/ignore/ ><message>"
+    # BSD Syslog RFC 3164 no pid
+    - event.original: "<timestamp/SYSLOG> <host.hostname> <process.name>:<_/ignore/ ><message>"
+
+    # BSD Syslog RFC 3164 standard ISO8601
+    - event.original: "<timestamp/ISO8601> <host.hostname> <process.name>[<process.pid>]: <message>"
+    # BSD Syslog RFC 3164 no pid ISO8601
+    - event.original: "<timestamp/ISO8601> <host.hostname> <process.name>: <message>"
+
+normalize:
+  - map:
+      - event.kind: event
+      - related.hosts: +s_append/$host.hostname

@@ -2,10 +2,11 @@
 name: decoder/sca/0
 
 parents:
-  - decoder/json/0
+  - decoder/queue-sca/0
 
-check:
-  - wazuh.queue: 112
+parse:
+  logpar:
+    - event.original: <_json>
 
 normalize:
   - check:

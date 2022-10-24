@@ -1,7 +1,7 @@
 name: decoder/rootcheck/0
 
-check:
-  - wazuh.queue: 57 # ROOTCHECK_MQ '9'
+parents:
+  - decoder/queue-rootcheck/0
 
 normalize:
   - map:
