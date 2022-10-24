@@ -128,7 +128,14 @@ Asset::Asset(const json::Json& jsonDefinition, Asset::Type type)
             auto parseExpression =
                 internals::Registry::getBuilder("stage.parse")({std::get<1>(*parsePos)});
             objectDefinition.erase(parsePos);
-            m_check = base::And::create("condition", {m_check, parseExpression});
+            if (m_check)
+            {
+                m_check = base::And::create("condition", {m_check, parseExpression});
+            }
+            else
+            {
+                m_check = parseExpression;
+            }
         }
         catch (const std::exception& e)
         {
@@ -159,7 +166,17 @@ base::Expression Asset::getExpression() const
         case Asset::Type::OUTPUT:
         case Asset::Type::RULE:
         case Asset::Type::DECODER:
-            asset = base::Implication::create(m_name, m_check, m_stages);
+            if (m_check)
+            {
+                asset = base::Implication::create(m_name, m_check, m_stages);
+            }
+            else
+            {
+                auto trueExpression = base::Term<base::EngineOp>::create(
+                    "AcceptAll",
+                    [](auto e) { return base::result::makeSuccess(e, "AcceptAll"); });
+                asset = base::Implication::create(m_name, trueExpression, m_stages);
+            }
             break;
         case Asset::Type::FILTER: asset = base::And::create(m_name, {m_check}); break;
         default: throw std::runtime_error("Unknown asset type in Asset::getExpression");
