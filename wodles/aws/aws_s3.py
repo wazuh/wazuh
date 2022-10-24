@@ -69,6 +69,9 @@ CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prere
 RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/considerations.html#Connection-configuration-for-retries'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
+GUARDDUTY_URL = 'https://documentation.wazuh.com/current/amazon/services/supported-services/guardduty.html#amazon-configuration'
+GUARDDUTY_DEPRECATED_MESSAGE = 'The GuardDuty + Kinesis integration was deprecated in {release}. GuardDuty ' \
+                               'native support should be used instead. Check {url} for more information.'
 DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
 
 # Enable/disable debug mode
@@ -2233,19 +2236,16 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         self.db_table_name = 'guardduty'
         AWSCustomBucket.__init__(self, self.db_table_name, **kwargs)
         self.service = 'GuardDuty'
-        if self.check_AWSLogs_type():
+        if self.check_guardduty_type():
             self.type = "GuardDutyNative"
         else:
             self.type = "GuardDutyKinesis"
 
-    def check_AWSLogs_type(self):
+    def check_guardduty_type(self):
         return self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/')['CommonPrefixes'][0]['Prefix'] == self.prefix + 'AWSLogs/'
 
     def get_service_prefix(self, account_id):
-        return '{base_prefix}{aws_account_id}/{aws_service}/'.format(
-            base_prefix=self.get_base_prefix(),
-            aws_account_id=account_id,
-            aws_service=self.service)
+        return AWSLogsBucket.get_service_prefix(self,account_id)
 
     def get_full_prefix(self, account_id, account_region):
         if self.type == "GuardDutyNative":
@@ -2263,8 +2263,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         if self.type == "GuardDutyNative":
             AWSBucket.iter_regions_and_accounts(self, account_id, regions)
         else:
-            debug("+++ WARNING: The GuardDuty + Kinesis integration will be deprecated in future releases. GuardDuty "
-                  "native support should be used instead", 2)
+            print(GUARDDUTY_DEPRECATED_MESSAGE.format(release="4.5", url=GUARDDUTY_URL))
             self.check_prefix = True
             AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)
 
