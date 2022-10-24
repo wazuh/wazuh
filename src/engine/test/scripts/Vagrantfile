@@ -34,8 +34,9 @@ Vagrant.configure("2") do |config|
         echo "Installing dependencies to build the engine"
 
         #Dependencies
+        sudo add-apt-repository ppa:rmescandon/yq -y
         sudo apt-get update
-        sudo apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev libcurl4-openssl-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq -y
+        sudo apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev libcurl4-openssl-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq yq -y
 
         #CMake 3.24 installation from its release page
         curl -sL https://github.com/Kitware/CMake/releases/download/v3.24.2/cmake-3.24.2-linux-x86_64.tar.gz | sudo tar -xz -C /usr/local --strip-components=1
@@ -126,4 +127,3 @@ Vagrant.configure("2") do |config|
     SHELL
 
 end
-

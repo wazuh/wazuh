@@ -1,6 +1,10 @@
 ---
 name: decoder/json/0
 
+parents:
+  - decoder/queue-syslog/0
+  - decoder/queue-localfile/0
+
 check:
   - event.original: +s_starts/{
 

@@ -1,0 +1,7 @@
+name: decoder/queue-rootcheck/0
+
+metadata:
+  description: Exclusive parent decoder for Wazuh-Rootcheck server (ROOTCHECK_MQ)
+
+check:
+  - wazuh.queue: 57 # ROOTCHECK_MQ '9'
