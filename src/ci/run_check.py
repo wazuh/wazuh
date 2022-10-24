@@ -375,21 +375,25 @@ def runScanBuild(targetName):
                       headerKey="scanbuild")
     build_tools.cleanAll()
     build_tools.cleanExternals()
+    build_tools.makeDeps(targetName=targetName,
+                         srcOnly=True)
+    build_tools.makeTarget(targetName=targetName,
+                           tests=False,
+                           debug=True)
+    build_tools.cleanInternals()
     if targetName == "winagent":
-        build_tools.makeDeps(targetName, True)
-        build_tools.makeTarget(targetName="winagent",
-                               tests=False,
-                               debug=True)
-        build_tools.cleanInternals()
         scanBuildCommand = "scan-build --status-bugs \
                             --use-cc=/usr/bin/i686-w64-mingw32-gcc \
                             --use-c++=/usr/bin/i686-w64-mingw32-g++-posix \
                             --analyzer-target=i686-w64-mingw32 \
                             --force-analyze-debug-code \
                             make TARGET=winagent DEBUG=1 -j4"
+    elif targetName == "server":
+        scanBuildCommand = "scan-build --status-bugs \
+                            --force-analyze-debug-code \
+                            --exclude external/ make TARGET={} INSTALLDIR=/path \
+                            DEBUG=1 -j4".format(targetName)
     else:
-        build_tools.makeDeps(targetName=targetName,
-                             srcOnly=False)
         scanBuildCommand = "scan-build --status-bugs \
                             --force-analyze-debug-code \
                             --exclude external/ make TARGET={} \

@@ -353,11 +353,14 @@ def makeTarget(targetName, tests, debug):
     """
     utils.printSubHeader(moduleName=targetName,
                          headerKey="makeAll")
-    makeTargetCommand = "make TARGET={} -j4".format(targetName)
+    makeTargetCommand = "make TARGET={}".format(targetName)
+    if targetName == "server":
+        makeTargetCommand += " INSTALLDIR=/path"
     if tests:
         makeTargetCommand += " TEST=1"
     if debug:
         makeTargetCommand += " DEBUG=1"
+    makeTargetCommand += " -j4"
     out = subprocess.run(makeTargetCommand,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
