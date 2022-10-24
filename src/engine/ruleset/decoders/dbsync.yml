@@ -3,6 +3,9 @@ name: decoder/dbsync/0
 parents:
   - decoder/queue-dbsync/0
 
+check:
+  - event.original: +s_starts/{
+
 parse:
   logpar:
     - event.original: <_json>

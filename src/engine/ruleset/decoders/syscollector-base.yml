@@ -3,9 +3,10 @@ name: decoder/syscollector-base/0
 parents:
   - decoder/queue-syscollector/0
 
+check:
+  - wazuh.origin: +s_eq/syscollector
+  - event.original: +s_starts/{
+
 parse:
   logpar:
     - event.original: <_json>
-
-check:
-  - _json.type: +t_is_string
