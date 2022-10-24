@@ -1,10 +1,11 @@
 name: decoder/dbsync/0
 
 parents:
-  - decoder/json/0
+  - decoder/queue-dbsync/0
 
-check:
-  - wazuh.queue: 53 # DBSYNC_MQ '5'
+parse:
+  logpar:
+    - event.original: <_json>
 
 normalize:
   - check:
