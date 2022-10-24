@@ -2,7 +2,8 @@
 name: decoder/fim/0
 
 parents:
-  - decoder/json/0
+  - decoder/queue-fim/0
 
-check:
-  - wazuh.queue: +i_eq/56
+parse:
+  logpar:
+    - event.original: <_json>
