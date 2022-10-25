@@ -3518,215 +3518,189 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare > 10'
       - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare > 10'
 
-  ########### WIP
-
-  ######################################################
   # 5.4 Configure PAM
-  ######################################################
-  # 5.4.1 Ensure password creation requirements are configured (Scored)
-  - id: 19168
+
+  # 5.4.1 Ensure password creation requirements are configured (Automated)
+  - id: 19173
     title: "Ensure password creation requirements are configured."
-    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options: - retry=3 (Allow 3 tries before sending back a failure). The following options are set in the /etc/security/pwquality.conf file: - minlen = 14 dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1 (The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies.)"
+    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options. The following options are set in the /etc/security/pwquality.conf file: - Password Length: > minlen = 14 - password must be 14 characters or more - Password complexity: > minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR > dcredit = -1 - provide at least one digit > ucredit = -1 - provide at least one uppercase character o ocredit = -1 - provide at least one special character > lcredit = -1 - provide at least one lowercase character The following is set in the /etc/pam.d/common-password file: - retry=3 - Allow 3 tries before sending back a failure. The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies. "
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
-    remediation: "1) Run the following command to install the pam_pwquality module: apt install libpam-pwquality 2) Edit the /etc/pam.d/common-password file to include the appropriate options for pam_pwquality.so and to conform to site policy: password requisite pam_pwquality.so retry=3 3) Edit /etc/security/pwquality.conf to add or update the following settings to conform to site policy: minlen = 14 dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1. Notes: Additional module options may be set, recommendation requirements only cover including try_first_pass and minlen set to 14 or more. Settings in /etc/security/pwquality.conf must use spaces around the = symbol."
+    remediation: "Run the following command to install the pam_pwquality module: apt install libpam-pwquality Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy minclass = 4 OR dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1 Edit the /etc/pam.d/common-password file to include the appropriate options for pam_pwquality.so and to conform to site policy: password requisite pam_pwquality.so retry=3"
     compliance:
       - cis: ["5.4.1"]
       - cis_csc_v7: ["4.4"]
-      - pci_dss: ["8.2.3"]
-      - tsc: ["CC6.1"]
+      - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
+      - nist_sp_800-53: ["IA-5 (1)"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> !r:^# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
-      - 'f:/etc/pam.d/common-password -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+) compare <=3'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && n:minlen\s*=\s*(\d+) compare >= 14'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && n:minclass\s*=\s*(\d+) compare >= 4'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:dcredit = -1'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:ucredit = -1'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:lcredit = -1'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:ocredit = -1'
+      - 'f:/etc/pam.d/common-password -> !r:^\s*# && n:password\s*requisite\s*pam_pwquality.so\s*retry=(\d+) compare <=3'
 
-  # 5.4.2 Ensure lockout for failed password attempts is configured (Scored)
-  - id: 19169
+  # 5.4.2 Ensure lockout for failed password attempts is configured (Automated)
+  - id: 19174
     title: "Ensure lockout for failed password attempts is configured."
-    description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. Set the lockout number to the policy in effect at your site."
+    description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. - deny=n - n represents the number of failed attempts before the account is locked. - unlock_time=n - n represents the number of seconds before the account is unlocked. - audit - Will log the user name into the system log if the user is not found. - silent - Don't print informative messages. Set the lockout number and unlock time in accordance with local site policy."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
-    remediation: 'Edit the /etc/pam.d/common-auth file and add the auth line below: auth required pam_tally2.so onerr=fail audit silent deny=5 unlock_time=900. Edit the /etc/pam.d/common-account file and add the account lines below: account    requisite    pam_deny.so      account    required    pam_tally2.so. Note: If a user has been locked out because they have reached the maximum consecutive failure count defined by deny= in the pam_tally2.so module, the user can be unlocked by issuing the command /sbin/pam_tally2 -u <username> --reset. This command sets the failed count to 0, effectively unlocking the user. Notes:BUG In pam_tally2.so To work around this issue the addition of pam_tally2.so in the accounts section of the /etc/pam.d/common-account file has been added to the audit and remediation sections. pam_tally2 line must be added for the counter to reset to 0 when using sudo.     Use of the "audit" keyword may log credentials in the case of user error during authentication. This risk should be evaluated in the context of the site policies of your organization.'
+    remediation: "Edit the /etc/pam.d/common-auth file and add the auth line below: auth required pam_tally2.so onerr=fail audit silent deny=5 unlock_time=900 Edit the /etc/pam.d/common-account file and add the account lines bellow:  account     requisite    pam_deny.so account     required     pam_tally2.so"
     compliance:
       - cis: ["5.4.2"]
       - cis_csc_v7: ["16.7"]
-      - pci_dss: ["8.2.5"]
-      - tsc: ["CC6.1"]
+      - cmmc_v2.0: ["AC.4.025", "PS.2.128", "IA.3.085"]
+      - iso_27001-2013: ["A.9.2.6"]
+      - mitre_techniques: ["T1134", "T1197", "T1538", "T1530", "T1213", "T1089", "T1157", "T1044", "T1484", "T1054", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1034", "T1163", "T1076", "T1021", "T1053", "T1489", "T1051", "T1023", "T1165", "T1528", "T1501", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-2"]
+      - pci_dss_v3.2.1: ["8.1.3", "8.1.4"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-auth -> !r:^# && r:auth\s*\t*required\s*\t*pam_tally2.so && r:onerr=fail && r:audit && r:silent && r:deny\s*=\s*\d+ && r:unlock_time\s*=\s*\d+'
-      - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*requisite\s*\t*pam_deny.so'
-      - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*required\s*\t*pam_tally2.so'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:auth\s*required\s*pam_tally2.so && r:onerr=fail && r:audit && r:silent && r:deny\s*=\s*\d+ && r:unlock_time\s*=\s*\d+'
+      - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*requi\w+\s*pam_deny.so'
+      - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*requi\w+\s*pam_tally2.so'
 
-  # 5.4.3 Ensure password reuse is limited (Scored)
-  - id: 19170
+  # 5.4.3 Ensure password reuse is limited (Automated)
+  - id: 19175
     title: "Ensure password reuse is limited."
     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords."
-    rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password. Note that these change only apply to accounts configured on the local system."
-    remediation: "Edit the /etc/pam.d/common-password file to include the remember option and conform to site policy as shown: password required pam_pwhistory.so remember=5. Notes: Additional module options may be set, recommendation only covers those listed here."
+    rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password."
+    remediation: "Edit the /etc/pam.d/common-password file to include the remember option and conform to site policy as shown: password required pam_pwhistory.so remember=5."
     compliance:
       - cis: ["5.4.3"]
       - cis_csc_v7: ["16"]
-      - pci_dss: ["8.2.5"]
-      - tsc: ["CC6.1"]
     condition: none
     rules:
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare < 5'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*=\s*(\d+) compare < 5'
       - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && !r:remember'
 
-  # 5.4.4 Ensure password hashing algorithm is SHA-512 (Scored)
-  - id: 19171
+  # 5.4.4 Ensure password hashing algorithm is SHA-512 (Automated)
+  - id: 19176
     title: "Ensure password hashing algorithm is SHA-512."
     description: "The commands below change password encryption from md5 to sha512 (a much stronger hashing algorithm). All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The SHA-512 algorithm provides much stronger hashing than MD5, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note that these change only apply to accounts configured on the local system."
     remediation: "Edit the /etc/pam.d/common-password file to include the sha512 option for pam_unix.so as shown: password [success=1 default=ignore] pam_unix.so sha512"
     compliance:
       - cis: ["5.4.4"]
-      - cis_csc_v7: ["16.14"]
-      - pci_dss: ["3.6.1", "8.2.1"]
-      - tsc: ["CC6.1", "CC6.7"]
+      - cis_csc_v7: ["16.4"]
+      - cmmc_v2.0: ["IA.2.081"]
+      - iso_27001-2013: ["A.10.1.1"]
+      - nist_sp_800-53: ["IA-5", "IA-5 (1)"]
+      - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: none
     rules:
-      - 'f:/etc/pam.d/common-password -> r:^password\.+pam_unix.so && !r:sha512'
+      - 'f:/etc/pam.d/common-password -> r:^\s*password\.+success=1\s+default=ignore\.+pam_unix.so|^\s*password\.+required\.+pam_unix.so && !r:sha512'
 
-  ####################################################
   # 5.5 User Accounts and Environment
-  ####################################################
-  ####################################################
   # 5.5.1 Set Shadow Password Suite Parameters
-  ####################################################
-  # 5.5.1.1 Ensure password expiration is 365 days or less (Scored)
-  - id: 19172
+
+  # 5.5.1.1 Ensure minimum days between password changes is configured (Automated) - Not implemented
+
+  # 5.5.1.2 Ensure password expiration is 365 days or less (Automated)
+  - id: 19177
     title: "Ensure password expiration is 365 days or less."
-    description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days."
-    rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity."
-    remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs: PASS_MAX_DAYS 90. Modify user parameters for all users with a password set to match: # chage --maxdays 90 <user>. Notes: You can also check this setting in /etc/shadow directly. The 5th field should be 365 or less for all users with a password. A value of -1 will disable password expiration. Additionally the password expiration must be greater than the minimum days between password changes or users will be unable to change their password."
+    description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age."
+    rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity. It is recommended that the PASS_MAX_DAYS parameter does not exceed 365 days and is greater than the value of PASS_MIN_DAYS."
+    remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs : PASS_MAX_DAYS 365 Modify user parameters for all users with a password set to match: # chage --maxdays 365 <user>"
     compliance:
       - cis: ["5.5.1.2"]
       - cis_csc_v7: ["4.4"]
-      - pci_dss: ["8.2.4"]
-      - tsc: ["CC6.1"]
+      - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
+      - nist_sp_800-53: ["IA-5 (1)"]
+    references:
+      - https://www.cisecurity.org/white-papers/cis-password-policy-guide/
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
-      - 'not f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare < 0'
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare > 0'
+      - 'not f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+root:\S*:\d*:\d*:(\d+) compare > 365'
 
-  # 5.5.1.2 Ensure minimum days between password changes is configured
-  - id: 19173
-    title: "Ensure minimum days between password changes is 7 or more."
-    description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 7 or more days."
-    rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
-    remediation: "Set the PASS_MIN_DAYS parameter to 7 in /etc/login.defs: PASS_MIN_DAYS 7. Modify user parameters for all users with a password set to match: # chage --mindays 7 <user>. Notes: You can also check this setting in /etc/shadow directly. The 4th field should be 7 or more for all users with a password."
-    compliance:
-      - cis: ["5.5.1.1"]
-      - cis_csc_v7: ["4.4", "16"]
-      - pci_dss: ["8.2"]
-      - tsc: ["CC6.1"]
-    condition: all
-    rules:
-      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
-
-  # 5.5.1.3 Ensure password expiration warning days is 7 or more (Scored)
-  - id: 19174
+  # 5.5.1.3 Ensure password expiration warning days is 7 or more (Automated)
+  - id: 19178
     title: "Ensure password expiration warning days is 7 or more."
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
-    remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs: PASS_WARN_AGE 7. Modify user parameters for all users with a password set to match: # chage --warndays 7 <user>. Notes: You can also check this setting in /etc/shadow directly. The 6th field should be 7 or more for all users with a password."
+    remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs : PASS_WARN_AGE 7 Modify user parameters for all users with a password set to match: # chage --warndays 7 <user>"
     compliance:
       - cis: ["5.5.1.3"]
       - cis_csc_v7: ["4.4"]
-      - pci_dss: ["8.2"]
-      - tsc: ["CC6.1"]
+      - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
+      - nist_sp_800-53: ["IA-5 (1)"]
     condition: all
     rules:
-      - 'f:/etc/login.defs -> n:^\s*\t*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
+      - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*(\d+) compare >= 7'
+      - 'not f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+root:\S*:\d*:\d*:\d*:(\d+) compare < 7'
 
-  # 5.5.1.4 Ensure inactive password lock is 30 days or less (Scored)
-  - id: 19175
+  # 5.5.1.4 Ensure inactive password lock is 30 days or less (Automated)
+  - id: 19179
     title: "Ensure inactive password lock is 30 days or less."
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
-    remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30. Modify user parameters for all users with a password set to match: # chage --inactive 30 <user>. Notes: You can also check this setting in /etc/shadow directly. The 7th field should be 30 or less for all users with a password. A value of -1 would disable this setting."
+    remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30 Modify user parameters for all users with a password set to match: # chage --inactive 30 <user> "
     compliance:
       - cis: ["5.5.1.4"]
-      - cis_csc_v7: ["4.4", "16"]
-      - pci_dss: ["8.2"]
-      - tsc: ["CC6.1"]
-    condition: all
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
+      - nist_sp_800-53: ["IA-5 (1)"]
+    condition: none
     rules:
-      - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 30'
-      - 'not c:useradd -D -> n:^INACTIVE=(\d+) compare < 0'
+      - 'c:useradd -D -> n:^INACTIVE=(\d+) compare >= 30'
+      - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 0'
+      - 'f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+root:\S*:\d*:\d*:\d*:\d+:(\d+) compare > 30'
 
-  # 5.5.3 Ensure default group for the root account is GID 0 (Scored)
-  - id: 19176
+  # 5.5.1.5 Ensure all users last password change date is in the past (Automated) - Not implemented
+  # 5.5.2 Ensure system accounts are secured (Automated) - Not implemented
+
+  # 5.5.3 Ensure default group for the root account is GID 0 (Automated)
+  - id: 19180
     title: "Ensure default group for the root account is GID 0."
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
-    rationale: "Using GID 0 for the root account helps prevent root-owned files from accidentally becoming accessible to non-privileged users."
-    remediation: "Run the following command to set the root user default group to GID 0: # usermod -g 0 root"
+    rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
+    remediation: "Run the following command to set the root user default group to GID 0 : # usermod -g 0 root"
     compliance:
       - cis: ["5.5.3"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["8.2"]
-      - tsc: ["CC6.1"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'f:/etc/passwd -> !r:^# && r:root:\w+:\w+:0:'
+      - 'f:/etc/passwd -> r:^root:\S*:\S*:0:'
 
-  # 5.5.4 Ensure default user umask is 027 or more restrictive (Scored)
-  - id: 19177
-    title: "Ensure default user umask is 027 or more restrictive."
-    description: "The default umask determines the permissions of files created by users. The user creating the file has the discretion of making their files and directories readable by others via the chmod command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files ( .profile , .bashrc , etc.) in their home directories."
-    rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
-    remediation: "Edit the /etc/bash.bashrc , /etc/profile and /etc/profile.d/*.sh files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: umask 027"
-    compliance:
-      - cis: ["5.5.4"]
-      - cis_csc_v7: ["14.6"]
-      - pci_dss: ["8.2"]
-      - tsc: ["CC6.1"]
-    condition: none
-    rules:
-      - 'f:/etc/bash.bashrc -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
-      - 'f:/etc/bash.bashrc -> !r:^\s*\t*# && n:umask \d\d(\d) compare != 7'
-      - 'f:/etc/profile -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
-      - 'f:/etc/profile -> !r:^\s*\t*# && n:umask \d\d(\d) compare != 7'
-      - 'd:/etc/profile.d -> .sh -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
-      - 'd:/etc/profile.d -> .sh -> !r:^\s*t*# && n:umask \d\d(\d) compare != 7'
+  # 5.5.4 Ensure default user umask is 027 or more restrictive (Automated) - Not implemented
+  # 5.5.5 Ensure default user shell timeout is 900 seconds or less (Automated) - Not implemented
+  # 5.6 Ensure root login is restricted to system console (Manual) - Not implemented
 
-  # 5.5.5 Ensure default user shell timeout is 900 seconds or less (Scored)
-  - id: 19178
-    title: "Ensure default user shell timeout is 900 seconds or less."
-    description: "The default TMOUT determines the shell timeout for users. The TMOUT value is measured in seconds."
-    rationale: "Having no timeout value associated with a shell could allow an unauthorized user access to another user's shell session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value at least reduces the risk of this happening."
-    remediation: "Edit the /etc/bash.bashrc , /etc/profile and /etc/profile.d/*.sh files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: readonly TMOUT=900 ; export TMOUT . Note that setting the value to readonly prevents unwanted modification during runtime."
-    compliance:
-      - cis: ["5.5.5"]
-      - cis_csc_v7: ["16.11"]
-      - pci_dss: ["12.3.8"]
-    condition: all
-    rules:
-      - 'not d:/etc/profile.d -> .sh -> r:^\s*\t*readonly && n:TMOUT\s*\t*=\s*\t*(\d+) compare > 900'
-      - 'not f:/etc/bash.bashrc -> r:^\s*\t*readonly && n:TMOUT\s*\t*=\s*\t*(\d+) compare > 900'
-      - 'not f:/etc/profile -> r:^\s*\t*readonly && n:TMOUT\s*\t*=\s*\t*(\d+) compare > 900'
-      - 'd:/etc/profile.d -> .sh -> r:^\s*\t*readonly && n:TMOUT\s*\t*=\s*\t*(\d+) compare <= 900'
-      - 'f:/etc/bash.bashrc -> r:^\s*\t*readonly && n:TMOUT\s*\t*=\s*\t*(\d+) compare <= 900'
-      - 'f:/etc/profile -> r:^\s*\t*readonly && n:TMOUT\s*\t*=\s*\t*(\d+) compare <= 900'
-
-  # 5.7 Ensure access to the su command is restricted (Scored)
-  - id: 19179
+  # 5.7 Ensure access to the su command is restricted (Automated)
+  - id: 19181
     title: "Ensure access to the su command is restricted."
-    description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in the sudo group to execute su."
+    description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By adding, or uncommenting, the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in a specific group to execute su. This group should be empty to reinforce the use of sudo for privileged access."
     rationale: "Restricting the use of su, and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo, whereas su can only record that a user executed the su program."
-    remediation: "Create an empty group that will be specified for use of the su command. The group should be named according to site policy. Example # groupadd sugroup Add the following line to the /etc/pam.d/su file, specifying the empty group: auth required pam_wheel.so use_uid group=sugroup"
+    remediation: "Create an empty group that will be specified for use of the su command. The group should be named according to site policy. Example: # groupadd sugroup Add the following line to the /etc/pam.d/su file, specifying the empty group: Example: auth required pam_wheel.so use_uid group=sugroup"
     compliance:
       - cis: ["5.7"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["10.2.5"]
-      - hipaa: ["164.312.b"]
-      - nist_800_53: ["AU.14", "AC.7"]
-      - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7", "32.2"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/su -> !r:^# && r:auth\s*\t*required\s*\t*pam_wheel.so && r:use_uid && r:group='
+      - 'f:/etc/pam.d/su -> !r:^# && r:auth\s*required\s*pam_wheel.so && r:use_uid && r:group='
+
+  ########### WIP
 
   ############################################################
   # 6 System Maintenance
@@ -3736,7 +3710,7 @@ checks:
   # 6.1 System File Permissions
   ############################################################
   # 6.1.2 Ensure permissions on /etc/passwd are configured (Scored)
-  - id: 19180
+  - id: 19182
     title: "Ensure permissions on /etc/passwd are configured."
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3752,7 +3726,7 @@ checks:
       - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.9 Ensure permissions on /etc/gshadow- are configured (Scored)
-  - id: 19181
+  - id: 19183
     title: "Ensure permissions on /etc/gshadow- are configured."
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3768,7 +3742,7 @@ checks:
       - 'c:stat /etc/gshadow- -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.6 Ensure permissions on /etc/shadow are configured (Scored)
-  - id: 19182
+  - id: 19184
     title: "Ensure permissions on /etc/shadow are configured."
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
@@ -3784,7 +3758,7 @@ checks:
       - 'c:stat /etc/shadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 6.1.4 Ensure permissions on /etc/group are configured (Scored)
-  - id: 19183
+  - id: 19185
     title: "Ensure permissions on /etc/group are configured."
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
@@ -3800,7 +3774,7 @@ checks:
       - 'c:stat /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.3 Ensure permissions on /etc/passwd- are configured (Scored)
-  - id: 19184
+  - id: 19186
     title: "Ensure permissions on /etc/passwd- are configured."
     description: "The /etc/passwd- file contains backup user account information."
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3816,7 +3790,7 @@ checks:
       - 'c:stat /etc/passwd- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.7 Ensure permissions on /etc/shadow- are configured (Scored)
-  - id: 19185
+  - id: 19187
     title: "Ensure permissions on /etc/shadow- are configured."
     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3832,7 +3806,7 @@ checks:
       - 'c:stat /etc/shadow- -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.5 Ensure permissions on /etc/group- are configured (Scored)
-  - id: 19186
+  - id: 19188
     title: "Ensure permissions on /etc/group- are configured."
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3848,7 +3822,7 @@ checks:
       - 'c:stat /etc/group- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.8 Ensure permissions on /etc/gshadow are configured (Scored)
-  - id: 19187
+  - id: 19189
     title: "Ensure permissions on /etc/gshadow are configured."
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group"
@@ -3867,7 +3841,7 @@ checks:
   # 6.2 User and Group Settings
   ####################################################
 
-  - id: 19188
+  - id: 19190
     title: "Ensure password fields are not empty."
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
@@ -3881,7 +3855,7 @@ checks:
     rules:
       - 'f:/etc/shadow -> r:^\w+::'
 
-  - id: 19189
+  - id: 19191
     title: "Ensure root is the only UID 0 account."
     description: "Any account with UID 0 has superuser privileges on the system."
     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
@@ -3898,7 +3872,7 @@ checks:
     rules:
       - 'f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:'
 
-  - id: 19190
+  - id: 19192
     title: "Ensure shadow group is empty."
     description: "The shadow group allows system programs which require access the ability to read the /etc/shadow file. No users should be assigned to the shadow group."
     rationale: "Any users assigned to the shadow group would be granted read access to the /etc/shadow file. If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed passwords to break them. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert additional user accounts."
