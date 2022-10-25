@@ -942,7 +942,7 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
 //*************************************************
 
 // field: +s_append/$field|literal...
-base::Expression opBuilderHelperAppendString(const std::any& definition)
+base::Expression opBuilderHelperAppend(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     auto parameters = helper::base::processParameters(rawParameters);
@@ -971,13 +971,13 @@ base::Expression opBuilderHelperAppendString(const std::any& definition)
                 {
                     case helper::base::Parameter::Type::REFERENCE:
                     {
-                        auto value = event->getString(parameter.m_value);
+                        auto value = event->getJson(parameter.m_value);
                         if (!value)
                         {
                             return base::result::makeFailure(event, failureTrace1);
                         }
 
-                        event->appendString(value.value(), targetField);
+                        event->appendJson(value.value(), targetField);
                     }
                     break;
                     case helper::base::Parameter::Type::VALUE:
