@@ -220,6 +220,7 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
 
     if (configuration->options & CHECK_PERM) {
         if (aux = cJSON_GetObjectItem(dbsync_event, "perm"), aux != NULL) {
+            printf("%s\n", cJSON_Print(aux));
 #ifndef WIN32
             cJSON_AddStringToObject(attributes, "perm", cJSON_GetStringValue(aux));
 #else
