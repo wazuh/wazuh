@@ -941,7 +941,7 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
 //*           Array tranform                      *
 //*************************************************
 
-// field: +s_append/$field|literal...
+// field: +a_append/$field|literal...
 base::Expression opBuilderHelperAppend(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
