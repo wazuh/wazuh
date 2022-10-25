@@ -3,6 +3,8 @@
 Vagrant.configure("2") do |config|
     config.vm.box = "generic/ubuntu2004"
     config.vm.hostname = "engine"
+    config.vm.define "engine" do |engine|
+    end
     config.vm.network "public_network"
     config.vm.synced_folder ".", "/vagrant", disabled: true
 
