@@ -419,7 +419,7 @@ checks:
   # 1.5 File/Directory Permissions/Access
   #################################################################
 
-  - id: 30133
+  - id: 30131
     title: "Resolve 'unowned' files and directories."
     description: "Evaluate ownership of any files that are not owned by a locally defined user, and consider reassignment to an active user."
     rationale: "Sometimes when administrators delete users from the system they neglect to remove all files owned by those users from the system. A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended. It is a good idea to locate files that are owned by users or groups not listed in the system configuration files, and make sure to reset the ownership of these files to some active user on the system (in this example, 'bin') as appropriate."
@@ -448,7 +448,7 @@ checks:
   # 1.6 System Access, Authentication, and Authorization
   #################################################################
 
-  - id: 30034
+  - id: 30032
     title: "Enable Hidden Passwords."
     description: "Enable hidden passwords by converting the system to a Trusted System or to use Shadow Passwords. - Note: do not perform this if the system runs applications that read the encrypted password entries in /etc/passwd directly."
     rationale: "Without hidden passwords, an intruder could use any user's account to obtain hashed passwords and use crack or similar utilities to find easily guessed passwords. Password aging (covered in item 1.8.3) ensures that users change their passwords on a regular basis and helps stop the use of stolen passwords."
@@ -460,7 +460,7 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.hidepasswords="Y"'
 
-  - id: 30035
+  - id: 30033
     title: "Restrict users who can access to FTP."
     description: "Configure FTP to prevent certain users from accessing the system via FTP. The file ftpusers contains a list of users who are not allowed to access the system via FTP. Generally, only normal users should ever access the system via FTP - there should be no reason for 'system' type accounts to be transferring information via this mechanism. Certainly, the root account should never be allowed to transfer files directly via FTP. - Note: more fine-grained FTP access controls can be placed in /etc/ftpd/ftpaccess."
     rationale: "Privileged users such as root and other 'system' type accounts should never be transferring information via such an insecure service as FTP."
@@ -472,7 +472,7 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:FTP.ftpusers="N"'
 
-  - id: 30036
+  - id: 30034
     title: "Prevent Syslog from accepting messages from the network."
     description: "Prevent syslogd from accepting messages from the network. By default the system logging daemon, syslogd, listens for log messages from other systems on network port 514/udp. Unfortunately, the protocol used to transfer these messages does not include any form of authentication, so a malicious outsider could simply barrage the local system's Syslog port with spurious traffic—either as a denial-of-service attack on the system, or to fill up the local system's logging file systems so that subsequent attacks will not be logged. - Note: Do not perform this action if this machine is a log server, or needs to receive Syslog messages via the network from other systems. - Note: It is considered good practice to setup one or more machines as central 'log servers' to aggregate log traffic from all machines at a site. However, unless a system is set up to be one of these 'log server' systems, it should not be listening on 514/udp for incoming log messages."
     rationale: "Disabling unused network services will reduce the remote attack surfaces of the hosting system."
@@ -484,7 +484,7 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.syslog_localonly="Y"'
 
-  - id: 30037
+  - id: 30035
     title: "Disable XDMCP port."
     description: "Disable the XDMCP port for remote login services. The standard GUI login provided on most Unix systems can act as a remote login server to other devices (including X terminals and other workstations). Access control is handled via the Xaccess file—by default under HP-UX, this file allows any system on the network to get a remote login screen from the local system. This behavior can be overridden in the /etc/dt/config/Xaccess file."
     rationale: "XDMCP is an unencrypted protocol that may reduce the confidentiality and integrity of data that traverses it."
@@ -496,7 +496,7 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.xaccess="N"'
 
-  - id: 30038
+  - id: 30036
     title: "Set default locking screensaver timeout."
     description: "The default timeout is between 10 and 30 minutes of keyboard/mouse inactivity before a password-protected screen saver is invoked by the CDE session manager depending on the OS release and the locale. Uniformly reduce this default timeout value to 10 minutes (this setting can still be overridden by individual users in their own environment.)"
     rationale: "Setting the inactivity timer to a low value will reduce the probability of a malicious entity compromising the system via the console."
@@ -508,7 +508,7 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:HP_UX.screensaver_timeout="Y"'
 
-  - id: 30039
+  - id: 30037
     title: "Configure IPFilter to allow only select communication."
     description: "HP-UX IPFilter (B9901AA) is a stateful system firewall that controls IP packet flow in or out of a machine. It is installed by default on HP-UX 11iv2 (11.23) and later. On older systems, IPFilter can be obtained from http://www.hp.com/go/ipfilter. The rules below will work in an otherwise-empty ipf.conf file, or, if there are rules already present, it will block all that were not passed earlier in the ruleset. This is less likely to break things, but will allow more traffic through. Alternatively, you can instead take the pass lines below (not using the block rule), and change them into 'block in quick' rules, and place those at the top of the file. This will error on the side of blocking traffic. See ipf(5) for detail. Your ruleset can be tested using ipftest(1). Bastille note: if using to change and monitor the IPFilter firewall, ensure that rules are added to /etc/opt/sec_mgmt/bastille/ipf.customrules, and that Bastille is rerun with the last config file, so they will not be overwritten in a subsequent lockdown."
     rationale: "Restricting incoming network traffic to explicitly allowed hosts will help prevent unauthorized access the system."
@@ -520,7 +520,7 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:IPFilter.configure_ipfilter="Y"'
 
-  - id: 30040
+  - id: 30038
     title: "Restrict at/cron to authorized users."
     description: "The cron.allow and at.allow files are a list of users who are allowed to run the crontab and at commands to submit jobs to be run at scheduled intervals. - Note that even though a given user is not listed in cron.allow, cron jobs can still be run as that user. cron.allow only controls administrative access to the crontab command for scheduling and modifying cron jobs."
     rationale: "On many systems, only the system administrator needs the ability to schedule jobs."
@@ -532,11 +532,11 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.cronuser="N"'
 
-  - id: 30041
+  - id: 30039
     title: "Restrict crontab file permissions."
     description: "The system crontab files are only accessed by the cron daemon (which runs with superuser privileges) and the crontab command (which is set-UID to root)."
     rationale: "Allowing unprivileged users to read or (even worse) modify system crontab files can create the potential for a local user on the system to gain elevated privileges."
-    remediation: "Perform the following so that only root has access to the crontab files: 1. Change to the /var/spool/cron/crontabs directory 2. Change the file owner to root and file group owner to sys 3. Set file permissions so that only root has access to the files. The following script will perform the procedure above: cd /var/spool/cron/crontabs chown root:sys * chmod og-rwx *" 
+    remediation: "Perform the following so that only root has access to the crontab files: 1. Change to the /var/spool/cron/crontabs directory 2. Change the file owner to root and file group owner to sys 3. Set file permissions so that only root has access to the files. The following script will perform the procedure above: cd /var/spool/cron/crontabs chown root:sys * chmod og-rwx *"
     compliance:
       - cis: ["1.6.8"]
       - cis_level: ["1"]
@@ -544,7 +544,7 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.crontabs_file="Y"'
 
-  - id: 30042
+  - id: 30040
     title: "Restrict root logins to system console."
     description: "Anonymous root logins should never be allowed except on the system console in emergency situations. At all other times, the administrator should access the system via an unprivileged account and use some authorized mechanism to gain additional privilege, such as the su command, the freely-available sudo package discussed in item SN.6, or the HP Role Based Authorization system also discussed in item SN.6. These mechanisms provide at least a limited audit trail in the event of problems."
     rationale: "Anonymous root logins do not provide an audit trail, nor are subject to additional authorization provisions."
@@ -556,11 +556,11 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.create_securetty="Y"'
 
-  - id: 30044
+  - id: 30041
     title: "Disable nobody access for secure RPC."
-    description: "TThe keyserv process stores user keys that are utilized with the ONC secure RPC mechanism. The action below prevents keyserv from using default keys for the 'nobody' user, effectively stopping this user from accessing information via secure RPC."
+    description: 'The keyserv process stores user keys that are utilized with the ONC secure RPC mechanism. The action below prevents keyserv from using default keys for the "nobody" user, effectively stopping this user from accessing information via secure RPC.'
     rationale: "The default 'nobody' user should not be accessing information via secure RPC."
-    remediation: "Perform the following to disable nobody access for secure RPC: 1. Add the “-d” option to the KEYSERV_OPTIONS parameter in the system startup configuration file /etc/rc.config.d/namesvrs The following script will perform the procedure above: KEYSERV_OPTIONS=\"`sh -c '. /etc/rc.config.d/namesvrs ; echo \"$KEYSERV_OPTIONS\"'`\" ch_rc -a -p KEYSERV_OPTIONS=\"-d $KEYSERV_OPTIONS \" \ /etc/rc.config.d/namesvrs"
+    remediation: "Perform the following to disable nobody access for secure RPC: 1. Add the '-d' option to the KEYSERV_OPTIONS parameter in the system startup configuration file /etc/rc.config.d/namesvrs The following script will perform the procedure above: KEYSERV_OPTIONS=\"`sh -c '. /etc/rc.config.d/namesvrs ; echo \"$KEYSERV_OPTIONS\"'`\" ch_rc -a -p KEYSERV_OPTIONS=\"-d $KEYSERV_OPTIONS \" \ /etc/rc.config.d/namesvrs"
     compliance:
       - cis: ["1.6.11"]
       - cis_level: ["1"]
@@ -572,10 +572,10 @@ checks:
   # 1.7 Logging
   #################################################################
 
-  - id: 30045
+  - id: 30042
     title: "Enable kernel-level auditing."
-    description: "Kernel-level auditing provides information on commands and system calls that are executed on the local system.  The audit trail may be reviewed with the audisp command.  Kernel auditing has a prerequisite of either Standard Security Mode Extensions, or in the case of HP-UX 11iv1 and prior, Trusted Mode. Kernel-level auditing can consume large amounts of disk space and even cause a system performance impact, particularly on heavily used machines.  Sites may wish to consider logging less information to help reduce the amount of disk space and other system resources consumed by the auditing process. See the audevent(1M) manual page for more information."
-    rationale: "By recording key system events in log files, kernel-level auditing provides a trail to detect and analyze security breaches.  Moreover, this data can be used to detect potential security weakness, and also serves as a deterrent against system abuses."
+    description: "If inetd is running, it is a good idea to make use of the 'logging' (-l) feature of the HP-UX inetd that logs information about the source of any network connections seen by the daemon, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd‟s /var/adm/inetd.sec configuration file. This information is logged via Syslog and by default HP-UX systemsdeposit this logging information in var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination. IPFilter, which comes with HP-UX, can log inetd and other connections or attempted connections with its 'ipmon' daemon as either a compliment or alternative to inetd logging."
+    rationale: "By recording key system events in log files, kernel-level auditing provides a trail to detect and analyze security breaches. Moreover, this data can be used to detect potential security weakness, and also serves as a deterrent against system abuses."
     remediation: "Use the Systems Management Homepage (SMH) facility to configure and enable the type and level of auditing appropriate for your environment."
     compliance:
       - cis: ["1.7.1"]
@@ -584,9 +584,9 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.system_auditing="Y"'
 
-  - id: 30046
+  - id: 30043
     title: "Enable logging from inetd."
-    description: "If inetd is running, it is a good idea to make use of the 'logging' (-l) feature of the HP-UX inetd that logs information about the source of any network connections seen by the daemon, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd‟s /var/adm/inetd.sec configuration file. This information is logged via Syslog and by default HP-UX systemsdeposit this logging information in var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination. IPFilter, which comes with HP-UX, can log inetd and other connections or attempted connections with its 'ipmon' daemon as either a compliment or alternative to inetd logging."
+    description: 'If inetd is running, it is a good idea to make use of the "logging" (-l) feature of the HP-UX inetd that logs information about the source of any network connections seen by the daemon, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd''s /var/adm/inetd.sec configuration file. This information is logged via Syslog and by default HP-UX systems deposit this logging information in var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination. IPFilter, which comes with HP-UX, can log inetd and other connections or attempted connections with its "ipmon" daemon as either a compliment or alternative to inetd logging.'
     rationale: "Logging information about the source of inetd network connections assists in the detection and identification of unusual activity that may be associated with security intrusions."
     remediation: "Perform the following: ch_rc -a -p INETD_ARGS=-l /etc/rc.config.d/netdaemons"
     compliance:
@@ -596,11 +596,11 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.log_inetd="Y"'
 
-  - id: 30146
+  - id: 30144
     title: "Turn on additional logging for FTP daemon."
-    description: "If the FTP daemon is left on, it is recommended that the command logging (-L) and connection logging (-l) flags also be enabled to track FTP activity on the system, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd’s /var/adm/inetd.sec configuration file. Note that this setting has no effect if the FTP daemon remains de-activated from item 2.1. Also note that enabling command logging on the FTP daemon (HP-UX 11.x only) can cause user passwords to appear in clear-text form in the system logs, if the user accidentally types their password at the username prompt. Information about FTP sessions will be logged to Syslog and by default HP-UX systems deposit this logging information in /var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination."
+    description: "If the FTP daemon is left on, it is recommended that the command logging (-L) and connection logging (-l) flags also be enabled to track FTP activity on the system, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd's /var/adm/inetd.sec configuration file. Note that this setting has no effect if the FTP daemon remains de-activated from item 2.1. Also note that enabling command logging on the FTP daemon (HP-UX 11.x only) can cause user passwords to appear in clear-text form in the system logs, if the user accidentally types their password at the username prompt. Information about FTP sessions will be logged to Syslog and by default HP-UX systems deposit this logging information in /var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination."
     rationale: "Logging information about the source of ftp network connections assists in the detection and identification of unusual activity that may be associated with security intrusions."
-    remediation: "Perform the following to enable logging for the FTP daemon: 1. Change directory to /etc. 2. Open the inetd.conf file and locate the ftpd configuration entry line. 3. Add the "-L" and "-l" flags to the ftpd entry if not already present. 4. Save and close file. "
+    remediation: 'Perform the following to enable logging for the FTP daemon: 1. Change directory to /etc. 2. Open the inetd.conf file and locate the ftpd configuration entry line. 3. Add the "-L" and "-l" flags to the ftpd entry if not already present. 4. Save and close file. The following script will perform the procedure above: cd /etc awk ''/^ftpd/ && !/-L/ { $NF = $NF " -L" } /^ftpd/ && !/-l/ { $NF = $NF " -l" } { print }'' inetd.conf > inetd.conf.tmp cp inetd.conf.tmp inetd.conf rm -f inetd.conf.tmp'
     compliance:
       - cis: ["1.7.3"]
       - cis_level: ["1"]
@@ -613,11 +613,11 @@ checks:
   # 1.8 User Accounts and Environment
   #################################################################
 
-  - id: 30048
+  - id: 30045
     title: "Block system accounts."
-    description: "Accounts that are not being used by regular users should be locked.  Not only should the password field for the account be set to an invalid string, but the shell field in the password file should contain an invalid shell. Access to the uucp and nuucp accounts is only needed when the deprecated Unix to Unix Copy (UUCP) service is in use.  The other listed accounts should never require direct access.  The actions below locks the passwords to these accounts (on systems converted to Trusted Mode only) and sets the login shell to /bin/false. Note that the above is not an exhaustive list of possible system/application accounts that could be installed on the system. An audit of all users on the system is the only way to be sure that only authorized accounts are in place."
+    description: "Accounts that are not being used by regular users should be locked. Not only should the password field for the account be set to an invalid string, but the shell field in the password file should contain an invalid shell. Access to the uucp and nuucp accounts is only needed when the deprecated Unix to Unix Copy (UUCP) service is in use. The other listed accounts should never require direct access. The actions below locks the passwords to these accounts (on systems converted to Trusted Mode only) and sets the login shell to /bin/false. Note that the above is not an exhaustive list of possible system/application accounts that could be installed on the system. An audit of all users on the system is the only way to be sure that only authorized accounts are in place."
     rationale: "System accounts are not used by regular users, and almost never require direct access; thus, they should be locked to prevent accidental or malicious usage."
-    remediation: "Perform the following to properly lock the following known system users: www sys smbnull iwww owww sshd hpsmh named uucp nuucp adm daemon bin lp nobody noaccess hpdb useradm  1. Lock the account:  passwd -l <user> 2. Set the login shell to an invalid program:  /usr/sbin/usermod -s /bin/false <user> 3. If a trusted system, set the adminstrator lock:  /usr/lbin/modprpw -m alock=YES <user>"
+    remediation: 'Perform the following to properly lock the following known system users: www sys smbnull iwww owww sshd hpsmh named uucp nuucp adm daemon bin lp nobody noaccess hpdb useradm 1. Lock the account: passwd -l <user> 2. Set the login shell to an invalid program: /usr/sbin/usermod -s /bin/false <user> 3. If a trusted system, set the adminstrator lock: /usr/lbin/modprpw -m alock=YES <user> The following script will perform the procedure above: for user in www sys smbnull iwww owww sshd \ hpsmh named uucp nuucp adm daemon bin lp \ nobody noaccess hpdb useradm; do passwd -l "$user" /usr/sbin/usermod -s /bin/false "$user" if [[ -f /tcb ]]; then /usr/lbin/modprpw -m alock=YES "$user" fi done'
     compliance:
       - cis: ["1.8.1"]
       - cis_level: ["1"]
@@ -625,11 +625,11 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.block_system_accounts="Y"'
 
-  - id: 30049
+  - id: 30046
     title: "Verify that there are no accounts with empty password fields."
-    description: "An account with an empty password field means that anybody may log in as that user without providing a password at all.  All accounts should have strong passwords or should be locked by using a password string like '*', 'NP', or '*LOCKED*' "
+    description: 'An account with an empty password field means that anybody may log in as that user without providing a password at all. All accounts should have strong passwords or should be locked by using a password string like "*", "NP", or "*LOCKED*"'
     rationale: "User accounts should have passwords, or be locked."
-    remediation: "Perform the following to ensure that no accounts have an empty password field: 1. Identify all user accounts with an empty password field:  logins -p 2. Lock each account:  passwd -l <user> 3. If a trusted system, set the administrator lock:  /usr/lbin/modprpw -m alock=YES <user>"
+    remediation: "Perform the following to ensure that no accounts have an empty password field: 1. Identify all user accounts with an empty password field: logins -p 2. Lock each account: passwd -l <user> 3. If a trusted system, set the administrator lock: /usr/lbin/modprpw -m alock=YES <user>"
     compliance:
       - cis: ["1.8.2"]
       - cis_level: ["1"]
@@ -637,11 +637,11 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.lock_account_nopasswd="Y"'
 
-  - id: 30050
+  - id: 30047
     title: "Set account expiration parameters on active accounts."
-    description: "The commands below will set all active accounts (except the root account) to force password changes every 90 days (91 days when not running in HP-UX Trusted Mode) and then prevent password changes for seven days (one week) thereafter.  Users will begin receiving warnings 30 days (28 days when not running in HP-UX Trusted Mode) before their password expires.  Sites also have the option of expiring idle accounts after a certain number of days (see the on-line manual page for the usermod command, particularly the -f option)."
+    description: "The commands below will set all active accounts (except the root account) to force password changes every 90 days (91 days when not running in HP-UX Trusted Mode) and then prevent password changes for seven days (one week) thereafter. Users will begin receiving warnings 30 days (28 days when not running in HP-UX Trusted Mode) before their password expires. Sites also have the option of expiring idle accounts after a certain number of days (see the on-line manual page for the usermod command, particularly the -f option). These are recommended starting values, but sites may choose to make them more restrictive depending on local policies."
     rationale: "It is a good idea to force users to change passwords on a regular basis."
-    remediation: "Perform the following to set password expiration parameters on all active accounts: 1. Identify all user accounts excluding root that are not locked, and for each: 2. Set password expiration parameters for the account (logname) by executing the following: passwd -x 91 -n 7 -w 28 <logname>    for trusted systems, perform the following: /usr/lbin/modprpw -m exptm=90,mintm=7,expwarn=30 <logname>  3. Set the default account expiration parameters by appending the following lines to /etc/default/security: a.  PASSWORD_MAXDAYS=91 b.  PASSWORD_MINDAYS=7 c.  PASSWORD_WARNDAYS=28 4. Set the default parameters for trusted systems with: /usr/lbin/modprdef -m exptm=90,mintm=7,expwarn=30"
+    remediation: 'Perform the following to set password expiration parameters on all active accounts: 1. Identify all user accounts excluding root that are not locked, and for each: 2. Set password expiration parameters for the account (logname) by executing the following: passwd -x 91 -n 7 -w 28 <logname> for trusted systems, perform the following: /usr/lbin/modprpw -m exptm=90,mintm=7,expwarn=30 <logname> 3. Set the default account expiration parameters by appending the following lines to /etc/default/security: a. PASSWORD_MAXDAYS=91 b. PASSWORD_MINDAYS=7 c. PASSWORD_WARNDAYS=28 4. Set the default parameters for trusted systems with: /usr/lbin/modprdef -m exptm=90,mintm=7,expwarn=30 The following script will perform the procedure above. logins -ox \ | awk -F: ''($8 != "LK" && $1 != "root") { print $1 }'' \ | while read logname; do passwd -x 91 -n 7 -w 28 "$logname" /usr/lbin/modprpw -m exptm=90,mintm=7,expwarn=30 \ "$logname" done echo PASSWORD_MAXDAYS=91 >> /etc/default/security echo PASSWORD_MINDAYS=7 >> /etc/default/security echo PASSWORD_WARNDAYS=28 >> /etc/default/security /usr/lbin/modprdef -m exptm=90,mintm=7,expwarn=30'
     compliance:
       - cis: ["1.8.3"]
       - cis_level: ["1"]
@@ -651,11 +651,11 @@ checks:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.PASSWORD_MINDAYS="Y"'
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.PASSWORD_WARNDAYS="Y"'
 
-  - id: 30051
+  - id: 30048
     title: "Set strong password enforcement policies."
-    description: "The policies set here are designed to force users to make better password choices when changing their passwords.  Sites often have differing opinions on the optimal value of the MIN_PASSWORD_LENGTH and PASSWORD_HISTORY_DEPTH parameters. A minimum password length of seven is in line with industry standards, especially the Payment Card Industry (PCI) Security Standard; however, a longer value may be warranted if account locks are not enabled (item 1.6.10). A password history depth of ten combined with passwords that expire four times per year (item 1.8.3) means users will typically not re-use the same password in any given year.   Requiring an upper/lowercase and special character password will dramatically increase the password search space and lower the chances for brute-force attack significantly."
+    description: "The policies set here are designed to force users to make better password choices when changing their passwords. Sites often have differing opinions on the optimal value of the MIN_PASSWORD_LENGTH and PASSWORD_HISTORY_DEPTH parameters. A minimum password length of seven is in line with industry standards, especially the Payment Card Industry (PCI) Security Standard; however, a longer value may be warranted if account locks are not enabled (item 1.6.10). A password history depth of ten combined with passwords that expire four times per year (item 1.8.3) means users will typically not re-use the same password in any given year. Requiring an upper/lowercase and special character password will dramatically increase the password search space and lower the chances for brute-force attack significantly. - Note: these settings are known to exist for HP-UX 11iv2, 0512 and later. The man page for security(5) will indicate if these exist on your particular system. Be sure to consult you local security standards before adopting the values given above."
     rationale: "All users should use strong passwords."
-    remediation: "Perform the following to set strong password enforcement policies: 1. Change the following parameters in the /etc/default/security file to establish default password policies for new users: a.  MIN_PASSORD_LENGTH=7 b.  PASSWORD_HISTORY_DEPTH=10 c.  PASSWORD_MIN_UPPER_CASE_CHARS=1 d.  PASSWORD_MIN_DIGIT_CHARS=1 e.  PASSWORD_MIN_SPECIAL_CHARS=1 f.  PASSWORD_MIN_LOWER_CASE_CHARS=1  2. If using a trusted system, issue the following modprdef commands  to disallow null or trivial passwords: modprdef -m nullpw=NO modprdef -m rstrpw=YES"
+    remediation: "Perform the following to set strong password enforcement policies: 1. Change the following parameters in the /etc/default/security file to establish default password policies for new users: a. MIN_PASSORD_LENGTH=7 b. PASSWORD_HISTORY_DEPTH=10 c. PASSWORD_MIN_UPPER_CASE_CHARS=1 d. PASSWORD_MIN_DIGIT_CHARS=1 e. PASSWORD_MIN_SPECIAL_CHARS=1 f. PASSWORD_MIN_LOWER_CASE_CHARS=1 2. If using a trusted system, issue the following modprdef commands to disallow null or trivial passwords:  modprdef -m nullpw=NO modprdef -m rstrpw=YES The following script will perform the procedure above: modprdef -m nullpw=NO modprdef -m rstrpw=YES ch_rc -a -p MIN_PASSORD_LENGTH=7 /etc/default/security ch_rc -a -p PASSWORD_HISTORY_DEPTH=10 \ /etc/default/security ch_rc -a -p PASSWORD_MIN_UPPER_CASE_CHARS=1 \ /etc/default/security ch_rc -a -p PASSWORD_MIN_DIGIT_CHARS=1 \ /etc/default/security ch_rc -a -p PASSWORD_MIN_SPECIAL_CHARS=1 \ /etc/default/security ch_rc -a -p PASSWORD_MIN_LOWER_CASE_CHARS=1 \ /etc/default/security modprdef -m nullpw=NO modprdef -m rstrpw=YES"
     compliance:
       - cis: ["1.8.4"]
       - cis_level: ["1"]
@@ -664,11 +664,10 @@ checks:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.PASSWORD_HISTORY_DEPTH="Y"'
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.MIN_PASSWORD_LENGTH="Y"'
 
-  - id: 30052
-    title: "Verify no legacy '+' entries exist in passwd and group files."
-    description: "'+' entries in various passwd and group files served as markers for systems to insert data from NIS maps at a certain point in a system configuration file.  HP-UX does not use these markers, but they may exist in files that have been imported from other platforms.  They should be deleted if they exist."
-    rationale: "Legacy ‘+’ entries are no longer required on HP-UX systems, and may provide an avenue for attackers to gain privileged access on the system."
-    remediation: "Perform the following to remove any legacy ‘+’ entries in passwd and group files: 1. Display legacy ‘+’ entries:   grep '^+:' /etc/passwd /etc/group 2. Remove any entries found from the passwd and group files."
+  - id: 30049
+    description: "'+' entries in various passwd and group files served as markers for systems to insert data from NIS maps at a certain point in a system configuration file. HP-UX does not use these markers, but they may exist in files that have been imported from other platforms. They should be deleted if they exist."
+    rationale: "Legacy '+'' entries are no longer required on HP-UX systems, and may provide an avenue for attackers to gain privileged access on the system."
+    remediation: "Perform the following to remove any legacy '+' entries in passwd and group files: 1. Display legacy '+' entries: grep '^+:' /etc/passwd /etc/group 2. Remove any entries found from the passwd and group files."
     compliance:
       - cis: ["1.8.5"]
       - cis_level: ["1"]
@@ -676,11 +675,11 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nis_client="N"'
 
-  - id: 30053
+  - id: 30050
     title: "No '.' or group/world-writable directory in root $PATH."
-    description: "Remove the current working directory ('.') or other world-writable directories from the root user’s execution path.  To execute a file in the current directory when '.' is not in the $PATH, use the format './filename'."
-    rationale: "Including these paths in the root's executable path allows an attacker to gain superuser access if an administrator operating as root executes a Trojan horse program. "
-    remediation: "Remove the following path components if they exist in the root user’s $PATH: 1. current working directory ('.')  2. empty directories ('::') 3. a trailing path seperator at the end of the $PATH (‘:’)  4. any directory with world or group -write permissions set"
+    description: "Remove the current working directory ('.') or other world-writable directories from the root user's execution path. To execute a file in the current directory when „.‟ is not in the $PATH, use the format “./filename”."
+    rationale: "Including these paths in the root's executable path allows an attacker to gain superuser access if an administrator operating as root executes a Trojan horse program."
+    remediation: "Remove the following path components if they exist in the root user's $PATH: 1. current working directory ('.') 2. empty directories („::‟) 3. a trailing path seperator at the end of the $PATH (':') 4. any directory with world or group -write permissions set"
     compliance:
       - cis: ["1.8.6"]
       - cis_level: ["1"]
@@ -688,11 +687,11 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.root_path="N"'
 
-  - id: 30054
+  - id: 30051
     title: "Secure user home directories."
     description: "Remove group write and world access to all user home directories. While the modifications below are relatively benign, making global modifications to user home directories without alerting your user community can result in unexpected outages and unhappy users."
     rationale: "Group or world-writable user home directories may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
-    remediation: "Perform the following to secure user home directories: 1. Identify all user accounts excluding root that are not locked, and for each of these user home directories: 2. Remove group write permission (g-w) and all other permissions (o-rwx)"
+    remediation: 'Perform the following to secure user home directories: 1. Identify all user accounts excluding root that are not locked, and for each of these user home directories: 2. Remove group write permission (g-w) and all other permissions (o-rwx) The following script will perform the procedure above: logins -ox \ | awk -F: ''($8 == "PS" && $1 != "root") { print $6 }'' \ | grep /home/ \ | while read dir do  chmod g-w,o-rwx "$dir" done'
     compliance:
       - cis: ["1.8.7"]
       - cis_level: ["1"]
@@ -700,11 +699,11 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.restrict_home="Y"'
 
-  - id: 30055
+  - id: 30052
     title: "No user dot-files should be group/world writable."
     description: "Remove group and world write permissions from user dot-files. While the modifications below are relatively benign, making global modifications to user dot-files without alerting your user community can result in unexpected outages and unhappy users."
     rationale: "Group or world-writable user configuration files may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
-    remediation: "Perform the following: 1. Identify all user accounts excluding root that are not locked, and for each of these user home directories: 2. Remove group/other write permissions (go-w) from any files beginning with ‘.’"
+    remediation: 'Perform the following: 1. Identify all user accounts excluding root that are not locked, and for each of these user home directories: 2. Remove group/other write permissions (go-w) from any files beginning with ''.'' The following script performs the procedure above: logins -ox \ | awk -F: ''($8 == "PS") { print $6 }'' \ | while read dir do ls -d "$dir/".[!.]* | while read file do  if [ ! -h "$file" -a -f "$file" ] then chmod go-w "$file" fi done done'
     compliance:
       - cis: ["1.8.8"]
       - cis_level: ["1"]
@@ -712,11 +711,11 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.user_dot_files="N"'
 
-  - id: 30056
+  - id: 30053
     title: "Remove user .netrc, .rhosts and .shosts files."
-    description: "Remove user .netrc, .rhosts, and .shosts files. Note that making global modifications to user security files in their home directories without alerting your user community can result in unexpected outages and unhappy users. "
-    rationale: ".netrc files may contain unencrypted passwords that may be used to attack other systems, while .rhosts  and .shosts files used in conjunction with the BSD-style 'r-commands' (rlogin, remsh, rcp) or SSH implement a weak form of authentication based on the network address or host name of the remote computer (which can be spoofed by a potential attacker to exploit the local system)."
-    remediation: "Perform the following to remove user .netrc, .rhosts, and .shosts files. 1. Identify all user accounts, and for each existing home directory: 2. Remove .netrc, .rhosts, and .shosts files"
+    description: "Remove user .netrc, .rhosts, and .shosts files. Note that making global modifications to user security files in their home directories without alerting your user community can result in unexpected outages and unhappy users."
+    rationale: ".netrc files may contain unencrypted passwords that may be used to attack other systems, while .rhosts and .shosts files used in conjunction with the BSD-style “r-commands” (rlogin, remsh, rcp) or SSH implement a weak form of authentication based on the network address or host name of the remote computer (which can be spoofed by a potential attacker to exploit the local system)."
+    remediation: 'Perform the following to remove user .netrc, .rhosts, and .shosts files. 1. Identify all user accounts, and for each existing home directory: 2. Remove .netrc, .rhosts, and .shosts files The following script performs the procedure above: logins -ox | cut -f6 -d: | while read h do for file in "$h/.netrc" "$h/.rhosts" "$h/.shosts" do  if [ -f "$file" ] then  echo "removing $file" rm -f "$file" fi done done'
     compliance:
       - cis: ["1.8.9"]
       - cis_level: ["1"]
@@ -724,11 +723,11 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.user_rc_files="N"'
 
-  - id: 30057
+  - id: 30054
     title: "Set default umask for users."
-    description: "Set the default umask to 077 so that files created by users will not be readable by any other user on the system.  A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
-    rationale: "Restricting access to files and directories created by a user from any other user on the system reduces the possibility of an unauthorized account accessing that user’s files.  The user creating the file has the discretion of making their files and directories readable by others via the chmod command.  Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files (.profile, .cshrc, etc.) in their home directories."
-    remediation: "Perform the following to set a default umask for users: 1. Change directory to /etc 2. Append the line  umask 077  to the following files: a.  profile b.  csh.login c.  d.profile d.  d.login 3. Update the UMASK parameter to 077 in the file /etc/default/security"
+    description: "Set the default umask to 077 so that files created by users will not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system. - Bastille Note: sets the default umask, but uses a umask of 027 rather than the 077."
+    rationale: "Restricting access to files and directories created by a user from any other user on the system reduces the possibility of an unauthorized account accessing that user's files. The user creating the file has the discretion of making their files and directories readable by others via the chmod command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files (.profile, .cshrc, etc.) in their home directories."
+    remediation: 'Perform the following to set a default umask for users: 1. Change directory to /etc 2. Append the line umask 077 to the following files: a. profile b. csh.login c. d.profile d. d.login 3. Update the UMASK parameter to 077 in the file /etc/default/security The following script performs the procedure above: cd /etc for file in profile csh.login d.profile d.login do echo umask 077 >> "$file" done ch_rc -a -p UMASK=077 /etc/default/security'
     compliance:
       - cis: ["1.8.10"]
       - cis_level: ["1"]
@@ -736,11 +735,11 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.umask="Y"'
 
-  - id: 30058
+  - id: 30055
     title: "Set 'mesg n' as default for all users."
-    description: "Block the use of write or talk commands to contact the user at their terminal in order to slightly strengthen permissions on the user's tty device.  Note that this setting is the default on HP-UX 11i."
+    description: "Block the use of write or talk commands to contact the user at their terminal in order to slightly strengthen permissions on the user's tty device. Note that this setting is the default on HP-UX 11i."
     rationale: "Since write and talk are no longer widely used at most sites, the incremental security increase is worth the loss of functionality."
-    remediation: "Perform the following: 1. Change directory to /etc 2. Append the line  mesg n  to the following files: a.  profile b.  csh.login c.  d.profile d.  d.login"
+    remediation: 'Perform the following: 1. Change directory to /etc 2. Append the line mesg n to the following files: a. profile b. csh.login c. d.profile d. d.login The following script performs the procedure above:  cd /etc for file in profile csh.login d.profile d.login do  echo mesg n >> "$file" done'
     compliance:
       - cis: ["1.8.11"]
       - cis_level: ["1"]
@@ -752,7 +751,7 @@ checks:
   # 1.9 Warning Banners
   #################################################################
 
-  - id: 30059
+  - id: 30056
     title: "Create warning banners for terminal-session logins."
     description: "The contents of the /etc/issue file are displayed prior to the login prompt on the system's console and serial devices, as well as for remote terminal-session logins such as through SSH or Telnet.  /etc/motd is generally displayed after all successful logins, no matter where the user is logging in from, but is thought to be less useful because it only provides notification to the user after the machine has been accessed."
     rationale: "Presenting some sort of statutory warning message prior to the normal user logon may assist the prosecution of trespassers on the computer system. Changing some of these login banners also has the side effect of hiding OS version information and other detailed system information from attackers attempting to target specific attacks at a system."
@@ -764,11 +763,11 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.banners="Y"'
 
-  - id: 30060
+  - id: 30057
     title: "Create warning banners for GUI logins."
-    description: "The standard graphical login program for HP-UX requires the user to enter their username in one dialog box and their password in a second separate dialog.  The commands below set the warning message on both to be the same message, but the site has the option of using different messages on each screen.  The Dtlogin*greeting.labelString is the message for the first dialog where the user is prompted for their username, and .perslabelString is the message on the second dialog box."
+    description: "The standard graphical login program for HP-UX requires the user to enter their username in one dialog box and their password in a second separate dialog. The commands below set the warning message on both to be the same message, but the site has the option of using different messages on each screen. The Dtlogin*greeting.labelString is the message for the first dialog where the user is prompted for their username, and .perslabelString is the message on the second dialog box. Note that system administrators may wish to consult with their site’s legal council about the specifics of any warning banners."
     rationale: "Presenting some sort of statutory warning message prior to the normal user logon may assist the prosecution of trespassers on the computer system. Changing some of these login banners also has the side effect of hiding OS version information and other detailed system information from attackers attempting to target specific attacks at a system."
-    remediation: "Perform the following to install default warning banners for GUI logins: 1. Create a default banner text string ($banner) 2. For each directory in /usr/dt/config that contains a Xresources file, copy that Xresources file into a corresponding directory in /etc/dt/config (creating the directory if needed) 3. Append the following lines (replacing $banner with the string in step 1) to each /etc/dt/config/*/Xresources file: a. Dtlogin*greeting.labelString: $banner b. Dtlogin*greeting.persLabelString: $banner 4. Change the owner to root and group owner to sys for each Xresource file 5. Change the file permissions to 644 for each Xresource file"
+    remediation: 'Perform the following to install default warning banners for GUI logins: 1. Create a default banner text string ($banner) 2. For each directory in /usr/dt/config that contains a Xresources file, copy that Xresources file into a corresponding directory in /etc/dt/config (creating the directory if needed) 3. Append the following lines (replacing $banner with the string in step 1) to each /etc/dt/config/*/Xresources file: a. Dtlogin*greeting.labelString: $banner b. Dtlogin*greeting.persLabelString: $banner 4. Change the owner to root and group owner to sys for each Xresource file 5. Change the file permissions to 644 for each Xresource file The following script performs the procedure above: banner="Authorized users only. All activity may \ be monitored and reported." for file in /usr/dt/config/*/Xresources; do dir="$(dirname "$file" | sed ''s|^/usr/|/etc/|'')" mkdir -p "$dir" if [ ! -f "$dir/Xresources" ]; then cp -p "$file" "$dir/Xresources" fi echo "Dtlogin*greeting.labelString: $banner" \ >> "$dir/Xresources" echo "Dtlogin*greeting.persLabelString: $banner" \ >> "$dir/Xresources" done chown root:sys /etc/dt/config/*/Xresources chmod 644 /etc/dt/config/*/Xresources'
     compliance:
       - cis: ["1.9.2"]
       - cis_level: ["1"]
@@ -776,11 +775,11 @@ checks:
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:HP_UX.gui_banner="Y"'
 
-  - id: 30061
+  - id: 30058
     title: "Create warning banners for FTP daemon."
     description: "The FTP daemon in HP-UX 11 is based on the popular Washington University FTP daemon (WU-FTPD), which is an Open Source program widely distributed on the Internet. Note that this setting has no effect if the FTP daemon remains de-activated from item 1.2.1."
     rationale: "Presenting some sort of statutory warning message prior to the normal user logon may assist the prosecution of trespassers on the computer system. Changing some of these login banners also has the side effect of hiding OS version information and other detailed system information from attackers attempting to target specific attacks at a system."
-    remediation: "Perform the following to install a default warning banner for the FTP daemon: 1. Ensure that an appropriate warning message exists in the /etc/issue file . 2. Append the line "banner /etc/issue" to the file /etc/ftpd/ftpaccess 3. Change file permissions to 600 for /etc/ftpd/ftpaccess 4. Change owner to root and group owner to sys for both /etc/ftpd and /etc/ftpd/ftpaccess"
+    remediation: 'Perform the following to install a default warning banner for the FTP daemon: 1. Ensure that an appropriate warning message exists in the /etc/issue file . 2. Append the line "banner /etc/issue" to the file /etc/ftpd/ftpaccess 3. Change file permissions to 600 for /etc/ftpd/ftpaccess 4. Change owner to root and group owner to sys for both /etc/ftpd and /etc/ftpd/ftpaccess The following script performs the procedure above: if [ -d /etc/ftpd ]; then echo "banner /etc/issue" >>/etc/ftpd/ftpaccess chmod 600 /etc/ftpd/ftpaccess chown root:sys /etc/ftpd /etc/ftpd/ftpaccess fi'
     compliance:
       - cis: ["1.9.3"]
       - cis_level: ["1"]

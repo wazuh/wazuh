@@ -121,7 +121,7 @@ checks:
 
   - id: 25004
     title: "Only enable FTP if absolutely necessary."
-    description: "Re-enable ftp. Like telnet, the FTP protocol is unencrypted, which means passwords and other data transmitted during the session can be captured by sniffing the network, and that the FTP session itself can be hijacked by an external attacker. SSH provides two alternative, encrypted file transfer mechanisms, scp and sftp, which should be used instead of FTP. Even if FTP is required because the local system is an anonymous FTP server, consider requiring authenticated users on the system to transfer files via SSH-based protocols. For further information on restricting FTP access to the system, see item 1.6.2 below. Sites may also consider augmenting the "ftpd -l" below with '-v' (10.x and 11.x) or '-L' (11.x only) for additional logging of FTP transactions, or with '-a' (11.x only) for fine grain FTP access control through the use of a configuration file - see the ftpd(1M) man page on your systems for details."
+    description: "Re-enable ftp. Like telnet, the FTP protocol is unencrypted, which means passwords and other data transmitted during the session can be captured by sniffing the network, and that the FTP session itself can be hijacked by an external attacker. SSH provides two alternative, encrypted file transfer mechanisms, scp and sftp, which should be used instead of FTP. Even if FTP is required because the local system is an anonymous FTP server, consider requiring authenticated users on the system to transfer files via SSH-based protocols. For further information on restricting FTP access to the system, see item 1.6.2 below. Sites may also consider augmenting the 'ftpd -l' below with '-v' (10.x and 11.x) or '-L' (11.x only) for additional logging of FTP transactions, or with '-a' (11.x only) for fine grain FTP access control through the use of a configuration file - see the ftpd(1M) man page on your systems for details."
     rationale: "This machine serves as an (anonymous) FTP server or other mission-critical role where data must be transferred via FTP instead of the more secure alternatives."
     remediation: 'Perform the following to re-enable FTP: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the ftp service definition. 3. Save /etc/inetd.conf. The following script will perform the above procedure: awk '' /^#ftp/ { $1 = "ftp"; print $0; next} { print } '' inetd.conf > inetd.conf.new cp inetd.conf.new inetd.conf rm -f /etc/inetd.conf.new'
     compliance:
@@ -589,7 +589,7 @@ checks:
     title: "Restrict crontab file permissions."
     description: "The system crontab files are only accessed by the cron daemon (which runs with superuser privileges) and the crontab command (which is set-UID to root)."
     rationale: "Allowing unprivileged users to read or (even worse) modify system crontab files can create the potential for a local user on the system to gain elevated privileges."
-    remediation: "Perform the following so that only root has access to the crontab files: 1. Change to the /var/spool/cron/crontabs directory 2. Change the file owner to root and file group owner to sys 3. Set file permissions so that only root has access to the files. The following script will perform the procedure above: cd /var/spool/cron/crontabs chown root:sys * chmod og-rwx *" 
+    remediation: "Perform the following so that only root has access to the crontab files: 1. Change to the /var/spool/cron/crontabs directory 2. Change the file owner to root and file group owner to sys 3. Set file permissions so that only root has access to the files. The following script will perform the procedure above: cd /var/spool/cron/crontabs chown root:sys * chmod og-rwx *"
     compliance:
       - cis: ["1.6.8"]
       - cis_level: ["1"]
@@ -613,9 +613,9 @@ checks:
 
   - id: 25039
     title: "Disable nobody access for secure RPC."
-    description: "TThe keyserv process stores user keys that are utilized with the ONC secure RPC mechanism. The action below prevents keyserv from using default keys for the 'nobody' user, effectively stopping this user from accessing information via secure RPC."
+    description: 'The keyserv process stores user keys that are utilized with the ONC secure RPC mechanism. The action below prevents keyserv from using default keys for the "nobody" user, effectively stopping this user from accessing information via secure RPC.'
     rationale: "The default 'nobody' user should not be accessing information via secure RPC."
-    remediation: "Perform the following to disable nobody access for secure RPC: 1. Add the “-d” option to the KEYSERV_OPTIONS parameter in the system startup configuration file /etc/rc.config.d/namesvrs The following script will perform the procedure above: KEYSERV_OPTIONS=\"`sh -c '. /etc/rc.config.d/namesvrs ; echo \"$KEYSERV_OPTIONS\"'`\" ch_rc -a -p KEYSERV_OPTIONS=\"-d $KEYSERV_OPTIONS \" \ /etc/rc.config.d/namesvrs"
+    remediation: "Perform the following to disable nobody access for secure RPC: 1. Add the '-d' option to the KEYSERV_OPTIONS parameter in the system startup configuration file /etc/rc.config.d/namesvrs The following script will perform the procedure above: KEYSERV_OPTIONS=\"`sh -c '. /etc/rc.config.d/namesvrs ; echo \"$KEYSERV_OPTIONS\"'`\" ch_rc -a -p KEYSERV_OPTIONS=\"-d $KEYSERV_OPTIONS \" \ /etc/rc.config.d/namesvrs"
     compliance:
       - cis: ["1.6.11"]
       - cis_level: ["1"]
@@ -629,7 +629,7 @@ checks:
 
   - id: 25040
     title: "Enable logging from inetd."
-    description: "If inetd is running, it is a good idea to make use of the 'logging' (-l) feature of the HP-UX inetd that logs information about the source of any network connections seen by the daemon, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd‟s /var/adm/inetd.sec configuration file. This information is logged via Syslog and by default HP-UX systemsdeposit this logging information in var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination. IPFilter, which comes with HP-UX, can log inetd and other connections or attempted connections with its 'ipmon' daemon as either a compliment or alternative to inetd logging."
+    description: 'If inetd is running, it is a good idea to make use of the "logging" (-l) feature of the HP-UX inetd that logs information about the source of any network connections seen by the daemon, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd''s /var/adm/inetd.sec configuration file. This information is logged via Syslog and by default HP-UX systems deposit this logging information in var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination. IPFilter, which comes with HP-UX, can log inetd and other connections or attempted connections with its "ipmon" daemon as either a compliment or alternative to inetd logging.'
     rationale: "Logging information about the source of inetd network connections assists in the detection and identification of unusual activity that may be associated with security intrusions."
     remediation: "Perform the following: ch_rc -a -p INETD_ARGS=-l /etc/rc.config.d/netdaemons"
     compliance:
@@ -641,9 +641,9 @@ checks:
 
   - id: 25141
     title: "Turn on additional logging for FTP daemon."
-    description: "If the FTP daemon is left on, it is recommended that the command logging (-L) and connection logging (-l) flags also be enabled to track FTP activity on the system, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd’s /var/adm/inetd.sec configuration file. Note that this setting has no effect if the FTP daemon remains de-activated from item 2.1. Also note that enabling command logging on the FTP daemon (HP-UX 11.x only) can cause user passwords to appear in clear-text form in the system logs, if the user accidentally types their password at the username prompt. Information about FTP sessions will be logged to Syslog and by default HP-UX systems deposit this logging information in /var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination."
+    description: "If the FTP daemon is left on, it is recommended that the command logging (-L) and connection logging (-l) flags also be enabled to track FTP activity on the system, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd's /var/adm/inetd.sec configuration file. Note that this setting has no effect if the FTP daemon remains de-activated from item 2.1. Also note that enabling command logging on the FTP daemon (HP-UX 11.x only) can cause user passwords to appear in clear-text form in the system logs, if the user accidentally types their password at the username prompt. Information about FTP sessions will be logged to Syslog and by default HP-UX systems deposit this logging information in /var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination."
     rationale: "Logging information about the source of ftp network connections assists in the detection and identification of unusual activity that may be associated with security intrusions."
-    remediation: "Perform the following to enable logging for the FTP daemon: 1. Change directory to /etc. 2. Open the inetd.conf file and locate the ftpd configuration entry line. 3. Add the "-L" and "-l" flags to the ftpd entry if not already present. 4. Save and close file. "
+    remediation: 'Perform the following to enable logging for the FTP daemon: 1. Change directory to /etc. 2. Open the inetd.conf file and locate the ftpd configuration entry line. 3. Add the "-L" and "-l" flags to the ftpd entry if not already present. 4. Save and close file. The following script will perform the procedure above: cd /etc awk ''/^ftpd/ && !/-L/ { $NF = $NF " -L" } /^ftpd/ && !/-l/ { $NF = $NF " -l" } { print }'' inetd.conf > inetd.conf.tmp cp inetd.conf.tmp inetd.conf rm -f inetd.conf.tmp'
     compliance:
       - cis: ["1.7.3"]
       - cis_level: ["1"]
@@ -658,9 +658,9 @@ checks:
 
   - id: 25042
     title: "Block system accounts."
-    description: "Accounts that are not being used by regular users should be locked.  Not only should the password field for the account be set to an invalid string, but the shell field in the password file should contain an invalid shell. Access to the uucp and nuucp accounts is only needed when the deprecated Unix to Unix Copy (UUCP) service is in use.  The other listed accounts should never require direct access.  The actions below locks the passwords to these accounts (on systems converted to Trusted Mode only) and sets the login shell to /bin/false. Note that the above is not an exhaustive list of possible system/application accounts that could be installed on the system. An audit of all users on the system is the only way to be sure that only authorized accounts are in place."
+    description: "Accounts that are not being used by regular users should be locked. Not only should the password field for the account be set to an invalid string, but the shell field in the password file should contain an invalid shell. Access to the uucp and nuucp accounts is only needed when the deprecated Unix to Unix Copy (UUCP) service is in use. The other listed accounts should never require direct access. The actions below locks the passwords to these accounts (on systems converted to Trusted Mode only) and sets the login shell to /bin/false. Note that the above is not an exhaustive list of possible system/application accounts that could be installed on the system. An audit of all users on the system is the only way to be sure that only authorized accounts are in place."
     rationale: "System accounts are not used by regular users, and almost never require direct access; thus, they should be locked to prevent accidental or malicious usage."
-    remediation: "Perform the following to properly lock the following known system users: www sys smbnull iwww owww sshd hpsmh named uucp nuucp adm daemon bin lp nobody noaccess hpdb useradm  1. Lock the account:  passwd -l <user> 2. Set the login shell to an invalid program:  /usr/sbin/usermod -s /bin/false <user> 3. If a trusted system, set the adminstrator lock:  /usr/lbin/modprpw -m alock=YES <user>"
+    remediation: 'Perform the following to properly lock the following known system users: www sys smbnull iwww owww sshd hpsmh named uucp nuucp adm daemon bin lp nobody noaccess hpdb useradm 1. Lock the account: passwd -l <user> 2. Set the login shell to an invalid program: /usr/sbin/usermod -s /bin/false <user> 3. If a trusted system, set the adminstrator lock: /usr/lbin/modprpw -m alock=YES <user> The following script will perform the procedure above: for user in www sys smbnull iwww owww sshd \ hpsmh named uucp nuucp adm daemon bin lp \ nobody noaccess hpdb useradm; do passwd -l "$user" /usr/sbin/usermod -s /bin/false "$user" if [[ -f /tcb ]]; then /usr/lbin/modprpw -m alock=YES "$user" fi done'
     compliance:
       - cis: ["1.8.1"]
       - cis_level: ["1"]
@@ -681,11 +681,11 @@ checks:
       - "f:/etc/passwd -> r:^bin && r:/bin/false"
       - "f:/etc/passwd -> r:^lp && r:/bin/false"
 
-  - id: 25049
+  - id: 25043
     title: "Verify that there are no accounts with empty password fields."
-    description: "An account with an empty password field means that anybody may log in as that user without providing a password at all.  All accounts should have strong passwords or should be locked by using a password string like '*', 'NP', or '*LOCKED*' "
+    description: 'An account with an empty password field means that anybody may log in as that user without providing a password at all. All accounts should have strong passwords or should be locked by using a password string like "*", "NP", or "*LOCKED*"'
     rationale: "User accounts should have passwords, or be locked."
-    remediation: "Perform the following to ensure that no accounts have an empty password field: 1. Identify all user accounts with an empty password field:  logins -p 2. Lock each account:  passwd -l <user> 3. If a trusted system, set the administrator lock:  /usr/lbin/modprpw -m alock=YES <user>"
+    remediation: "Perform the following to ensure that no accounts have an empty password field: 1. Identify all user accounts with an empty password field: logins -p 2. Lock each account: passwd -l <user> 3. If a trusted system, set the administrator lock: /usr/lbin/modprpw -m alock=YES <user>"
     compliance:
       - cis: ["1.8.2"]
       - cis_level: ["1"]
@@ -693,11 +693,11 @@ checks:
     rules:
       - "c:logins -p -> r:^$"
 
-  - id: 25043
+  - id: 25044
     title: "Set account expiration parameters on active accounts."
-    description: "The commands below will set all active accounts (except the root account) to force password changes every 90 days (91 days when not running in HP-UX Trusted Mode) and then prevent password changes for seven days (one week) thereafter.  Users will begin receiving warnings 30 days (28 days when not running in HP-UX Trusted Mode) before their password expires.  Sites also have the option of expiring idle accounts after a certain number of days (see the on-line manual page for the usermod command, particularly the -f option)."
+    description: "The commands below will set all active accounts (except the root account) to force password changes every 90 days (91 days when not running in HP-UX Trusted Mode) and then prevent password changes for seven days (one week) thereafter. Users will begin receiving warnings 30 days (28 days when not running in HP-UX Trusted Mode) before their password expires. Sites also have the option of expiring idle accounts after a certain number of days (see the on-line manual page for the usermod command, particularly the -f option). These are recommended starting values, but sites may choose to make them more restrictive depending on local policies."
     rationale: "It is a good idea to force users to change passwords on a regular basis."
-    remediation: "Perform the following to set password expiration parameters on all active accounts: 1. Identify all user accounts excluding root that are not locked, and for each: 2. Set password expiration parameters for the account (logname) by executing the following: passwd -x 91 -n 7 -w 28 <logname>    for trusted systems, perform the following: /usr/lbin/modprpw -m exptm=90,mintm=7,expwarn=30 <logname>  3. Set the default account expiration parameters by appending the following lines to /etc/default/security: a.  PASSWORD_MAXDAYS=91 b.  PASSWORD_MINDAYS=7 c.  PASSWORD_WARNDAYS=28 4. Set the default parameters for trusted systems with: /usr/lbin/modprdef -m exptm=90,mintm=7,expwarn=30"
+    remediation: 'Perform the following to set password expiration parameters on all active accounts: 1. Identify all user accounts excluding root that are not locked, and for each: 2. Set password expiration parameters for the account (logname) by executing the following: passwd -x 91 -n 7 -w 28 <logname> for trusted systems, perform the following: /usr/lbin/modprpw -m exptm=90,mintm=7,expwarn=30 <logname> 3. Set the default account expiration parameters by appending the following lines to /etc/default/security: a. PASSWORD_MAXDAYS=91 b. PASSWORD_MINDAYS=7 c. PASSWORD_WARNDAYS=28 4. Set the default parameters for trusted systems with: /usr/lbin/modprdef -m exptm=90,mintm=7,expwarn=30 The following script will perform the procedure above. logins -ox \ | awk -F: ''($8 != "LK" && $1 != "root") { print $1 }'' \ | while read logname; do passwd -x 91 -n 7 -w 28 "$logname" /usr/lbin/modprpw -m exptm=90,mintm=7,expwarn=30 \ "$logname" done echo PASSWORD_MAXDAYS=91 >> /etc/default/security echo PASSWORD_MINDAYS=7 >> /etc/default/security echo PASSWORD_WARNDAYS=28 >> /etc/default/security /usr/lbin/modprdef -m exptm=90,mintm=7,expwarn=30'
     compliance:
       - cis: ["1.8.3"]
       - cis_level: ["1"]
@@ -707,11 +707,11 @@ checks:
       - 'f:/etc/default/security -> r:^\s*PASSWORD_WARNDAYS='
       - 'f:/etc/default/security -> r:^\s*PASSWORD_MINDAYS='
 
-  - id: 25044
+  - id: 25045
     title: "Set strong password enforcement policies."
-    description: "The policies set here are designed to force users to make better password choices when changing their passwords.  Sites often have differing opinions on the optimal value of the MIN_PASSWORD_LENGTH and PASSWORD_HISTORY_DEPTH parameters. A minimum password length of seven is in line with industry standards, especially the Payment Card Industry (PCI) Security Standard; however, a longer value may be warranted if account locks are not enabled (item 1.6.10). A password history depth of ten combined with passwords that expire four times per year (item 1.8.3) means users will typically not re-use the same password in any given year.   Requiring an upper/lowercase and special character password will dramatically increase the password search space and lower the chances for brute-force attack significantly."
+    description: "The policies set here are designed to force users to make better password choices when changing their passwords. Sites often have differing opinions on the optimal value of the MIN_PASSWORD_LENGTH and PASSWORD_HISTORY_DEPTH parameters. A minimum password length of seven is in line with industry standards, especially the Payment Card Industry (PCI) Security Standard; however, a longer value may be warranted if account locks are not enabled (item 1.6.10). A password history depth of ten combined with passwords that expire four times per year (item 1.8.3) means users will typically not re-use the same password in any given year. Requiring an upper/lowercase and special character password will dramatically increase the password search space and lower the chances for brute-force attack significantly. - Note: these settings are known to exist for HP-UX 11iv2, 0512 and later. The man page for security(5) will indicate if these exist on your particular system. Be sure to consult you local security standards before adopting the values given above."
     rationale: "All users should use strong passwords."
-    remediation: "Perform the following to set strong password enforcement policies: 1. Change the following parameters in the /etc/default/security file to establish default password policies for new users: a.  MIN_PASSORD_LENGTH=7 b.  PASSWORD_HISTORY_DEPTH=10 c.  PASSWORD_MIN_UPPER_CASE_CHARS=1 d.  PASSWORD_MIN_DIGIT_CHARS=1 e.  PASSWORD_MIN_SPECIAL_CHARS=1 f.  PASSWORD_MIN_LOWER_CASE_CHARS=1  2. If using a trusted system, issue the following modprdef commands  to disallow null or trivial passwords: modprdef -m nullpw=NO modprdef -m rstrpw=YES"
+    remediation: "Perform the following to set strong password enforcement policies: 1. Change the following parameters in the /etc/default/security file to establish default password policies for new users: a. MIN_PASSORD_LENGTH=7 b. PASSWORD_HISTORY_DEPTH=10 c. PASSWORD_MIN_UPPER_CASE_CHARS=1 d. PASSWORD_MIN_DIGIT_CHARS=1 e. PASSWORD_MIN_SPECIAL_CHARS=1 f. PASSWORD_MIN_LOWER_CASE_CHARS=1 2. If using a trusted system, issue the following modprdef commands to disallow null or trivial passwords:  modprdef -m nullpw=NO modprdef -m rstrpw=YES The following script will perform the procedure above: modprdef -m nullpw=NO modprdef -m rstrpw=YES ch_rc -a -p MIN_PASSORD_LENGTH=7 /etc/default/security ch_rc -a -p PASSWORD_HISTORY_DEPTH=10 \ /etc/default/security ch_rc -a -p PASSWORD_MIN_UPPER_CASE_CHARS=1 \ /etc/default/security ch_rc -a -p PASSWORD_MIN_DIGIT_CHARS=1 \ /etc/default/security ch_rc -a -p PASSWORD_MIN_SPECIAL_CHARS=1 \ /etc/default/security ch_rc -a -p PASSWORD_MIN_LOWER_CASE_CHARS=1 \ /etc/default/security modprdef -m nullpw=NO modprdef -m rstrpw=YES"
     compliance:
       - cis: ["1.8.4"]
       - cis_level: ["1"]
@@ -724,11 +724,11 @@ checks:
       - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_SPECIAL_CHARS='
       - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_LOWER_CASE_CHARS='
 
-  - id: 25045
+  - id: 25046
     title: "Verify no legacy '+' entries exist in passwd and group files."
-    description: "'+' entries in various passwd and group files served as markers for systems to insert data from NIS maps at a certain point in a system configuration file.  HP-UX does not use these markers, but they may exist in files that have been imported from other platforms.  They should be deleted if they exist."
-    rationale: "Legacy ‘+’ entries are no longer required on HP-UX systems, and may provide an avenue for attackers to gain privileged access on the system."
-    remediation: "Perform the following to remove any legacy ‘+’ entries in passwd and group files: 1. Display legacy ‘+’ entries:   grep '^+:' /etc/passwd /etc/group 2. Remove any entries found from the passwd and group files."
+    description: "'+' entries in various passwd and group files served as markers for systems to insert data from NIS maps at a certain point in a system configuration file. HP-UX does not use these markers, but they may exist in files that have been imported from other platforms. They should be deleted if they exist."
+    rationale: "Legacy '+'' entries are no longer required on HP-UX systems, and may provide an avenue for attackers to gain privileged access on the system."
+    remediation: "Perform the following to remove any legacy '+' entries in passwd and group files: 1. Display legacy '+' entries: grep '^+:' /etc/passwd /etc/group 2. Remove any entries found from the passwd and group files."
     compliance:
       - cis: ["1.8.5"]
       - cis_level: ["1"]
@@ -737,11 +737,11 @@ checks:
       - "not f:/etc/passwd -> r:^+"
       - "not f:/etc/group -> r:^+"
 
-  - id: 25046
+  - id: 25047
     title: "Set default umask for users."
-    description: "Set the default umask to 077 so that files created by users will not be readable by any other user on the system.  A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
-    rationale: "Restricting access to files and directories created by a user from any other user on the system reduces the possibility of an unauthorized account accessing that user’s files.  The user creating the file has the discretion of making their files and directories readable by others via the chmod command.  Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files (.profile, .cshrc, etc.) in their home directories."
-    remediation: "Perform the following to set a default umask for users: 1. Change directory to /etc 2. Append the line  umask 077  to the following files: a.  profile b.  csh.login c.  d.profile d.  d.login 3. Update the UMASK parameter to 077 in the file /etc/default/security"
+    description: "Set the default umask to 077 so that files created by users will not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system. - Bastille Note: sets the default umask, but uses a umask of 027 rather than the 077."
+    rationale: "Restricting access to files and directories created by a user from any other user on the system reduces the possibility of an unauthorized account accessing that user's files. The user creating the file has the discretion of making their files and directories readable by others via the chmod command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files (.profile, .cshrc, etc.) in their home directories."
+    remediation: 'Perform the following to set a default umask for users: 1. Change directory to /etc 2. Append the line umask 077 to the following files: a. profile b. csh.login c. d.profile d. d.login 3. Update the UMASK parameter to 077 in the file /etc/default/security The following script performs the procedure above: cd /etc for file in profile csh.login d.profile d.login do echo umask 077 >> "$file" done ch_rc -a -p UMASK=077 /etc/default/security'
     compliance:
       - cis: ["1.8.10"]
       - cis_level: ["1"]
@@ -749,11 +749,11 @@ checks:
     rules:
       - 'f:/etc/default/security -> r:^\s*UMASK=077'
 
-  - id: 25047
+  - id: 25048
     title: "Set 'mesg n' as default for all users."
-    description: "Block the use of write or talk commands to contact the user at their terminal in order to slightly strengthen permissions on the user's tty device.  Note that this setting is the default on HP-UX 11i."
+    description: "Block the use of write or talk commands to contact the user at their terminal in order to slightly strengthen permissions on the user's tty device. Note that this setting is the default on HP-UX 11i."
     rationale: "Since write and talk are no longer widely used at most sites, the incremental security increase is worth the loss of functionality."
-    remediation: "Perform the following: 1. Change directory to /etc 2. Append the line  mesg n  to the following files: a.  profile b.  csh.login c.  d.profile d.  d.login"
+    remediation: 'Perform the following: 1. Change directory to /etc 2. Append the line mesg n to the following files: a. profile b. csh.login c. d.profile d. d.login The following script performs the procedure above:  cd /etc for file in profile csh.login d.profile d.login do  echo mesg n >> "$file" done'
     compliance:
       - cis: ["1.8.11"]
       - cis_level: ["1"]
@@ -768,11 +768,11 @@ checks:
   # 1.9 Warning Banners
   #################################################################
 
-  - id: 25048
+  - id: 25049
     title: "Create warning banners for terminal-session logins."
-    description: "The contents of the /etc/issue file are displayed prior to the login prompt on the system's console and serial devices, as well as for remote terminal-session logins such as through SSH or Telnet.  /etc/motd is generally displayed after all successful logins, no matter where the user is logging in from, but is thought to be less useful because it only provides notification to the user after the machine has been accessed."
+    description: "The contents of the /etc/issue file are displayed prior to the login prompt on the system's console and serial devices, as well as for remote terminal-session logins such as through SSH or Telnet. /etc/motd is generally displayed after all successful logins, no matter where the user is logging in from, but is thought to be less useful because it only provides notification to the user after the machine has been accessed."
     rationale: "Presenting some sort of statutory warning message prior to the normal user logon may assist the prosecution of trespassers on the computer system. Changing some of these login banners also has the side effect of hiding OS version information and other detailed system information from attackers attempting to target specific attacks at a system."
-    remediation: "Perform the following to create warning banners for terminal-session logins: 1. Compose a default banner text string 2. Append this string to the files  /etc/motd and /etc/motd 3. Change the owner to root and group owner to sys  for the file /etc/motd 4. Change the owner to root and group owner to root for the file /etc/issue 5. Change file permissions to (644) for the files /etc/motd and /etc/issue"
+    remediation: 'Perform the following to create warning banners for terminal-session logins: 1. Compose a default banner text string 2. Append this string to the files /etc/motd and /etc/motd 3. Change the owner to root and group owner to sys for the file /etc/motd 4. Change the owner to root and group owner to root for the file /etc/issue 5. Change file permissions to (644) for the files /etc/motd and /etc/issue The following script performs the procedure above: banner="Authorized users only. All activity may \ be monitored and reported." echo "$banner" >> /etc/motd echo "$banner" >> /etc/issue chown root:sys /etc/motd chown root:root /etc/issue chmod 644 /etc/motd /etc/issue'
     compliance:
       - cis: ["1.9.1"]
       - cis_level: ["1"]
@@ -781,11 +781,11 @@ checks:
       - "f:/etc/motd"
       - "f:/etc/issue"
 
-  - id: 25049
+  - id: 25050
     title: "Create warning banners for FTP daemon."
     description: "The FTP daemon in HP-UX 11 is based on the popular Washington University FTP daemon (WU-FTPD), which is an Open Source program widely distributed on the Internet. Note that this setting has no effect if the FTP daemon remains de-activated from item 1.2.1."
     rationale: "Presenting some sort of statutory warning message prior to the normal user logon may assist the prosecution of trespassers on the computer system. Changing some of these login banners also has the side effect of hiding OS version information and other detailed system information from attackers attempting to target specific attacks at a system."
-    remediation: "Perform the following to install a default warning banner for the FTP daemon: 1. Ensure that an appropriate warning message exists in the /etc/issue file . 2. Append the line "banner /etc/issue" to the file /etc/ftpd/ftpaccess 3. Change file permissions to 600 for /etc/ftpd/ftpaccess 4. Change owner to root and group owner to sys for both /etc/ftpd and /etc/ftpd/ftpaccess"
+    remediation: 'Perform the following to install a default warning banner for the FTP daemon: 1. Ensure that an appropriate warning message exists in the /etc/issue file . 2. Append the line "banner /etc/issue" to the file /etc/ftpd/ftpaccess 3. Change file permissions to 600 for /etc/ftpd/ftpaccess 4. Change owner to root and group owner to sys for both /etc/ftpd and /etc/ftpd/ftpaccess The following script performs the procedure above: if [ -d /etc/ftpd ]; then echo "banner /etc/issue" >>/etc/ftpd/ftpaccess chmod 600 /etc/ftpd/ftpaccess chown root:sys /etc/ftpd /etc/ftpd/ftpaccess fi'
     compliance:
       - cis: ["1.9.3"]
       - cis_level: ["1"]
