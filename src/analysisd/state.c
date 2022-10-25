@@ -423,6 +423,10 @@ int w_analysisd_write_state() {
         state_cpy.events_decoded_breakdown.modules.rootcheck +
         state_cpy.events_decoded_breakdown.modules.sca +
         state_cpy.events_decoded_breakdown.modules.logcollector.eventchannel +
+        state_cpy.events_decoded_breakdown.dbsync +
+        state_cpy.events_decoded_breakdown.modules.upgrade +
+        state_cpy.events_decoded_breakdown.modules.ciscat +
+        state_cpy.events_decoded_breakdown.syslog +
         state_cpy.events_decoded_breakdown.modules.logcollector.others,
         state_cpy.events_decoded_breakdown.modules.syscheck,
         state_cpy.events_decoded_breakdown.modules.syscollector,
@@ -430,6 +434,9 @@ int w_analysisd_write_state() {
         state_cpy.events_decoded_breakdown.modules.sca,
         state_cpy.events_decoded_breakdown.modules.logcollector.eventchannel,
         state_cpy.events_decoded_breakdown.dbsync,
+        state_cpy.events_decoded_breakdown.modules.upgrade +
+        state_cpy.events_decoded_breakdown.modules.ciscat +
+        state_cpy.events_decoded_breakdown.syslog +
         state_cpy.events_decoded_breakdown.modules.logcollector.others,
         state_cpy.events_processed,
         state_cpy.events_received,
@@ -438,6 +445,10 @@ int w_analysisd_write_state() {
         state_cpy.events_dropped_breakdown.modules.rootcheck +
         state_cpy.events_dropped_breakdown.modules.sca +
         state_cpy.events_dropped_breakdown.modules.logcollector.eventchannel +
+        state_cpy.events_dropped_breakdown.dbsync +
+        state_cpy.events_dropped_breakdown.modules.upgrade +
+        state_cpy.events_dropped_breakdown.modules.ciscat +
+        state_cpy.events_dropped_breakdown.syslog +
         state_cpy.events_dropped_breakdown.modules.logcollector.others,
         state_cpy.events_written_breakdown.alerts_written,
         state_cpy.events_written_breakdown.firewall_written,
