@@ -8,7 +8,7 @@ check:
 
 parse:
   logpar:
-    - event.original: <_json>
+    - event.original: <_json/json>
 
 normalize:
   - check:
