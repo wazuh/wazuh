@@ -904,6 +904,38 @@ void Json::appendString(std::string_view value, std::string_view path)
     }
 }
 
+void Json:: appendJson(const Json& value, std::string_view path)
+{
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        rapidjson::Value rapidValue{value.m_document, m_document.GetAllocator()};
+        auto* val = pp.Get(m_document);
+        if (val)
+        {
+            if (!val->IsArray())
+            {
+                val->SetArray();
+            }
+            val->PushBack(rapidValue, m_document.GetAllocator());
+        }
+        else
+        {
+            rapidjson::Value vArray;
+            vArray.SetArray();
+            vArray.PushBack(rapidValue, m_document.GetAllocator());
+            pp.Set(m_document, vArray);
+        }
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::appendJson(basePointerPath)] "
+                                             "Invalid json path: [{}]",
+                                             path));
+    }
+}
+
 bool Json::erase(std::string_view path)
 {
     if (path.empty())
