@@ -146,7 +146,7 @@ gtest_discover_tests(opBuilderHelperCheck_test)
 
 add_executable(opBuilderHelperMap_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperAppendSplitString_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperAppendString_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperAppend_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntCalc_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperJsonDeleteField_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexExtract_test.cpp

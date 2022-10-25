@@ -178,7 +178,7 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition);
  * @return base::Expression The lifter with the `append string to array` transformation.
  * @throw std::runtime_error if the parameters are empty.
  */
-base::Expression opBuilderHelperAppendString(const std::any& definition);
+base::Expression opBuilderHelperAppend(const std::any& definition);
 
 /**
  * @brief Append splitted strings to array field.
