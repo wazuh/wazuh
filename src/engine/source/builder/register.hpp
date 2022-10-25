@@ -41,7 +41,7 @@ static void registerBuilders()
 
     // Filter Helpers
     Registry::registerBuilder(builders::opBuilderHelperContainsString,
-                              "helper.s_contains");
+                              "helper.a_contains");
     Registry::registerBuilder(builders::opBuilderHelperIntEqual, "helper.i_eq");
     Registry::registerBuilder(builders::opBuilderHelperIntGreaterThan, "helper.i_gt");
     Registry::registerBuilder(builders::opBuilderHelperIntGreaterThanEqual,
@@ -96,7 +96,7 @@ static void registerBuilders()
     // Map helpers: String functions
     Registry::registerBuilder(builders::opBuilderHelperAppendSplitString,
                               "helper.s_to_array");
-    Registry::registerBuilder(builders::opBuilderHelperAppend, "helper.s_append");
+    Registry::registerBuilder(builders::opBuilderHelperAppend, "helper.a_append");
     Registry::registerBuilder(builders::opBuilderHelperHexToNumber,
                               "helper.s_hex_to_num");
     Registry::registerBuilder(builders::opBuilderHelperIPVersionFromIPStr,

@@ -233,7 +233,7 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition);
 base::Expression opBuilderHelperIPCIDR(const std::any& definition);
 
 /**
- * @brief Create `s_contains` helper function that filters events if the field
+ * @brief Create `a_contains` helper function that filters events if the field
  * is an array and contains one of the specified values.
  *
  * @param definition The filter definition.

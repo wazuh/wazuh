@@ -25,7 +25,7 @@ std::map<std::string, const char*> decoders =
             "normalize": [
                 {
                     "map": [
-                        {"decoded.names": "+s_append/decoder1"}
+                        {"decoded.names": "+a_append/decoder1"}
                     ]
                 }
             ]
@@ -42,7 +42,7 @@ std::map<std::string, const char*> decoders =
             "normalize": [
                 {
                     "map": [
-                        {"decoded.names": "+s_append/decoder1_1"}
+                        {"decoded.names": "+a_append/decoder1_1"}
                     ]
                 }
             ]
@@ -59,7 +59,7 @@ std::map<std::string, const char*> decoders =
             "normalize": [
                 {
                     "map": [
-                        {"decoded.names": "+s_append/decoder1_2"}
+                        {"decoded.names": "+a_append/decoder1_2"}
                     ]
                 }
             ]
@@ -75,7 +75,7 @@ std::map<std::string, const char*> decoders =
             "normalize": [
                 {
                     "map": [
-                        {"decoded.names": "+s_append/decoder2"}
+                        {"decoded.names": "+a_append/decoder2"}
                     ]
                 }
             ]
@@ -91,7 +91,7 @@ std::map<std::string, const char*> decoders =
             "normalize": [
                 {
                     "map": [
-                        {"decoded.names": "+s_append/decoder3"}
+                        {"decoded.names": "+a_append/decoder3"}
                     ]
                 }
             ]
@@ -108,7 +108,7 @@ std::map<std::string, const char*> decoders =
             "normalize": [
                 {
                     "map": [
-                        {"decoded.names": "+s_append/decoder23_1"}
+                        {"decoded.names": "+a_append/decoder23_1"}
                     ]
                 }
             ]
