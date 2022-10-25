@@ -24,6 +24,9 @@ setup.template.pattern: 'wazuh-alerts-5.x-*'
 setup.template.json.enabled: true
 setup.template.json.path: '/etc/filebeat/wazuh-template.json'
 setup.template.json.name: 'wazuh-5'
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 0
 setup.ilm.overwrite: true
 setup.ilm.enabled: false
 
