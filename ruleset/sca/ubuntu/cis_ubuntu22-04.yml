@@ -2255,7 +2255,7 @@ checks:
     rules:
       - "d:/etc/audit"
       - "f:/etc/audit/auditd.conf"
-      - "f:/etc/audit/auditd.conf -> -> r:^\s*max_log_file\s*=\s*\d+"
+      - "f:/etc/audit/auditd.conf -> r:^\s*max_log_file\s*=\s*\d+"
 
   # 4.1.2.2 Ensure audit logs are not automatically deleted (Automated)
   - id: 28594
@@ -2276,7 +2276,7 @@ checks:
     rules:
       - "d:/etc/audit"
       - "f:/etc/audit/auditd.conf"
-      - "f:/etc/audit/auditd.conf -> -> r:^\s*max_log_file_action\s*=\s*keep_logs"
+      - "f:/etc/audit/auditd.conf -> r:^\s*max_log_file_action\s*=\s*keep_logs"
 
   # 4.1.2.3 Ensure system is disabled when audit logs are full (Automated)
   - id: 28595
@@ -2300,21 +2300,48 @@ checks:
     rules:
       - "d:/etc/audit"
       - "f:/etc/audit/auditd.conf"
-      - "f:/etc/audit/auditd.conf -> -> r:^\s*space_left_action\s*=\s*email"
-      - "f:/etc/audit/auditd.conf -> -> r:^\s*action_mail_acct\s*=\s*root"
-      - "f:/etc/audit/auditd.conf -> -> r:^\s*admin_space_left_action\s*=\s*(halt|single))"
+      - "f:/etc/audit/auditd.conf -> r:^\s*space_left_action\s*=\s*email"
+      - "f:/etc/audit/auditd.conf -> r:^\s*action_mail_acct\s*=\s*root"
+      - "f:/etc/audit/auditd.conf -> r:^\s*admin_space_left_action\s*=\s*(halt|single))"
 
   # 4.1.3 Configure auditd rules
   # 4.1.3.1 Ensure changes to system administration scope (sudoers) is collected (Automated)
   - id: 28596
-      title: "Ensure changes to system administration scope (sudoers) is collected."
-      description: 'Monitor scope changes for system administrations. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers will be written to when the file or its attributes have changed. The audit records will be tagged with the identifier "scope.". Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
-      rationale: "Changes in the /etc/sudoers file can indicate that an unauthorized change has been made to scope of system administrator activity."
-      remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-scope.rules Add the following lines: -w /etc/sudoers -p wa -k scope -w /etc/sudoers.d/ -p wa -k scope"
-      compliance:
-        - cis: ["4.1.3.1"]
-        - cis_csc_v7: ["4.8"]
-        - cis_csc_v8: ["8.5"]
+    title: "Ensure changes to system administration scope (sudoers) is collected."
+    description: 'Monitor scope changes for system administrations. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers will be written to when the file or its attributes have changed. The audit records will be tagged with the identifier "scope.". Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
+    rationale: "Changes in the /etc/sudoers file can indicate that an unauthorized change has been made to scope of system administrator activity."
+    remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-scope.rules Add the following lines: -w /etc/sudoers -p wa -k scope -w /etc/sudoers.d/ -p wa -k scope"
+    compliance:
+      - cis: ["4.1.3.1"]
+      - cis_csc_v7: ["4.8"]
+      - cis_csc_v8: ["8.5"]
+      - mitre_techniques: ["T1562","T1562.006"]
+      - mitre_tactics: ["TA0004"]
+      - mitre_mitigations: ["M1047"]
+      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
+      - pci_dss_3.2.1: [ "10.1","10.2.2","10.2.4","10.2.5","10.3" ]
+      - pci_dss_4.0: [ "9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5" ]
+      - nist_853: [ "AU-3(1)","AU-7" ]
+      - soc_2: [ "CC5.2","CC7.2" ]
+    condition: all
+    rules:
+      - 'd:/etc/audit/rules.d'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope'
+      - "c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope"
+      - "c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope"
+
+  # 4.1.3.2 Ensure actions as another user are always logged (Automated)
+  - id: 28597
+    title: "Ensure actions as another user are always logged."
+    description: "sudo provides users with temporary elevated privileges to perform operations, either as the superuser or another user."
+    rationale: "Creating an audit log of users with temporary elevated privileges and the operation(s) they performed is essential to reporting. Administrators will want to correlate the events written to the audit trail with the records written to sudo's logfile to verify if unauthorized commands have been executed."
+    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor elevated privileges. 64 Bit systems Example: # printf \" -a always,exit -F arch=b64 -C euid!=uid -F auid!=unset -S execve -k user_emulation -a always,exit -F arch=b32 -C euid!=uid -F auid!=unset -S execve -k user_emulation \" >> /etc/audit/rules.d/50-user_emulation.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\ \"; fi 32 Bit systems Follow the same procedures as for 64 bit systems and ignore any entries with b64. Additional Information: Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
+    compliance:
+      - cis: ["4.1.3.2"]
+      - cis_csc_v7: ["4.9"]
+      - cis_csc_v8: ["8.5"]
         - mitre_techniques: ["T1562","T1562.006"]
         - mitre_tactics: ["TA0004"]
         - mitre_mitigations: ["M1047"]
@@ -2323,67 +2350,36 @@ checks:
         - pci_dss_4.0: [ "9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5" ]
         - nist_853: [ "AU-3(1)","AU-7" ]
         - soc_2: [ "CC5.2","CC7.2" ]
-      condition: all
-      rules:
-        - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-        - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
-        - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope'
-        - "c: auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope"
-        - "c: auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope"
+    condition: all
+    rules:
+      - 'd:/etc/audit/rules.d'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\s*always,exit && r:-F\s*arch=b(64|32) && r:-C\s*(euid!=uid|uid!=euid) && r:-F\s*auid!=(unset|-1|4294967295) && r:-S\s*execve && r:(key= |-k)\s*.+$'
 
-  - id: 28597
-    title: "Ensure actions as another user are always logged"
-    description: "sudo provides users with temporary elevated privileges to perform operations, either as the superuser or another user."
-    rationale: "Creating an audit log of users with temporary elevated privileges and the operation(s) they performed is essential to reporting. Administrators will want to correlate the events written to the audit trail with the records written to sudo's logfile to verify if unauthorized commands have been executed."
-    impact: ""
-    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor elevated privileges. 64 Bit systems Example: # printf " -a always,exit -F arch=b64 -C euid!=uid -F auid!=unset -S execve -k user_emulation -a always,exit -F arch=b32 -C euid!=uid -F auid!=unset -S execve -k user_emulation " >> /etc/audit/rules.d/50-user_emulation.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\ "; fi 32 Bit systems Follow the same procedures as for 64 bit systems and ignore any entries with b64. Additional Information: Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
-    references: ""
-    compliance:
-      - cis: ["4.1.3.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28598
-    title: "Ensure events that modify the sudo log file are collected"
-    description: "Monitor the sudo log file. If the system has been properly configured to disable the use of the su command and force all administrators to have to log in first and then use sudo to execute privileged commands, then all administrator commands will be logged to /var/log/sudo.log . Any time a command is executed, an audit event will be triggered as the /var/log/sudo.log file will be opened for write and the executed administration command will be written to the log."
-    rationale: "Changes in /var/log/sudo.log indicate that an administrator has executed a command or the log file itself has been tampered with. Administrators will want to correlate the events written to the audit trail with the records written to /var/log/sudo.log to verify if unauthorized commands have been executed."
-    impact: ""
-    remediation: "Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify the sudo log file. Example: # { SUDO_LOG_FILE=$(grep -r logfile /etc/sudoers* | .*//' -e 's/"//g') [ -n "${SUDO_LOG_FILE}" ] && printf " -w ${SUDO_LOG_FILE} -p wa -k sudo_log_file " >> /etc/audit/rules.d/50-sudo.rules || printf 'SUDO_LOG_FILE_ESCAPED' is unset.\ " } sed -e 's/.*logfile=//;s/,? "ERROR: Variable Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\ "; fi Additional Information: Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
-    references: ""
-    compliance:
-      - cis: ["4.1.3.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
+  # 4.1.3.3 Ensure events that modify the sudo log file are collected (Automated) - Not implemented
+  # 4.1.3.4 Ensure events that modify date and time information are collected (Automated)
   - id: 28599
-    title: "Ensure events that modify date and time information are collected"
-    description: "Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the; adjtimex - tune kernel clock settimeofday - set time using timeval and timezone structures stime - using seconds since 1/1/1970 clock_settime - allows for the setting of several internal clocks and timers system calls have been executed. Further, ensure to write an audit record to the configured audit log file upon exit, tagging the records with a unique identifier such as "time-change"."
+    title: "Ensure events that modify date and time information are collected."
+    description: "Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the; adjtimex - tune kernel clock settimeofday - set time using timeval and timezone structures stime - using seconds since 1/1/1970 clock_settime - allows for the setting of several internal clocks and timers system calls have been executed. Further, ensure to write an audit record to the configured audit log file upon exit, tagging the records with a unique identifier such as \"time-change\"."
     rationale: "Unexpected changes in system date and/or time could be a sign of malicious activity on the system."
-    impact: ""
-    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify date and time information. 64 Bit systems Example: # printf " -a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k timechange -a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime -k timechange -w /etc/localtime -p wa -k time-change " >> /etc/audit/rules.d/50-time-change.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\ "; fi 32 Bit systems Follow the same procedures as for 64 bit systems and ignore any entries with b64. In addition, add stime to the system call audit. Example: -a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime,stime -k time-change Additional Information: Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
-    references: ""
+    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify date and time information. 64 Bit systems Example: # printf \" -a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k timechange -a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime -k timechange -w /etc/localtime -p wa -k time-change \" >> /etc/audit/rules.d/50-time-change.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\ "; fi 32 Bit systems Follow the same procedures as for 64 bit systems and ignore any entries with b64. In addition, add stime to the system call audit. Example: -a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime,stime -k time-change Additional Information: Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["5.5"]
+      - cis_csc_v8: ["8.5"]
+          - mitre_techniques: ["T1562","T1562.006"]
+          - mitre_tactics: ["TA0005"]
+          - cmmc_v2.0: [ "AU.L2-3.3.1" ]
+          - pci_dss_3.2.1: [ "10.1","10.2.2","10.2.4","10.2.5","10.3" ]
+          - pci_dss_4.0: [ "9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5" ]
+          - nist_853: [ "AU-3(1)","AU-7" ]
+          - soc_2: [ "CC5.2","CC7.2" ]
     condition: all
     rules:
-      - ''    
+      - 'd:/etc/audit/rules.d'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\s*always,exit && r:-F\s*arch=b(64|32) && r:-S\s*(adjtimex|settimeofday|clock_settime) && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/localtime && r:-p\s*wa && r:(key= |-k)\s*.+$'
     
   - id: 28600
     title: "Ensure use of privileged commands are collected"
