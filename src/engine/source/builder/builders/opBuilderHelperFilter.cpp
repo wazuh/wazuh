@@ -716,7 +716,7 @@ base::Expression opBuilderHelperNotExists(const std::any& definition)
 //*               Array filters                   *
 //*************************************************
 
-// field: +s_contains/value1/value2/...valueN
+// field: +a_contains/value1/value2/...valueN
 base::Expression opBuilderHelperContainsString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -761,10 +761,10 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
                     case helper::base::Parameter::Type::REFERENCE:
                     {
                         const auto resolvedParameter {
-                            event->getString(parameter.m_value)};
+                            event->getJson(parameter.m_value)};
                         if (resolvedParameter.has_value())
                         {
-                            cmpValue.setString(resolvedParameter.value());
+                            cmpValue = resolvedParameter.value();
                         }
                         else
                         {

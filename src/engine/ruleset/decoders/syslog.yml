@@ -27,4 +27,4 @@ parse:
 normalize:
   - map:
       - event.kind: event
-      - related.hosts: +s_append/$host.hostname
+      - related.hosts: +a_append/$host.hostname

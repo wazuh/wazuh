@@ -52,14 +52,14 @@ TEST_F(RegisterTest, AllBuildersRegistered)
     ASSERT_NO_THROW(Registry::getBuilder("helper.r_match"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.r_not_match"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.ip_cidr"));
-    ASSERT_NO_THROW(Registry::getBuilder("helper.s_contains"));
+    ASSERT_NO_THROW(Registry::getBuilder("helper.a_contains"));
 
     ASSERT_NO_THROW(Registry::getBuilder("helper.i_calc"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.s_up"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.s_lo"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.s_trim"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.r_ext"));
-    ASSERT_NO_THROW(Registry::getBuilder("helper.s_append"));
+    ASSERT_NO_THROW(Registry::getBuilder("helper.a_append"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.s_to_array"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.s_hex_to_num"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.ef_merge"));

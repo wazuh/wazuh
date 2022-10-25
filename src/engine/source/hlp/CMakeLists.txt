@@ -1,8 +1,13 @@
 ####################################################################################################
 # Dependencies
 ####################################################################################################
-# TODO we use the one from the system. We may want to change this
-find_package(CURL REQUIRED)
+CPMAddPackage(
+    NAME CURL
+    GITHUB_REPOSITORY curl/curl
+    GIT_TAG curl-7_85_0
+    VERSION 7.85.0
+    EXCLUDE_FROM_ALL YES
+)
 
 add_compile_definitions ( ONLY_C_LOCALE=1 )
 
