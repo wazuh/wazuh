@@ -34,27 +34,23 @@ Vagrant.configure("2") do |config|
         echo "Installing dependencies to build the engine"
 
         #Dependencies
-        sudo add-apt-repository ppa:rmescandon/yq -y
         sudo apt-get update
-        sudo apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev libcurl4-openssl-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq yq -y
+        sudo apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq -y
 
         #CMake 3.24 installation from its release page
         curl -sL https://github.com/Kitware/CMake/releases/download/v3.24.2/cmake-3.24.2-linux-x86_64.tar.gz | sudo tar -xz -C /usr/local --strip-components=1
         export PATH=$PATH:/usr/local/bin
 
 
-        echo "Downlading the engine from github"
+        echo "--- Downlading the engine from github ---"
         sudo apt-get update
         mkdir engine &&	cd engine
-        git clone  https://github.com/wazuh/wazuh.git
+        git clone --branch 14738-filebeat-mappings-ecs-engine  https://github.com/wazuh/wazuh.git
         cd wazuh
-        # git checkout 11334-dev-new-wazuh-engine
-        # TODO: Change this to main branch when merging
-        git checkout 14738-filebeat-mappings-ecs-engine
         cd src/engine && mkdir build
         ENGINE_SRC_DIR=$(pwd)
 
-        echo "Building the engine from its source code"
+        echo "--- Building the engine from its source code ---"
         ulimit -s unlimited
         cmake -S . -B build/
         cmake --build build/ --config Debug --target main -j $(nproc)
@@ -65,11 +61,9 @@ Vagrant.configure("2") do |config|
             exit -1
         fi
 
-        # git checkout 14738-filebeat-mappings-ecs-engine
-
         # Get IP Address
         ip="127.0.0.1"
-        echo "Setting up Wazuh in $ip"
+        echo "--- Setting up Wazuh in $ip ---"
         #Download the Wazuh installation assistant.
         curl -sO https://packages.wazuh.com/4.3/wazuh-install.sh
         curl -sO https://packages.wazuh.com/4.3/config.yml
@@ -91,24 +85,14 @@ Vagrant.configure("2") do |config|
         WAZUH_DIR=/var/ossec
         ENGINE_DIR=$WAZUH_DIR/engine
 
-        echo "Setting up the engine"
+        echo "--- Setting up the engine ---"
         sudo systemctl stop wazuh-manager
-        sudo rm $WAZUH_DIR/queue/sockets/queue #Remove queue of Analysisd
-        sudo mkdir -p $ENGINE_DIR/store #Path to store the catalog
-        sudo mkdir $WAZUH_DIR/etc/kvdb/ #Path to store the kvdb
-        sudo cp -r ruleset/store/schema/ $ENGINE_DIR/store/ #Copy schema
-        build/main start --event_endpoint $WAZUH_DIR/queue/sockets/queue --api_endpoint $WAZUH_DIR/queue/sockets/engine-api --threads 1 --file_storage $ENGINE_DIR/store </dev/null &>/dev/null & # Inicialize engine
-        main_pid=$!
-        # Loads the store
-        build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load decoder ruleset/decoders/
-        build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load output ruleset/outputs/
-        build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load environment ruleset/environments/
-        build/main env -a $WAZUH_DIR/queue/sockets/engine-api set environment/wazuh/0
-        echo
-        sleep 1
-        kill $main_pid
+        sudo rm $WAZUH_DIR/queue/sockets/queue
+        sudo mkdir -p $ENGINE_DIR/store
+        sudo mkdir $WAZUH_DIR/etc/kvdb/
+        sudo cp -r ruleset/store/schema/ $ENGINE_DIR/store/
 
-        echo "Enabling the engine"
+        echo "--- Enabling the engine ---"
         #TODO: uncomment once full replacement works
         sudo cp $ENGINE_SRC_DIR/build/main $ENGINE_DIR/wazuh-engine
         sudo chmod 755 $ENGINE_DIR/wazuh-engine
@@ -120,12 +104,20 @@ Vagrant.configure("2") do |config|
         sudo sed -e "s/wazuh-analysisd /wazuh-engine /g" -i $WAZUH_DIR/bin/wazuh-control
         sudo systemctl restart wazuh-manager
 
+        sleep 2s
 
-        # wait for elastic to be ready
-        sleep 10s
-        # create index pattern
-        sudo filebeat setup
+        echo "--- Loading ruleset & enabling wazuh environment  ---"
+        build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load decoder ruleset/decoders/
+        build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load output ruleset/outputs/
+        build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load environment ruleset/environments/
+        build/main env -a $WAZUH_DIR/queue/sockets/engine-api set environment/wazuh/0
+        echo
+
+        # Create index pattern
+        echo "--- Setting up dashboards index pattern  ---"
+        sudo curl -s --cacert /etc/filebeat/certs/root-ca.pem -u 'admin:wazuhEngine5+' -X POST "https://127.0.0.1/api/saved_objects/index-pattern/wazuh-alerts-5x-*" -H 'osd-xsrf: true' -H 'Content-Type: application/json' -d   '{"attributes": {"title": "wazuh-alerts-5.x-*", "timeFieldName": "@timestamp" }}'
 
     SHELL
 
 end
+
