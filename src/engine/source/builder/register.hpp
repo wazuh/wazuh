@@ -96,7 +96,7 @@ static void registerBuilders()
     // Map helpers: String functions
     Registry::registerBuilder(builders::opBuilderHelperAppendSplitString,
                               "helper.s_to_array");
-    Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
+    Registry::registerBuilder(builders::opBuilderHelperAppend, "helper.s_append");
     Registry::registerBuilder(builders::opBuilderHelperHexToNumber,
                               "helper.s_hex_to_num");
     Registry::registerBuilder(builders::opBuilderHelperIPVersionFromIPStr,

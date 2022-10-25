@@ -9,23 +9,23 @@
 using namespace base;
 namespace bld = builder::internals::builders;
 
-TEST(OpBuilderHelperAppendString, Builds)
+TEST(OpBuilderHelperAppend, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"+s_append"},
                                  std::vector<std::string> {"1", "$ref", "3"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperAppendString(tuple));
+    ASSERT_NO_THROW(bld::opBuilderHelperAppend(tuple));
 }
 
-TEST(OpBuilderHelperAppendString, EmptyParameters)
+TEST(OpBuilderHelperAppend, EmptyParameters)
 {
     auto tuple = std::make_tuple(
         std::string {"/field"}, std::string {"+s_append"}, std::vector<std::string> {});
-    ASSERT_THROW(bld::opBuilderHelperAppendString(tuple), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperAppend(tuple), std::runtime_error);
 }
 
-TEST(OpBuilderHelperAppendString, Exec_append_literals)
+TEST(OpBuilderHelperAppend, Exec_append_literals)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"+s_append"},
@@ -33,7 +33,7 @@ TEST(OpBuilderHelperAppendString, Exec_append_literals)
     auto event1 = std::make_shared<json::Json>(R"({"field": []})");
     auto event2 = std::make_shared<json::Json>(R"({"field": "2"})");
     auto event3 = std::make_shared<json::Json>(R"({"field": ["0"]})");
-    auto op = bld::opBuilderHelperAppendString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = bld::opBuilderHelperAppend(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result.success());
@@ -64,7 +64,7 @@ TEST(OpBuilderHelperAppendString, Exec_append_literals)
     }
 }
 
-TEST(OpBuilderHelperAppendString, Exec_append_refs)
+TEST(OpBuilderHelperAppend, Exec_append_refs)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"+s_append"},
@@ -75,7 +75,7 @@ TEST(OpBuilderHelperAppendString, Exec_append_refs)
         R"({"field": "2", "ref1": "1", "ref2": "2", "ref3": "3"})");
     auto event3 = std::make_shared<json::Json>(
         R"({"field": ["0"], "ref1": "1", "ref2": "2", "ref3": "3"})");
-    auto op = bld::opBuilderHelperAppendString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = bld::opBuilderHelperAppend(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result.success());
@@ -106,7 +106,7 @@ TEST(OpBuilderHelperAppendString, Exec_append_refs)
     }
 }
 
-TEST(OpBuilderHelperAppendString, Exec_append_refs_literals)
+TEST(OpBuilderHelperAppend, Exec_append_refs_literals)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"+s_append"},
@@ -117,7 +117,7 @@ TEST(OpBuilderHelperAppendString, Exec_append_refs_literals)
         std::make_shared<json::Json>(R"({"field": "2", "ref1": "1", "ref3": "3"})");
     auto event3 =
         std::make_shared<json::Json>(R"({"field": ["0"], "ref1": "1", "ref3": "3"})");
-    auto op = bld::opBuilderHelperAppendString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = bld::opBuilderHelperAppend(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result.success());
@@ -148,7 +148,7 @@ TEST(OpBuilderHelperAppendString, Exec_append_refs_literals)
     }
 }
 
-TEST(OpBuilderHelperAppendString, Exec_append_fail_refs)
+TEST(OpBuilderHelperAppend, Exec_append_fail_refs)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"+s_append"},
@@ -158,10 +158,32 @@ TEST(OpBuilderHelperAppendString, Exec_append_fail_refs)
     auto event2 =
         std::make_shared<json::Json>(R"({"field": "2", "$ref1": 1, "ref3": "3"})");
 
-    auto op = bld::opBuilderHelperAppendString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = bld::opBuilderHelperAppend(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_FALSE(result.success());
 
     result = op(event2);
     ASSERT_FALSE(result.success());
+}
+
+TEST(OpBuilderHelperAppend, Exec_append_use_case)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+s_append"},
+                                 std::vector<std::string> {"$ref1", "literal", "$ref2"});
+    auto event1 = std::make_shared<json::Json>(R"({"field": [], "ref1": [1], "ref2": {"a": 2}})");
+
+    auto op = bld::opBuilderHelperAppend(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    result::Result<Event> result = op(event1);
+    ASSERT_TRUE(result.success());
+
+    auto field = result.payload()->getArray("/field");
+    ASSERT_TRUE(field.has_value());
+    ASSERT_TRUE(field.value().size() == 3);
+    ASSERT_TRUE(field.value()[0].getArray().value().size() == 1);
+    ASSERT_TRUE(field.value()[0].getArray().value()[0].getInt().value() == 1);
+    ASSERT_TRUE(field.value()[1].getString().value() == "literal");
+    ASSERT_TRUE(field.value()[2].getObject().value().size() == 1);
+    ASSERT_TRUE(std::get<0>(field.value()[2].getObject().value()[0]) == "a");
+    ASSERT_TRUE(std::get<1>(field.value()[2].getObject().value()[0]).getInt().value() == 2);
 }

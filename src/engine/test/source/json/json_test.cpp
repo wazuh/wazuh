@@ -1198,6 +1198,80 @@ TEST(JsonGettersTest, GetObject)
     ASSERT_THROW(jObjObject.getObject("object/key"), std::runtime_error);
 }
 
+TEST(JsonGettersTest, GetJson)
+{
+    // Success cases
+    Json source(R"({
+        "string": "value",
+        "number": 123,
+        "bool": true,
+        "null": null,
+        "array": ["value1", "value2"],
+        "object": {
+            "key1": "value1",
+            "key2": "value2"
+        }
+    })");
+
+    Json expected;
+    std::optional<Json> got;
+
+    // String
+    ASSERT_NO_THROW(got = source.getJson("/string"));
+    ASSERT_TRUE(got.has_value());
+    expected = Json("\"value\"");
+    ASSERT_EQ(expected, got.value());
+
+    // Number
+    ASSERT_NO_THROW(got = source.getJson("/number"));
+    ASSERT_TRUE(got.has_value());
+    expected = Json("123");
+    ASSERT_EQ(expected, got.value());
+
+    // Boolean
+    ASSERT_NO_THROW(got = source.getJson("/bool"));
+    ASSERT_TRUE(got.has_value());
+    expected = Json("true");
+    ASSERT_EQ(expected, got.value());
+
+    // Null
+    ASSERT_NO_THROW(got = source.getJson("/null"));
+    ASSERT_TRUE(got.has_value());
+    expected = Json("null");
+    ASSERT_EQ(expected, got.value());
+
+    // Array
+    ASSERT_NO_THROW(got = source.getJson("/array"));
+    ASSERT_TRUE(got.has_value());
+    expected = Json(R"([
+        "value1",
+        "value2"
+    ])");
+    ASSERT_EQ(expected, got.value());
+
+    // Object
+    ASSERT_NO_THROW(got = source.getJson("/object"));
+    ASSERT_TRUE(got.has_value());
+    expected = Json(R"({
+        "key1": "value1",
+        "key2": "value2"
+    })");
+    ASSERT_EQ(expected, got.value());
+
+    // Root
+    ASSERT_NO_THROW(got = source.getJson());
+    ASSERT_TRUE(got.has_value());
+    expected = source;
+    ASSERT_EQ(expected, got.value());
+
+    // Non-existing pointer
+    ASSERT_NO_THROW(got = source.getJson("/nonexistent"));
+    ASSERT_FALSE(got.has_value());
+
+    // Wrong pointer
+    ASSERT_THROW(source.getJson("object/key"), std::runtime_error);
+}
+
 /****************************************************************************************/
 // SETTERS
 /****************************************************************************************/
@@ -1378,6 +1452,75 @@ TEST(JsonSettersTest, AppendString)
 
     // Invalid pointer
     ASSERT_THROW(jObjString.appendString("object/key", "value2"), std::runtime_error);
+}
+
+TEST(JsonSettersTest, Append)
+{
+    Json jString {"\"value\""};
+    Json jNumber {"1"};
+    Json jBool {"true"};
+    Json jArray {"[\"value\"]"};
+    Json jObject {"{\"key\": \"value\"}"};
+    Json jEmpty {"null"};
+
+    Json source{"[]"};
+    Json sourceNested{"{\"nested\": []}"};
+
+    // String
+    ASSERT_NO_THROW(source.appendJson(jString));
+    ASSERT_EQ(source.size(), 1);
+    ASSERT_EQ(source.getString("/0").value(), "value");
+    ASSERT_NO_THROW(sourceNested.appendJson(jString, "/nested"));
+    ASSERT_EQ(sourceNested.size("/nested"), 1);
+    ASSERT_EQ(sourceNested.getString("/nested/0").value(), "value");
+
+    // Number
+    ASSERT_NO_THROW(source.appendJson(jNumber));
+    ASSERT_EQ(source.size(), 2);
+    ASSERT_EQ(source.getInt("/1").value(), 1);
+    ASSERT_NO_THROW(sourceNested.appendJson(jNumber, "/nested"));
+    ASSERT_EQ(sourceNested.size("/nested"), 2);
+    ASSERT_EQ(sourceNested.getInt("/nested/1").value(), 1);
+
+    // Bool
+    ASSERT_NO_THROW(source.appendJson(jBool));
+    ASSERT_EQ(source.size(), 3);
+    ASSERT_EQ(source.getBool("/2").value(), true);
+    ASSERT_NO_THROW(sourceNested.appendJson(jBool, "/nested"));
+    ASSERT_EQ(sourceNested.size("/nested"), 3);
+    ASSERT_EQ(sourceNested.getBool("/nested/2").value(), true);
+
+    // Array
+    ASSERT_NO_THROW(source.appendJson(jArray));
+    ASSERT_EQ(source.size(), 4);
+    ASSERT_EQ(source.getArray("/3").value(), jArray.getArray().value());
+    ASSERT_NO_THROW(sourceNested.appendJson(jArray, "/nested"));
+    ASSERT_EQ(sourceNested.size("/nested"), 4);
+    ASSERT_EQ(sourceNested.getArray("/nested/3").value(), jArray.getArray().value());
+
+    // Object
+    ASSERT_NO_THROW(source.appendJson(jObject));
+    ASSERT_EQ(source.size(), 5);
+    ASSERT_EQ(source.getObject("/4").value(), jObject.getObject().value());
+    ASSERT_NO_THROW(sourceNested.appendJson(jObject, "/nested"));
+    ASSERT_EQ(sourceNested.size("/nested"), 5);
+    ASSERT_EQ(sourceNested.getObject("/nested/4").value(), jObject.getObject().value());
+
+    // Empty
+    ASSERT_NO_THROW(source.appendJson(jEmpty));
+    ASSERT_EQ(source.size(), 6);
+    ASSERT_EQ(source.getJson("/5").value(), jEmpty);
+    ASSERT_NO_THROW(sourceNested.appendJson(jEmpty, "/nested"));
+    ASSERT_EQ(sourceNested.size("/nested"), 6);
+    ASSERT_EQ(sourceNested.getJson("/nested/5").value(), jEmpty);
+
+    // Non-existing pointer
+    ASSERT_NO_THROW(source.appendJson(jString, "/non-existing"));
+    ASSERT_EQ(source.size("/non-existing"), 1);
+    ASSERT_EQ(source.getString("/non-existing/0").value(), "value");
+
+    // Invalid pointer
+    ASSERT_THROW(source.appendJson(jString, "invalid"), std::runtime_error);
 }
 
 TEST(JsonSettersTest, Erase)

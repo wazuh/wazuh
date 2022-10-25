@@ -48,7 +48,9 @@ Vagrant.configure("2") do |config|
         mkdir engine &&	cd engine
         git clone  https://github.com/wazuh/wazuh.git
         cd wazuh
-        git checkout 11334-dev-new-wazuh-engine
+        # git checkout 11334-dev-new-wazuh-engine
+        # TODO: Change this to main branch when merging
+        git checkout 14738-filebeat-mappings-ecs-engine
         cd src/engine && mkdir build
         ENGINE_SRC_DIR=$(pwd)
 
@@ -63,7 +65,7 @@ Vagrant.configure("2") do |config|
             exit -1
         fi
 
-        git checkout 14738-filebeat-mappings-ecs-engine
+        # git checkout 14738-filebeat-mappings-ecs-engine
 
         # Get IP Address
         ip="127.0.0.1"
