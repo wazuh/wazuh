@@ -2302,7 +2302,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         if log_key.endswith('jsonl.gz'):
             with self.decompress_file(log_key=log_key) as f:
                 json_list = list(f)
-                return [dict(json.loads(x), source=json.loads(x)['service']['serviceName']) for x in json_list]
+                return [dict(x, source=x['service']['serviceName']) for json_item in json_list if (x := json.loads(json_item))]
         else:
             return AWSCustomBucket.load_information_from_file(self, log_key)
 
