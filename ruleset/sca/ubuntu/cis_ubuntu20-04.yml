@@ -2182,7 +2182,7 @@ checks:
     rules:
       - "c:ufw status -> r:Status:\\s*inactive"
       - "c:dpkg -s ufw -> r:package 'ufw' is not installed"
-      - "c:systemctl isenabled ufw -> r:masked"
+      - "c:systemctl is-enabled ufw -> r:masked"
 
   # 3.5.3.2 Configure IPv4 iptables
 
