@@ -26,13 +26,13 @@
 
 #define timeval_to_milis(time) ((time.tv_sec * (uint64_t)1000) + (time.tv_usec / 1000))
 
-STATIC uint64_t get_agent_time(wdb_state_t state);
+STATIC uint64_t get_agent_time(wdb_state_t *state);
 
-STATIC uint64_t get_global_time(wdb_state_t state);
+STATIC uint64_t get_global_time(wdb_state_t *state);
 
-STATIC uint64_t get_task_time(wdb_state_t state);
+STATIC uint64_t get_task_time(wdb_state_t *state);
 
-STATIC uint64_t get_time_total(wdb_state_t state);
+STATIC uint64_t get_time_total(wdb_state_t *state);
 
 wdb_state_t wdb_state = {0};
 pthread_mutex_t db_state_t_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -1103,12 +1103,12 @@ cJSON* wdb_create_state_json() {
     cJSON *_time = cJSON_CreateObject();
     cJSON_AddItemToObject(_metrics, "time", _time);
 
-    cJSON_AddNumberToObject(_time, "execution", get_time_total(wdb_state_cpy));
+    cJSON_AddNumberToObject(_time, "execution", get_time_total(&wdb_state_cpy));
 
     cJSON *_execution_breakdown = cJSON_CreateObject();
     cJSON_AddItemToObject(_time, "execution_breakdown", _execution_breakdown);
 
-    cJSON_AddNumberToObject(_execution_breakdown, "agent", get_agent_time(wdb_state_cpy));
+    cJSON_AddNumberToObject(_execution_breakdown, "agent", get_agent_time(&wdb_state_cpy));
 
     cJSON *_agent_breakdown_t = cJSON_CreateObject();
     cJSON_AddItemToObject(_execution_breakdown, "agent_breakdown", _agent_breakdown_t);
@@ -1183,7 +1183,7 @@ cJSON* wdb_create_state_json() {
 
     cJSON_AddNumberToObject(_agent_tables_vulnerability_t, "vuln_cves", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_time));
 
-    cJSON_AddNumberToObject(_execution_breakdown, "global", get_global_time(wdb_state_cpy));
+    cJSON_AddNumberToObject(_execution_breakdown, "global", get_global_time(&wdb_state_cpy));
 
     cJSON *_global_breakdown_t = cJSON_CreateObject();
     cJSON_AddItemToObject(_execution_breakdown, "global_breakdown", _global_breakdown_t);
@@ -1249,7 +1249,7 @@ cJSON* wdb_create_state_json() {
 
     cJSON_AddNumberToObject(_mitre_db_t, "sql", timeval_to_milis(wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_time));
 
-    cJSON_AddNumberToObject(_execution_breakdown, "task", get_task_time(wdb_state_cpy));
+    cJSON_AddNumberToObject(_execution_breakdown, "task", get_task_time(&wdb_state_cpy));
 
     cJSON *_task_breakdown_t = cJSON_CreateObject();
     cJSON_AddItemToObject(_execution_breakdown, "task_breakdown", _task_breakdown_t);
@@ -1287,92 +1287,92 @@ cJSON* wdb_create_state_json() {
     return wdb_state_json;
 }
 
-STATIC uint64_t get_agent_time(wdb_state_t state){
+STATIC uint64_t get_agent_time(wdb_state_t *state){
     struct timeval task_time;
 
-    timeradd(&state.queries_breakdown.agent_breakdown.sql_time, &state.queries_breakdown.agent_breakdown.remove_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.begin_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.commit_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.close_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscheck.syscheck_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscheck.fim_file_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscheck.fim_registry_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.rootcheck.rootcheck_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.sca.sca_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.ciscat.ciscat_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_packages_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_hotfixes_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_ports_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_network_protocol_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_network_address_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_network_iface_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_hwinfo_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_osinfo_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.process_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.package_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.hotfix_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.port_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.netproto_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.netaddr_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.netinfo_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.hardware_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.osinfo_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.sync.dbsync_time, &task_time);
+    timeradd(&state->queries_breakdown.agent_breakdown.sql_time, &state->queries_breakdown.agent_breakdown.remove_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.begin_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.commit_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.close_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscheck.syscheck_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscheck.fim_file_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscheck.fim_registry_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.rootcheck.rootcheck_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.sca.sca_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.ciscat.ciscat_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.syscollector_processes_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.syscollector_packages_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.syscollector_hotfixes_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.syscollector_ports_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.syscollector_network_protocol_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.syscollector_network_address_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.syscollector_network_iface_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.syscollector_hwinfo_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.syscollector_osinfo_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.deprecated.process_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.deprecated.package_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.deprecated.hotfix_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.deprecated.port_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.deprecated.netproto_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.deprecated.netaddr_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.deprecated.netinfo_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.deprecated.hardware_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.deprecated.osinfo_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.sync.dbsync_time, &task_time);
 
     return timeval_to_milis(task_time);
 }
 
-STATIC uint64_t get_global_time(wdb_state_t state){
+STATIC uint64_t get_global_time(wdb_state_t *state){
     struct timeval task_time;
 
-    timeradd(&state.queries_breakdown.global_breakdown.sql_time, &state.queries_breakdown.global_breakdown.backup_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.insert_agent_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.update_agent_data_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.update_agent_name_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.update_keepalive_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.update_connection_status_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.reset_agents_connection_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.delete_agent_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.select_agent_name_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.select_agent_group_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.find_agent_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.get_agent_info_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.get_all_agents_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.get_agents_by_connection_status_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.disconnect_agents_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.sync_agent_info_get_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.sync_agent_info_set_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.sync_agent_groups_get_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.set_agent_groups_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.agent.get_groups_integrity_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.group.insert_agent_group_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.group.delete_group_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.group.select_groups_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.group.find_group_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.belongs.select_group_belong_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.belongs.get_group_agent_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.global_breakdown.labels.get_labels_time, &task_time);
+    timeradd(&state->queries_breakdown.global_breakdown.sql_time, &state->queries_breakdown.global_breakdown.backup_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.insert_agent_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_agent_data_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_agent_name_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_keepalive_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_connection_status_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.reset_agents_connection_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.delete_agent_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.select_agent_name_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.select_agent_group_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.find_agent_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.get_agent_info_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.get_all_agents_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.get_agents_by_connection_status_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.disconnect_agents_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.sync_agent_info_get_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.sync_agent_info_set_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.sync_agent_groups_get_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.set_agent_groups_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.get_groups_integrity_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.group.insert_agent_group_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.group.delete_group_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.group.select_groups_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.group.find_group_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.belongs.select_group_belong_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.belongs.get_group_agent_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.labels.get_labels_time, &task_time);
 
     return timeval_to_milis(task_time);
 }
 
-STATIC uint64_t get_task_time(wdb_state_t state){
+STATIC uint64_t get_task_time(wdb_state_t *state){
     struct timeval task_time;
 
-    timeradd(&state.queries_breakdown.task_breakdown.sql_time, &state.queries_breakdown.task_breakdown.tasks.upgrade_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.upgrade_custom_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.upgrade_get_status_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.upgrade_update_status_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.upgrade_result_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.set_timeout_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.delete_old_time, &task_time);
+    timeradd(&state->queries_breakdown.task_breakdown.sql_time, &state->queries_breakdown.task_breakdown.tasks.upgrade_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.upgrade_custom_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.upgrade_get_status_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.upgrade_update_status_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.upgrade_result_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.set_timeout_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.delete_old_time, &task_time);
 
     return timeval_to_milis(task_time);
 }
 
-STATIC uint64_t get_time_total(wdb_state_t state){
-    return get_task_time(state) + get_global_time(state) + get_agent_time(state) + timeval_to_milis(state.queries_breakdown.wazuhdb_breakdown.remove_time) + timeval_to_milis(state.queries_breakdown.mitre_breakdown.sql_time);
+STATIC uint64_t get_time_total(wdb_state_t *state){
+    return get_task_time(state) + get_global_time(state) + get_agent_time(state) + timeval_to_milis(state->queries_breakdown.wazuhdb_breakdown.remove_time) + timeval_to_milis(state->queries_breakdown.mitre_breakdown.sql_time);
 }

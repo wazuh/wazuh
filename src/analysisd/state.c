@@ -579,6 +579,7 @@ STATIC void w_analysisd_clean_agents_state() {
         }
     }
 
+    os_free(active_agents);
     return;
 }
 

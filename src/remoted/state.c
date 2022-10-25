@@ -265,6 +265,7 @@ STATIC void w_remoted_clean_agents_state() {
         }
     }
 
+    os_free(active_agents);
     return;
 }
 

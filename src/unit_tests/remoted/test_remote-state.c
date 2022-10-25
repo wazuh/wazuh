@@ -362,8 +362,6 @@ void test_w_remoted_clean_agents_state_completed(void ** state) {
     will_return(__wrap_OSHash_Delete_ex, test_data->agent_state);
 
     w_remoted_clean_agents_state();
-
-    os_free(connected_agents);
 }
 
 void test_w_remoted_clean_agents_state_completed_without_delete(void ** state) {
@@ -386,7 +384,6 @@ void test_w_remoted_clean_agents_state_completed_without_delete(void ** state) {
 
     w_remoted_clean_agents_state();
 
-    os_free(connected_agents);
     os_free(test_data->agent_state);
 }
 
