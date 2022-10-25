@@ -589,10 +589,21 @@ public:
      * If the object is not an Array, it is converted to an Array.
      *
      * @param value The string to append.
+     * @param path The path to the object, default value is root object ("").
      *
      * @throws std::runtime_error If path is invalid.
      */
     void appendString(std::string_view value, std::string_view path = "");
+
+    /**
+     * @brief Append Json to the Array object at the path.
+     *
+     * @param value The Json to append.
+     * @param path The path to the object, default value is root object ("").
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void appendJson(const Json& value, std::string_view path = "");
 
     /**
      * @brief Erase Json object at the path.
