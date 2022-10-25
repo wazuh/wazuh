@@ -4,4 +4,4 @@ metadata:
   description: Exclusive parent decoder for Wazuh-SCA server (SCA_MQ)
 
 check:
-  - wazuh.queue: 54 # SCA_MQ '6'
+  - wazuh.queue: 112 # SCA_MQ 'p'
