@@ -2380,7 +2380,35 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\s*always,exit && r:-F\s*arch=b(64|32) && r:-S\s*(adjtimex|settimeofday|clock_settime) && r:(key= |-k)\s*.+$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/localtime && r:-p\s*wa && r:(key= |-k)\s*.+$'
-    
+
+  # 4.1.3.5 Ensure events that modify the system's network environment are collected (Automated)
+  - id: 28600
+      title: "Ensure events that modify the system's network environment are collected."
+      description: "Record changes to network environment files or system calls. The below parameters monitors the following system calls, and write an audit event on system call exit: sethostname - set the systems host name setdomainname - set the systems domain name The files being monitored are: -/etc/issue and /etc/issue.net - messages displayed pre-login /etc/hosts - file containing host names and associated IP addresses - /etc/networks - symbolic names for networks - /etc/network/ - directory containing network interface scripts and configurations files."
+      rationale: "Monitoring sethostname and setdomainname will identify potential unauthorized changes to host and domainname of a system. The changing of these names could potentially break security parameters that are set based on those names. The /etc/hosts file is monitored for changes that can indicate an unauthorized intruder is trying to change machine associations with IP addresses and trick users and processes into connecting to unintended machines. Monitoring /etc/issue and /etc/issue.net is important, as intruders could put disinformation into those files and trick users into providing information to the intruder. Monitoring /etc/network is important as it can show if network interfaces or scripts are being modified in a way that can lead to the machine becoming unavailable or compromised. All audit records should have a relevant tag associated with them."
+      remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify the system's network environment. 64 Bit systems Example: # printf \"-a always,exit -F arch=b64 -S sethostname,setdomainname -k system-locale -a always,exit -F arch=b32 -S sethostname,setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/networks -p wa -k system-locale -w /etc/network/ -p wa -k system-locale\" >> /etc/audit/rules.d/50-system_local.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\n\"; fi 32 Bit systems Follow the same procedures as for 64 bit systems and ignore any entries with b64."
+      compliance:
+        - cis: [ "4.1.3.6" ]
+        - cis_csc_v7: [ "5.5" ]
+        - cis_csc_v8: [ "8.5" ]
+        - mitre_techniques: ["T1562","T1562.006"]
+        - mitre_tactics: ["TA0003"]
+        - mitre_mitigations: ["M1047"]
+        - cmmc_v2.0: [ "AU.L2-3.3.1" ]
+        - pci_dss_3.2.1: [ "10.1","10.2.2","10.2.4","10.2.5","10.3" ]
+        - pci_dss_4.0: [ "9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5" ]
+        - nist_853: [ "AU-3(1)","AU-7" ]
+        - soc_2: [ "CC5.2","CC7.2" ]
+      condition: all
+      rules:
+        - 'd:/etc/audit/rules.d'
+        - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+        - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\s*always,exit && r:-F\s*arch=b(64|32) && r:-S\s*(setdomainname|sethostname) && r:(key= |-k)\s*.+$'
+        - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue && r:-p\s*wa && r:(key= |-k)\s*.+$'
+        - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue.net && r:-p\s*wa && r:(key= |-k)\s*.+$'
+        - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/networks && r:-p\s*wa && r:(key= |-k)\s*.+$'
+        - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/network/ && r:-p\s*wa && r:(key= |-k)\s*.+$'
+
   - id: 28600
     title: "Ensure use of privileged commands are collected"
     description: "Monitor privileged programs, those that have the setuid and/or setgid bit set on execution, to determine if unprivileged users are running these commands."
