@@ -911,6 +911,8 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
     const auto failureTrace1 {
         fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
     const auto failureTrace2 {fmt::format("[{}] -> Failure", name)};
+    const auto failureTrace3 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, map_field)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -923,7 +925,7 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
 
             if (!resolvedField.has_value())
             {
-                return base::result::makeFailure(event, failureTrace1);
+                return base::result::makeFailure(event, failureTrace3);
             }
 
             std::string match;
