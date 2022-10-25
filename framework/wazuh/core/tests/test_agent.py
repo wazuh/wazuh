@@ -378,7 +378,7 @@ def test_WazuhDBQueryGroup__add_sort_to_query(mock_socket_conn, send_mock):
     query_group = WazuhDBQueryGroup()
     query_group._add_sort_to_query()
 
-    assert 'count' in query_group.fields and query_group.fields['count'] == 'count(id_group)' 
+    assert 'count' in query_group.fields and query_group.fields['count'] == 'count(id_group)'
 
 
 @patch('socket.socket.connect')
@@ -1344,3 +1344,48 @@ def test_get_rbac_filters(system_resources, permitted_resources, filters, expect
     result['filters']['rbac_ids'] = set(result['filters']['rbac_ids'])
     expected_result['filters']['rbac_ids'] = set(expected_result['filters']['rbac_ids'])
     assert result == expected_result
+
+
+@pytest.mark.parametrize('eligible_agents, expected_calls, task_manager_error', [
+    ([1, 2, 3, 4],
+     [
+         call(command='test', agents_chunk=[1, 2, 3, 4], wpk_repo=None, version=None, force=None, use_http=None,
+              file_path=None, installer=None, get_result=None)
+     ],
+     False),
+    ([i for i in range(16)],
+     [
+         call(command='test', agents_chunk=[i for i in range(10)], wpk_repo=None, version=None, force=None,
+              use_http=None, file_path=None, installer=None, get_result=None),
+         call(command='test', agents_chunk=[i for i in range(10, 16)], wpk_repo=None, version=None, force=None,
+              use_http=None, file_path=None, installer=None, get_result=None)
+     ],
+     False),
+    ([i for i in range(13)],
+     [
+         call(command='test', agents_chunk=[i for i in range(5)], wpk_repo=None, version=None, force=None,
+              use_http=None, file_path=None, installer=None, get_result=None),
+         call(command='test', agents_chunk=[i for i in range(5, 10)], wpk_repo=None, version=None, force=None,
+              use_http=None, file_path=None, installer=None, get_result=None),
+         call(command='test', agents_chunk=[i for i in range(10, 13)], wpk_repo=None, version=None, force=None,
+              use_http=None, file_path=None, installer=None, get_result=None)
+     ],
+     True)
+])
+@patch('wazuh.core.agent.core_upgrade_agents')
+def test_create_upgrade_tasks(mock_upgrade, eligible_agents, expected_calls, task_manager_error):
+    """Test that the create_upgrade_tasks function and its recursive behaviour work properly.
+
+    Parameters
+    ----------
+    eligible_agents : list
+        List of eligible agents used in the create_upgrade_tasks function.
+    expected_calls : list
+        List of calls expected for the core_upgrade_agents function.
+    task_manager_error : bool
+        Boolean variable that indicates whether the mocked function returns a task communication error or not.
+    """
+    mock_upgrade.side_effect = [{'data': [{'error': 0 if not task_manager_error else 4}]},
+                                {'data': [{'error': 0}]}, {'data': [{'error': 0}]}, {'data': [{'error': 0}]}]
+    create_upgrade_tasks(eligible_agents=eligible_agents, chunk_size=10, command='test')
+    mock_upgrade.assert_has_calls(expected_calls, any_order=False)
