@@ -111,7 +111,7 @@
         </UI>
         <InstallExecuteSequence>
             <!-- Close the GUI -->
-            <Custom Action="CloseGUI" Before="InstallInitialize"></Custom>
+            <Custom Action="CloseGUI" After="InstallInitialize"></Custom>
             <!-- Set deployment values -->
             <Custom Action="SetWazuhManager" Before="SetCustomActionDataValue">ADDRESS &lt;&gt; "" AND WAZUH_MANAGER = ""</Custom>
             <Custom Action="SetWazuhManagerPort" Before="SetCustomActionDataValue">SERVER_PORT &lt;&gt; "" AND WAZUH_MANAGER_PORT = ""</Custom>
