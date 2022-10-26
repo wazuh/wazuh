@@ -2198,7 +2198,7 @@ checks:
     title: "Ensure auditing for processes that start prior to auditd is enabled"
     description: "Configure grub2 so that processes that are capable of being audited can be audited even if they start up prior to auditd startup."
     rationale: "Audit events need to be captured on processes that start up prior to auditd , so that potential malicious activity cannot go undetected."
-    remediation: "Edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: Example: GRUB_CMDLINE_LINUX=\"audit=1\" Run the following command to update the grub2 configuration: # update-grub Additional Information: This recommendation is designed around the grub2 bootloader, if another bootloader is in use in your environment enact equivalent settings."
+    remediation: "Edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: Example: GRUB_CMDLINE_LINUX=\"audit=1\" Run the following command to update the grub2 configuration: # update-grub."
     compliance:
       - cis: ["4.1.1.3"]
       - cis_csc_v7: ["6.2"]
@@ -2210,9 +2210,9 @@ checks:
       - pci_dss_3.2.1: ["10.2","10.3"]
       - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
       - nist_853: ["AU-7"]
-    condition: all
+    condition: none
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:audit=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:audit=1'
 
   # 4.1.1.4 Ensure audit_backlog_limit is sufficient (Automated)
   - id: 28592
