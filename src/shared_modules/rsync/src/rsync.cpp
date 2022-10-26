@@ -46,14 +46,14 @@ EXPORTED void rsync_teardown(void)
     RSyncImplementation::instance().release();
 }
 
-EXPORTED RSYNC_HANDLE rsync_create(const size_t maxQueueSize)
+EXPORTED RSYNC_HANDLE rsync_create(const unsigned int thread_pool_size, const size_t maxQueueSize)
 {
     RSYNC_HANDLE retVal{ nullptr };
     std::string errorMessage;
 
     try
     {
-        retVal = RSyncImplementation::instance().create(maxQueueSize);
+        retVal = RSyncImplementation::instance().create(thread_pool_size, maxQueueSize);
     }
     // LCOV_EXCL_START
     catch (...)
@@ -221,8 +221,8 @@ void RemoteSync::teardown()
     RSyncImplementation::instance().release();
 }
 
-RemoteSync::RemoteSync(const size_t maxQueueSize)
-    : m_handle { RSyncImplementation::instance().create(maxQueueSize) }
+RemoteSync::RemoteSync(const unsigned int threadPoolSize, const size_t maxQueueSize)
+    : m_handle { RSyncImplementation::instance().create(threadPoolSize, maxQueueSize) }
     , m_shouldBeRemoved{ true }
 
 { }
