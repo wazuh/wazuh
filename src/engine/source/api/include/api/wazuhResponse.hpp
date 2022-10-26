@@ -155,7 +155,7 @@ public:
      * @brief Return a request with unknown error message
      *
      */
-    static WazuhResponse unknownError() 
+    static WazuhResponse unknownError()
     {
         return WazuhResponse(json::Json(R"({})"),
                              static_cast<int>(RESPONSE_ERROR_CODES::UNKNOWN_ERROR),

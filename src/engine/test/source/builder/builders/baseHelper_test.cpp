@@ -60,9 +60,9 @@ TEST(processParameters, Builds)
     std::vector<std::string> vector = {"10"};
 
     std::vector<helper::base::Parameter> parameters =
-        helper::base::processParameters(vector);
+        helper::base::processParameters("processParameters", vector);
 
-    ASSERT_NO_THROW(helper::base::processParameters(vector));
+    ASSERT_NO_THROW(helper::base::processParameters("processParameters", vector));
 }
 
 TEST(processParameters, Exec_extract_definition_value_true)
@@ -70,7 +70,7 @@ TEST(processParameters, Exec_extract_definition_value_true)
     std::vector<std::string> vector = {"10"};
 
     std::vector<helper::base::Parameter> parameters =
-        helper::base::processParameters(vector);
+        helper::base::processParameters("processParameters", vector);
 
     ASSERT_EQ(parameters[0].m_type, helper::base::Parameter::Type::VALUE);
     ASSERT_EQ(parameters[0].m_value, "10");
@@ -81,7 +81,7 @@ TEST(processParameters, Exec_extract_definition_reference_true)
     std::vector<std::string> vector = {"$test"};
 
     std::vector<helper::base::Parameter> parameters =
-        helper::base::processParameters(vector);
+        helper::base::processParameters("processParameters", vector);
 
     ASSERT_EQ(parameters[0].m_type, helper::base::Parameter::Type::REFERENCE);
     ASSERT_EQ(parameters[0].m_value, "/test");
@@ -96,7 +96,8 @@ TEST(checkParametersSize, Builds)
 
     std::vector<helper::base::Parameter> parameters = {p};
 
-    ASSERT_NO_THROW(helper::base::checkParametersSize(parameters, 1));
+    ASSERT_NO_THROW(
+        helper::base::checkParametersSize("checkParameterType", parameters, 1));
 }
 
 TEST(checkParametersSize, Exec_check_parameters_size_false)
@@ -107,7 +108,8 @@ TEST(checkParametersSize, Exec_check_parameters_size_false)
 
     std::vector<helper::base::Parameter> parameters = {p};
 
-    ASSERT_THROW(helper::base::checkParametersSize(parameters, 2), std::runtime_error);
+    ASSERT_THROW(helper::base::checkParametersSize("checkParameterType", parameters, 2),
+                 std::runtime_error);
 }
 
 TEST(checkParametersSize, Exec_check_parameters_size_true)
@@ -118,7 +120,8 @@ TEST(checkParametersSize, Exec_check_parameters_size_true)
 
     std::vector<helper::base::Parameter> parameters = {p};
 
-    ASSERT_NO_THROW(helper::base::checkParametersSize(parameters, 1));
+    ASSERT_NO_THROW(
+        helper::base::checkParametersSize("checkParameterType", parameters, 1));
 }
 
 // checkParameterType
@@ -131,7 +134,7 @@ TEST(checkParameterType, Builds)
     std::vector<helper::base::Parameter> parameters = {p};
 
     ASSERT_NO_THROW(helper::base::checkParameterType(
-        parameters[0], helper::base::Parameter::Type::VALUE));
+        "checkParameterType", parameters[0], helper::base::Parameter::Type::VALUE));
 }
 
 TEST(checkParameterType, Exec_check_parameters_type_false)
@@ -142,9 +145,11 @@ TEST(checkParameterType, Exec_check_parameters_type_false)
 
     std::vector<helper::base::Parameter> parameters = {p};
 
-    ASSERT_THROW(helper::base::checkParameterType(
-                     parameters[0], helper::base::Parameter::Type::REFERENCE),
-                 std::runtime_error);
+    ASSERT_THROW(
+        helper::base::checkParameterType("checkParameterType",
+                                         parameters[0],
+                                         helper::base::Parameter::Type::REFERENCE),
+        std::runtime_error);
 }
 
 TEST(checkParameterType, Exec_check_parameters_type_value_true)
@@ -156,7 +161,7 @@ TEST(checkParameterType, Exec_check_parameters_type_value_true)
     std::vector<helper::base::Parameter> parameters = {p};
 
     ASSERT_NO_THROW(helper::base::checkParameterType(
-        parameters[0], helper::base::Parameter::Type::VALUE));
+        "checkParameterType", parameters[0], helper::base::Parameter::Type::VALUE));
 }
 
 TEST(checkParameterType, Exec_check_parameters_type_reference_true)
@@ -168,11 +173,11 @@ TEST(checkParameterType, Exec_check_parameters_type_reference_true)
     std::vector<helper::base::Parameter> parameters = {p};
 
     ASSERT_NO_THROW(helper::base::checkParameterType(
-        parameters[0], helper::base::Parameter::Type::REFERENCE));
+        "checkParameterType", parameters[0], helper::base::Parameter::Type::REFERENCE));
 }
 
-// formatHelperFilterName
-TEST(formatHelperFilterName, Builds)
+// formatHelperName
+TEST(formatHelperName, Builds)
 {
     const std::string name = "test_helper";
     const std::string targetField = "/test";
@@ -183,10 +188,10 @@ TEST(formatHelperFilterName, Builds)
 
     std::vector<helper::base::Parameter> parameters = {p};
 
-    ASSERT_NO_THROW(helper::base::formatHelperFilterName(name, targetField, parameters));
+    ASSERT_NO_THROW(helper::base::formatHelperName(name, targetField, parameters));
 }
 
-TEST(formatHelperFilterName, Exec_format_helper_filter_name_true)
+TEST(formatHelperName, Exec_format_helper_filter_name_true)
 {
     const std::string name = "test_helper";
     const std::string targetField = "/test";
@@ -197,8 +202,7 @@ TEST(formatHelperFilterName, Exec_format_helper_filter_name_true)
 
     std::vector<helper::base::Parameter> parameters = {p};
 
-    std::string result =
-        helper::base::formatHelperFilterName(name, targetField, parameters);
+    std::string result = helper::base::formatHelperName(name, targetField, parameters);
 
     ASSERT_EQ(result, "helper.test_helper[/test, 10]");
 }

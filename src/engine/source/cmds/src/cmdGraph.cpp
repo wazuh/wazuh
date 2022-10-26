@@ -45,10 +45,11 @@ void graph(const std::string& kvdbPath,
     auto hlpParsers = store->get(hlpConfigFileName);
     if (std::holds_alternative<base::Error>(hlpParsers))
     {
-        WAZUH_LOG_ERROR("Could not retreive configuration file [{}] needed by the HLP "
-                        "module, error: {}",
-                        hlpConfigFileName.fullName(),
-                        std::get<base::Error>(hlpParsers).message);
+        WAZUH_LOG_ERROR(
+            "Engine \"graph\" command: Configuration file \"{}\" needed by the "
+            "parsing module could not be obtained: {}",
+            hlpConfigFileName.fullName(),
+            std::get<base::Error>(hlpParsers).message);
         g_exitHanlder.execute();
         return;
     }
@@ -62,7 +63,8 @@ void graph(const std::string& kvdbPath,
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Exception while registering builders: [{}]",
+        WAZUH_LOG_ERROR("Engine \"graph\" command: An error occurred while registering "
+                        "the builders: {}",
                         utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
@@ -76,7 +78,8 @@ void graph(const std::string& kvdbPath,
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Exception while building environment: [{}]",
+        WAZUH_LOG_ERROR("Engine \"graph\" command: An error occurred while building the "
+                        "environment: \"{}\"",
                         utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
@@ -89,7 +92,8 @@ void graph(const std::string& kvdbPath,
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Exception while building environment Expression: [{}]",
+        WAZUH_LOG_ERROR("Engine \"graph\" command: An error occurred while building the "
+                        "environment expression: {}",
                         utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
@@ -107,12 +111,12 @@ void graph(const std::string& kvdbPath,
     graphFile.open(envGraph.string());
     graphFile << env.getGraphivzStr();
     std::cout << std::endl
-              << "Environment graph saved on " << envGraph.string() << std::endl;
+              << "Environment graph saved to " << envGraph.string() << std::endl;
     graphFile.close();
 
     graphFile.open(envExprGraph.string());
     graphFile << base::toGraphvizStr(envExpression);
-    std::cout << "Environment expression graph saved on " << envExprGraph.string()
+    std::cout << "Environment expression graph saved to " << envExprGraph.string()
               << std::endl;
     graphFile.close();
 

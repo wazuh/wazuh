@@ -104,7 +104,7 @@ public:
                          [](const auto& tuple) { return std::get<0>(tuple) == "name"; });
         if (nameIt == envObj.end())
         {
-            throw std::runtime_error("Environment has no name");
+            throw std::runtime_error("Environment name is missing");
         }
         auto nameOpt = std::get<1>(*nameIt).getString();
         if (!nameOpt)
@@ -118,10 +118,11 @@ public:
         // Filters are not graphs, its treated as a special case.
         // We just add them to the asset map and then inject them into each
         // graph.
-        auto filtersPos =
-            std::find_if(envObj.begin(),
-                         envObj.end(),
-                         [](auto& tuple) { return std::get<0>(tuple) == FILTERS; });
+        auto filtersPos = std::find_if(envObj.begin(), envObj.end(), [](auto& tuple)
+            {
+                return std::get<0>(tuple) == FILTERS;
+            });
+
         if (envObj.end() != filtersPos)
         {
             auto filtersList = std::get<1>(*filtersPos).getArray().value();
@@ -137,7 +138,7 @@ public:
                     if (std::holds_alternative<base::Error>(assetJson))
                     {
                         throw std::runtime_error(
-                            fmt::format("[Environment] Cannot retreive filter [{}]: {}",
+                            fmt::format("Filter \"{}\" could not be obtained: {}",
                                         assetName,
                                         std::get<base::Error>(assetJson).message));
                     }
@@ -150,12 +151,12 @@ public:
         }
 
         // Build graphs
-        // We need atleast one graph to build the environment.
+        // We need at least one graph to build the environment.
         if (envObj.empty())
         {
             throw std::runtime_error(
-                fmt::format("[Environment(json, catalog)] environment [{}] needs "
-                            "atleast one graph",
+                fmt::format("Environment \"{}\" needs at least one asset (decoder, rule "
+                            "or output) to build a graph",
                             m_name));
         }
         for (auto& [name, json] : envObj)
@@ -182,7 +183,7 @@ public:
                     if (std::holds_alternative<base::Error>(assetJson))
                     {
                         throw std::runtime_error(
-                            fmt::format("[Environment] Cannot retreive asset [{}]: {}",
+                            fmt::format("Asset \"{}\" cannot be obtained: {}",
                                         assetName,
                                         std::get<base::Error>(assetJson).message));
                     }
@@ -209,19 +210,19 @@ public:
                     {
                         childrenNames += child + " ";
                     }
-                    throw std::runtime_error(
-                        fmt::format("Error building [{}] graph: parent [{}] not found, "
-                                    "for children [{}]",
-                                    name,
-                                    parent,
-                                    childrenNames));
+                    throw std::runtime_error(fmt::format(
+                        "Error building environment \"{}\". Asset \"{}\" requested for "
+                        "parent \"{}\" which could not be found",
+                        name,
+                        parent,
+                        childrenNames));
                 }
                 for (auto& child : children)
                 {
                     if (!std::get<1>(*graphPos).hasNode(child))
                     {
                         throw std::runtime_error(
-                            fmt::format("Missing child asset: {}", child));
+                            fmt::format("Asset \"{}\" could not be found", child));
                     }
                 }
             }

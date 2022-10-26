@@ -25,12 +25,12 @@ base::Expression KVDBExtract(const std::any& definition,
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(raw_parameters)};
+    auto parameters {helper::base::processParameters(name, raw_parameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(parameters, 2);
-    helper::base::checkParameterType(parameters[0], Parameter::Type::VALUE);
+    helper::base::checkParametersSize(name, parameters, 2);
+    helper::base::checkParameterType(name, parameters[0], Parameter::Type::VALUE);
     // Format name for the tracer
-    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+    name = helper::base::formatHelperName(name, targetField, parameters);
 
     // Extract parameters
     const auto dbName = parameters[0].m_value;
@@ -46,23 +46,27 @@ base::Expression KVDBExtract(const std::any& definition,
     kvdb = kvdbManager->getDB(dbName);
     if (!kvdb)
     {
-        const auto msg {fmt::format("[{}] DB isn't available for usage", dbName)};
-        throw std::runtime_error(std::move(msg));
+        throw std::runtime_error(fmt::format(
+            "Engine KVDB builder: Database \"{}\" is not available.", dbName));
     }
 
     // Trace messages
     std::string successTrace = fmt::format("[{}] -> Success", name);
     std::string failureTrace1 =
-        fmt::format("[{}] -> Failure: key [{}] not found", name, key.m_value);
-    std::string failureTrace2 = fmt::format("[{}] -> Failure", name);
-    std::string failureTrace3 = fmt::format("[{}] -> Failure: Target field [{}] not "
+        fmt::format("[{}] -> Failure: reference \"{}\" not found", name, key.m_value);
+    std::string failureTrace2 =
+        fmt::format("[{}] -> Failure: key \"{}\" could not be found on database \"{}\"",
+                    name,
+                    key.m_value,
+                    dbName);
+    std::string failureTrace3 = fmt::format("[{}] -> Failure: target field \"{}\" not "
                                             "found",
                                             name,
                                             targetField);
     std::string failureTrace4 =
-        fmt::format("[{}] -> Failure: Fields type mismatch when merging", name);
-    std::string failureTrace5 = fmt::format("[{}] -> Failure: Malformed JSON for key "
-                                            "[{}]",
+        fmt::format("[{}] -> Failure: fields type mismatch when merging", name);
+    std::string failureTrace5 = fmt::format("[{}] -> Failure: malformed JSON for key "
+                                            "\"{}\"",
                                             name,
                                             key.m_value);
 
@@ -155,12 +159,11 @@ base::Expression existanceCheck(const std::any& definition,
                                 bool checkExist,
                                 std::shared_ptr<KVDBManager> kvdbManager)
 {
-
     auto [targetField, name, arguments] = extractDefinition(definition);
-    auto parameters = processParameters(arguments);
-    checkParametersSize(parameters, 1);
-    checkParameterType(parameters[0], Parameter::Type::VALUE);
-    name = formatHelperFilterName(targetField, name, parameters);
+    auto parameters = processParameters(name, arguments);
+    checkParametersSize(name, parameters, 1);
+    checkParameterType(name, parameters[0], Parameter::Type::VALUE);
+    name = formatHelperName(targetField, name, parameters);
 
     const auto dbName = parameters[0].m_value;
 
@@ -174,12 +177,15 @@ base::Expression existanceCheck(const std::any& definition,
     kvdb = kvdbManager->getDB(dbName);
     if (!kvdb)
     {
-        const auto msg {fmt::format("[{}] DB isn't available for usage", dbName)};
-        throw std::runtime_error(std::move(msg));
+        throw std::runtime_error(fmt::format(
+            "Engine KVDB builder: Database \"{}\" is not available.", dbName));
     }
 
     std::string successTrace = fmt::format("[{}] -> Success", name);
-    std::string failureTrace = fmt::format("[{}] -> Failure", name);
+
+    std::string failureTrace =
+        fmt::format("[{}] -> ", name)
+        + "Failure, target {} does not exist or it is not a string.";
 
     return base::Term<base::EngineOp>::create(
         name,
@@ -199,11 +205,15 @@ base::Expression existanceCheck(const std::any& definition,
                     }
                 }
             }
-            catch (std::exception& ex)
+            catch (std::exception& e)
             {
-                return base::result::makeFailure(event, failureTrace);
+                return base::result::makeFailure(
+                    event, fmt::format(failureTrace, targetField) + e.what());
             }
 
+            // TODO: is this condition right? shouldn't this condition be: "!checkExist ||
+            // (checkExist && found)" as if "checkExist" is "false" and "found" is "true"
+            // then "truth" is false and the result is a
             bool truth = checkExist ? found : !found;
             if (truth)
             {
@@ -211,7 +221,8 @@ base::Expression existanceCheck(const std::any& definition,
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                return base::result::makeFailure(event,
+                                                 fmt::format(failureTrace, targetField));
             }
         });
 }

@@ -30,7 +30,7 @@ private:
     std::shared_ptr<uvw::PipeHandle> m_handle;
     std::shared_ptr<api::Registry> m_registry;
 
-    void connectionHandler(uvw::PipeHandle &handle);
+    void connectionHandler(uvw::PipeHandle& handle);
 
 public:
     /**
@@ -39,7 +39,8 @@ public:
      * @param Path to the unix socket.
      * @param Registry with all available API calls.
      */
-    explicit APIEndpoint(const std::string &config,  std::shared_ptr<api::Registry> registry);
+    explicit APIEndpoint(const std::string& config,
+                         std::shared_ptr<api::Registry> registry);
     ~APIEndpoint();
 
     void run() override;

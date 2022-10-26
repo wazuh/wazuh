@@ -46,7 +46,8 @@ Name& operator++(Name& field)
 {
     if (Name::A_END == field)
     {
-        throw std::out_of_range("For Name& operator ++)");
+        // TODO: improve this message
+        throw std::out_of_range("Engine SCA decoder builder: operator++ error");
     }
     field = Name(static_cast<std::underlying_type<Name>::type>(field) + 1);
     return field;
@@ -113,7 +114,7 @@ std::string getRealtivePath(Name field)
         case Name::CHECK_PREVIOUS_RESULT: return "/check/previous_result";
         default:
             throw std::logic_error(
-                "getRealtivePath: unknown field: "
+                "Engine SCA decoder builder: getRealtivePath(): unknown field: "
                 + std::to_string(static_cast<std::underlying_type<Name>::type>(field)));
     }
 }
@@ -183,27 +184,26 @@ inline bool isValidEvent(const DecodeCxt& ctx,
 {
     // Check types and mandatory fields if is necessary. Return false on fail.
     const auto isValidCondition =
-        [&ctx](field::Type type, const std::string& path, bool mandatory)
-    {
-        if (ctx.event->exists(path))
-        {
-            switch (type)
+        [&ctx](field::Type type, const std::string& path, bool mandatory) {
+            if (ctx.event->exists(path))
             {
-                case field::Type::STRING: return ctx.event->isString(path);
-                case field::Type::NUMBER: return ctx.event->isNumber(path);
-                case field::Type::INT: return ctx.event->isInt(path);
-                case field::Type::BOOL: return ctx.event->isBool(path);
-                case field::Type::ARRAY: return ctx.event->isArray(path);
-                case field::Type::OBJECT: return ctx.event->isObject(path);
-                default: return false;
+                switch (type)
+                {
+                    case field::Type::STRING: return ctx.event->isString(path);
+                    case field::Type::NUMBER: return ctx.event->isNumber(path);
+                    case field::Type::INT: return ctx.event->isInt(path);
+                    case field::Type::BOOL: return ctx.event->isBool(path);
+                    case field::Type::ARRAY: return ctx.event->isArray(path);
+                    case field::Type::OBJECT: return ctx.event->isObject(path);
+                    default: return false;
+                }
             }
-        }
-        else if (mandatory)
-        {
-            return false;
-        }
-        return true;
-    };
+            else if (mandatory)
+            {
+                return false;
+            }
+            return true;
+        };
 
     for (const auto& [field, type, mandatory] : conditions)
     {
@@ -278,8 +278,8 @@ std::tuple<SearchResult, std::string> searchAndParse(
             }
             catch (const std::out_of_range& e)
             {
-                WAZUH_LOG_WARN("[SCA] Error parsing result: '{}', cannot remove 'found ' "
-                               "of query: '{}'",
+                WAZUH_LOG_WARN("Engine SCA decoder builder: Error parsing result \"{}\", "
+                               "cannot remove \"found \" of query: \"{}\"",
                                payload.value(),
                                query);
                 retCode = SearchResult::ERROR;
@@ -405,8 +405,9 @@ void insertCompliance(const DecodeCxt& ctx, const int checkID)
         const auto value = jsonValue.getString();
         if (!value.has_value())
         {
-            WAZUH_LOG_WARN("[SCA] Expected string for compliance item '{}'",
-                           jsonValue.str());
+            WAZUH_LOG_WARN(
+                "Engine SCA decoder builder: Expected string for compliance item \"{}\".",
+                jsonValue.str());
             continue;
         }
         // Saving compliance fields to database for event id
@@ -419,7 +420,8 @@ void insertCompliance(const DecodeCxt& ctx, const int checkID)
         const auto [res, payload] = ctx.wdb->tryQueryAndParseResult(query);
         if (wazuhdb::QueryResultCodes::OK != res)
         {
-            WAZUH_LOG_WARN("[SCA] Failed to insert compliance '{}' for check '{}'",
+            WAZUH_LOG_WARN("Engine SCA decoder builder: Failed to insert compliance "
+                           "\"{}\" for check \"{}\".",
                            value.value(),
                            checkID);
         }
@@ -442,7 +444,8 @@ void insertRules(const DecodeCxt& ctx, const int checkID)
         const auto rule = jsonRule.getString();
         if (!rule.has_value())
         {
-            WAZUH_LOG_WARN("[SCA] Expected string for rule '{}'", jsonRule.str());
+            WAZUH_LOG_WARN("Engine SCA decoder builder: Expected string for rule \"{}\".",
+                           jsonRule.str());
             continue;
         }
 
@@ -458,14 +461,16 @@ void insertRules(const DecodeCxt& ctx, const int checkID)
             const auto [res, payload] = ctx.wdb->tryQueryAndParseResult(query);
             if (wazuhdb::QueryResultCodes::OK != res)
             {
-                WAZUH_LOG_WARN("[SCA] Failed to insert rule '{}' for check '{}'",
+                WAZUH_LOG_WARN("Engine SCA decoder builder: Failed to insert rule \"{}\" "
+                               "for check \"{}\".",
                                rule.value(),
                                checkID);
             }
         }
         else
         {
-            WAZUH_LOG_WARN("[SCA] Invalid rule type '{}'", rule.value());
+            WAZUH_LOG_WARN("Engine SCA decoder builder: Invalid rule type \"{}\".",
+                           rule.value());
         }
     }
 }
@@ -477,8 +482,8 @@ std::optional<std::string> handleCheckEvent(const DecodeCxt& ctx)
     if (!isValidCheckEvent(ctx))
     {
         // TODO: Check this message. exit error
-        WAZUH_LOG_WARN("[SCA] Invalid check event, discarding..");
-        return "Invalid check event,";
+        WAZUH_LOG_WARN("Engine SCA decoder builder: Invalid check event, discarding..");
+        return "Invalid check event.";
     }
 
     // Get the necesary fields for the query
@@ -522,16 +527,19 @@ std::optional<std::string> handleCheckEvent(const DecodeCxt& ctx)
         case SearchResult::ERROR:
         default:
             // if query fails, no sense to continue
-            WAZUH_LOG_WARN(
-                "[SCA] Error querying policy monitoring database for agent '{}'",
-                ctx.agentID);
-            return "Error querying policy monitoring database for agent '{}";
+            WAZUH_LOG_WARN("Engine SCA decoder builder: Error querying policy monitoring "
+                           "database for agent '{}'",
+                           ctx.agentID);
+            return std::string("Error querying policy monitoring database for agent ")
+                   + ctx.agentID;
     }
     // Save or update the policy monitoring
     const auto [resSavePolicy, empty] = ctx.wdb->tryQueryAndParseResult(saveQuery);
     if (wazuhdb::QueryResultCodes::OK != resSavePolicy)
     {
-        WAZUH_LOG_WARN("Error saving policy monitoring for agent '{}'", ctx.agentID);
+        WAZUH_LOG_WARN("Engine SCA decoder builder: Error saving policy monitoring for "
+                       "agent \"{}\".",
+                       ctx.agentID);
     }
 
     // If policies are new, then save the rules and compliance
@@ -602,7 +610,9 @@ void pushDumpRequest(const DecodeCxt& ctx, const std::string& policyId, bool fir
         }
         catch (const std::exception& e)
         {
-            WAZUH_LOG_WARN("[SCA] Error connecting to forwarder socket: {}", e.what());
+            WAZUH_LOG_WARN(
+                "Engine SCA decoder builder: Error connecting to forwarder socket: {}",
+                e.what());
             return;
         }
     }
@@ -617,12 +627,15 @@ void pushDumpRequest(const DecodeCxt& ctx, const std::string& policyId, bool fir
     {
         case base::utils::socketInterface::SendRetval::SUCCESS: break;
         case base::utils::socketInterface::SendRetval::SIZE_TOO_LONG:
-            WAZUH_LOG_WARN(
-                "[SCA] Error sending message to forwarder: message too long: {}", msg);
+            WAZUH_LOG_WARN("Engine SCA decoder builder: Error sending message to "
+                           "forwarder: message too long ({}): \"{}\".",
+                           msg.length(),
+                           msg);
             break;
         case base::utils::socketInterface::SendRetval::SOCKET_ERROR:
         default:
-            WAZUH_LOG_WARN("[SCA] Error database dump request for agent '{}'. {} ({})",
+            WAZUH_LOG_WARN("Engine SCA decoder builder: Error database dump request for "
+                           "agent \"{}\". {} ({}).",
                            ctx.agentID,
                            strerror(errno),
                            errno);
@@ -686,7 +699,9 @@ bool SaveScanInfo(const DecodeCxt& ctx, bool update)
 
     if (wazuhdb::QueryResultCodes::OK != queryResult)
     {
-        WAZUH_LOG_WARN("[SCA] Error saving scan info for agent '{}'", ctx.agentID);
+        WAZUH_LOG_WARN(
+            "Engine SCA decoder builder: Error saving scan info for agent \"{}\".",
+            ctx.agentID);
         return false;
     }
 
@@ -710,7 +725,9 @@ void insertPolicyInfo(const DecodeCxt& ctx)
 
     if (wazuhdb::QueryResultCodes::OK != result)
     {
-        WAZUH_LOG_WARN("Error saving policy info for agent '{}'", ctx.agentID);
+        WAZUH_LOG_WARN(
+            "Engine SCA decoder builder: Error saving policy info for agent \"{}\".",
+            ctx.agentID);
     }
     return;
 }
@@ -738,7 +755,9 @@ void updatePolicyInfo(const DecodeCxt& ctx, const std::string& policyId)
             }
             else
             {
-                WAZUH_LOG_DEBUG("[SCA] Hash file is the same for policy '%s'", policyId);
+                WAZUH_LOG_DEBUG("Engine SCA decoder builder: Hash file is the same for "
+                                "policy \"%s\".",
+                                policyId);
             }
             break;
         }
@@ -746,7 +765,8 @@ void updatePolicyInfo(const DecodeCxt& ctx, const std::string& policyId)
         case SearchResult::ERROR:
         default:
         {
-            WAZUH_LOG_WARN("[SCA] Error querying policy SHA256 database for agent: {}",
+            WAZUH_LOG_WARN("Engine SCA decoder builder: Error querying policy SHA256 "
+                           "database for agent \"{}\".",
                            ctx.agentID);
         }
     }
@@ -768,8 +788,9 @@ void checkResultsAndDump(const DecodeCxt& ctx,
             {
                 doPushDumpRequest = true;
                 WAZUH_LOG_DEBUG(
-                    "[SCA] Scan result integrity failed for policy '%s'. Hash from "
-                    "DB: '%s', hash from summary: '%s'. Requesting DB dump.",
+                    "Engine SCA decoder builder: Scan result integrity failed for policy "
+                    "\"%s\". Hash from "
+                    "DB: \"%s\", hash from summary: \"%s\". Requesting DB dump.",
                     policyId,
                     oldEventHash,
                     eventHash);
@@ -779,12 +800,13 @@ void checkResultsAndDump(const DecodeCxt& ctx,
         case SearchResult::NOT_FOUND:
             /* Empty DB */
             doPushDumpRequest = true;
-            WAZUH_LOG_DEBUG(
-                "[SCA] Check results DB empty for policy '%s'. Requesting DB dump.",
-                policyId);
+            WAZUH_LOG_DEBUG("Engine SCA decoder builder: Check results DB empty for "
+                            "policy \"%s\". Requesting DB dump.",
+                            policyId);
             break;
         default:
-            WAZUH_LOG_WARN("[SCA] Error querying check results database for agent: {}",
+            WAZUH_LOG_WARN("Engine SCA decoder builder: Error querying check results "
+                           "database for agent \"{}\".",
                            ctx.agentID);
             break;
     }
@@ -807,7 +829,9 @@ bool deletePolicyAndCheck(const DecodeCxt& ctx, const std::string& policyId)
     if (wazuhdb::QueryResultCodes::OK != resDelPolicy)
     {
         WAZUH_LOG_WARN(
-            "[SCA] Error deleting policy '{}' for agent '{}'.", policyId, ctx.agentID);
+            "Engine SCA decoder builder: Error deleting policy \"{}\" for agent \"{}\".",
+            policyId,
+            ctx.agentID);
         return false;
     }
 
@@ -819,7 +843,8 @@ bool deletePolicyAndCheck(const DecodeCxt& ctx, const std::string& policyId)
 
     if (wazuhdb::QueryResultCodes::OK != delCheckResultCode)
     {
-        WAZUH_LOG_WARN("[SCA] Error deleting check for policy '{}' for agent '{}'.",
+        WAZUH_LOG_WARN("Engine SCA decoder builder: Error deleting check for policy "
+                       "\"{}\" for agent \"{}\".",
                        policyId,
                        ctx.agentID);
         // return false;
@@ -902,7 +927,8 @@ std::optional<std::string> handleScanInfo(const DecodeCxt& ctx)
         }
         case SearchResult::ERROR:
         default:
-            WAZUH_LOG_WARN("[SCA] Error querying scan database for agent: {}",
+            WAZUH_LOG_WARN("Engine SCA decoder builder: Error querying scan database for "
+                           "agent \"{}\".",
                            ctx.agentID);
             break;
     }
@@ -941,9 +967,9 @@ std::optional<std::string> handleScanInfo(const DecodeCxt& ctx)
 
         case SearchResult::ERROR:
         default:
-            WAZUH_LOG_WARN(
-                "[SCA] Error querying policy monitoring database for agent: {}",
-                ctx.agentID);
+            WAZUH_LOG_WARN("Engine SCA decoder builder: Error querying policy monitoring "
+                           "database for agent \"{}\".",
+                           ctx.agentID);
     }
 
     // Check and dump!
@@ -969,7 +995,8 @@ std::optional<std::string> handlePoliciesInfo(const DecodeCxt& ctx)
     const auto policiesEvent = ctx.getSrcArray(field::Name::POLICIES).value();
     if (policiesEvent.empty())
     {
-        WAZUH_LOG_DEBUG("[SCA] No policies found for agent: {}", ctx.agentID);
+        WAZUH_LOG_DEBUG("Engine SCA decoder builder: No policies found for agent \"{}\".",
+                        ctx.agentID);
     }
     else
     {
@@ -981,7 +1008,8 @@ std::optional<std::string> handlePoliciesInfo(const DecodeCxt& ctx)
 
         if (SearchResult::ERROR == resPoliciesIds)
         {
-            WAZUH_LOG_WARN("[SCA] Error retrieving policies from database for agent: {}",
+            WAZUH_LOG_WARN("[Engine SCA decoder builder: Error retrieving policies from "
+                           "database for agent \"{}\".",
                            ctx.agentID);
         }
         else
@@ -994,14 +1022,15 @@ std::optional<std::string> handlePoliciesInfo(const DecodeCxt& ctx)
                 /* This policy is not being scanned anymore, delete it */
                 if (std::find_if(policiesEvent.begin(),
                                  policiesEvent.end(),
-                                 [&](const auto& policy)
-                                 {
+                                 [&](const auto& policy) {
                                      auto pStr = policy.getString();
                                      return pStr && pStr.value() == pId;
                                  })
                     == policiesEvent.end())
                 {
-                    WAZUH_LOG_DEBUG("Policy id doesn't exist: '{}'. Deleting it.", pId);
+                    WAZUH_LOG_DEBUG("Engine SCA decoder builder: Policy id \"{}\" "
+                                    "doesn't exist. Deleting it.",
+                                    pId);
                     deletePolicyAndCheck(ctx, pId);
                 }
             }
@@ -1049,7 +1078,8 @@ void deletePolicyCheckDistinct(const DecodeCxt& ctx,
     const auto [resultCode, payload] = ctx.wdb->tryQueryAndParseResult(query);
     if (wazuhdb::QueryResultCodes::OK != resultCode)
     {
-        WAZUH_LOG_WARN("[SCA] Error deleting check distinct policy id: {} agent id: {}",
+        WAZUH_LOG_WARN("Engine SCA decoder builder: Error deleting check distinct policy "
+                       "id \"{}\" of agent \"{}\".",
                        policyId,
                        ctx.agentID);
     }
@@ -1089,24 +1119,26 @@ std::optional<std::string> handleDumpEvent(const DecodeCxt& ctx)
             if (hashCheckResults != hashScanInfo)
             {
                 pushDumpRequest(ctx, policyId, false);
-                WAZUH_LOG_DEBUG(
-                    "[SCA] Scan result integrity failed for policy '{}'. Hash from DB: "
-                    "'{}' hash from summary: '{}'. Requesting DB dump.",
-                    policyId,
-                    hashCheckResults,
-                    hashScanInfo);
+                WAZUH_LOG_DEBUG("Engine SCA decoder builder: Scan result integrity "
+                                "failed for policy \"{}\". Hash from DB: "
+                                "\"{}\" hash from summary: \"{}\". Requesting DB dump.",
+                                policyId,
+                                hashCheckResults,
+                                hashScanInfo);
             }
         }
         else if (SearchResult::ERROR == resScanInfo)
         {
-            WAZUH_LOG_WARN("[SCA] Error querying summary for policy: {} agent: {}",
+            WAZUH_LOG_WARN("Engine SCA decoder builder: Error querying summary for "
+                           "policy \"{}\" of agent \"{}\".",
                            policyId,
                            ctx.agentID);
         }
     }
     else if (SearchResult::ERROR == resCheckResult)
     {
-        WAZUH_LOG_WARN("[SCA] Error querying check results for policy: {} agent: {}",
+        WAZUH_LOG_WARN("Engine SCA decoder builder: Error querying check results for "
+                       "policy \"{}\" of agent \"{}\".",
                        policyId,
                        ctx.agentID);
     }
@@ -1124,29 +1156,29 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    const auto parameters {helper::base::processParameters(raw_parameters)};
+    const auto parameters {helper::base::processParameters(name, raw_parameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(parameters, 2);
+    helper::base::checkParametersSize(name, parameters, 2);
     // Parameter type check
-    helper::base::checkParameterType(parameters[0],
-                                     helper::base::Parameter::Type::REFERENCE);
-    helper::base::checkParameterType(parameters[1],
-                                     helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(
+        name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(
+        name, parameters[1], helper::base::Parameter::Type::REFERENCE);
 
     // Format name for the tracer
-    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+    name = helper::base::formatHelperName(name, targetField, parameters);
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
     const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: [{}] not found", name, parameters[0].m_value)};
+        fmt::format("[{}] -> Failure: Parameter \"{}\" reference not found",
+                    name,
+                    parameters[0].m_value)};
     const auto failureTrace2 {
-        fmt::format("[{}] -> Failure: [{}] is empty or is not an string",
+        fmt::format("[{}] -> Failure: Parameter \"{}\" type not supported",
                     name,
                     parameters[0].m_value + "/type")};
-    const auto failureTrace3 {fmt::format(
-        "[{}] -> Failure: [{}] unknown type", name, parameters[0].m_value + "/type")};
 
     /* Create the context for SCA decoder */
     namespace SF = sca::field;
@@ -1212,7 +1244,7 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
                 else
                 {
                     // Unknown type value
-                    error = failureTrace3;
+                    error = failureTrace2;
                 }
             }
             else

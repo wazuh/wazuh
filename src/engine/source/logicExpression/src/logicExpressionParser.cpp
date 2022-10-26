@@ -77,12 +77,13 @@ struct syntaxChecker
     void operator()(const Token& token)
     {
         // Got term
-        if (token.m_type == TokenType::TERM)
+        if (TokenType::TERM == token.m_type)
         {
             if (expectedOperator())
             {
                 throw std::runtime_error(
-                    fmt::format("Unexpected term [{}] at pos [{}]",
+                    fmt::format("Engine logic expression parser: Unexpected tocken TERM "
+                                "\"{}\" at position \"{}\".",
                                 token.m_text,
                                 token.m_position));
             }
@@ -97,7 +98,8 @@ struct syntaxChecker
             if (expectedOperator())
             {
                 throw std::runtime_error(
-                    fmt::format("Unexpected unary operator [NOT] at pos [{}]",
+                    fmt::format("Engine logic expression parser: Unexpected unary "
+                                "operator \"NOT\" at position \"{}\".",
                                 token.m_position));
             }
 
@@ -111,7 +113,8 @@ struct syntaxChecker
             if (expectedOperand())
             {
                 throw std::runtime_error(
-                    fmt::format("Unexpected binary operator [{}] at pos [{}]",
+                    fmt::format("Engine logic expression parser: Unexpected binary "
+                                "operator \"{}\" at position \"{}\".",
                                 token.m_text,
                                 token.m_position));
             }
@@ -121,12 +124,13 @@ struct syntaxChecker
         }
 
         // Got parenthesis open
-        if (token.m_type == TokenType::PARENTHESIS_OPEN)
+        if (TokenType::PARENTHESIS_OPEN == token.m_type)
         {
             if (expectedOperator())
             {
                 throw std::runtime_error(
-                    fmt::format("Unexpected parenthesis [(] at pos [{}]",
+                    fmt::format("Engine logic expression parser: Unexpected parenthesis "
+                                "\"(\" at position \"{}\".",
                                 token.m_position));
             }
 
@@ -135,12 +139,13 @@ struct syntaxChecker
         }
 
         // Got parenthesis close
-        if (token.m_type == TokenType::PARENTHESIS_CLOSE)
+        if (TokenType::PARENTHESIS_CLOSE == token.m_type)
         {
             if (expectedOperand())
             {
                 throw std::runtime_error(
-                    fmt::format("Unexpected parenthesis [)] at pos [{}]",
+                    fmt::format("Engine logic expression parser: Unexpected parenthesis "
+                                "\")\" at position \"{}\".",
                                 token.m_position));
             }
 
@@ -164,15 +169,15 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
         infix.pop();
         checker(token);
 
-        if (token.m_type == TokenType::TERM)
+        if (TokenType::TERM == token.m_type)
         {
             postfix.push(std::move(token));
         }
-        else if (token.m_type == TokenType::PARENTHESIS_OPEN)
+        else if (TokenType::PARENTHESIS_OPEN == token.m_type)
         {
             operatorStack.push(std::move(token));
         }
-        else if (token.m_type == TokenType::PARENTHESIS_CLOSE)
+        else if (TokenType::PARENTHESIS_CLOSE == token.m_type)
         {
             while (!operatorStack.empty() &&
                    operatorStack.top().m_type != TokenType::PARENTHESIS_OPEN)
@@ -182,7 +187,8 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
             }
             if (operatorStack.empty())
             {
-                throw std::runtime_error("Mismatched parenthesis");
+                throw std::runtime_error(
+                    "Engine logic expression parser: Parenthesis are not balanced.");
             }
             operatorStack.pop();
         }
@@ -204,7 +210,8 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
     {
         if (operatorStack.top().m_type == TokenType::PARENTHESIS_OPEN)
         {
-            throw std::runtime_error("Mismatched parenthesis");
+            throw std::runtime_error(
+                "Engine logic expression parser: Parenthesis are not balanced.");
         }
         postfix.push(std::move(operatorStack.top()));
         operatorStack.pop();
@@ -229,8 +236,9 @@ std::shared_ptr<Expression> parse(const std::string& rawExpression)
     }
     catch (...)
     {
-        std::throw_with_nested(std::runtime_error(
-            fmt::format("Failed to parse expression [{}]", rawExpression)));
+        std::throw_with_nested(std::runtime_error(fmt::format(
+            "Engine logic expression parser: Failed to parse expression \"{}\".",
+            rawExpression)));
     }
 
     return expression;

@@ -13,7 +13,7 @@
 enum class ParserType
 {
     Any,
-    ToEnd, //TODO: can this be avoided merging it with Any parser?
+    ToEnd, // TODO: can this be avoided merging it with Any parser?
     Literal,
     IP,
     Ts,
@@ -46,13 +46,12 @@ struct Parser
     char endToken;
 };
 
-using parserFuncPtr =
-    bool (*)(const char **it,
-             Parser const &parser,
-             ParseResult &result);
+using parserFuncPtr = bool (*)(const char** it,
+                               Parser const& parser,
+                               ParseResult& result);
 
-using parserConfigFuncPtr = bool (*)(Parser &parser,
-                                     std::vector<std::string_view> const &args);
+using parserConfigFuncPtr = bool (*)(Parser& parser,
+                                     std::vector<std::string_view> const& args);
 
 /**
  * @brief List with the available parser functions
