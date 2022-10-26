@@ -36,16 +36,16 @@ Vagrant.configure("2") do |config|
         echo "Installing dependencies to build the engine"
 
         #Dependencies
-        sudo apt-get update
-        sudo apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq -y
+        apt-get update
+        apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq -y
 
         #CMake 3.24 installation from its release page
-        curl -sL https://github.com/Kitware/CMake/releases/download/v3.24.2/cmake-3.24.2-linux-x86_64.tar.gz | sudo tar -xz -C /usr/local --strip-components=1
+        curl -sL https://github.com/Kitware/CMake/releases/download/v3.24.2/cmake-3.24.2-linux-x86_64.tar.gz | tar -xz -C /usr/local --strip-components=1
         export PATH=$PATH:/usr/local/bin
 
 
         echo "--- Downlading the engine from github ---"
-        sudo apt-get update
+        apt-get update
         mkdir engine &&	cd engine
         git clone --branch 14738-filebeat-mappings-ecs-engine  https://github.com/wazuh/wazuh.git
         cd wazuh
@@ -72,39 +72,39 @@ Vagrant.configure("2") do |config|
         sed -E -i "s/ ip: <indexer-node-ip>/ ip: $ip/gm" config.yml
         sed -E -i "s/ ip: <wazuh-manager-ip>/ ip: $ip/gm" config.yml
         sed -E -i "s/ ip: <dashboard-node-ip>/ ip: $ip/gm" config.yml
-        sudo bash wazuh-install.sh --generate-config-files
-        sudo bash wazuh-install.sh -a
+        bash wazuh-install.sh --generate-config-files
+        bash wazuh-install.sh -a
 
         #Change password to admin/wazuhEngine5+ because it must have lower, uper, numbers and symbol
-        sudo /usr/share/wazuh-indexer/plugins/opensearch-security/tools/wazuh-passwords-tool.sh -u admin -p "wazuhEngine5+"
+        /usr/share/wazuh-indexer/plugins/opensearch-security/tools/wazuh-passwords-tool.sh -u admin -p "wazuhEngine5+"
 
         #Replace filebeat & elastic for engine
-        sudo cp extension/elasticsearch/7.x/wazuh-template.json /etc/filebeat/
-        sudo cp extension/filebeat/7.x/filebeat.yml /etc/filebeat/
-        sudo systemctl restart filebeat.service
+        cp extension/elasticsearch/7.x/wazuh-template.json /etc/filebeat/
+        cp extension/filebeat/7.x/filebeat.yml /etc/filebeat/
+        systemctl restart filebeat.service
 
         #Replace engine for analysisd
         WAZUH_DIR=/var/ossec
         ENGINE_DIR=$WAZUH_DIR/engine
 
         echo "--- Setting up the engine ---"
-        sudo systemctl stop wazuh-manager
-        sudo rm $WAZUH_DIR/queue/sockets/queue
-        sudo mkdir -p $ENGINE_DIR/store
-        sudo mkdir $WAZUH_DIR/etc/kvdb/
-        sudo cp -r ruleset/store/schema/ $ENGINE_DIR/store/
+        systemctl stop wazuh-manager
+        rm $WAZUH_DIR/queue/sockets/queue
+        mkdir -p $ENGINE_DIR/store
+        mkdir $WAZUH_DIR/etc/kvdb/
+        cp -r ruleset/store/schema/ $ENGINE_DIR/store/
 
         echo "--- Enabling the engine ---"
         #TODO: uncomment once full replacement works
-        sudo cp $ENGINE_SRC_DIR/build/main $ENGINE_DIR/wazuh-engine
-        sudo chmod 755 $ENGINE_DIR/wazuh-engine
-        sudo cp $ENGINE_SRC_DIR/test/scripts/wazuh-bin-engine.sh $WAZUH_DIR/bin/wazuh-engine
-        sudo chmod 755 $WAZUH_DIR/bin/wazuh-engine
-        sudo chown -R wazuh:wazuh $ENGINE_DIR
-        sudo chown wazuh:wazuh $WAZUH_DIR/bin/wazuh-engine
-        sudo sed -e "s/'wazuh-analysisd', //g" -i $(find $WAZUH_DIR -name dapi.py | grep python)
-        sudo sed -e "s/wazuh-analysisd /wazuh-engine /g" -i $WAZUH_DIR/bin/wazuh-control
-        sudo systemctl restart wazuh-manager
+        cp $ENGINE_SRC_DIR/build/main $ENGINE_DIR/wazuh-engine
+        chmod 755 $ENGINE_DIR/wazuh-engine
+        cp $ENGINE_SRC_DIR/test/scripts/wazuh-bin-engine.sh $WAZUH_DIR/bin/wazuh-engine
+        chmod 755 $WAZUH_DIR/bin/wazuh-engine
+        chown -R wazuh:wazuh $ENGINE_DIR
+        chown wazuh:wazuh $WAZUH_DIR/bin/wazuh-engine
+        sed -e "s/'wazuh-analysisd', //g" -i $(find $WAZUH_DIR -name dapi.py | grep python)
+        sed -e "s/wazuh-analysisd /wazuh-engine /g" -i $WAZUH_DIR/bin/wazuh-control
+        systemctl restart wazuh-manager
 
         sleep 2s
 
@@ -117,8 +117,34 @@ Vagrant.configure("2") do |config|
 
         # Create index pattern
         echo "--- Setting up dashboards index pattern  ---"
-        sudo curl -s --cacert /etc/filebeat/certs/root-ca.pem -u 'admin:wazuhEngine5+' -X POST "https://127.0.0.1/api/saved_objects/index-pattern/wazuh-alerts-5x-*" -H 'osd-xsrf: true' -H 'Content-Type: application/json' -d   '{"attributes": {"title": "wazuh-alerts-5.x-*", "timeFieldName": "@timestamp" }}'
+        curl -s --cacert /etc/filebeat/certs/root-ca.pem -u 'admin:wazuhEngine5+' -X POST "https://127.0.0.1/api/saved_objects/index-pattern/wazuh-alerts-5x-*" -H 'osd-xsrf: true' -H 'Content-Type: application/json' -d   '{"attributes": {"title": "wazuh-alerts-5.x-*", "timeFieldName": "@timestamp" }}'
 
+        # Install code-server
+        CS_USER=vagrant
+        CS_HOME=/home/$CS_USER
+        curl -fsSL https://code-server.dev/install.sh | sh
+
+        # Create base config
+        systemctl enable --now code-server@$CS_USER
+        sleep 4
+
+        # set config files
+        sed -i 's/code-server/code-server \\/home\\/vagrant\\/engine\\/wazuh\\/src\\/engine/g'    /lib/systemd/system/code-server@.service
+        systemctl daemon-reload
+        echo "bind-addr: 0.0.0.0:8040" | tee  $CS_HOME/.config/code-server/config.yaml
+        echo "auth: password"  | tee -a  $CS_HOME/.config/code-server/config.yaml
+        echo "password: wazuhEngine5+" | tee -a  $CS_HOME/.config/code-server/config.yaml
+        echo "cert: false" | tee -a  $CS_HOME/.config/code-server/config.yaml
+        systemctl restart code-server@$CS_USER
+
+        # Install and configs extensions
+        mkdir $CS_HOME/engine/wazuh/src/engine/.vscode
+        # extension: redhat yml
+        su - vagrant -c 'code-server --install-extension redhat.vscode-yaml'
+        # code-server --install-extension redhat.vscode-yaml
+        echo '{"yaml.schemas":{"./ruleset/schemas/wazuh-asset.json":["*/decoders/*.yml","*/rules/*.yml","*/outputs/*.yml","*/filters/*.yml"],"./ruleset/schemas/wazuh-environments.json":["*/environments/*.yml"]}}'| tee $CS_HOME/engine/wazuh/src/engine/.vscode/settings.json
+
+        chown -R $CS_USER:$CS_USER $CS_HOME/
     SHELL
 
 end
