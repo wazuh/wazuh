@@ -308,5 +308,3 @@ Else
     write-output "$(Get-Date -format u) - New version: $($new_version)." >> .\upgrade\upgrade.log
 }
 
-Remove-Item $Env:WAZUH_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
-Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
