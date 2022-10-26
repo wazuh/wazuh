@@ -47,6 +47,7 @@ const wm_context WM_TASK_MANAGER_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_task_manager_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 size_t wm_task_manager_dispatch(const char *msg, char **response) {

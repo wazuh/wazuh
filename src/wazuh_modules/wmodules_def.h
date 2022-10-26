@@ -39,6 +39,7 @@ typedef struct wm_context {
     cJSON *(* dump)(const void *);              // Dump current configuration
     int (* sync)(const char*);                  // Sync
     void (*stop)(void *);                       // Module destructor
+    size_t (*query)(void *, char *, char **);   // Run a query
 } wm_context;
 
 // Main module structure

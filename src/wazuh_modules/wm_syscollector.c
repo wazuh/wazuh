@@ -40,6 +40,7 @@ const wm_context WM_SYS_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_sys_dump,
     .sync = (int(*)(const char*))wm_sync_message,
     .stop = (void(*)(void *))wm_sys_stop,
+    .query = NULL,
 };
 
 void *syscollector_module = NULL;

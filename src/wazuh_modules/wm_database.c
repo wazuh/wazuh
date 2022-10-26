@@ -111,6 +111,7 @@ const wm_context WM_DATABASE_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_database_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 // Module main function. It won't return

@@ -38,6 +38,7 @@ const wm_context WM_AZURE_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_azure_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 // Module main function. It won't return.

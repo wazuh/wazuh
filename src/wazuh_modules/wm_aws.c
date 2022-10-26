@@ -40,6 +40,7 @@ const wm_context WM_AWS_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_aws_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 // Module module main function. It won't return.

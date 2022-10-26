@@ -28,6 +28,7 @@ const wm_context WM_COMMAND_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_command_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 // Module module main function. It won't return.

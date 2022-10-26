@@ -44,6 +44,7 @@ const wm_context WM_AGENT_UPGRADE_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_agent_upgrade_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 #ifdef WIN32
