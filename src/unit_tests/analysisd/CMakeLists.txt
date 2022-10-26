@@ -39,7 +39,7 @@ list(APPEND analysisd_names "test_analysisd_syscheck")
 list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND analysisd_names "test_cleanevent")
-list(APPEND analysisd_flags "-Wl,--wrap,_merror")
+list(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS}")
 
 list(APPEND analysisd_names "test_dbsync")
 list(APPEND analysisd_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
@@ -142,6 +142,19 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,send_rootcheck_log ${DEBUG_OP_WRAPPERS}"
 
 LIST(APPEND analysisd_names "test_decoder_syscollector")
 LIST(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND analysisd_names "test_analysis-state")
+list(APPEND analysisd_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize \
+                            -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Begin \
+                            -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get \
+                            -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
+                            -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
+                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,_merror -Wl,--wrap,limit_reached")
+
+list(APPEND analysisd_names "test_asyscom")
+list(APPEND analysisd_flags "-Wl,--wrap,asys_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \
+                             -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getGlobalConfig -Wl,--wrap,asys_create_agents_state_json \
+                             -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,json_parse_agents -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
 
 LIST(APPEND analysisd_names "test_limits")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_minfo")

@@ -7,19 +7,13 @@
  * Foundation
  */
 
-#include <stdarg.h>
+
 #include <stddef.h>
+#include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <shared.h>
-#include <os_net/os_net.h>
+#include "config_wrappers.h"
 
-#include "netcounter_wrappers.h"
-
-
-void __wrap_rem_setCounter(int fd, size_t counter) {
-    check_expected(fd);
-    check_expected(counter);
+cJSON *__wrap_getRemoteConfig() {
+    return mock_type(cJSON *);
 }

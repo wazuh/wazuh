@@ -321,7 +321,7 @@ void test_monitor_queue_connect_success(void **state) {
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, 1);
-    expect_string(__wrap_SendMSG, message, OS_AD_STARTED);
+    expect_string(__wrap_SendMSG, message, OS_MG_STARTED);
     expect_string(__wrap_SendMSG, locmsg, ARGV0);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
@@ -335,7 +335,7 @@ void test_monitor_queue_connect_msg_fail(void **state) {
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, 1);
-    expect_string(__wrap_SendMSG, message, OS_AD_STARTED);
+    expect_string(__wrap_SendMSG, message, OS_MG_STARTED);
     expect_string(__wrap_SendMSG, locmsg, ARGV0);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, -1);

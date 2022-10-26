@@ -187,6 +187,9 @@ else()
                                 -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetStringValue")
 endif()
 
+list(APPEND shared_tests_names "test_json_op")
+list(APPEND shared_tests_flags " ")
+
 list(APPEND shared_tests_names "test_rwlock_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
