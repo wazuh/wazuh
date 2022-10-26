@@ -768,8 +768,8 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:apparmor=1'
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:security=apparmor'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:apparmor=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:security=apparmor'
 
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode (Automated)
   - id: 19038
@@ -2889,7 +2889,7 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:^Access: \(0600/-rw-------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/crontab -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
   - id: 19141
@@ -2907,7 +2907,7 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly -> r:^Access: \(0700/drwx------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/cron.hourly -> r:^Access: \(0700/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 19142
@@ -2925,7 +2925,7 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily -> r:^Access: \(0700/drwx------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/cron.daily -> r:^Access: \(0700/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
   - id: 19143
@@ -2943,7 +2943,7 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly -> r:^Access: \(0700/drwx------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/cron.weekly -> r:^Access: \(0700/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 19144
@@ -2961,7 +2961,7 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 19145
@@ -2979,7 +2979,7 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.d -> r:^Access: \(0700/drwx------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/cron.d -> r:^Access: \(0700/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.8 Ensure cron is restricted to authorized users (Automated)
   - id: 19146
@@ -2999,7 +2999,7 @@ checks:
     rules:
       - "f:/etc/cron.allow"
       - "not f:/etc/cron.deny"
-      - 'c:stat /etc/cron.allow -> r:^Access: \(0640/-rw-r-----\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/cron.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.9 Ensure at is restricted to authorized users (Automated)
   - id: 19147
@@ -3019,7 +3019,7 @@ checks:
     rules:
       - "f:/etc/at.allow"
       - "not f:/etc/at.deny"
-      - 'c:stat /etc/at.allow -> r:^Access: \(0640/-rw-r-----\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/at.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.2 Configure sudo
 
@@ -3097,7 +3097,7 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.3.2 Ensure permissions on SSH private host key files are configured (Automated)
   - id: 19152
@@ -3115,9 +3115,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0600/-rw-------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$|Access: \(0400/-r--------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0600/-rw-------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$|Access: \(0400/-r--------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ed25519_key -> r:^Access: \(0600/-rw-------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$|Access: \(0400/-r--------\)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access: \(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access: \(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/ssh/ssh_host_ed25519_key -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access: \(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
 
   # 5.3.3 Ensure permissions on SSH public host key files are configured (Automated)
   - id: 19153
@@ -3135,9 +3135,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0644/-rw-r--r--)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0644/-rw-r--r--)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0644/-rw-r--r--)\s+Uid:\s+\(\s+0/\s+root\)\s+Gid:\s+\(\s+0/\s+root\)$'
+      - 'c:stat /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0644/-rw-r--r--)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0644/-rw-r--r--)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0644/-rw-r--r--)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.3.4 Ensure SSH access is limited (Automated) - Not implemented
   - id: 19154
@@ -3733,7 +3733,7 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.3 Ensure permissions on /etc/passwd- are configured (Automated)
   - id: 19183
@@ -3750,7 +3750,7 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0644/-rw-r--r--\)|^Access:\s*\(0640/-rw-r-----\)|^Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0644/-rw-r--r--\)|^Access:\s*\(0640/-rw-r-----\)|^Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.4 Ensure permissions on /etc/group are configured (Automated)
   - id: 19184
@@ -3767,7 +3767,7 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.5 Ensure permissions on /etc/group- are configured (Automated)
   - id: 19185
@@ -3784,7 +3784,7 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/group- -> r:^Access:\s*\(0644/-rw-r--r--\)|^Access:\s*\(0640/-rw-r-----\)|^Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/group- -> r:^Access:\s*\(0644/-rw-r--r--\)|^Access:\s*\(0640/-rw-r-----\)|^Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.6 Ensure permissions on /etc/shadow are configured (Automated)
   - id: 19186
@@ -3801,8 +3801,8 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
-      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)'
+      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   #  6.1.7 Ensure permissions on /etc/shadow- are configured (Automated)
   - id: 19187
@@ -3819,8 +3819,8 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: any
     rules:
-      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
-      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)'
+      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 6.1.8 Ensure permissions on /etc/gshadow are configured (Automated)
   - id: 19188
@@ -3837,8 +3837,8 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: any
     rules:
-      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
-      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)'
+      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 6.1.9 Ensure permissions on /etc/gshadow- are configured (Automated)
   - id: 19189
@@ -3855,8 +3855,8 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: any
     rules:
-      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
-      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)'
+      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 6.1.10 Ensure no world writable files exist (Automated) - Not implemented
   # 6.1.11 Ensure no unowned files or directories exist (Automated) - Not implemented
