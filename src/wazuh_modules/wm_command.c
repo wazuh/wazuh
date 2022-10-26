@@ -22,12 +22,12 @@ cJSON *wm_command_dump(const wm_command_t * command);
 // Command module context definition
 
 const wm_context WM_COMMAND_CONTEXT = {
-    "command",
-    (wm_routine)wm_command_main,
-    (void(*)(void *))wm_command_destroy,
-    (cJSON * (*)(const void *))wm_command_dump,
-    NULL,
-    NULL
+    .name = "command",
+    .start = (wm_routine)wm_command_main,
+    .destroy = (void(*)(void *))wm_command_destroy,
+    .dump = (cJSON * (*)(const void *))wm_command_dump,
+    .sync = NULL,
+    .stop = NULL,
 };
 
 // Module module main function. It won't return.
