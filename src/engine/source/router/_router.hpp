@@ -268,7 +268,7 @@ public:
         {
             throw std::invalid_argument(
                 "Error, route " + route
-                + " can not be deleted because is not registered");
+                + " cannot be deleted because is not registered");
         }
 
         // Delete route and delete environment if not referenced by any other

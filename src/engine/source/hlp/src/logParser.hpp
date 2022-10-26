@@ -36,6 +36,6 @@ using ExpressionList = std::vector<Expression>;
  * @note This function requires that the original string live for the duration
  *       that you need each piece as the vector refers to the original string
  */
-ExpressionList parseLogExpr(const char *expr);
+ExpressionList parseLogExpr(const char* expr);
 
 #endif //_LOG_PARSER_H

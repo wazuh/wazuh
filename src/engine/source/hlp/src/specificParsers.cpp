@@ -82,7 +82,7 @@ void addValueToJson(rapidjson::Document& output_doc,
     {
 
         // Check if the value maybe is a negative number
-        bool negativeNumber = value[0] == '-' && value.size() > 1;
+        bool negativeNumber = (('-' == value[0]) && (value.size() > 1));
 
         if (value.find_first_not_of("0123456789.", negativeNumber ? 1 : 0)
             == std::string_view::npos)
@@ -152,7 +152,7 @@ bool configureTsParser(Parser& parser, std::vector<std::string_view> const& args
     else
     {
         throw std::runtime_error(fmt::format(
-            "[configureTsParser(parser, args)] Unknown timestamp format: {}", args[0]));
+            "Engine HLP specific parsers: Unknown timestamp format of \"{}\".", args[0]));
     }
 }
 
@@ -160,21 +160,21 @@ bool configureKVMapParser(Parser& parser, std::vector<std::string_view> const& a
 {
     size_t argsSize = args.size();
 
-    if (argsSize != 2 || args[0].empty() || args[1].empty())
+    if (2 != argsSize || args[0].empty() || args[1].empty())
     {
-        const auto msg = fmt::format(
-            "[HLP] Invalid arguments for map Parser. Expected 2, got [{}]", argsSize);
-        throw std::runtime_error(msg);
+        throw std::runtime_error(
+            fmt::format("Engine HLP specific parsers: Invalid arguments quantity for "
+                        "\"map\" parser, Expected 2 arguments but got {}.",
+                        argsSize));
     }
 
     if (args[0] == args[1])
     {
-        const auto msg =
-            fmt::format("[HLP] Invalid arguments for map Parser. Key-Value separator "
-                        "({}) cannot be the same as the pairs separator ({}).",
-                        args[0],
-                        args[1]);
-        throw std::runtime_error(msg);
+        throw std::runtime_error(fmt::format(
+            "Engine HLP specific parsers: Invalid arguments for \"map\" parser. "
+            "Key-Value separator \"{}\" cannot be equal to the pairs separator \"{}\".",
+            args[0],
+            args[1]));
     }
 
     // Key-Value Separator
@@ -189,7 +189,7 @@ bool configureFilepathParser(Parser& parser, std::vector<std::string_view> const
 {
     std::string folderSeparator = "/\\";
     bool hasDriveLetter = true;
-    if (!args.empty() && args[0] == "UNIX")
+    if (!args.empty() && "UNIX" == args[0])
     {
         hasDriveLetter = false;
         folderSeparator = "/";
@@ -207,7 +207,7 @@ bool configureFilepathParser(Parser& parser, std::vector<std::string_view> const
 
 bool configureDomainParser(Parser& parser, std::vector<std::string_view> const& args)
 {
-    if (!args.empty() && args[0] == "FQDN")
+    if (!args.empty() && "FQDN" == args[0])
     {
         // TODO this is a hack to demonstrate the pattern
         parser.options.push_back({});
@@ -241,10 +241,10 @@ bool configureQuotedString(Parser& parser, std::vector<std::string_view> const& 
     }
     else
     {
-        const auto msg = fmt::format("[HLP] Invalid arguments for quoted string Parser. "
-                                     "Expected 0, 1 or 2, got [{}]",
-                                     args.size());
-        throw std::runtime_error(msg);
+        throw std::runtime_error(
+            fmt::format("Engine HLP specific parsers: Invalid arguments for \"quoted "
+                        "string\" parser. Expected 2 arguments at most but got {}.",
+                        args.size()));
     }
 
     return true;
@@ -274,10 +274,10 @@ bool configureIgnoreParser(Parser& parser, std::vector<std::string_view> const& 
         }
         else
         {
-            const auto msg = fmt::format("[HLP] Invalid arguments for ignore Parser. "
-                                         "Expected 0 or 1, got [{}]",
-                                         args.size());
-            throw std::runtime_error(msg);
+            throw std::runtime_error(
+                fmt::format("Engine HLP specific parsers: Invalid arguments for "
+                            "\"ignore\" parser. Expected 1 argument at most but got {}.",
+                            args.size()));
         }
     }
     return true;
@@ -301,20 +301,20 @@ bool configureJsonParser(Parser& parser, std::vector<std::string_view> const& ar
             }
             else
             {
-                const auto msg = fmt::format("[HLP] Invalid arguments for json Parser. "
-                                             "Expected one of [string, bool, number, "
-                                             "object, array, null, any], got [{}]",
-                                             args[0]);
-                throw std::runtime_error(msg);
+                throw std::runtime_error(fmt::format(
+                    "Engine HLP specific parsers: Invalid arguments for \"json\" parser. "
+                    "Expected one argument of one of the following types: string; bool; "
+                    "number; object; array; null or any, but got {}.",
+                    args[0]));
             }
         }
         else
         {
             // If more than one argument then is an error
-            const auto msg = fmt::format("[HLP] Invalid quantity of arguments for json "
-                                         "Parser. Expected one got [{}]",
-                                         args.size());
-            throw std::runtime_error(msg);
+            throw std::runtime_error(
+                fmt::format("Engine HLP specific parsers: Invalid quantity of arguments "
+                            "for \"json\" parser. Expected 1 argument but got {}.",
+                            args.size()));
         }
     }
     return true;
@@ -331,10 +331,10 @@ bool configureCSVParser(Parser& parser, std::vector<std::string_view> const& arg
         }
         else
         {
-            const auto msg = fmt::format("[HLP] Invalid arguments for CVS Parser. "
-                                         "Expected 1 or more, got [{}]",
-                                         args.size());
-            throw std::runtime_error(msg);
+            throw std::runtime_error(
+                fmt::format("Engine HLP specific parsers: Invalid arguments for \"CVS\" "
+                            "parser. Expected 1 argument at least but got {}.",
+                            args.size()));
         }
     }
     return true;
@@ -351,8 +351,7 @@ bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
         auto ignoreStr = parser.options[0];
         size_t ignoreLen = ignoreStr.size();
 
-        auto checkIgnore = [&](const char** tmpIt)
-        {
+        auto checkIgnore = [&](const char** tmpIt) {
             auto start = **tmpIt;
             for (auto i = 0; '\0' != **tmpIt && i < ignoreLen; ++i, ++*tmpIt)
             {
@@ -422,7 +421,7 @@ bool matchLiteral(const char** it, Parser const& parser, ParseResult&)
         i++;
     }
 
-    return parser.name[i] == '\0';
+    return ('\0' == parser.name[i]);
 }
 
 bool parseFilePath(const char** it, Parser const& parser, ParseResult& result)
@@ -451,7 +450,7 @@ bool parseFilePath(const char** it, Parser const& parser, ParseResult& result)
         (std::string::npos == extensionStart) ? "" : name.substr(extensionStart + 1);
 
     std::string driveLetter;
-    if (hasDriveLetter && filePath[1] == ':'
+    if (hasDriveLetter && ':' == filePath[1]
         && ('\\' == filePath[2] || '/' == filePath[2]))
     {
         driveLetter = std::toupper(filePath[0]);
@@ -531,56 +530,56 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
     */
     const auto getQuoted =
         [&scapeChar](const char* c_str) -> std::pair<const char*, std::string_view>
-    {
-        const char quoteChar = c_str[0];
-        const char* ptr = c_str + 1;
-        std::pair<const char*, std::string_view> result = {nullptr, ""};
-
-        while (ptr = strchrnul(ptr, quoteChar), *ptr != '\0')
         {
-            // Is not posible that ptr-2 < str
-            bool escaped = (*(ptr - 1) == scapeChar);
-            escaped = escaped && (*(ptr - 2) != scapeChar);
+            const char quoteChar = c_str[0];
+            const char* ptr = c_str + 1;
+            std::pair<const char*, std::string_view> result = {nullptr, ""};
 
-            if (!escaped)
+            while (ptr = strchrnul(ptr, quoteChar), '\0' != *ptr)
             {
-                result = {ptr, std::string_view(c_str + 1, ptr - c_str - 1)};
-                break;
+                // Is not posible that ptr-2 < str
+                bool escaped = (*(ptr - 1) == scapeChar);
+                escaped = escaped && (*(ptr - 2) != scapeChar);
+
+                if (!escaped)
+                {
+                    result = {ptr, std::string_view(c_str + 1, ptr - c_str - 1)};
+                    break;
+                }
+                ptr++;
             }
-            ptr++;
-        }
-        return result;
-    };
+            return result;
+        };
 
     /*
       Return the pointer to the first `kvSeparator` not escaped by `scapeChar`.
       If there is no kvSeparator, return NULL
     */
     const auto getSeparator = [&kvSeparator, &scapeChar](const char* c_str)
-    {
-        const char* ptr = c_str;
-        while (ptr = strstr(ptr, kvSeparator.data()), ptr != nullptr)
         {
-            bool escaped = false;
-            // worst cases:
-            //    [=\0], [\=\0],[\\=\0],
-            if (ptr + 1 >= c_str)
+            const char* ptr = c_str;
+            while (ptr = strstr(ptr, kvSeparator.data()), nullptr != ptr)
             {
-                escaped = (*(ptr - 1) == scapeChar);
-                if (escaped && (ptr + 2 >= c_str))
+                bool escaped = false;
+                // worst cases:
+                //    [=\0], [\=\0],[\\=\0],
+                if (ptr + 1 >= c_str)
                 {
-                    escaped = (*(ptr - 2) != scapeChar);
+                    escaped = (*(ptr - 1) == scapeChar);
+                    if (escaped && (ptr + 2 >= c_str))
+                    {
+                        escaped = (*(ptr - 2) != scapeChar);
+                    }
                 }
+                if (!escaped)
+                {
+                    break;
+                }
+                ptr++;
             }
-            if (!escaped)
-            {
-                break;
-            }
-            ptr++;
-        }
 
-        return ptr;
-    };
+            return ptr;
+        };
 
     /*
       Returns a pair with the pointer to the start value (After key value separator)
@@ -590,43 +589,43 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
     const auto getKey =
         [&kvSeparator, &pairSeparator, &scapeChar, &getQuoted, &getSeparator](
             const char* c_str)
-    {
-        std::string_view key {};
-        const char* ptr = c_str;
-        if (*ptr == '"' || *ptr == '\'')
         {
-            auto [endQuote, quoted] = getQuoted(ptr);
-            // The key is valid only if valid only is followed by kvSeparator
-            if (endQuote != nullptr
-                && kvSeparator.compare(
-                       1, kvSeparator.size(), endQuote, kvSeparator.size())
-                       == 0)
+            std::string_view key {};
+            const char* ptr = c_str;
+            if ('"' == *ptr || '\'' == *ptr)
             {
-                key = std::move(quoted);
-                ptr = endQuote + kvSeparator.size() + 1;
+                auto [endQuote, quoted] = getQuoted(ptr);
+                // The key is valid only if valid only is followed by kvSeparator
+                if (nullptr != endQuote
+                    && kvSeparator.compare(
+                           1, kvSeparator.size(), endQuote, kvSeparator.size())
+                           == 0)
+                {
+                    key = std::move(quoted);
+                    ptr = endQuote + kvSeparator.size() + 1;
+                }
             }
-        }
-        else
-        {
-            ptr = getSeparator(ptr);
+            else
+            {
+                ptr = getSeparator(ptr);
 
-            if (ptr != nullptr)
-            {
-                // The key is valid only if no there a pairSeparator in the middle
-                auto tmpKey = std::string_view(c_str, ptr - c_str);
-                if (tmpKey.find(pairSeparator) == std::string_view::npos)
+                if (nullptr != ptr)
                 {
-                    key = std::move(tmpKey);
-                    ptr += kvSeparator.size();
-                }
-                else
-                {
-                    ptr = nullptr;
+                    // The key is valid only if no there a pairSeparator in the middle
+                    auto tmpKey = std::string_view(c_str, ptr - c_str);
+                    if (tmpKey.find(pairSeparator) == std::string_view::npos)
+                    {
+                        key = std::move(tmpKey);
+                        ptr += kvSeparator.size();
+                    }
+                    else
+                    {
+                        ptr = nullptr;
+                    }
                 }
             }
-        }
-        return std::pair<const char*, std::string_view> {ptr, key};
-    };
+            return std::pair<const char*, std::string_view> {ptr, key};
+        };
 
     /* -----------------------------------------------
                     Start parsing
@@ -636,7 +635,7 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
     {
         /* Get Key */
         auto [strParsePtr, key] = getKey(lastFoundOk);
-        if (strParsePtr == nullptr || key.empty())
+        if (nullptr == strParsePtr || key.empty())
         {
             // Goback to the last valid pair
             if (lastFoundOk > *it)
@@ -651,10 +650,10 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
         // Get value
         std::string_view value {};
         // Check if value is quoted
-        if (*strParsePtr == '"' || *strParsePtr == '\'')
+        if ('"' == *strParsePtr || '\'' == *strParsePtr)
         {
             auto [endQuotePtr, quotedValue] = getQuoted(strParsePtr);
-            if (endQuotePtr != nullptr)
+            if (nullptr != endQuotePtr)
             {
                 value = std::move(quotedValue);
                 // Point to the next char after the end quote
@@ -683,7 +682,7 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
         {
             // Search for pairSeparator
             auto endValuePtr = strstr(strParsePtr, pairSeparator.data());
-            if (endValuePtr != nullptr)
+            if (nullptr != endValuePtr)
             {
                 value = std::string_view(strParsePtr, endValuePtr - strParsePtr);
                 // if there a endMapToken before the pairSeparator, the search is finished
@@ -703,7 +702,7 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
             }
             // No pairSeparator, search for endMapToken
             else if (endValuePtr = strchr(strParsePtr, endMapToken),
-                     endValuePtr != nullptr)
+                     nullptr != endValuePtr)
             {
                 value = std::string_view(strParsePtr, endValuePtr - strParsePtr);
                 strParsePtr = endValuePtr;
@@ -835,7 +834,7 @@ bool parseTimeStamp(const char** it, Parser const& parser, ParseResult& result)
         //  occurrence of the endToken between all sizes of the tsExample
         for (auto i = 0; i < tsSize; i++, (*it)++)
         {
-            if (**it == '\0')
+            if ('\0' == **it)
             {
                 return false;
             }
@@ -868,13 +867,12 @@ bool parseURL(const char** it, Parser const& parser, ParseResult& result)
 
     const char* start = *it;
     // TODO Check how to handle if the URL contains the endToken
-    while (**it != parser.endToken && **it != '\0')
+    while (**it != parser.endToken && '\0' != **it)
     {
         (*it)++;
     }
 
-    auto urlCleanup = [](auto* url)
-    {
+    auto urlCleanup = [](auto* url) {
         curl_url_cleanup(url);
     };
 
@@ -984,15 +982,15 @@ bool parseURL(const char** it, Parser const& parser, ParseResult& result)
 
 static bool isAsciiNum(char c)
 {
-    return (c <= '9' && c >= '0');
+    return ('9' >= c && '0' <= c);
 }
 static bool isAsciiUpp(char c)
 {
-    return (c <= 'Z' && c >= 'A');
+    return ('Z' >= c && 'A' <= c);
 }
 static bool isAsciiLow(char c)
 {
-    return (c <= 'z' && c >= 'a');
+    return ('z' >= c && 'a' <= c);
 }
 static bool isDomainValidChar(char c)
 {
@@ -1010,7 +1008,7 @@ bool parseDomain(const char** it, Parser const& parser, ParseResult& result)
     const bool validateFQDN = !parser.options.empty();
 
     const char* start = *it;
-    while (**it != parser.endToken && **it != '\0')
+    while (**it != parser.endToken && '\0' != **it)
     {
         (*it)++;
     }
@@ -1312,17 +1310,17 @@ bool parseQuotedString(const char** it, Parser const& parser, ParseResult& resul
     const char* start = *it;
 
     auto checkEnd = [&](const char** it)
-    {
-        for (const auto& ch : endQuote)
         {
-            if (**it != ch)
+            for (const auto& ch : endQuote)
             {
-                return false;
+                if (**it != ch)
+                {
+                    return false;
+                }
+                (*it)++;
             }
-            (*it)++;
-        }
-        return true;
-    };
+            return true;
+        };
     auto foundEnd = false;
 
     while (**it != '\0' && (escaped || !foundEnd))
@@ -1394,13 +1392,16 @@ bool configureXmlParser(Parser& parser, std::vector<std::string_view> const& arg
         }
         else
         {
-            throw std::runtime_error {fmt::format("Invalid xml module: [{}]", args[0])};
+            throw std::runtime_error {fmt::format(
+                "Engine HLP specific parsers: Invalid \"xml\" parser: \"{}\".", args[0])};
         }
     }
     else
     {
         throw std::runtime_error {
-            "Invalid number of arguments for xml module, expected 0 or 1"};
+            fmt::format("Engine HLP specific parsers: Invalid number of arguments for "
+                        "\"xml\" parser. Expected 1 argument at most but got {}.",
+                        args.size())};
     }
 
     return true;
@@ -1508,50 +1509,50 @@ bool parseCSV(const char** it, Parser const& parser, ParseResult& result)
      * valid
      */
     const auto getQuoted = [&](const char* str) -> std::pair<const char*, std::string>
-    {
-        str++;
-        const char* end = nullptr;
-
-        std::string value {};
-        // Search for the end quote
-        while (end = strchr(str, escapeChar), nullptr != end)
         {
-            if (escapeChar == *(end + 1))
+            str++;
+            const char* end = nullptr;
+
+            std::string value {};
+            // Search for the end quote
+            while (end = strchr(str, escapeChar), nullptr != end)
             {
-                value.append(str, end + 1 - str);
-                str = end + 2; // Escaped quote, skip it
+                if (escapeChar == *(end + 1))
+                {
+                    value.append(str, end + 1 - str);
+                    str = end + 2; // Escaped quote, skip it
+                }
+                else
+                {
+                    // End quote found
+                    value.append(str, end - str);
+                    end++;
+                    break;
+                }
             }
-            else
-            {
-                // End quote found
-                value.append(str, end - str);
-                end++;
-                break;
-            }
-        }
-        return {end, std::move(value)};
-    };
+            return {end, std::move(value)};
+        };
 
     /*
      * Returns pair <const char * iterator, std::string_view value> with
      * the pointer to the nex character to parse and the value unquoted parsed
      */
     const auto getUnQuoted = [&](const char* str) -> std::pair<const char*, std::string>
-    {
-        // Search for the separator or the end of the CSV.
-        const char* end = strchr(str, separator);
-        if (nullptr == end)
         {
-            end = strchr(str, endToken);
-        }
-        // If the end is nullptr, the CSV is malformed
-        if (nullptr != end)
-        {
-            std::string value(str, end - str);
-            return {end, std::move(value)};
-        }
-        return {nullptr, std::string {}};
-    };
+            // Search for the separator or the end of the CSV.
+            const char* end = strchr(str, separator);
+            if (nullptr == end)
+            {
+                end = strchr(str, endToken);
+            }
+            // If the end is nullptr, the CSV is malformed
+            if (nullptr != end)
+            {
+                std::string value(str, end - str);
+                return {end, std::move(value)};
+            }
+            return {nullptr, std::string {}};
+        };
 
     /*
      * Extract the values

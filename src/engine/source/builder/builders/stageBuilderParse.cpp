@@ -25,13 +25,12 @@ Builder getStageBuilderParse(std::shared_ptr<Registry> registry)
         catch (const std::exception& e)
         {
             throw std::runtime_error(
-                "[builder::stageBuilderParse(json)] Received unexpected argument type");
+                fmt::format("Definition could not be converted to json: {}", e.what()));
         }
         if (!jsonDefinition.isObject())
         {
             throw std::runtime_error(
-                fmt::format("[builder::stageBuilderParse(json)] Invalid json definition "
-                            "type: expected [object] but got [{}]",
+                fmt::format("Invalid json definition type: expected object but got {}",
                             jsonDefinition.typeName()));
         }
 
@@ -43,8 +42,8 @@ Builder getStageBuilderParse(std::shared_ptr<Registry> registry)
                        std::back_inserter(parserExpressions),
                        [registry](auto& tuple)
                        {
-                           auto& parserName = std::get<0>(tuple);
-                           auto& parserValue = std::get<1>(tuple);
+                           const auto& parserName = std::get<0>(tuple);
+                           const auto& parserValue = std::get<1>(tuple);
                            base::Expression parserExpression;
                            try
                            {
@@ -53,11 +52,10 @@ Builder getStageBuilderParse(std::shared_ptr<Registry> registry)
                            }
                            catch (const std::exception& e)
                            {
-                               std::throw_with_nested(std::runtime_error(
-                                   fmt::format("[builder::stageBuilderParse(json)] "
-                                               "Error building parser [{}]: {}",
+                               throw std::runtime_error(
+                                   fmt::format("Error building parser \"{}\": {}",
                                                parserName,
-                                               e.what())));
+                                               e.what()));
                            }
 
                            return parserExpression;

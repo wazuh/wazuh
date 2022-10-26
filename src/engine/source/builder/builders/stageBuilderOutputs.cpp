@@ -26,22 +26,20 @@ Builder getStageBuilderOutputs(std::shared_ptr<Registry> registry)
         }
         catch (const std::exception& e)
         {
-            throw std::runtime_error("[builders::stageBuilderOutputs(json)] Received "
-                                     "unexpected argument type");
+            throw std::runtime_error(
+                fmt::format("Definition could not be converted to json: {}", e.what()));
         }
 
         if (!jsonDefinition.isArray())
         {
             throw std::runtime_error(fmt::format(
-                "[builders::stageBuilderOutputs(json)] Invalid json definition "
-                "type: expected [array] but got [{}]",
+                "Invalid json definition type: expected \"array\" but got \"{}\"",
                 jsonDefinition.typeName()));
         }
         if (jsonDefinition.size() == 0)
         {
             throw std::runtime_error(
-                "[builders::stageBuilderOutputs(json)] Invalid json definition: expected "
-                "at least one element");
+                "Invalid json definition, expected one element at least");
         }
 
         // All output expressions
@@ -57,20 +55,18 @@ Builder getStageBuilderOutputs(std::shared_ptr<Registry> registry)
                        {
                            if (!outputDefinition.isObject())
                            {
-                               throw std::runtime_error(fmt::format(
-                                   "[builders::stageBuilderOutputs(json)] "
-                                   "Invalid array item type: expected [object] but "
-                                   "got [{}]",
-                                   outputDefinition.typeName()));
+                               throw std::runtime_error(
+                                   fmt::format("Invalid array item type, expected "
+                                               "\"object\" but got \"{}\"",
+                                               outputDefinition.typeName()));
                            }
 
                            if (outputDefinition.size() != 1)
                            {
-                               throw std::runtime_error(
-                                   fmt::format("[builders::stageBuilderOutputs(json)] "
-                                               "Invalid object item syze: expected "
-                                               "exactly one key/value pair, but got [{}]",
-                                               outputDefinition.size()));
+                               throw std::runtime_error(fmt::format(
+                                   "Invalid object item size, expected exactly one "
+                                   "key/value pair but got \"{}\"",
+                                   outputDefinition.size()));
                            }
 
                            auto outputObject = outputDefinition.getObject().value();
@@ -85,10 +81,10 @@ Builder getStageBuilderOutputs(std::shared_ptr<Registry> registry)
                            }
                            catch (const std::exception& e)
                            {
-                               std::throw_with_nested(std::runtime_error(
-                                   fmt::format("[builders::stageBuilderOutputs(json)] "
-                                               "Exception building output [{}]",
-                                               outputName)));
+                               throw std::runtime_error(
+                                   fmt::format("Building output \"{}\" failed: {}",
+                                               outputName,
+                                               e.what()));
                            }
 
                            return outputExpression;

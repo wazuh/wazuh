@@ -41,8 +41,10 @@ private:
     {
         if (size < 1 || size > MAX_PARTS)
         {
-            throw std::runtime_error(
-                fmt::format("[Name] size must be between 1 and {}", MAX_PARTS));
+            throw std::runtime_error(fmt::format(
+                "Engine base name: Name size must be between 1 and {}, but it is {}.",
+                MAX_PARTS,
+                size));
         }
     }
 

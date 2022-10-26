@@ -119,26 +119,26 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
 {
     const auto [targetField, name, rawParameters] =
         helper::base::extractDefinition(definition);
-    const auto parameters = helper::base::processParameters(rawParameters);
+    const auto parameters = helper::base::processParameters(name, rawParameters);
 
     // Assert expected number of parameters
-    helper::base::checkParametersSize(parameters, 4);
+    helper::base::checkParametersSize(name, parameters, 4);
     // Parameter type check
     // Agent_id
-    helper::base::checkParameterType(parameters[0],
-                                     helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(
+        name, parameters[0], helper::base::Parameter::Type::REFERENCE);
     // scan_id
-    helper::base::checkParameterType(parameters[1],
-                                     helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(
+        name, parameters[1], helper::base::Parameter::Type::REFERENCE);
     // name
-    helper::base::checkParameterType(parameters[2],
-                                     helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(
+        name, parameters[2], helper::base::Parameter::Type::REFERENCE);
     // array (IPv4 or IPv6)
-    helper::base::checkParameterType(parameters[3],
-                                     helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(
+        name, parameters[3], helper::base::Parameter::Type::REFERENCE);
 
     const auto traceName =
-        helper::base::formatHelperFilterName(name, targetField, parameters);
+        helper::base::formatHelperName(name, targetField, parameters);
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", traceName);

@@ -42,9 +42,8 @@ public:
      * @param path (std::string) Absolute path to the datagram socket.
      * @param eventBuffer (ServerOutput) Reference to the event queue.
      */
-    explicit EventEndpoint(
-        const std::string& path,
-        std::shared_ptr<concurrentQueue> eventQueue);
+    explicit EventEndpoint(const std::string& path,
+                           std::shared_ptr<concurrentQueue> eventQueue);
 
     ~EventEndpoint();
 
