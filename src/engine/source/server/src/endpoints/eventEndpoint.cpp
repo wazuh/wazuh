@@ -9,8 +9,10 @@
 
 #include "eventEndpoint.hpp"
 
+#include <atomic>
 #include <cstring>
 #include <fcntl.h>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <sys/socket.h>
@@ -26,6 +28,10 @@ using uvw::UDPDataEvent;
 using uvw::UDPHandle;
 
 static constexpr int MAX_MSG_SIZE = 65536 + 512;
+
+// TODO: Refactor how we handle queue flooding and environments down
+static constexpr auto dumpFile = "/var/ossec/logs/archives/flooded.log";
+extern std::atomic_bool g_envDown;
 
 namespace engineserver::endpoints
 {
@@ -101,7 +107,9 @@ static inline int bindUnixDatagramSocket(const char* path)
     return (socketFd);
 }
 
-EventEndpoint::EventEndpoint(const std::string& path, std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::string>> eventQueue)
+EventEndpoint::EventEndpoint(
+    const std::string& path,
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::string>> eventQueue)
     : BaseEndpoint {path}
     , m_loop {Loop::getDefault()}
     , m_handle {m_loop->resource<DatagramSocketHandle>()}
@@ -119,8 +127,17 @@ EventEndpoint::EventEndpoint(const std::string& path, std::shared_ptr<moodycamel
                             event.what());
         });
 
+    auto dumpFileHandler = std::make_shared<std::ofstream>(
+        dumpFile, std::ios::out | std::ios::app | std::ios::ate);
+    if (!dumpFileHandler || !dumpFileHandler->good())
+    {
+        dumpFileHandler.reset();
+        WAZUH_LOG_ERROR("Cannot open dump file: {}, flooded events will be lost",
+                        dumpFile);
+    }
     m_handle->on<DatagramSocketEvent>(
-        [this](const DatagramSocketEvent& event, DatagramSocketHandle& handle)
+        [this, dumpFileHandler](const DatagramSocketEvent& event,
+                                DatagramSocketHandle& handle)
         {
             auto client = handle.loop().resource<DatagramSocketHandle>();
 
@@ -137,9 +154,44 @@ EventEndpoint::EventEndpoint(const std::string& path, std::shared_ptr<moodycamel
                 });
 
             auto strRequest = std::string {event.data.get(), event.length};
-            while (!m_eventQueue->try_enqueue(strRequest))
+            if (g_envDown)
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                if (dumpFileHandler && dumpFileHandler->good())
+                {
+                    *dumpFileHandler << strRequest.c_str() << std::endl;
+                }
+                else
+                {
+                    WAZUH_LOG_ERROR(
+                        "Cannot write to dump file: {}, flooded events will be lost",
+                        dumpFile);
+                }
+            }
+            else
+            {
+                while (!m_eventQueue->try_enqueue(strRequest))
+                {
+                    if (g_envDown)
+                    {
+                        if (dumpFileHandler && dumpFileHandler->good())
+                        {
+                            *dumpFileHandler << strRequest.c_str() << std::endl;
+                        }
+                        else
+                        {
+                            WAZUH_LOG_ERROR("Cannot write to dump file: {}, flooded "
+                                            "events will be lost",
+                                            dumpFile);
+                        }
+                        return;
+                    }
+                    else
+                    {
+                        // Right now we process 1 event for ~0.1ms, we sleep by a factor
+                        // of 10 because we are saturating the queue
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    }
+                }
             }
         });
 
@@ -180,16 +232,17 @@ void EventEndpoint::close(void)
     {
         m_loop->stop(); /// Stops the loop
         m_loop->walk([](uvw::BaseHandle& handle)
-                    { handle.close(); }); /// Triggers every handle's close callback
+                     { handle.close(); }); /// Triggers every handle's close callback
         m_loop->run(); /// Runs the loop again, so every handle is able to receive
-                    /// its close callback
+                       /// its close callback
         m_loop->clear();
         m_loop->close();
         WAZUH_LOG_INFO("Closed endpoints.");
-    } else {
+    }
+    else
+    {
         WAZUH_LOG_INFO("Loop is already closed.");
     }
-    
 }
 
 EventEndpoint::~EventEndpoint()
@@ -197,7 +250,8 @@ EventEndpoint::~EventEndpoint()
     close();
 }
 
-std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::string>> EventEndpoint::getEventQueue() const
+std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::string>>
+EventEndpoint::getEventQueue() const
 {
     return m_eventQueue;
 }
