@@ -46,7 +46,7 @@ void configureParserMappings(const std::string& config)
 
     if (config.empty())
     {
-        WAZUH_LOG_ERROR("Schema configuration is empty.");
+        WAZUH_LOG_ERROR("Engine HLP: Schema configuration is empty.");
         return;
     }
 
@@ -55,9 +55,11 @@ void configureParserMappings(const std::string& config)
 
     if (doc.HasParseError())
     {
-        WAZUH_LOG_ERROR("HLP types configuration its not a valid JSON. Error "
-                        "at offset [{}]",
-                        doc.GetErrorOffset());
+        WAZUH_LOG_ERROR("Engine HLP: \"{}\" method: An error ocurred while parsing "
+                        "configuration at offset {} from configuration: \"{}\".",
+                        __func__,
+                        doc.GetErrorOffset(),
+                        config);
         return;
     }
 
@@ -70,9 +72,11 @@ void configureParserMappings(const std::string& config)
         }
         else
         {
-            WAZUH_LOG_DEBUG("Invalid parser type [{}] for field [{}]",
+            WAZUH_LOG_DEBUG(" Engine HLP: \"{}\" method: Invalid parser type \"{}\" for "
+                            "field \"{}\" from configuration: \"{}\".",
                             it->value.GetString(),
-                            it->name.GetString());
+                            it->name.GetString(),
+                            config);
         }
     }
 }
@@ -213,8 +217,9 @@ std::vector<Parser> getParserList(ExpressionList const& expressions)
             }
             default:
             {
-                throw std::runtime_error(
-                    "[HLP]Invalid expression parsed from Logpar expression");
+                throw std::runtime_error(fmt::format(
+                    "Engine HLP: \"{}\" method: Invalid type of parsed expression.",
+                    __func__));
             }
         }
     }
@@ -246,6 +251,7 @@ static ExecuteResult executeParserList(std::string_view const& event,
         else
         {
             // ASSERT here we are missing an implementation
+            // TODO: review this
             return ExecuteResult {
                 false,
                 trace
@@ -267,6 +273,7 @@ static ExecuteResult executeParserList(std::string_view const& event,
             else
             {
                 // TODO report error <field>?<other>
+                // TODO: review this
                 return ExecuteResult {
                     false, trace + fmt::format("Parser[\"{}\"] failure", parser.name)};
             }
@@ -285,20 +292,28 @@ ParserFn getParserOp(std::string_view const& logpar)
     WAZUH_TRACE_FUNCTION;
     if (logpar.empty())
     {
-        throw std::invalid_argument("[HLP]Empty Logpar expression");
+        throw std::invalid_argument(
+            "Engine HLP: \"{}\" method: Empty Logpar expression.");
     }
 
     ExpressionList expressions = parseLogExpr(logpar.data());
     if (expressions.empty())
     {
         throw std::runtime_error(
-            "[HLP]Empty expression output obtained from Logpar parsing");
+            fmt::format("Engine HLP: \"{}\" method: Empty expression output obtained "
+                        "from parsing \"{}\".",
+                        __func__,
+                        logpar));
     }
 
     auto parserList = getParserList(expressions);
     if (parserList.empty())
     {
-        throw std::runtime_error("[HLP]Could not convert expressions to parser List");
+        throw std::runtime_error(
+            fmt::format("Engine HLP: \"{}\" method: Could not convert expressions to "
+                        "parser List from \"{}\".",
+                        __func__,
+                        logpar));
     }
 
     ParserFn parseFn = [parserList = std::move(parserList)](std::string_view const& event,

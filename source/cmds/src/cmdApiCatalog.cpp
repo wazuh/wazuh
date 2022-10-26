@@ -15,6 +15,18 @@
 #include <name.hpp>
 #include <variant>
 
+namespace
+{
+constexpr auto INVALID_NAME_FOR_ACTION =
+    "Engine API Catalog: Invalid name \"{}\" for action \"{}\", the name must be a valid "
+    "\"{}\".";
+constexpr auto CONTENT_SHOULD_BE_EMPTY =
+    "Engine API Catalog: Content should be empty for action \"{}\". Content: \"{}\".";
+
+constexpr auto CONTENT_CANNOT_BE_EMPTY =
+    "Engine API XXX Catalog: Content cannot be empty for action \"{}\".";
+}
+
 namespace cmd
 {
 
@@ -32,7 +44,9 @@ void singleRequest(const std::string& socketPath,
     auto action = catalog_details::stringToAction(actionStr.c_str());
     if (action == catalog_details::Action::ERROR_ACTION)
     {
-        std::cerr << "Invalid action " << actionStr << std::endl;
+        // TODO: Why do we use std::cerr instead of WAZUH_LOG_ERROR?
+        std::cerr << fmt::format("Engine API Catalog: Invalid action \"{}\".", actionStr)
+                  << std::endl;
         return;
     }
 
@@ -45,7 +59,9 @@ void singleRequest(const std::string& socketPath,
     }
     catch (const std::exception& e)
     {
-        std::cerr << fmt::format("Invalid name [{}]: {}", nameStr, e.what()) << std::endl;
+        std::cerr << fmt::format(
+            "Engine API Catalog: Invalid name \"{}\": {}", nameStr, e.what())
+                  << std::endl;
         return;
     }
 
@@ -54,16 +70,16 @@ void singleRequest(const std::string& socketPath,
         case catalog_details::Action::LIST:
             if (name.parts().size() != 1 && name.parts().size() != 2)
             {
-                std::cerr << fmt::format("Invalid name [{}] for action {}, name must be "
-                                         "a valid <type>[/<item-id>]",
-                                         nameStr,
-                                         actionStr)
+                // TODO: Check this message
+                std::cerr << fmt::format(
+                    INVALID_NAME_FOR_ACTION, nameStr, actionStr, "<type>[/<item-id>]")
                           << std::endl;
                 return;
             }
             if (!content.empty())
             {
-                std::cerr << "Content not allowed for action " << actionStr << std::endl;
+                std::cerr << fmt::format(CONTENT_SHOULD_BE_EMPTY, actionStr, content)
+                          << std::endl;
                 return;
             }
             command = "get";
@@ -71,16 +87,15 @@ void singleRequest(const std::string& socketPath,
         case catalog_details::Action::GET:
             if (name.parts().size() != 3)
             {
-                std::cerr << fmt::format("Invalid name [{}] for action {}, name must be "
-                                         "a valid <type>/<item-id>/<ver>",
-                                         nameStr,
-                                         actionStr)
+                std::cerr << fmt::format(
+                    INVALID_NAME_FOR_ACTION, nameStr, actionStr, "<type>/<item-id>/<ver>")
                           << std::endl;
                 return;
             }
             if (!content.empty())
             {
-                std::cerr << "Content not allowed for action " << actionStr << std::endl;
+                std::cerr << fmt::format(CONTENT_SHOULD_BE_EMPTY, actionStr, content)
+                          << std::endl;
                 return;
             }
             command = "get";
@@ -88,16 +103,14 @@ void singleRequest(const std::string& socketPath,
         case catalog_details::Action::UPDATE:
             if (name.parts().size() != 3)
             {
-                std::cerr << fmt::format("Invalid name [{}] for action {}, name must be "
-                                         "a valid <type>/<item-id>/<ver>",
-                                         nameStr,
-                                         actionStr)
+                std::cerr << fmt::format(
+                    INVALID_NAME_FOR_ACTION, nameStr, actionStr, "<type>/<item-id>/<ver>")
                           << std::endl;
                 return;
             }
             if (content.empty())
             {
-                std::cerr << "Content required for action " << actionStr << std::endl;
+                std::cerr << fmt::format(CONTENT_CANNOT_BE_EMPTY, actionStr) << std::endl;
                 return;
             }
             command = "put";
@@ -106,15 +119,13 @@ void singleRequest(const std::string& socketPath,
             if (name.parts().size() != 1)
             {
                 std::cerr << fmt::format(
-                    "Invalid name [{}] for action {}, name must be a valid <type>",
-                    nameStr,
-                    actionStr)
+                    INVALID_NAME_FOR_ACTION, nameStr, actionStr, "<type>")
                           << std::endl;
                 return;
             }
             if (content.empty())
             {
-                std::cerr << "Content required for action " << actionStr << std::endl;
+                std::cerr << fmt::format(CONTENT_CANNOT_BE_EMPTY, actionStr) << std::endl;
                 return;
             }
             command = "post";
@@ -122,7 +133,8 @@ void singleRequest(const std::string& socketPath,
         case catalog_details::Action::DELETE:
             if (!content.empty())
             {
-                std::cerr << "Content not allowed for action " << actionStr << std::endl;
+                std::cerr << fmt::format(CONTENT_SHOULD_BE_EMPTY, actionStr, content)
+                          << std::endl;
                 return;
             }
             command = "delete";
@@ -130,21 +142,21 @@ void singleRequest(const std::string& socketPath,
         case catalog_details::Action::VALIDATE:
             if (name.parts().size() != 3)
             {
-                std::cerr << fmt::format("Invalid name [{}] for action {}, name must be "
-                                         "a valid <type>/<item-id>/<ver>",
-                                         nameStr,
-                                         actionStr)
+                std::cerr << fmt::format(
+                    INVALID_NAME_FOR_ACTION, nameStr, actionStr, "<type>/<item-id>/<ver>")
                           << std::endl;
                 return;
             }
             if (content.empty())
             {
-                std::cerr << "Content required for action " << actionStr << std::endl;
+                std::cerr << fmt::format(CONTENT_CANNOT_BE_EMPTY, actionStr) << std::endl;
                 return;
             }
             command = "validate";
             break;
-        default: throw std::runtime_error("Invalid action for single request");
+        default:
+            throw std::runtime_error(
+                "Engine API Catalog: Invalid action for a single request.");
     }
     command += "_catalog";
 
@@ -157,7 +169,8 @@ void singleRequest(const std::string& socketPath,
     request = api::WazuhRequest::create(command, "api", params);
     if (!request.isValid())
     {
-        std::cerr << "Request malformed: " << request.toStr() << std::endl;
+        std::cerr << "Engine API Catalog: Malformed request: " << request.toStr()
+                  << std::endl;
         return;
     }
     auto requestStr = request.toStr();
@@ -171,24 +184,32 @@ void singleRequest(const std::string& socketPath,
         auto errorCode = responseJson.getInt("/error");
         if (!errorCode)
         {
-            std::cerr << "Malformed response, no error code: " << responseStr
+            std::cerr << fmt::format("Engine API Catalog: Malformed response, no return "
+                                     "code (\"error\") field found: \"{}\".",
+                                     responseStr)
                       << std::endl;
         }
         auto message = responseJson.getString("/message");
         if (!message)
         {
-            std::cerr << "Malformed response, no message: " << responseStr << std::endl;
+            std::cerr
+                << "Engine API Catalog: Malformed response, no \"message\" field found: "
+                << responseStr << std::endl;
         }
         auto data = responseJson.getJson("/data");
         if (!data)
         {
-            std::cerr << "Malformed response, no data: " << responseStr << std::endl;
+            std::cerr
+                << "Engine API Catalog: Malformed response, no \"data\" field found: "
+                << responseStr << std::endl;
         }
 
         // Print friendly response
         if (errorCode.value() != 200)
         {
-            std::cout << "Error: " << message.value() << std::endl;
+            std::cout << fmt::format(
+                "Communitacion Error ({}): {}.", errorCode.value(), message.value())
+                      << std::endl;
         }
         else
         {
@@ -205,7 +226,9 @@ void singleRequest(const std::string& socketPath,
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Error procesing response from API: " << e.what() << std::endl;
+        std::cerr
+            << "Engine API Catalog: An error ocurred while  procesing response from API: "
+            << e.what() << std::endl;
     }
 }
 
@@ -224,13 +247,16 @@ void loadRuleset(const std::string& socketPath,
     }
     catch (const std::exception& e)
     {
-        std::cerr << e.what() << '\n';
+        std::cerr << "Engine API Catalog: An error ocurred while loading the ruleset: "
+                  << e.what() << std::endl;
         return;
     }
     if (!std::filesystem::is_directory(collectionPath, ec))
     {
-        std::cerr << "Error " << collectionPathStr
-                  << " is not a directory: " << ec.message() << std::endl;
+        std::cerr << fmt::format("Engine API Catalog: \"{}\" is not a directory: {}.",
+                                 collectionPathStr,
+                                 ec.message())
+                  << std::endl;
         ec.clear();
         return;
     }
@@ -240,7 +266,9 @@ void loadRuleset(const std::string& socketPath,
         && "filter" != collectionNameStr && "output" != collectionNameStr
         && "schema" != collectionNameStr && "environment" != collectionNameStr)
     {
-        std::cerr << "Invalid collection name: " << collectionNameStr << std::endl;
+        std::cerr << fmt::format("Engine API Catalog: Invalid collection name \"{}\".",
+                                 collectionNameStr)
+                  << std::endl;
         return;
     }
 
@@ -250,8 +278,10 @@ void loadRuleset(const std::string& socketPath,
             // If error ignore entry and continue
             if (ec)
             {
-                std::cerr << "Error reading " << dirEntry.path() << ": " << ec.message()
-                        << std::endl;
+                WAZUH_LOG_ERROR(fmt::format("Engine API Catalog: An error ocurred while "
+                                            "reading the file \"{}\": {}",
+                                            dirEntry.path().c_str(),
+                                            ec.message()));
                 ec.clear();
                 return;
             }
@@ -261,8 +291,10 @@ void loadRuleset(const std::string& socketPath,
                 // If error ignore entry and continue
                 if (ec)
                 {
-                    std::cerr << "Error reading " << dirEntry.path() << ": " << ec.message()
-                            << std::endl;
+                    WAZUH_LOG_ERROR(fmt::format("Engine API Catalog: An error ocurred "
+                                                "while reading the file \"{}\": {}",
+                                                dirEntry.path().c_str(),
+                                                ec.message()));
                     ec.clear();
                     return;
                 }
@@ -278,8 +310,10 @@ void loadRuleset(const std::string& socketPath,
                 }
                 catch (const std::exception& e)
                 {
-                    std::cerr << "Error reading " << dirEntry.path() << ": " << e.what()
-                            << std::endl;
+                    WAZUH_LOG_ERROR(fmt::format("Engine API Catalog: An error ocurred "
+                                                "while reading the file \"{}\": {}",
+                                                dirEntry.path().c_str(),
+                                                e.what()));
                     return;
                 }
 
@@ -337,7 +371,11 @@ void catalog(const std::string& socketPath,
         case catalog_details::Action::LOAD:
             catalog_details::loadRuleset(socketPath, nameStr, path, format, recursive);
             break;
-        default: std::cerr << "Invalid action: " << actionStr << std::endl; break;
+        default:
+            std::cerr << fmt::format(
+                "Engine API Catalog: Action \"{}\" is not supported.", actionStr)
+                      << std::endl;
+            break;
     }
 }
 

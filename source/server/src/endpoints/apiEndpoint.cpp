@@ -34,12 +34,12 @@ using uvw::TimerHandle;
 
 namespace
 {
-constexpr uint32_t CONNECTION_TIMEOUT_MSEC = 5000; // Stream
+constexpr uint32_t CONNECTION_TIMEOUT_MSEC {5000}; // Stream
 
 auto addSecureHeader(std::string_view data)
 {
     auto buffer = std::unique_ptr<char[]> {new char[data.size() + sizeof(uint32_t)]};
-    auto size {static_cast<uint32_t>(data.size())};
+    auto size = static_cast<uint32_t>(data.size());
     std::memcpy(buffer.get(), &size, sizeof(uint32_t));
     std::memcpy(buffer.get() + sizeof(uint32_t), data.data(), data.size());
     return std::tuple<std::unique_ptr<char[]>, uint32_t> {std::move(buffer),
@@ -58,19 +58,17 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
 
     auto protocolHandler = std::make_shared<WazuhStreamProtocol>();
 
-    timer->on<TimerEvent>(
-        [client](const auto&, auto& handler)
-        {
-            WAZUH_LOG_INFO("API TimerEvent: Timeout for connection.");
-            client->close();
-            handler.close();
-        });
+    timer->on<TimerEvent>([client](const auto&, auto& handler) {
+        WAZUH_LOG_INFO("Engine API endpoint: Connection timeout with client ({}).",
+                       client->peer());
+        client->close();
+        handler.close();
+    });
 
-    client->on<ErrorEvent>(
-        [](const ErrorEvent& event, PipeHandle& client)
+    client->on<ErrorEvent>([](const ErrorEvent& event, PipeHandle& client)
         {
-            WAZUH_LOG_ERROR("API ErrorEvent: endpoint[{}] error: code=[{}]; "
-                            "name=[{}]; message=[{}]",
+            WAZUH_LOG_ERROR("Engine API endpoint: Connection error with client ({}): "
+                            "code=[{}]; name=[{}]; message=[{}].",
                             client.peer(),
                             event.code(),
                             event.name(),
@@ -81,7 +79,7 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
         [&, timer, protocolHandler](const DataEvent& event, PipeHandle& client)
         {
             timer->again();
-            const auto result {protocolHandler->process(event.data.get(), event.length)};
+            const auto result = protocolHandler->process(event.data.get(), event.length);
 
             if (result)
             {
@@ -90,8 +88,8 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                     api::WazuhResponse wresponse {};
                     try
                     {
-                        auto jrequest = json::Json {message.c_str()};
-                        auto wrequest = api::WazuhRequest {jrequest};
+                        json::Json jrequest {message.c_str()};
+                        api::WazuhRequest wrequest {jrequest};
                         if (wrequest.isValid())
                         {
                             wresponse =
@@ -102,7 +100,7 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                         {
                             wresponse = api::WazuhResponse(
                                 json::Json {R"({})"}, -1, wrequest.error().value());
-                            // Create ERROR API response
+                            // TODO: Create ERROR API response
                         }
                     }
                     catch (const std::runtime_error& e)
@@ -112,20 +110,23 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                     catch (const std::exception& e)
                     {
                         wresponse = api::WazuhResponse::unknownError();
-                        WAZUH_LOG_ERROR("API DataEvent: endpoint[{}] error: {}",
-                                        client.peer(),
-                                        e.what());
+                        WAZUH_LOG_ERROR(
+                            "Engine API endpoint: Error with client ({}): {}",
+                            client.peer(),
+                            e.what());
                     }
 
-                    auto [buffer, size] {addSecureHeader(wresponse.toString())};
+                    auto [buffer, size] = addSecureHeader(wresponse.toString());
                     client.write(std::move(buffer), size);
                 }
             }
             else
             {
-                WAZUH_LOG_WARN("API DataEvent: endpoint[{}] error: Data could "
-                               "not be processed.",
-                               m_path);
+                WAZUH_LOG_WARN(
+                    "Engine API endpoint: Some data could not be processed from client "
+                    "({}).",
+                    client.peer());
+                // TODO: are we sure that it is always due to an invalid size?
                 auto invalidSize = api::WazuhResponse::invalidSize();
                 auto [buffer, size] {addSecureHeader(invalidSize.toString())};
                 client.write(std::move(buffer), size);
@@ -134,19 +135,22 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
             }
         });
 
-    client->on<EndEvent>(
-        [timer](const EndEvent&, PipeHandle& client)
+    client->on<EndEvent>([timer](const EndEvent&, PipeHandle& client)
         {
-            WAZUH_LOG_INFO("API EndEvent: Terminating connection.");
+            WAZUH_LOG_INFO("Engine API endpoint: Closing connection of client ({}).",
+                           client.peer());
             timer->close();
             client.close();
         });
 
     client->on<CloseEvent>([](const CloseEvent& event, PipeHandle& client)
-                           { WAZUH_LOG_INFO("API CloseEvent: Connection closed."); });
+        {
+            WAZUH_LOG_INFO("Engine API endpoint: Connection closed of client ({}).",
+                           client.peer());
+        });
 
     handle.accept(*client);
-    WAZUH_LOG_INFO("API ListenEvent: Client accepted.");
+    WAZUH_LOG_INFO("Engine API endpoint: Client accepted: {}", client->peer());
 
     timer->start(TimerHandle::Time {CONNECTION_TIMEOUT_MSEC},
                  TimerHandle::Time {CONNECTION_TIMEOUT_MSEC});
@@ -161,29 +165,33 @@ APIEndpoint::APIEndpoint(const std::string& config,
     , m_handle {m_loop->resource<PipeHandle>()}
     , m_registry {registry}
 {
-
-    m_handle->on<ErrorEvent>(
-        [](const ErrorEvent& event, PipeHandle& handle)
+    m_handle->on<ErrorEvent>([](const ErrorEvent& event, PipeHandle& handle)
         {
-            WAZUH_LOG_ERROR("API ErrorEvent: endpoint[{}] error: code=[{}]; "
-                            "name=[{}]; message=[{}]",
+            WAZUH_LOG_ERROR("Engine API endpoint: Error on endpoint ({}): code=[{}]; "
+                            "name=[{}]; message=[{}].",
                             handle.sock(),
                             event.code(),
                             event.name(),
                             event.what());
         });
 
-    m_handle->on<ListenEvent>(
-        [this](const ListenEvent& event, PipeHandle& handle)
+    m_handle->on<ListenEvent>([this](const ListenEvent& event, PipeHandle& handle)
         {
-            WAZUH_LOG_INFO("API ListenEvent: stablishing new connection.");
+            // TODO check if the parameter is correct
+            WAZUH_LOG_INFO("Engine API endpoint: Stablishing a new connection with peer "
+                           "({}).",
+                           handle.peer());
             connectionHandler(handle);
         });
 
     m_handle->on<CloseEvent>([](const CloseEvent& event, PipeHandle& handle)
-                             { WAZUH_LOG_INFO("API CloseEvent."); });
+        {
+            // TODO check if the parameter is correct
+            WAZUH_LOG_INFO("Engine API endpoint: Closing connection with peer ({}).",
+                            handle.peer());
+        });
 
-    WAZUH_LOG_INFO("API endpoint configured: [{}]", config);
+    WAZUH_LOG_INFO("Engine API endpoint: Endpoint configured: [{}]", config);
 }
 
 void APIEndpoint::configure()
@@ -200,14 +208,22 @@ void APIEndpoint::run()
 
 void APIEndpoint::close()
 {
-    m_loop->stop(); /// Stops the loop
-    m_loop->walk([](uvw::BaseHandle& handle)
-                 { handle.close(); }); /// Triggers every handle's close callback
-    m_loop->run(); /// Runs the loop again, so every handle is able to receive
-                   /// its close callback
-    m_loop->clear();
-    m_loop->close();
-    WAZUH_LOG_INFO("Closed loop.");
+    if (m_loop->alive())
+    {
+        // The loop is stoped
+        m_loop->stop();
+        // Every handle's closing callback is triggered
+        m_loop->walk([](uvw::BaseHandle& handle) { handle.close(); });
+        // The loop is run again, so every handle is able to receive its close callback
+        m_loop->run();
+        m_loop->clear();
+        m_loop->close();
+        WAZUH_LOG_INFO("Engine API endpoint: All the endpoints were closed.");
+    }
+    else
+    {
+        WAZUH_LOG_INFO("Engine API endpoint: Loop is already closed.");
+    }
 }
 
 APIEndpoint::~APIEndpoint()

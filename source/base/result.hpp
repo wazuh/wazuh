@@ -19,7 +19,7 @@ public:
      * @brief Construct a new Result object without parameters.
      *
      */
-    Result(){}
+    Result() {}
 
     /**
      * @brief Construct a new Result object with parameters.
@@ -98,10 +98,7 @@ public:
      * @return true if the result has been a success.
      * @return false if the result has been a failure.
      */
-    operator bool() const
-    {
-        return m_success;
-    }
+    operator bool() const { return m_success; }
 
     /**
      * @brief Check if the result is a success.
@@ -109,10 +106,7 @@ public:
      * @return true if the result has been a success.
      * @return false otherwise.
      */
-    bool success() const
-    {
-        return m_success;
-    }
+    bool success() const { return m_success; }
 
     /**
      * @brief Check if the result is a failure.
@@ -120,75 +114,54 @@ public:
      * @return true if the result has been a failure.
      * @return false otherwise.
      */
-    bool failure() const
-    {
-        return !m_success;
-    }
+    bool failure() const { return !m_success; }
 
     /**
      * @brief Returns the event payload.
      *
      * @return const Event& the event payload.
      */
-    const Event& payload() const
-    {
-        return m_payload;
-    }
+    const Event& payload() const { return m_payload; }
 
     /**
      * @brief Returns the event trace.
      *
      * @return std::string the event trace.
      */
-    std::string trace() const
-    {
-        return m_trace;
-    }
+    std::string trace() const { return m_trace; }
 
     /**
      * @brief Get the payload object.
      *
      * @return Event the payload object.
      */
-    Event popPayload()
-    {
-        return std::move(m_payload);
-    }
+    Event popPayload() { return std::move(m_payload); }
 
     /**
      * @brief Set the status object.
      *
      * @param success the status object.
      */
-    void setStatus(bool success)
-    {
-        m_success = success;
-    }
+    void setStatus(bool success) { m_success = success; }
 
     /**
      * @brief Set the trace object.
      *
      * @param trace the trace object.
      */
-    void setTrace(std::string trace)
-    {
-        m_trace = trace;
-    }
+    void setTrace(std::string trace) { m_trace = trace; }
 
     /**
      * @brief Set the payload object.
      *
      * @param payload th payload object.
      */
-    void setPayload(Event&& payload)
-    {
-        m_payload = std::move(payload);
-    }
+    void setPayload(Event&& payload) { m_payload = std::move(payload); }
 };
 
 /**
  * @brief Returns the result of the event with all the information that it has been
- * success. 
+ * success.
  * Incorporates the trace and sets m_success to true
  *
  * @tparam Event

@@ -20,7 +20,7 @@ void setEnv(const std::string& socketPath, const std::string& target)
     // target must be start with a '/'
     if (target.empty())
     {
-        std::cerr << "Target is empty" << std::endl;
+        std::cerr << "Engine API Environment: Invalid empty target." << std::endl;
         return;
     }
 
@@ -34,21 +34,27 @@ void setEnv(const std::string& socketPath, const std::string& target)
 
     // Send the request
     json::Json response {};
+    std::string responseStr {};
     try
     {
-        auto responseStr = apiclnt::connection(socketPath, req.toStr());
+        responseStr = apiclnt::connection(socketPath, req.toStr());
         response = json::Json {responseStr.c_str()};
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Error sending request: " << e.what() << std::endl;
+        std::cerr << fmt::format("Engine API Environment: An error occurred while "
+                                 "sending the request \"{}\": {}",
+                                 req.toStr(),
+                                 e.what())
+                  << std::endl;
         return;
     }
 
     if (response.getInt("/error").value_or(-1) != 0)
     {
-        std::cerr << "Error setting environment: "
-                  << response.getString("/message").value_or("-") << std::endl;
+        std::cerr << fmt::format("Engine API Environment: Malformed response, no return "
+                                 "code (\"error\") field found: \"{}\".",
+                                 responseStr) << std::endl;
         return;
     }
 
@@ -67,34 +73,41 @@ void getEnv(const std::string& socketPath, const std::string& target)
 
     // Send the request
     json::Json response {};
+    std::string responseStr {};
     try
     {
-        auto responseStr = apiclnt::connection(socketPath, req.toStr());
+        responseStr = apiclnt::connection(socketPath, req.toStr());
         response = json::Json {responseStr.c_str()};
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Error sending request: " << e.what() << std::endl;
+        std::cerr << fmt::format("Engine API Environment: An error occurred while "
+                                 "sending the request \"{}\": {}",
+                                 req.toStr(),
+                                 e.what())
+                  << std::endl;
         return;
     }
 
     if (response.getInt("/error").value_or(-1) != 0)
     {
-        std::cerr << "Error getting environment: "
-                  << response.getString("/message").value_or("-") << std::endl;
+        std::cerr << fmt::format("Engine API Environment: Malformed response, no return "
+                                 "code (\"error\") field found: \"{}\".",
+                                 responseStr) << std::endl;
         return;
     }
 
     auto envs = response.getArray("/data");
     if (!envs)
     {
-        std::cerr << "Error getting environment: "
-                  << response.getString("/message").value_or("-") << std::endl;
+        std::cerr << fmt::format("Engine API Environment: Malformed response, no return "
+                                 "code (\"data\") field found: \"{}\".",
+                                 responseStr) << std::endl;
         return;
     }
     else if (envs.value().empty())
     {
-        std::cout << "No active environments found" << std::endl;
+        std::cout << "There are no active environments." << std::endl;
         return;
     }
     for (const auto& env : *envs)
@@ -110,7 +123,8 @@ void deleteEnv(const std::string& socketPath, const std::string& target)
     // target must be start with a '/'
     if (target.empty())
     {
-        std::cerr << "Target is empty" << std::endl;
+        std::cerr << "Engine API Environment: Delete environment: Target cannot be empty."
+                  << std::endl;
     }
 
     // Create a request
@@ -123,21 +137,27 @@ void deleteEnv(const std::string& socketPath, const std::string& target)
 
     // Send the request
     json::Json response {};
+    std::string responseStr {};
     try
     {
-        auto responseStr = apiclnt::connection(socketPath, req.toStr());
+        responseStr = apiclnt::connection(socketPath, req.toStr());
         response = json::Json {responseStr.c_str()};
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Error sending request: " << e.what() << std::endl;
+        std::cerr << fmt::format("Engine API Environment: An error occurred while "
+                                 "sending the request \"{}\": {}",
+                                 req.toStr(),
+                                 e.what())
+                  << std::endl;
         return;
     }
 
     if (response.getInt("/error").value_or(-1) != 0)
     {
-        std::cerr << "Error deleting environment: "
-                  << response.getString("/message").value_or("-") << std::endl;
+        std::cerr << fmt::format("Engine API Environment: Malformed response, no return "
+                                 "code (\"error\") field found: \"{}\".",
+                                 responseStr) << std::endl;
         return;
     }
 
@@ -166,8 +186,9 @@ void environment(const std::string& socketPath,
     }
     else
     {
-        std::cerr << "Invalid action, expected [set] or [get] but got [" << action << "]"
-                  << std::endl;
+        std::cerr << "Engine API Environment: Invalid action, expected \"set\" or "
+                     "\"get\" but got \""
+                  << action << "\"." << std::endl;
         return;
     }
 

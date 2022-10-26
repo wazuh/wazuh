@@ -51,6 +51,6 @@ public:
     std::optional<base::Error> update(const base::Name& name,
                                       const json::Json& content) override;
 };
-} // namespace store::fileDriver
+} // namespace store
 
 #endif // _FILE_DRIVER_H

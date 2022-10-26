@@ -31,11 +31,10 @@ EngineServer::EngineServer(const std::string& apiEndpointPath,
                            std::shared_ptr<api::Registry> registry,
                            const std::string& eventEndpointPath,
                            const int bufferSize)
-
 {
     try
     {
-        if (registry == nullptr)
+        if (nullptr == registry)
         {
             registry = std::make_shared<api::Registry>();
         }
@@ -52,7 +51,9 @@ EngineServer::EngineServer(const std::string& apiEndpointPath,
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Exception while creating server configuration: [{}]", e.what());
+        WAZUH_LOG_ERROR(
+            "Engine server: An exception ocurred while building the server: {}",
+            e.what());
         throw;
     }
 }
@@ -61,18 +62,19 @@ void EngineServer::run(void)
 {
     if (m_endpoints.size() > 0)
     {
-        WAZUH_LOG_INFO("Server starting...");
+        WAZUH_LOG_INFO("Engine server: Starting...");
         m_endpoints.begin()->second->run();
     }
     else
     {
-        WAZUH_LOG_ERROR("No endpoints configured");
+        WAZUH_LOG_WARN("Engine server: The server cannot be started, there are no "
+                       "endpoints configured.");
     }
 }
 
 void EngineServer::close(void)
 {
-    if (m_endpoints.size() > 0)
+    if (0 < m_endpoints.size())
     {
         m_endpoints.begin()->second->close(); // TODO: All or only the first one?
     }

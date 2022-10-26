@@ -392,7 +392,9 @@ TEST(unixSecureStreamSocket, RemoteCloseBeforeRcv)
     // gracefully closed
     ASSERT_THROW(
         try { uStream.recvMsg(); } catch (const std::runtime_error& e) {
-            ASSERT_STREQ(e.what(), "recvMsg: socket disconnected.");
+            ASSERT_STREQ(e.what(),
+                         "Engine Unix Stream socket utils: recvMsg(): Socket "
+                         "disconnected.");
             throw;
         },
         std::runtime_error);

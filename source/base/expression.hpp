@@ -80,8 +80,9 @@ public:
         if (!ptr)
         {
             throw std::runtime_error(
-                fmt::format("Error trying to downcast [{}] to [{}], this "
-                            "Formula type is [{}]",
+                fmt::format("Engine base expression: Error trying to downcast \"{}\" to "
+                            "\"{}\" from a "
+                            "formula of type \"{}\".",
                             typeid(Formula).name(),
                             typeid(Derived).name(),
                             typeid(decltype(*shared_from_this())).name()));

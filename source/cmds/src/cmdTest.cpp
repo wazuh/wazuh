@@ -66,8 +66,8 @@ void test(const std::string& kvdbPath,
     auto hlpParsers = fileStore->get(hlpConfigFileName);
     if (std::holds_alternative<base::Error>(hlpParsers))
     {
-        WAZUH_LOG_ERROR("Could not retreive configuration file [{}] needed by the HLP "
-                        "module, error: {}",
+        WAZUH_LOG_ERROR("Engine \"test\" command: Configuration file \"{}\" could not be "
+                        "obtained: {}",
                         hlpConfigFileName.fullName(),
                         std::get<base::Error>(hlpParsers).message);
 
@@ -85,7 +85,8 @@ void test(const std::string& kvdbPath,
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Exception while registering builders: [{}]",
+        WAZUH_LOG_ERROR("Engine \"test\" command: An error occurred while registering "
+                        "the builders: {}",
                         utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
@@ -98,7 +99,9 @@ void test(const std::string& kvdbPath,
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Exception while creating environment: [{}]",
+        WAZUH_LOG_ERROR("Engine \"test\" command: An error occurred while creating the "
+                        "environment \"{}\": {}",
+                        environment,
                         utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
@@ -106,7 +109,9 @@ void test(const std::string& kvdbPath,
     auto envDefinition = fileStore->get({environment});
     if (std::holds_alternative<base::Error>(envDefinition))
     {
-        WAZUH_LOG_ERROR("Error while getting environment definition: [{}]",
+        WAZUH_LOG_ERROR("Engine \"test\" command: An error occurred while getting the "
+                        "definition of the environment \"{}\": {}",
+                        environment,
                         std::get<base::Error>(envDefinition).message);
         g_exitHanlder.execute();
         return;
@@ -145,7 +150,9 @@ void test(const std::string& kvdbPath,
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Exception while building environment: [{}]",
+        WAZUH_LOG_ERROR("Engine \"test\" command: An error occurred while building the "
+                        "environment \"{}\": {}",
+                        environment,
                         utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
@@ -211,7 +218,8 @@ void test(const std::string& kvdbPath,
                 }
                 catch (const std::exception& e)
                 {
-                    WAZUH_LOG_WARN("Asset [{}] not found, skipping tracer: {}",
+                    WAZUH_LOG_WARN("Engine \"test\" command: Asset \"{}\" could not "
+                                   "found, skipping tracer: {}",
                                    name,
                                    utils::getExceptionStack(e));
                 }
@@ -224,7 +232,7 @@ void test(const std::string& kvdbPath,
     {
         std::cout << std::endl
                   << std::endl
-                  << "Enter log in single line (Crtl+C to exit):" << std::endl
+                  << "Enter a log in single line (Crtl+C to exit):" << std::endl
                   << std::endl;
         std::string line;
         std::getline(std::cin, line);
@@ -309,7 +317,9 @@ void test(const std::string& kvdbPath,
         }
         catch (const std::exception& e)
         {
-            WAZUH_LOG_ERROR("An error ocurred while parsing a message: [{}]", e.what());
+            WAZUH_LOG_ERROR(
+                "Engine \"test\" command: An error ocurred while parsing a message: {}",
+                e.what());
         }
     }
 

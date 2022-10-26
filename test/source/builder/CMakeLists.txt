@@ -115,10 +115,10 @@ add_executable(environment_test
 )
 gtest_discover_tests(environment_test)
 
-add_executable(baseHelper
+add_executable(baseHelper_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/baseHelper_test.cpp
 )
-gtest_discover_tests(baseHelper)
+gtest_discover_tests(baseHelper_test)
 
 add_executable(opBuilderHelperCheck_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperExists_test.cpp

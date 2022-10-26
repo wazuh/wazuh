@@ -48,11 +48,17 @@ KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
     std::unique_lock lk(mMtx);
     if (m_availableKVDBs.find(name) != m_availableKVDBs.end())
     {
-        WAZUH_LOG_ERROR("DB with name [{}] already exists.", name);
+        WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Database with name \"{}\" "
+                        "already exists.",
+                        __func__,
+                        name);
         return nullptr;
     }
 
-    WAZUH_LOG_DEBUG("adding DB with name [{}] to available Databases", name);
+    WAZUH_LOG_DEBUG("Engine KVDB manager: \"{}\" method: Adding database \"{}\" to the "
+                    "available databases list.",
+                    __func__,
+                    name);
     auto kvdb = std::make_shared<KVDB>(name, mDbFolder);
     kvdb->init(createIfMissing);
     m_availableKVDBs[name] = kvdb;
@@ -65,14 +71,18 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path& path,
     std::ifstream CDBfile(path);
     if (!CDBfile.is_open())
     {
-        WAZUH_LOG_ERROR("Couln't open CDB file [{}]", path.c_str());
+        WAZUH_LOG_ERROR(
+            "Engine KVDB manager: \"{}\" method: CDB file \"{}\" could not be opened.",
+            __func__,
+            path.c_str());
         return false;
     }
 
     auto db = addDb(path.stem(), createIfMissing);
     if (!db)
     {
-        WAZUH_LOG_ERROR("Failed to create db [{}] from CDB file [{}].",
+        WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Failed to create database "
+                        "\"{}\" from CDB file \"{}\".",
                         path.stem().string(),
                         path.string());
         return false;
@@ -85,7 +95,10 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path& path,
         auto kv = utils::string::split(line, ':');
         if (kv.empty() || kv.size() > 2)
         {
-            WAZUH_LOG_ERROR("Error while reading CDBfile [{}]", path.c_str());
+            WAZUH_LOG_ERROR(
+                "Engine KVDB manager: \"{}\" method: CDB file \"{}\" could not be read.",
+                __func__,
+                path.c_str());
             return false;
         }
 
@@ -101,7 +114,10 @@ bool KVDBManager::deleteDB(const std::string& name)
     auto it = m_availableKVDBs.find(name);
     if (it == m_availableKVDBs.end())
     {
-        WAZUH_LOG_ERROR("Database [{}] isn't handled by KVDB manager", name);
+        WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Database \"{}\" is not in "
+                        "the available databases list, so it cannot be deleted.",
+                        __func__,
+                        name);
         return false;
     }
     it->second->cleanupOnClose();
@@ -122,7 +138,10 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
             // removing this
             if (!db->init(false))
             {
-                WAZUH_LOG_ERROR("Error initializing db [{}].", db->getName());
+                WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Error initializing "
+                                "database \"{}\".",
+                                __func__,
+                                db->getName());
                 return nullptr;
             }
         }
