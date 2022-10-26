@@ -123,7 +123,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                              -Wl,--wrap,sqlite3_column_count -Wl,--wrap,sqlite3_column_type -Wl,--wrap,sqlite3_column_name -Wl,--wrap,sqlite3_column_double \
                              -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_finalize -Wl,--wrap,sqlite3_reset \
                              -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,sqlite3_sql -Wl,--wrap,OS_SendSecureTCP  \
-                             -Wl,--wrap,OS_SetSendTimeout -Wl,--wrap,time -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_bind_int ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,OS_SetSendTimeout -Wl,--wrap,time -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_bind_text ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_upgrade")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_count_tables_with_name \

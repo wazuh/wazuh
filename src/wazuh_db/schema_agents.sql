@@ -279,9 +279,7 @@ CREATE INDEX IF NOT EXISTS ciscat_id ON ciscat_results (scan_id);
 
 CREATE TABLE IF NOT EXISTS metadata (
     key TEXT PRIMARY KEY,
-    value TEXT,
-    last_vacuum_time INTEGER,
-    last_fragmentation_value INTEGER
+    value TEXT
 );
 
 CREATE TABLE IF NOT EXISTS scan_info (
@@ -400,7 +398,7 @@ CREATE INDEX IF NOT EXISTS cve_status ON vuln_cves (status);
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '10');
+INSERT INTO metadata (key, value) VALUES ('db_version', '9');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');
