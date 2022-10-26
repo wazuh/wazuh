@@ -120,6 +120,7 @@ const wm_context WM_SCA_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_sca_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 static unsigned int summary_passed = 0;

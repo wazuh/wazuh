@@ -119,6 +119,7 @@ const wm_context WM_OFFICE365_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_office365_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 #ifdef WIN32

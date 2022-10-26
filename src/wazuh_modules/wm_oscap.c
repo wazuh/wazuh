@@ -28,6 +28,7 @@ const wm_context WM_OSCAP_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_oscap_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 #ifndef WIN32

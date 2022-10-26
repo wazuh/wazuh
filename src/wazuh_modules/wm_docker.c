@@ -31,6 +31,7 @@ const wm_context WM_DOCKER_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_docker_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 // Module module main function. It won't return.

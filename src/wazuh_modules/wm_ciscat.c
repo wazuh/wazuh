@@ -52,6 +52,7 @@ const wm_context WM_CISCAT_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_ciscat_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 // CIS-CAT module main function. It won't return.

@@ -74,6 +74,7 @@ const wm_context WM_FLUENT_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_fluent_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 // Module main function. It won't return

@@ -27,6 +27,7 @@ const wm_context WM_CONTROL_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_control_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 void *sysinfo_module = NULL;
 sysinfo_networks_func sysinfo_network_ptr = NULL;

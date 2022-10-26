@@ -79,6 +79,7 @@ const wm_context WM_GITHUB_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_github_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 #ifdef WIN32

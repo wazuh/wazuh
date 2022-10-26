@@ -101,6 +101,7 @@ const wm_context WM_GCP_PUBSUB_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_gcp_pubsub_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 const wm_context WM_GCP_BUCKET_CONTEXT = {
@@ -110,6 +111,7 @@ const wm_context WM_GCP_BUCKET_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_gcp_bucket_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 #ifdef WAZUH_UNIT_TESTING

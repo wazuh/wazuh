@@ -40,6 +40,7 @@ const wm_context WM_DOWNLOAD_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_download_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 // Module main function. It won't return

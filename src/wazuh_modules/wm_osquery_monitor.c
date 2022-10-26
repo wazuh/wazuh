@@ -57,6 +57,7 @@ const wm_context WM_OSQUERYMONITOR_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_osquery_dump,
     .sync = NULL,
     .stop = NULL,
+    .query = NULL,
 };
 
 void *Read_Log(wm_osquery_monitor_t * osquery)
