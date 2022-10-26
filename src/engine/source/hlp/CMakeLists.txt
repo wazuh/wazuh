@@ -7,6 +7,7 @@ CPMAddPackage(
     GIT_TAG curl-7_85_0
     VERSION 7.85.0
     EXCLUDE_FROM_ALL YES
+    DOWNLOAD_ONLY
 )
 
 add_compile_definitions ( ONLY_C_LOCALE=1 )
