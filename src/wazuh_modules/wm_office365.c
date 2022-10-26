@@ -113,12 +113,12 @@ STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, 
 
 /* Context definition */
 const wm_context WM_OFFICE365_CONTEXT = {
-    OFFICE365_WM_NAME,
-    (wm_routine)wm_office365_main,
-    (void(*)(void *))wm_office365_destroy,
-    (cJSON * (*)(const void *))wm_office365_dump,
-    NULL,
-    NULL
+    .name = OFFICE365_WM_NAME,
+    .start = (wm_routine)wm_office365_main,
+    .destroy = (void(*)(void *))wm_office365_destroy,
+    .dump = (cJSON * (*)(const void *))wm_office365_dump,
+    .sync = NULL,
+    .stop = NULL,
 };
 
 #ifdef WIN32

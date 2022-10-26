@@ -34,12 +34,12 @@ cJSON *wm_aws_dump(const wm_aws *aws_config);
 // Command module context definition
 
 const wm_context WM_AWS_CONTEXT = {
-    "aws-s3",
-    (wm_routine)wm_aws_main,
-    (void(*)(void *))wm_aws_destroy,
-    (cJSON * (*)(const void *))wm_aws_dump,
-    NULL,
-    NULL
+    .name = "aws-s3",
+    .start = (wm_routine)wm_aws_main,
+    .destroy = (void(*)(void *))wm_aws_destroy,
+    .dump = (cJSON * (*)(const void *))wm_aws_dump,
+    .sync = NULL,
+    .stop = NULL,
 };
 
 // Module module main function. It won't return.

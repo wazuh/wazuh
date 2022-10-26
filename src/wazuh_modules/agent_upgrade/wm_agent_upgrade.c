@@ -38,12 +38,12 @@ STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
 
 /* Context definition */
 const wm_context WM_AGENT_UPGRADE_CONTEXT = {
-    AGENT_UPGRADE_WM_NAME,
-    (wm_routine)wm_agent_upgrade_main,
-    (void(*)(void *))wm_agent_upgrade_destroy,
-    (cJSON * (*)(const void *))wm_agent_upgrade_dump,
-    NULL,
-    NULL
+    .name = AGENT_UPGRADE_WM_NAME,
+    .start = (wm_routine)wm_agent_upgrade_main,
+    .destroy = (void(*)(void *))wm_agent_upgrade_destroy,
+    .dump = (cJSON * (*)(const void *))wm_agent_upgrade_dump,
+    .sync = NULL,
+    .stop = NULL,
 };
 
 #ifdef WIN32

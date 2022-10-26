@@ -105,12 +105,12 @@ static int wm_sync_file(const char *dirname, const char *path);
 
 // Database module context definition
 const wm_context WM_DATABASE_CONTEXT = {
-    "database",
-    (wm_routine)wm_database_main,
-    (void(*)(void *))wm_database_destroy,
-    (cJSON * (*)(const void *))wm_database_dump,
-    NULL,
-    NULL
+    .name = "database",
+    .start = (wm_routine)wm_database_main,
+    .destroy = (void(*)(void *))wm_database_destroy,
+    .dump = (cJSON * (*)(const void *))wm_database_dump,
+    .sync = NULL,
+    .stop = NULL,
 };
 
 // Module main function. It won't return
