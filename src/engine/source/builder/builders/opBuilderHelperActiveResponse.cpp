@@ -53,73 +53,94 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
         helper::base::extractDefinition(definition);
 
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(raw_parameters)};
+    auto parameters {helper::base::processParameters(name, raw_parameters)};
 
     // Assert expected number of parameters
-    helper::base::checkParametersMinSize(parameters, 2);
+    helper::base::checkParametersMinSize(name, parameters, 2);
 
     // Format name for the tracer
-    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+    name = helper::base::formatHelperName(name, targetField, parameters);
 
     // Get command-name -> mandatory parameter, it can be either a value or a reference
-    const auto commandNameType {parameters[0].m_type};
+    const Parameter::Type commandNameType {parameters[0].m_type};
     std::string commandNameValue {parameters[0].m_value};
     if (commandNameValue.empty())
     {
         throw std::runtime_error(
-            fmt::format("[base::opBuilderHelperCreateAR] -> "
-                        "Failure: <command-name> can not be empty."));
+            fmt::format("Engine active response builder: \"{}\" function: <command-name> "
+                        "cannot be empty.", name));
     }
 
     // Get location -> mandatory value, it can be either a value or a reference
-    const auto locationType {parameters[1].m_type};
-    const auto locationValue {parameters[1].m_value};
+    const Parameter::Type locationType {parameters[1].m_type};
+    const std::string locationValue {parameters[1].m_value};
     if (locationValue.empty())
     {
-        throw std::runtime_error(fmt::format("[base::opBuilderHelperCreateAR] -> "
-                                             "Failure: <location> can not be empty."));
+        throw std::runtime_error(fmt::format("Engine active response builder: \"{}\" "
+                                             "function: <location> cannot be empty.",
+                                             name));
     }
 
     const auto paramsQtty = parameters.size();
 
     // Get timeout -> optional parameter, it can be either a value or a reference
-    const auto timeoutValue {(paramsQtty > 2) ? parameters[2].m_value : ""};
-    const auto timeoutType {(paramsQtty > 2) ? parameters[2].m_type
-                                             : Parameter::Type::VALUE};
+    const std::string timeoutValue {(paramsQtty > 2) ? parameters[2].m_value : ""};
+    const Parameter::Type timeoutType {(paramsQtty > 2) ? parameters[2].m_type
+                                                        : Parameter::Type::VALUE};
 
     // Get extra-args -> optional parameter, it must be a reference of an array
     if (paramsQtty > 3)
     {
-        helper::base::checkParameterType(parameters[3], Parameter::Type::REFERENCE);
+        helper::base::checkParameterType(name, parameters[3], Parameter::Type::REFERENCE);
     }
     const auto extraArgsRefValue {(paramsQtty > 3) ? parameters[3].m_value : ""};
 
     // If it has more than 4 arguments then an error is raised
     if (paramsQtty > 4)
     {
-        throw std::runtime_error(fmt::format("[base::opBuilderHelperCreateAR] -> "
-                                             "Failure: Too many arguments"));
+        throw std::runtime_error(
+            fmt::format("Engine active response builder: \"{}\" function: 3 parameters "
+                        "were expected at most, {} parameters received.",
+                        name,
+                        paramsQtty));
     }
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
-    const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: [{}] reference not found",
+    const std::string failureTrace1 {fmt::format(
+        "[{}] -> Failure: Trying to get command name value, \"{}\" reference not found",
+        name,
+        parameters[0].m_value)};
+    std::string failureTrace2 {};
+    if (paramsQtty >= 3)
+    {
+        failureTrace2 = fmt::format(
+            "[{}] -> Failure: Trying to get timeout value, \"{}\" reference not found",
+            name,
+            parameters[2].m_value);
+    }
+    const std::string failureTrace3 {
+        fmt::format("[{}] -> Failure: ", name)
+        + "Timeout value \"{}\" cannot be converted to a number"};
+    const std::string failureTrace4 {fmt::format(
+        "[{}] -> Failure: Trying to get location value, \"{}\" reference not found",
+        name,
+        parameters[1].m_value)};
+    const std::string failureTrace5 {fmt::format(
+        "[{}] -> Failure: Agent ID \"{}\" not found", name, ar::AGENT_ID_PATH)};
+    const std::string failureTrace6 {fmt::format("[{}] -> Failure: ", name)
+                                     + "Agent ID \"{}\" is not a number"};
+    const std::string failureTrace7 {
+        fmt::format("[{}] -> Failure: Agent ID is not set", name)};
+    const std::string failureTrace8 {
+        fmt::format("[{}] -> Failure: Trying to get extra "
+                    "arguments value, \"{}\" reference not found",
                     name,
-                    (paramsQtty == 4) ? parameters[3].m_value : "")};
-    const auto failureTrace2 {fmt::format("[{}] -> Failure: query is empty", name)};
-    const auto failureTrace3 {fmt::format(
-        "[{}] -> Failure: [{}] reference not found", name, parameters[0].m_value)};
-    const auto failureTrace4 {
-        fmt::format("[{}] -> Failure: Unable to get agent ID", name)};
-    const auto failureTrace5 {
-        fmt::format("[{}] -> Failure: inserting event in alert: ", name)};
-    const auto failureTrace6 {fmt::format(
-        "[{}] -> Failure: Agent ID could not be found", name, parameters[0].m_value)};
-    const auto failureTrace7 {fmt::format("[{}] -> Failure: Wrong Agent ID: ", name)};
-    const auto failureTrace8 {fmt::format(
+                    parameters[1].m_value)};
+    const std::string failureTrace9 {fmt::format(
         "[{}] -> Failure: Wrong extra argument, a string was expected.", name)};
-    const auto failureTrace9 {fmt::format("[{}] -> Failure: Wrong Timeout: ", name)};
+    const std::string failureTrace10 {
+        fmt::format("[{}] -> Failure: Event could not be inserted in alert: ", name)};
 
     // Function that implements the helper
     return base::Term<base::EngineOp>::create(
@@ -138,7 +159,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
 
                 if (commandNameResolvedValue.empty())
                 {
-                    return base::result::makeFailure(event, failureTrace3);
+                    return base::result::makeFailure(event, failureTrace1);
                 }
             }
             else
@@ -153,7 +174,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
 
                 if (timeoutResolvedValue.empty())
                 {
-                    return base::result::makeFailure(event, failureTrace3);
+                    return base::result::makeFailure(event, failureTrace2);
                 }
             }
             else
@@ -163,8 +184,8 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
 
             if (!ar::isStringNumber(timeoutResolvedValue))
             {
-                return base::result::makeFailure(event,
-                                                 failureTrace9 + timeoutResolvedValue);
+                return base::result::makeFailure(
+                    event, fmt::format(failureTrace3, timeoutResolvedValue));
             }
 
             // Adds the timeout at the end of the command name (or "0" if no timeout set)
@@ -179,7 +200,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
 
                 if (!locationResolvedValue.has_value())
                 {
-                    return base::result::makeFailure(event, failureTrace3);
+                    return base::result::makeFailure(event, failureTrace4);
                 }
 
                 location = locationResolvedValue.value();
@@ -200,8 +221,9 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
                 }
                 else
                 {
-                    return base::result::makeFailure(event, failureTrace6);
+                    return base::result::makeFailure(event, failureTrace5);
                 }
+
                 isLocal = true;
             }
             else if (!location.compare("ALL"))
@@ -221,13 +243,14 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
                 }
                 else
                 {
-                    return base::result::makeFailure(event, failureTrace7 + location);
+                    return base::result::makeFailure(
+                        event, fmt::format(failureTrace6, location));
                 }
             }
 
             if (agentID.empty())
             {
-                return base::result::makeFailure(event, failureTrace4);
+                return base::result::makeFailure(event, failureTrace7);
             }
 
             // Check existence and not emptyness of extraArgsRefValue if used
@@ -236,7 +259,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
                 const auto extraArgsArray = event->getArray(extraArgsRefValue);
                 if (!extraArgsArray.has_value())
                 {
-                    return base::result::makeFailure(event, failureTrace1);
+                    return base::result::makeFailure(event, failureTrace8);
                 }
                 else
                 {
@@ -253,7 +276,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
                         }
                         else
                         {
-                            return base::result::makeFailure(event, failureTrace8);
+                            return base::result::makeFailure(event, failureTrace9);
                         }
                     }
                 }
@@ -266,7 +289,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
             }
             catch (const std::runtime_error& e)
             {
-                return base::result::makeFailure(event, failureTrace5 + e.what());
+                return base::result::makeFailure(event, failureTrace10 + e.what());
             }
 
             auto payload = api::WazuhRequest::create(
@@ -292,11 +315,11 @@ base::Expression opBuilderHelperSendAR(const std::any& definition)
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(raw_parameters)};
+    auto parameters {helper::base::processParameters(name, raw_parameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(parameters, 1);
+    helper::base::checkParametersSize(name, parameters, 1);
     // Format name for the tracer
-    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+    name = helper::base::formatHelperName(name, targetField, parameters);
 
     std::shared_ptr<unixDatagram> socketAR {
         std::make_shared<unixDatagram>(ar::AR_QUEUE_PATH)};
@@ -309,12 +332,15 @@ base::Expression opBuilderHelperSendAR(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: [{}] not found", name, parameters[0].m_value)};
-    const auto failureTrace2 {fmt::format("[{}] -> Failure: query is empty", name)};
-    const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
-
-    // field_: name/parameter
+    const std::string failureTrace1 {
+        fmt::format("[{}] -> Failure: Query reference \"{}\" not found",
+                    name,
+                    parameters[0].m_value)};
+    const std::string failureTrace2 {fmt::format("[{}] -> Failure: The query is empty", name)};
+    const std::string failureTrace3 {
+        fmt::format("[{}] -> Failure: AR message could not be send", name)};
+    const std::string failureTrace4 {
+        fmt::format("[{}] -> Failure: Error trying to send AR message: ", name)};
 
     // Function that implements the helper
     return base::Term<base::EngineOp>::create(
@@ -364,9 +390,7 @@ base::Expression opBuilderHelperSendAR(const std::any& definition)
                 }
                 catch (const std::exception& e)
                 {
-                    const auto failureTraceEx {
-                        fmt::format("[{}] -> Failure: [{}]", name, e.what())};
-                    return base::result::makeFailure(event, failureTraceEx);
+                    return base::result::makeFailure(event, failureTrace4 + e.what());
                 }
             }
         });

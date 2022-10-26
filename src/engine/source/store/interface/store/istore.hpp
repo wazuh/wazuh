@@ -6,8 +6,8 @@
 #include <variant>
 
 #include <error.hpp>
-#include <name.hpp>
 #include <json/json.hpp>
+#include <name.hpp>
 
 /**
  * @brief Store functionallity.

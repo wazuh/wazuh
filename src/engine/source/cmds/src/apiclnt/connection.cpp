@@ -24,7 +24,8 @@ void client(uvw::Loop& loop,
     client->on<uvw::ErrorEvent>(
         [](const uvw::ErrorEvent& event, uvw::PipeHandle& handle)
         {
-            std::cerr << "API Client ErrorEvent: " << event.what() << std::endl;
+            std::cerr << "Engine API Client: An ErrorEvent was raised: " << event.what()
+                      << std::endl;
             handle.close();
         });
 

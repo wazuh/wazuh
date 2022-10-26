@@ -24,15 +24,14 @@ Builder getStageNormalizeBuilder(std::shared_ptr<Registry> registry)
         }
         catch (std::exception& e)
         {
-            throw std::runtime_error("[builders::stageNormalizeBuilder(json)] Received "
-                                     "unexpected argument type");
+            throw std::runtime_error(
+                fmt::format("Definition could not be converted to json: {}", e.what()));
         }
 
         if (!jsonDefinition.isArray())
         {
             throw std::runtime_error(fmt::format(
-                "[builders::stageNormalizeBuilder(json)] Invalid json definition "
-                "type: expected [array] but got [{}]",
+                "Invalid json definition type: expected \"array\" but got \"{}\"",
                 jsonDefinition.typeName()));
         }
 
@@ -46,11 +45,9 @@ Builder getStageNormalizeBuilder(std::shared_ptr<Registry> registry)
             {
                 if (!block.isObject())
                 {
-                    throw std::runtime_error(
-                        fmt::format("[builders::stageNormalizeBuilder(json)] "
-                                    "Invalid array item type: expected [object] but got "
-                                    "[{}]",
-                                    block.typeName()));
+                    throw std::runtime_error(fmt::format(
+                        "Invalid array item type, expected \"object\" but got \"{}\"",
+                        block.typeName()));
                 }
                 auto blockObj = block.getObject().value();
                 std::vector<base::Expression> subBlocksExpressions;
@@ -68,10 +65,8 @@ Builder getStageNormalizeBuilder(std::shared_ptr<Registry> registry)
                         }
                         catch (const std::exception& e)
                         {
-                            std::throw_with_nested(std::runtime_error(
-                                fmt::format("[builders::stageNormalizeBuilder(json)] "
-                                            "Exception building stage block [{}]",
-                                            key)));
+                            throw std::runtime_error(fmt::format(
+                                "Stage block \"{}\" building failed: {}", key, e.what()));
                         }
                     });
                 auto expression = base::And::create("subblock", subBlocksExpressions);

@@ -23,15 +23,14 @@ Builder getStageMapBuilder(std::shared_ptr<Registry> registry)
         catch (std::exception& e)
         {
             throw std::runtime_error(
-                "[builders::stageMapBuilder(json)] Received unexpected argument type");
+                fmt::format("Definition could not be converted to json: {}", e.what()));
         }
 
         if (!jsonDefinition.isArray())
         {
-            throw std::runtime_error(
-                fmt::format("[builders::stageMapBuilder(json)] Invalid json definition "
-                            "type: expected [array] but got [{}]",
-                            jsonDefinition.typeName()));
+            throw std::runtime_error(fmt::format(
+                "Invalid json definition type: expected \"array\" but got \"{}\"",
+                jsonDefinition.typeName()));
         }
 
         auto mappings = jsonDefinition.getArray().value();
@@ -45,16 +44,15 @@ Builder getStageMapBuilder(std::shared_ptr<Registry> registry)
                 if (!arrayMember.isObject())
                 {
                     throw std::runtime_error(fmt::format(
-                        "[builders::stageMapBuilder(json)] "
-                        "Invalid array item type: expected [object] but got [{}]",
+                        "Invalid array item type, expected \"object\" but got \"{}\"",
                         arrayMember.typeName()));
                 }
                 if (arrayMember.size() != 1)
                 {
-                    throw std::runtime_error(fmt::format(
-                        "[builders::stageMapBuilder(json)] "
-                        "Invalid array item object size: expected [1] but got [{}]",
-                        arrayMember.size()));
+                    throw std::runtime_error(
+                        fmt::format("Invalid object item size, expected exactly one "
+                                    "key/value pair but got \"{}\"",
+                                    arrayMember.size()));
                 }
                 return registry->getBuilder("operation.map")(
                     arrayMember.getObject().value()[0]);

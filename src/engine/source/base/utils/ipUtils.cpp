@@ -11,6 +11,8 @@
 
 #include <arpa/inet.h>
 
+#include <fmt/format.h>
+
 namespace utils::ip
 {
 
@@ -22,11 +24,13 @@ uint32_t IPv4ToUInt(const std::string& ipStr)
 
     if (sscanf(ipStr.c_str(), "%d.%d.%d.%d%c", &a, &b, &c, &d, &z) != 4)
     {
-        throw std::invalid_argument("Invalid IPv4 address");
+        throw std::invalid_argument(fmt::format(
+            "Engine ip utils: Invalid IPv4 address format (\"\").", ipStr.c_str()));
     }
     else if (a < 0 || a > 255 || b < 0 || b > 255 || c < 0 || c > 255 || d < 0 || d > 255)
     {
-        throw std::invalid_argument("Invalid IPv4 address");
+        throw std::invalid_argument(fmt::format(
+            "Engine ip utils: Invalid IPv4 address format (\"\").", ipStr.c_str()));
     }
 
     ipUInt = a << 24;
@@ -55,11 +59,13 @@ uint32_t IPv4MaskUInt(const std::string& maskStr)
         auto intMask = std::stoi(maskStr, &afterMask);
         if (intMask < 0 || intMask > 32)
         {
-            throw std::invalid_argument("Invalid IPv4 mask");
+            throw std::invalid_argument(
+                fmt::format("Engine ip utils: Invalid IPv4 mask \"{}\".", maskStr));
         }
         else if (afterMask != maskStr.size())
         {
-            throw std::invalid_argument("Invalid IPv4 mask");
+            throw std::invalid_argument(
+                fmt::format("Engine ip utils: Invalid IPv4 mask \"{}\".", maskStr));
         }
         else
         {

@@ -28,7 +28,8 @@ private:
     {
         if (m_nodes.end() != m_nodes.find(key))
         {
-            throw std::runtime_error(fmt::format("Node [{}] already exists", key));
+            throw std::runtime_error(
+                fmt::format("Engine base graph: Node \"{}\" already exists.", key));
         }
         m_nodes[key] = std::move(value);
     }
@@ -45,8 +46,10 @@ private:
             if (m_edges[from].end()
                 != std::find(m_edges[from].begin(), m_edges[from].end(), to))
             {
-                throw std::runtime_error(
-                    fmt::format("Edge [{} -> {}] already exists", from, to));
+                throw std::runtime_error(fmt::format(
+                    "Engine base graph: Edge \"{}\" -> \"{}\" already exists.",
+                    from,
+                    to));
             }
             else
             {
@@ -59,7 +62,8 @@ private:
     {
         if (m_nodes.end() == m_nodes.find(key))
         {
-            throw std::runtime_error(fmt::format("Node [{}] does not exist", key));
+            throw std::runtime_error(
+                fmt::format("Engine base graph: Node \"{}\" does not exist.", key));
         }
         m_nodes.erase(key);
         m_edges.erase(key);
@@ -177,7 +181,8 @@ public:
     {
         if (m_nodes.end() == m_nodes.find(id))
         {
-            throw std::runtime_error(fmt::format("Node [{}] does not exist", id));
+            throw std::runtime_error(
+                fmt::format("Engine base graph: Node \"{}\" does not exist.", id));
         }
         return m_nodes.at(id);
     }
@@ -194,7 +199,8 @@ public:
     {
         if (m_edges.end() == m_edges.find(id))
         {
-            throw std::runtime_error(fmt::format("Node [{}] has no children", id));
+            throw std::runtime_error(
+                fmt::format("Engine base graph: Node \"{}\" has no children.", id));
         }
         return m_edges.at(id);
     }
