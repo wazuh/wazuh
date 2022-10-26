@@ -8870,7 +8870,7 @@ paths:
                 name: NewHost_2
                 ip: 10.0.10.11
                 id: "123"
-                key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
+                key: 1abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456789
                 force:
                   enabled: True
                   disconnected_time:
