@@ -45,6 +45,10 @@ else
         GROUPADD="/usr/sbin/groupadd"
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/sbin/nologin"
+    elif [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
+        GROUPADD="/usr/sbin/addgroup -S"
+        USERADD="/usr/sbin/adduser -S"
+        OSMYSHELL="/sbin/nologin"
     else
     # All current linux distributions should support system accounts for
     # users/groups. If not, leave the GROUPADD/USERADD as it was before
@@ -79,6 +83,8 @@ else
             GID=$(cat /etc/group | grep wazuh| cut -d':' -f 3)
             uid=$(( $GID + 1 ))
             echo "${USER}:x:$uid:$GID::${DIR}:/bin/false" >> /etc/passwd
+        elif [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
+            ${USERADD} "${USER}" -h "${DIR}" -s ${OSMYSHELL} -G "${GROUP}"
         else
             ${USERADD} "${USER}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
         fi

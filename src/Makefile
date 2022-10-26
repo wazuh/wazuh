@@ -14,10 +14,33 @@ uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
 uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
 uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
+
+ifeq (${TARGET}, winagent)
+WAZUH_LIB_OUTPUT_PATH := win32/
+STRIP_TOOL := i686-w64-mingw32-strip
+libstdc++_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libstdc++-6.dll 2>/dev/null || echo not')
+LIBSTDCPP_NAME := libstdc++-6.dll
+libgcc_s_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libgcc_s_dw2-1.dll 2>/dev/null || echo not')
+LIBGCC_S_NAME := libgcc_s_dw2-1.dll
+else
+libstdc++_path := $(shell sh -c 'g++ --print-file-name=libstdc++.so.6 2>/dev/null || echo not')
+libgcc_s_path := $(shell sh -c 'g++ --print-file-name=libgcc_s.so.1 2>/dev/null || echo not')
+LIBSTDCPP_NAME := libstdc++.so.6
+LIBGCC_S_NAME := libgcc_s.so.1
+STRIP_TOOL := strip
+endif
+
+ifeq (, $(filter ${libstdc++_path}, not ${LIBSTDCPP_NAME}))
+ifeq (, $(filter ${libgcc_s_path}, not ${LIBGCC_S_NAME}))
+CPPLIBDEPS := ${LIBSTDCPP_NAME} ${LIBGCC_S_NAME}
+endif
+endif
+
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
 CHECK_CENTOS5 := $(shell sh -c 'grep "CentOS release 5." /etc/redhat-release 2>&1 > /dev/null && echo YES || echo not')
+CHECK_ALPINE := $(shell sh -c 'grep "Alpine Linux" /etc/os-release 2>&1 > /dev/null && echo YES || echo not')
 
 ARCH_FLAGS =
 
@@ -136,11 +159,16 @@ else
 endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
+ifeq (${CHECK_ALPINE},YES)
+		OSSEC_LIBS+=-lintl
+		DEFINES+=-DALPINE
+endif
 		OSSEC_LIBS+=-lrt -ldl -lm
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 		AR_LDFLAGS+=-pthread -lrt -ldl
 		OSSEC_CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
+		CC=gcc
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 		OSSEC_CFLAGS+=-I$(EXTERNAL_AUDIT)lib
 endif
@@ -682,52 +710,44 @@ BUILD_AGENT+=manage_agents
 BUILD_AGENT+=active-responses
 BUILD_AGENT+=wazuh-modulesd
 
-ifeq (${uname_S},SunOS)
-ifeq ($(uname_R),5.10)
-	BUILD_AGENT+=libgcc_s.so.1
-endif
-endif
-
 BUILD_CMAKE_PROJECTS+=build_sysinfo
 BUILD_CMAKE_PROJECTS+=build_shared_modules
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 BUILD_CMAKE_PROJECTS+=build_syscollector
 endif
 
+${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}: ${libstdc++_path}
+	cp $< $@
+	${STRIP_TOOL} -x $@
+
+${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME}: ${libgcc_s_path}
+	cp $< $@
+	${STRIP_TOOL} -x $@
 
 .PHONY: server local hybrid agent selinux
 
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
-server: external
-ifneq (${uname_S},HP-UX)
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-endif
-	${MAKE} ${BUILD_SERVER}
+server: external ${CPPLIBDEPS}
+	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},local)
 $(error Do not use 'local' directly, use 'TARGET=local')
 endif
-local: external
-ifneq (${uname_S},HP-UX)
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-endif
-	${MAKE} ${BUILD_SERVER}
+local: external ${CPPLIBDEPS}
+	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},hybrid)
 $(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
 endif
-hybrid: external
-ifneq (${uname_S},HP-UX)
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-endif
-	${MAKE} ${BUILD_SERVER}
+hybrid: external ${CPPLIBDEPS}
+	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},agent)
 $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
-agent: external
+agent: external ${CPPLIBDEPS}
 ifneq (${uname_S},HP-UX)
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 endif
@@ -752,7 +772,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external win32/libwinpthread-1.dll win32/libgcc_s_dw2-1.dll
+winagent: external win32/libwinpthread-1.dll ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
@@ -783,9 +803,6 @@ win32/syscollector: win32/shared_modules win32/sysinfo
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
-	cp $< $@
-
-win32/libgcc_s_dw2-1.dll: $(wildcard /usr/lib/gcc/i686-w64-mingw32/*-posix/libgcc_s_dw2-1.dll)
 	cp $< $@
 
 ####################
@@ -1008,9 +1025,12 @@ PROCPS_INCLUDE=-I./${EXTERNAL_PROCPS}
 
 procps_c := $(wildcard ${EXTERNAL_PROCPS}*.c)
 procps_o := $(procps_c:.c=.o)
+ifeq (${CHECK_ALPINE},YES)
+ALPINE_DEBUG := "-DPATH_MAX=4096"
+endif
 
 ${EXTERNAL_PROCPS}%.o: ${EXTERNAL_PROCPS}%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${ALPINE_DEBUG} -fPIC -c $^ -o $@
 
 $(PROCPS_LIB): ${procps_o}
 	${OSSEC_LINK} $@ $^
@@ -1696,13 +1716,6 @@ endif
 endif
 endif
 endif
-
-
-### libgcc_s #########
-
-LIBGCC := $(realpath $(dir $(shell which gcc))../lib/libgcc_s.so.1)
-libgcc_s.so.1: $(LIBGCC)
-	cp $< $@
 
 #### os_mail #########
 
@@ -2475,7 +2488,8 @@ clean-internals: clean-unit-tests
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SYSINFO)build
 	rm -rf libwazuhext
-	rm -f libgcc_s.so.1
+	rm -rf libstdc++.so.6
+	rm -rf libgcc_s.so.1
 
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}
@@ -2548,6 +2562,9 @@ clean-windows:
 	rm -f win32/libwinpthread-1.dll
 	rm -f win32/VERSION
 	rm -f win32/REVISION
+	rm -f win32/libstdc++-6.dll
+	rm -f win32/libgcc_s_dw2-1.dll
+	rm -f win32/libgcc_s_sjlj-1.dll
 
 clean-config:
 	rm -f ../etc/ossec.mc
