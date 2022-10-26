@@ -38,12 +38,14 @@ function is_wazuh_installed
 
 # Forces Wazuh-Agent to stop
 function stop_wazuh_agent
+function stop_wazuh_agent
 {
     param (
         $process_name
     )
 
     Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
+    Start-Sleep 2
     $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
     $counter = 5
 
@@ -52,11 +54,14 @@ function stop_wazuh_agent
         write-output "$(Get-Date -format u) - Trying to stop Wazuh service again. Remaining attempts: $counter." >> .\upgrade\upgrade.log
         $counter--
         Get-Service -Name "Wazuh" | Stop-Service
-        taskkill /pid $process_id /f /T
         Start-Sleep 2
         $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
     }
 
+    if ($process_id -ne $null) {
+        taskkill /pid $process_id /f /T
+        Start-Sleep 10
+    }
 }
 
 function backup_home
