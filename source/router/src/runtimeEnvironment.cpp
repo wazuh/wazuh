@@ -5,6 +5,9 @@
 #include <rxbk/rxFactory.hpp>
 #include <utils/getExceptionStack.hpp>
 
+// TODO: Refactor how we handle queue flooding and environments down
+std::atomic_bool g_envDown{true};
+
 namespace router
 {
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
@@ -52,6 +55,7 @@ std::optional<base::Error> RuntimeEnvironment::run(std::shared_ptr<concurrentQue
     }
 
     m_isRunning = true;
+    g_envDown.store(false);
 
     for (std::size_t i = 0; i < m_numThreads; ++i)
     {
@@ -101,6 +105,7 @@ void RuntimeEnvironment::stop()
     }
 
     m_isRunning = false;
+    g_envDown.store(true);
 
     for (auto& thread : m_threads)
     {
