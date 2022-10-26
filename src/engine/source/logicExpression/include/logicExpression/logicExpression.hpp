@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <fmt/format.h>
+
 #include "logicExpressionEvaluator.hpp"
 #include "logicExpressionParser.hpp"
 
@@ -59,8 +61,9 @@ std::function<bool(Event)> buildDijstraEvaluator(
                 return builtExpr;
             default:
                 throw std::runtime_error(
-                    "Unexpected token type in parsed expression when building "
-                    "[buildDijstraEvaluator]");
+                    fmt::format("Engine logic expression: Unexpected token type of token "
+                                "\"{}\" in parsed expression.",
+                                tokenExpr->m_token.m_text));
         }
     };
 

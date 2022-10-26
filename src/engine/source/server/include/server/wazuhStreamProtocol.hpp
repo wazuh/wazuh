@@ -18,8 +18,8 @@ namespace engineserver
 {
 
 /**
- * @brief A handler which knows how to parse messages from the network
- * data chunks and send them to a subscriber.
+ * @brief A handler which knows how to parse messages from the network data chunks and
+ * send them to a subscriber.
  *
  */
 class WazuhStreamProtocol
@@ -30,8 +30,8 @@ private:
     int m_stage {0};
 
     /**
-     * @brief Update pending value and return true if we have enough data
-     * to calculate the message size.
+     * @brief Update pending value and return true if we have enough data to calculate the
+     * message size.
      *
      * @return true
      * @return false
@@ -39,11 +39,10 @@ private:
     bool hasHeader();
 
 public:
-
     /**
-     * @brief process the chunk of data and send messages to dst when. Return
-     * true if all data was processed correctly, or false in case of error.
-     * The error will be send to the dst.
+     * @brief process the chunk of data and send messages to dst when. Return true if all
+     * data was processed correctly, or false in case of error. The error will be send to
+     * the dst.
      *
      * @param data Array of chars containing the event data
      * @param length Size of the data array

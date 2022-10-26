@@ -50,13 +50,13 @@ public:
         if (std::holds_alternative<base::Error>(envJson))
         {
             throw std::runtime_error(fmt::format(
-                "[Environment] Error retreiving environment [{}] from store: {}",
+                "Engine builder: Environment \"{}\" could not be obtained from the "
+                "store: {}.",
                 name.fullName(),
                 std::get<base::Error>(envJson).message));
         }
 
-        auto environment =
-            Environment {std::get<json::Json>(envJson), m_storeRead, m_registry};
+        Environment environment {std::get<json::Json>(envJson), m_storeRead, m_registry};
 
         return environment;
     }

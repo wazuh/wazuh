@@ -130,8 +130,7 @@ public:
      * @return false if key wasn't found
      */
 
-    bool hasKey(const std::string& key,
-                const std::string& columnName = DEFAULT_CF_NAME);
+    bool hasKey(const std::string& key, const std::string& columnName = DEFAULT_CF_NAME);
 
     /**
      * @brief read a value from a key inside a CF without value copying
@@ -147,10 +146,9 @@ public:
 
     /**
      * @brief
-     * //TODO: this should be returning a PinnableSlice and the consumer should
-     * reset it and read it's value. Check what methods should we add in order
-     * to decouple rocksdb library from the client, wrapping all the functions
-     * and objects needed.
+     * //TODO: this should be returning a PinnableSlice and the consumer should reset it
+     * and read it's value. Check what methods should we add in order to decouple rocksdb
+     * library from the client, wrapping all the functions and objects needed.
      * @param key key where to find the value
      * @param value value that the result of the proccess will modify
      * @param ColumnName where to search the key

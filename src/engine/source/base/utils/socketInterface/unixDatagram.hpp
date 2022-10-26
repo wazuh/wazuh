@@ -36,8 +36,8 @@ public:
      * @param msg message to send.
      *
      * @return SendRetval::SUCCESS on success.
-     * @return SendRetval::size_zero if msg is empty.
-     * @return SendRetval::size_too_long if msg is too long.
+     * @return SendRetval::SIZE_ZERO if msg is empty.
+     * @return SendRetval::SIZE_TOO_LONG if msg is too long.
      * @return SendRetval::SOCKET_ERROR if the socket cannot be written to. (errno is
      * set).
      *

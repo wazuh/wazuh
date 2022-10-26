@@ -1,5 +1,7 @@
 #include "parseEvent.hpp"
 
+#include <fmt/format.h>
+
 namespace base::parseEvent
 {
 
@@ -47,15 +49,18 @@ Event parseOssecEvent(const std::string& event)
     if (event.length() <= MINIMUM_EVENT_ALLOWED_LENGTH)
     {
         throw std::runtime_error(
-            "Invalid event format. Event is too short. Received Event: \"" + event
-            + "\"");
+            fmt::format("Engine base event parse: Invalid event format, event is too "
+                        "short ({}). Event received: \"{}\".",
+                        event.length(),
+                        event));
     }
 
     if (':' != event[1])
     {
-        throw std::runtime_error("Invalid event format. A colon should be right after "
-                                 "the first character. Received Event: \""
-                                 + event + "\"");
+        throw std::runtime_error(fmt::format(
+            "Engine base event parse: Invalid event format, a colon was expected to "
+            "be right after the first character. Event received: \"{}\".",
+            event));
     }
 
     const int queue {event[0]};
@@ -112,11 +117,12 @@ Event parseOssecEvent(const std::string& event)
         }
         catch (std::runtime_error& e)
         {
-            const std::string msg =
-                "An error occurred while parsing the location field of "
-                "the event. Event received: \""
-                + event + "\".";
-            std::throw_with_nested(msg);
+            std::throw_with_nested(
+                fmt::format("Engine base event parse: An error occurred while parsing "
+                            "the \"location\" field of "
+                            "the event. Event received: \"{}\". Error: {}",
+                            event,
+                            e.what()));
         }
 
         msgStartIndex = endIdx + 1;
@@ -142,9 +148,11 @@ Event parseOssecEvent(const std::string& event)
 
             if (event.length() < LAST_COLON_INDEX)
             {
-                throw std::runtime_error(
-                    "Invalid event format. Event is too short. Received Event: \"" + event
-                    + "\"");
+                throw std::runtime_error(fmt::format(
+                    "Engine base event parse: Invalid event format, event is too "
+                    "short ({}). Event received: \"{}\".",
+                    event.length(),
+                    event));
             }
 
             try
@@ -155,11 +163,12 @@ Event parseOssecEvent(const std::string& event)
             }
             catch (std::runtime_error& e)
             {
-                const std::string msg =
-                    "An error occurred while parsing the location field "
-                    "of the event. Event received: \""
-                    + event + "\".";
-                std::throw_with_nested(msg);
+                std::throw_with_nested(fmt::format(
+                    "Engine base event parse: An error occurred while parsing "
+                    "the \"location\" field of "
+                    "the event. Event received: \"{}\". Error: {}",
+                    event,
+                    e.what()));
             }
 
             msgStartIndex = LAST_COLON_INDEX + 1;
@@ -175,11 +184,12 @@ Event parseOssecEvent(const std::string& event)
             }
             catch (std::runtime_error& e)
             {
-                const std::string msg =
-                    "An error occurred while parsing the location field "
-                    "of the event. Event received: \""
-                    + event + "\".";
-                std::throw_with_nested(msg);
+                std::throw_with_nested(fmt::format(
+                    "Engine base event parse: An error occurred while parsing "
+                    "the \"location\" field of "
+                    "the event. Event received: \"{}\". Error: {}",
+                    event,
+                    e.what()));
             }
 
             msgStartIndex = secondColonIdx + 1;
@@ -193,11 +203,12 @@ Event parseOssecEvent(const std::string& event)
     }
     catch (std::runtime_error& e)
     {
-        const std::string msg =
-            "An error occurred while parsing the location field of the "
-            "event. Event received: \""
-            + event + "\".";
-        std::throw_with_nested(msg);
+        std::throw_with_nested(
+            fmt::format("Engine base event parse: An error occurred while parsing "
+                        "the \"location\" field of "
+                        "the event. Event received: \"{}\". Error: {}",
+                        event,
+                        e.what()));
     }
 
     // TODO Create event here

@@ -33,7 +33,8 @@ public:
     {
         if (!this->m_os)
         {
-            throw std::invalid_argument("File output cannot open file " + path);
+            throw std::invalid_argument("Engine outputs: File output \"" + path
+                                        + "\" could not be opened.");
         }
     }
 

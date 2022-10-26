@@ -13,6 +13,7 @@
 
 #include "baseTypes.hpp"
 #include "expression.hpp"
+#include <baseHelper.hpp>
 #include <hlp/hlp.hpp>
 #include <json/json.hpp>
 #include <logging/logging.hpp>
@@ -99,20 +100,21 @@ base::Expression opBuilderLogParser(const std::any& definition)
     catch (const std::exception& e)
     {
         throw std::runtime_error(
-            "[builder::opBuilderLogParser(json)] Received unexpected argument type");
+            std::string(
+                "Engine log parser builder: Definition could not be converted to json: ")
+            + e.what());
     }
     if (!jsonDefinition.isArray())
     {
         throw std::runtime_error(
-            fmt::format("[builder::opBuilderLogParser(json)] Invalid json definition "
-                        "type: expected [array] but got [{}]",
+            fmt::format("Engine log parser builder: Invalid json definition type: "
+                        "expected \"array\" but got \"{}\".",
                         jsonDefinition.typeName()));
     }
     if (jsonDefinition.size() < 1)
     {
-        throw std::runtime_error(
-            "[builder::opBuilderLogParser(json)] Invalid json definition: expected "
-            "at least one element");
+        throw std::runtime_error("Engine log parser builder: Invalid json definition, "
+                                 "expected at least one element.");
     }
 
     auto logparArr = jsonDefinition.getArray().value();
@@ -123,21 +125,21 @@ base::Expression opBuilderLogParser(const std::any& definition)
         if (!item.isObject())
         {
             throw std::runtime_error(
-                fmt::format("[builder::opBuilderLogParser(json)] Invalid item json "
-                            "type: expected [object] but got [{}]",
+                fmt::format("Engine log parser builder: Invalid json item type: expected "
+                            "an object but got {}.",
                             item.typeName()));
         }
         if (item.size() != 1)
         {
             throw std::runtime_error(
-                fmt::format("[builder::opBuilderLogParser(json)] Invalid item json "
-                            "size: expected exactly one element but got {}",
+                fmt::format("Engine log parser builder: Invalid json item size, expected "
+                            "exactly one element but got {}",
                             item.size()));
         }
 
         auto itemObj = item.getObject().value();
-        auto field = json::Json::formatJsonPath(std::get<0>(itemObj[0]));
-        auto logpar = std::get<1>(itemObj[0]).getString().value();
+        const auto field = json::Json::formatJsonPath(std::get<0>(itemObj[0]));
+        const auto logpar = std::get<1>(itemObj[0]).getString().value();
 
         ParserFn parseOp;
         try
@@ -146,41 +148,43 @@ base::Expression opBuilderLogParser(const std::any& definition)
         }
         catch (std::runtime_error& e)
         {
-            const char* msg =
-                "Stage [parse] builder encountered exception parsing logpar "
-                "expr";
-            std::throw_with_nested(std::runtime_error(msg));
+            std::throw_with_nested(std::runtime_error(
+                std::string(
+                    "Engine log parser builder: An error occurred while parsing a log: ")
+                + e.what()));
         }
 
         // Traces
-        auto name = fmt::format("{}: {}", field, logpar);
-        auto successTrace = fmt::format("{} -> Success", name);
+        const auto name = fmt::format("{}: {}", field, logpar);
+        const auto successTrace = fmt::format("[{}] -> Success", name);
 
         // field to be parsed not exists
-        auto errorTrace1 =
-            fmt::format("[{}] -> Failure: field [{}] not found", name, field);
+        const std::string failureTrace1 = fmt::format(
+            "[{}] -> Failure: Parameter \"{}\" reference not found", name, field);
         // Parsing failed
-        auto errorTrace2 = fmt::format("[{}] -> Failure:\nParser trace: ", name);
+        const std::string failureTrace2 =
+            fmt::format("[{}] -> Failure: Parse operation failed: ", name);
         // Parsing ok, mapping failed
-        auto errorTrace3 = fmt::format(
-            "[{}] -> Failure: parsing succeded but mapping failed at:\n", name);
+        const std::string failureTrace3 = fmt::format(
+            "[{}] -> Failure: Parsing succeded but mapping failed at: ", name);
 
         base::Expression parseExpression;
         try
         {
             parseExpression = base::Term<base::EngineOp>::create(
-                "parse.logpar", [=, parserOp = std::move(parseOp)](base::Event event) {
+                "parse.logpar", [=, parserOp = std::move(parseOp)](base::Event event)
+                {
                     if (!event->exists(field))
                     {
-                        return base::result::makeFailure(std::move(event), errorTrace1);
+                        return base::result::makeFailure(event, failureTrace1);
                     }
                     auto ev = event->getString(field);
                     ParseResult result;
                     auto parseResult = parserOp(ev.value(), result);
                     if (!parseResult)
                     {
-                        return base::result::makeFailure(std::move(event),
-                                                         errorTrace2 + parseResult.trace);
+                        return base::result::makeFailure(
+                            event, failureTrace2 + parseResult.trace);
                     }
 
                     for (auto const& val : result)
@@ -188,18 +192,18 @@ base::Expression opBuilderLogParser(const std::any& definition)
                         auto resultPath = json::Json::formatJsonPath(val.first.c_str());
                         if (!any2Json(val.second, resultPath, event))
                         {
-                            return base::result::makeFailure(std::move(event),
-                                                             errorTrace3 + resultPath);
+                            return base::result::makeFailure(event,
+                                                             failureTrace3 + resultPath);
                         }
                     }
 
-                    return base::result::makeSuccess(std::move(event), successTrace);
+                    return base::result::makeSuccess(event, successTrace);
                 });
         }
-        catch (const std::exception& e)
+        catch (const std::exception& e) // TODO: is this right?
         {
             throw std::runtime_error(fmt::format(
-                "[builder::opBuilderLogParser(json)] Exception creating [{}: {}]: {}",
+                "Engine log parser builder: Exception creating \"{}: {}\": {}",
                 field,
                 logpar,
                 e.what()));

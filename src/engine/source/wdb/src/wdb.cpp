@@ -17,12 +17,16 @@ std::string WazuhDB::query(const std::string& query)
 
     if (0 == query.length())
     {
-        WAZUH_LOG_WARN("wdb: The query to send is empty.");
+        WAZUH_LOG_WARN("Engine WDB: The query to send is empty.");
         return {};
     }
     else if (query.length() > m_socket.getMaxMsgSize())
     {
-        WAZUH_LOG_WARN("wdb: The query to send is too long: {}.", query.c_str());
+        WAZUH_LOG_WARN(
+            "Engine WDB: The query to send is too long: {} characters (Maximum "
+            "allowed size is {} characters).",
+            query.length(),
+            m_socket.getMaxMsgSize());
         return {};
     }
 
@@ -35,15 +39,17 @@ std::string WazuhDB::query(const std::string& query)
     }
     else if (SendRetval::SOCKET_ERROR == sendStatus)
     {
-        const auto msgError {
-            fmt::format("wdb: sendMsg failed: {} ({})", strerror(errno), errno)};
+        const auto msgError {fmt::format(
+            "Engine WDB: sendMsg() method failed: {} ({}).", strerror(errno), errno)};
         throw std::runtime_error(msgError);
     }
     else
     {
         // SIZE_ZERO, SIZE_TOO_LONG never reach here
         const auto logicErrorStr {
-            "wdb: sendMsg reached a condition that should never happen: "};
+            fmt::format("Engine WDB: sendMsg() method reached a condition that should "
+                        "never happen (Query status = {}).",
+                        sendStatus == SendRetval::SIZE_ZERO ? 1 : 2)};
         throw std::logic_error(logicErrorStr);
     }
 
@@ -78,8 +84,9 @@ WazuhDB::parseResult(const std::string& result) const noexcept
         {
             if (result.length() > 0)
             {
-                WAZUH_LOG_ERROR("wdb: Unknown query result code. Message received: {}",
-                                result);
+                WAZUH_LOG_ERROR(
+                    "Engine WDB: Unknown query result code. Message received: \"{}\".",
+                    result);
             }
             payload = {};
             code = QueryResultCodes::UNKNOWN;
@@ -109,7 +116,7 @@ std::string WazuhDB::tryQuery(const std::string& query,
         }
         catch (const RecoverableError& e)
         {
-            WAZUH_LOG_DEBUG("wdb: Query failed (attempt {}): {}", i, e.what());
+            WAZUH_LOG_DEBUG("Engine WDB: Query failed (attempt {}): {}", i, e.what());
             disconnectError = e.what();
             try
             {
@@ -117,28 +124,32 @@ std::string WazuhDB::tryQuery(const std::string& query,
             }
             catch (const std::runtime_error& e)
             {
-                WAZUH_LOG_ERROR("wdb: reconnect attempt {} failed: {}", i + 1, e.what());
+                WAZUH_LOG_ERROR(
+                    "Engine WDB: Reconnect attempt {} failed: {}", i + 1, e.what());
                 continue;
             }
         }
         catch (const std::runtime_error& e)
         {
-            WAZUH_LOG_WARN(
-                "wdb: tryQuery irrecuperable failed (attempt {}): {}", i, e.what());
+            WAZUH_LOG_WARN("Engine WDB: WazuhDB::tryQuery() method failed in an "
+                           "irrecuperable way: {}",
+                           e.what());
             this->m_socket.socketDisconnect();
             break;
         }
         catch (const std::exception& e)
         {
-            WAZUH_LOG_WARN(
-                "wdb: tryQuery irrecuperable failed (attempt {}): {}", i, e.what());
+            WAZUH_LOG_WARN("Engine WDB: WazuhDB::tryQuery() method failed in an "
+                           "irrecuperable way: {}",
+                           e.what());
             this->m_socket.socketDisconnect();
             break;
         }
         catch (...)
         {
             WAZUH_LOG_WARN(
-                "wdb: tryQuery irrecuperable failed (attempt {}): unknown error", i);
+                "Engine WDB: WazuhDB::tryQuery() method failed in an irrecuperable "
+                "way: unknown error.");
             this->m_socket.socketDisconnect();
             break;
         }
@@ -146,24 +157,25 @@ std::string WazuhDB::tryQuery(const std::string& query,
 
     if (0 == result.length() && disconnectError.has_value())
     {
-        WAZUH_LOG_WARN("wdb: tryQuery failed: {}", disconnectError.value());
+        WAZUH_LOG_WARN("Engine WDB: WazuhDB::tryQuery() method failed: {}",
+                       disconnectError.value());
     }
 
     return result;
 }
 
 std::tuple<QueryResultCodes, std::optional<std::string>>
-WazuhDB::queryAndParseResult(const std::string& query)
+WazuhDB::queryAndParseResult(const std::string& q)
 {
-    auto result {this->query(query)};
-    return this->parseResult(result);
+    auto result {query(q)};
+    return parseResult(result);
 }
 
 std::tuple<QueryResultCodes, std::optional<std::string>>
-WazuhDB::tryQueryAndParseResult(const std::string& query,
+WazuhDB::tryQueryAndParseResult(const std::string& q,
                                 const unsigned int attempts) noexcept
 {
-    auto result {tryQuery(query, attempts)};
+    auto result {tryQuery(q, attempts)};
     return parseResult(result);
 }
 

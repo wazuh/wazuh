@@ -26,15 +26,14 @@ base::Expression stageBuilderCheckList(const std::any& definition, std::shared_p
     catch (std::exception& e)
     {
         throw std::runtime_error(
-            "[builders::stageBuilderCheckList(json)] Received unexpected argument type");
+            fmt::format("Definition could not be converted to json: {}", e.what()));
     }
 
     if (!jsonDefinition.isArray())
     {
-        throw std::runtime_error(
-            fmt::format("[builders::stageBuilderCheckList(json)] Invalid json definition "
-                        "type: expected [array] but got [{}]",
-                        jsonDefinition.typeName()));
+        throw std::runtime_error(fmt::format(
+            "Invalid json definition type: expected \"array\" but got \"{}\"",
+            jsonDefinition.typeName()));
     }
 
     auto conditions = jsonDefinition.getArray().value();
@@ -47,17 +46,16 @@ base::Expression stageBuilderCheckList(const std::any& definition, std::shared_p
         {
             if (!condition.isObject())
             {
-                throw std::runtime_error(
-                    fmt::format("[builders::stageBuilderCheckList(json)] "
-                                "Invalid array item type: expected [object] but got [{}]",
-                                condition.typeName()));
+                throw std::runtime_error(fmt::format(
+                    "Invalid array item type, expected \"object\" but got \"{}\"",
+                    condition.typeName()));
             }
             if (condition.size() != 1)
             {
-                throw std::runtime_error(fmt::format(
-                    "[builders::stageBuilderCheckList(json)] "
-                    "Invalid array item object size: expected [1] but got [{}]",
-                    condition.size()));
+                throw std::runtime_error(
+                    fmt::format("Invalid object item size, expected exactly one "
+                                "key/value pair but got \"{}\"",
+                                condition.size()));
             }
             return registry->getBuilder("operation.condition")(
                 condition.getObject().value()[0]);
@@ -119,8 +117,8 @@ base::Expression stageBuilderCheckExpression(const std::any& definition, std::sh
 
     // Trace
     auto name = fmt::format("check: {}", expressionString);
-    auto successTrace = fmt::format("[{}] -> Success", name);
-    auto failureTrace = fmt::format("[{}] -> Failure", name);
+    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto failureTrace = fmt::format("[{}] -> Failure", name);
 
     // Return expression
     return base::Term<base::EngineOp>::create(
@@ -154,8 +152,8 @@ Builder getStageBuilderCheck(std::shared_ptr<Registry> registry)
         }
         catch (const std::exception& e)
         {
-            std::throw_with_nested(std::runtime_error(fmt::format(
-                "[builder::stageBuilderCheck(json)] Received unexpected argument type")));
+            throw std::runtime_error(
+                fmt::format("Definition could not be converted to json: {}", e.what()));
         }
 
         if (jsonDefinition.isArray())
@@ -169,8 +167,8 @@ Builder getStageBuilderCheck(std::shared_ptr<Registry> registry)
         else
         {
             throw std::runtime_error(
-                fmt::format("[builder::stageBuilderCheck(json)] Invalid json definition "
-                            "type: expected [string] or [array] but got [{}]",
+                fmt::format("Invalid json definition type, \"string\" or \"array\" were "
+                            "expected but got \"{}\"",
                             jsonDefinition.typeName()));
         }
     };

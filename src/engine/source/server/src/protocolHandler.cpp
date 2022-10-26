@@ -26,14 +26,17 @@ bool WazuhStreamProtocol::hasHeader()
 {
     bool retval = false;
 
-    if (m_buff.size() == sizeof(int))
+    if (sizeof(int) == m_buff.size())
     {
         // TODO: make this safe
         memcpy(&m_pending, m_buff.data(), sizeof(int));
         // TODO: Max message size config option
         if ((1 << 20) < m_pending)
         {
-            throw std::runtime_error("Invalid message. The size is probably wrong.");
+            throw std::runtime_error(
+                fmt::format("Engine protocol handler: Invalid message. The size "
+                            "contained on the message header is probably wrong: {}",
+                            m_pending));
         }
 
         retval = true;
@@ -43,7 +46,7 @@ bool WazuhStreamProtocol::hasHeader()
 }
 
 std::optional<vector<string>> WazuhStreamProtocol::process(const char* data,
-                                                       const size_t length)
+                                                           const size_t length)
 {
     vector<string> events;
 
@@ -61,9 +64,11 @@ std::optional<vector<string>> WazuhStreamProtocol::process(const char* data,
                         m_stage = 1;
                     }
                 }
-                catch (...)
+                catch (std::exception& e)
                 {
-                    // TODO: improve this try-catch
+                    WAZUH_LOG_ERROR("Engine protocol handler: An error ocurred while "
+                                    "trying to process a message's header: {}",
+                                    e.what());
                     return std::nullopt;
                 }
                 break;
@@ -83,14 +88,19 @@ std::optional<vector<string>> WazuhStreamProtocol::process(const char* data,
                     }
                     catch (std::exception& e)
                     {
-                        WAZUH_LOG_ERROR("{}", e.what());
+                        WAZUH_LOG_ERROR(
+                            "Engine protocol handler: Processing message error: {}",
+                            e.what());
                         return std::nullopt;
                     }
                     m_stage = 0;
                 }
                 break;
 
-            default: WAZUH_LOG_ERROR("Invalid stage value."); return std::nullopt;
+            default:
+                WAZUH_LOG_ERROR("Engine protocol handler: Invalid stage state: {}",
+                                m_stage);
+                return std::nullopt;
         }
     }
 

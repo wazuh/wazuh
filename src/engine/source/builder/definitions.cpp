@@ -39,9 +39,12 @@ void substituteDefinitions(Json& asset)
     if (!asset.isObject())
     {
         throw std::runtime_error(
-            fmt::format("[substituteDefinitions(asset)] Expected object, got [{}]",
+            fmt::format("Engine definitions: Asset is expected to be an object but it "
+                        "is of type \"{}\". The asset name cannot be obtained.",
                         asset.typeName()));
     }
+
+    const std::string assetName {asset.getString("/name").value_or("")};
 
     if (asset.exists(DEFINITIONS_KEY))
     {
@@ -49,15 +52,18 @@ void substituteDefinitions(Json& asset)
         {
             // TODO: add getTypeName with path to Json
             throw std::runtime_error(
-                fmt::format("[substituteDefinitions(asset)] Expected object, got [{}]",
-                            "not_implemented"));
+                fmt::format("Engine definitions: Field \"{}\" from asset \"{}\" is "
+                            "expected to be an object, but it is not.",
+                            DEFINITIONS_KEY,
+                            assetName));
         }
-
         auto definitionsObject = asset.getObject(DEFINITIONS_KEY).value();
         if (!asset.erase(DEFINITIONS_KEY))
         {
             throw std::runtime_error(fmt::format(
-                "[substituteDefinitions(asset)] Could not erase [{}]", DEFINITIONS_KEY));
+                "Engine definitions: Field \"{}\" from asset \"{}\" could not be erased.",
+                DEFINITIONS_KEY,
+                assetName));
         }
 
         // Definitions can reference other definitions, so we need to check other
@@ -83,7 +89,11 @@ void substituteDefinitions(Json& asset)
             if (value.isNull())
             {
                 throw std::runtime_error(fmt::format(
-                    "[substituteDefinitions(asset)] Definition [{}] is null", key));
+                    "Engine definitions: On the asset \"{}\", the object \"{}\" contains "
+                    "a key (\"{}\") with a null value, which is not allowed.",
+                    assetName,
+                    DEFINITIONS_KEY,
+                    key));
             }
             auto formatKey = syntax::REFERENCE_ANCHOR + key;
             auto formatValue = value.getString().value();
@@ -97,8 +107,9 @@ void substituteDefinitions(Json& asset)
         catch (const std::exception& e)
         {
             throw std::runtime_error(
-                fmt::format("[substituteDefinitions(asset)] Definition substitution "
-                            "yield to bad json [{}]",
+                fmt::format("Engine definitions: On the asset \"{}\", its definition "
+                            "substitution resulted in a wrong json: \"{}\".",
+                            assetName,
                             assetStr));
         }
     }

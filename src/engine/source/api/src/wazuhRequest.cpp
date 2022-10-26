@@ -51,11 +51,12 @@ WazuhRequest WazuhRequest::create(std::string_view command,
 
     if (command.empty())
     {
-        throw std::runtime_error("The command cannot be empty");
+        throw std::runtime_error("Engine API request: A command cannot be empty.");
     }
     if (!parameters.isObject())
     {
-        throw std::runtime_error("The parameters must be a JSON type object");
+        throw std::runtime_error(
+            "Engine API request: The command parameters must be object JSON type.");
     }
 
     json::Json jrequest;

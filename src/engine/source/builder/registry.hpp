@@ -58,10 +58,11 @@ public:
             }
             else
             {
-                throw std::logic_error(fmt::format(
-                    "Error, trying to register a builder with name [{}], but a "
-                    "builder with that name already exists",
-                    name));
+
+                throw std::logic_error(
+                    fmt::format("Engine registry: A builder is already registered with "
+                                "name \"{}\", registration failed.",
+                                name));
             }
         }
     }

@@ -225,7 +225,6 @@ bool parseQuotedString(const char** it, Parser const& parser, ParseResult& resul
  */
 bool parseBoolean(const char** it, Parser const& parser, ParseResult& result);
 
-
 /**
  * @brief Parse a string until the next character (next token) is found. The parsed string
  * can be empty. Only fails if the next token is not found.

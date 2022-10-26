@@ -22,9 +22,9 @@ using namespace base;
 Expression conditionValueBuilder(std::string&& field, Json&& value)
 {
     const auto name {fmt::format("condition.value[{}=={}]", field, value.str())};
-    const auto successTrace {fmt::format("{} -> Success", name)};
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("{} -> Failure", name)};
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
     return Term<EngineOp>::create(
         name,
         [=](Event event)
@@ -43,9 +43,9 @@ Expression conditionValueBuilder(std::string&& field, Json&& value)
 Expression conditionReferenceBuilder(std::string&& field, std::string&& reference)
 {
     const auto name {fmt::format("condition.reference[{}=={}]", field, reference)};
-    const auto successTrace {fmt::format("{} -> Success", name)};
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("{} -> Failure", name)};
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
     return Term<EngineOp>::create(
         name,
         [=](Event event)
@@ -67,7 +67,7 @@ Expression mapValueBuilder(std::string&& field, Json&& value)
 {
     const auto name {fmt::format("map.value[{}={}]", field, value.prettyStr())};
 
-    const auto successTrace {fmt::format("{} -> Success", name)};
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
     return Term<EngineOp>::create(name,
                                   [=](Event event)
                                   {
@@ -81,13 +81,11 @@ Expression mapValueBuilder(std::string&& field, Json&& value)
 Expression mapReferenceBuilder(std::string&& field, std::string&& reference)
 {
     const auto name {fmt::format("map.reference[{}={}]", field, reference)};
-    const auto successTrace {fmt::format("{} -> Success", name)};
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {
-        fmt::format("{} -> Failure: [{}] not found", name, reference)};
-    return Term<EngineOp>::create(
-        name,
-        [=](Event event)
+    const auto failureTrace {fmt::format(
+        "[{}] -> Failure: Parameter \"{}\" reference not found", name, reference)};
+    return Term<EngineOp>::create(name, [=](Event event)
         {
             if (event->exists(reference))
             {
@@ -123,9 +121,10 @@ Expression operationBuilder(const std::any& definition,
     }
     catch (std::exception& e)
     {
-        std::throw_with_nested(
-            std::runtime_error("[builders::operationBuilder(<definition, type>)] "
-                               "Received unexpected arguments."));
+        std::throw_with_nested(std::runtime_error(
+            std::string(
+                "Engine operation builder: Error trying to obtain the arguments: ")
+            + e.what()));
     }
 
     // Call apropiate builder based on value
@@ -140,10 +139,9 @@ Expression operationBuilder(const std::any& definition,
             case OperationType::MAP:
                 return mapReferenceBuilder(std::move(field), std::move(reference));
             default:
-                throw std::runtime_error(
-                    fmt::format("[builders::operationBuilder(<definition, type>)] "
-                                "Unsupported operation type: {}",
-                                static_cast<int>(type)));
+                throw std::runtime_error(fmt::format(
+                    "Engine operation builder: Unsupported operation type \"{}\".",
+                    static_cast<int>(type)));
         }
     }
     else if (value.isString()
@@ -166,10 +164,10 @@ Expression operationBuilder(const std::any& definition,
         }
         catch (const std::exception& e)
         {
-            std::throw_with_nested(std::runtime_error(
-                fmt::format("[builders::operationBuilder(<definition, type>)] "
-                            "Exception building helper [{}]",
-                            helperName)));
+            std::throw_with_nested(std::runtime_error(fmt::format(
+                "Engine operation builder: Exception building helper function \"{}\": {}",
+                helperName,
+                e.what())));
         }
     }
     else if (value.isArray())
@@ -237,10 +235,9 @@ Expression operationBuilder(const std::any& definition,
             case OperationType::MAP:
                 return mapValueBuilder(std::move(field), std::move(value));
             default:
-                throw std::runtime_error(
-                    fmt::format("[builders::operationBuilder(<definition, type>)] "
-                                "Unsupported operation type: {}",
-                                static_cast<int>(type)));
+                throw std::runtime_error(fmt::format(
+                    "Engine operation builder: Unsupported operation type \"{}\".",
+                    static_cast<int>(type)));
         }
     }
 }

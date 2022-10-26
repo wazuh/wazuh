@@ -92,7 +92,7 @@ struct Token
         if (text.empty())
         {
             throw std::runtime_error(
-                "Got empty token while parsing a new Token");
+                "Engine logic expression parser: Got an empty token.");
         }
 
         if (text == "(")
@@ -169,7 +169,8 @@ struct Token
         if (!isOperator() || !other.isOperator())
         {
             throw std::logic_error(fmt::format(
-                "Comparing precendence between non-operators: {} and {}",
+                "Engine logic expression parser: Comparing precendence between something "
+                "that is not an operator: Comparing \"{}\" and \"{}\".",
                 m_text,
                 other.m_text));
         }
@@ -329,17 +330,19 @@ private:
     {
         if (postfix.empty())
         {
-            throw std::logic_error("Got unbalanced expression");
+            throw std::logic_error(
+                "Engine logic expression parser: Got unbalanced expression.");
         }
         if (postfix.top().m_type == TokenType::ERROR_TYPE)
         {
-            throw std::logic_error("Got invalid token with [ERROR_TYPE]");
+            throw std::logic_error(
+                "Engine logic expression parser: Got invalid token with \"ERROR_TYPE\".");
         }
         if (postfix.top().m_type == TokenType::PARENTHESIS_OPEN ||
             postfix.top().m_type == TokenType::PARENTHESIS_CLOSE)
         {
-            throw std::logic_error("Got invalid token with [PARENTHESIS_OPEN] "
-                                   "or [PARENTHESIS_CLOSE]");
+            throw std::logic_error("Engine logic expression parser: Got invalid token "
+                                   "with \"PARENTHESIS_OPEN\" or \"PARENTHESIS_CLOSE\".");
         }
 
         m_token = std::move(postfix.top());

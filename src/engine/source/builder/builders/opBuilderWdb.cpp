@@ -29,11 +29,11 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::any& definiti
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(raw_parameters)};
+    auto parameters {helper::base::processParameters(name, raw_parameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(parameters, 1);
+    helper::base::checkParametersSize(name, parameters, 1);
     // Format name for the tracer
-    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+    name = helper::base::formatHelperName(name, targetField, parameters);
 
     // Depending on rValue type we store the reference or the string value, string in both
     // cases
@@ -46,10 +46,10 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::any& definiti
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
     const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
+        fmt::format("[{}] -> Failure: Target field \"{}\" not found", name, targetField)};
     const auto failureTrace2 {
-        fmt::format("[{}] -> Failure: [{}] is empty", name, targetField)};
-    const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
+        fmt::format("[{}] -> Failure: Target field \"{}\" is empty", name, targetField)};
+    const auto failureTrace3 {fmt::format("[{}] -> Failure: ", name) + "Result code is \"{}.\""};
 
     // instantiate WDB
     auto wdb = std::make_shared<wazuhdb::WazuhDB>(wazuhdb::WDB_SOCK_PATH);
@@ -108,7 +108,16 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::any& definiti
                 }
                 else
                 {
-                    return base::result::makeFailure(event, failureTrace3);
+                    std::string_view retCode {};
+                    for (auto& it : wazuhdb::QueryResStr2Code)
+                    {
+                        if (it.second == resultCode)
+                        {
+                            retCode = it.first;
+                        }
+                    }
+                    return base::result::makeFailure(event,
+                                                     fmt::format(failureTrace3, retCode));
                 }
             }
             else

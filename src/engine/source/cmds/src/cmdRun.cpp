@@ -71,7 +71,7 @@ void run(const std::string& kvdbPath,
     }
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
-    WAZUH_LOG_INFO("Logging initialized");
+    WAZUH_LOG_INFO("Engine \"run\" command: Logging successfully initialized.");
 
     // Init modules
     std::shared_ptr<store::FileDriver> store;
@@ -88,26 +88,26 @@ void run(const std::string& kvdbPath,
         server = std::make_shared<engineserver::EngineServer>(
             apiEndpoint, nullptr, eventEndpoint, bufferSize);
         g_exitHanlder.add([server]() { server->close(); });
-        WAZUH_LOG_INFO("Server configured");
+        WAZUH_LOG_INFO("Engine \"run\" command: Server successfully configured.");
 
         kvdb = std::make_shared<KVDBManager>(kvdbPath);
-        WAZUH_LOG_INFO("KVDB initialized");
+        WAZUH_LOG_INFO("Engine \"run\" command: KVDB successfully initialized.");
         g_exitHanlder.add(
             [kvdb]()
             {
-                WAZUH_LOG_INFO("KVDB terminated");
+                WAZUH_LOG_INFO("Engine \"run\" command: KVDB terminated.");
                 kvdb->clear();
             });
 
         store = std::make_shared<store::FileDriver>(fileStorage);
-        WAZUH_LOG_INFO("Store initialized");
+        WAZUH_LOG_INFO("Engine \"run\" command: Store successfully initialized.");
 
         auto registry = std::make_shared<builder::internals::Registry>();
         builder::internals::registerBuilders(registry, {kvdb});
-        WAZUH_LOG_INFO("Builders registered");
+        WAZUH_LOG_INFO("Engine \"run\" command: Builders successfully registered.");
 
         builder = std::make_shared<builder::Builder>(store, registry);
-        WAZUH_LOG_INFO("Builder initialized");
+        WAZUH_LOG_INFO("Engine \"run\" command: Builders successfully initialized.");
 
         api::catalog::Config catalogConfig {store,
                                             builder,
@@ -120,14 +120,14 @@ void run(const std::string& kvdbPath,
 
         catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
         api::catalog::cmds::registerAllCmds(catalog, server->getRegistry());
-        WAZUH_LOG_INFO("Catalog initialized");
+        WAZUH_LOG_INFO("Engine \"run\" command: Catalog successfully initialized.");
 
         base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
         auto hlpParsers = store->get(hlpConfigFileName);
         if (std::holds_alternative<base::Error>(hlpParsers))
         {
-            WAZUH_LOG_ERROR("Could not retreive configuration file [{}] needed by the "
-                            "HLP module, error: {}",
+            WAZUH_LOG_ERROR("Engine \"run\" command: Configuration file \"{}\" could not "
+                            "be obtained: {}",
                             hlpConfigFileName.fullName(),
                             std::get<base::Error>(hlpParsers).message);
 
@@ -137,13 +137,14 @@ void run(const std::string& kvdbPath,
         // TODO because builders don't have access to the catalog we are configuring
         // the parser mappings on start up for now
         hlp::configureParserMappings(std::get<json::Json>(hlpParsers).str());
-        WAZUH_LOG_INFO("HLP initialized");
+        WAZUH_LOG_INFO("Engine \"run\" command: HLP successfully initialized.");
 
         envManager = std::make_shared<router::EnvironmentManager>(
             builder, server->getEventQueue(), threads);
         g_exitHanlder.add([envManager]() { envManager->delAllEnvironments(); });
 
-        WAZUH_LOG_INFO("Environment manager initialized");
+        WAZUH_LOG_INFO(
+            "Engine \"run\" command: Environment manager successfully initialized.");
         // Register the API command
         server->getRegistry()->registerCommand("env", envManager->apiCallback());
 
@@ -155,14 +156,18 @@ void run(const std::string& kvdbPath,
         }
         else
         {
-            WAZUH_LOG_WARN("Error creating default environment [{}]: {}",
+            WAZUH_LOG_WARN("Engine \"run\" command: An error occurred while creating the "
+                           "default environment \"{}\": {}",
                            environment,
                            error.value().message);
         }
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Error initializing modules: {}", utils::getExceptionStack(e));
+        WAZUH_LOG_ERROR(
+            "Engine \"run\" command: An error occurred while initializing the "
+            "engine modules: {}",
+            utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
     }
@@ -174,7 +179,9 @@ void run(const std::string& kvdbPath,
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Unexpected error: {}", utils::getExceptionStack(e));
+        WAZUH_LOG_ERROR(
+            "Engine \"run\" command: An error occurred while executing the server: {}",
+            utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
     }

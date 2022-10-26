@@ -30,8 +30,7 @@ constexpr int kMaxStackTraceDepth = 7;
 // wich needs the symbols to be in the dyn table
 static std::string getBacktrace()
 {
-    auto tracer = [](_Unwind_Context* ctx, void* s)
-    {
+    auto tracer = [](_Unwind_Context* ctx, void* s) {
         auto* state = static_cast<BtState*>(s);
         if (state->count == state->addrs.size())
         {
@@ -84,15 +83,9 @@ static std::string getBacktrace()
 }
 #endif
 
-void wazuhAssertImpl(const char* expr,
-                     const char* file,
-                     const char* func,
-                     int line)
+void wazuhAssertImpl(const char* expr, const char* file, const char* func, int line)
 {
-    WAZUH_LOG_ERROR("\n----------------------------------------\n"
-                    "# ASSERT FAILED ({}): {}::{}::{}\n"
-                    "----------------------------------------\n"
-                    "{}",
+    WAZUH_LOG_ERROR("Engine base: ASSERT FAILED ({}): {}::{}::{}: {}",
                     expr,
                     file,
                     func,
@@ -106,26 +99,18 @@ void wazuhAssertImpl(const char* expr,
     //*((volatile int *)0) = 0xDEADBEEF;
 }
 
-void wazuhAssertMsgImpl(const char* expr,
-                        const char* file,
-                        const char* func,
-                        int line,
-                        const char* fmt,
-                        ...)
+void wazuhAssertMsgImpl(
+    const char* expr, const char* file, const char* func, int line, const char* fmt, ...)
 {
-    const int largeEnough = 2048;
+    const int largeEnough {2048};
     char output[largeEnough + 1] = {};
     char fmtMsg[largeEnough + 1] = {};
 
     va_list args;
     va_start(args, fmt);
 
-    int len = vsnprintf(fmtMsg, largeEnough, fmt, args);
-    WAZUH_LOG_ERROR("\n----------------------------------------\n"
-                    "# ASSERT FAILED ({}): {}::{}::{}\n"
-                    "# {}"
-                    "\n----------------------------------------\n"
-                    "{}",
+    const int len {vsnprintf(fmtMsg, largeEnough, fmt, args)};
+    WAZUH_LOG_ERROR("Engine base: ASSERT FAILED ({}): {}::{}::{}: {}: {}",
                     expr,
                     file,
                     func,

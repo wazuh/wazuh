@@ -8,6 +8,14 @@
 
 #include <fmt/format.h>
 
+namespace
+{
+constexpr auto INVALID_POINTER_TYPE_MSG =
+    "Engine JSON: \"{}\" method: Invalid pointer path \"{}\".";
+constexpr auto PATH_NOT_FOUND_MSG = "Engine JSON: \"{}\" method: Path \"{}\" not found.";
+
+}
+
 namespace json
 {
 
@@ -39,18 +47,17 @@ Json::Json(const char* json)
     rapidjson::ParseResult result = m_document.Parse(json);
     if (!result)
     {
-        throw std::runtime_error(fmt::format(
-            "[Json(jsonString)] Unable to build json document because: {} at {}",
-            rapidjson::GetParseError_En(result.Code()),
-            result.Offset()));
+        throw std::runtime_error(
+            fmt::format("Engine JSON: JSON document could not be parsed: {} at {}.",
+                        rapidjson::GetParseError_En(result.Code()),
+                        result.Offset()));
     }
 
     auto error = checkDuplicateKeys();
     if (error)
     {
-        throw std::runtime_error(
-            fmt::format("[Json(jsonString)] Unable to build json document because: {}",
-                        error->message));
+        throw std::runtime_error(fmt::format(
+            "Engine JSON: JSON document has duplicated keys: {}.", error->message));
     }
 }
 
@@ -73,41 +80,41 @@ bool Json::operator==(const Json& other) const
 std::string Json::formatJsonPath(std::string_view dotPath)
 {
     // TODO: Handle array indices and pointer path operators.
-    std::string pointerPath {dotPath};
+    std::string ptrPath {dotPath};
 
     // Some helpers may indiate that the field is root element
     // In this case the path will be defined as "."
-    if (pointerPath == ".")
+    if (ptrPath == ".")
     {
-        pointerPath = "";
+        ptrPath = "";
     }
     else
     {
         // Replace ~ with ~0
-        for (auto pos = pointerPath.find('~'); pos != std::string::npos;
-             pos = pointerPath.find('~', pos + 2))
+        for (auto pos = ptrPath.find('~'); pos != std::string::npos;
+             pos = ptrPath.find('~', pos + 2))
         {
-            pointerPath.replace(pos, 1, "~0");
+            ptrPath.replace(pos, 1, "~0");
         }
 
         // Replace / with ~1
-        for (auto pos = pointerPath.find('/'); pos != std::string::npos;
-             pos = pointerPath.find('/', pos + 2))
+        for (auto pos = ptrPath.find('/'); pos != std::string::npos;
+             pos = ptrPath.find('/', pos + 2))
         {
-            pointerPath.replace(pos, 1, "~1");
+            ptrPath.replace(pos, 1, "~1");
         }
 
         // Replace . with /
-        std::replace(std::begin(pointerPath), std::end(pointerPath), '.', '/');
+        std::replace(std::begin(ptrPath), std::end(ptrPath), '.', '/');
 
         // Add / at the beginning
-        if (pointerPath.front() != '/')
+        if (ptrPath.front() != '/')
         {
-            pointerPath.insert(0, "/");
+            ptrPath.insert(0, "/");
         }
     }
 
-    return pointerPath;
+    return ptrPath;
 }
 
 Json::Json(Json&& other) noexcept
@@ -121,61 +128,56 @@ Json& Json::operator=(Json&& other) noexcept
     return *this;
 }
 
-bool Json::exists(std::string_view pointerPath) const
+bool Json::exists(std::string_view ptrPath) const
 {
-    auto fieldPtr = rapidjson::Pointer(pointerPath.data());
+    const auto fieldPtr = rapidjson::Pointer(ptrPath.data());
     if (fieldPtr.IsValid())
     {
         return fieldPtr.Get(m_document) != nullptr;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format(
-            "[Json::exists(pointerPath)] Invalid pointerPath: [{}]", pointerPath));
-    }
+
+    throw std::runtime_error(fmt::format(
+        "..", __func__, ptrPath));
 }
 
-bool Json::equals(std::string_view pointerPath, const Json& value) const
+bool Json::equals(std::string_view ptrPath, const Json& value) const
 {
-    auto fieldPtr = rapidjson::Pointer(pointerPath.data());
+    const auto fieldPtr = rapidjson::Pointer(ptrPath.data());
     if (fieldPtr.IsValid())
     {
         const auto got {fieldPtr.Get(m_document)};
         return (got && *got == value.m_document);
     }
-    else
-    {
-        throw std::runtime_error(fmt::format(
-            "[Json::equals(pointerPath, value)] Invalid pointerPath: [{}]", pointerPath));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, ptrPath));
 }
 
-bool Json::equals(std::string_view basePointerPath,
-                  std::string_view referencePointerPath) const
+bool Json::equals(std::string_view basePtrPath, std::string_view referencePtrPath) const
 {
-    auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
-    auto referencePtr = rapidjson::Pointer(referencePointerPath.data());
+    const auto fieldPtr = rapidjson::Pointer(basePtrPath.data());
+    const auto referencePtr = rapidjson::Pointer(referencePtrPath.data());
 
-    if (fieldPtr.IsValid() && referencePtr.IsValid())
-    {
-        const auto got {fieldPtr.Get(m_document)};
-        const auto reference {referencePtr.Get(m_document)};
-        return (got && reference && *got == *reference);
-    }
-    else
+    if (!fieldPtr.IsValid())
     {
         throw std::runtime_error(
-            fmt::format("[Json::equals(basePointerPath, referencePointerPath)] "
-                        "Invalid json path: [{}] or [{}]",
-                        basePointerPath,
-                        referencePointerPath));
+            fmt::format(INVALID_POINTER_TYPE_MSG, __func__, basePtrPath));
     }
+    if (!referencePtr.IsValid())
+    {
+        throw std::runtime_error(
+            fmt::format(INVALID_POINTER_TYPE_MSG, __func__, referencePtrPath));
+    }
+
+    const auto fieldValue {fieldPtr.Get(m_document)};
+    const auto referenceValue {referencePtr.Get(m_document)};
+
+    return (fieldValue && referenceValue && *fieldValue == *referenceValue);
 }
 
 // TODO Invert parameters to be consistent with other methods.
-void Json::set(std::string_view pointerPath, const Json& value)
+void Json::set(std::string_view ptrPath, const Json& value)
 {
-    auto fieldPtr = rapidjson::Pointer(pointerPath.data());
+    const auto fieldPtr = rapidjson::Pointer(ptrPath.data());
     if (fieldPtr.IsValid())
     {
         fieldPtr.Set(m_document, value.m_document);
@@ -183,113 +185,95 @@ void Json::set(std::string_view pointerPath, const Json& value)
     else
     {
         throw std::runtime_error(fmt::format(
-            "[Json::set(pointerPath, value)] Invalid pointerPath: [{}]", pointerPath));
+            "Engine JSON: \"{}\" method: Invalid Pointer Path \"{}\".", ptrPath));
     }
 }
 
-void Json::set(std::string_view basePointerPath, std::string_view referencePointerPath)
+void Json::set(std::string_view basePtrPath, std::string_view referencePtrPath)
 {
-    auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
-    auto referencePtr = rapidjson::Pointer(referencePointerPath.data());
+    const auto fieldPtr = rapidjson::Pointer(basePtrPath.data());
+    const auto referencePtr = rapidjson::Pointer(referencePtrPath.data());
 
-    if (fieldPtr.IsValid() && referencePtr.IsValid())
+    if (!fieldPtr.IsValid())
     {
-        const auto* reference = referencePtr.Get(m_document);
-        if (reference)
-        {
-            fieldPtr.Set(m_document, *reference);
-        }
-        else
-        {
-            fieldPtr.Set(m_document, rapidjson::Value());
-        }
+        throw std::runtime_error(
+            fmt::format(INVALID_POINTER_TYPE_MSG, __func__, basePtrPath));
+    }
+    if (!referencePtr.IsValid())
+    {
+        throw std::runtime_error(
+            fmt::format(INVALID_POINTER_TYPE_MSG, __func__, referencePtrPath));
+    }
+
+    const auto* reference = referencePtr.Get(m_document);
+    if (reference)
+    {
+        fieldPtr.Set(m_document, *reference);
     }
     else
     {
-        throw std::runtime_error(
-            fmt::format("[Json::set(basePointerPath, referencePointerPath)] "
-                        "Invalid json path: [{}] or [{}]",
-                        basePointerPath,
-                        referencePointerPath));
+        fieldPtr.Set(m_document, rapidjson::Value());
     }
 }
 
 std::optional<std::string> Json::getString(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    std::optional<std::string> retval {std::nullopt};
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
         const auto* value = pp.Get(m_document);
         if (value && value->IsString())
         {
-            return std::string {value->GetString()};
+            retval = std::string {value->GetString()};
         }
-        else
-        {
-            return std::nullopt;
-        }
+        return retval;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::get(path)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
-    return {};
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 std::optional<int> Json::getInt(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    std::optional<int> retval {std::nullopt};
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
         const auto* value = pp.Get(m_document);
         if (value && value->IsInt())
         {
-            return value->GetInt();
+            retval = value->GetInt();
         }
-        else
-        {
-            return std::nullopt;
-        }
+        return retval;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 std::optional<double> Json::getDouble(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    std::optional<double> retval {std::nullopt};
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
         const auto* value = pp.Get(m_document);
         if (value && value->IsDouble())
         {
-            return value->GetDouble();
+            retval = value->GetDouble();
         }
-        else
-        {
-            return std::nullopt;
-        }
+        return retval;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 std::optional<double> Json::getNumberAsDouble(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    std::optional<double> retval {std::nullopt};
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -298,51 +282,41 @@ std::optional<double> Json::getNumberAsDouble(std::string_view path) const
         {
             if (value->IsInt())
             {
-                return static_cast<double>(value->GetInt());
+                retval = static_cast<double>(value->GetInt());
             }
-            if (value->IsDouble())
+            else if (value->IsDouble())
             {
-                return value->GetDouble();
+                retval = value->GetDouble();
             }
         }
-    }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
+        return retval;
     }
 
-    return std::nullopt;
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 std::optional<bool> Json::getBool(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    std::optional<bool> retval {std::nullopt};
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
         const auto* value = pp.Get(m_document);
         if (value && value->IsBool())
         {
-            return value->GetBool();
+            retval = value->GetBool();
         }
-        else
-        {
-            return std::nullopt;
-        }
+        return retval;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 std::optional<std::vector<Json>> Json::getArray(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    std::optional<std::vector<Json>> retval {std::nullopt};
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -354,25 +328,19 @@ std::optional<std::vector<Json>> Json::getArray(std::string_view path) const
             {
                 result.push_back(Json(item));
             }
-            return result;
+            retval = result;
         }
-        else
-        {
-            return std::nullopt;
-        }
+        return retval;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 std::optional<std::vector<std::tuple<std::string, Json>>>
 Json::getObject(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    std::optional<std::vector<std::tuple<std::string, Json>>> retval {std::nullopt};
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -384,19 +352,12 @@ Json::getObject(std::string_view path) const
             {
                 result.emplace_back(std::make_tuple(key.GetString(), Json(value)));
             }
-            return result;
+            retval = result;
         }
-        else
-        {
-            return std::nullopt;
-        }
+        return retval;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 std::string Json::prettyStr() const
@@ -423,9 +384,8 @@ std::string Json::str() const
 
 std::optional<std::string> Json::str(std::string_view path) const
 {
-
-    std::optional<std::string> retval = std::nullopt;
-    auto pp = rapidjson::Pointer(path.data());
+    std::optional<std::string> retval {std::nullopt};
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -440,15 +400,10 @@ std::optional<std::string> Json::str(std::string_view path) const
             value->Accept(writer);
             retval = std::string {buffer.GetString()};
         }
-    }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::size(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
+        return retval;
     }
 
-    return retval;
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 std::ostream& operator<<(std::ostream& os, const Json& json)
@@ -459,7 +414,7 @@ std::ostream& operator<<(std::ostream& os, const Json& json)
 
 size_t Json::size(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -474,31 +429,26 @@ size_t Json::size(std::string_view path) const
             {
                 return value->MemberCount();
             }
-            else
+            else if (value->IsString())
             {
-                throw std::runtime_error(fmt::format("[Json::size(basePointerPath)] "
-                                                     "Invalid json path: [{}]",
-                                                     path));
+                // TODO: create tests
+                return value->GetStringLength();
             }
+            throw std::runtime_error(fmt::format(
+                "Engine JSON: \"{}\" method: Value \"{}\" size is not measurable.",
+                __func__,
+                path));
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::size(basePointerPath)] "
-                                                 "Cannot find json path: [{}]",
-                                                 path));
-        }
+
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::size(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 bool Json::isNull(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -507,24 +457,16 @@ bool Json::isNull(std::string_view path) const
         {
             return value->IsNull();
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::isNull(basePointerPath)] "
-                                                 "Cannot find path: [{}]",
-                                                 path));
-        }
+
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::isNull(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 bool Json::isBool(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -533,24 +475,16 @@ bool Json::isBool(std::string_view path) const
         {
             return value->IsBool();
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::isBool(basePointerPath)] "
-                                                 "Cannot find path: [{}]",
-                                                 path));
-        }
+
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::isBool(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 bool Json::isNumber(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -559,24 +493,16 @@ bool Json::isNumber(std::string_view path) const
         {
             return value->IsNumber();
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::isNumber(basePointerPath)] "
-                                                 "Cannot find path: [{}]",
-                                                 path));
-        }
+
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::isNumber(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 bool Json::isInt(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -585,24 +511,16 @@ bool Json::isInt(std::string_view path) const
         {
             return value->IsInt();
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] "
-                                                 "Cannot find path: [{}]",
-                                                 path));
-        }
+
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 bool Json::isDouble(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -611,24 +529,16 @@ bool Json::isDouble(std::string_view path) const
         {
             return value->IsDouble();
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::isDouble(basePointerPath)] "
-                                                 "Cannot find path: [{}]",
-                                                 path));
-        }
+
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::isDouble(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 bool Json::isString(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -637,24 +547,16 @@ bool Json::isString(std::string_view path) const
         {
             return value->IsString();
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::isString(basePointerPath)] "
-                                                 "Cannot find path: [{}]",
-                                                 path));
-        }
+
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::isString(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 bool Json::isArray(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -663,24 +565,16 @@ bool Json::isArray(std::string_view path) const
         {
             return value->IsArray();
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::isArray(basePointerPath)] "
-                                                 "Cannot find path: [{}]",
-                                                 path));
-        }
+
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::isArray(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 bool Json::isObject(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -689,24 +583,16 @@ bool Json::isObject(std::string_view path) const
         {
             return value->IsObject();
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::isObject(basePointerPath)] "
-                                                 "Cannot find path: [{}]",
-                                                 path));
-        }
+
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::isObject(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 std::string Json::typeName(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -725,24 +611,16 @@ std::string Json::typeName(std::string_view path) const
                 default: return "unknown";
             }
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::typeName(basePointerPath)] "
-                                                 "Cannot find path: [{}]",
-                                                 path));
-        }
+
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::typeName(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 Json::Type Json::type(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -751,136 +629,107 @@ Json::Type Json::type(std::string_view path) const
         {
             return rapidTypeToJsonType(value->GetType());
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::type(basePointerPath)] "
-                                                 "Cannot find path: [{}]",
-                                                 path));
-        }
+
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::type(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 void Json::setNull(std::string_view path)
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
         pp.Set(m_document, rapidjson::Value().SetNull());
+        return;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::setNull(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 void Json::setBool(bool value, std::string_view path)
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
         pp.Set(m_document, value);
+        return;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::setBool(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 void Json::setInt(int value, std::string_view path)
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
         pp.Set(m_document, value);
+        return;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::setInt(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 void Json::setDouble(double value, std::string_view path)
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
         pp.Set(m_document, value);
+        return;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::setDouble(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 void Json::setString(std::string_view value, std::string_view path)
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
         pp.Set(m_document, value.data());
+        return;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::setString(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 void Json::setArray(std::string_view path)
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
         pp.Set(m_document, rapidjson::Value().SetArray());
+        return;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::setArray(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 void Json::setObject(std::string_view path)
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
         pp.Set(m_document, rapidjson::Value().SetObject());
+        return;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::setObject(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 void Json::appendString(std::string_view value, std::string_view path)
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -889,9 +738,11 @@ void Json::appendString(std::string_view value, std::string_view path)
         const size_t s2 = static_cast<size_t>(s1);
         if (s2 != value.size())
         {
-            throw std::runtime_error(fmt::format("[Json::appendString(basePointerPath)] "
-                                                 "String is too long: [{}]",
-                                                 value));
+            throw std::runtime_error(fmt::format(
+                "Engine JSON: \"{}\" method: String is too long ({}): \"{}\".",
+                __func__,
+                value.size(),
+                value));
         }
         rapidjson::Value v(value.data(), s2, m_document.GetAllocator());
 
@@ -912,13 +763,10 @@ void Json::appendString(std::string_view value, std::string_view path)
             vArray.PushBack(v, m_document.GetAllocator());
             pp.Set(m_document, vArray);
         }
+        return;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::appendString(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 void Json::appendJson(const Json& value, std::string_view path)
@@ -962,24 +810,20 @@ bool Json::erase(std::string_view path)
     }
     else
     {
-        auto pp = rapidjson::Pointer(path.data());
+        const auto pp = rapidjson::Pointer(path.data());
 
         if (pp.IsValid())
         {
             return pp.Erase(m_document);
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::erase(basePointerPath)] "
-                                                 "Invalid json path: [{}]",
-                                                 path));
-        }
+
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
     }
 }
 
 void Json::merge(rapidjson::Value& source, std::string_view path)
 {
-    auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
@@ -1035,31 +879,24 @@ void Json::merge(rapidjson::Value& source, std::string_view path)
                 else
                 {
                     throw std::runtime_error(
-                        "[Json::merge(basePointerPath)] "
-                        "Invalid json type, expected object or array");
+                        fmt::format("Engine JSON: \"{}\" method: JSON elements must be "
+                                    "either objects or arrays to be merged.",
+                                    __func__));
                 }
-            }
-            else
-            {
-                throw std::runtime_error("[Json::merge(basePointerPath)] "
-                                         "Cannot merge json objects of different types"
 
-                );
+                return;
             }
+
+            throw std::runtime_error(
+                fmt::format("Engine JSON: \"{}\" method: JSON objects of "
+                            "different types cannot be merged.",
+                            __func__));
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::merge(basePointerPath)] "
-                                                 "Field not found: [{}]",
-                                                 path));
-        }
+
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::merge(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 void Json::merge(Json& other, std::string_view path)
@@ -1069,7 +906,7 @@ void Json::merge(Json& other, std::string_view path)
 
 void Json::merge(std::string_view source, std::string_view path)
 {
-    auto pp = rapidjson::Pointer(source.data());
+    const auto pp = rapidjson::Pointer(source.data());
 
     if (pp.IsValid())
     {
@@ -1078,44 +915,31 @@ void Json::merge(std::string_view source, std::string_view path)
         {
             merge(*srcValue, path);
             erase(source);
+            return;
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::merge(basePointerPath)] "
-                                                 "Field not found: [{}]",
-                                                 source));
-        }
+
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::merge(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             source));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 std::optional<Json> Json::getJson(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    std::optional<Json> retval {std::nullopt};
+    const auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
         auto* val = pp.Get(m_document);
         if (val)
         {
-            return Json(*val);
+            retval = Json(*val);
         }
-        else
-        {
-            return std::nullopt;
-        }
+        return retval;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::getJson(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
 }
 
 std::optional<base::Error> Json::validate(const Json& schema) const
@@ -1129,14 +953,14 @@ std::optional<base::Error> Json::validate(const Json& schema) const
         validator.GetInvalidSchemaPointer().StringifyUriFragment(sb);
         rapidjson::StringBuffer sb2;
         validator.GetInvalidDocumentPointer().StringifyUriFragment(sb2);
-        return base::Error {fmt::format("Invalid JSON schema: [{}], [{}]",
-                                        std::string {sb.GetString()},
-                                        std::string {sb2.GetString()})};
+        return base::Error {
+            fmt::format("Engine JSON: \"{}\" method: Invalid JSON schema: [{}], [{}]",
+                        __func__,
+                        std::string {sb.GetString()},
+                        std::string {sb2.GetString()})};
     }
-    else
-    {
-        return std::nullopt;
-    }
+
+    return std::nullopt;
 }
 
 std::optional<base::Error> Json::checkDuplicateKeys() const
@@ -1150,8 +974,7 @@ std::optional<base::Error> Json::checkDuplicateKeys() const
     // contains duplicated members.
 
     auto validateDuplicatedKeys = [](const rapidjson::Value& value,
-                                     auto& recurRef) -> void
-    {
+                                     auto& recurRef) -> void {
         if (value.IsObject())
         {
             for (auto it = value.MemberBegin(); it != value.MemberEnd(); ++it)
@@ -1159,9 +982,9 @@ std::optional<base::Error> Json::checkDuplicateKeys() const
                 if (value[it->name.GetString()] != value[it->name.GetString()])
                 {
                     throw std::runtime_error(
-                        fmt::format("[Json(jsonString)] Unable to build json "
-                                    "document because: Duplicated key [{}], or duplicate "
-                                    "key inside object [{}]",
+                        fmt::format("Engine JSON: \"{}\" method: Unable to build json "
+                                    "document because there is a duplicated key \"{}\", "
+                                    "or a duplicated key inside object \"{}\".",
                                     it->name.GetString(),
                                     it->name.GetString()));
                 }
@@ -1177,7 +1000,8 @@ std::optional<base::Error> Json::checkDuplicateKeys() const
     }
     catch (const std::exception& e)
     {
-        return base::Error {e.what()};
+        return base::Error {
+            fmt::format("Engine JSON: \"{}\" method: {}", __func__, e.what())};
     }
 
     return std::nullopt;
