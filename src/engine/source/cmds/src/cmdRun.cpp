@@ -116,8 +116,6 @@ void run(const std::string& kvdbPath,
         api::catalog::cmds::registerAllCmds(catalog, server->getRegistry());
         WAZUH_LOG_INFO("Catalog initialized");
 
-        // server = std::make_shared<engineserver::EngineServer>(
-        //     std::vector<std::string> {"api:"+apiEndpoint});
         base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
         auto hlpParsers = store->get(hlpConfigFileName);
         if (std::holds_alternative<base::Error>(hlpParsers))
