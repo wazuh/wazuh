@@ -2299,10 +2299,14 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             yield event
 
     def load_information_from_file(self, log_key):
-        if log_key.endswith('jsonl.gz'):
+        if log_key.endswith('.jsonl.gz'):
             with self.decompress_file(log_key=log_key) as f:
                 json_list = list(f)
-                return [dict(x, source=x['service']['serviceName']) for json_item in json_list if (x := json.loads(json_item))]
+                result = []
+                for json_item in json_list:
+                    x = json.loads(json_item)
+                    result.append(dict(x, source=x['service']['serviceName']))
+                return result
         else:
             return AWSCustomBucket.load_information_from_file(self, log_key)
 
