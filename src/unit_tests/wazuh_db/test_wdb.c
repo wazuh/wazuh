@@ -33,7 +33,7 @@
 int wdb_execute_non_select_query(sqlite3 *db, const char *query);
 int wdb_select_from_temp_table(sqlite3 *db);
 int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value);
-int wdb_update_last_vacuum_data(wdb_t* wdb, int last_vacuum_time, int last_vacuum_value);
+int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const char *last_vacuum_value);
 
 extern wdb_t * db_pool_begin;
 
@@ -91,6 +91,18 @@ int  wazuh_db_config_teardown() {
     wdb_free_conf();
 
     return OS_SUCCESS;
+}
+
+int setup_wdb_stmt_mode(void **state) {
+    stmt_mode = 1;
+
+    return 0;
+}
+
+int teardown_wdb_stmt_mode(void **state) {
+    stmt_mode = 0;
+
+    return 0;
 }
 
 /* Tests wdb_open_global */
@@ -1310,7 +1322,7 @@ void test_wdb_get_db_state_success_100(void **state) {
     os_free(wdb);
 }
 
-void test_wdb_get_last_vacuum_data_prepare_error(void **state) {
+void test_wdb_get_last_vacuum_data_exec_error(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
     int last_vacuum_time;
@@ -1319,27 +1331,7 @@ void test_wdb_get_last_vacuum_data_prepare_error(void **state) {
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "sqlite3_prepare_v2(): ERROR MESSAGE");
-
-    assert_int_equal(-1, wdb_get_last_vacuum_data(wdb, &last_vacuum_time, &last_vacuum_value));
-
-    os_free(wdb->db);
-    os_free(wdb);
-}
-
-void test_wdb_get_last_vacuum_data_step_error(void **state) {
-    wdb_t *wdb = calloc(1, sizeof(wdb_t));
-    wdb->db = calloc(1, sizeof(sqlite3 *));
-    int last_vacuum_time;
-    int last_vacuum_value;
-
-    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    expect_string(__wrap__mdebug2, formatted_msg, "SQL: SELECT key, value FROM metadata WHERE key in ('last_vacuum_time', 'last_vacuum_value');");
 
     assert_int_equal(-1, wdb_get_last_vacuum_data(wdb, &last_vacuum_time, &last_vacuum_value));
 
@@ -1355,13 +1347,35 @@ void test_wdb_get_last_vacuum_data_ok(void **state) {
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 1655555); // last_vacuum_time
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 85); // last_vacuum_value
+    expect_sqlite3_step_call(SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 2);
+    expect_value(__wrap_sqlite3_column_type, i, 0);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 0);
+    will_return(__wrap_sqlite3_column_name, "key");
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "last_vacuum_time");
+    expect_value(__wrap_sqlite3_column_type, i, 1);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 1);
+    will_return(__wrap_sqlite3_column_name, "value");
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "1655555");
+    expect_sqlite3_step_call(SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 2);
+    expect_value(__wrap_sqlite3_column_type, i, 0);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 0);
+    will_return(__wrap_sqlite3_column_name, "key");
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "last_vacuum_value");
+    expect_value(__wrap_sqlite3_column_type, i, 1);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 1);
+    will_return(__wrap_sqlite3_column_name, "value");
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "85");
+    expect_sqlite3_step_call(SQLITE_DONE);
 
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
@@ -1376,8 +1390,8 @@ void test_wdb_get_last_vacuum_data_ok(void **state) {
 void test_wdb_update_last_vacuum_data_prepare_error(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
-    int last_vacuum_time = 166555;
-    int last_vacuum_value = 85;
+    const char *last_vacuum_time = "1655555";
+    const char *last_vacuum_value = "85";
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
@@ -1392,16 +1406,16 @@ void test_wdb_update_last_vacuum_data_prepare_error(void **state) {
 void test_wdb_update_last_vacuum_data_step_error(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
-    int last_vacuum_time = 166555;
-    int last_vacuum_value = 85;
+    const char *last_vacuum_time = "1655555";
+    const char *last_vacuum_value = "85";
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, last_vacuum_time);
-    expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, last_vacuum_value);
-    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, last_vacuum_time);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, last_vacuum_value);
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -1419,16 +1433,16 @@ void test_wdb_update_last_vacuum_data_step_error(void **state) {
 void test_wdb_update_last_vacuum_data_ok_done(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
-    int last_vacuum_time = 166555;
-    int last_vacuum_value = 85;
+    const char *last_vacuum_time = "1655555";
+    const char *last_vacuum_value = "85";
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, last_vacuum_time);
-    expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, last_vacuum_value);
-    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, last_vacuum_time);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, last_vacuum_value);
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1444,16 +1458,16 @@ void test_wdb_update_last_vacuum_data_ok_done(void **state) {
 void test_wdb_update_last_vacuum_data_ok_constraint(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
-    int last_vacuum_time = 166555;
-    int last_vacuum_value = 85;
+    const char *last_vacuum_time = "1655555";
+    const char *last_vacuum_value = "85";
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, last_vacuum_time);
-    expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, last_vacuum_value);
-    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, last_vacuum_time);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, last_vacuum_value);
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_CONSTRAINT);
@@ -1528,60 +1542,6 @@ void test_wdb_check_fragmentation_get_state_error(void **state)
     os_free(db_pool_begin);
 }
 
-void test_wdb_check_fragmentation_tasks_db(void **state)
-{
-    os_calloc(1,sizeof(wdb_t),db_pool_begin);
-    os_strdup("tasks",db_pool_begin->id);
-    os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
-    db_pool_begin->stmt[0] = (sqlite3_stmt*)1;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "tasks");
-    will_return(__wrap_OSHash_Get, db_pool_begin);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    wdb_check_fragmentation();
-
-    os_free(db_pool_begin->id);
-    os_free(db_pool_begin->db);
-    os_free(db_pool_begin);
-}
-
-void test_wdb_check_fragmentation_mitre_db(void **state)
-{
-    os_calloc(1,sizeof(wdb_t),db_pool_begin);
-    os_strdup("mitre",db_pool_begin->id);
-    os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
-    db_pool_begin->stmt[0] = (sqlite3_stmt*)1;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "mitre");
-    will_return(__wrap_OSHash_Get, db_pool_begin);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    wdb_check_fragmentation();
-
-    os_free(db_pool_begin->id);
-    os_free(db_pool_begin->db);
-    os_free(db_pool_begin);
-}
-
 void test_wdb_check_fragmentation_get_last_vacuum_data_error(void **state)
 {
     os_calloc(1,sizeof(wdb_t),db_pool_begin);
@@ -1623,6 +1583,7 @@ void test_wdb_check_fragmentation_get_last_vacuum_data_error(void **state)
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "sqlite3_prepare_v2(): ERROR MESSAGE");
+    expect_string(__wrap__mdebug2, formatted_msg, "SQL: SELECT key, value FROM metadata WHERE key in ('last_vacuum_time', 'last_vacuum_value');");
 
     expect_string(__wrap__merror, formatted_msg, "Couldn't get last vacuum info for the database '000'");
 
@@ -1677,12 +1638,35 @@ void test_wdb_check_fragmentation_commit_error(void **state)
 
     // wdb_get_last_vacuum_data
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_time
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_value
+    expect_sqlite3_step_call(SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 2);
+    expect_value(__wrap_sqlite3_column_type, i, 0);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 0);
+    will_return(__wrap_sqlite3_column_name, "key");
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "last_vacuum_time");
+    expect_value(__wrap_sqlite3_column_type, i, 1);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 1);
+    will_return(__wrap_sqlite3_column_name, "value");
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "1655555");
+    expect_sqlite3_step_call(SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 2);
+    expect_value(__wrap_sqlite3_column_type, i, 0);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 0);
+    will_return(__wrap_sqlite3_column_name, "key");
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "last_vacuum_value");
+    expect_value(__wrap_sqlite3_column_type, i, 1);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 1);
+    will_return(__wrap_sqlite3_column_name, "value");
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "85");
+    expect_sqlite3_step_call(SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     // wdb_commit2
@@ -1742,12 +1726,35 @@ void test_wdb_check_fragmentation_vacuum_error(void **state)
 
     // wdb_get_last_vacuum_data
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_time
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_value
+    expect_sqlite3_step_call(SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 2);
+    expect_value(__wrap_sqlite3_column_type, i, 0);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 0);
+    will_return(__wrap_sqlite3_column_name, "key");
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "last_vacuum_time");
+    expect_value(__wrap_sqlite3_column_type, i, 1);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 1);
+    will_return(__wrap_sqlite3_column_name, "value");
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "1655555");
+    expect_sqlite3_step_call(SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 2);
+    expect_value(__wrap_sqlite3_column_type, i, 0);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 0);
+    will_return(__wrap_sqlite3_column_name, "key");
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "last_vacuum_value");
+    expect_value(__wrap_sqlite3_column_type, i, 1);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 1);
+    will_return(__wrap_sqlite3_column_name, "value");
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "85");
+    expect_sqlite3_step_call(SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     // wdb_vacuum
@@ -1807,12 +1814,35 @@ void test_wdb_check_fragmentation_get_fragmentation_after_vacuum_error(void **st
 
     // wdb_get_last_vacuum_data
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_time
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_value
+    expect_sqlite3_step_call(SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 2);
+    expect_value(__wrap_sqlite3_column_type, i, 0);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 0);
+    will_return(__wrap_sqlite3_column_name, "key");
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "last_vacuum_time");
+    expect_value(__wrap_sqlite3_column_type, i, 1);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 1);
+    will_return(__wrap_sqlite3_column_name, "value");
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "1655555");
+    expect_sqlite3_step_call(SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 2);
+    expect_value(__wrap_sqlite3_column_type, i, 0);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 0);
+    will_return(__wrap_sqlite3_column_name, "key");
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "last_vacuum_value");
+    expect_value(__wrap_sqlite3_column_type, i, 1);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 1);
+    will_return(__wrap_sqlite3_column_name, "value");
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "85");
+    expect_sqlite3_step_call(SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     // wdb_vacuum
@@ -1886,12 +1916,35 @@ void test_wdb_check_fragmentation_update_last_vacuum_data_error(void **state)
 
     // wdb_get_last_vacuum_data
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_time
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_value
+    expect_sqlite3_step_call(SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 2);
+    expect_value(__wrap_sqlite3_column_type, i, 0);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 0);
+    will_return(__wrap_sqlite3_column_name, "key");
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "last_vacuum_time");
+    expect_value(__wrap_sqlite3_column_type, i, 1);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 1);
+    will_return(__wrap_sqlite3_column_name, "value");
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "1655555");
+    expect_sqlite3_step_call(SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 2);
+    expect_value(__wrap_sqlite3_column_type, i, 0);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 0);
+    will_return(__wrap_sqlite3_column_name, "key");
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "last_vacuum_value");
+    expect_value(__wrap_sqlite3_column_type, i, 1);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 1);
+    will_return(__wrap_sqlite3_column_name, "value");
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "85");
+    expect_sqlite3_step_call(SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     // wdb_vacuum
@@ -1984,12 +2037,9 @@ void test_wdb_check_fragmentation_success_with_warning(void **state)
     // wdb_get_last_vacuum_data
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_time
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_value
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    expect_string(__wrap__mdebug2, formatted_msg, "No vacuum data in metadata table.");
 
     // wdb_vacuum
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
@@ -2025,11 +2075,11 @@ void test_wdb_check_fragmentation_success_with_warning(void **state)
 
     // wdb_update_last_vacuum_data
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 12);
-    expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, 100);
-    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "12");
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "100");
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
@@ -2087,12 +2137,9 @@ void test_wdb_check_fragmentation_success(void **state)
     // wdb_get_last_vacuum_data
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_time
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_value
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    expect_string(__wrap__mdebug2, formatted_msg, "No vacuum data in metadata table.");
 
     // wdb_vacuum
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
@@ -2128,11 +2175,11 @@ void test_wdb_check_fragmentation_success(void **state)
 
     // wdb_update_last_vacuum_data
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 12);
-    expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, 0);
-    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "12");
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "0");
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
@@ -2226,9 +2273,8 @@ int main() {
         cmocka_unit_test(test_wdb_get_db_state_success_0),
         cmocka_unit_test(test_wdb_get_db_state_success_100),
         // wdb_get_last_vacuum_data
-        cmocka_unit_test(test_wdb_get_last_vacuum_data_prepare_error),
-        cmocka_unit_test(test_wdb_get_last_vacuum_data_step_error),
-        cmocka_unit_test(test_wdb_get_last_vacuum_data_ok),
+        cmocka_unit_test(test_wdb_get_last_vacuum_data_exec_error),
+        cmocka_unit_test_setup_teardown(test_wdb_get_last_vacuum_data_ok, setup_wdb_stmt_mode, teardown_wdb_stmt_mode),
         // wdb_update_last_vacuum_data
         cmocka_unit_test(test_wdb_update_last_vacuum_data_prepare_error),
         cmocka_unit_test(test_wdb_update_last_vacuum_data_step_error),
@@ -2237,15 +2283,13 @@ int main() {
         // wdb_check_fragmentation
         cmocka_unit_test(test_wdb_check_fragmentation_node_null),
         cmocka_unit_test(test_wdb_check_fragmentation_get_state_error),
-        cmocka_unit_test(test_wdb_check_fragmentation_tasks_db),
-        cmocka_unit_test(test_wdb_check_fragmentation_mitre_db),
         cmocka_unit_test(test_wdb_check_fragmentation_get_last_vacuum_data_error),
-        cmocka_unit_test(test_wdb_check_fragmentation_commit_error),
-        cmocka_unit_test(test_wdb_check_fragmentation_vacuum_error),
-        cmocka_unit_test(test_wdb_check_fragmentation_get_fragmentation_after_vacuum_error),
-        cmocka_unit_test(test_wdb_check_fragmentation_update_last_vacuum_data_error),
-        cmocka_unit_test(test_wdb_check_fragmentation_success_with_warning),
-        cmocka_unit_test(test_wdb_check_fragmentation_success),
+        cmocka_unit_test_setup_teardown(test_wdb_check_fragmentation_commit_error, setup_wdb_stmt_mode, teardown_wdb_stmt_mode),
+        cmocka_unit_test_setup_teardown(test_wdb_check_fragmentation_vacuum_error, setup_wdb_stmt_mode, teardown_wdb_stmt_mode),
+        cmocka_unit_test_setup_teardown(test_wdb_check_fragmentation_get_fragmentation_after_vacuum_error, setup_wdb_stmt_mode, teardown_wdb_stmt_mode),
+        cmocka_unit_test_setup_teardown(test_wdb_check_fragmentation_update_last_vacuum_data_error, setup_wdb_stmt_mode, teardown_wdb_stmt_mode),
+        cmocka_unit_test_setup_teardown(test_wdb_check_fragmentation_success_with_warning, setup_wdb_stmt_mode, teardown_wdb_stmt_mode),
+        cmocka_unit_test_setup_teardown(test_wdb_check_fragmentation_success, setup_wdb_stmt_mode, teardown_wdb_stmt_mode),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
