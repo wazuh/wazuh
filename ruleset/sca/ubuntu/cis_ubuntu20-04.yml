@@ -2321,7 +2321,7 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2", "10.3"]
     condition: none
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:audit=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:audit=1'
 
   # 4.1.1.4 Ensure audit_backlog_limit is sufficient (Automated) - Not implemented
 
@@ -2388,7 +2388,7 @@ checks:
     title: "Ensure events that modify date and time information are collected."
     description: 'Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the adjtimex (tune kernel clock), settimeofday (Set time, using timeval and timezone structures) stime (using seconds since 1/1/1970) or clock_settime (allows for the setting of several internal clocks and timers) system calls have been executed and always write an audit record to the /var/log/audit.log file upon exit, tagging the records with the identifier "time-change" Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Unexpected changes in system date and/or time could be a sign of malicious activity on the system."
-    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-time-change.rules Add the following lines: -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time- change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-time-change.rules Add the following lines: -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time- change -a always,exit -F arch=b64 -S clock_settime -k time-change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change"
+    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-time-change.rules Add the following lines: -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-time-change.rules Add the following lines: -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change -a always,exit -F arch=b64 -S clock_settime -k time-change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change"
     compliance:
       - cis: ["4.1.3"]
       - cis_csc_v7: ["5.5"]
@@ -2426,6 +2426,7 @@ checks:
       - pci_dss_v3.2.1: ["10.2.5"]
     condition: all
     rules:
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/group && r:-p wa && r:-k identity'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity'
@@ -2441,7 +2442,7 @@ checks:
   # 4.1.5 Ensure events that modify the system's network environment are collected (Automated)
   - id: 19121
     title: "Ensure events that modify the system's network environment are collected."
-    description: "Record changes to network environment files or system calls. The below parameters monitor the sethostname (set the systems host name) or setdomainname (set the systems domainname) system calls, and write an audit event on system call exit. The other parameters monitor the /etc/issue and /etc/issue.net files (messages displayed pre- login), /etc/hosts (file containing host names and associated IP addresses) and /etc/network (directory containing network interface scripts and configurations) files. Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot."
+    description: "Record changes to network environment files or system calls. The below parameters monitor the sethostname (set the systems host name) or setdomainname (set the systems domainname) system calls, and write an audit event on system call exit. The other parameters monitor the /etc/issue and /etc/issue.net files (messages displayed pre-login), /etc/hosts (file containing host names and associated IP addresses) and /etc/network (directory containing network interface scripts and configurations) files. Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot."
     rationale: 'Monitoring sethostname and setdomainname will identify potential unauthorized changes to host and domainname of a system. The changing of these names could potentially break security parameters that are set based on those names. The /etc/hosts file is monitored for changes in the file that can indicate an unauthorized intruder is trying to change machine associations with IP addresses and trick users and processes into connecting to unintended machines. Monitoring /etc/issue and /etc/issue.net is important, as intruders could put disinformation into those files and trick users into providing information to the intruder. Monitoring /etc/network is important as it can show if network interfaces or scripts are being modified in a way that can lead to the machine becoming unavailable or compromised. All audit records will be tagged with the identifier "system-locale."'
     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-system-locale.rules Add the following lines: -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/network -p wa -k system-locale For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-system-locale.rules Add the following lines: -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/network -p wa -k system-locale"
     compliance:
@@ -2453,6 +2454,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5"]
     condition: all
     rules:
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S sethostname && r:-S setdomainname && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S sethostname && r:-S setdomainname && r:-k system-locale'
@@ -2482,6 +2484,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5"]
     condition: all
     rules:
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy'
@@ -2497,12 +2500,14 @@ checks:
     compliance:
       - cis: ["4.1.7"]
       - cis_csc_v7: ["4.9", "16.11", "16.13"]
-      - iso_27001-2013: ["A.9.4.2", "AC.2.010", "AC.3.019", "IA.3.086", "SI.5.223", "AC.4.032"]
-      - mitre_techniques: ["T1110", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1527", "T1176", "T1213", "T1038", "T1482", "T1114", "T1484", "T1161", "T1031", "T1528", "T1197", "T1538", "T1044", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1050", "T1163", "T1021", "T1489", "T1023", "T1537", "T1004"]
+      - cmmc_v2.0: ["AC.2.010", "AC.3.019", "IA.3.086", "SI.5.223", "AC.4.032"]
+      - iso_27001-2013: ["A.8.1.3", "A.9.4.2"]
+      - mitre_techniques: ["T1110", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1527", "T1176", "T1213", "T1038", "T1482", "T1114", "T1484", "T1161", "T1031", "T1528", "T1197", "T1538", "T1044", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1050", "T1163", "T1021", "T1023", "T1537", "T1004"]
       - nist_sp_800-53: ["AU-3"]
       - pci_dss_v3.2.1: ["8.1.8", "10.2.4", "10.2.5"]
     condition: all
     rules:
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/faillog && r:-p wa && r:-k logins'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins'
@@ -2520,12 +2525,14 @@ checks:
     compliance:
       - cis: ["4.1.8"]
       - cis_csc_v7: ["4.9", "16.11", "16.13"]
-      - iso_27001-2013: ["A.9.4.2", "AC.2.010", "AC.3.019", "IA.3.086", "SI.5.223", "AC.4.032"]
-      - mitre_techniques: ["T1110", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1527", "T1176", "T1213", "T1038", "T1482", "T1114", "T1484", "T1161", "T1031", "T1528", "T1197", "T1538", "T1044", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1050", "T1163", "T1021", "T1489", "T1023", "T1537", "T1004"]
+      - cmmc_v2.0: ["AC.2.010", "AC.3.019", "IA.3.086", "SI.5.223", "AC.4.032"]
+      - iso_27001-2013: ["A.8.1.3", "A.9.4.2"]
+      - mitre_techniques: ["T1110", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1527", "T1176", "T1213", "T1038", "T1482", "T1114", "T1484", "T1161", "T1031", "T1528", "T1197", "T1538", "T1044", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1050", "T1163", "T1021", "T1023", "T1537", "T1004"]
       - nist_sp_800-53: ["AU-3"]
       - pci_dss_v3.2.1: ["8.1.8", "10.2.4", "10.2.5"]
     condition: all
     rules:
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k logins'
@@ -2549,6 +2556,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5"]
     condition: all
     rules:
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
@@ -2556,8 +2564,8 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S chown && r:-S fchown && r:-S fchownat && r:-S lchown && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S setxattr && r:-S lsetxattr && r:-S fsetxattr && r:-S removexattr && r:-S lremovexattr && r:-S fremovexattr && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S setxattr && r:-S lsetxattr && r:-S fsetxattr && r:-S removexattr && r:-S lremovexattr && r:-S fremovexattr && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-F key=perm_mod"
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-F key=perm_mod"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
       - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:chown && r:fchown && r:fchownat && r:lchown && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
       - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chown && r:fchown && r:fchownat && r:lchown && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
       - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
@@ -2578,15 +2586,16 @@ checks:
       - pci_dss_v3.2.1: ["10.2.1", "11.5"]
     condition: all
     rules:
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
 
   # 4.1.11 Ensure use of privileged commands is collected (Automated) - Not implemented
 
@@ -2599,13 +2608,14 @@ checks:
     compliance:
       - cis: ["4.1.12"]
       - cis_csc_v7: ["5.1"]
-  - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
-  - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
-  - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
-  - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
-  - pci_dss_v3.2.1: ["2.2"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
@@ -2628,6 +2638,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
@@ -2649,6 +2660,7 @@ checks:
       - pci_dss_v3.2.1: ["10.2.5"]
     condition: all
     rules:
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d/ && r:-p wa && r:-k scope'
@@ -2670,6 +2682,7 @@ checks:
       - pci_dss_v3.2.1: ["10.2.4"]
     condition: all
     rules:
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:always,exit|exit,always && r:-F arch=b64 && r:-C euid!=uid && r:-F euid=0 && r:-S execve && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k actions'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:always,exit|exit,always && r:-F arch=b32 && r:-C euid!=uid && r:-F euid=0 && r:-S execve && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k actions'
@@ -2692,6 +2705,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules'
@@ -2767,7 +2781,7 @@ checks:
     title: "Ensure rsyslog is configured to send logs to a remote log host."
     description: "The rsyslog utility supports the ability to send logs it gathers to a remote log host running syslogd(8) or to receive messages from remote hosts, reducing administrative overhead."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system Note: Ensure that the selection of logfiles being sent follows local site policy."
-    remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add one of the following lines: Newer syntax: <files to sent to the remote log server> action(type="omfwd" target="<FQDN or ip of loghost>" port="<port number>" protocol="tcp" action.resumeRetryCount="<number of re-tries>" queue.size=<number of messages to queue>") Example: *.* action(type="omfwd" target="192.168.2.100" port="514" protocol="tcp" action.resumeRetryCount="100" queue.type="LinkedList" queue.size="1000") Older syntax: *.* @@<FQDN or ip of loghost> Example: *.* @@192.168.2.100 Run the following command to reload the rsyslog configuration: # systemctl restart rsyslog'
+    remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add one of the following lines: Newer syntax: <files to sent to the remote log server> action(type="omfwd" target="<FQDN or ip of loghost>" port="<port number>" protocol="tcp" action.resumeRetryCount="<number of re-tries>" queue.type="LinkedList" queue.size=<number of messages to queue>") Example: *.* action(type="omfwd" target="192.168.2.100" port="514" protocol="tcp" action.resumeRetryCount="100" queue.type="LinkedList" queue.size="1000") Older syntax: *.* @@<FQDN or ip of loghost> Example: *.* @@192.168.2.100 Run the following command to reload the rsyslog configuration: # systemctl restart rsyslog'
     compliance:
       - cis: ["4.2.1.5"]
       - cis_csc_v7: ["6.6", "6.8"]
