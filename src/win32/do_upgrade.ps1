@@ -184,6 +184,7 @@ function restore
     # Saves ossec.log before remove fail update
     Copy-Item $Env:WAZUH_BACKUP_DIR\ossec.log $Env:WAZUH_BACKUP_DIR\ossec.log.save -force
     Copy-Item ossec.log $Env:WAZUH_BACKUP_DIR\ossec.log -force
+    Copy-Item ossec.conf .\upgrade\ossec.conf.old
 
     # Uninstall the latest version of the Wazuh-Agent.
     uninstall_wazuh
