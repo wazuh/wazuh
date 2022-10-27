@@ -1,310 +1,310 @@
 name: decoder/syscollector-dbsync-processes-inserted/0
 
-parents:
+sources:
   - decoder/syscollector-dbsync-base/0
 
 check:
-  - _json.type: +s_eq/dbsync_processes
-  - _json.operation: +s_eq/INSERTED
+  - ~json.type: +s_eq/dbsync_processes
+  - ~json.operation: +s_eq/INSERTED
 
 normalize:
   - check:
-      - _json.data.scan_time: +ef_not_exists
+      - ~json.data.scan_time: +ef_not_exists
     map:
-      - _json.data.scan_time: ""
+      - ~json.data.scan_time: ""
 
   - check:
-      - _json.data.pid: +ef_not_exists
+      - ~json.data.pid: +ef_not_exists
     map:
-      - _json.data.pid: ""
+      - ~json.data.pid: ""
 
   - check:
-      - _json.data.name: +s_ne//
+      - ~json.data.name: +s_ne//
     map:
-      - _json.data.name: +s_replace/|/$_escaped_pipe_char
-      - _json.data.name: +s_replace/NULL/_NULL_
+      - ~json.data.name: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.name: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.name: +s_eq//
+      - ~json.data.name: +s_eq//
     map:
-      - _json.data.name: "NULL"
+      - ~json.data.name: "NULL"
   - check:
-      - _json.data.name: +ef_not_exists
+      - ~json.data.name: +ef_not_exists
     map:
-      - _json.data.name: ""
+      - ~json.data.name: ""
 
   - check:
-      - _json.data.state: +s_ne//
+      - ~json.data.state: +s_ne//
     map:
-      - _json.data.state: +s_replace/|/$_escaped_pipe_char
-      - _json.data.state: +s_replace/NULL/_NULL_
+      - ~json.data.state: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.state: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.state: +s_eq//
+      - ~json.data.state: +s_eq//
     map:
-      - _json.data.state: "NULL"
+      - ~json.data.state: "NULL"
   - check:
-      - _json.data.state: +ef_not_exists
+      - ~json.data.state: +ef_not_exists
     map:
-      - _json.data.state: ""
+      - ~json.data.state: ""
 
   - check:
-      - _json.data.ppid: +ef_not_exists
+      - ~json.data.ppid: +ef_not_exists
     map:
-      - _json.data.ppid: ""
+      - ~json.data.ppid: ""
 
   - check:
-      - _json.data.utime: +ef_not_exists
+      - ~json.data.utime: +ef_not_exists
     map:
-      - _json.data.utime: ""
+      - ~json.data.utime: ""
 
   - check:
-      - _json.data.stime: +ef_not_exists
+      - ~json.data.stime: +ef_not_exists
     map:
-      - _json.data.stime: ""
+      - ~json.data.stime: ""
 
   - check:
-      - _json.data.cmd: +s_ne//
+      - ~json.data.cmd: +s_ne//
     map:
-      - _json.data.cmd: +s_replace/|/$_escaped_pipe_char
-      - _json.data.cmd: +s_replace/NULL/_NULL_
+      - ~json.data.cmd: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.cmd: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.cmd: +s_eq//
+      - ~json.data.cmd: +s_eq//
     map:
-      - _json.data.cmd: "NULL"
+      - ~json.data.cmd: "NULL"
   - check:
-      - _json.data.cmd: +ef_not_exists
+      - ~json.data.cmd: +ef_not_exists
     map:
-      - _json.data.cmd: ""
+      - ~json.data.cmd: ""
 
   - check:
-      - _json.data.argvs: +s_ne//
+      - ~json.data.argvs: +s_ne//
     map:
-      - _json.data.argvs: +s_replace/|/$_escaped_pipe_char
-      - _json.data.argvs: +s_replace/NULL/_NULL_
+      - ~json.data.argvs: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.argvs: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.argvs: +s_eq//
+      - ~json.data.argvs: +s_eq//
     map:
-      - _json.data.argvs: "NULL"
+      - ~json.data.argvs: "NULL"
   - check:
-      - _json.data.argvs: +ef_not_exists
+      - ~json.data.argvs: +ef_not_exists
     map:
-      - _json.data.argvs: ""
+      - ~json.data.argvs: ""
 
   - check:
-      - _json.data.euser: +s_ne//
+      - ~json.data.euser: +s_ne//
     map:
-      - _json.data.euser: +s_replace/|/$_escaped_pipe_char
-      - _json.data.euser: +s_replace/NULL/_NULL_
+      - ~json.data.euser: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.euser: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.euser: +s_eq//
+      - ~json.data.euser: +s_eq//
     map:
-      - _json.data.euser: "NULL"
+      - ~json.data.euser: "NULL"
   - check:
-      - _json.data.euser: +ef_not_exists
+      - ~json.data.euser: +ef_not_exists
     map:
-      - _json.data.euser: ""
+      - ~json.data.euser: ""
 
   - check:
-      - _json.data.ruser: +s_ne//
+      - ~json.data.ruser: +s_ne//
     map:
-      - _json.data.ruser: +s_replace/|/$_escaped_pipe_char
-      - _json.data.ruser: +s_replace/NULL/_NULL_
+      - ~json.data.ruser: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.ruser: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.ruser: +s_eq//
+      - ~json.data.ruser: +s_eq//
     map:
-      - _json.data.ruser: "NULL"
+      - ~json.data.ruser: "NULL"
   - check:
-      - _json.data.ruser: +ef_not_exists
+      - ~json.data.ruser: +ef_not_exists
     map:
-      - _json.data.ruser: ""
+      - ~json.data.ruser: ""
 
   - check:
-      - _json.data.suser: +s_ne//
+      - ~json.data.suser: +s_ne//
     map:
-      - _json.data.suser: +s_replace/|/$_escaped_pipe_char
-      - _json.data.suser: +s_replace/NULL/_NULL_
+      - ~json.data.suser: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.suser: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.suser: +s_eq//
+      - ~json.data.suser: +s_eq//
     map:
-      - _json.data.suser: "NULL"
+      - ~json.data.suser: "NULL"
   - check:
-      - _json.data.suser: +ef_not_exists
+      - ~json.data.suser: +ef_not_exists
     map:
-      - _json.data.suser: ""
+      - ~json.data.suser: ""
 
   - check:
-      - _json.data.egroup: +s_ne//
+      - ~json.data.egroup: +s_ne//
     map:
-      - _json.data.egroup: +s_replace/|/$_escaped_pipe_char
-      - _json.data.egroup: +s_replace/NULL/_NULL_
+      - ~json.data.egroup: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.egroup: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.egroup: +s_eq//
+      - ~json.data.egroup: +s_eq//
     map:
-      - _json.data.egroup: "NULL"
+      - ~json.data.egroup: "NULL"
   - check:
-      - _json.data.egroup: +ef_not_exists
+      - ~json.data.egroup: +ef_not_exists
     map:
-      - _json.data.egroup: ""
+      - ~json.data.egroup: ""
 
   - check:
-      - _json.data.rgroup: +s_ne//
+      - ~json.data.rgroup: +s_ne//
     map:
-      - _json.data.rgroup: +s_replace/|/$_escaped_pipe_char
-      - _json.data.rgroup: +s_replace/NULL/_NULL_
+      - ~json.data.rgroup: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.rgroup: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.rgroup: +s_eq//
+      - ~json.data.rgroup: +s_eq//
     map:
-      - _json.data.rgroup: "NULL"
+      - ~json.data.rgroup: "NULL"
   - check:
-      - _json.data.rgroup: +ef_not_exists
+      - ~json.data.rgroup: +ef_not_exists
     map:
-      - _json.data.rgroup: ""
+      - ~json.data.rgroup: ""
 
   - check:
-      - _json.data.sgroup: +s_ne//
+      - ~json.data.sgroup: +s_ne//
     map:
-      - _json.data.sgroup: +s_replace/|/$_escaped_pipe_char
-      - _json.data.sgroup: +s_replace/NULL/_NULL_
+      - ~json.data.sgroup: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.sgroup: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.sgroup: +s_eq//
+      - ~json.data.sgroup: +s_eq//
     map:
-      - _json.data.sgroup: "NULL"
+      - ~json.data.sgroup: "NULL"
   - check:
-      - _json.data.sgroup: +ef_not_exists
+      - ~json.data.sgroup: +ef_not_exists
     map:
-      - _json.data.sgroup: ""
+      - ~json.data.sgroup: ""
 
   - check:
-      - _json.data.fgroup: +s_ne//
+      - ~json.data.fgroup: +s_ne//
     map:
-      - _json.data.fgroup: +s_replace/|/$_escaped_pipe_char
-      - _json.data.fgroup: +s_replace/NULL/_NULL_
+      - ~json.data.fgroup: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.fgroup: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.fgroup: +s_eq//
+      - ~json.data.fgroup: +s_eq//
     map:
-      - _json.data.fgroup: "NULL"
+      - ~json.data.fgroup: "NULL"
   - check:
-      - _json.data.fgroup: +ef_not_exists
+      - ~json.data.fgroup: +ef_not_exists
     map:
-      - _json.data.fgroup: ""
+      - ~json.data.fgroup: ""
 
   - check:
-      - _json.data.priority: +ef_not_exists
+      - ~json.data.priority: +ef_not_exists
     map:
-      - _json.data.priority: ""
+      - ~json.data.priority: ""
 
   - check:
-      - _json.data.nice: +ef_not_exists
+      - ~json.data.nice: +ef_not_exists
     map:
-      - _json.data.nice: ""
+      - ~json.data.nice: ""
 
   - check:
-      - _json.data.size: +ef_not_exists
+      - ~json.data.size: +ef_not_exists
     map:
-      - _json.data.size: ""
+      - ~json.data.size: ""
 
   - check:
-      - _json.data.vm_size: +ef_not_exists
+      - ~json.data.vm_size: +ef_not_exists
     map:
-      - _json.data.vm_size: ""
+      - ~json.data.vm_size: ""
 
   - check:
-      - _json.data.resident: +ef_not_exists
+      - ~json.data.resident: +ef_not_exists
     map:
-      - _json.data.resident: ""
+      - ~json.data.resident: ""
 
   - check:
-      - _json.data.share: +ef_not_exists
+      - ~json.data.share: +ef_not_exists
     map:
-      - _json.data.share: ""
+      - ~json.data.share: ""
 
   - check:
-      - _json.data.start_time: +ef_not_exists
+      - ~json.data.start_time: +ef_not_exists
     map:
-      - _json.data.start_time: ""
+      - ~json.data.start_time: ""
 
   - check:
-      - _json.data.pgrp: +ef_not_exists
+      - ~json.data.pgrp: +ef_not_exists
     map:
-      - _json.data.pgrp: ""
+      - ~json.data.pgrp: ""
 
   - check:
-      - _json.data.session: +ef_not_exists
+      - ~json.data.session: +ef_not_exists
     map:
-      - _json.data.session: ""
+      - ~json.data.session: ""
 
   - check:
-      - _json.data.nlwp: +ef_not_exists
+      - ~json.data.nlwp: +ef_not_exists
     map:
-      - _json.data.nlwp: ""
+      - ~json.data.nlwp: ""
 
   - check:
-      - _json.data.tgid: +ef_not_exists
+      - ~json.data.tgid: +ef_not_exists
     map:
-      - _json.data.tgid: ""
+      - ~json.data.tgid: ""
 
   - check:
-      - _json.data.tty: +ef_not_exists
+      - ~json.data.tty: +ef_not_exists
     map:
-      - _json.data.tty: ""
+      - ~json.data.tty: ""
 
   - check:
-      - _json.data.processor: +ef_not_exists
+      - ~json.data.processor: +ef_not_exists
     map:
-      - _json.data.processor: ""
+      - ~json.data.processor: ""
 
   - check:
-      - _json.data.checksum: +ef_not_exists
+      - ~json.data.checksum: +ef_not_exists
     map:
-      - _json.data.checksum: ""
+      - ~json.data.checksum: ""
 
   - map:
-      - _query: +s_concat/agent /$agent.id/ dbsync processes /$_json.operation/ /$_json.data.scan_time/|/$_json.data.pid/|/$_json.data.name/|/$_json.data.state/|/$_json.data.ppid/|/$_json.data.utime/|/$_json.data.stime/|/$_json.data.cmd/|/$_json.data.argvs/|/$_json.data.euser/|/$_json.data.ruser/|/$_json.data.suser/|/$_json.data.egroup/|/$_json.data.rgroup/|/$_json.data.sgroup/|/$_json.data.fgroup/|/$_json.data.priority/|/$_json.data.nice/|/$_json.data.size/|/$_json.data.vm_size/|/$_json.data.resident/|/$_json.data.share/|/$_json.data.start_time/|/$_json.data.pgrp/|/$_json.data.session/|/$_json.data.nlwp/|/$_json.data.tgid/|/$_json.data.tty/|/$_json.data.processor/|/$_json.data.checksum/|
-      - _query_response: +wdb_update/$_query
+      - ~query: +s_concat/agent /$agent.id/ dbsync processes /$~json.operation/ /$~json.data.scan_time/|/$~json.data.pid/|/$~json.data.name/|/$~json.data.state/|/$~json.data.ppid/|/$~json.data.utime/|/$~json.data.stime/|/$~json.data.cmd/|/$~json.data.argvs/|/$~json.data.euser/|/$~json.data.ruser/|/$~json.data.suser/|/$~json.data.egroup/|/$~json.data.rgroup/|/$~json.data.sgroup/|/$~json.data.fgroup/|/$~json.data.priority/|/$~json.data.nice/|/$~json.data.size/|/$~json.data.vm_size/|/$~json.data.resident/|/$~json.data.share/|/$~json.data.start_time/|/$~json.data.pgrp/|/$~json.data.session/|/$~json.data.nlwp/|/$~json.data.tgid/|/$~json.data.tty/|/$~json.data.processor/|/$~json.data.checksum/|
+      - ~query_response: +wdb_update/$~query
 
   - check:
-      - _query_response: +t_is_true
+      - ~query_response: +t_is_true
     map:
-      - _json.data.board_serial: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.process.pid: $_json.data.pid
-      - _json.data.name: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.process.name: $_json.data.name
-      - _json.data.state: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.process.state: $_json.data.state
-      - _json.data.ppid: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.process.ppid: $_json.data.ppid
-      - wazuh.syscollector.process.utime: $_json.data.utime
-      - wazuh.syscollector.process.stime: $_json.data.stime
-      - wazuh.syscollector.process.cmd: $_json.data.cmd
-      - _json.data.argvs: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.process.args: $_json.data.argvs
-      - _json.data.euser: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.process.euser: $_json.data.euser
-      - _json.data.ruser: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.process.ruser: $_json.data.ruser
-      - _json.data.suser: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.process.suser: $_json.data.suser
-      - _json.data.egroup: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.process.egroup: $_json.data.egroup
-      - _json.data.rgroup: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.process.rgroup: $_json.data.rgroup
-      - _json.data.sgroup: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.process.sgroup: $_json.data.sgroup
-      - _json.data.fgroup: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.process.fgroup: $_json.data.fgroup
-      - wazuh.syscollector.process.priority: $_json.data.priority
-      - wazuh.syscollector.process.nice: $_json.data.nice
-      - wazuh.syscollector.process.size: $_json.data.size
-      - wazuh.syscollector.process.vm_size: $_json.data.vm_size
-      - wazuh.syscollector.process.resident: $_json.data.resident
-      - wazuh.syscollector.process.share: $_json.data.share
-      - wazuh.syscollector.process.start_time: $_json.data.start_time
-      - wazuh.syscollector.process.pgrp: $_json.data.pgrp
-      - wazuh.syscollector.process.session: $_json.data.session
-      - wazuh.syscollector.process.nlwp: $_json.data.nlwp
-      - wazuh.syscollector.process.tgid: $_json.data.tgid
-      - wazuh.syscollector.process.tty: $_json.data.tty
-      - wazuh.syscollector.process.processor: $_json.data.processor
-      - _query: +ef_delete
-      - _query_response: +ef_delete
-      - _json.data: +ef_delete
-      - _escaped_pipe_char: +ef_delete
+      - ~json.data.board_serial: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.process.pid: $~json.data.pid
+      - ~json.data.name: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.process.name: $~json.data.name
+      - ~json.data.state: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.process.state: $~json.data.state
+      - ~json.data.ppid: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.process.ppid: $~json.data.ppid
+      - wazuh.syscollector.process.utime: $~json.data.utime
+      - wazuh.syscollector.process.stime: $~json.data.stime
+      - wazuh.syscollector.process.cmd: $~json.data.cmd
+      - ~json.data.argvs: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.process.args: $~json.data.argvs
+      - ~json.data.euser: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.process.euser: $~json.data.euser
+      - ~json.data.ruser: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.process.ruser: $~json.data.ruser
+      - ~json.data.suser: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.process.suser: $~json.data.suser
+      - ~json.data.egroup: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.process.egroup: $~json.data.egroup
+      - ~json.data.rgroup: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.process.rgroup: $~json.data.rgroup
+      - ~json.data.sgroup: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.process.sgroup: $~json.data.sgroup
+      - ~json.data.fgroup: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.process.fgroup: $~json.data.fgroup
+      - wazuh.syscollector.process.priority: $~json.data.priority
+      - wazuh.syscollector.process.nice: $~json.data.nice
+      - wazuh.syscollector.process.size: $~json.data.size
+      - wazuh.syscollector.process.vm_size: $~json.data.vm_size
+      - wazuh.syscollector.process.resident: $~json.data.resident
+      - wazuh.syscollector.process.share: $~json.data.share
+      - wazuh.syscollector.process.start_time: $~json.data.start_time
+      - wazuh.syscollector.process.pgrp: $~json.data.pgrp
+      - wazuh.syscollector.process.session: $~json.data.session
+      - wazuh.syscollector.process.nlwp: $~json.data.nlwp
+      - wazuh.syscollector.process.tgid: $~json.data.tgid
+      - wazuh.syscollector.process.tty: $~json.data.tty
+      - wazuh.syscollector.process.processor: $~json.data.processor
+      - ~query: +ef_delete
+      - ~query_response: +ef_delete
+      - ~json.data: +ef_delete
+      - ~escaped_pipe_char: +ef_delete

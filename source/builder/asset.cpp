@@ -62,7 +62,7 @@ Asset::Asset(const json::Json& jsonDefinition, Asset::Type type)
     auto parentsPos = std::find_if(objectDefinition.begin(),
                                    objectDefinition.end(),
                                    [](auto tuple) {
-                                       return std::get<0>(tuple) == "parents"
+                                       return std::get<0>(tuple) == "sources"
                                               || std::get<0>(tuple) == "after";
                                    });
     if (objectDefinition.end() != parentsPos)

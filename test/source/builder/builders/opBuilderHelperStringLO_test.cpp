@@ -171,7 +171,7 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_ref_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"s_lo"},
-                                 std::vector<std::string> {"$/parentObjt_2/field2check"});
+                                 std::vector<std::string> {"$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {

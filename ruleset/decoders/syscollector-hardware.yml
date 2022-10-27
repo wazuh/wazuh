@@ -1,53 +1,53 @@
 name: decoder/syscollector-hardware/0
 
-parents:
+sources:
   - decoder/syscollector-base/0
 
 check:
-  - _json.type: +s_eq/hardware
-  - _json.inventory: +ef_exists
+  - ~json.type: +s_eq/hardware
+  - ~json.inventory: +ef_exists
 
 normalize:
   - check:
-      - _json.timestamp: +ef_not_exists
+      - ~json.timestamp: +ef_not_exists
     map:
-      - _json.timestamp: "NULL"
+      - ~json.timestamp: "NULL"
 
   - check:
-      - _json.inventory.board_serial: +ef_not_exists
+      - ~json.inventory.board_serial: +ef_not_exists
     map:
-      - _json.inventory.board_serial: "NULL"
+      - ~json.inventory.board_serial: "NULL"
 
   - check:
-      - _json.inventory.cpu_name: +ef_not_exists
+      - ~json.inventory.cpu_name: +ef_not_exists
     map:
-      - _json.inventory.cpu_name: "NULL"
+      - ~json.inventory.cpu_name: "NULL"
 
   - check:
-      - _json.inventory.cpu_cores: +ef_not_exists
+      - ~json.inventory.cpu_cores: +ef_not_exists
     map:
-      - _json.inventory.cpu_cores: "NULL"
+      - ~json.inventory.cpu_cores: "NULL"
 
   - check:
-      - _json.inventory.cpu_MHz: +ef_not_exists
+      - ~json.inventory.cpu_MHz: +ef_not_exists
     map:
-      - _json.inventory.cpu_MHz: "NULL"
+      - ~json.inventory.cpu_MHz: "NULL"
 
   - check:
-      - _json.inventory.ram_total: +ef_not_exists
+      - ~json.inventory.ram_total: +ef_not_exists
     map:
-      - _json.inventory.ram_total: "NULL"
+      - ~json.inventory.ram_total: "NULL"
 
   - check:
-      - _json.inventory.ram_free: +ef_not_exists
+      - ~json.inventory.ram_free: +ef_not_exists
     map:
-      - _json.inventory.ram_free: "NULL"
+      - ~json.inventory.ram_free: "NULL"
 
   - check:
-      - _json.inventory.ram_usage: +ef_not_exists
+      - ~json.inventory.ram_usage: +ef_not_exists
     map:
-      - _json.inventory.ram_usage: "NULL"
+      - ~json.inventory.ram_usage: "NULL"
 
   - map:
-      - _query: +s_concat/agent /$agent.id/ hardware save /$_json.ID/|/$_json.timestamp/|/$_json.inventory.board_serial/|/$_json.inventory.cpu_name/|/$_json.inventory.cpu_cores/|/$_json.inventory.cpu_MHz/|/$_json.inventory.ram_total/|/$_json.inventory.ram_free/|/$_json.inventory.ram_usage
-      - _query_response: +wdb_update/$_query
+      - ~query: +s_concat/agent /$agent.id/ hardware save /$~json.ID/|/$~json.timestamp/|/$~json.inventory.board_serial/|/$~json.inventory.cpu_name/|/$~json.inventory.cpu_cores/|/$~json.inventory.cpu_MHz/|/$~json.inventory.ram_total/|/$~json.inventory.ram_free/|/$~json.inventory.ram_usage
+      - ~query_response: +wdb_update/$~query

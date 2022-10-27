@@ -1,71 +1,71 @@
 name: decoder/syscollector-dbsync-network-address-inserted/0
 
-parents:
+sources:
   - decoder/syscollector-dbsync-base/0
 
 check:
-  - _json.type: +s_eq/dbsync_network_address
-  - _json.operation: +s_eq/INSERTED
+  - ~json.type: +s_eq/dbsync_network_address
+  - ~json.operation: +s_eq/INSERTED
 
 normalize:
   - check:
-      - _json.data.iface: +s_ne//
+      - ~json.data.iface: +s_ne//
     map:
-      - _json.data.iface: +s_replace/|/$_escaped_pipe_char
-      - _json.data.iface: +s_replace/NULL/_NULL_
+      - ~json.data.iface: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.iface: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.iface: +s_eq//
+      - ~json.data.iface: +s_eq//
     map:
-      - _json.data.iface: "NULL"
+      - ~json.data.iface: "NULL"
   - check:
-      - _json.data.iface: +ef_not_exists
+      - ~json.data.iface: +ef_not_exists
     map:
-      - _json.data.iface: ""
+      - ~json.data.iface: ""
 
   - check:
-      - _json.data.proto: +ef_not_exists
+      - ~json.data.proto: +ef_not_exists
     map:
-      - _json.data.proto: ""
+      - ~json.data.proto: ""
 
   - check:
-      - _json.data.address: +ef_not_exists
+      - ~json.data.address: +ef_not_exists
     map:
-      - _json.data.address: ""
+      - ~json.data.address: ""
 
   - check:
-      - _json.data.netmask: +ef_not_exists
+      - ~json.data.netmask: +ef_not_exists
     map:
-      - _json.data.netmask: ""
+      - ~json.data.netmask: ""
 
   - check:
-      - _json.data.broadcast: +ef_not_exists
+      - ~json.data.broadcast: +ef_not_exists
     map:
-      - _json.data.broadcast: ""
+      - ~json.data.broadcast: ""
 
   - check:
-      - _json.data.checksum: +ef_not_exists
+      - ~json.data.checksum: +ef_not_exists
     map:
-      - _json.data.checksum: ""
+      - ~json.data.checksum: ""
 
   - check:
-      - _json.data.item_id: +ef_not_exists
+      - ~json.data.item_id: +ef_not_exists
     map:
-      - _json.data.item_id: ""
+      - ~json.data.item_id: ""
 
   - map:
-      - _query: +s_concat/agent /$agent.id/ dbsync network_address /$_json.operation/ /$_json.data.iface/|/$_json.data.proto/|/$_json.data.address/|/$_json.data.netmask/|/$_json.data.broadcast/|/$_json.data.checksum/|/$_json.data.item_id/|
-      - _query_response: +wdb_update/$_query
+      - ~query: +s_concat/agent /$agent.id/ dbsync network_address /$~json.operation/ /$~json.data.iface/|/$~json.data.proto/|/$~json.data.address/|/$~json.data.netmask/|/$~json.data.broadcast/|/$~json.data.checksum/|/$~json.data.item_id/|
+      - ~query_response: +wdb_update/$~query
 
   - check:
-      - _query_response: +t_is_true
+      - ~query_response: +t_is_true
     map:
-      - _json.data.iface: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.netinfo.addr.iface: $_json.data.iface
-      - wazuh.syscollector.netinfo.addr.proto: $_json.data.proto
-      - wazuh.syscollector.netinfo.addr.address: $_json.data.address
-      - wazuh.syscollector.netinfo.addr.netmask: $_json.data.netmask
-      - wazuh.syscollector.netinfo.addr.broadcast: $_json.data.broadcast
-      - _query: +ef_delete
-      - _query_response: +ef_delete
-      - _json.data: +ef_delete
-      - _escaped_pipe_char: +ef_delete
+      - ~json.data.iface: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.netinfo.addr.iface: $~json.data.iface
+      - wazuh.syscollector.netinfo.addr.proto: $~json.data.proto
+      - wazuh.syscollector.netinfo.addr.address: $~json.data.address
+      - wazuh.syscollector.netinfo.addr.netmask: $~json.data.netmask
+      - wazuh.syscollector.netinfo.addr.broadcast: $~json.data.broadcast
+      - ~query: +ef_delete
+      - ~query_response: +ef_delete
+      - ~json.data: +ef_delete
+      - ~escaped_pipe_char: +ef_delete

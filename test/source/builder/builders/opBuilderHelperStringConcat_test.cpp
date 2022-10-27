@@ -448,8 +448,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"s_concat"},
-                                 std::vector<std::string> {"$/parentObjt_1/field2check",
-                                                           "$/parentObjt_3/field2check"});
+                                 std::vector<std::string> {"$parentObjt_1.field2check",
+                                                           "$parentObjt_3.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -484,8 +484,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_success_int)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"s_concat"},
-                                 std::vector<std::string> {"$/parentObjt_1/field2check",
-                                                           "$/parentObjt_3/field2check"});
+                                 std::vector<std::string> {"$parentObjt_1.field2check",
+                                                           "$parentObjt_3.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -520,10 +520,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_large_succes
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"s_concat"},
-                                 std::vector<std::string> {"$/parentObjt_1/field2check",
-                                                           "$/parentObjt_2/field2check",
-                                                           "$/parentObjt_4/field2check",
-                                                           "$/parentObjt_3/field2check"});
+                                 std::vector<std::string> {"$parentObjt_1.field2check",
+                                                           "$parentObjt_2.field2check",
+                                                           "$parentObjt_4.field2check",
+                                                           "$parentObjt_3.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -558,10 +558,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_large_succes
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"s_concat"},
-                                 std::vector<std::string> {"$/parentObjt_1/field2check",
-                                                           "$/parentObjt_2/field2check",
-                                                           "$/parentObjt_4/field2check",
-                                                           "$/parentObjt_3/field2check"});
+                                 std::vector<std::string> {"$parentObjt_1.field2check",
+                                                           "$parentObjt_2.field2check",
+                                                           "$parentObjt_4.field2check",
+                                                           "$parentObjt_3.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -597,7 +597,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_field_not_ex
     auto tuple =
         std::make_tuple(std::string {"/parentObjt_1/field2check"},
                         std::string {"s_concat"},
-                        std::vector<std::string> {"concat", "$parentObjt_2/field2check"});
+                        std::vector<std::string> {"concat", "$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -624,8 +624,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_field_succes
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"s_concat"},
-                                 std::vector<std::string> {"$parentObjt_1/field2check",
-                                                           "$parentObjt_3/field2check"});
+                                 std::vector<std::string> {"$parentObjt_1.field2check",
+                                                           "$parentObjt_3.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -661,7 +661,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_field_no
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"s_concat"},
                                  std::vector<std::string> {"concat",
-                                                           "$parentObjt_2/fieldcheck"});
+                                                           "$parentObjt_2.fieldcheck"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "field2check": 10,
@@ -682,13 +682,13 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_field_no
     ASSERT_FALSE(result);
 }
 
-// TODO $/parentObjt_3/field2check a $/parentObjt_3/fieldcheck
+// TODO $parentObjt_3.field2check a $/parentObjt_3/fieldcheck
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"s_concat"},
                                  std::vector<std::string> {"concat",
-                                                           "$/parentObjt_3/field2check"});
+                                                           "$parentObjt_3.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -724,7 +724,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_success_
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"s_concat"},
                                  std::vector<std::string> {"10",
-                                                           "$/parentObjt_3/field2check"});
+                                                           "$parentObjt_3.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -760,9 +760,9 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_large_su
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"s_concat"},
                                  std::vector<std::string> {"This",
-                                                           "$/parentObjt_2/field2check",
+                                                           "$parentObjt_2.field2check",
                                                            "a",
-                                                           "$/parentObjt_4/field2check"});
+                                                           "$parentObjt_4.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -798,9 +798,9 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_large_su
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"s_concat"},
                                  std::vector<std::string> {"This",
-                                                           "$/parentObjt_2/field2check",
+                                                           "$parentObjt_2.field2check",
                                                            "10",
-                                                           "$/parentObjt_4/field2check"});
+                                                           "$parentObjt_4.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
