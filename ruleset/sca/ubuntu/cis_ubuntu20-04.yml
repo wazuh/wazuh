@@ -3157,8 +3157,6 @@ checks:
     condition: any
     rules:
       - 'c:sshd -T -> r:\s*allowusers\s+\w+|allowgroups\s+\w+|denyusers\s+\w+|denygroups\s+\w+'
-      - 'f:/etc/ssh/sshd_config -> r:\s*allowusers\s+\w+|allowgroups\s+\w+|denyusers\s+\w+|denygroups\s+\w+'
-      - 'd:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:\s*allowusers\s+\w+|allowgroups\s+\w+|denyusers\s+\w+|denygroups\s+\w+'
 
   # 5.3.5 Ensure SSH LogLevel is appropriate (Automated)
   - id: 19155
@@ -3343,7 +3341,7 @@ checks:
     title: "Ensure only strong MAC algorithms are used."
     description: "This variable Specifies the available MAC (message authentication code) algorithms. The MAC algorithm is used in protocol version 2 for data integrity protection. Multiple algorithms must be comma-separated. Note: Some organizations may have stricter requirements for approved MACs. Ensure that MACs used are in compliance with site policy."
     rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information."
-    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf and add or modify the MACs line to contain a comma separated list of the site approved MACs Example:"
+    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf and add or modify the MACs line to contain a comma separated list of the site approved MACs Example: MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2- 512,hmac-sha2-256"
     compliance:
       - cis: ["5.3.14"]
       - cis_csc_v7: ["14.4", "16.5"]
@@ -3399,10 +3397,10 @@ checks:
     rules:
       - 'c:sshd -T -> n:^\s*clientaliveinterval\s*(\d+) compare <= 300 && n:clientaliveinterval\s*(\d+) compare != 0'
       - 'c:sshd -T -> n:^\s*clientalivecountmax\s*(\d+) compare <= 3 && n:^\s*clientalivecountmax\s*(\d+) compare != 0'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*clientaliveinterval\s*(\d+) compare > 300'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientaliveinterval\s*(\d+) compare > 300'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*clientalivecountmax\s*(\d+) compare > 3'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientalivecountmax\s*(\d+) compare > 3'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*clientaliveinterval\s*(\d+) compare > 300 && n:clientaliveinterval\s*(\d+) compare != 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientaliveinterval\s*(\d+) compare > 300 && n:^\s*clientaliveinterval\s*(\d+) compare != 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*clientalivecountmax\s*(\d+) compare > 3 && n:^\s*clientalivecountmax\s*(\d+) compare != 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientalivecountmax\s*(\d+) compare > 3 && n:^\s*clientalivecountmax\s*(\d+) compare != 0'
 
   # 5.3.17 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 19167
@@ -3421,8 +3419,8 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -> n:^\s*logingracetime\s*(\d+) compare <= 60 && n:^\s*logingracetime\s*(\d+) compare >= 1'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*(\d+) compare > 60'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*LoginGraceTime\s*(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*(\d+) compare > 60 &&  n:^\s*LoginGraceTime\s*(\d+) compare >= 1'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*LoginGraceTime\s*(\d+) compare > 60 && n:^\s*LoginGraceTime\s*(\d+) compare >= 1'
 
   # 5.3.18 Ensure SSH warning banner is configured (Automated)
   - id: 19168
@@ -3531,8 +3529,8 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -> n:^maxsessions\s+(\d+) compare <= 10 && n:^maxsessions\s+(\d+) compare >= 1'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare > 10'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare > 10'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare > 10 && n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare != 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare > 10 && n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare != 0'
 
   # 5.4 Configure PAM
 
