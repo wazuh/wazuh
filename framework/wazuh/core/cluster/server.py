@@ -141,7 +141,7 @@ class AbstractServerHandler(c_common.Handler):
         self.name = data.decode()
         if self.name in self.server.clients:
             self.name = ''
-            raise exception.WazuhClusterError(3028, extra_message=data)
+            raise exception.WazuhClusterError(3028, extra_message=data.decode())
         elif self.name == self.server.configuration['node_name']:
             raise exception.WazuhClusterError(3029)
         else:

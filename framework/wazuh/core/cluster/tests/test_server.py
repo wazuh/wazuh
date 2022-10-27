@@ -136,7 +136,7 @@ def test_AbstractServerHandler_hello(create_task_mock):
         abstract_server_handler.hello(b"elif_test")
 
     abstract_server_handler.server.clients["if_test"] = "testing"
-    with pytest.raises(WazuhClusterError, match=f".* 3028 .* b'if_test'"):
+    with pytest.raises(WazuhClusterError, match=f".* 3028 .* if_test"):
         abstract_server_handler.hello(b"if_test")
     assert abstract_server_handler.name == ""
 
