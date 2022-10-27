@@ -3665,7 +3665,7 @@ checks:
       - nist_sp_800-53: ["IA-5 (1)"]
     condition: all
     rules:
-      - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*(\d+) compare >= 7'
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
       - 'not f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+:\S*:\d*:\d*:\d*:(\d+) compare < 7'
 
   # 5.5.1.4 Ensure inactive password lock is 30 days or less (Automated)
@@ -3684,7 +3684,8 @@ checks:
     condition: none
     rules:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare >= 30'
-      - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 0'
+      - 'c:useradd -D -> n:^INACTIVE=(\d+) compare = 0'
+      - "c:useradd -D -> n:^INACTIVE=-1"
       - 'f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+:\S*:\d*:\d*:\d*:\d+:(\d+) compare > 30'
 
   # 5.5.1.5 Ensure all users last password change date is in the past (Automated) - Not implemented
