@@ -38,7 +38,6 @@ function is_wazuh_installed
 
 # Forces Wazuh-Agent to stop
 function stop_wazuh_agent
-function stop_wazuh_agent
 {
     param (
         $process_name
