@@ -251,12 +251,12 @@ def _read_option(section_name: str, opt: str) -> tuple:
             if list(opt):
                 for child in opt:
                     child_section, child_config = _read_option(child.tag.lower(), child)
-                    if not (section_name, opt_name, child_section) == ('vulnerability-detector', 'provider', 'os'):
+                    if (section_name, opt_name, child_section) != ('vulnerability-detector', 'provider', 'os'):
                         opt_value[child_section] = child_config
                     else:
-                        if opt_value.get(child_section):
+                        try:
                             opt_value[child_section].append(child_config)
-                        else:
+                        except KeyError:
                             opt_value[child_section] = [child_config]
 
             else:
