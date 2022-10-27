@@ -53,7 +53,7 @@
 <decoder name="wazuh-api-fields">
   <parent>wazuh-api</parent>
   <regex type="pcre2">"(\w+)\s(.+)"\swith\sparameters\s\{(.+)\}\sand</regex>
-  <order>method,uri,parameters</order>
+  <order>method,uri,api-parameters</order>
 </decoder>
 
 <decoder name="wazuh-api-fields">
