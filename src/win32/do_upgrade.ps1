@@ -44,7 +44,7 @@ function stop_wazuh_agent
     )
 
     Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
-    Start-Sleep 2
+    Start-Sleep 5
     $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
     $counter = 5
 
@@ -53,7 +53,7 @@ function stop_wazuh_agent
         write-output "$(Get-Date -format u) - Trying to stop Wazuh service again. Remaining attempts: $counter." >> .\upgrade\upgrade.log
         $counter--
         Get-Service -Name "Wazuh" | Stop-Service
-        Start-Sleep 2
+        Start-Sleep 5
         $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
     }
 
