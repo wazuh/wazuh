@@ -83,7 +83,24 @@ std::string Json::formatJsonPath(std::string_view dotPath)
     }
     else
     {
+        // Replace ~ with ~0
+        for (auto pos = pointerPath.find('~'); pos != std::string::npos;
+             pos = pointerPath.find('~', pos + 2))
+        {
+            pointerPath.replace(pos, 1, "~0");
+        }
+
+        // Replace / with ~1
+        for (auto pos = pointerPath.find('/'); pos != std::string::npos;
+             pos = pointerPath.find('/', pos + 2))
+        {
+            pointerPath.replace(pos, 1, "~1");
+        }
+
+        // Replace . with /
         std::replace(std::begin(pointerPath), std::end(pointerPath), '.', '/');
+
+        // Add / at the beginning
         if (pointerPath.front() != '/')
         {
             pointerPath.insert(0, "/");
@@ -904,13 +921,13 @@ void Json::appendString(std::string_view value, std::string_view path)
     }
 }
 
-void Json:: appendJson(const Json& value, std::string_view path)
+void Json::appendJson(const Json& value, std::string_view path)
 {
     auto pp = rapidjson::Pointer(path.data());
 
     if (pp.IsValid())
     {
-        rapidjson::Value rapidValue{value.m_document, m_document.GetAllocator()};
+        rapidjson::Value rapidValue {value.m_document, m_document.GetAllocator()};
         auto* val = pp.Get(m_document);
         if (val)
         {

@@ -112,7 +112,7 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperStringUP, "helper.s_up");
     // Map helpers: Time functions
     Registry::registerBuilder(builders::opBuilderHelperEpochTimeFromSystem,
-                              "helper.t_epoch");
+                              "helper. sys_epoch");
 
     // Special helpers
 

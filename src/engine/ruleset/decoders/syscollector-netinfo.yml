@@ -1,7 +1,7 @@
 name: decoder/syscollector-netinfo/0
 
-parents:
+sources:
   - decoder/syscollector-base/0
 
 check:
-  - _json.type: +s_starts/network
+  - ~json.type: +s_starts/network

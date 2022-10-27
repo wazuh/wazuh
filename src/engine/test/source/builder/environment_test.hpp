@@ -35,7 +35,7 @@ std::map<std::string, const char*> decoders =
         "decoder/decoder1_1/version",
         R"({
             "name": "decoder/decoder1_1/version",
-            "parents": ["decoder/decoder1/version"],
+            "sources": ["decoder/decoder1/version"],
             "check": [
                 {"child": 1}
             ],
@@ -52,7 +52,7 @@ std::map<std::string, const char*> decoders =
         "decoder/decoder1_2/version",
         R"({
             "name": "decoder/decoder1_2/version",
-            "parents": ["decoder/decoder1/version"],
+            "sources": ["decoder/decoder1/version"],
             "check": [
                 {"child": 2}
             ],
@@ -101,7 +101,7 @@ std::map<std::string, const char*> decoders =
         "decoder/decoder23_1/version",
         R"({
             "name": "decoder/decoder23_1/version",
-            "parents": ["decoder/decoder2/version", "decoder/decoder3/version"],
+            "sources": ["decoder/decoder2/version", "decoder/decoder3/version"],
             "check": [
                 {"child": 1}
             ],
@@ -138,7 +138,7 @@ std::map<std::string, const char*> rules =
         "rule/rule1_1/version",
         R"({
             "name": "rule/rule1_1/version",
-            "parents": ["rule/rule1/version"],
+            "sources": ["rule/rule1/version"],
             "check": [
                 {"child": 1}
             ],

@@ -13,7 +13,7 @@ ParserFn op {};
 ParseResult result {};
 bool retVal {false};
 
-const char* defaultLogparExpression {"<_kv/kv_map/:/ >"};
+const char* defaultLogparExpression {"<~kv/kv_map/:/ >"};
 
 TEST(parseKVMap, build)
 {
@@ -22,7 +22,7 @@ TEST(parseKVMap, build)
 
 TEST(parseKVMap, buildNoArgumentsError)
 {
-    const char* customLogparExpression {"<_kv/kv_map>"};
+    const char* customLogparExpression {"<~kv/kv_map>"};
 
     ASSERT_THROW(getParserOp(customLogparExpression), std::runtime_error);
 }
@@ -42,35 +42,35 @@ TEST(parseKVMap, buildNoParserError)
 {
     GTEST_SKIP();
 
-    const char* customLogparExpression {"<_kv//=/ >"};
+    const char* customLogparExpression {"<~kv//=/ >"};
 
     ASSERT_THROW(getParserOp(customLogparExpression), std::runtime_error);
 }
 
 TEST(parseKVMap, buildNoKVSeparatorError)
 {
-    const char* customLogparExpression {"<_kv/kv_map// >"};
+    const char* customLogparExpression {"<~kv/kv_map// >"};
 
     ASSERT_THROW(getParserOp(customLogparExpression), std::runtime_error);
 }
 
 TEST(parseKVMap, buildNoPairsSeparatorError)
 {
-    const char* customLogparExpression {"<_kv/kv_map/=/>"};
+    const char* customLogparExpression {"<~kv/kv_map/=/>"};
 
     ASSERT_THROW(getParserOp(customLogparExpression), std::runtime_error);
 }
 
 TEST(parseKVMap, buildSameSeparatorError)
 {
-    const char* customLogparExpression {"<_kv/kv_map/=/=>"};
+    const char* customLogparExpression {"<~kv/kv_map/=/=>"};
 
     ASSERT_THROW(getParserOp(customLogparExpression), std::runtime_error);
 }
 
 TEST(parseKVMap, buildNoEndString)
 {
-    const char* customLogparExpression {"<_kv/kv_map/=/ >"};
+    const char* customLogparExpression {"<~kv/kv_map/=/ >"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
@@ -79,7 +79,7 @@ TEST(parseKVMap, buildNoEndString)
 // Test: parsing maps objects
 TEST(parseKVMap, success_test)
 {
-    const char* logpar = "<_map/kv_map/=/ > <_dummy>";
+    const char* logpar = "<~map/kv_map/=/ > <~dummy>";
     const char* event = "key1=Value1 Key2=Value2 dummy";
 
     ParserFn parseOp = getParserOp(logpar);
@@ -89,13 +89,13 @@ TEST(parseKVMap, success_test)
     bool ret = parseOp(event, result);
 
     ASSERT_EQ("{\"key1\":\"Value1\",\"Key2\":\"Value2\"}",
-              std::any_cast<JsonString>(result["_map"]).jsonString);
-    ASSERT_EQ("dummy", std::any_cast<std::string>(result["_dummy"]));
+              std::any_cast<JsonString>(result["~map"]).jsonString);
+    ASSERT_EQ("dummy", std::any_cast<std::string>(result["~dummy"]));
 }
 
 TEST(parseKVMap, end_mark_test)
 {
-    const char* logpar = "<_map/kv_map/=/ >-<_dummy>";
+    const char* logpar = "<~map/kv_map/=/ >-<~dummy>";
     const char* event = "key1=Value1 Key2=Value2-dummy";
 
     ParserFn parseOp = getParserOp(logpar);
@@ -104,13 +104,13 @@ TEST(parseKVMap, end_mark_test)
 
     ASSERT_TRUE(static_cast<bool>(parseOp));
     ASSERT_EQ("{\"key1\":\"Value1\",\"Key2\":\"Value2\"}",
-              std::any_cast<JsonString>(result["_map"]).jsonString);
-    ASSERT_EQ("dummy", std::any_cast<std::string>(result["_dummy"]));
+              std::any_cast<JsonString>(result["~map"]).jsonString);
+    ASSERT_EQ("dummy", std::any_cast<std::string>(result["~dummy"]));
 }
 
 TEST(parseKVMap, incomplete_map_test)
 {
-    const char* logpar = "<_map/kv_map/=/ >";
+    const char* logpar = "<~map/kv_map/=/ >";
     const char* event1 = "key1=Value1 Key2=";
     const char* event2 = "key1=Value1 Key2";
     const char* event3 = "key1=Value1 =Value2";
@@ -132,7 +132,7 @@ TEST(parseKVMap, incomplete_map_test)
 // MAP: Values before literal
 TEST(parseKVMap, success_map_1_before_string)
 {
-    const char* logpar = "<_map/kv_map/=/ > hi!";
+    const char* logpar = "<~map/kv_map/=/ > hi!";
     const char* event = "key1=Value1 hi!";
 
     ParserFn parseOp = getParserOp(logpar);
@@ -143,12 +143,12 @@ TEST(parseKVMap, success_map_1_before_string)
 
     ASSERT_TRUE(static_cast<bool>(parseOp));
     ASSERT_STREQ(R"({"key1":"Value1"})",
-                 std::any_cast<JsonString>(result["_map"]).jsonString.c_str());
+                 std::any_cast<JsonString>(result["~map"]).jsonString.c_str());
 }
 
 TEST(parseKVMap, success_map_2_before_string)
 {
-    const char* logpar = "<_map/kv_map/=/ > hi!";
+    const char* logpar = "<~map/kv_map/=/ > hi!";
     const char* event = "key1=Value1 Key2=Value2 hi!";
 
     ParserFn parseOp = getParserOp(logpar);
@@ -159,12 +159,12 @@ TEST(parseKVMap, success_map_2_before_string)
 
     ASSERT_TRUE(static_cast<bool>(parseOp));
     ASSERT_STREQ(R"({"key1":"Value1","Key2":"Value2"})",
-                 std::any_cast<JsonString>(result["_map"]).jsonString.c_str());
+                 std::any_cast<JsonString>(result["~map"]).jsonString.c_str());
 }
 
 TEST(parseKVMap, success_map_multiCharacterArgs)
 {
-    const char* logpar = "<_map/kv_map/: / > hi!";
+    const char* logpar = "<~map/kv_map/: / > hi!";
     const char* event = "key1: Value1 Key2: Value2 hi!";
 
     ParserFn parseOp = getParserOp(logpar);
@@ -175,169 +175,169 @@ TEST(parseKVMap, success_map_multiCharacterArgs)
 
     ASSERT_TRUE(static_cast<bool>(parseOp));
     ASSERT_STREQ(R"({"key1":"Value1","Key2":"Value2"})",
-                 std::any_cast<JsonString>(result["_map"]).jsonString.c_str());
+                 std::any_cast<JsonString>(result["~map"]).jsonString.c_str());
 }
 
 TEST(parseKVMap, singleKVPairMatchTestKVSeparators)
 {
     const auto expectedResult {R"({"keyX":"valueX"})"};
 
-    string customLogparExpression {"<_kv/kv_map/:/,>"};
+    string customLogparExpression {"<~kv/kv_map/:/,>"};
     string event {R"(keyX:valueX)"};
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/=/,>";
+    customLogparExpression = "<~kv/kv_map/=/,>";
     event = R"(keyX=valueX)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/|/,>";
+    customLogparExpression = "<~kv/kv_map/|/,>";
     event = R"(keyX|valueX)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/-/,>";
+    customLogparExpression = "<~kv/kv_map/-/,>";
     event = R"(keyX-valueX)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/./,>";
+    customLogparExpression = "<~kv/kv_map/./,>";
     event = R"(keyX.valueX)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/,/.>";
+    customLogparExpression = "<~kv/kv_map/,/.>";
     event = R"(keyX,valueX)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/_/.>";
+    customLogparExpression = "<~kv/kv_map/_/.>";
     event = R"(keyX_valueX)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/#/.>";
+    customLogparExpression = "<~kv/kv_map/#/.>";
     event = R"(keyX#valueX)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/'/.>";
+    customLogparExpression = "<~kv/kv_map/'/.>";
     event = R"(keyX'valueX)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/^/.>";
+    customLogparExpression = "<~kv/kv_map/^/.>";
     event = R"(keyX^valueX)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/:=/.>";
+    customLogparExpression = "<~kv/kv_map/:=/.>";
     event = R"(keyX:=valueX)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/_:.-,.|/ >";
+    customLogparExpression = "<~kv/kv_map/_:.-,.|/ >";
     event = R"(keyX_:.-,.|valueX)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, singleKVPairMatchTestEndCharacter)
 {
     const auto expectedResult {R"({"keyX":"valueX"})"};
 
-    string customLogparExpression {"<_kv/kv_map/:/ >."};
+    string customLogparExpression {"<~kv/kv_map/:/ >."};
     string event {R"(keyX:valueX.)"};
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/:/ >,";
+    customLogparExpression = "<~kv/kv_map/:/ >,";
     event = R"(keyX:valueX,)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/:/ >|";
+    customLogparExpression = "<~kv/kv_map/:/ >|";
     event = R"(keyX:valueX|)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/:/ >-";
+    customLogparExpression = "<~kv/kv_map/:/ >-";
     event = R"(keyX:valueX-)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/:/ >!";
+    customLogparExpression = "<~kv/kv_map/:/ >!";
     event = R"(keyX:valueX!)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/:/ >#";
+    customLogparExpression = "<~kv/kv_map/:/ >#";
     event = R"(keyX:valueX#)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 
-    customLogparExpression = "<_kv/kv_map/:/ >;";
+    customLogparExpression = "<~kv/kv_map/:/ >;";
     event = R"(keyX:valueX;)";
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
     ASSERT_TRUE(static_cast<bool>(op));
     ASSERT_NO_THROW(retVal = op(event, result));
     ASSERT_TRUE(retVal);
-    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["_kv"]).jsonString.data());
+    ASSERT_STREQ(expectedResult, any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, singleKVPairMatchCaseI)
@@ -351,12 +351,12 @@ TEST(parseKVMap, singleKVPairMatchCaseI)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"keyX":"valueX"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, singleKVPairMatchCaseII)
 {
-    const char* customLogparExpression {R"("<_kv/kv_map/:/ >")"};
+    const char* customLogparExpression {R"("<~kv/kv_map/:/ >")"};
     const char* event {R"("keyX:valueX")"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -366,12 +366,12 @@ TEST(parseKVMap, singleKVPairMatchCaseII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"keyX":"valueX"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, singleKVPairMatchCaseIII)
 {
-    const char* customLogparExpression {R"(<_kv/kv_map/:/ >;)"};
+    const char* customLogparExpression {R"(<~kv/kv_map/:/ >;)"};
     const char* event {R"(keyX:valueX;)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -381,12 +381,12 @@ TEST(parseKVMap, singleKVPairMatchCaseIII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"keyX":"valueX"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, singleKVPairMatchCaseIV)
 {
-    const char* customLogparExpression {R"(<_kv/kv_map/:/ >;)"};
+    const char* customLogparExpression {R"(<~kv/kv_map/:/ >;)"};
     const char* event {R"(keyX:valueX;)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -396,12 +396,12 @@ TEST(parseKVMap, singleKVPairMatchCaseIV)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"keyX":"valueX"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, singleKVPairMatchCaseV)
 {
-    const char* customLogparExpression {R"(<_kv/kv_map/:/ >;)"};
+    const char* customLogparExpression {R"(<~kv/kv_map/:/ >;)"};
     const char* event {R"(keyX:"valueX;";)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -411,12 +411,12 @@ TEST(parseKVMap, singleKVPairMatchCaseV)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"keyX":"valueX;"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, singleKVPairMatchCaseVI)
 {
-    const char* customLogparExpression {R"(<_kv/kv_map/:/ >;)"};
+    const char* customLogparExpression {R"(<~kv/kv_map/:/ >;)"};
     const char* event {R"(keyX:"valueX;";)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -426,12 +426,12 @@ TEST(parseKVMap, singleKVPairMatchCaseVI)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"keyX":"valueX;"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, singleKVPairMatchCaseVII)
 {
-    const char* customLogparExpression {R"(<_kv/kv_map/: / >;)"};
+    const char* customLogparExpression {R"(<~kv/kv_map/: / >;)"};
     const char* event {R"(keyX: ": valueX;";)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -441,7 +441,7 @@ TEST(parseKVMap, singleKVPairMatchCaseVII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"keyX":": valueX;"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, twoKVPairsMatch)
@@ -455,7 +455,7 @@ TEST(parseKVMap, twoKVPairsMatch)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value1","key2":"value2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, threeKVPairsMatch)
@@ -469,12 +469,12 @@ TEST(parseKVMap, threeKVPairsMatch)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value1","key2":"value2","key3":"value3"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseI)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: /,>"};
+    const char* customLogparExpression {"<~kv/kv_map/: /,>"};
     const char* event {R"(keyX: valueX)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -484,12 +484,12 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseI)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"keyX":"valueX"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: / >"};
+    const char* customLogparExpression {"<~kv/kv_map/: / >"};
     const char* event {R"(keyX: valueX)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -499,12 +499,12 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"keyX":"valueX"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseIII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: / >"};
+    const char* customLogparExpression {"<~kv/kv_map/: / >"};
     const char* event {R"(keyX: valueX )"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -516,7 +516,7 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseIII)
 
 TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseIV)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: /,>;"};
+    const char* customLogparExpression {"<~kv/kv_map/: /,>;"};
     const char* event {R"(keyX: valueX;)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -526,12 +526,12 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseIV)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"keyX":"valueX"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseV)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: /,>;"};
+    const char* customLogparExpression {"<~kv/kv_map/: /,>;"};
     const char* event {R"(keyX: valueX)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -543,7 +543,7 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseV)
 
 TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseVI)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: /,>"};
+    const char* customLogparExpression {"<~kv/kv_map/: /,>"};
     const char* event {R"(keyX:valueX)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -555,7 +555,7 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseVI)
 
 TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseVII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: / >"};
+    const char* customLogparExpression {"<~kv/kv_map/: / >"};
     const char* event {R"(keyX: valueX )"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -567,7 +567,7 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseVII)
 
 TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseI)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: /,>"};
+    const char* customLogparExpression {"<~kv/kv_map/: /,>"};
     const char* event {R"(key1: value1,key2: value2)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -577,12 +577,12 @@ TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseI)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value1","key2":"value2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: / >"};
+    const char* customLogparExpression {"<~kv/kv_map/: / >"};
     const char* event {R"(key1: value1 key2: value2)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -592,12 +592,12 @@ TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value1","key2":"value2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseIII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: / >"};
+    const char* customLogparExpression {"<~kv/kv_map/: / >"};
     const char* event {R"(key1: value1 key2: value2 )"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -609,7 +609,7 @@ TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseIII)
 
 TEST(parseKVMap, twoKVPairMultipleCharKVSeparatorMatchCaseIV)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: /,>;"};
+    const char* customLogparExpression {"<~kv/kv_map/: /,>;"};
     const char* event {R"(key1: value1,key2: value2;)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -619,12 +619,12 @@ TEST(parseKVMap, twoKVPairMultipleCharKVSeparatorMatchCaseIV)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value1","key2":"value2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseV)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: /,>;"};
+    const char* customLogparExpression {"<~kv/kv_map/: /,>;"};
     const char* event {R"(key1: value1,key2: value2)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -636,7 +636,7 @@ TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseV)
 
 TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseVI)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: /,>"};
+    const char* customLogparExpression {"<~kv/kv_map/: /,>"};
     const char* event {R"(key1:value1,key2:value2)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -648,7 +648,7 @@ TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseVI)
 
 TEST(parseKVMap, twoKVPairMultipleCharKVSeparatorMatchCaseVII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: / >"};
+    const char* customLogparExpression {"<~kv/kv_map/: / >"};
     const char* event {R"(key1: value1 key2: value2 )"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -660,7 +660,7 @@ TEST(parseKVMap, twoKVPairMultipleCharKVSeparatorMatchCaseVII)
 
 TEST(parseKVMap, singleKVPairNoMatchGivenEndString)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >."};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >."};
     const char* event {R"(keyX:valueX)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -672,7 +672,7 @@ TEST(parseKVMap, singleKVPairNoMatchGivenEndString)
 
 TEST(parseKVMap, twoKVPairsNoMatchGivenEndString)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >."};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >."};
     const char* event {R"(key1:value1 key2:value2)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -684,7 +684,7 @@ TEST(parseKVMap, twoKVPairsNoMatchGivenEndString)
 
 TEST(parseKVMap, threeKVPairsNoMatchGivenEndString)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >."};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >."};
     const char* event {R"(key1:value1 key2:value2 key3:value3)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -696,7 +696,7 @@ TEST(parseKVMap, threeKVPairsNoMatchGivenEndString)
 
 TEST(parseKVMap, singleKVPairNoMatchGivenKVSeparator)
 {
-    const char* customLogparExpression {"<_kv/kv_map/=/ >"};
+    const char* customLogparExpression {"<~kv/kv_map/=/ >"};
     const char* event {R"(keyX:valueX)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -708,7 +708,7 @@ TEST(parseKVMap, singleKVPairNoMatchGivenKVSeparator)
 
 TEST(parseKVMap, twoKVPairsNoMatchGivenKVSeparator)
 {
-    const char* customLogparExpression {"<_kv/kv_map/=/ >"};
+    const char* customLogparExpression {"<~kv/kv_map/=/ >"};
     const char* event {R"(key1:value1 key2:value2)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -720,7 +720,7 @@ TEST(parseKVMap, twoKVPairsNoMatchGivenKVSeparator)
 
 TEST(parseKVMap, threeKVPairsNoMatchGivenKVSeparator)
 {
-    const char* customLogparExpression {"<_kv/kv_map/=/ >"};
+    const char* customLogparExpression {"<~kv/kv_map/=/ >"};
     const char* event {R"(key1:value1 key2:value2 key3:value3)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -732,7 +732,7 @@ TEST(parseKVMap, threeKVPairsNoMatchGivenKVSeparator)
 
 TEST(parseKVMap, noEndStringCaseI)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >."};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >."};
     const char* event {R"(keyX:valueX)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -744,7 +744,7 @@ TEST(parseKVMap, noEndStringCaseI)
 
 TEST(parseKVMap, noEndStringCaseII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >."};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >."};
     const char* event {R"(keyX: valueX)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -756,7 +756,7 @@ TEST(parseKVMap, noEndStringCaseII)
 
 TEST(parseKVMap, noEndStringCaseIII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >."};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >."};
     const char* event {R"(keyX: )"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -768,7 +768,7 @@ TEST(parseKVMap, noEndStringCaseIII)
 
 TEST(parseKVMap, noEndStringCaseIV)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >."};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >."};
     const char* event {R"(keyX:)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -780,7 +780,7 @@ TEST(parseKVMap, noEndStringCaseIV)
 
 TEST(parseKVMap, noEndStringCaseV)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >."};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >."};
     const char* event {R"(keyX)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -792,7 +792,7 @@ TEST(parseKVMap, noEndStringCaseV)
 
 TEST(parseKVMap, noEndStringCaseVI)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >."};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >."};
     const char* event {R"(: )"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -804,7 +804,7 @@ TEST(parseKVMap, noEndStringCaseVI)
 
 TEST(parseKVMap, noEndStringCaseVII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >."};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >."};
     const char* event {R"(:)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -816,7 +816,7 @@ TEST(parseKVMap, noEndStringCaseVII)
 
 TEST(parseKVMap, noEndStringCaseVIII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >."};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >."};
     const char* event {R"(: value)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -837,7 +837,7 @@ TEST(parseKVMap, noPairSeparatorFoundCaseI)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value1,key2:value2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, noPairSeparatorFoundCaseII)
@@ -851,7 +851,7 @@ TEST(parseKVMap, noPairSeparatorFoundCaseII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value1,key2:value2,key3:value3"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, noPairSeparatorFoundCaseIII)
@@ -865,7 +865,7 @@ TEST(parseKVMap, noPairSeparatorFoundCaseIII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value1,key2:value2,key3:value3"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseI)
@@ -879,12 +879,12 @@ TEST(parseKVMap, generalCaseI)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"keyX":"valueX;"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >;"};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >;"};
     const char* event {R"(keyX:valueX;)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -894,12 +894,12 @@ TEST(parseKVMap, generalCaseII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"keyX":"valueX"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseIII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: / >;"};
+    const char* customLogparExpression {"<~kv/kv_map/: / >;"};
     const char* event {R"(keyX:;)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -911,7 +911,7 @@ TEST(parseKVMap, generalCaseIII)
 
 TEST(parseKVMap, generalCaseIV)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/,>,"};
+    const char* customLogparExpression {"<~kv/kv_map/:/,>,"};
     const char* event {R"(key1:value1,key2:value2,)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -921,12 +921,12 @@ TEST(parseKVMap, generalCaseIV)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value1","key2":"value2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseV)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/,>,"};
+    const char* customLogparExpression {"<~kv/kv_map/:/,>,"};
     const char* event {R"(key1:value1,key2:value2,)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -936,12 +936,12 @@ TEST(parseKVMap, generalCaseV)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value1","key2":"value2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseVI)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/,>"};
+    const char* customLogparExpression {"<~kv/kv_map/:/,>"};
     const char* event {R"(key1:value:1)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -951,12 +951,12 @@ TEST(parseKVMap, generalCaseVI)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value:1"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseVII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/,>"};
+    const char* customLogparExpression {"<~kv/kv_map/:/,>"};
     const char* event {R"(key1::value1)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -966,12 +966,12 @@ TEST(parseKVMap, generalCaseVII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":":value1"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseVIII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/,>"};
+    const char* customLogparExpression {"<~kv/kv_map/:/,>"};
     const char* event {R"(key1:value:1,key2:value:2)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -981,12 +981,12 @@ TEST(parseKVMap, generalCaseVIII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value:1","key2":"value:2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseIX)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/,>"};
+    const char* customLogparExpression {"<~kv/kv_map/:/,>"};
     const char* event {R"(key1::value1,key2::value2)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -996,12 +996,12 @@ TEST(parseKVMap, generalCaseIX)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":":value1","key2":":value2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseX)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/,>;"};
+    const char* customLogparExpression {"<~kv/kv_map/:/,>;"};
     const char* event {R"(key1::value1,key2::value2;)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1011,12 +1011,12 @@ TEST(parseKVMap, generalCaseX)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":":value1","key2":":value2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseXI)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: / >"};
+    const char* customLogparExpression {"<~kv/kv_map/: / >"};
     const char* event {R"(key1: "value 1" key2: "value 2")"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1026,12 +1026,12 @@ TEST(parseKVMap, generalCaseXI)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value 1","key2":"value 2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseXII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: / >;"};
+    const char* customLogparExpression {"<~kv/kv_map/: / >;"};
     const char* event {R"(key1: "value 1" key2: "value 2";)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1041,12 +1041,12 @@ TEST(parseKVMap, generalCaseXII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value 1","key2":"value 2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseXIII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: /,>"};
+    const char* customLogparExpression {"<~kv/kv_map/: /,>"};
     const char* event {R"(key1: value 1,key2: value 2)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1056,12 +1056,12 @@ TEST(parseKVMap, generalCaseXIII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value 1","key2":"value 2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseXIV)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: /,>"};
+    const char* customLogparExpression {"<~kv/kv_map/: /,>"};
     const char* event {R"(key1: "value 1",key2: value 2)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1071,12 +1071,12 @@ TEST(parseKVMap, generalCaseXIV)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value 1","key2":"value 2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseXV)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: / >"};
+    const char* customLogparExpression {"<~kv/kv_map/: / >"};
     const char* event {R"(key1: "value 1" key2: "value 2")"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1086,12 +1086,12 @@ TEST(parseKVMap, generalCaseXV)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value 1","key2":"value 2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseXVI)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: /,>;"};
+    const char* customLogparExpression {"<~kv/kv_map/: /,>;"};
     const char* event {R"(key1: "value 1,key2: value2",key3: value3;)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1101,12 +1101,12 @@ TEST(parseKVMap, generalCaseXVI)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value 1,key2: value2","key3":"value3"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseXVII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: /, >;"};
+    const char* customLogparExpression {"<~kv/kv_map/: /, >;"};
     const char* event {R"(key1: "value 1,key2: value2", key3: value3;)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1116,12 +1116,12 @@ TEST(parseKVMap, generalCaseXVII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value 1,key2: value2","key3":"value3"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseXVIII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/=/ >"};
+    const char* customLogparExpression {"<~kv/kv_map/=/ >"};
     const char* event {
         R"(key1=value1 key2=value2 key3="key4=value4 key5=value5 key6=value6")"};
 
@@ -1133,12 +1133,12 @@ TEST(parseKVMap, generalCaseXVIII)
 
     ASSERT_STREQ(
         R"({"key1":"value1","key2":"value2","key3":"key4=value4 key5=value5 key6=value6"})",
-        any_cast<JsonString>(result["_kv"]).jsonString.data());
+        any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseXIX)
 {
-    const char* customLogparExpression {"<_kv/kv_map/=/ >"};
+    const char* customLogparExpression {"<~kv/kv_map/=/ >"};
     const char* event {R"(key1= key2=value2)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1148,12 +1148,12 @@ TEST(parseKVMap, generalCaseXIX)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":null,"key2":"value2"})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 TEST(parseKVMap, generalCaseXX)
 {
-    const char* customLogparExpression {"<_kv/kv_map/=/ >"};
+    const char* customLogparExpression {"<~kv/kv_map/=/ >"};
     const char* event {R"(key1= key2="" key3=)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1163,14 +1163,14 @@ TEST(parseKVMap, generalCaseXX)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":null,"key2":null,"key3":null})",
-                 any_cast<JsonString>(result["_kv"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv"]).jsonString.data());
 }
 
 /* -------------------- START OF MULTIPLE MAPPING CASES -------------------- */
 
 TEST(parseKVMap, multipleMappingCaseI)
 {
-    const char* customLogparExpression {"<_kv1/kv_map/:/ >|<_kv2/kv_map/:/ >"};
+    const char* customLogparExpression {"<~kv1/kv_map/:/ >|<~kv2/kv_map/:/ >"};
     const char* event {R"(key1:value1 key2:value2|key3:value3 key4:value4)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1180,15 +1180,15 @@ TEST(parseKVMap, multipleMappingCaseI)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value1","key2":"value2"})",
-                 any_cast<JsonString>(result["_kv1"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv1"]).jsonString.data());
 
     ASSERT_STREQ(R"({"key3":"value3","key4":"value4"})",
-                 any_cast<JsonString>(result["_kv2"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv2"]).jsonString.data());
 }
 
 TEST(parseKVMap, multipleMappingCaseII)
 {
-    const char* customLogparExpression {"<_kv1/kv_map/:/ >  <_kv2/kv_map/:/ >"};
+    const char* customLogparExpression {"<~kv1/kv_map/:/ >  <~kv2/kv_map/:/ >"};
     const char* event {R"(key1:value1 key2:value2  key3:value3 key4:value4)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1198,15 +1198,15 @@ TEST(parseKVMap, multipleMappingCaseII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value1","key2":"value2"})",
-                 any_cast<JsonString>(result["_kv1"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv1"]).jsonString.data());
 
     ASSERT_STREQ(R"({"key3":"value3","key4":"value4"})",
-                 any_cast<JsonString>(result["_kv2"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv2"]).jsonString.data());
 }
 
 TEST(parseKVMap, multipleMappingCaseIII)
 {
-    const char* customLogparExpression {"<_kv1/kv_map/: / > --- <_kv2/kv_map/=/, >"};
+    const char* customLogparExpression {"<~kv1/kv_map/: / > --- <~kv2/kv_map/=/, >"};
     const char* event {
         R"(key1: value=1 key2: "value, 2" --- key3=value 3, key4=value: 4)"};
 
@@ -1217,16 +1217,16 @@ TEST(parseKVMap, multipleMappingCaseIII)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value=1","key2":"value, 2"})",
-                 any_cast<JsonString>(result["_kv1"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv1"]).jsonString.data());
 
     ASSERT_STREQ(R"({"key3":"value 3","key4":"value: 4"})",
-                 any_cast<JsonString>(result["_kv2"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv2"]).jsonString.data());
 }
 
 TEST(parseKVMap, multipleMappingCaseIV)
 {
     const char* customLogparExpression {
-        "<_kv1/kv_map/:/,> <_kv2/kv_map/=/:>, <_kv3/kv_map/: / >"};
+        "<~kv1/kv_map/:/,> <~kv2/kv_map/=/:>, <~kv3/kv_map/: / >"};
     const char* event {
         R"(key1:value1,key2:value2 key3=value3:key4=value4, key5: value5 key6: value6)"};
 
@@ -1237,13 +1237,13 @@ TEST(parseKVMap, multipleMappingCaseIV)
     ASSERT_TRUE(retVal);
 
     ASSERT_STREQ(R"({"key1":"value1","key2":"value2"})",
-                 any_cast<JsonString>(result["_kv1"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv1"]).jsonString.data());
 
     ASSERT_STREQ(R"({"key3":"value3","key4":"value4"})",
-                 any_cast<JsonString>(result["_kv2"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv2"]).jsonString.data());
 
     ASSERT_STREQ(R"({"key5":"value5","key6":"value6"})",
-                 any_cast<JsonString>(result["_kv3"]).jsonString.data());
+                 any_cast<JsonString>(result["~kv3"]).jsonString.data());
 }
 
 /* --------------------- END OF MULTIPLE MAPPING CASES --------------------- */
@@ -1252,7 +1252,7 @@ TEST(parseKVMap, multipleMappingCaseIV)
 
 TEST(parseKVMap, nullKeyCaseI)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: / >;"};
+    const char* customLogparExpression {"<~kv/kv_map/: / >;"};
     const char* event {R"(: ;)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1264,7 +1264,7 @@ TEST(parseKVMap, nullKeyCaseI)
 
 TEST(parseKVMap, nullKeyCaseII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: / >;"};
+    const char* customLogparExpression {"<~kv/kv_map/: / >;"};
     const char* event {R"(: valueX;)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1276,7 +1276,7 @@ TEST(parseKVMap, nullKeyCaseII)
 
 TEST(parseKVMap, nullKeyCaseIII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/: / >"};
+    const char* customLogparExpression {"<~kv/kv_map/: / >"};
     const char* event {R"(: valueX)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1288,7 +1288,7 @@ TEST(parseKVMap, nullKeyCaseIII)
 
 TEST(parseKVMap, nullKeyCaseIV)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >"};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >"};
     const char* event {R"(:valueX)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1300,7 +1300,7 @@ TEST(parseKVMap, nullKeyCaseIV)
 
 TEST(parseKVMap, nullKeyCaseV)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/,>"};
+    const char* customLogparExpression {"<~kv/kv_map/:/,>"};
     const char* event {R"(key1:value1,:value2)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1312,7 +1312,7 @@ TEST(parseKVMap, nullKeyCaseV)
 
 TEST(parseKVMap, nullKeyCaseVI)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/,>"};
+    const char* customLogparExpression {"<~kv/kv_map/:/,>"};
     const char* event {R"(key1:value1,key2:value2,:value3)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1324,7 +1324,7 @@ TEST(parseKVMap, nullKeyCaseVI)
 
 TEST(parseKVMap, nullKeyCaseVII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/,>"};
+    const char* customLogparExpression {"<~kv/kv_map/:/,>"};
     const char* event {R"(key1:value1,key2:value2,value3)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1336,7 +1336,7 @@ TEST(parseKVMap, nullKeyCaseVII)
 
 TEST(parseKVMap, nullKeyCaseVIII)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/,>"};
+    const char* customLogparExpression {"<~kv/kv_map/:/,>"};
     const char* event {R"(key1:value1,key2:value2,:)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1348,7 +1348,7 @@ TEST(parseKVMap, nullKeyCaseVIII)
 
 TEST(parseKVMap, nullKeyCaseIX)
 {
-    const char* customLogparExpression {"<_kv/kv_map/:/ >"};
+    const char* customLogparExpression {"<~kv/kv_map/:/ >"};
     const char* event {R"(key1:value1 key2:value2 : )"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1360,7 +1360,7 @@ TEST(parseKVMap, nullKeyCaseIX)
 
 TEST(parseKVMap, nullKeyCaseX)
 {
-    const char* customLogparExpression {"<_kv1/kv_map/:/,> <_kv2/kv_map/:/,>"};
+    const char* customLogparExpression {"<~kv1/kv_map/:/,> <~kv2/kv_map/:/,>"};
     const char* event {R"(key1:value1 key2:value2,:)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));
@@ -1372,7 +1372,7 @@ TEST(parseKVMap, nullKeyCaseX)
 
 TEST(parseKVMap, nullKeyCaseXI)
 {
-    const char* customLogparExpression {"<_kv1/kv_map/:/,> <_kv2/kv_map/:/,>"};
+    const char* customLogparExpression {"<~kv1/kv_map/:/,> <~kv2/kv_map/:/,>"};
     const char* event {R"(key1:value1,:value2 key3:value3,key4:value4)"};
 
     ASSERT_NO_THROW(op = getParserOp(customLogparExpression));

@@ -381,7 +381,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_sum)
     auto tuple =
         std::make_tuple(std::string {"/parentObjt_1/field2check"},
                         std::string {"i_calc"},
-                        std::vector<std::string> {"sum", "$/parentObjt_2/field2check"});
+                        std::vector<std::string> {"sum", "$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -408,7 +408,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_sub)
     auto tuple =
         std::make_tuple(std::string {"/parentObjt_1/field2check"},
                         std::string {"i_calc"},
-                        std::vector<std::string> {"sub", "$/parentObjt_2/field2check"});
+                        std::vector<std::string> {"sub", "$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -435,7 +435,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_mul)
     auto tuple =
         std::make_tuple(std::string {"/parentObjt_1/field2check"},
                         std::string {"i_calc"},
-                        std::vector<std::string> {"mul", "$/parentObjt_2/field2check"});
+                        std::vector<std::string> {"mul", "$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -461,7 +461,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_division_by_zero)
     auto tuple =
         std::make_tuple(std::string {"/parentObjt_1/field2check"},
                         std::string {"i_calc"},
-                        std::vector<std::string> {"div", "$/parentObjt_2/field2check"});
+                        std::vector<std::string> {"div", "$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -486,7 +486,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_div)
     auto tuple =
         std::make_tuple(std::string {"/parentObjt_1/field2check"},
                         std::string {"i_calc"},
-                        std::vector<std::string> {"div", "$/parentObjt_2/field2check"});
+                        std::vector<std::string> {"div", "$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {

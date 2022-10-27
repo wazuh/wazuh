@@ -1,101 +1,101 @@
 name: decoder/syscollector-dbsync-hwinfo/0
 
-parents:
+sources:
   - decoder/syscollector-dbsync-base/0
 
 check:
-  - _json.type: +s_eq/dbsync_hwinfo
-  - _json.operation: +s_ne/INSERTED
+  - ~json.type: +s_eq/dbsync_hwinfo
+  - ~json.operation: +s_ne/INSERTED
 
 normalize:
   - check:
-      - _json.data.scan_time: +ef_not_exists
+      - ~json.data.scan_time: +ef_not_exists
     map:
-      - _json.data.scan_time: "NULL"
+      - ~json.data.scan_time: "NULL"
 
   - check:
-      - _json.data.board_serial: +s_ne//
+      - ~json.data.board_serial: +s_ne//
     map:
-      - _json.data.board_serial: +s_replace/|/$_escaped_pipe_char
-      - _json.data.board_serial: +s_replace/NULL/_NULL_
+      - ~json.data.board_serial: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.board_serial: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.board_serial: +s_eq//
+      - ~json.data.board_serial: +s_eq//
     map:
-      - _json.data.board_serial: "NULL"
+      - ~json.data.board_serial: "NULL"
   - check:
-      - _json.data.board_serial: +ef_not_exists
+      - ~json.data.board_serial: +ef_not_exists
     map:
-      - _json.data.board_serial: "NULL"
+      - ~json.data.board_serial: "NULL"
 
   - check:
-      - _json.data.cpu_name: +ef_not_exists
+      - ~json.data.cpu_name: +ef_not_exists
     map:
-      - _json.data.cpu_name: "NULL"
+      - ~json.data.cpu_name: "NULL"
 
   - check:
-      - _json.data.cpu_name: +s_ne//
+      - ~json.data.cpu_name: +s_ne//
     map:
-      - _json.data.cpu_name: +s_replace/|/$_escaped_pipe_char
-      - _json.data.cpu_name: +s_replace/NULL/_NULL_
+      - ~json.data.cpu_name: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.cpu_name: +s_replace/NULL/_NULL_
 
   - check:
-      - _json.data.cpu_name: +s_eq//
+      - ~json.data.cpu_name: +s_eq//
     map:
-      - _json.data.cpu_name: "NULL"
+      - ~json.data.cpu_name: "NULL"
 
   - check:
-      - _json.data.cpu_cores: +ef_not_exists
+      - ~json.data.cpu_cores: +ef_not_exists
     map:
-      - _json.data.cpu_cores: "NULL"
+      - ~json.data.cpu_cores: "NULL"
 
   - check:
-      - _json.data.cpu_mhz: +ef_not_exists
+      - ~json.data.cpu_mhz: +ef_not_exists
     map:
-      - _json.data.cpu_mhz: "NULL"
+      - ~json.data.cpu_mhz: "NULL"
 
   - check:
-      - _json.data.ram_total: +ef_not_exists
+      - ~json.data.ram_total: +ef_not_exists
     map:
-      - _json.data.ram_total: "NULL"
+      - ~json.data.ram_total: "NULL"
 
   - check:
-      - _json.data.ram_free: +ef_not_exists
+      - ~json.data.ram_free: +ef_not_exists
     map:
-      - _json.data.ram_free: "NULL"
+      - ~json.data.ram_free: "NULL"
 
   - check:
-      - _json.data.ram_usage: +ef_not_exists
+      - ~json.data.ram_usage: +ef_not_exists
     map:
-      - _json.data.ram_usage: "NULL"
+      - ~json.data.ram_usage: "NULL"
 
   - check:
-      - _json.data.checksum: +ef_not_exists
+      - ~json.data.checksum: +ef_not_exists
     map:
-      - _json.data.checksum: "NULL"
+      - ~json.data.checksum: "NULL"
 
   - map:
-      - _query_header: +s_concat/agent /$agent.id/ dbsync hwinfo /$_json.operation
-      - _query: +s_concat/$_query_header/ /$_json.data.scan_time/|/$_json.data.board_serial/|/$_json.data.cpu_name/|/$_json.data.cpu_cores/|/$_json.data.cpu_mhz/|/$_json.data.ram_total/|/$_json.data.ram_free/|/$_json.data.ram_usage/|/$_json.data.checksum/|
-      - _query: +s_replace/||/|NULL|
-      - _query_response: +wdb_query/$_query
+      - ~query_header: +s_concat/agent /$agent.id/ dbsync hwinfo /$~json.operation
+      - ~query: +s_concat/$~query_header/ /$~json.data.scan_time/|/$~json.data.board_serial/|/$~json.data.cpu_name/|/$~json.data.cpu_cores/|/$~json.data.cpu_mhz/|/$~json.data.ram_total/|/$~json.data.ram_free/|/$~json.data.ram_usage/|/$~json.data.checksum/|
+      - ~query: +s_replace/||/|NULL|
+      - ~query_response: +wdb_query/$~query
 
   - check:
-      - _query_response: +s_ne//
+      - ~query_response: +s_ne//
     map:
-      - _query_response_values: +r_ext/$_query_response/\|(.*)
-      - _array_of_field: +s_to_array/$_query_response_values/|
-      - _array_of_field/0: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.hardware.serial: $_array_of_field/0
-      - _array_of_field/1: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.hardware.cpu_name: $_array_of_field/1
-      - wazuh.syscollector.hardware.cpu_cores: $_array_of_field/2
-      - wazuh.syscollector.hardware.cpu_mhz" : $_array_of_field/3
-      - wazuh.syscollector.hardware.ram_total: $_array_of_field/4
-      - wazuh.syscollector.hardware.ram_free": $_array_of_field/5
-      - wazuh.syscollector.hardware.ram_usage: $_array_of_field/6
-      - _query: +ef_delete
-      - _query_response: +ef_delete
-      - _query_response_values: +ef_delete
-      - _array_of_field: +ef_delete
-      - _escaped_pipe_char: +ef_delete
-      - _json.data: +ef_delete
+      - ~query_response_values: +r_ext/$~query_response/\|(.*)
+      - ~array_of_field: +s_to_array/$~query_response_values/|
+      - ~array_of_field/0: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.hardware.serial: $~array_of_field/0
+      - ~array_of_field/1: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.hardware.cpu_name: $~array_of_field/1
+      - wazuh.syscollector.hardware.cpu_cores: $~array_of_field/2
+      - wazuh.syscollector.hardware.cpu_mhz" : $~array_of_field/3
+      - wazuh.syscollector.hardware.ram_total: $~array_of_field/4
+      - wazuh.syscollector.hardware.ram_free": $~array_of_field/5
+      - wazuh.syscollector.hardware.ram_usage: $~array_of_field/6
+      - ~query: +ef_delete
+      - ~query_response: +ef_delete
+      - ~query_response_values: +ef_delete
+      - ~array_of_field: +ef_delete
+      - ~escaped_pipe_char: +ef_delete
+      - ~json.data: +ef_delete

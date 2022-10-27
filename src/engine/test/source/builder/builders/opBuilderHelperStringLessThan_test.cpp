@@ -147,7 +147,7 @@ TEST(opBuilderHelperStringLessThan, Exec_less_than_multilevel_ref_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"s_lt"},
-                                 std::vector<std::string> {"$/parentObjt_2/field2check"});
+                                 std::vector<std::string> {"$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -172,7 +172,7 @@ TEST(opBuilderHelperStringLessThan, Exec_less_than_multilevel_ref_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"s_lt"},
-                                 std::vector<std::string> {"$/parentObjt_2/field2check"});
+                                 std::vector<std::string> {"$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {

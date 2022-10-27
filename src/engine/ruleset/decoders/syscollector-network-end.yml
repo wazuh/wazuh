@@ -1,13 +1,13 @@
 name: decoder/syscollector-network-end/0
 
-parents:
+sources:
   - decoder/syscollector-netinfo/0
 
 check:
-  - _json.iface: +ef_not_exists
-  - _json.type: +s_eq/network_end
+  - ~json.iface: +ef_not_exists
+  - ~json.type: +s_eq/network_end
 
 normalize:
   - map:
-      - _query: +s_concat/agent /$agent.id/ netinfo del /$_json.ID
-      - _query_response: +wdb_update/$_query
+      - ~query: +s_concat/agent /$agent.id/ netinfo del /$~json.ID
+      - ~query_response: +wdb_update/$~query

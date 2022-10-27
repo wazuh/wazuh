@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "wazuh-asset.json",
+    "name": "schema/wazuh-asset/0",
     "title": "Schema for Wazuh assets",
     "type": "object",
     "description": "Schema for Wazuh assets",
@@ -10,65 +11,61 @@
     ],
     "anyOf": [
         {
-            "required": [
-                "check"
-            ],
-            "not": {
-                "required": [
-                    "allow"
-                ]
-            },
             "anyOf": [
                 {
-                    "allOf": [
-                        {
-                            "anyOf": [
-                                {
-                                    "required": [
-                                        "normalize"
-                                    ]
-                                },
-                                {
-                                    "required": [
-                                        "parse"
-                                    ]
-                                }
-                            ]
-                        },
-                        {
-                            "not": {
-                                "required": [
-                                    "outputs"
-                                ]
-                            }
-                        }
+                    "required": [
+                        "check"
                     ]
                 },
                 {
                     "required": [
-                        "outputs"
-                    ],
-                    "not": {
-                        "anyOf": [
-                            {
-                                "required": [
-                                    "normalize"
-                                ]
-                            },
-                            {
-                                "required": [
-                                    "parse"
-                                ]
-                            }
+                        "parse"
+                    ]
+                },
+                {
+                    "required": [
+                        "normalize"
+                    ]
+                }
+            ],
+            "not": {
+                "anyOf": [
+                    {
+                        "required": [
+                            "allow"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "outputs"
                         ]
                     }
-                }
-            ]
+                ]
+            }
+        },
+        {
+            "required": [
+                "outputs"
+            ],
+            "not": {
+                "anyOf": [
+                    {
+                        "required": [
+                            "normalize"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "parse"
+                        ]
+                    }
+                ]
+            }
         },
         {
             "required": [
                 "allow",
-                "parents"
+                "sources"
             ],
             "not": {
                 "anyOf": [
@@ -89,15 +86,16 @@
     "properties": {
         "name": {
             "type": "string",
-            "description": "Name of the asset, short and concise name to identify this asset"
+            "description": "Name of the asset, short and concise name to identify this asset",
+            "pattern": "^[^/]+/[^/]+/[^/]+$"
         },
         "metadata": {
             "type": "object",
             "description": "Metadata of the asset"
         },
-        "parents": {
+        "sources": {
             "type": "array",
-            "description": "This asset will process events coming only from the specified parents",
+            "description": "This asset will process events coming only from the specified sources",
             "items": {
                 "type": "string"
             }
@@ -177,14 +175,19 @@
             "additionalProperties": false,
             "properties": {
                 "map": {
-                    "allOf": [
-                        {
-                            "$ref": "custom-ecs-field.json#"
-                        },
-                        {
-                            "description": "Modify fields on the event, syntax is `field`: `value`, where `field` is the field to modify and `value` is the new value. If `value` is a function helper, it will be executed and the result will be used as new value if executed correctly. If `value` is a reference it will be used as new value only if the reference exists."
-                        }
-                    ]
+                    "description": "Modify fields on the event, an array composed of tuples with syntax `- field`: `value`, where `field` is the field to modify and `value` is the new value. If `value` is a function helper, it will be executed and the result will be used as new value if executed correctly. If `value` is a reference it will be used as new value only if the reference exists.",
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "allOf": [
+                            {
+                                "$ref": "custom-ecs-field.json#"
+                            },
+                            {
+                                "maxProperties": 1
+                            }
+                        ]
+                    }
                 },
                 "check": {
                     "$ref": "#/definitions/_check"

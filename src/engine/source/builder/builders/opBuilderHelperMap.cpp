@@ -1251,7 +1251,7 @@ base::Expression opBuilderHelperIPVersionFromIPStr(const std::any& definition)
 //*              Time tranform                    *
 //*************************************************
 
-// field: +t_epoch
+// field: + sys_epoch
 base::Expression opBuilderHelperEpochTimeFromSystem(const std::any& definition) {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     auto parameters {helper::base::processParameters(rawParameters)};
