@@ -10,7 +10,7 @@ using namespace base;
 TEST(OperationBuilderLogParserTest, Builds)
 {
     Json doc = Json {R"([
-        {"field": "<field>"}
+        {"~field": "<~field>"}
     ])"};
     ASSERT_NO_THROW(opBuilderLogParser(doc));
 }
@@ -23,7 +23,7 @@ TEST(OperationBuilderLogParserTest, NotJson)
 TEST(OperationBuilderLogParserTest, NotArray)
 {
     Json doc = Json {R"(
-        {"field": "<field>"}
+        {"~field": "<~field>"}
     )"};
     ASSERT_THROW(opBuilderLogParser(doc), std::runtime_error);
 }
@@ -37,7 +37,7 @@ TEST(OperationBuilderLogParserTest, EmptyArray)
 TEST(OperationBuilderLogParserTest, ItemNotObject)
 {
     Json doc = Json {R"([
-        "field"
+        "~field"
     ])"};
     ASSERT_THROW(opBuilderLogParser(doc), std::runtime_error);
 }
@@ -45,7 +45,7 @@ TEST(OperationBuilderLogParserTest, ItemNotObject)
 TEST(OperationBuilderLogParserTest, ItemWrongObjectSize)
 {
     Json doc = Json {R"([
-        {"field": "<field>", "other":1}
+        {"~field": "<~field>", "other":1}
     ])"};
     ASSERT_THROW(opBuilderLogParser(doc), std::runtime_error);
 }
@@ -53,7 +53,7 @@ TEST(OperationBuilderLogParserTest, ItemWrongObjectSize)
 TEST(OperationBuilderLogParserTest, WrongLogparString)
 {
     Json doc = Json {R"([
-        {"field": "<field"}
+        {"~field": "<field"}
     ])"};
     ASSERT_THROW(opBuilderLogParser(doc), std::runtime_error);
 }
@@ -61,7 +61,7 @@ TEST(OperationBuilderLogParserTest, WrongLogparString)
 TEST(OperationBuilderLogParserTest, BuildsCorrectExpression)
 {
     Json doc = Json {R"([
-        {"field": "<field>"}
+        {"~field": "<~field>"}
     ])"};
 
     auto expression = opBuilderLogParser(doc);

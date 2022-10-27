@@ -19,6 +19,8 @@ using ParserFn = std::function<ExecuteResult(std::string_view const&, ParseResul
 namespace hlp
 {
 
+static constexpr auto TMP_FIELD_PREFIX = '~';
+
 struct JsonString
 {
     // TODO

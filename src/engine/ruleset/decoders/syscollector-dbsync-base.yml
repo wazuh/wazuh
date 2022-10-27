@@ -1,13 +1,13 @@
 name: decoder/syscollector-dbsync-base/0
 
-parents:
+sources:
   - decoder/syscollector-base/0
 
 check:
-  - _json.type: +s_starts/dbsync_
-  - _json.operation: +t_is_string
-  - _json.data: +t_is_object
+  - ~json.type: +s_starts/dbsync_
+  - ~json.operation: +t_is_string
+  - ~json.data: +t_is_object
 
 normalize:
   - map:
-      - _escaped_pipe_char: "\uffff"
+      - ~escaped_pipe_char: "\uffff"
