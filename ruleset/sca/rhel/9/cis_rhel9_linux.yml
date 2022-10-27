@@ -28,6 +28,7 @@ requirements:
     - "f:/etc/redhat-release -> r:^Oracle && r:release 9"
     - "f:/etc/redhat-release -> r:^Better && r:release 9"
     - "f:/etc/redhat-release -> r:^OpenVZ && r:release 9"
+    - 'f:/etc/os-release -> r:^PRETTY_NAME="Fedora Linux && r:34|35|36|37'
 
 variables:
   $sshd_file: /etc/ssh/sshd_config
@@ -3200,8 +3201,7 @@ checks:
       - cis: ["5.2.5"]
       - cis_csc: ["6.2", "6.3", "8.2"]
       - pci_dss: ["4.1"]
-      - hipaa:
-          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
@@ -3236,8 +3236,7 @@ checks:
       - cis: ["5.2.7"]
       - cis_csc: ["4.3", "5.4"]
       - pci_dss: ["4.1"]
-      - hipaa:
-          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
@@ -3254,8 +3253,7 @@ checks:
       - cis: ["5.2.8"]
       - cis_csc: ["4.1", "16.3"]
       - pci_dss: ["4.1"]
-      - hipaa:
-          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
@@ -3272,8 +3270,7 @@ checks:
       - cis: ["5.2.9"]
       - cis_csc: ["4.1", "16.3"]
       - pci_dss: ["4.1"]
-      - hipaa:
-          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
@@ -3290,8 +3287,7 @@ checks:
       - cis: ["5.2.10"]
       - cis_csc: ["4.1", "5.1"]
       - pci_dss: ["4.1"]
-      - hipaa:
-          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
@@ -3308,8 +3304,7 @@ checks:
       - cis: ["5.2.11"]
       - cis_csc: ["4.1", "9.2"]
       - pci_dss: ["4.1"]
-      - hipaa:
-          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
@@ -3345,8 +3340,7 @@ checks:
       - cis: ["5.2.13"]
       - cis_csc: ["4.1", "9.2"]
       - pci_dss: ["4.1"]
-      - hipaa:
-          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
@@ -3365,8 +3359,7 @@ checks:
       - cis: ["5.2.14"]
       - cis_csc: ["3.10", "14.4"]
       - pci_dss: ["4.1"]
-      - hipaa:
-          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
