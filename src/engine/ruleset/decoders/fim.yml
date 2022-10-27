@@ -1,7 +1,7 @@
 ---
 name: decoder/fim/0
 
-parents:
+sources:
   - decoder/queue-fim/0
 
 check:
@@ -9,4 +9,4 @@ check:
 
 parse:
   logpar:
-    - event.original: <_json/json>
+    - event.original: <~json/json>

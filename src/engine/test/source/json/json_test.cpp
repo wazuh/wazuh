@@ -50,6 +50,18 @@ TEST(JsonStatic, FormatJsonPath)
     dotPath = ".";
     ASSERT_NO_THROW(pointerPath = Json::formatJsonPath(dotPath););
     ASSERT_EQ(pointerPath, "");
+
+    dotPath = "field.~tmp.field.~tmp";
+    ASSERT_NO_THROW(pointerPath = Json::formatJsonPath(dotPath););
+    ASSERT_EQ(pointerPath, "/field/~0tmp/field/~0tmp");
+
+    dotPath = "field./tmp.field./tmp";
+    ASSERT_NO_THROW(pointerPath = Json::formatJsonPath(dotPath););
+    ASSERT_EQ(pointerPath, "/field/~1tmp/field/~1tmp");
+
+    dotPath = "field.~tmp./field./tmp";
+    ASSERT_NO_THROW(pointerPath = Json::formatJsonPath(dotPath););
+    ASSERT_EQ(pointerPath, "/field/~0tmp/~1field/~1tmp");
 }
 
 TEST(JsonBuildtime, Size)

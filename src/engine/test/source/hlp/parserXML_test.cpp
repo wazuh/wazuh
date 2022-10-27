@@ -10,7 +10,7 @@ using namespace hlp;
 
 TEST(parseXML, successDefault)
 {
-    const char* expression = "<_xml/xml>";
+    const char* expression = "<~xml/xml>";
     const char* event =
         R"(<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event"><System><Provider Name="Microsoft-Windows-Eventlog" Guid="{fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148}" /><EventID>1100</EventID><Version>0</Version><Level TestAtt="value">4</Level><Task>103</Task><Opcode>0</Opcode><Keywords>0x4020000000000000</Keywords><TimeCreated SystemTime="2019-11-07T10:37:04.2260925Z" /><EventRecordID>14257</EventRecordID><Correlation /><Execution ProcessID="1144" ThreadID="4532" /><Channel>Security</Channel><Computer>WIN-41OB2LO92CR.wlbeat.local</Computer><Security /></System><UserData><ServiceShutdown xmlns="http://manifests.microsoft.com/win/2004/08/windows/eventlog" /></UserData></Event>)";
     JsonString expected {
@@ -21,12 +21,12 @@ TEST(parseXML, successDefault)
     bool ret = parseOp(event, result);
     ASSERT_TRUE(static_cast<bool>(ret));
 
-    ASSERT_EQ(std::any_cast<json::Json>(result["_xml"]).str(), expected.jsonString);
+    ASSERT_EQ(std::any_cast<json::Json>(result["~xml"]).str(), expected.jsonString);
 }
 
 TEST(parseXML, failureWrongXml)
 {
-    const char* expression = "<_xml/xml>";
+    const char* expression = "<~xml/xml>";
     const char* event =
         R"(>Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event"><System><Provider Name="Microsoft-Windows-Eventlog" Guid="{fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148}" /><EventID>1100</EventID><Version>0</Version><Level TestAtt="value">4</Level><Task>103</Task><Opcode>0</Opcode><Keywords>0x4020000000000000</Keywords><TimeCreated SystemTime="2019-11-07T10:37:04.2260925Z" /><EventRecordID>14257</EventRecordID><Correlation /><Execution ProcessID="1144" ThreadID="4532" /><Channel>Security</Channel><Computer>WIN-41OB2LO92CR.wlbeat.local</Computer><Security /></System><UserData><ServiceShutdown xmlns="http://manifests.microsoft.com/win/2004/08/windows/eventlog" /></UserData></Event>)";
 
@@ -38,7 +38,7 @@ TEST(parseXML, failureWrongXml)
 
 TEST(parseXML, failureNotXml)
 {
-    const char* expression = "<_xml/xml>";
+    const char* expression = "<~xml/xml>";
     const char* event =
         R"(3:[678] (someAgentName) any->/some/route:Some : random -> ([)] log )";
 
@@ -50,21 +50,21 @@ TEST(parseXML, failureNotXml)
 
 TEST(parseXML, failureModuleNotSupported)
 {
-    const char* expression = "<_xml/xml/notsupported>";
+    const char* expression = "<~xml/xml/notsupported>";
 
     ASSERT_THROW(getParserOp(expression), std::runtime_error);
 }
 
 TEST(parseXML, failureMultipleArguments)
 {
-    const char* expression = "<_xml/xml/windows/other>";
+    const char* expression = "<~xml/xml/windows/other>";
 
     ASSERT_THROW(getParserOp(expression), std::runtime_error);
 }
 
 TEST(parseXML, successWinModule)
 {
-    const char* expression = "<_xml/xml/windows>";
+    const char* expression = "<~xml/xml/windows>";
     const char* event =
         R"(<EventData><Data Name='SubjectUserSid'>S-1-5-21-3541430928-2051711210-1391384369-1001</Data><Data Name='SubjectUserName'>vagrant</Data><Data Name='SubjectDomainName'>VAGRANT-2012-R2</Data><Data Name='SubjectLogonId'>0x1008e</Data><Data Name='TargetUserSid'>S-1-0-0</Data><Data Name='TargetUserName'>bosch</Data><Data Name='TargetDomainName'>VAGRANT-2012-R2</Data><Data Name='Status'>0xc000006d</Data><Data Name='FailureReason'>%%2313</Data><Data Name='SubStatus'>0xc0000064</Data><Data Name='LogonType'>2</Data><Data Name='LogonProcessName'>seclogo</Data><Data Name='AuthenticationPackageName'>Negotiate</Data><Data Name='WorkstationName'>VAGRANT-2012-R2</Data><Data Name='TransmittedServices'>-</Data><Data Name='LmPackageName'>-</Data><Data Name='KeyLength'>0</Data><Data Name='ProcessId'>0x344</Data><Data Name='ProcessName'>C:\\Windows\\System32\\svchost.exe</Data><Data Name='IpAddress'>::1</Data><Data Name='IpPort'>0</Data></EventData>)";
     JsonString expected {
@@ -74,5 +74,5 @@ TEST(parseXML, successWinModule)
     ParseResult result;
     bool ret = parseOp(event, result);
     ASSERT_TRUE(static_cast<bool>(ret));
-    ASSERT_EQ(std::any_cast<json::Json>(result["_xml"]).str(), expected.jsonString);
+    ASSERT_EQ(std::any_cast<json::Json>(result["~xml"]).str(), expected.jsonString);
 }

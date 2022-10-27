@@ -3,9 +3,17 @@
     "$id": "wazuh-environments.json",
     "title": "Schema for Wazuh environments",
     "type": "object",
-    "minProperties": 1,
+    "minProperties": 2,
+    "required": [
+        "name"
+    ],
     "additionalProperties": false,
     "properties": {
+        "name": {
+            "type": "string",
+            "description": "Name of the environment, short and concise name to identify this asset",
+            "pattern": "^[^/]+/[^/]+/[^/]+$"
+        },
         "decoders":{
             "type": "array",
             "minItems": 1,

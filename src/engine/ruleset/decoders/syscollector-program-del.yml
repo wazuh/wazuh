@@ -1,13 +1,13 @@
 name: decoder/syscollector-program-del/0
 
-parents:
+sources:
   - decoder/syscollector-program/0
 
 check:
-  - _json.program: +ef_not_exists
-  - _json.type: +s_eq/program_end
+  - ~json.program: +ef_not_exists
+  - ~json.type: +s_eq/program_end
 
 normalize:
   - map:
-      - _query: +s_concat/agent /$agent.id/ package del /$_json.ID
-      - _package_del_result: +wdb_update/$_query
+      - ~query: +s_concat/agent /$agent.id/ package del /$~json.ID
+      - ~package_del_result: +wdb_update/$~query

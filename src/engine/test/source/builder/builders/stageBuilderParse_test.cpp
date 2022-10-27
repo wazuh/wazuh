@@ -25,7 +25,7 @@ TEST_F(StageBuilderParseTest, Builds)
 {
     Json doc = Json {R"({
             "logpar":[
-                {"field": "<field>"}
+                {"~field": "<~field>"}
             ]
     })"};
     ASSERT_NO_THROW(stageBuilderParse(doc));
@@ -40,7 +40,7 @@ TEST_F(StageBuilderParseTest, NotObject)
 {
     Json doc = Json {R"([
             {"logpar":[
-                {"field": "<field>"}
+                {"~field": "<~field>"}
             ]}
     ])"};
     ASSERT_THROW(stageBuilderParse(doc), std::runtime_error);
@@ -50,7 +50,7 @@ TEST_F(StageBuilderParseTest, BuildsCorrectExpression)
 {
     Json doc = Json {R"({
             "logpar":[
-                {"field": "<field>"}
+                {"~field": "<~field>"}
             ]
     })"};
     auto expression = stageBuilderParse(doc);

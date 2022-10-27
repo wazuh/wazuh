@@ -115,7 +115,7 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"r_ext"},
-                                 std::vector<std::string> {"$parentObjt_1/fieldcheck", "(test)"});
+                                 std::vector<std::string> {"$parentObjt_1.fieldcheck", "(test)"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -141,7 +141,7 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_ref_field_not_ex
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_2/field2check"},
                                  std::string {"r_ext"},
-                                 std::vector<std::string> {"$parentObjt_1/field2check", "(test)"});
+                                 std::vector<std::string> {"$parentObjt_1.field2check", "(test)"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -165,7 +165,7 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_fail)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"r_ext"},
-                                 std::vector<std::string> {"$parentObjt_2/field2check", "(regex)"});
+                                 std::vector<std::string> {"$parentObjt_2.field2check", "(regex)"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -189,7 +189,7 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"r_ext"},
-                                 std::vector<std::string> {"$parentObjt_2/field2check", "(test)"});
+                                 std::vector<std::string> {"$parentObjt_2.field2check", "(test)"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {

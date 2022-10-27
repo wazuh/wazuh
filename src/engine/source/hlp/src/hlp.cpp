@@ -23,10 +23,7 @@ static std::unordered_map<std::string, ParserType> kECSParserMapper;
 void configureParserMappings(const std::string& config)
 {
     static const std::unordered_map<std::string_view, ParserType> kSchema2ParserType {
-        {"constant_keyword", ParserType::Any},
         {"keyword", ParserType::Any},
-        {"match_only_text", ParserType::Any},
-        {"wildcard", ParserType::Any},
         {"any", ParserType::ToEnd},
         {"ip", ParserType::IP},
         {"timestamp", ParserType::Ts},
@@ -39,12 +36,12 @@ void configureParserMappings(const std::string& config)
         {"useragent", ParserType::UserAgent},
         {"float", ParserType::Number},
         {"long", ParserType::Number},
-        {"number", ParserType::Number},
         {"scaled_float", ParserType::Number},
         {"short", ParserType::Number},
         {"quoted", ParserType::QuotedString},
         {"boolean", ParserType::Boolean},
         {"xml", ParserType::Xml},
+        {"text", ParserType::Any},
         {"ignore", ParserType::Ignore}};
 
     if (config.empty())
@@ -140,10 +137,10 @@ static void setParserOptions(Parser& parser, std::vector<std::string_view> const
 Parser createParserFromExpresion(Expression const& exp)
 {
     // We could be parsing:
-    //      '<_>'
-    //      '<_name>'
-    //      '<_name/type>'
-    //      '<_name/type/type2>'
+    //      '<TMP_FIELD_PREFIX>'
+    //      '<TMP_FIELD_PREFIXname>'
+    //      '<TMP_FIELD_PREFIXname/type>'
+    //      '<TMP_FIELD_PREFIXname/type/type2>'
     auto args = splitSlashSeparatedField(exp.text);
     Parser parser;
     parser.expType = exp.type;
@@ -151,7 +148,7 @@ Parser createParserFromExpresion(Expression const& exp)
     parser.name = args[0];
     args.erase(args.begin());
     parser.type = ParserType::Any;
-    if (parser.name[0] == '_')
+    if (parser.name[0] == TMP_FIELD_PREFIX)
     {
         // TODO: temporary fields should be trimmed on the final event
         //  We have a temp capture with the format <_temp/type/typeN>
@@ -176,7 +173,11 @@ Parser createParserFromExpresion(Expression const& exp)
         {
             parser.type = it->second;
         }
-        // TODO: modify in order to show error to usr (no parser found)
+        else
+        {
+            throw std::runtime_error(fmt::format(
+                "Field {} in logparse expression is not a valid ECS field", parser.name));
+        }
     }
 
     setParserOptions(parser, args);
@@ -301,7 +302,8 @@ ParserFn getParserOp(std::string_view const& logpar)
     }
 
     ParserFn parseFn = [parserList = std::move(parserList)](std::string_view const& event,
-                                                            ParseResult& result) {
+                                                            ParseResult& result)
+    {
         return executeParserList(event, parserList, result);
     };
 
