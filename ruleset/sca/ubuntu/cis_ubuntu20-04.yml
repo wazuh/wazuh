@@ -3613,10 +3613,27 @@ checks:
   # 5.5 User Accounts and Environment
   # 5.5.1 Set Shadow Password Suite Parameters
 
-  # 5.5.1.1 Ensure minimum days between password changes is configured (Automated) - Not implemented
+  # 5.5.1.1 Ensure minimum days between password changes is configured (Automated)
+  - id: 19177
+    title: "Ensure minimum days between password changes is configured."
+    description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 1 or more days."
+    rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
+    remediation: "Set the PASS_MIN_DAYS parameter to 1 in /etc/login.defs : PASS_MIN_DAYS 1 Modify user parameters for all users with a password set to match: # chage --mindays 1 <user>"
+    compliance:
+      - cis: ["5.5.1.1"]
+      - cis_csc_v6: ["16"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
+      - nist_sp_800-53: ["IA-5 (1)"]
+    condition: all
+    rules:
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare > 0'
+      - 'not f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+:\S*:\d*:(\d+) compare < 1'
 
   # 5.5.1.2 Ensure password expiration is 365 days or less (Automated)
-  - id: 19177
+  - id: 19178
     title: "Ensure password expiration is 365 days or less."
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity. It is recommended that the PASS_MAX_DAYS parameter does not exceed 365 days and is greater than the value of PASS_MIN_DAYS."
@@ -3634,10 +3651,10 @@ checks:
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare > 0'
-      - 'not f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+root:\S*:\d*:\d*:(\d+) compare > 365'
+      - 'not f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+:\S*:\d*:\d*:(\d+) compare > 365'
 
   # 5.5.1.3 Ensure password expiration warning days is 7 or more (Automated)
-  - id: 19178
+  - id: 19179
     title: "Ensure password expiration warning days is 7 or more."
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
@@ -3655,7 +3672,7 @@ checks:
       - 'not f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+root:\S*:\d*:\d*:\d*:(\d+) compare < 7'
 
   # 5.5.1.4 Ensure inactive password lock is 30 days or less (Automated)
-  - id: 19179
+  - id: 19180
     title: "Ensure inactive password lock is 30 days or less."
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
@@ -3677,7 +3694,7 @@ checks:
   # 5.5.2 Ensure system accounts are secured (Automated) - Not implemented
 
   # 5.5.3 Ensure default group for the root account is GID 0 (Automated)
-  - id: 19180
+  - id: 19181
     title: "Ensure default group for the root account is GID 0."
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
@@ -3699,7 +3716,7 @@ checks:
   # 5.6 Ensure root login is restricted to system console (Manual) - Not implemented
 
   # 5.7 Ensure access to the su command is restricted (Automated)
-  - id: 19181
+  - id: 19182
     title: "Ensure access to the su command is restricted."
     description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By adding, or uncommenting, the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in a specific group to execute su. This group should be empty to reinforce the use of sudo for privileged access."
     rationale: "Restricting the use of su, and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo, whereas su can only record that a user executed the su program."
@@ -3721,7 +3738,7 @@ checks:
   # 6.1.1 Audit system file permissions (Manual) - Not implemented
 
   # 6.1.2 Ensure permissions on /etc/passwd are configured (Automated)
-  - id: 19182
+  - id: 19183
     title: "Ensure permissions on /etc/passwd are configured."
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3738,7 +3755,7 @@ checks:
       - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.3 Ensure permissions on /etc/passwd- are configured (Automated)
-  - id: 19183
+  - id: 19184
     title: "Ensure permissions on /etc/gshadow- are configured."
     description: "The /etc/passwd- file contains backup user account information."
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3755,7 +3772,7 @@ checks:
       - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0644/-rw-r--r--\)|^Access:\s*\(0640/-rw-r-----\)|^Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.4 Ensure permissions on /etc/group are configured (Automated)
-  - id: 19184
+  - id: 19185
     title: "Ensure permissions on /etc/group are configured."
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
@@ -3772,7 +3789,7 @@ checks:
       - 'c:stat /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.5 Ensure permissions on /etc/group- are configured (Automated)
-  - id: 19185
+  - id: 19186
     title: "Ensure permissions on /etc/group- are configured."
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3789,7 +3806,7 @@ checks:
       - 'c:stat /etc/group- -> r:^Access:\s*\(0644/-rw-r--r--\)|^Access:\s*\(0640/-rw-r-----\)|^Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.6 Ensure permissions on /etc/shadow are configured (Automated)
-  - id: 19186
+  - id: 19187
     title: "Ensure permissions on /etc/shadow are configured."
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
@@ -3807,7 +3824,7 @@ checks:
       - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   #  6.1.7 Ensure permissions on /etc/shadow- are configured (Automated)
-  - id: 19187
+  - id: 19188
     title: "Ensure permissions on /etc/shadow- are configured."
     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3825,7 +3842,7 @@ checks:
       - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 6.1.8 Ensure permissions on /etc/gshadow are configured (Automated)
-  - id: 19188
+  - id: 19189
     title: "Ensure permissions on /etc/gshadow are configured."
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
@@ -3843,7 +3860,7 @@ checks:
       - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 6.1.9 Ensure permissions on /etc/gshadow- are configured (Automated)
-  - id: 19189
+  - id: 19190
     title: "Ensure permissions on /etc/gshadow- are configured."
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3869,7 +3886,7 @@ checks:
   # 6.2 User and Group Settings
 
   # 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords (Automated)
-  - id: 19190
+  - id: 19191
     title: "Ensure accounts in /etc/passwd use shadowed passwords."
     description: "Local accounts can uses shadowed passwords. With shadowed passwords, The passwords are saved in shadow password file, /etc/shadow, encrypted by a salted one-way hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
     rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack. Notes: - All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user. - A user account with an empty second field in /etc/passwd allows the account to be logged into by providing only the username."
@@ -3886,7 +3903,7 @@ checks:
       - 'f:/etc/passwd -> !r:^\w+:x:'
 
   # 6.2.2 Ensure password fields are not empty (Automated)
-  - id: 19191
+  - id: 19192
     title: "Ensure password fields are not empty."
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
@@ -3912,7 +3929,7 @@ checks:
   # 6.2.10 Ensure no users have .rhosts files (Automated) - Not implemented
 
   # 6.2.11 Ensure root is the only UID 0 account (Automated)
-  - id: 19191
+  - id: 19193
     title: "Ensure root is the only UID 0 account."
     description: "Any account with UID 0 has superuser privileges on the system."
     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
@@ -3934,7 +3951,7 @@ checks:
   # 6.2.16 Ensure no duplicate group names exist (Automated) - Not implemented
 
   # 6.2.17 Ensure shadow group is empty (Automated)
-  - id: 19192
+  - id: 19194
     title: "Ensure shadow group is empty."
     description: "The shadow group allows system programs which require access the ability to read the /etc/shadow file. No users should be assigned to the shadow group."
     rationale: "Any users assigned to the shadow group would be granted read access to the /etc/shadow file. If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed passwords to break them. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert additional user accounts."
