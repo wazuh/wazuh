@@ -139,20 +139,6 @@ EventEndpoint::EventEndpoint(
         [this, dumpFileHandler](const DatagramSocketEvent& event,
                                 DatagramSocketHandle& handle)
         {
-            auto client = handle.loop().resource<DatagramSocketHandle>();
-
-            client->on<ErrorEvent>(
-                [this](const ErrorEvent& event, DatagramSocketHandle& client)
-                {
-                    WAZUH_LOG_ERROR("Datagram Socket ErrorEvent: endpoint[{}] "
-                                    "error: code=[{}]; "
-                                    "name=[{}]; message=[{}]",
-                                    m_path,
-                                    event.code(),
-                                    event.name(),
-                                    event.what());
-                });
-
             auto strRequest = std::string {event.data.get(), event.length};
             if (g_envDown)
             {
