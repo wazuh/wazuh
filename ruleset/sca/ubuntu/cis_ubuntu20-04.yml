@@ -3141,7 +3141,7 @@ checks:
       - 'c:stat /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0644/-rw-r--r--)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
       - 'c:stat /etc/ssh/ssh_host_dsa_key.pub -> r:^Access: \(0644/-rw-r--r--)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 5.3.4 Ensure SSH access is limited (Automated) - Not implemented
+  # 5.3.4 Ensure SSH access is limited (Automated)
   - id: 19154
     title: "Ensure SSH access is limited."
     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: > The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: > The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: > The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. - DenyGroups: > The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
@@ -3397,10 +3397,14 @@ checks:
     rules:
       - 'c:sshd -T -> n:^\s*clientaliveinterval\s*(\d+) compare <= 300 && n:clientaliveinterval\s*(\d+) compare != 0'
       - 'c:sshd -T -> n:^\s*clientalivecountmax\s*(\d+) compare <= 3 && n:^\s*clientalivecountmax\s*(\d+) compare != 0'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*clientaliveinterval\s*(\d+) compare > 300 && n:clientaliveinterval\s*(\d+) compare != 0'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientaliveinterval\s*(\d+) compare > 300 && n:^\s*clientaliveinterval\s*(\d+) compare != 0'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*clientalivecountmax\s*(\d+) compare > 3 && n:^\s*clientalivecountmax\s*(\d+) compare != 0'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientalivecountmax\s*(\d+) compare > 3 && n:^\s*clientalivecountmax\s*(\d+) compare != 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*clientaliveinterval\s*(\d+) compare > 300'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*clientaliveinterval\s*(\d+) compare == 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientaliveinterval\s*(\d+) compare > 300'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientaliveinterval\s*(\d+) compare == 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*clientalivecountmax\s*(\d+) compare > 3'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*clientalivecountmax\s*(\d+) compare == 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientalivecountmax\s*(\d+) compare > 3'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientalivecountmax\s*(\d+) compare == 0'
 
   # 5.3.17 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 19167
@@ -3419,8 +3423,10 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -> n:^\s*logingracetime\s*(\d+) compare <= 60 && n:^\s*logingracetime\s*(\d+) compare >= 1'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*(\d+) compare > 60 &&  n:^\s*LoginGraceTime\s*(\d+) compare >= 1'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*LoginGraceTime\s*(\d+) compare > 60 && n:^\s*LoginGraceTime\s*(\d+) compare >= 1'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*(\d+) compare == 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*LoginGraceTime\s*(\d+) compare > 60'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*LoginGraceTime\s*(\d+) compare == 0'
 
   # 5.3.18 Ensure SSH warning banner is configured (Automated)
   - id: 19168
@@ -3505,12 +3511,18 @@ checks:
       - 'c:sshd -T -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10 && n:^\s*maxstartups\s+(\d+):\d+:\d+ compare >= 1'
       - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30 && n:^\s*maxstartups\s+(\d+):\d+:\d+ compare >= 1'
       - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60 && n:^\s*maxstartups\s+(\d+):\d+:\d+ compare >= 1'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare > 10 && n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare != 0'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare > 10 &&  n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare != 0'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare > 30 && n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare != 0'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare > 30 && n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare != 0'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare > 60 && n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare != 0'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare > 60 && n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare != 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare > 10'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare == 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare > 10'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare == 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare > 30'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare == 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare > 30'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare == 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare == 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare > 60'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare == 0'
 
   # 5.3.22 Ensure SSH MaxSessions is limited (Automated)
   - id: 19172
@@ -3529,8 +3541,10 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -> n:^maxsessions\s+(\d+) compare <= 10 && n:^maxsessions\s+(\d+) compare >= 1'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare > 10 && n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare != 0'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare > 10 && n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare != 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare > 10'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare == 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare > 10'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare == 0'
 
   # 5.4 Configure PAM
 
