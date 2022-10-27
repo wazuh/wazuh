@@ -3507,12 +3507,12 @@ checks:
       - 'c:sshd -T -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10 && n:^\s*maxstartups\s+(\d+):\d+:\d+ compare >= 1'
       - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30 && n:^\s*maxstartups\s+(\d+):\d+:\d+ compare >= 1'
       - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60 && n:^\s*maxstartups\s+(\d+):\d+:\d+ compare >= 1'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare > 10'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare > 10'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare > 30'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare > 30'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare > 60'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare > 10 && n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare != 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare > 10 &&  n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare != 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare > 30 && n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare != 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare > 30 && n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare != 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare > 60 && n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare != 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare > 60 && n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare != 0'
 
   # 5.3.22 Ensure SSH MaxSessions is limited (Automated)
   - id: 19172
