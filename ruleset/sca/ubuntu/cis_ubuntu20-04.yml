@@ -3539,7 +3539,7 @@ checks:
   # 5.4.1 Ensure password creation requirements are configured (Automated)
   - id: 19173
     title: "Ensure password creation requirements are configured."
-    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options. The following options are set in the /etc/security/pwquality.conf file: - Password Length: > minlen = 14 - password must be 14 characters or more - Password complexity: > minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR > dcredit = -1 - provide at least one digit > ucredit = -1 - provide at least one uppercase character o ocredit = -1 - provide at least one special character > lcredit = -1 - provide at least one lowercase character The following is set in the /etc/pam.d/common-password file: - retry=3 - Allow 3 tries before sending back a failure. The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies. "
+    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options. The following options are set in the /etc/security/pwquality.conf file: - Password Length: > minlen = 14 - password must be 14 characters or more - Password complexity: > minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR > dcredit = -1 - provide at least one digit > ucredit = -1 - provide at least one uppercase character > ocredit = -1 - provide at least one special character > lcredit = -1 - provide at least one lowercase character The following is set in the /etc/pam.d/common-password file: - retry=3 - Allow 3 tries before sending back a failure. The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies. "
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
     remediation: "Run the following command to install the pam_pwquality module: apt install libpam-pwquality Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy minclass = 4 OR dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1 Edit the /etc/pam.d/common-password file to include the appropriate options for pam_pwquality.so and to conform to site policy: password requisite pam_pwquality.so retry=3"
     compliance:
@@ -3564,7 +3564,7 @@ checks:
     title: "Ensure lockout for failed password attempts is configured."
     description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. - deny=n - n represents the number of failed attempts before the account is locked. - unlock_time=n - n represents the number of seconds before the account is unlocked. - audit - Will log the user name into the system log if the user is not found. - silent - Don't print informative messages. Set the lockout number and unlock time in accordance with local site policy."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
-    remediation: "Edit the /etc/pam.d/common-auth file and add the auth line below: auth required pam_tally2.so onerr=fail audit silent deny=5 unlock_time=900 Edit the /etc/pam.d/common-account file and add the account lines bellow:  account     requisite    pam_deny.so account     required     pam_tally2.so"
+    remediation: "Edit the /etc/pam.d/common-auth file and add the auth line below: auth required pam_tally2.so onerr=fail audit silent deny=5 unlock_time=900 Edit the /etc/pam.d/common-account file and add the account lines bellow: account requisite pam_deny.so account required pam_tally2.so"
     compliance:
       - cis: ["5.4.2"]
       - cis_csc_v7: ["16.7"]
@@ -3588,10 +3588,9 @@ checks:
     compliance:
       - cis: ["5.4.3"]
       - cis_csc_v7: ["16"]
-    condition: none
+    condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*=\s*(\d+) compare < 5'
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && !r:remember'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*=\s*(\d+) compare >= 5'
 
   # 5.4.4 Ensure password hashing algorithm is SHA-512 (Automated)
   - id: 19176
@@ -3669,7 +3668,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*(\d+) compare >= 7'
-      - 'not f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+root:\S*:\d*:\d*:\d*:(\d+) compare < 7'
+      - 'not f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+:\S*:\d*:\d*:\d*:(\d+) compare < 7'
 
   # 5.5.1.4 Ensure inactive password lock is 30 days or less (Automated)
   - id: 19180
@@ -3688,7 +3687,7 @@ checks:
     rules:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare >= 30'
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 0'
-      - 'f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+root:\S*:\d*:\d*:\d*:\d+:(\d+) compare > 30'
+      - 'f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+:\S*:\d*:\d*:\d*:\d+:(\d+) compare > 30'
 
   # 5.5.1.5 Ensure all users last password change date is in the past (Automated) - Not implemented
   # 5.5.2 Ensure system accounts are secured (Automated) - Not implemented
