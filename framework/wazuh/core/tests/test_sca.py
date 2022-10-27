@@ -162,9 +162,9 @@ def test_WazuhDBQuerySCACheck_parse_select_filter(mock_exists, mock_get_basic_in
         wdbq_sca_check._parse_select_filter(['test'])
     except WazuhError as e:
         assert e.code == 1724
-        assert ", ".join(
-            set(wdbq_sca_check.fields.keys()).union(core_sca.SCA_CHECK_COMPLIANCE_DB_FIELDS.keys()).union(
-                core_sca.SCA_CHECK_RULES_DB_FIELDS.keys()) - {'id_check'}) in e.message
+        expected_fields = set(wdbq_sca_check.fields.keys()).union(core_sca.SCA_CHECK_COMPLIANCE_DB_FIELDS.keys()).union(
+            core_sca.SCA_CHECK_RULES_DB_FIELDS.keys()) - {'id_check'}
+        assert all(field in e.message for field in expected_fields)
 
 
 @pytest.mark.parametrize('query', [
