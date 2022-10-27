@@ -1,122 +1,122 @@
 name: decoder/syscollector-dbsync-ports-inserted/0
 
-parents:
+sources:
   - decoder/syscollector-dbsync-base/0
 
 check:
-  - _json.type: +s_eq/dbsync_ports
-  - _json.operation: +s_eq/INSERTED
+  - ~json.type: +s_eq/dbsync_ports
+  - ~json.operation: +s_eq/INSERTED
 
 normalize:
   - check:
-      - _json.data.scan_time: +ef_not_exists
+      - ~json.data.scan_time: +ef_not_exists
     map:
-      - _json.data.scan_time: ""
+      - ~json.data.scan_time: ""
 
   - check:
-      - _json.data.protocol: +ef_not_exists
+      - ~json.data.protocol: +ef_not_exists
     map:
-      - _json.data.protocol: ""
+      - ~json.data.protocol: ""
 
   - check:
-      - _json.data.local_ip: +ef_not_exists
+      - ~json.data.local_ip: +ef_not_exists
     map:
-      - _json.data.local_ip: ""
+      - ~json.data.local_ip: ""
 
   - check:
-      - _json.data.local_port: +ef_not_exists
+      - ~json.data.local_port: +ef_not_exists
     map:
-      - _json.data.local_port: ""
+      - ~json.data.local_port: ""
 
   - check:
-      - _json.data.remote_ip: +ef_not_exists
+      - ~json.data.remote_ip: +ef_not_exists
     map:
-      - _json.data.remote_ip: ""
+      - ~json.data.remote_ip: ""
 
   - check:
-      - _json.data.remote_port: +ef_not_exists
+      - ~json.data.remote_port: +ef_not_exists
     map:
-      - _json.data.remote_port: ""
+      - ~json.data.remote_port: ""
 
   - check:
-      - _json.data.tx_queue: +ef_not_exists
+      - ~json.data.tx_queue: +ef_not_exists
     map:
-      - _json.data.tx_queue: ""
+      - ~json.data.tx_queue: ""
 
   - check:
-      - _json.data.rx_queue: +ef_not_exists
+      - ~json.data.rx_queue: +ef_not_exists
     map:
-      - _json.data.rx_queue: ""
+      - ~json.data.rx_queue: ""
 
   - check:
-      - _json.data.inode: +ef_not_exists
+      - ~json.data.inode: +ef_not_exists
     map:
-      - _json.data.inode: ""
+      - ~json.data.inode: ""
 
   - check:
-      - _json.data.state: +s_ne//
+      - ~json.data.state: +s_ne//
     map:
-      - _json.data.state: +s_replace/|/$_escaped_pipe_char
-      - _json.data.state: +s_replace/NULL/_NULL_
+      - ~json.data.state: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.state: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.state: +s_eq//
+      - ~json.data.state: +s_eq//
     map:
-      - _json.data.state: "NULL"
+      - ~json.data.state: "NULL"
   - check:
-      - _json.data.state: +ef_not_exists
+      - ~json.data.state: +ef_not_exists
     map:
-      - _json.data.state: ""
+      - ~json.data.state: ""
 
   - check:
-      - _json.data.pid: +ef_not_exists
+      - ~json.data.pid: +ef_not_exists
     map:
-      - _json.data.pid: ""
+      - ~json.data.pid: ""
 
   - check:
-      - _json.data.process: +s_ne//
+      - ~json.data.process: +s_ne//
     map:
-      - _json.data.process: +s_replace/|/$_escaped_pipe_char
-      - _json.data.process: +s_replace/NULL/_NULL_
+      - ~json.data.process: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.process: +s_replace/NULL/_NULL_
   - check:
-      - _json.data.process: +s_eq//
+      - ~json.data.process: +s_eq//
     map:
-      - _json.data.process: "NULL"
+      - ~json.data.process: "NULL"
   - check:
-      - _json.data.process: +ef_not_exists
+      - ~json.data.process: +ef_not_exists
     map:
-      - _json.data.process: ""
+      - ~json.data.process: ""
 
   - check:
-      - _json.data.checksum: +ef_not_exists
+      - ~json.data.checksum: +ef_not_exists
     map:
-      - _json.data.checksum: ""
+      - ~json.data.checksum: ""
 
   - check:
-      - _json.data.item_id: +ef_not_exists
+      - ~json.data.item_id: +ef_not_exists
     map:
-      - _json.data.item_id: ""
+      - ~json.data.item_id: ""
 
   - map:
-      - _query: +s_concat/agent /$agent.id/ dbsync ports /$_json.operation/ /$_json.data.scan_time/|/$_json.data.protocol/|/$_json.data.local_ip/|/$_json.data.local_port/|/$_json.data.remote_ip/|/$_json.data.remote_port/|/$_json.data.tx_queue/|/$_json.data.rx_queue/|/$_json.data.inode/|/$_json.data.state/|/$_json.data.pid/|/$_json.data.process/|/$_json.data.checksum/|/$_json.data.item_id/|
-      - _query_response: +wdb_update/$_query
+      - ~query: +s_concat/agent /$agent.id/ dbsync ports /$~json.operation/ /$~json.data.scan_time/|/$~json.data.protocol/|/$~json.data.local_ip/|/$~json.data.local_port/|/$~json.data.remote_ip/|/$~json.data.remote_port/|/$~json.data.tx_queue/|/$~json.data.rx_queue/|/$~json.data.inode/|/$~json.data.state/|/$~json.data.pid/|/$~json.data.process/|/$~json.data.checksum/|/$~json.data.item_id/|
+      - ~query_response: +wdb_update/$~query
 
   - check:
-      - _query_response: +t_is_true
+      - ~query_response: +t_is_true
     map:
-      - wazuh.syscollector.port.protocol: $_json.data.protocol
-      - wazuh.syscollector.port.local_ip: $_json.data.local_ip
-      - wazuh.syscollector.port.local_port: $_json.data.local_port
-      - wazuh.syscollector.port.remote_ip: $_json.data.remote_ip
-      - wazuh.syscollector.port.remote_port: $_json.data.remote_port
-      - wazuh.syscollector.port.tx_queue: $_json.data.tx_queue
-      - wazuh.syscollector.port.rx_queue: $_json.data.rx_queue
-      - wazuh.syscollector.port.inode: $_json.data.inode
-      - _json.data.state: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.port.state: $_json.data.state
-      - wazuh.syscollector.port.pid: $_json.data.pid
-      - _json.data.process: +s_replace/$_escaped_pipe_char/|
-      - wazuh.syscollector.port.process: $_json.data.process
-      - _query: +ef_delete
-      - _query_response: +ef_delete
-      - _json.data: +ef_delete
-      - _escaped_pipe_char: +ef_delete
+      - wazuh.syscollector.port.protocol: $~json.data.protocol
+      - wazuh.syscollector.port.local_ip: $~json.data.local_ip
+      - wazuh.syscollector.port.local_port: $~json.data.local_port
+      - wazuh.syscollector.port.remote_ip: $~json.data.remote_ip
+      - wazuh.syscollector.port.remote_port: $~json.data.remote_port
+      - wazuh.syscollector.port.tx_queue: $~json.data.tx_queue
+      - wazuh.syscollector.port.rx_queue: $~json.data.rx_queue
+      - wazuh.syscollector.port.inode: $~json.data.inode
+      - ~json.data.state: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.port.state: $~json.data.state
+      - wazuh.syscollector.port.pid: $~json.data.pid
+      - ~json.data.process: +s_replace/$~escaped_pipe_char/|
+      - wazuh.syscollector.port.process: $~json.data.process
+      - ~query: +ef_delete
+      - ~query_response: +ef_delete
+      - ~json.data: +ef_delete
+      - ~escaped_pipe_char: +ef_delete

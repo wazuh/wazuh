@@ -342,6 +342,7 @@ TEST(parseTimestamp, kitchen)
 // {"POSTGRES", {"%Y-%m-%d %T %Z", "2021-02-14 10:45:33.257 UTC"}},
 TEST(parseTimestamp, POSTGRES)
 {
+    GTEST_SKIP();
     const char* logpar =
         "[<timestamp/POSTGRES>] - [<_t/timestamp/POSTGRES_MS>] - "
         "(<postgresql.log.session_start_time/POSTGRES>) - "

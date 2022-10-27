@@ -1,7 +1,7 @@
 ---
 name: decoder/json/0
 
-parents:
+sources:
   - decoder/queue-syslog/0
   - decoder/queue-localfile/0
 
@@ -10,4 +10,4 @@ check:
 
 parse:
   logpar:
-    - event.original: <_json/json>
+    - event.original: <~json/json>

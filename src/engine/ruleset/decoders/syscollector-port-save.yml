@@ -1,72 +1,72 @@
 name: decoder/syscollector-port-save/0
 
-parents:
+sources:
   - decoder/syscollector-port/0
 
 check:
-  - _json.port: +ef_exists
+  - ~json.port: +ef_exists
 
 normalize:
   - check:
-      - _json.timestamp: +ef_not_exists
+      - ~json.timestamp: +ef_not_exists
     map:
-      - _json.timestamp: "NULL"
+      - ~json.timestamp: "NULL"
 
   - check:
-      - _json.port.protocol: +ef_not_exists
+      - ~json.port.protocol: +ef_not_exists
     map:
-      - _json.port.protocol: "NULL"
+      - ~json.port.protocol: "NULL"
 
   - check:
-      - _json.port.local_ip: +ef_not_exists
+      - ~json.port.local_ip: +ef_not_exists
     map:
-      - _json.port.local_ip: "NULL"
+      - ~json.port.local_ip: "NULL"
 
   - check:
-      - _json.port.local_port: +ef_not_exists
+      - ~json.port.local_port: +ef_not_exists
     map:
-      - _json.port.local_port: "NULL"
+      - ~json.port.local_port: "NULL"
 
   - check:
-      - _json.port.remote_ip: +ef_not_exists
+      - ~json.port.remote_ip: +ef_not_exists
     map:
-      - _json.port.remote_ip: "NULL"
+      - ~json.port.remote_ip: "NULL"
 
   - check:
-      - _json.port.remote_port: +ef_not_exists
+      - ~json.port.remote_port: +ef_not_exists
     map:
-      - _json.port.remote_port: "NULL"
+      - ~json.port.remote_port: "NULL"
 
   - check:
-      - _json.port.tx_queue: +ef_not_exists
+      - ~json.port.tx_queue: +ef_not_exists
     map:
-      - _json.port.tx_queue: "NULL"
+      - ~json.port.tx_queue: "NULL"
 
   - check:
-      - _json.port.rx_queue: +ef_not_exists
+      - ~json.port.rx_queue: +ef_not_exists
     map:
-      - _json.port.rx_queue: "NULL"
+      - ~json.port.rx_queue: "NULL"
 
   - check:
-      - _json.port.inode: +ef_not_exists
+      - ~json.port.inode: +ef_not_exists
     map:
-      - _json.port.inode: "NULL"
+      - ~json.port.inode: "NULL"
 
   - check:
-      - _json.port.state: +ef_not_exists
+      - ~json.port.state: +ef_not_exists
     map:
-      - _json.port.state: "NULL"
+      - ~json.port.state: "NULL"
 
   - check:
-      - _json.port.PID: +ef_not_exists
+      - ~json.port.PID: +ef_not_exists
     map:
-      - _json.port.PID: "NULL"
+      - ~json.port.PID: "NULL"
 
   - check:
-      - _json.port.process: +ef_not_exists
+      - ~json.port.process: +ef_not_exists
     map:
-      - _json.port.process: "NULL"
+      - ~json.port.process: "NULL"
 
   - map:
-      - _query: +s_concat/agent /$agent.id/ port save /$_json.ID/|/$_json.timestamp/|/$_json.port.protocol/|/$_json.port.local_ip/|/$_json.port.local_port/|/$_json.port.remote_ip/|/$_json.port.remote_port/|/$_json.port.tx_queue/|/$_json.port.rx_queue/|/$_json.port.inode/|/$_json.port.state/|/$_json.port.PID/|/$_json.port.process
-      - _port_save_result: +wdb_update/$_query
+      - ~query: +s_concat/agent /$agent.id/ port save /$~json.ID/|/$~json.timestamp/|/$~json.port.protocol/|/$~json.port.local_ip/|/$~json.port.local_port/|/$~json.port.remote_ip/|/$~json.port.remote_port/|/$~json.port.tx_queue/|/$~json.port.rx_queue/|/$~json.port.inode/|/$~json.port.state/|/$~json.port.PID/|/$~json.port.process
+      - ~port_save_result: +wdb_update/$~query

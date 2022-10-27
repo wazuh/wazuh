@@ -95,11 +95,6 @@ TEST_F(AssetTest, BuildDecoder)
         "check": [
             {"decoder": 1}
         ],
-        "parse": {
-            "logpar": [
-                {"field": "<other.field> "}
-            ]
-        },
         "normalize": [
             {
                 "map": [
@@ -126,7 +121,7 @@ TEST_F(AssetTest, BuildRule)
 {
     auto assetJson = R"({
         "name": "rule1",
-        "parents": ["ruleParent"],
+        "sources": ["ruleParent"],
         "check": [
             {"rule": 1}
         ],
