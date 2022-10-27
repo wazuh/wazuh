@@ -3118,13 +3118,14 @@ checks:
       - 'c:stat /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access: \(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
       - 'c:stat /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access: \(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
       - 'c:stat /etc/ssh/ssh_host_ed25519_key -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access: \(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
+      - 'c:stat /etc/ssh/ssh_host_dsa_key -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access: \(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
 
   # 5.3.3 Ensure permissions on SSH public host key files are configured (Automated)
   - id: 19153
     title: "Ensure permissions on SSH public host key files are configured."
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: "Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,go- wx {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;"
+    remediation: "Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,go-wx {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;"
     compliance:
       - cis: ["5.3.3"]
       - cis_csc_v7: ["14.6"]
@@ -3138,6 +3139,7 @@ checks:
       - 'c:stat /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0644/-rw-r--r--)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
       - 'c:stat /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0644/-rw-r--r--)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
       - 'c:stat /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0644/-rw-r--r--)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/ssh/ssh_host_dsa_key.pub -> r:^Access: \(0644/-rw-r--r--)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.3.4 Ensure SSH access is limited (Automated) - Not implemented
   - id: 19154
@@ -3152,7 +3154,7 @@ checks:
       - iso_27001-2013: ["A.9.2.3"]
       - mitre_techniques: ["T1176", "T1501", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-    condition: all
+    condition: any
     rules:
       - 'c:sshd -T -> r:\s*allowusers\s+\w+|allowgroups\s+\w+|denyusers\s+\w+|denygroups\s+\w+'
       - 'f:/etc/ssh/sshd_config -> r:\s*allowusers\s+\w+|allowgroups\s+\w+|denyusers\s+\w+|denygroups\s+\w+'
@@ -3240,7 +3242,7 @@ checks:
   # 5.3.9 Ensure SSH HostbasedAuthentication is disabled (Automated)
   - id: 19159
     title: "Ensure SSH HostbasedAuthentication is disabled."
-    description: " The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication."
+    description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
     remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf to set the parameter as follows: HostbasedAuthentication no"
     compliance:
@@ -3259,7 +3261,7 @@ checks:
     title: "Ensure SSH root login is disabled."
     description: "The PermitRootLogin parameter specifies if the root user can log in using ssh."
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no"
+    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf to set the parameter as follows: PermitRootLogin no"
     compliance:
       - cis: ["5.3.10"]
       - cis_csc_v7: ["4.3"]
@@ -3315,7 +3317,7 @@ checks:
     title: "Ensure only strong Ciphers are used."
     description: "This variable limits the ciphers that SSH can use during communication. Note: Some organizations may have stricter requirements for approved ciphers. Ensure that ciphers used are in compliance with site policy."
     rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. - The DES, Triple DES, and Blowfish ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain cleartext data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack. - The RC4 algorithm, as used in the TLS protocol and SSL protocol, does not properly combine state data with key data during the initialization phase, which makes it easier for remote attackers to conduct plaintext-recovery attacks against the initial bytes of a stream by sniffing network traffic that occasionally relies on keys affected by the Invariance Weakness, and then using a brute-force approach involving LSB values, aka the "Bar Mitzvah" issue. - The passwords used during an SSH session encrypted with RC4 can be recovered by an attacker who is able to capture and replay the session. - Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plaintext data from an arbitrary block of ciphertext in an SSH session via unknown vectors.'
-    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf and add or modify the Ciphers line to contain a comma separated list of the site approved ciphers Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128- gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
+    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf and add or modify the Ciphers line to contain a comma separated list of the site approved ciphers Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
     compliance:
       - cis: ["5.3.13"]
       - cis_csc_v7: ["14.4"]
@@ -3363,7 +3365,7 @@ checks:
     title: "Ensure only strong Key Exchange algorithms are used."
     description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received Note: Some organizations may have stricter requirements for approved Key Exchange algorithms. Ensure that Key Exchange algorithms used are in compliance with site policy."
     rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks."
-    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf and add or modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms. Example: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman- group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18- sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie- hellman-group-exchange-sha256"
+    remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf and add or modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms. Example: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256"
     compliance:
       - cis: ["5.3.15"]
       - cis_csc_v7: ["14.4"]
@@ -3396,11 +3398,11 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -> n:^\s*clientaliveinterval\s*(\d+) compare <= 300 && n:clientaliveinterval\s*(\d+) compare != 0'
-      - 'c:sshd -T -> n:^\s*clientalivecountmax\s*(\d+) compare <= 3'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*clientaliveinterval\s*(\d+) compare > 300'
-      - 'd:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientaliveinterval\s*(\d+) compare > 300'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*clientalivecountmax\s*(\d+) compare > 3'
-      - 'd:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientalivecountmax\s*(\d+) compare > 3'
+      - 'c:sshd -T -> n:^\s*clientalivecountmax\s*(\d+) compare <= 3 && n:^\s*clientalivecountmax\s*(\d+) compare != 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*clientaliveinterval\s*(\d+) compare > 300'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientaliveinterval\s*(\d+) compare > 300'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*clientalivecountmax\s*(\d+) compare > 3'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*clientalivecountmax\s*(\d+) compare > 3'
 
   # 5.3.17 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 19167
@@ -3419,8 +3421,8 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -> n:^\s*logingracetime\s*(\d+) compare <= 60 && n:^\s*logingracetime\s*(\d+) compare >= 1'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*(\d+) compare > 60'
-      - 'd:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*LoginGraceTime\s*(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*(\d+) compare > 60'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*LoginGraceTime\s*(\d+) compare > 60'
 
   # 5.3.18 Ensure SSH warning banner is configured (Automated)
   - id: 19168
@@ -3467,7 +3469,7 @@ checks:
   - id: 19170
     title: "Ensure SSH AllowTcpForwarding is disabled."
     description: "SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines."
-    rationale: "Leaving port forwarding enabled can expose the organization to security risks and back- doors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
+    rationale: "Leaving port forwarding enabled can expose the organization to security risks and back-doors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
     impact: "SSH tunnels are widely used in many corporate environments that employ mainframe systems as their application backends. In those environments the applications themselves may have very limited native support for security. By utilizing tunneling, compliance with SOX, HIPAA, PCI-DSS, and other standards can be achieved without having to modify the applications."
     remediation: "Edit /etc/ssh/sshd_config or a file in /ssh/sshd_config.d/ ending in .conf to set the parameter as follows: AllowTcpForwarding no"
     compliance:
