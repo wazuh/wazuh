@@ -2146,7 +2146,11 @@ checks:
 
   # 3.5.3.3.3 Ensure ip6tables outbound and established connections are configured (Manual) - Not implemented
   # 3.5.3.3.4 Ensure ip6tables firewall rules exist for all open ports (Automated) - Not implemented
+
+  ############################################################
   # 4 Logging and Auditing
+  ############################################################
+
   # 4.1 Configure System Accounting (auditd)
   # 4.1.1 Ensure auditing is enabled
   # 4.1.1.1 Ensure auditd is installed (Automated)
@@ -2948,187 +2952,306 @@ checks:
     condition: all
     rules:
       - 'c:c:dpkg-query -s rsyslog -> r:install ok installed'
-    
+
+  # 4.2.2.2 Ensure rsyslog service is enabled (Automated)
   - id: 28624
-    title: "Ensure rsyslog service is enabled"
+    title: "Ensure rsyslog service is enabled."
     description: "Once the rsyslog package is installed, ensure that the service is enabled."
     rationale: "If the rsyslog service is not enabled to start on boot, the system will not capture logging events."
-    impact: ""
     remediation: "Run the following command to enable rsyslog: # systemctl --now enable rsyslog"
-    references: ""
     compliance:
       - cis: ["4.2.2.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["6.2","6.3"]
+      - cis_csc_v8: ["8.2"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.001"]
+      - mitre_tactics: ["TA0005"]
+      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
+      - hipaa: [ "164.312(b)" ]
+      - pci_dss_3.2.1: [ "10.2","10.3" ]
+      - pci_dss_4.0: [ "5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2" ]
+      - nist_853: [ "AU-7" ]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:systemctl is-enabled rsyslog -> r:enabled'
+
+  # 4.2.2.3 Ensure journald is configured to send logs to rsyslog (Manual)
   - id: 28625
-    title: "Ensure journald is configured to send logs to rsyslog (Manual)"
+    title: "Ensure journald is configured to send logs to rsyslog."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of journald logs, however, use of the RSyslog service provides a consistent means of log collection and export."
     rationale: "IF RSyslog is the preferred method for capturing logs, all logs of the system should be sent to it for further processing."
-    impact: ""
-    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes Restart the service: # systemctl restart rsyslog Additional Information: As noted in the journald man pages, journald logs may be exported to rsyslog either through the process mentioned here, or through a facility like systemdjournald.service. There are trade-offs involved in each implementation, where ForwardToSyslog will immediately capture all events (and forward to an external log server, if properly configured), but may not capture all boot-up activities. Mechanisms such as systemd-journald.service, on the other hand, will record bootup events, but may delay sending the information to rsyslog, leading to the potential for log manipulation prior to export. Be aware of the limitations of all tools employed to secure a system. The main configuration file /etc/systemd/journald.conf is read before any of the custom *.conf files. If there are custom configurations present, they override the main configuration parameters"
-    references: ""
+    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes Restart the service: # systemctl restart rsyslog."
     compliance:
       - cis: ["4.2.2.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["6.2","6.3","6.5"]
+      - cis_csc_v8: ["8.2","8.9"]
+      - pci_dss_3.2.1: [ "10.5.3","10.5.4" ]
+      - pci_dss_4.0: [ "10.3.3" ]
+      - nist_853: [ "AU-6(3)" ]
+      - soc_2: [ "PL1.4" ]
     condition: all
     rules:
-      - ''    
-    
+      - 'f:/etc/systemd/journald.conf -> r:^ForwardToSyslog=yes$'
+
+  # 4.2.2.4 Ensure rsyslog default file permissions are configured (Automated)
   - id: 28626
     title: "Ensure rsyslog default file permissions are configured"
     description: "RSyslog will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
     impact: "The systems global umask could override, but only making the file permissions stricter, what is configured in RSyslog with the FileCreateMode directive. RSyslog also has it's own $umask directive that can alter the intended file creation mode. In addition, consideration should be given to how FileCreateMode is used. Thus it is critical to ensure that the intended file creation mode is not overridden with less restrictive settings in /etc/rsyslog.conf, /etc/rsyslog.d/*conf files and that FileCreateMode is set before any file is created."
     remediation: "Edit either /etc/rsyslog.conf or a dedicated .conf file in /etc/rsyslog.d/ and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640 Restart the service: # systemctl restart rsyslog"
-    references: "1. See the rsyslog.conf(5) man page for more information."
+    references:
+      - See the rsyslog.conf(5) man page for more information.
     compliance:
       - cis: ["4.2.2.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["5.1","6.2","6.3"]
+      - cis_csc_v8: ["3.3","8.2"]
+      - mitre_techniques: ["T1070","T1070.002","T1083"]
+      - mitre_tactics: ["TA0007"]
+      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
+      - hipaa: [ "164.312(b)" ]
+      - pci_dss_3.2.1: [ "10.2","10.3" ]
+      - pci_dss_4.0: [ "5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2" ]
+      - nist_853: [ "AU-7" ]
     condition: all
     rules:
-      - ''    
-    
-  - id: 28627
-    title: "Ensure logging is configured (Manual)"
-    description: "The /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files specifies rules for logging and which files are to be used to log certain classes of messages."
-    rationale: "A great deal of important security-related information is sent via rsyslog (e.g., successful and failed su attempts, failed login attempts, root login attempts, etc.)."
-    impact: ""
-    remediation: "Edit the following lines in the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files as appropriate for your environment. NOTE: The below configuration is shown for example purposes only. Due care should be given to how the organization wish to store log data. *.emerg auth,authpriv.* mail.* mail.info mail.warning mail.err cron.* *.=warning;*.=err *.crit *.*;mail.none;news.none local0,local1.* local2,local3.* local4,local5.* local6,local7.* :omusrmsg:* /var/log/secure -/var/log/mail -/var/log/mail.info -/var/log/mail.warn /var/log/mail.err /var/log/cron -/var/log/warn /var/log/warn -/var/log/messages -/var/log/localmessages -/var/log/localmessages -/var/log/localmessages -/var/log/localmessages Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog"
-    references: "1. See the rsyslog.conf(5) man page for more information."
-    compliance:
-      - cis: ["4.2.2.5"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28628
-    title: "Ensure rsyslog is configured to send logs to a remote log host (Manual)"
-    description: "RSyslog supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
-    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
-    impact: ""
-    remediation: "Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add the following line (where loghost.example.com is the name of your central log host). The target directive may either be a fully qualified domain name or an IP address. *.* action(type="omfwd" target="192.168.2.100" port="514" protocol="tcp" action.resumeRetryCount="100" queue.type="LinkedList" queue.size="1000") Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog"
-    references: "1. See the rsyslog.conf(5) man page for more information. Additional Information: In addition, see the RSyslog documentation for implementation details of TLS."
-    compliance:
-      - cis: ["4.2.2.6"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
+      - 'f:/etc/rsyslog.conf -> r:\$FileCreateMode 0640'
+      - 'f:/etc/rsyslog.d/*.conf -> r:\$FileCreateMode 0640'
+
+  # 4.2.2.5 Ensure logging is configured (Manual) - Not implemented
+  # 4.2.2.6 Ensure rsyslog is configured to send logs to a remote log host (Manual) - Not implemented
+  # 4.2.2.7 Ensure rsyslog is not configured to receive logs from a remote client (Automated)
   - id: 28629
-    title: "Ensure rsyslog is not configured to receive logs from a remote client"
+    title: "Ensure rsyslog is not configured to receive logs from a remote client."
     description: "RSyslog supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
-    impact: ""
-    remediation: "Should there be any active log server configuration found in the auditing section, modify those file and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf. Old format $ModLoad imtcp $InputTCPServerRun New format module(load="imtcp") input(type="imtcp" port="514") Restart the service: # systemctl restart rsyslog"
-    references: ""
+    remediation: 'Should there be any active log server configuration found in the auditing section, modify those file and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf. Old format $ModLoad imtcp $InputTCPServerRun New format module(load="imtcp") input(type="imtcp" port="514") Restart the service: # systemctl restart rsyslog'
     compliance:
       - cis: ["4.2.2.7"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
+      - cis_csc_v7: ["6.2","6.3","9.2"]
+      - cis_csc_v8: ["4.8","8.2"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
+      - mitre_tactics: ["TA0005"]
+      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
+      - hipaa: [ "164.312(b)" ]
+      - pci_dss_3.2.1: [ "10.2","10.3" ]
+      - pci_dss_4.0: [ "5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2" ]
+      - nist_853: [ "AU-7" ]
+    condition: none
     rules:
-      - ''    
-    
-  - id: 28630
-    title: "Ensure all logfiles have appropriate permissions and ownership"
-    description: "Log files contain information from many services on the the local system, or in the event of a centralized log server, others systems logs as well. In general log files are found in /var/log/, although application can be configured to store logs elsewhere. Should your application store logs in another, ensure to run the same test on that location."
-    rationale: "It is important that log files have the correct permissions to ensure that sensitive data is protected and that only the appropriate users / groups have access to them."
-    impact: ""
-    remediation: "Run the following script to update permissions and ownership on files in /var/log. Although the script is not destructive, ensure that the output of the audit procedure is captured in the event that the remediation causes issues. #!/usr/bin/env bash { echo -e "\ - Start remediation - logfiles have appropriate permissions and ownership" find /var/log -type f | while read -r fname; do bname="$(basename "$fname")" case "$bname" in lastlog | lastlog.* | wtmp | wtmp.* | btmp | btmp.*) ! stat -Lc "%a" "$fname" | grep -Pq -- '^\h*[0,2,4,6][0,2,4,6][0,4]\h*$' && echo -e "- changing mode on \"$fname\"" && chmod ug-x,o-wx "$fname" ! stat -Lc "%U" "$fname" | grep -Pq -- '^\h*root\h*$' && echo -e "- changing owner on \"$fname\"" && chown root "$fname" ! stat -Lc "%G" "$fname" | grep -Pq -- '^\h*(utmp|root)\h*$' && echo -e "- changing group on \"$fname\"" && chgrp root "$fname" ;; secure | auth.log) ! stat -Lc "%a" "$fname" | grep -Pq -- '^\h*[0,2,4,6][0,4]0\h*$' && echo -e "- changing mode on \"$fname\"" && chmod u-x,g-wx,o-rwx "$fname" ! stat -Lc "%U" "$fname" | grep -Pq -- '^\h*(syslog|root)\h*$' && echo -e "- changing owner on \"$fname\"" && chown root "$fname" ! stat -Lc "%G" "$fname" | grep -Pq -- '^\h*(adm|root)\h*$' && echo -e "- changing group on \"$fname\"" && chgrp root "$fname" ;; SSSD | sssd) ! stat -Lc "%a" "$fname" | grep -Pq -'^\h*[0,2,4,6][0,2,4,6]0\h*$' && echo -e "- changing mode on \"$fname\"" && chmod ug-x,o-rwx "$fname" ! stat -Lc "%U" "$fname" | grep -Piq -- '^\h*(SSSD|root)\h*$' && echo -e "- changing owner on \"$fname\"" && chown root "$fname" ! stat -Lc "%G" "$fname" | grep -Piq -- '^\h*(SSSD|root)\h*$' && echo -e "- changing group on \"$fname\"" && chgrp root "$fname" ;; gdm | gdm3) ! stat -Lc "%a" "$fname" | grep -Pq -'^\h*[0,2,4,6][0,2,4,6]0\h*$' && echo -e "- changing mode on \"$fname\"" && chmod ug-x,o-rwx ! stat -Lc "%U" "$fname" | grep -Pq -- '^\h*root\h*$' && echo -e "- changing owner on \"$fname\"" && chown root "$fname" ! stat -Lc "%G" "$fname" | grep -Pq -- '^\h*(gdm3?|root)\h*$' && echo -e "- changing group on \"$fname\"" && chgrp root "$fname" ;; *.journal) ! stat -Lc "%a" "$fname" | grep -Pq -- '^\h*[0,2,4,6][0,4]0\h*$' && echo -e "- changing mode on \"$fname\"" && chmod u-x,g-wx,o-rwx "$fname" ! stat -Lc "%U" "$fname" | grep -Pq -- '^\h*root\h*$' && echo -e "- changing owner on \"$fname\"" && chown root "$fname" ! stat -Lc "%G" "$fname" | grep -Pq -- '^\h*(systemdjournal|root)\h*$' && echo -e "- changing group on \"$fname\"" && chgrp root "$fname" ;; *) ! stat -Lc "%a" "$fname" | grep -Pq -- '^\h*[0,2,4,6][0,4]0\h*$' && echo -e "- changing mode on \"$fname\"" && chmod u-x,g-wx,o-rwx "$fname" ! stat -Lc "%U" "$fname" | grep -Pq -- '^\h*(syslog|root)\h*$' && echo -e "- changing owner on \"$fname\"" && chown root "$fname" ! stat -Lc "%G" "$fname" | grep -Pq -- '^\h*(adm|root)\h*$' && echo -e "- changing group on \"$fname\"" && chgrp root "$fname" ;; esac done echo -e "- End remediation - logfiles have appropriate permissions and ownership\ " } Note: You may also need to change the configuration for your logging software or services for any logs that had incorrect permissions. If there are services that log to other locations, ensure that those log files have the appropriate permissions. Additional Information: NIST SP 800-53 Rev. 5: AC-3 MP-2"
-    references: ""
-    compliance:
-      - cis: ["4.2.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
+      - 'f:/etc/rsyslog.conf -> r:module\(load="imtcp"\)'
+      - 'f:/etc/rsyslog.d/*.conf -> r:module\(load="imtcp"\)'
+      - 'f:/etc/rsyslog.conf -> r:input\(type="imtcp" port="514"\)'
+      - 'f:/etc/rsyslog.d/*.conf -> r:input\(type="imtcp" port="514"\)'
+
+  # 4.2.3 Ensure all logfiles have appropriate permissions and ownership (Automated) - Not implemented
+
+  ############################################################
+  # 5 Access, Authentication and Authorization
+  ############################################################
+
+  # 5.1 Configure time-based job schedulers
+  # 5.1.1 Ensure cron daemon is enabled and running (Automated)
   - id: 28631
-    title: "Ensure cron daemon is enabled and running"
+    title: "Ensure cron daemon is enabled and running."
     description: "The cron daemon is used to execute batch jobs on the system. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy"
     rationale: "While there may not be user jobs that need to be run on the system, the system does have maintenance jobs that may include security monitoring that have to run, and cron is used to execute them."
-    impact: ""
-    remediation: "Run the following command to enable and start cron: # systemctl --now enable cron MITRE ATT&CK Mappings: Techniques / Subtechniques Tactics Mitigations T1562, T1562.001 TA0005 M1018 5.1.2 Ensure permissions on /etc/crontab are configured Profile Applicability: Level 1 - Server Level 1 - Workstation Description: The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy Rationale: This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges. Read access to these files could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access. Audit: Run the following command and verify Uid and Gid are both 0/root and Access does not grant permissions to group or other : # stat /etc/crontab Access: (0600/-rw-------) Uid: ( 0/ root) Gid: ( 0/ root) Remediation: Run the following commands to set ownership and permissions on /etc/crontab : # chown root:root /etc/crontab # chmod og-rwx /etc/crontab"
-    references: ""
+    remediation: "Run the following command to enable and start cron: # systemctl --now enable cron"
     compliance:
       - cis: ["5.1.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - mitre_techniques: ["T1562"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:systemctl is-enabled cron -> r:enabled'
+
+  # 5.1.2 Ensure permissions on /etc/crontab are configured (Automated)
   - id: 28632
-    title: "Ensure cron is restricted to authorized users"
-    description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy Even though a given user is not listed in cron.allow, cron jobs can still be run as that user The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs"
+    title: "Ensure permissions on /etc/crontab are configured."
+    description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy"
+    rationale: "This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges. Read access to these files could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
+    remediation: "Run the following commands to set ownership and permissions on /etc/crontab : # chown root:root /etc/crontab # chmod og-rwx /etc/crontab"
+    compliance:
+      - cis: ["5.1.2"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1053","T1053.003"]
+      - mitre_tactics: ["TA0002","TA0007"]
+      - mitre_mitigations: ["M1018"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_853: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
+    condition: all
+    rules:
+      - 'c:stat /etc/crontab -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+
+  # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
+  - id: 28632
+    title: "Ensure permissions on /etc/cron.hourly are configured."
+    description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy"
+    rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
+    remediation: "Run the following commands to set ownership and permissions on the /etc/cron.hourly directory: # chown root:root /etc/cron.hourly/ # chmod og-rwx /etc/cron.hourly"
+    compliance:
+      - cis: [ "5.1.3" ]
+      - cis_csc_v7: [ "14.6" ]
+      - cis_csc_v8: [ "3.3" ]
+      - mitre_techniques: [ "T1053","T1053.003" ]
+      - mitre_tactics: [ "TA0002","TA0007" ]
+      - mitre_mitigations: [ "M1018" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_853: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
+    condition: all
+    rules:
+      - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+
+  # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
+  - id: 28632
+    title: "Ensure permissions on /etc/cron.daily are configured"
+    description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy"
+    rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
+    remediation: "Run the following commands to set ownership and permissions on the /etc/cron.daily directory: # chown root:root /etc/cron.daily/ # chmod og-rwx /etc/cron.daily/"
+    compliance:
+      - cis: [ "5.1.4" ]
+      - cis_csc_v7: [ "14.6" ]
+      - cis_csc_v8: [ "3.3" ]
+      - mitre_techniques: [ "T1053","T1053.003" ]
+      - mitre_tactics: [ "TA0002","TA0007" ]
+      - mitre_mitigations: [ "M1018" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_853: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
+    condition: all
+    rules:
+      - 'c:stat /etc/cron.daily/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+
+  # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
+  - id: 28632
+    title: "Ensure permissions on /etc/cron.weekly are configured."
+    description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
+    rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
+    remediation: "Run the following commands to set ownership and permissions on the /etc/cron.weekly directory: # chown root:root /etc/cron.weekly/ # chmod og-rwx /etc/cron.weekly/"
+    compliance:
+      - cis: ["5.1.5"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: [ "T1053","T1053.003" ]
+      - mitre_tactics: [ "TA0002","TA0007" ]
+      - mitre_mitigations: [ "M1018" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_853: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
+    condition: all
+    rules:
+      - 'c:stat /etc/cron.weekly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+
+  # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
+  - id: 28632
+    title: "Ensure permissions on /etc/cron.monthly are configured."
+    description: "The /etc/cron.monthly directory contains system cron jobs that need to run on a monthly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
+    rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
+    remediation: "Run the following commands to set ownership and permissions on the /etc/cron.monthly directory: # chown root:root /etc/cron.monthly/ # chmod og-rwx /etc/cron.monthly/"
+    compliance:
+      - cis: ["5.1.6"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: [ "T1053","T1053.003" ]
+      - mitre_tactics: [ "TA0002","TA0007" ]
+      - mitre_mitigations: [ "M1018" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_853: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
+    condition: all
+    rules:
+      - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+
+  # Ensure permissions on /etc/cron.d are configured (Automated)
+  - id: 28632
+    title: "Ensure permissions on /etc/cron.d are configured"
+    description: "The /etc/cron.d directory contains system cron jobs that need to run in a similar manner to the hourly, daily weekly and monthly jobs from /etc/crontab, but require more granular control as to when they run. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
+    rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
+    remediation: "Run the following commands to set ownership and permissions on the /etc/cron.d directory: # chown root:root /etc/cron.d/ # chmod og-rwx /etc/cron.d/"
+    compliance:
+      - cis: ["5.1.7"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: [ "T1053","T1053.003" ]
+      - mitre_tactics: [ "TA0002","TA0007" ]
+      - mitre_mitigations: [ "M1018" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_853: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
+    condition: all
+    rules:
+      - 'c:stat /etc/cron.d/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+
+  # 5.1.8 Ensure cron is restricted to authorized users (Automated)
+  - id: 28632
+    title: "Ensure cron is restricted to authorized users."
+    description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy Even though a given user is not listed in cron.allow, cron jobs can still be run as that user The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
     rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    impact: ""
-    remediation: "Run the following commands to remove /etc/cron.deny: # rm /etc/cron.deny Run the following command to create /etc/cron.allow # touch /etc/cron.allow Run the following commands to set permissions and ownership for /etc/cron.allow: # chmod g-wx,o-rwx /etc/cron.allow # chown root:root /etc/cron.allow"
-    references: ""
+    remediation: "Run the following commands to remove /etc/cron.deny: # rm /etc/cron.deny Run the following command to create /etc/cron.allow # touch /etc/cron.allow Run the following commands to set permissions and ownership for /etc/cron.allow: # chmod g-wx,o-rwx /etc/cron.allow # chown root:root /etc/cron.allow."
     compliance:
       - cis: ["5.1.8"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: [ "T1053","T1053.003" ]
+      - mitre_tactics: [ "TA0002","TA0007" ]
+      - mitre_mitigations: [ "M1018" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_853: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
     condition: all
     rules:
-      - ''    
-    
+      - 'not f:/etc/cron.deny'
+      - 'c:stat /etc/cron.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+
+  # 5.1.9 Ensure at is restricted to authorized users (Automated)
   - id: 28633
-    title: "Ensure at is restricted to authorized users"
-    description: "Configure /etc/at.allow to allow specific users to use this service. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not specifically defined in this file is allowed to use at. By removing the file, only users in /etc/at.allow are allowed to use at. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, at should be removed, and the alternate method should be secured in accordance with local site policy"
+    title: "Ensure at is restricted to authorized users."
+    description: "Configure /etc/at.allow to allow specific users to use this service. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not specifically defined in this file is allowed to use at. By removing the file, only users in /etc/at.allow are allowed to use at. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, at should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    impact: ""
-    remediation: "Run the following commands to remove /etc/at.deny: # rm /etc/at.deny Run the following command to create /etc/at.allow # touch /etc/at.allow Run the following commands to set permissions and ownership for /etc/at.allow: # chmod g-wx,o-rwx /etc/at.allow # chown root:root /etc/at.allow"
-    references: ""
+    remediation: "Run the following commands to remove /etc/at.deny: # rm /etc/at.deny Run the following command to create /etc/at.allow # touch /etc/at.allow Run the following commands to set permissions and ownership for /etc/at.allow: # chmod g-wx,o-rwx /etc/at.allow # chown root:root /etc/at.allow."
     compliance:
       - cis: ["5.1.9"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: [ "T1053","T1053.003" ]
+      - mitre_tactics: [ "TA0002","TA0007" ]
+      - mitre_mitigations: [ "M1018" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_853: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
     condition: all
     rules:
-      - ''    
-    
+      - 'not f:/etc/at.deny'
+      - 'c:stat /etc/at.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+
+  # 5.2 Configure SSH Server
   - id: 28634
     title: "Ensure permissions on /etc/ssh/sshd_config are configured"
     description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
