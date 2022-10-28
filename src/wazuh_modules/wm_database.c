@@ -65,7 +65,7 @@ int wdb_wmdb_sock = -1;
 // Module main function. It won't return
 static void* wm_database_main(wm_database *data);
 // Destroy data
-static void* wm_database_destroy(wm_database *data);
+static void wm_database_destroy(wm_database *data);
 // Read config
 cJSON *wm_database_dump(const wm_database *data);
 // Update manager information
@@ -711,9 +711,8 @@ cJSON *wm_database_dump(const wm_database *data) {
 
 
 // Destroy data
-void* wm_database_destroy(wm_database *data) {
+void wm_database_destroy(wm_database *data) {
     free(data);
-    return NULL;
 }
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
