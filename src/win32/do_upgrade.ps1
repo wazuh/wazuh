@@ -172,46 +172,6 @@ function check-installation
     Get-Service -Name "Wazuh" | Start-Service
 }
 
-function restore
-{
-    param (
-        $msi_filename
-    )
-
-    kill -processname win32ui -ErrorAction SilentlyContinue -Force
-    stop_wazuh_agent("wazuh-agent")
-
-    # Saves ossec.log before remove fail update
-    Copy-Item $Env:WAZUH_BACKUP_DIR\ossec.log $Env:WAZUH_BACKUP_DIR\ossec.log.save -force
-    Copy-Item ossec.log $Env:WAZUH_BACKUP_DIR\ossec.log -force
-    Copy-Item ossec.conf .\upgrade\ossec.conf.old
-
-    # Uninstall the latest version of the Wazuh-Agent.
-    uninstall_wazuh
-
-    # Install the former version of the Wazuh-Agent
-    if ($msi_filename -ne $null) {
-        write-output "$(Get-Date -format u) - Excecuting former Wazuh-Agent MSI: `"$Env:WAZUH_BACKUP_DIR\$msi_filename`"." >> .\upgrade\upgrade.log
-        cmd /c start $Env:WAZUH_BACKUP_DIR\$msi_filename -quiet -norestart -log installer.log
-
-        $counter = 10
-        While(-Not (is_wazuh_installed) -And $counter -gt 0) {
-            write-output "$(Get-Date -format u) - Waiting for the installation to end." >> .\upgrade\upgrade.log
-            $counter--
-            Start-Sleep 2
-        }
-        Remove-Item $Env:WAZUH_BACKUP_DIR\$msi_filename -ErrorAction SilentlyContinue
-    }
-
-    # Restore old files
-    write-output "$(Get-Date -format u) - Restoring former Wazuh-Agent home files." >> .\upgrade\upgrade.log
-    Copy-Item $Env:WAZUH_BACKUP_DIR\* .\ -force
-
-    # Get current version
-    $current_version = (Get-Content VERSION)
-    write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
-}
-
 # Stop UI and launch the msi installer
 function install
 {
@@ -276,30 +236,9 @@ write-output "$(Get-Date -format u) - Reading status file: $($status)." >> .\upg
 If ($status -eq $null)
 {
     Get-Service -Name "Wazuh" | Stop-Service
-    write-output "$(Get-Date -format u) - Upgrade failed: Restoring former installation." >> .\upgrade\upgrade.log
+    write-output "$(Get-Date -format u) - Upgrade failed" >> .\upgrade\upgrade.log
 
     write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
-
-    .\wazuh-agent.exe uninstall-service >> .\upgrade\upgrade.log
-    restore($previous_msi_name)
-
-    If ($current_process -eq "wazuh-agent")
-    {
-        write-output "$(Get-Date -format u) - Installing Wazuh service." >> .\upgrade\upgrade.log
-        .\wazuh-agent.exe install-service >> .\upgrade\upgrade.log
-    }
-    Else
-    {
-        write-output "$(Get-Date -format u) - Installing Wazuh service." >> .\upgrade\upgrade.log
-        sc.exe delete WazuhSvc -ErrorAction SilentlyContinue -Force
-        Remove-Item .\wazuh-agent.exe -ErrorAction SilentlyContinue
-        Remove-Item .\wazuh-agent.state -ErrorAction SilentlyContinue
-        .\ossec-agent.exe install-service >> .\upgrade\upgrade.log
-    }
-
-    write-output "$(Get-Date -format u) - Starting Wazuh-Agent service." >> .\upgrade\upgrade.log
-    Start-Service -Name "Wazuh" -ErrorAction SilentlyContinue
-
 }
 Else
 {
