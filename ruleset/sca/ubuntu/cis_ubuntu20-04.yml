@@ -3024,7 +3024,7 @@ checks:
   # 5.2 Configure sudo
 
   # 5.2.1 Ensure sudo is installed (Automated)
-  - id: 19048
+  - id: 19148
     title: "Ensure sudo is installed."
     description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy. Note: Use the sudo-ldap package if you need LDAP support for sudoers."
     rationale: "sudo supports a plugin architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plugins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
@@ -3044,7 +3044,7 @@ checks:
       - "c:dpkg -s sudo-ldap -> r:install ok installed"
 
   # 5.2.2 Ensure sudo commands use pty (Automated)
-  - id: 19049
+  - id: 19149
     title: "Ensure sudo commands use pty."
     description: "sudo can be configured to run only from a pseudo-pty. Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks or parse errors. If the sudoers file is currently being edited you will receive a message to try again later."
     rationale: "Attackers can run a malicious program using sudo, which would again fork a background process that remains even when the main program has finished executing."
@@ -3062,7 +3062,7 @@ checks:
       - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*Defaults\s*use_pty'
 
   # 5.2.3 Ensure sudo log file exists (Automated)
-  - id: 19050
+  - id: 19150
     title: "Ensure sudo log file exists."
     description: "sudo can use a custom log file. Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks or parse errors. If the sudoers file is currently being edited you will receive a message to try again later."
     rationale: "A sudo log file simplifies auditing of sudo commands."
