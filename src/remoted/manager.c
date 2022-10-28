@@ -162,15 +162,14 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
 /**
  * @brief Validate files to be shared with agents, update invalid file hash table
  * @param src_path Source path of the files to validate
- * @param group Group name
- * @param merged_tmp Name of temporal merged.mg file
+ * @param finalfp Handler of temporal file
  * @param _f_time File time table to update
  * @param create_merged Flag indicating if merged.mg needs to be created
  * @param is_multigroup Flag indicating if this is a multigroup
  * @param path_offset Variable that indicates the necessary offset for the MergeAppendFile function
  * @return 1 on shared file creation success, 0 on shared file creation failure
  */
-STATIC int validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, OSHash **_f_time, bool create_merged, bool is_multigroup, int path_offset);
+STATIC int validate_shared_files(const char *src_path, FILE *finalfp, OSHash **_f_time, bool create_merged, bool is_multigroup, int path_offset);
 
 /**
  * @brief Copy the contents of one directory to another
@@ -491,8 +490,10 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
     os_md5 md5sum_tmp;
     struct stat attrib;
     char merged[PATH_MAX + 1];
-    char merged_tmp[PATH_MAX + 1];
     char group_path[PATH_MAX + 1];
+    FILE *finalfp = NULL;
+    char *finalbuf = NULL;
+    size_t finalsize = 0;
     int merged_ok = 1;
     remote_files_group *r_group = NULL;
 
@@ -563,19 +564,20 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
 
     if ((!r_group || !r_group->merged_is_downloaded) && (!is_multigroup || create_merged)) {
         if (create_merged) {
-            snprintf(merged_tmp, PATH_MAX + 1, "%s/%s/%s.tmp", sharedcfg_dir, group, SHAREDCFG_FILENAME);
-            // First call, truncate merged file
-            if (merged_ok = MergeAppendFile(merged_tmp, NULL, group, -1), merged_ok == 0) {
-                unlink(merged_tmp);
+            if (finalfp = open_memstream(&finalbuf, &finalsize), finalfp == NULL) {
+                merror("Unable to open memory stream due to [(%d)-(%s)].", errno, strerror(errno));
+                os_free(finalbuf);
                 return;
             }
+            fprintf(finalfp, "#%s\n", group);
         }
 
         // Merge ar.conf always
         if (stat(DEFAULTAR, &attrib) == 0) {
             if (create_merged) {
-                if (merged_ok = MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1), merged_ok == 0) {
-                    unlink(merged_tmp);
+                if (merged_ok = MergeAppendFile(finalfp, DEFAULTAR, -1), merged_ok == 0) {
+                    fclose(finalfp);
+                    os_free(finalbuf);
                     return;
                 }
             }
@@ -586,30 +588,29 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
 
         snprintf(group_path, PATH_MAX + 1, "%s/%s", sharedcfg_dir, group);
 
-        merged_ok = validate_shared_files(group_path, group, merged_tmp, _f_time, create_merged, is_multigroup, -1);
+        merged_ok = validate_shared_files(group_path, finalfp, _f_time, create_merged, is_multigroup, -1);
 
         if (create_merged) {
             if (merged_ok == 0) {
-                unlink(merged_tmp);
+                fclose(finalfp);
+                os_free(finalbuf);
                 return;
             }
         }
 
         if (create_merged) {
-            if (OS_MD5_File(merged_tmp, md5sum_tmp, OS_TEXT) == 0) {
-                if (OS_MD5_File(merged, md5sum, OS_TEXT) == 0) {
-                    if (strcmp(md5sum_tmp, md5sum) != 0) {
-                        OS_MoveFile(merged_tmp, merged);
-                    } else {
-                        unlink(merged_tmp);
-                    }
-                } else {
-                    OS_MoveFile(merged_tmp, merged);
+            fclose(finalfp);
+            OS_MD5_Str(finalbuf, finalsize, md5sum);
+            if ((OS_MD5_File(merged, md5sum, OS_TEXT) != 0) || (strcmp(md5sum_tmp, md5sum) != 0)) {
+                if (finalfp = fopen(merged, "w"), finalfp == NULL) {
+                    merror("Unable to open file: '%s' due to [(%d)-(%s)].", merged, errno, strerror(errno));
+                    os_free(finalbuf);
+                    return;
                 }
-            } else {
-                merror("Accessing file '%s'", merged_tmp);
-                return;
+                fprintf(finalfp, "%s", finalbuf);
+                fclose(finalfp);
             }
+            os_free(finalbuf);
         }
     }
 
@@ -984,7 +985,7 @@ STATIC void process_deleted_multi_groups(bool initial_scan) {
     }
 }
 
-STATIC int validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, OSHash **_f_time, bool create_merged, bool is_multigroup, int path_offset) {
+STATIC int validate_shared_files(const char *src_path, FILE *finalfp, OSHash **_f_time, bool create_merged, bool is_multigroup, int path_offset) {
     char ** files;
     char file[MAX_SHARED_PATH + 1];
     int merged_ok = 1;
@@ -1039,7 +1040,7 @@ STATIC int validate_shared_files(const char *src_path, const char *group, const 
         }
 
         if (S_ISDIR(attrib.st_mode)) {
-            if (merged_ok = validate_shared_files(file, group, merged_tmp, _f_time, create_merged, is_multigroup, path_offset), merged_ok == 0) {
+            if (merged_ok = validate_shared_files(file, finalfp, _f_time, create_merged, is_multigroup, path_offset), merged_ok == 0) {
                 free_strarray(files);
                 return 0;
             }
@@ -1055,11 +1056,11 @@ STATIC int validate_shared_files(const char *src_path, const char *group, const 
                     *modify_time = last_modify;
                     if (checkBinaryFile(file)) {
                         OSHash_Set(invalid_files, file, modify_time);
-                        mdebug1("File '%s' in group '%s' modified but still invalid.", file, group);
+                        mdebug1("File '%s' modified but still invalid.", file);
                     } else {
                         os_free(modify_time);
                         OSHash_Delete(invalid_files, file);
-                        minfo("File '%s' in group '%s' is valid after last modification.", file, group);
+                        minfo("File '%s' is valid after last modification.", file);
                         ignored = 0;
                     }
                 }
@@ -1078,14 +1079,14 @@ STATIC int validate_shared_files(const char *src_path, const char *group, const 
                             merror("Unable to add file '%s' to hash table of invalid files.", file);
                         }
                     } else {
-                        merror("Invalid shared file '%s' in group '%s'. Ignoring it.", file, group);
+                        merror("Invalid shared file '%s'. Ignoring it.", file);
                     }
                 }
             }
 
             if (!ignored) {
                 if (create_merged) {
-                    if (merged_ok = MergeAppendFile(merged_tmp, file, NULL, path_offset), merged_ok == 0) {
+                    if (merged_ok = MergeAppendFile(finalfp, file, path_offset), merged_ok == 0) {
                         free_strarray(files);
                         return 0;
                     }
