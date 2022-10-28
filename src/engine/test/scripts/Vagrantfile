@@ -33,20 +33,20 @@ Vagrant.configure("2") do |config|
     config.ssh.forward_agent = true
 
     config.vm.provision "engineFirstRun", type: "shell", inline: <<-SHELL
+
         echo "Installing dependencies to build the engine"
 
         #Dependencies
         apt-get update
-        apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq -y
+        apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq tig linux-tools-common linux-tools-generic linux-tools-`uname -r` bpfcc-tools sysstat -y
 
         #CMake 3.24 installation from its release page
         curl -sL https://github.com/Kitware/CMake/releases/download/v3.24.2/cmake-3.24.2-linux-x86_64.tar.gz | tar -xz -C /usr/local --strip-components=1
         export PATH=$PATH:/usr/local/bin
 
-
         echo "--- Downlading the engine from github ---"
         apt-get update
-        mkdir engine &&	cd engine
+        mkdir engine && cd engine
         git clone --branch 14738-filebeat-mappings-ecs-engine  https://github.com/wazuh/wazuh.git
         cd wazuh
         cd src/engine && mkdir build
@@ -66,6 +66,8 @@ Vagrant.configure("2") do |config|
         # Get IP Address
         ip="127.0.0.1"
         echo "--- Setting up Wazuh in $ip ---"
+        WAZUH_INSTALL=/home/vagrant/wazuh-install
+        mkdir -p  $WAZUH_INSTALL && cd $WAZUH_INSTALL
         #Download the Wazuh installation assistant.
         curl -sO https://packages.wazuh.com/4.3/wazuh-install.sh
         curl -sO https://packages.wazuh.com/4.3/config.yml
@@ -79,11 +81,11 @@ Vagrant.configure("2") do |config|
         /usr/share/wazuh-indexer/plugins/opensearch-security/tools/wazuh-passwords-tool.sh -u admin -p "wazuhEngine5+"
 
         #Replace filebeat & elastic for engine
-        cp extension/elasticsearch/7.x/wazuh-template.json /etc/filebeat/
-        cp extension/filebeat/7.x/filebeat.yml /etc/filebeat/
+        cd $HOME
+        cp $ENGINE_SRC_DIR/extension/elasticsearch/7.x/wazuh-template.json /etc/filebeat/
+        cp $ENGINE_SRC_DIR/extension/filebeat/7.x/filebeat.yml /etc/filebeat/
         systemctl restart filebeat.service
 
-        #Replace engine for analysisd
         WAZUH_DIR=/var/ossec
         ENGINE_DIR=$WAZUH_DIR/engine
 
@@ -92,10 +94,9 @@ Vagrant.configure("2") do |config|
         rm $WAZUH_DIR/queue/sockets/queue
         mkdir -p $ENGINE_DIR/store
         mkdir $WAZUH_DIR/etc/kvdb/
-        cp -r ruleset/store/schema/ $ENGINE_DIR/store/
+        cp -r $ENGINE_SRC_DIR/ruleset/store/schema/ $ENGINE_DIR/store/
 
         echo "--- Enabling the engine ---"
-        #TODO: uncomment once full replacement works
         cp $ENGINE_SRC_DIR/build/main $ENGINE_DIR/wazuh-engine
         chmod 755 $ENGINE_DIR/wazuh-engine
         cp $ENGINE_SRC_DIR/test/scripts/wazuh-bin-engine.sh $WAZUH_DIR/bin/wazuh-engine
@@ -109,10 +110,10 @@ Vagrant.configure("2") do |config|
         sleep 2s
 
         echo "--- Loading ruleset & enabling wazuh environment  ---"
-        build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load decoder ruleset/decoders/
-        build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load output ruleset/outputs/
-        build/main catalog -a $WAZUH_DIR/queue/sockets/engine-api -y load environment ruleset/environments/
-        build/main env -a $WAZUH_DIR/queue/sockets/engine-api set environment/wazuh/0
+        $ENGINE_DIR/wazuh-engine catalog load decoder $ENGINE_SRC_DIR/ruleset/decoders/
+        $ENGINE_DIR/wazuh-engine catalog load output $ENGINE_SRC_DIR/ruleset/outputs/
+        $ENGINE_DIR/wazuh-engine catalog load environment $ENGINE_SRC_DIR/ruleset/environments/
+        $ENGINE_DIR/wazuh-engine env set environment/wazuh/0
         echo
 
         # Create index pattern
@@ -126,7 +127,7 @@ Vagrant.configure("2") do |config|
 
         # Create base config
         systemctl enable --now code-server@$CS_USER
-        sleep 4
+        sleep 4s
 
         # set config files
         sed -i 's/code-server/code-server \\/home\\/vagrant\\/engine\\/wazuh\\/src\\/engine/g'    /lib/systemd/system/code-server@.service
@@ -148,4 +149,3 @@ Vagrant.configure("2") do |config|
     SHELL
 
 end
-
