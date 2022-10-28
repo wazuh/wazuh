@@ -786,13 +786,29 @@ static bool parseFormattedTime(std::string const& fmt,
     std::stringstream ss {time};
     // check in which cases this could be necessary
     // ss.imbue(std::locale("en_US.UTF-8"));
-    date::fields<std::chrono::nanoseconds> fds {};
+
+    date::fields<std::chrono::milliseconds> fds {};
     std::chrono::minutes offset {};
     std::string abbrev;
     date::from_stream(ss, fmt.c_str(), fds, &abbrev, &offset);
+
     if (!ss.fail())
     {
-        result[name] = ss.str();
+        // Format to strict_date_optional_time
+        std::stringstream ssFormated;
+
+        // Add year
+        if (!fds.ymd.year().ok())
+        {
+            std::time_t t = std::time(nullptr);
+            std::tm* const pTInfo = std::localtime(&t);
+            fds.ymd = date::year_month_day(date::year(pTInfo->tm_year + 1900),
+                                           fds.ymd.month(),
+                                           fds.ymd.day());
+        }
+
+        date::to_stream(ssFormated, "%Y-%m-%dT%H:%M:%SZ", fds);
+        result[name] = ssFormated.str();
         return true;
     }
 
@@ -1341,12 +1357,10 @@ bool parseBoolean(const char** it, Parser const& parser, ParseResult& result)
 }
 
 // XML modules
-using xmlModule =
-    std::function<bool(pugi::xml_node&, json::Json&, std::string&)>;
-static bool
-xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
+using xmlModule = std::function<bool(pugi::xml_node&, json::Json&, std::string&)>;
+static bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
 {
-    if ("Data" != std::string{node.name()})
+    if ("Data" != std::string {node.name()})
     {
         return false;
     }
@@ -1540,7 +1554,7 @@ bool parseCSV(const char** it, Parser const& parser, ParseResult& result)
      * Extract the values
      */
 
-    if (separator == *str )
+    if (separator == *str)
     { // First value can be empty
         addValueToJson(output_doc, parser.options[colsParsed], "");
         colsParsed++;
