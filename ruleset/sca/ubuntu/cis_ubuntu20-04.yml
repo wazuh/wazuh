@@ -3698,8 +3698,8 @@ checks:
     condition: none
     rules:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare >= 30'
-      - 'c:useradd -D -> n:^INACTIVE=(\d+) compare = 0'
-      - "c:useradd -D -> n:^INACTIVE=-1"
+      - 'c:useradd -D -> n:^INACTIVE=(\d+) compare == 0'
+      - "c:useradd -D -> r:^INACTIVE=-1"
       - 'f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+:\S*:\d*:\d*:\d*:\d+:(\d+) compare > 30'
 
   # 5.5.1.5 Ensure all users last password change date is in the past (Automated) - Not implemented
