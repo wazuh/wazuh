@@ -363,7 +363,7 @@ End Function
 Public Function CheckSvcRunning()
     Dim FSO
     Set FSO = CreateObject("Scripting.FileSystemObject")
-    Set outputFile = FSO.OpenTextFile("C:/WazuhInstallerScript.log")
+    Set outputFile = FSO.OpenTextFile("C:\WazuhInstallerScript.log")
 	Set wmi = GetObject("winmgmts://./root/cimv2")
 
     outputFile.WriteLine("------ DEBUG TRACE ------")
