@@ -120,4 +120,11 @@ typedef struct
  */
 typedef void((*log_fnc_t)(const char* msg));
 
+/**
+* @brief Definition to indicate the unlimited queue.
+*
+* @details It's used to define the unlimited queue size.
+*/
+#define UNLIMITED_QUEUE_SIZE 0
+
 #endif // _COMMON_DEFS_H_

@@ -32,7 +32,8 @@ class AgentEmulator
         AgentEmulator(const std::chrono::milliseconds updatePeriod,
                       const unsigned int maxDbItems,
                       const std::shared_ptr<SyncQueue>& outQueue,
-                      const std::string& dbFolder);
+                      const std::string& dbFolder,
+                      const size_t maxQueueSize);
         ~AgentEmulator();
     private:
 

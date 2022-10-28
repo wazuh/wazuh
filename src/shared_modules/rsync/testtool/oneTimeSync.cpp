@@ -12,6 +12,7 @@
 #include <fstream>
 #include <sstream>
 #include "cjsonSmartDeleter.hpp"
+#include <thread>
 
 DBSYNC_HANDLE getDbsyncHandle(const nlohmann::json& config)
 {
@@ -40,8 +41,9 @@ DBSYNC_HANDLE getDbsyncHandle(const nlohmann::json& config)
 
 OneTimeSync::OneTimeSync(const nlohmann::json& config,
                          const nlohmann::json& inputData,
-                         const std::string& outputFolder)
-    : m_rsyncHandle{ rsync_create() }
+                         const std::string& outputFolder,
+                         const size_t maxQueueSize)
+    : m_rsyncHandle{ rsync_create(std::thread::hardware_concurrency(), maxQueueSize) }
     , m_dbSyncHandle{ getDbsyncHandle(config.at("dbsync")) }
     , m_inputData{ inputData }
     , m_outputFolder{ outputFolder }

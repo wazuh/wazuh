@@ -35,6 +35,8 @@ constexpr auto SQL_STMT_INFO
     CREATE INDEX inode_index ON entry_path (inode_id);
     COMMIT;)"
 };
+constexpr size_t MAX_QUEUE_SIZE {32378};
+constexpr unsigned int THREAD_POOL_SIZE {2};
 
 class CallbackMock
 {
@@ -83,7 +85,7 @@ void RSyncTest::TearDown()
 
 TEST_F(RSyncTest, Initialization)
 {
-    const auto handle { rsync_create() };
+    const auto handle { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
     ASSERT_NE(nullptr, handle);
 }
 
@@ -92,7 +94,7 @@ TEST_F(RSyncTest, startSyncWithInvalidParams)
     const auto dbsyncHandle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO) };
     ASSERT_NE(nullptr, dbsyncHandle);
 
-    const auto rsyncHandle { rsync_create() };
+    const auto rsyncHandle { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
     ASSERT_NE(nullptr, rsyncHandle);
 
     const auto startConfigStmt
@@ -113,7 +115,7 @@ TEST_F(RSyncTest, startSyncWithoutExtraParams)
     const auto dbsyncHandle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO) };
     ASSERT_NE(nullptr, dbsyncHandle);
 
-    const auto rsyncHandle { rsync_create() };
+    const auto rsyncHandle { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
     ASSERT_NE(nullptr, rsyncHandle);
 
     const auto startConfigStmt
@@ -130,7 +132,7 @@ TEST_F(RSyncTest, startSyncWithBadSelectQuery)
     const auto dbsyncHandle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO) };
     ASSERT_NE(nullptr, dbsyncHandle);
 
-    const auto rsyncHandle { rsync_create() };
+    const auto rsyncHandle { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
     ASSERT_NE(nullptr, rsyncHandle);
 
     const auto startConfigStmt
@@ -178,7 +180,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClear)
     const auto dbsyncHandle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, dbsyncHandle);
 
-    const auto rsyncHandle { rsync_create() };
+    const auto rsyncHandle { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
     ASSERT_NE(nullptr, rsyncHandle);
 
     const auto expectedResult1
@@ -265,7 +267,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
     const auto dbsyncHandle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO) };
     ASSERT_NE(nullptr, dbsyncHandle);
 
-    const auto rsyncHandle { rsync_create() };
+    const auto rsyncHandle { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
     ASSERT_NE(nullptr, rsyncHandle);
 
     const auto expectedResult1
@@ -350,14 +352,14 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
 }
 TEST_F(RSyncTest, registerIncorrectSyncId)
 {
-    const auto handle { rsync_create() };
+    const auto handle { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
     ASSERT_EQ(-1, rsync_register_sync_id(handle, nullptr, nullptr, nullptr, {}));
 }
 
 TEST_F(RSyncTest, pushMessage)
 {
     const std::string buffer{"test buffer"};
-    const auto handle { rsync_create() };
+    const auto handle { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
     ASSERT_NE(0, rsync_push_message(handle, nullptr, 1000));
     ASSERT_NE(0, rsync_push_message(handle, reinterpret_cast<const void*>(0x1000), 0));
     ASSERT_EQ(0, rsync_push_message(handle, reinterpret_cast<const void*>(buffer.data()), buffer.size()));
@@ -370,7 +372,7 @@ TEST_F(RSyncTest, CloseWithoutInitialization)
 
 TEST_F(RSyncTest, CloseCorrectInitialization)
 {
-    const auto handle { rsync_create() };
+    const auto handle { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
     ASSERT_NE(nullptr, handle);
     EXPECT_EQ(0, rsync_close(handle));
 }
@@ -380,7 +382,7 @@ TEST_F(RSyncTest, RegisterAndPush)
     const auto handle_dbsync { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO) };
     ASSERT_NE(nullptr, handle_dbsync);
 
-    const auto handle_rsync { rsync_create() };
+    const auto handle_rsync { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
     ASSERT_NE(nullptr, handle_rsync);
 
     const auto expectedResult1
@@ -497,7 +499,7 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
     const auto handle_dbsync { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO) };
     ASSERT_NE(nullptr, handle_dbsync);
 
-    const auto handle_rsync { rsync_create() };
+    const auto handle_rsync { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
     ASSERT_NE(nullptr, handle_rsync);
 
     const auto registerConfigStmt
