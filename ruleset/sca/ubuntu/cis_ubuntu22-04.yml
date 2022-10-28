@@ -2822,146 +2822,132 @@ checks:
   # 4.2.1.1.3 Ensure systemd-journal-remote is enabled (Manual) - Not implemented
   # 4.2.1.1.4 Ensure journald is not configured to recieve logs from a remote client (Automated)
   - id: 28616
-    title: "Ensure journald is not configured to recieve logs from a remote client"
+    title: "Ensure journald is not configured to recieve logs from a remote client."
     description: "Journald supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts. NOTE: The same package, systemd-journal-remote, is used for both sending logs to remote hosts and receiving incoming logs. With regards to receiving logs, there are two services; systemd-journalremote.socket and systemd-journal-remote.service."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
     remediation: "Run the following command to disable systemd-journal-remote.socket: # systemctl --now disable systemd-journal-remote.socket"
     compliance:
       - cis: ["4.2.1.1.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["6.2","6.3","9.2"]
+      - cis_csc_v8: ["4.8","8.2"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_mitigations: ["M1029"]
+      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
+      - hipaa: [ "164.312(b)" ]
+      - pci_dss_3.2.1: [ "10.2","10.3" ]
+      - pci_dss_4.0: [ "5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2" ]
+      - nist_853: [ "AU-7" ]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:systemctl is-enabled systemd-journal-remote.socket -> r:disabled'
+
+  # 4.2.1.2 Ensure journald service is enabled (Automated)
   - id: 28617
-    title: "Ensure journald service is enabled"
+    title: "Ensure journald service is enabled."
     description: "Ensure that the systemd-journald service is enabled to allow capturing of logging events."
     rationale: "If the systemd-journald service is not enabled to start on boot, the system will not capture logging events."
-    impact: ""
     remediation: "By default the systemd-journald service does not have an [Install] section and thus cannot be enabled / disabled. It is meant to be referenced as Requires or Wants by other unit files. As such, if the status of systemd-journald is not static, investigate why."
-    references: ""
     compliance:
       - cis: ["4.2.1.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["6.2","6.3"]
+      - cis_csc_v8: ["8.2"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
+      - mitre_tactics: ["TA0005"]
+      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
+      - hipaa: [ "164.312(b)" ]
+      - pci_dss_3.2.1: [ "10.2","10.3" ]
+      - pci_dss_4.0: [ "5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2" ]
+      - nist_853: [ "AU-7" ]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:systemctl is-enabled systemd-journald.service -> r:static'
+
+  # 4.2.1.3 Ensure journald is configured to compress large log files (Automated)
   - id: 28618
-    title: "Ensure journald is configured to compress large log files"
+    title: "Ensure journald is configured to compress large log files."
     description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large."
     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
-    impact: ""
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes Restart the service: # systemctl restart systemd-journald Additional Information: The main configuration file /etc/systemd/journald.conf is read before any of the custom *.conf files. If there are custom configs present, they override the main configuration parameters. It is possible to change the default threshold of 512 bytes per object before compression is used."
-    references: ""
     compliance:
       - cis: ["4.2.1.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["6.2","6.3","6.4"]
+      - cis_csc_v8: ["8.2","8.3"]
+      - mitre_techniques: ["T1562","T1562.002"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_mitigations: ["M1053"]
+      - pci_dss_3.2.1: [ "10.7" ]
+      - soc_2: [ "A1.1" ]
     condition: all
     rules:
-      - ''    
-    
+      - 'f:/etc/systemd/journald.conf -> r:Compress=yes'
+
+  # 4.2.1.4 Ensure journald is configured to write logfiles to persistent disk (Automated)
   - id: 28619
-    title: "Ensure journald is configured to write logfiles to persistent disk"
+    title: "Ensure journald is configured to write logfiles to persistent disk."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss due to a reboot."
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
-    impact: ""
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent Restart the service: # systemctl restart systemd-journald Additional Information: The main configuration file /etc/systemd/journald.conf is read before any of the custom *.conf files. If there are custom configs present, they override the main configuration parameters."
-    references: ""
     compliance:
       - cis: ["4.2.1.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["6.2","6.3"]
+      - cis_csc_v8: ["8.2"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
+      - hipaa: [ "164.312(b)" ]
+      - pci_dss_3.2.1: [ "10.2","10.3" ]
+      - pci_dss_4.0: [ "5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2" ]
+      - nist_853: [ "AU-7" ]
     condition: all
     rules:
-      - ''    
-    
+      - 'f:/etc/systemd/journald.conf -> r:Storage=persistent'
+
+  # 4.2.1.5 Ensure journald is not configured to send logs to rsyslog (Manual)
   - id: 28620
-    title: "Ensure journald is not configured to send logs to rsyslog (Manual)"
+    title: "Ensure journald is not configured to send logs to rsyslog."
     description: "Data from journald should be kept in the confines of the service and not forwarded on to other services."
     rationale: "IF journald is the method for capturing logs, all logs of the system should be handled by journald and not forwarded to other logging mechanisms."
-    impact: ""
     remediation: "Edit the /etc/systemd/journald.conf file and ensure that ForwardToSyslog=yes is removed. Restart the service: # systemctl restart systemd-journald"
-    references: ""
     compliance:
       - cis: ["4.2.1.5"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["6.2","6.3","6.5"]
+      - cis_csc_v8: ["8.2","8.9"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_mitigations: ["M1029"]
+      - pci_dss_3.2.1: [ "10.5.3","10.5.4" ]
+      - pci_dss_4.0: [ "10.3.3" ]
+      - nist_853: [ "AU-6(3)" ]
+      - soc_2: [ "PL1.4" ]
     condition: all
     rules:
-      - ''    
-    
-  - id: 28621
-    title: "Ensure journald log rotation is configured per site policy (Manual)"
-    description: "Journald includes the capability of rotating log files regularly to avoid filling up the system with logs or making the logs unmanageably large. The file /etc/systemd/journald.conf is the configuration file used to specify how logs generated by Journald should be rotated."
-    rationale: "By keeping the log files smaller and more manageable, a system administrator can easily archive these files to another system and spend less time looking through inordinately large log files."
-    impact: ""
-    remediation: "Review /etc/systemd/journald.conf and verify logs are rotated according to site policy. The settings should be carefully understood as there are specific edge cases and prioritisation of parameters. The specific parameters for log rotation are: SystemMaxUse= SystemKeepFree= RuntimeMaxUse= RuntimeKeepFree= MaxFileSec= Additional Information: See man 5 journald.conf for detailed information regarding the parameters in use."
-    references: ""
-    compliance:
-      - cis: ["4.2.1.6"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28622
-    title: "Ensure journald default file permissions configured (Manual)"
-    description: "Journald will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
-    rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
-    impact: ""
-    remediation: "If the default configuration is not appropriate for the site specific requirements, copy /usr/lib/tmpfiles.d/systemd.conf to /etc/tmpfiles.d/systemd.conf and modify as required. Requirements is either 0640 or site policy if that is less restrictive. Additional Information: See man 5 tmpfiles.d for detailed information on the permission sets for the relevant log files. Further information with examples can be found at https://www.freedesktop.org/software/systemd/man/tmpfiles.d.html"
-    references: ""
-    compliance:
-      - cis: ["4.2.1.7"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
+      - 'f:/etc/systemd/journald.conf -> !r:ForwardToSyslog=yes'
+
+  # 4.2.1.6 Ensure journald log rotation is configured per site policy (Manual) - Not implemented
+  # 4.2.1.7 Ensure journald default file permissions configured (Manual) - Not implemented
+  # 4.2.2 Configure rsyslog
+  # 4.2.2.1 Ensure rsyslog is installed (Automated)
   - id: 28623
-    title: "Ensure rsyslog is installed"
+    title: "Ensure rsyslog is installed."
     description: "The rsyslog software is recommended in environments where journald does not meet operation requirements."
     rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
-    impact: ""
-    remediation: "Run the following command to install rsyslog: # apt install rsyslog"
-    references: ""
+    remediation: "Run the following command to install rsyslog: # apt install rsyslog."
     compliance:
       - cis: ["4.2.2.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["6.2","6.3"]
+      - cis_csc_v8: ["8.2"]
+      - mitre_techniques: ["T1005","T1070","T1070.002"]
+      - mitre_tactics: ["TA0005"]
+      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
+      - hipaa: [ "164.312(b)" ]
+      - pci_dss_3.2.1: [ "10.2","10.3" ]
+      - pci_dss_4.0: [ "5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2" ]
+      - nist_853: [ "AU-7" ]
     condition: all
     rules:
-      - ''    
+      - 'c:c:dpkg-query -s rsyslog -> r:install ok installed'
     
   - id: 28624
     title: "Ensure rsyslog service is enabled"
