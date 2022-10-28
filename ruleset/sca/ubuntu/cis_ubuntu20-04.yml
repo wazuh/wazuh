@@ -3768,7 +3768,7 @@ checks:
 
   # 6.1.3 Ensure permissions on /etc/passwd- are configured (Automated)
   - id: 19184
-    title: "Ensure permissions on /etc/gshadow- are configured."
+    title: "Ensure permissions on /etc/passwd- are configured."
     description: "The /etc/passwd- file contains backup user account information."
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following command to set permissions on /etc/passwd-:  # chown root:root /etc/passwd- # chmod u-x,go-wx /etc/passwd-"
@@ -3781,7 +3781,7 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0644/-rw-r--r--\)|^Access:\s*\(0640/-rw-r-----\)|^Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/passwd- -> r:^Access:\s*\(0644/-rw-r--r--\)|^Access:\s*\(0640/-rw-r-----\)|^Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.4 Ensure permissions on /etc/group are configured (Automated)
   - id: 19185
@@ -3830,7 +3830,7 @@ checks:
       - iso_27001-2013: ["A.10.1.1"]
       - nist_sp_800-53: ["IA-5", "IA-5 (1)"]
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
       - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
@@ -3978,4 +3978,4 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: none
     rules:
-      - 'f:/etc/group -> !r:^# && r:shadow:\w*:\w*:\S+'
+      - 'f:/etc/group -> !r:^# && r:shadow:\w*:\w*:\d+'
