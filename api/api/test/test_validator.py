@@ -8,11 +8,10 @@ import os
 import jsonschema as js
 import pytest
 
-from api.validator import (check_exp, check_xml, _alphanumeric_param,
-                           _array_numbers, _array_names, _boolean, _dates, _empty_boolean, _hashes,
-                           _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _search_param,
-                           _sort_param, _timeframe_type, _type_format, _yes_no_boolean, _get_dirnames_path,
-                           allowed_fields, is_safe_path, _wazuh_version,
+from api.validator import (check_exp, check_xml, _alphanumeric_param, _array_numbers, _array_names, _boolean, _dates,
+                           _empty_boolean, _hashes, _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges,
+                           _search_param, _sort_param, _timeframe_type, _type_format, _yes_no_boolean,
+                           _get_dirnames_path, allowed_fields, is_safe_path, _wazuh_version,
                            _symbols_alphanumeric_param, _base64, _group_names, _group_names_or_all, _iso8601_date,
                            _iso8601_date_time, _numbers_or_all, _cdb_filename_path, _xml_filename_path, _xml_filename,
                            check_component_configuration_pair, _active_response_command)

@@ -196,7 +196,7 @@ async def get_agents(request, pretty: bool = False, wait_for_complete: bool = Fa
 
 async def add_agent(request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
     """Add a new Wazuh agent.
-    
+
     Parameters
     ----------
     request : connexion.request
@@ -826,6 +826,43 @@ async def get_agent_upgrade(request, agents_list: str = None, pretty: bool = Fal
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+async def get_daemon_stats(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                           daemons_list: list = None) -> web.Response:
+    """Get Wazuh statistical information from the specified daemons of a specified agent.
+
+    Parameters
+    ----------
+    request : connexion.request
+    agent_id : str
+        ID of the agent from which the statistics are obtained.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    daemons_list : list
+        List of the daemons to get statistical information from.
+
+    Returns
+    -------
+    web.Response
+        API response.
+    """
+    daemons_list = daemons_list or []
+    f_kwargs = {'agent_list': [agent_id],
+                'daemons_list': daemons_list}
+
+    dapi = DistributedAPI(f=stats.get_daemons_stats_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies'])
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
 async def get_component_stats(request, pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
                               component: str = None) -> web.Response:
     """Get a specified agent's component stats.
@@ -866,7 +903,7 @@ async def get_component_stats(request, pretty: bool = False, wait_for_complete: 
 async def post_new_agent(request, agent_name: str, pretty: bool = False,
                          wait_for_complete: bool = False) -> web.Response:
     """Add agent (quick method).
-    
+
     Parameters
     ----------
     request : connexion.request
@@ -1126,7 +1163,7 @@ async def get_agents_in_group(request, group_id: str, pretty: bool = False, wait
 
 async def post_group(request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
     """Create a new group.
-    
+
     Parameters
     ----------
     pretty : bool
@@ -1423,7 +1460,7 @@ async def restart_agents_by_group(request, group_id: str, pretty: bool = False,
 
 async def insert_agent(request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
     """Insert a new agent.
-    
+
     Parameters
     ----------
     pretty : bool

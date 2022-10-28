@@ -3615,19 +3615,25 @@ void test_save_controlmsg_request_error(void **state)
 
 void test_save_controlmsg_request_success(void **state)
 {
-    keyentry * key =  NULL;
     char r_msg[OS_SIZE_128] = {0};
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
     strcpy(r_msg, "req payload is here");
 
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+
     expect_string(__wrap_req_save, counter, "payload");
     expect_string(__wrap_req_save, buffer, "is here");
     expect_value(__wrap_req_save, length, OS_SIZE_128 - strlen(HC_REQUEST) - strlen("payload "));
     will_return(__wrap_req_save, 0);
 
-    save_controlmsg(key, r_msg, msg_length, wdb_sock);
+    expect_string(__wrap_rem_inc_recv_ctrl_request, agent_id, "001");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    free_keyentry(&key);
 }
 
 void test_save_controlmsg_invalid_msg(void **state)
@@ -3643,6 +3649,9 @@ void test_save_controlmsg_invalid_msg(void **state)
     int *wdb_sock = NULL;
 
     expect_string(__wrap_send_msg, msg, "001");
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
     expect_string(__wrap__mwarn, formatted_msg, "Invalid message from agent: 'NEW_AGENT' (001)");
 
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
@@ -3664,6 +3673,10 @@ void test_save_controlmsg_could_not_add_pending_data(void **state)
     int *wdb_sock = NULL;
 
     expect_string(__wrap_send_msg, msg, "001");
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_keepalive, agent_id, "001");
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
@@ -3697,6 +3710,10 @@ void test_save_controlmsg_unable_to_save_last_keepalive(void **state)
     int *wdb_sock = NULL;
 
     expect_string(__wrap_send_msg, msg, "001");
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_keepalive, agent_id, "001");
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
@@ -3737,6 +3754,10 @@ void test_save_controlmsg_update_msg_error_parsing(void **state)
     int *wdb_sock = NULL;
 
     expect_string(__wrap_send_msg, msg, "001");
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_keepalive, agent_id, "001");
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
@@ -3801,6 +3822,10 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
     int *wdb_sock = NULL;
 
     expect_string(__wrap_send_msg, msg, "001");
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_keepalive, agent_id, "001");
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
@@ -3897,6 +3922,10 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
 
     expect_string(__wrap_send_msg, msg, "001");
 
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_keepalive, agent_id, "001");
+
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
     pending_data = OSHash_Create();
@@ -3959,6 +3988,10 @@ void test_save_controlmsg_startup(void **state)
 
     expect_string(__wrap_send_msg, msg, "001");
 
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_startup, agent_id, "001");
+
     expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_STARTUP from ''");
 
     expect_function_call(__wrap_OSHash_Create);
@@ -4001,6 +4034,10 @@ void test_save_controlmsg_shutdown(void **state)
     int *wdb_sock = NULL;
 
     expect_string(__wrap_send_msg, msg, "001");
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_shutdown, agent_id, "001");
 
     expect_any(__wrap_get_ipv4_string, address);
     expect_any(__wrap_get_ipv4_string, address_size);
@@ -4067,6 +4104,10 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     int *wdb_sock = NULL;
 
     expect_string(__wrap_send_msg, msg, "001");
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_shutdown, agent_id, "001");
 
     expect_any(__wrap_get_ipv6_string, address);
     expect_any(__wrap_get_ipv6_string, address_size);

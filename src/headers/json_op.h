@@ -48,4 +48,11 @@ void json_strip(char * json);
 // Check if a JSON object is tagged
 #define json_tagged_obj(x) (x && x->string)
 
+/**
+ * Parses agents array and returns an array of agent ids
+ * @param agents array of agents
+ * @return pointer to array of agent ids
+ * */
+int* json_parse_agents(const cJSON* agents);
+
 #endif

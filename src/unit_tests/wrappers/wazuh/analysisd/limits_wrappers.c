@@ -7,9 +7,14 @@
  * Foundation
  */
 
-#ifndef QUEUE_WRAPPERS_H
-#define QUEUE_WRAPPERS_H
 
-int __wrap_rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock);
+#include <stddef.h>
+#include <stdarg.h>
+#include <setjmp.h>
+#include <cmocka.h>
+#include "limits_wrappers.h"
 
-#endif
+bool __wrap_limit_reached(unsigned int *value) {
+    *value = mock_type(unsigned int);
+    return mock_type(bool);
+}

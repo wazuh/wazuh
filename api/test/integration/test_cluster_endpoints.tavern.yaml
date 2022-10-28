@@ -1427,6 +1427,51 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
+  - name: Show the config of wazuh-db/internal on master
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wazuh-db/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - wazuh_db:
+                commit_time_max: !anyint
+                commit_time_min: !anyint
+                open_db_limit: !anyint
+                worker_pool_size: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Show the config of wazuh-db/wdb on master
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wazuh-db/wdb"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - wdb:
+                backup:
+                  - database: !anystr
+                    enabled: !anybool
+                    interval: !anyint
+                    max_files: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
   - name: Show the config of wmodules/wmodules on master
     request:
       verify: False
@@ -1762,6 +1807,98 @@ stages:
         message: !anystr
 
 ---
+test_name: GET /cluster/{node_id}/daemons/stats
+
+marks:
+  - cluster
+  - parametrize:
+      key: node_id
+      vals:
+        - master-node
+        - worker1
+        - worker2
+
+stages:
+
+  # GET /cluster/{node_id}/daemons/stats
+  - name: Get all daemons' statistics from {node_id}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: wazuh-remoted
+            - name: wazuh-analysisd
+            - name: wazuh-db
+          total_affected_items: 3
+          failed_items: []
+          total_failed_items: 0
+
+  # GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-remoted
+  - name: Get statistics from a single daemon from {node_id}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        daemons_list: wazuh-remoted
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: wazuh-remoted
+          total_affected_items: 1
+          failed_items: []
+          total_failed_items: 0
+
+  # GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-remoted,wazuh-db,wazuh-analysisd
+  - name: Get statistics from a list of daemons from {node_id}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        daemons_list: wazuh-remoted,wazuh-db,wazuh-analysisd
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: wazuh-remoted
+            - name: wazuh-db
+            - name: wazuh-analysisd
+          total_affected_items: 3
+          failed_items: []
+          total_failed_items: 0
+
+  # GET /cluster/{node_id}/daemons/stats?daemons_list=wrong-daemon-name
+  - name: Try to get statistics from a wrong daemon from {node_id}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        daemons_list: wrong-daemon-name
+    response:
+      status_code: 400
+
+---
 test_name: GET /cluster/{node_id}/stats
 
 marks:
@@ -1867,21 +2004,12 @@ stages:
           affected_items:
             - total_events_decoded: !anyfloat
               syscheck_events_decoded: !anyfloat
-              syscheck_edps: !anyfloat
               syscollector_events_decoded: !anyfloat
-              syscollector_edps: !anyfloat
               rootcheck_events_decoded: !anyfloat
-              rootcheck_edps: !anyfloat
               sca_events_decoded: !anyfloat
-              sca_edps: !anyfloat
-              hostinfo_events_decoded: !anyfloat
-              hostinfo_edps: !anyfloat
               winevt_events_decoded: !anyfloat
-              winevt_edps: !anyfloat
               other_events_decoded: !anyfloat
-              other_events_edps: !anyfloat
               events_processed: !anyfloat
-              events_edps: !anyfloat
               events_received: !anyfloat
               events_dropped: !anyfloat
               alerts_written: !anyfloat
@@ -1981,7 +2109,6 @@ stages:
               evt_count: !anyfloat
               ctrl_msg_count: !anyfloat
               discarded_count: !anyfloat
-              queued_msgs: !anyfloat
               sent_bytes: !anyfloat
               recv_bytes: !anyfloat
           total_affected_items: 1
