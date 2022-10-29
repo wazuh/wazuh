@@ -7,12 +7,12 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation
 #
-# CIS Checks for Ubuntu Linux 22.04 LTS based on Center for Internet Security Ubuntu Linux 22.04 LTS Benchmark v1.0.0 - 08-30-2022
+# SCA policy for Ubuntu Linux 22.04 LTS based on Center for Internet Security Ubuntu Linux 22.04 LTS Benchmark v1.0.0 - 08-30-2022
 
 policy:
   id: "cis_ubuntu22-04"
   file: "cis_ubuntu22-04.yml"
-  name: "CIS benchmark for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS."
+  name: "SCA policy for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS."
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -709,7 +709,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'c:dpkg-query -W -f=''${binary:Package}\t${Status}\t${db:Status-Status}\n'' aide aide-common -> r:aide\s+install ok && r:aide-common\s+install ok '
+      - "c:dpkg-query -s aide -> r:Status: install ok installed"
+      - "c:dpkg-query -s aide-common -> r:Status: install ok installed"
 
   # 1.3.2 Ensure filesystem integrity is regularly checked (Automated) - Not implemented
   # 1.4 Secure Boot Settings
@@ -732,10 +733,10 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - "f:/boot/grub/grub.cfg -> r:set superusers"
-      - "f:/boot/grub/grub.cfg -> r:password_pbkdf2"
+      - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*set superusers="
+      - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*password_pbkdf2\\s*\\t*\\w+"
 
-  #1.4.2 Ensure permissions on bootloader config are configured (Automated)
+  # 1.4.2 Ensure permissions on bootloader config are configured (Automated)
   - id: 28528
     title: "Ensure permissions on bootloader config are configured."
     description: "The grub configuration file contains information on boot settings and passwords for unlocking boot options."
@@ -756,7 +757,7 @@ checks:
       - soc_2: ["CC5.2", " CC6.1"]
     condition: all
     rules:
-      - 'c:stat /boot/grub/grub.cfg -> r:Uid:\s+\(\s*0/\s*root\)\s*Gid:\s+\(\s*0/\s*root\)'
+      - 'c:stat /boot/grub/grub.cfg -> r:Access: (0400/-r--------) && r:Uid:\s+\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s+\t*\(\s*\t*0/\s*\t*root\)'
 
   # 1.4.3 Ensure authentication required for single user mode (Automated)
   - id: 28529
@@ -776,7 +777,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - "f:/etc/shadow -> r:^root:*:|^root:!:"
+      - "f:/etc/shadow -> r:^root:\\$\\d+"
 
   # 1.5 Additional Process Hardening
   # 1.5.1 Ensure address space layout randomization (ASLR) is enabled (Automated) - Not implemented
@@ -804,7 +805,7 @@ checks:
       - "c:dpkg-query -s prelink -> r:package 'prelink' is not installed"
       - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' prelink -> r:prelink\\s*\\t*unknown\\s*\\t*ok\\s*\\t*not-installed\\s*\\t*not-installed|no packages found matching prelink"
 
-  #1.5.3 Ensure Automatic Error Reporting is not enabled (Automated)
+  # 1.5.3 Ensure Automatic Error Reporting is not enabled (Automated)
   - id: 28531
     title: "Ensure Automatic Error Reporting is not enabled."
     description: "The Apport Error Reporting Service automatically generates crash reports for debugging."
@@ -891,6 +892,7 @@ checks:
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:apparmor=1'
       - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:security=apparmor'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1'
       - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor'
 
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode (Automated)
@@ -912,7 +914,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - "c:apparmor_status -> r:profiles are loaded"
+      - 'c:apparmor_status -> r:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
       - "c:apparmor_status -> r:0 processes are unconfined"
 
   # 1.6.1.4 Ensure all AppArmor Profiles are enforcing (Automated)
@@ -935,8 +937,10 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - "c:apparmor_status -> r:0 profiles are in complain mode"
-      - "c:apparmor_status -> r:0 processes are unconfined"
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0'
+      - 'c:apparmor_status -> r:^0\s*profiles\s+are\s+in\s+complain\s+mode'
+      - 'c:apparmor_status -> r:^0\s*processes\s+are\s+unconfined'
 
   # 1.7 Command Line Warning Banners
   # 1.7.1 Ensure message of the day is configured properly (Automated)
@@ -954,7 +958,7 @@ checks:
       - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
       - "not f:/etc/motd"
 
-  #1.7.2 Ensure local login warning banner is configured properly (Automated)
+  # 1.7.2 Ensure local login warning banner is configured properly (Automated)
   - id: 28538
     title: "Ensure local login warning banner is configured properly."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version - or the operating system's name."
@@ -1115,7 +1119,7 @@ checks:
   # 2.1.2 Configure chrony
   # 2.1.2.1 Ensure chrony is configured with authorized timeserver (Manual) - Not implemented
 
-  # 2.1.2.2 Ensure chrony is running as user _chrony (Automated) #JAL
+  # 2.1.2.2 Ensure chrony is running as user _chrony (Automated)
   - id: 28545
     title: "Ensure chrony is running as user _chrony."
     description: "The chrony package is installed with a dedicated user account _chrony. This account is granted the access required by the chronyd service."
