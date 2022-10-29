@@ -323,6 +323,47 @@ int modulesSync(char* args) {
     return ret;
 }
 
+// Find a module
+
+wmodule * wm_find_module(const char * name) {
+    for (wmodule * module = wmodules; module != NULL; module = module->next) {
+        if (strcmp(module->context->name, name) == 0) {
+            return module;
+        }
+    }
+
+    return NULL;
+}
+
+// Run a query in a module
+
+size_t wm_module_query(char * query, char ** output) {
+    // vulnerability-detector run_now
+
+    char * module_name = query;
+    char * args = strchr(query, ' ');
+
+    if (args == NULL) {
+        os_strdup("err {\"message\": \"module query needs arguments\"}", *output);
+        return strlen(*output);
+    }
+
+    *args++ = '\0';
+
+    wmodule * module = wm_find_module(module_name);
+    if (module == NULL) {
+        os_strdup("err {\"message\": \"running module not found\"}", *output);
+        return strlen(*output);
+    }
+
+    if (module->context->query == NULL) {
+        os_strdup("err {\"message\": \"module does not support queries\"}", *output);
+        return strlen(*output);
+    }
+
+    return module->context->query(module->data, args, output);
+}
+
 cJSON *getModulesInternalOptions(void) {
 
     cJSON *root = cJSON_CreateObject();

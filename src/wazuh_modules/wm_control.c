@@ -21,12 +21,13 @@ static void wm_control_destroy();
 cJSON *wm_control_dump();
 
 const wm_context WM_CONTROL_CONTEXT = {
-    "control",
-    (wm_routine)wm_control_main,
-    (void(*)(void *))wm_control_destroy,
-    (cJSON * (*)(const void *))wm_control_dump,
-    NULL,
-    NULL
+    .name = "control",
+    .start = (wm_routine)wm_control_main,
+    .destroy = (void(*)(void *))wm_control_destroy,
+    .dump = (cJSON * (*)(const void *))wm_control_dump,
+    .sync = NULL,
+    .stop = NULL,
+    .query = NULL,
 };
 void *sysinfo_module = NULL;
 sysinfo_networks_func sysinfo_network_ptr = NULL;
