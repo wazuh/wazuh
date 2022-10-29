@@ -1136,7 +1136,6 @@ checks:
       - soc_2: ["CC4.1", "CC5.2"]
     condition: any
     rules:
-      - "not c:ps -ef -> r:chronyd"
       - 'c:ps -ef -> r:_chrony\.+chronyd'
 
   # 2.1.2.3 Ensure chrony is enabled and running (Automated)
@@ -1154,9 +1153,10 @@ checks:
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - nist_sp_800-53: ["AU-7"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition: any
+    condition: all
     rules:
-      - "not c:ps -ef -> r:chronyd"
+      - "c:ps -ef -> r:chronyd"
+      - "c:systemctl is-enabled chrony.service -> r:enabled"
       - "c:systemctl is-active chrony.service -> r:active"
 
   # 2.1.3 Configure systemd-timesyncd
@@ -1184,8 +1184,8 @@ checks:
       - soc_2: ["CC4.1", "CC5.2"]
     condition: all
     rules:
-      - "f:/etc/ntp.conf -> r:restrict -4 default kod notrap nomodify nopeer noquery"
-      - "f:/etc/ntp.conf -> r:restrict -6 default kod notrap nomodify nopeer noquery"
+      - "f:/etc/ntp.conf -> r:restrict -4 default|restrict default && r:kod && r:notrap && r:nomodify && r:nopeer && r:noquery"
+      - "f:/etc/ntp.conf -> r:restrict -6 default && r:kod && r:notrap && r:nomodify && r:nopeer && r:noquery"
 
   # 2.1.4.2 Ensure ntp is configured with authorized timeserver (Manual) - Not implemented
   # 2.1.4.3 Ensure ntp is running as user ntp (Automated)
@@ -1205,10 +1205,10 @@ checks:
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - nist_sp_800-53: ["AU-7"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition: any
+    condition: all
     rules:
-      - "f:/etc/init.d/ntp -> r:RUNASUSER=ntp"
-      - "not c:ps -ef -> r:ntpd"
+      - 'c:ps -ef -> r:^ntp\.+ntpd'
+      - "f:/etc/init.d/ntp -> r:^\\s*\\t*RUNASUSER=ntp"
 
   # 2.1.4.4 Ensure ntp is enabled and running (Automated)
   - id: 28549
@@ -1251,7 +1251,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s xserver-xorg* -> r:\sinstalled'
+      - 'not c:dpkg-query -W -f="${binary:Package}\t${Status}\t${db:Status-Status}\n" xserver-xorg* -> r:\sinstalled'
 
   # 2.2.2 Ensure Avahi Server is not installed (Automated)
   - id: 28551
@@ -1270,9 +1270,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
+    condition: any
     rules:
-      - 'not c:dpkg-query -s avahi-daemon -> r:\sinstalled'
+      - "c:dpkg-query -s avahi-daemon -> r:package 'avahi-daemon' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' avahi-daemon -> r:no packages found matching avahi-daemon|deinstall|not-installed"
 
   # 2.2.3 Ensure CUPS is not installed (Automated)
   - id: 28552
@@ -1296,8 +1297,9 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s cups -> r:\sinstalled'
-      -
+      - "c:dpkg-query -s cups -> r:package 'cups' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' cups -> no packages found matching cups|deinstall|not-installed"
+
   # 2.2.4 Ensure DHCP Server is not installed (Automated)
   - id: 28553
     title: "Ensure DHCP Server is not installed."
@@ -1319,7 +1321,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s isc-dhcp-server -> r:\sinstalled'
+      - "c:dpkg-query -s isc-dhcp-server -> r:package 'isc-dhcp-server' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' isc-dhcp-server -> no packages found matching isc-dhcp-server|deinstall|not-installed"
 
   # 2.2.5 Ensure LDAP server is not installed (Automated)
   - id: 28554
@@ -1342,7 +1345,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s slapd -> r:\sinstalled'
+      - "c:dpkg-query -s slapd -> r:package 'slapd' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' slapd -> no packages found matching slapd|deinstall|not-installed"
 
   # 2.2.6 Ensure NFS is not installed (Automated)
   - id: 28555
@@ -1363,7 +1367,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s nfs-kernel-server -> r:\sinstalled'
+      - "c:dpkg-query -s nfs-kernel-server -> r:package 'nfs-kernel-server' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nfs-kernel-server -> no packages found matching nfs-kernel-server|deinstall|not-installed"
 
   # 2.2.7 Ensure DNS Server is not installed (Automated)
   - id: 28556
@@ -1384,7 +1389,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s bind9 -> r:\sinstalled'
+      - "c:dpkg-query -s bind9 -> r:package 'bind9' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' bind9 -> no packages found matching bind9|deinstall|not-installed"
 
   # 2.2.8 Ensure FTP Server is not installed (Automated)
   - id: 28557
@@ -1405,7 +1411,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s vsftpd -> r:\sinstalled'
+      - "c:dpkg-query -s vsftpd -> r:package 'vsftpd' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' vsftpd -> no packages found matching vsftpd|deinstall|not-installed"
 
   # 2.2.9 Ensure HTTP server is not installed (Automated)
   - id: 28558
@@ -1426,7 +1433,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s apache2 -> r:\sinstalled'
+      - "c:dpkg-query -s apache2 -> r:package 'apache2' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' apache2 -> no packages found matching apache2|deinstall|not-installed"
 
   # 2.2.10 Ensure IMAP and POP3 server are not installed (Automated)
   - id: 28559
@@ -1447,8 +1455,10 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s dovecot-imapd -> r:\sinstalled'
-      - 'not c:dpkg-query -s dovecot-pop3d -> r:\sinstalled'
+      - "c:dpkg-query -s dovecot-imapd -> r:package 'dovecot-imapd' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-imapd -> no packages found matching dovecot-imapd|deinstall|not-installed"
+      - "c:dpkg-query -s dovecot-pop3d -> r:package 'dovecot-pop3d' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-pop3d -> no packages found matching dovecot-pop3d|deinstall|not-installed"
 
   # 2.2.11 Ensure Samba is not installed (Automated)
   - id: 28560
@@ -1469,7 +1479,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s samba -> r:\sinstalled'
+      - "c:dpkg-query -s samba -> r:package 'samba' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' samba -> no packages found matching sambad|deinstall|not-installed"
 
   # 2.2.12 Ensure HTTP Proxy Server is not installed (Automated)
   - id: 28561
@@ -1490,7 +1501,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s squid -> r:\sinstalled'
+      - "c:dpkg-query -s squid -> r:package 'squid' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' squid -> no packages found matching squid|deinstall|not-installed"
 
   # 2.2.13 Ensure SNMP Server is not installed (Automated)
   - id: 28562
@@ -1511,7 +1523,8 @@ checks:
       - soc_2: ["CC6.3", " CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s snmp -> r:\sinstalled'
+      - "c:dpkg-query -s snmp -> r:package 'snmp' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' snmp -> no packages found matching snmp|deinstall|not-installed"
 
   # 2.2.14 Ensure NIS Server is not installed (Automated)
   - id: 28563
@@ -1532,7 +1545,8 @@ checks:
       - soc_2: ["CC6.3", " CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s nis -> r:\sinstalled'
+      - "c:dpkg-query -s nis -> r:package 'nis' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> no packages found matching nis|deinstall|not-installed"
 
   # 2.2.15 Ensure mail transfer agent is configured for local-only mode (Automated)
   - id: 28564
@@ -1553,8 +1567,7 @@ checks:
       - soc_2: ["CC6.3", " CC6.6"]
     condition: all
     rules:
-      - "not c:ss -lntu -> 127.0.0.1:25"
-      - "not c:ss -lntu -> ::1:25"
+      - 'not c:ss -lntu -> r:\.*:25\s && r:127.0.0.1:25\s+|::1]:25\s+'
 
   # 2.2.16 Ensure rsync service is either not installed or masked (Automated)
   - id: 28565
@@ -1575,8 +1588,9 @@ checks:
       - soc_2: ["CC6.3", " CC6.6"]
     condition: all
     rules:
-      - "c:systemctl is-active rsync -> r:inactive"
-      - "c:systemctl is-enabled rsync -> r:masked"
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' rsync -> no packages found matching rsync|deinstall|not-installed"
+      - 'c:systemctl is-active rsync" -> r:inactive'
+      - "c:systemctl is-enabled rsync -> r:masked|disabled"
 
   # 2.3 Service Clients
   # 2.3.1 Ensure NIS Client is not installed (Automated)
@@ -1599,7 +1613,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s nis -> r:\sinstalled'
+      - "c:dpkg-query -s nis -> r:package 'nis' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> no packages found matching nis|deinstall|not-installed"
 
   # 2.3.2 Ensure rsh client is not installed (Automated)
   - id: 28567
@@ -1621,7 +1636,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s rsh-client -> r:\sinstalled'
+      - "c:dpkg-query -s rsh-client -> r:package 'rsh-client' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rsh-client -> no packages found matching rsh-client|deinstall|not-installed"
 
   # 2.3.3 Ensure talk client is not installed (Automated)
   - id: 28568
@@ -1643,7 +1659,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s talk -> r:\sinstalled'
+      - "c:dpkg-query -s talk -> r:package 'talk' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' talk -> no packages found matching talk|deinstall|not-installed"
 
   # 2.3.4 Ensure telnet client is not installed (Automated)
   - id: 28569
@@ -1665,7 +1682,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s telnet -> r:\sinstalled'
+      - "c:dpkg-query -s telnet -> r:package 'telnet' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' telnet -> no packages found matching telnet|deinstall|not-installed"
 
   # 2.3.5 Ensure LDAP client is not installed (Automated)
   - id: 28570
@@ -1687,7 +1705,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s ldap-utils -> r:\sinstalled'
+      - "c:dpkg-query -s ldap-utils -> r:package 'ldap-utils' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ldap-utils -> no packages found matching ldap-utils|deinstall|not-installed"
 
   # 2.3.6 Ensure RPC is not installed (Automated)
   - id: 28571
@@ -1708,7 +1727,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -s rpcbind -> r:\sinstalled'
+      - "c:dpkg-query -s rpcbind -> r:package 'rpcbind' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rpcbind -> no packages found matching rpcbind|deinstall|not-installed"
 
   # 2.4 Ensure nonessential services are removed or masked (Manual) - Not implemented
 
@@ -1759,7 +1779,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:dpkg-query -s ufw -> r:\sinstalled'
+      - "c:dpkg-query -s ufw -> r:Status: install ok installed"
 
   # 3.5.1.2 Ensure iptables-persistent is not installed with ufw (Automated)
   - id: 28573
@@ -1780,6 +1800,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
+      - "c:dpkg-query -s ufw -> r:Status: install ok installed"
       - "c:dpkg-query -s iptables-persistent -> r:is not installed"
 
   # 3.5.1.3 Ensure ufw service is enabled (Automated)
@@ -1827,12 +1848,13 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:ufw status verbose -> r:Anywhere on lo\s+ALLOW IN\s+Anywhere'
-      - 'c:ufw status verbose -> r:Anywhere\s+DENY IN\s+127.0.0.0/8'
-      - 'c:ufw status verbose -> r:Anywhere (v6) on lo\s+ALLOW IN\s+Anywhere (v6)'
-      - 'c:ufw status verbose -> r:Anywhere (v6)\s+DENY IN\s+::1'
-      - 'c:ufw status verbose -> r:Anywhere\s+ALLOW OUT\s+Anywhere on lo'
-      - 'c:ufw status verbose -> r:Anywhere (v6)\s+ALLOW OUT\s+Anywhere (v6) on lo'
+      - "c:dpkg -s ufw -> r:Status: install ok installed"
+      - 'c:ufw status verbose -> r:Anywhere on lo\s*ALLOW IN\s*Anywhere'
+      - 'c:ufw status verbose -> r:Anywhere\s*DENY IN\s*127.0.0.0/8'
+      - 'c:ufw status verbose -> r:Anywhere \(v6\) on lo\s*ALLOW IN\s*Anywhere \(v6\)'
+      - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*DENY IN\s*::1'
+      - 'c:ufw status verbose -> r:Anywhere\s*\t*ALLOW OUT\s*Anywhere on lo'
+      - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*ALLOW OUT\s*Anywhere \(v6\) on lo'
 
   # 3.5.1.5 Ensure ufw outbound connections are configured (Manual) - Not implemented
   # 3.5.1.6 Ensure ufw firewall rules exist for all open ports (Automated) - Not implemented
@@ -1856,7 +1878,10 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:ufw status verbose -> r:Default: && r:(deny|reject|disabled)\s+\(incoming\) && r:(deny|reject|disabled)\s+\(outgoing\) && r:(deny|reject|disabled)\s+\(routed\)'
+      - "c:dpkg -s ufw -> r:Status: install ok installed"
+      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(incoming\)|reject\s+\(incoming\)'
+      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(outgoing\)|reject\s+\(outgoing\)'
+      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(routed\)|reject\s+\(routed\)'
 
   # 3.5.2 Configure nftables
   # 3.5.2.1 Ensure nftables is installed (Automated)
@@ -1879,7 +1904,9 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - "c:dpkg-query -s nftables -> r:install ok installed"
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
+      - "c:dpkg -s iptables -> r:package 'iptables' is not installed"
+      - "c:dpkg -s ufw -> r:package 'ufw' is not installed"
 
   # 3.5.2.2 Ensure ufw is uninstalled or disabled with nftables (Automated) - Not implemented
   # 3.5.2.3 Ensure iptables are flushed with nftables (Manual) - Not implemented
@@ -1904,7 +1931,8 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - "c:nft list tables -> r:table"
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
+      - 'c:nft list tables -> r:\w+'
 
   # 3.5.2.5 Ensure nftables base chains exist (Automated)
   - id: 28579
@@ -1927,9 +1955,10 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+input\s+priority 0;'
-      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+forward\s+priority 0;'
-      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+output\s+priority 0;'
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
+      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+input\s+priority;'
+      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+forward\s+priority;'
+      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+output\s+priority;'
 
   # 3.5.2.6 Ensure nftables loopback traffic is configured (Automated) - Not implemented
   # 3.5.2.7 Ensure nftables outbound and established connections are configured (Manual) - Not implemented
@@ -1956,6 +1985,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
       - "c:nft list ruleset -> r:hook input && r:policy drop"
       - "c:nft list ruleset -> r:hook forward && r:policy drop"
       - "c:nft list ruleset -> r:hook output && r:policy drop"
@@ -1977,6 +2007,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
       - "c:systemctl is-enabled nftables -> r:enabled"
 
   # 3.5.2.10 Ensure nftables rules are permanent (Automated) - Not implemented
@@ -2002,8 +2033,10 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:apt list iptables -> r:\[installed'
-      - 'c:apt list iptables-persistent -> r:\[installed'
+      - "c:dpkg -s iptables -> r:Status: install ok installed"
+      - "c:dpkg -s iptables-persistent -> r:Status: install ok installed"
+      - "c:dpkg -s nftables -> r:package 'nftables' is not installed"
+      - "c:dpkg -s ufw -> r:package 'ufw' is not installed"
 
   - id: 28583
     title: "Ensure nftables is not installed with iptables."
@@ -2957,7 +2990,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
-      - "c:c:dpkg-query -s rsyslog -> r:install ok installed"
+      - "c:dpkg-query -s rsyslog -> r:install ok installed"
 
   # 4.2.2.2 Ensure rsyslog service is enabled (Automated)
   - id: 28624
@@ -3005,8 +3038,6 @@ checks:
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
     impact: "The systems global umask could override, but only making the file permissions stricter, what is configured in RSyslog with the FileCreateMode directive. RSyslog also has it's own $umask directive that can alter the intended file creation mode. In addition, consideration should be given to how FileCreateMode is used. Thus it is critical to ensure that the intended file creation mode is not overridden with less restrictive settings in /etc/rsyslog.conf, /etc/rsyslog.d/*conf files and that FileCreateMode is set before any file is created."
     remediation: "Edit either /etc/rsyslog.conf or a dedicated .conf file in /etc/rsyslog.d/ and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640 Restart the service: # systemctl restart rsyslog"
-    references:
-      - See the rsyslog.conf(5) man page for more information.
     compliance:
       - cis: ["4.2.2.4"]
       - cis_csc_v7: ["5.1", "6.2", "6.3"]
@@ -3021,7 +3052,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/rsyslog.conf -> r:\$FileCreateMode 0640'
-      - 'f:/etc/rsyslog.d/*.conf -> r:\$FileCreateMode 0640'
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:\$FileCreateMode 0640'
 
   # 4.2.2.5 Ensure logging is configured (Manual) - Not implemented
   # 4.2.2.6 Ensure rsyslog is configured to send logs to a remote log host (Manual) - Not implemented
@@ -3045,9 +3076,9 @@ checks:
     condition: none
     rules:
       - 'f:/etc/rsyslog.conf -> r:module\(load="imtcp"\)'
-      - 'f:/etc/rsyslog.d/*.conf -> r:module\(load="imtcp"\)'
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:module\(load="imtcp"\)'
       - 'f:/etc/rsyslog.conf -> r:input\(type="imtcp" port="514"\)'
-      - 'f:/etc/rsyslog.d/*.conf -> r:input\(type="imtcp" port="514"\)'
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:input\(type="imtcp" port="514"\)'
 
   # 4.2.3 Ensure all logfiles have appropriate permissions and ownership (Automated) - Not implemented
 
@@ -3092,7 +3123,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/crontab -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
   - id: 28632
@@ -3115,7 +3146,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 28632
@@ -3138,7 +3169,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/cron.daily/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
   - id: 28632
@@ -3161,7 +3192,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/cron.weekly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 28632
@@ -3184,7 +3215,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 28632
@@ -3207,7 +3238,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.d/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/cron.d/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.8 Ensure cron is restricted to authorized users (Automated)
   - id: 28632
@@ -3231,7 +3262,7 @@ checks:
     condition: all
     rules:
       - "not f:/etc/cron.deny"
-      - 'c:stat /etc/cron.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/cron.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.9 Ensure at is restricted to authorized users (Automated)
   - id: 28633
@@ -3255,7 +3286,7 @@ checks:
     condition: all
     rules:
       - "not f:/etc/at.deny"
-      - 'c:stat /etc/at.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/at.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.2 Configure SSH Server
   - id: 28634
