@@ -169,7 +169,8 @@ function check-installation
         $new_version = (Get-Content VERSION)
     }
     write-output "$(Get-Date -format u) - Restarting Wazuh-Agent service." >> .\upgrade\upgrade.log
-    #Get-Service -Name "Wazuh" | Start-Service
+    Start-Sleep 4
+    Get-Service -Name "Wazuh" | Start-Service
 }
 
 # Stop UI and launch the msi installer
@@ -213,7 +214,8 @@ $counter = 5
 while($process_id -eq $null -And $counter -gt 0)
 {
     $counter--
-    #Start-Service -Name "Wazuh"
+    Start-Sleep 4
+    Start-Service -Name "Wazuh"
     Start-Sleep 2
     $process_id = (Get-Process wazuh-agent).id
 }
