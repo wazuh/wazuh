@@ -43,7 +43,9 @@ function stop_wazuh_agent
         $process_name
     )
 
+    $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
     Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
+    taskkill /pid $process_id /f /T
     Start-Sleep 5
     $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
     $counter = 5
@@ -246,7 +248,6 @@ Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
 stop_wazuh_agent($current_process)
 
 # Install
-Start-Sleep 60
 install
 check-installation
 write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgrade.log
