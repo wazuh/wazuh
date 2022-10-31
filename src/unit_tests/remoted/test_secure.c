@@ -907,6 +907,60 @@ void test_handle_outgoing_data_to_tcp_socket_success(void **state)
     handle_outgoing_data_to_tcp_socket(sock_client);
 }
 
+
+void test_close_sock_success(void ** state)
+{
+
+    expect_function_call(__wrap_key_lock_read);
+    expect_value(__wrap_OS_DeleteSocket, sock, 1);
+    will_return(__wrap_OS_DeleteSocket, 0);
+    expect_function_call(__wrap_key_unlock);
+
+    will_return(__wrap_close, 0);
+
+    // nb_close
+    expect_value(__wrap_nb_close, sock, 1);
+    expect_value(__wrap_nb_close, sock, 1);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    // rem_setCounter
+    expect_value(__wrap_rem_setCounter, fd, 1);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    int ret = _close_sock(&keys, 1);
+    assert_int_equal(ret, 0);
+}
+
+void test_close_sock_fail(void ** state)
+{
+
+    expect_function_call(__wrap_key_lock_read);
+    expect_value(__wrap_OS_DeleteSocket, sock, 1);
+    will_return(__wrap_OS_DeleteSocket, 0);
+    expect_function_call(__wrap_key_unlock);
+
+    will_return(__wrap_close, 1);
+    errno = ENOTCONN;
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to close socket 1: Transport endpoint is not connected (107)");
+
+    // nb_close
+    expect_value(__wrap_nb_close, sock, 1);
+    expect_value(__wrap_nb_close, sock, 1);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    // rem_setCounter
+    expect_value(__wrap_rem_setCounter, fd, 1);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    int ret = _close_sock(&keys, 1);
+    assert_int_equal(ret, 0);
+}
+
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -938,6 +992,9 @@ int main(void)
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_case_1_EAGAIN),
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE),
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_success),
+        // Test _close_sock
+        cmocka_unit_test(test_close_sock_success),
+        cmocka_unit_test(test_close_sock_fail),
 
         };
     return cmocka_run_group_tests(tests, NULL, NULL);

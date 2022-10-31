@@ -724,11 +724,12 @@ int _close_sock(keystore * keys, int sock) {
     retval = OS_DeleteSocket(keys, sock);
     key_unlock();
 
-    if (!close(sock)) {
-        nb_close(&netbuffer_recv, sock);
-        nb_close(&netbuffer_send, sock);
-        rem_dec_tcp();
+    if (close(sock)) {
+        mwarn("Unable to close socket %d: %s (%d)", sock, strerror(errno), errno);
     }
+    nb_close(&netbuffer_recv, sock);
+    nb_close(&netbuffer_send, sock);
+    rem_dec_tcp();
 
     rem_setCounter(sock, global_counter);
     mdebug1("TCP peer disconnected [%d]", sock);
