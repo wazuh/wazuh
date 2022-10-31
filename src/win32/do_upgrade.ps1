@@ -246,6 +246,7 @@ Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
 stop_wazuh_agent($current_process)
 
 # Install
+Start-Sleep 60
 install
 check-installation
 write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgrade.log
