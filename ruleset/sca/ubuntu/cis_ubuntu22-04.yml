@@ -821,7 +821,7 @@ checks:
       - soc_2: ["CC6.3", " CC6.6"]
     condition: all
     rules:
-      - "systemct is-enabled apport.service -> r:disabled"
+      - "systemctl is-enabled apport.service -> r:disabled"
       - "not f:/etc/default/apport -> n:enabled=(\\d+) compare != 0"
       - "not c:systemctl is-active apport.service -> r:active"
 
@@ -867,7 +867,7 @@ checks:
       - soc_2: ["CC5.2", " CC6.1"]
     condition: all
     rules:
-      - "c: dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' apparmor -> r:install\\s+ok\\s+installed"
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' apparmor -> r:install\\s+ok\\s+installed"
 
   # 1.6.1.2 Ensure AppArmor is enabled in the bootloader configuration (Automated)
   - id: 28534
@@ -890,10 +890,10 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:apparmor=1'
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:security=apparmor'
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1'
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor'
+      - 'f:/boot/grub/grub.cfg -> r:^\\s*linux && r:apparmor=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\\s*linux && r:security=apparmor'
+      - 'not f:/boot/grub/grub.cfg -> r:^\\s*linux && !r:apparmor=1'
+      - 'not f:/boot/grub/grub.cfg -> r:^\\s*linux && !r:security=apparmor'
 
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode (Automated)
   - id: 28535
@@ -914,7 +914,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:apparmor_status -> r:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+      - 'c:apparmor_status -> r:^(\d+)\\s+profiles\\s+are\\s+loaded compare > 0'
       - "c:apparmor_status -> r:0 processes are unconfined"
 
   # 1.6.1.4 Ensure all AppArmor Profiles are enforcing (Automated)
@@ -937,10 +937,10 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
-      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0'
-      - 'c:apparmor_status -> r:^0\s*profiles\s+are\s+in\s+complain\s+mode'
-      - 'c:apparmor_status -> r:^0\s*processes\s+are\s+unconfined'
+      - 'c:apparmor_status -> n:^(\d+)\\s+profiles\\s+are\\s+loaded compare > 0'
+      - 'c:apparmor_status -> n:^(\d+)\\s+profiles\\s+are\\s+in\\s+enforce\\s+mode compare > 0'
+      - 'c:apparmor_status -> r:^0\\s*profiles\\s+are\\s+in\\s+complain\\s+mode'
+      - 'c:apparmor_status -> r:^0\\s*processes\\s+are\\s+unconfined'
 
   # 1.7 Command Line Warning Banners
   # 1.7.1 Ensure message of the day is configured properly (Automated)
@@ -1007,7 +1007,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
     rules:
-      - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/motd -> r:Access:\\s*\(0644/-rw-r--r--\)\\s*Uid:\\s*\(\\s*0/\\s*root\)\\s*\t*Gid:\\s*\(\\s*0/\\s*root\)'
       - "not f:/etc/motd"
 
   # 1.7.5 Ensure permissions on /etc/issue are configured (Automated)
@@ -1031,7 +1031,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/issue -> r:Access:\\s*\(0644/-rw-r--r--\)\\s*Uid:\\s*\(\\s*0/\\s*root\)\\s*\t*Gid:\\s*\(\\s*0/\\s*root\)'
 
   # 1.7.6 Ensure permissions on /etc/issue.net are configured (Automated)
   - id: 28542
@@ -1054,7 +1054,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/issue.net -> r:Access:\\s*\(0644/-rw-r--r--\)\\s*Uid:\\s*\(\\s*0/\\s*root\)\\s*\t*Gid:\\s*\(\\s*0/\\s*root\)'
 
   # 1.8 GNOME Display Manager
   # 1.8.1 Ensure GNOME Display Manager is removed (Automated)
@@ -1105,7 +1105,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
+      - 'not f:/etc/gdm3/custom.conf -> r:^\\s*Enable\\s*=\\s*true'
 
   # 1.9 Ensure updates, patches, and additional security software are installed (Manual) - Not implemented
 
@@ -1251,7 +1251,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W -f="${binary:Package}\t${Status}\t${db:Status-Status}\n" xserver-xorg* -> r:\sinstalled'
+      - 'not c:dpkg-query -W -f="${binary:Package}\t${Status}\t${db:Status-Status}\n" xserver-xorg* -> r:no packages found matching|deinstall|not-installed'
 
   # 2.2.2 Ensure Avahi Server is not installed (Automated)
   - id: 28551
@@ -1567,7 +1567,7 @@ checks:
       - soc_2: ["CC6.3", " CC6.6"]
     condition: all
     rules:
-      - 'not c:ss -lntu -> r:\.*:25\s && r:127.0.0.1:25\s+|::1]:25\s+'
+      - 'not c:ss -lntu -> r:\.*:25\\s && r:127.0.0.1:25\\s+|::1]:25\\s+'
 
   # 2.2.16 Ensure rsync service is either not installed or masked (Automated)
   - id: 28565
@@ -1827,7 +1827,7 @@ checks:
     rules:
       - "c:systemctl is-enabled ufw.service -> r:^enabled"
       - "c:systemctl is-active ufw -> r:^active"
-      - 'c:ufw status -> r:Status:\s+active'
+      - 'c:ufw status -> r:Status:\\s+active'
 
   # 3.5.1.4 Ensure ufw loopback traffic is configured (Automated)
   - id: 28575
@@ -1849,12 +1849,12 @@ checks:
     condition: all
     rules:
       - "c:dpkg -s ufw -> r:Status: install ok installed"
-      - 'c:ufw status verbose -> r:Anywhere on lo\s*ALLOW IN\s*Anywhere'
-      - 'c:ufw status verbose -> r:Anywhere\s*DENY IN\s*127.0.0.0/8'
-      - 'c:ufw status verbose -> r:Anywhere \(v6\) on lo\s*ALLOW IN\s*Anywhere \(v6\)'
-      - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*DENY IN\s*::1'
-      - 'c:ufw status verbose -> r:Anywhere\s*\t*ALLOW OUT\s*Anywhere on lo'
-      - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*ALLOW OUT\s*Anywhere \(v6\) on lo'
+      - 'c:ufw status verbose -> r:Anywhere on lo\\s*ALLOW IN\\s*Anywhere'
+      - 'c:ufw status verbose -> r:Anywhere\\s*DENY IN\\s*127.0.0.0/8'
+      - 'c:ufw status verbose -> r:Anywhere \(v6\) on lo\\s*ALLOW IN\\s*Anywhere \(v6\)'
+      - 'c:ufw status verbose -> r:Anywhere \(v6\)\\s*DENY IN\\s*::1'
+      - 'c:ufw status verbose -> r:Anywhere\\s*\t*ALLOW OUT\\s*Anywhere on lo'
+      - 'c:ufw status verbose -> r:Anywhere \(v6\)\\s*ALLOW OUT\\s*Anywhere \(v6\) on lo'
 
   # 3.5.1.5 Ensure ufw outbound connections are configured (Manual) - Not implemented
   # 3.5.1.6 Ensure ufw firewall rules exist for all open ports (Automated) - Not implemented
@@ -1879,9 +1879,9 @@ checks:
     condition: all
     rules:
       - "c:dpkg -s ufw -> r:Status: install ok installed"
-      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(incoming\)|reject\s+\(incoming\)'
-      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(outgoing\)|reject\s+\(outgoing\)'
-      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(routed\)|reject\s+\(routed\)'
+      - 'c:ufw status verbose -> r:^Default: && r:deny\\s+\(incoming\)|reject\\s+\(incoming\)'
+      - 'c:ufw status verbose -> r:^Default: && r:deny\\s+\(outgoing\)|reject\\s+\(outgoing\)'
+      - 'c:ufw status verbose -> r:^Default: && r:deny\\s+\(routed\)|reject\\s+\(routed\)'
 
   # 3.5.2 Configure nftables
   # 3.5.2.1 Ensure nftables is installed (Automated)
@@ -1956,9 +1956,9 @@ checks:
     condition: all
     rules:
       - "c:dpkg -s nftables -> r:Status: install ok installed"
-      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+input\s+priority;'
-      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+forward\s+priority;'
-      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+output\s+priority;'
+      - 'c:nft list ruleset -> r:type\\s+filter\\s+hook\\s+input\\s+priority;'
+      - 'c:nft list ruleset -> r:type\\s+filter\\s+hook\\s+forward\\s+priority;'
+      - 'c:nft list ruleset -> r:type\\s+filter\\s+hook\\s+output\\s+priority;'
 
   # 3.5.2.6 Ensure nftables loopback traffic is configured (Automated) - Not implemented
   # 3.5.2.7 Ensure nftables outbound and established connections are configured (Manual) - Not implemented
@@ -2255,7 +2255,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: none
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:audit=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\\s*linux && !r:audit=1'
 
   # 4.1.1.4 Ensure audit_backlog_limit is sufficient (Automated)
   - id: 28592
@@ -2276,7 +2276,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
-      - "f:/boot/grub/grub.cfg -> r:^\\s*linux && r:audit=1"
+      - "f:/boot/grub/grub.cfg -> r:^\\\s*linux && r:audit=1"
 
   # 4.1.2 Configure Data Retention
   # 4.1.2.1 Ensure audit log storage size is configured (Automated)
@@ -2397,7 +2397,7 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\s*always,exit && r:-F\s*arch=b(64|32) && r:-C\s*(euid!=uid|uid!=euid) && r:-F\s*auid!=(unset|-1|4294967295) && r:-S\s*execve && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\\s*always,exit && r:-F\\s*arch=b(64|32) && r:-C\\s*(euid!=uid|uid!=euid) && r:-F\\s*auid!=(unset|-1|4294967295) && r:-S\\s*execve && r:(key= |-k)\\s*.+$'
 
   # 4.1.3.3 Ensure events that modify the sudo log file are collected (Automated) - Not implemented
   # 4.1.3.4 Ensure events that modify date and time information are collected (Automated)
@@ -2421,8 +2421,8 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\s*always,exit && r:-F\s*arch=b(64|32) && r:-S\s*(adjtimex|settimeofday|clock_settime) && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/localtime && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\\s*always,exit && r:-F\\s*arch=b(64|32) && r:-S\\s*(adjtimex|settimeofday|clock_settime) && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/localtime && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
 
   # 4.1.3.5 Ensure events that modify the system's network environment are collected (Automated)
   - id: 28599
@@ -2446,11 +2446,11 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\s*always,exit && r:-F\s*arch=b(64|32) && r:-S\s*(setdomainname|sethostname) && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue.net && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/networks && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/network/ && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\\s*always,exit && r:-F\\s*arch=b(64|32) && r:-S\\s*(setdomainname|sethostname) && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/issue && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/issue.net && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/networks && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/network/ && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
 
   # 4.1.3.6 Ensure use of privileged commands are collected (Automated) - Not implemented
   # 4.1.3.7 Ensure unsuccessful file access attempts are collected (Automated) - Not implemented
@@ -2476,11 +2476,11 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/group && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/passwd && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/gshadow && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/shadow && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/security/opasswd && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/group && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/passwd && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/gshadow && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/shadow && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/security/opasswd && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
 
   # 4.1.3.9 Ensure discretionary access control permission modification events are collected (Automated) - Not implemented
   # 4.1.3.10 Ensure successful file system mounts are collected (Automated) - Not implemented
@@ -2505,9 +2505,9 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/run/utmp && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/log/wtmp && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/log/btmp && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/var/run/utmp && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/var/log/wtmp && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/var/log/btmp && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
 
   # 4.1.3.12 Ensure login and logout events are collected (Automated)
   - id: 28602
@@ -2530,8 +2530,8 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/run/faillock && r:-p\s*wa && r:(key= |-k)\s*\w+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/log/lastlog && r:-p\s*wa && r:(key= |-k)\s*\w+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/var/run/faillock && r:-p\\s*wa && r:(key= |-k)\\s*\w+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/var/log/lastlog && r:-p\\s*wa && r:(key= |-k)\\s*\w+$'
 
   # 4.1.3.13 Ensure file deletion events by users are collected (Automated) - Not implemented
   # 4.1.3.14 Ensure events that modify the system's Mandatory Access Controls are collected (Automated)
@@ -2556,8 +2556,8 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/apparmor/ && r:-p\s*wa && r:(key= |-k)\s*\w+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/apparmor.d/ && r:-p\s*wa && r:(key= |-k)\s*\w+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/apparmor/ && r:-p\\s*wa && r:(key= |-k)\\s*\w+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/apparmor.d/ && r:-p\\s*wa && r:(key= |-k)\\s*\w+$'
 
   # 4.1.3.15 Ensure successful and unsuccessful attempts to use the chcon command are recorded (Automated) - Not implemented
   # 4.1.3.16 Ensure successful and unsuccessful attempts to use the setfacl command are recorded (Automated) - Not implemented
@@ -3123,7 +3123,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/crontab -> r:Access:\\s*\(0600/-rw-------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
   - id: 28629
@@ -3146,7 +3146,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.hourly/ -> r:Access:\\s*\(0700/drwx------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 28630
@@ -3169,7 +3169,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.daily/ -> r:Access:\\s*\(0700/drwx------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
   - id: 28631
@@ -3192,7 +3192,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.weekly/ -> r:Access:\\s*\(0700/drwx------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 28632
@@ -3215,7 +3215,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.monthly/ -> r:Access:\\s*\(0700/drwx------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
 
   # Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 28633
@@ -3238,7 +3238,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.d/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.d/ -> r:Access:\\s*\(0700/drwx------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
 
   # 5.1.8 Ensure cron is restricted to authorized users (Automated)
   - id: 28634
@@ -3262,7 +3262,7 @@ checks:
     condition: all
     rules:
       - "not f:/etc/cron.deny"
-      - 'c:stat /etc/cron.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.allow/ -> r:Access:\\s*\(0640/-rw-r-----\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
 
   # 5.1.9 Ensure at is restricted to authorized users (Automated)
   - id: 28635
@@ -3286,7 +3286,7 @@ checks:
     condition: all
     rules:
       - "not f:/etc/at.deny"
-      - 'c:stat /etc/at.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/at.allow/ -> r:Access:\\s*\(0640/-rw-r-----\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
 
   # 5.2 Configure SSH Server
   # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured (Automated)
@@ -3310,7 +3310,7 @@ checks:
       - soc_2: [ "CC5.2","CC6.1" ]
     condition: all
     rules:
-      - "c:stat /etc/ssh/sshd_config -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\t*\(\s*\t*0/\s*root\)\s*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)"
+      - "c:stat /etc/ssh/sshd_config -> r:Access:\\s*\(0600/-rw-------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*root\)\\s*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)"
 
   # 5.2.3 Ensure permissions on SSH public host key files are configured (Automated)
   - id: 28637
@@ -3709,7 +3709,7 @@ checks:
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
     impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10 Default Value: MaxSessions 10"
-    references: '1. SSHD_CONFIG(5) MITRE ATT&CK Mappings: Techniques / Subtechniques T1499, T1499.002 Tactics TA0040 Mitigations 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less Profile Applicability: Level 1 - Server Level 1 - Workstation Description: The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access. Rationale: Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds (1 Minute), set the number based on site policy. Audit: Run the following command and verify that output LoginGraceTime is between 1 and 60 seconds or 1m: # sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk ''{print $1}'')" | grep logingracetime Verify the output matches: logingracetime 60 Run the following command and verify the output: # grep -Ei ''^\s*LoginGraceTime\s+(0|6[1-9]|[7-9][0-9]|[1-9][0-9][09]+|[^1]m)'' /etc/ssh/sshd_config Nothing should be returned. Remediation: Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60 Default Value: LoginGraceTime 120 References: 1. SSHD_CONFIG(5)'
+    references: '1. SSHD_CONFIG(5) MITRE ATT&CK Mappings: Techniques / Subtechniques T1499, T1499.002 Tactics TA0040 Mitigations 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less Profile Applicability: Level 1 - Server Level 1 - Workstation Description: The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access. Rationale: Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds (1 Minute), set the number based on site policy. Audit: Run the following command and verify that output LoginGraceTime is between 1 and 60 seconds or 1m: # sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk ''{print $1}'')" | grep logingracetime Verify the output matches: logingracetime 60 Run the following command and verify the output: # grep -Ei ''^\s*LoginGraceTime\\s+(0|6[1-9]|[7-9][0-9]|[1-9][0-9][09]+|[^1]m)'' /etc/ssh/sshd_config Nothing should be returned. Remediation: Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60 Default Value: LoginGraceTime 120 References: 1. SSHD_CONFIG(5)'
     compliance:
       - cis: ["5.2.20"]
       - cis_csc_v7: [""]
@@ -3906,7 +3906,7 @@ checks:
     description: "Currently used passwords with out of date hashing algorithms may pose a security risk to the system."
     rationale: "In use passwords should always match the configured hashing algorithm for the system."
     impact: "If the administrator forces a password change, this could cause a large spike in CPU usage if a large number of users change their password during the same time."
-    remediation: 'If the administrator wish to force an immediate change on all users as per the output of the audit, execute: #!/usr/bin/env bash { UID_MIN=$(awk ''/^\s*UID_MIN/{print $2}'' /etc/login.defs) awk -F: -v UID_MIN="${UID_MIN}" ''( $3 >= UID_MIN && $1 != "nfsnobody" ) { print $1 }'' /etc/passwd | xargs -n 1 chage -d 0 } NOTE: This could cause significant temporary CPU load on the system if a large number of users reset their passwords at the same time.'
+    remediation: 'If the administrator wish to force an immediate change on all users as per the output of the audit, execute: #!/usr/bin/env bash { UID_MIN=$(awk ''/^\\s*UID_MIN/{print $2}'' /etc/login.defs) awk -F: -v UID_MIN="${UID_MIN}" ''( $3 >= UID_MIN && $1 != "nfsnobody" ) { print $1 }'' /etc/passwd | xargs -n 1 chage -d 0 } NOTE: This could cause significant temporary CPU load on the system if a large number of users reset their passwords at the same time.'
     references: ""
     compliance:
       - cis: ["5.4.5"]
@@ -4014,7 +4014,7 @@ checks:
     description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell."
     rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
     impact: ""
-    remediation: 'Set the shell for any accounts returned by the audit to nologin: # usermod -s $(which nologin) <user> Lock any non root accounts returned by the audit: # usermod -L <user> The following command will set all system accounts to a non login shell: # awk -F: ''$1!~/(root|sync|shutdown|halt|^\+)/ && $3<''"$(awk ''/^\s*UID_MIN/{print $2}'' /etc/login.defs)"'' && $7!~/((\/usr)?\/sbin\/nologin)/ && $7!~/(\/bin)?\/false/ {print $1}'' /etc/passwd | while read -r user; do usermod -s "$(which nologin)" "$user"; done The following command will automatically lock not root system accounts: # awk -F: ''($1!~/(root|^\+)/ && $3<''"$(awk ''/^\s*UID_MIN/{print $2}'' /etc/login.defs)"'') {print $1}'' /etc/passwd | xargs -I ''{}'' passwd -S ''{}'' | awk ''($2!~/LK?/) {print $1}'' | while read -r user; do usermod -L "$user"; done'
+    remediation: 'Set the shell for any accounts returned by the audit to nologin: # usermod -s $(which nologin) <user> Lock any non root accounts returned by the audit: # usermod -L <user> The following command will set all system accounts to a non login shell: # awk -F: ''$1!~/(root|sync|shutdown|halt|^\+)/ && $3<''"$(awk ''/^\\s*UID_MIN/{print $2}'' /etc/login.defs)"'' && $7!~/((\/usr)?\/sbin\/nologin)/ && $7!~/(\/bin)?\/false/ {print $1}'' /etc/passwd | while read -r user; do usermod -s "$(which nologin)" "$user"; done The following command will automatically lock not root system accounts: # awk -F: ''($1!~/(root|^\+)/ && $3<''"$(awk ''/^\\s*UID_MIN/{print $2}'' /etc/login.defs)"'') {print $1}'' /etc/passwd | xargs -I ''{}'' passwd -S ''{}'' | awk ''($2!~/LK?/) {print $1}'' | while read -r user; do usermod -L "$user"; done'
     references: ""
     compliance:
       - cis: ["5.5.2"]
@@ -4050,7 +4050,7 @@ checks:
     description: "The user file-creation mode mask (umask) is use to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rwrw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. umask can be set with either octal or Symbolic values Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. Setting the default umask: pam_umask module: o will set the umask according to the system default in /etc/login.defs and user settings, solving the problem of different umask settings with different shells, display managers, remote sessions etc. o umask=<mask> value in the /etc/login.defs file is interpreted as Octal o Setting USERGROUPS_ENAB to yes in /etc/login.defs (default): will enable setting of the umask group bits to be the same as owner bits. (examples: 022 -> 002, 077 -> 007) for non-root users, if the uid is the same as gid, and username is the same as the primary group name userdel will remove the user's group if it contains no more members, and useradd will create by default a group with the name of the user System Wide Shell Configuration File: o /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter o /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. o /etc/bash.bashrc - System wide version of .bashrc. etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bash.bashrc User Shell Configuration Files: ~/.profile - Is executed to configure your shell before the initial command prompt. Is only read by login shells. ~/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login"
     rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
     impact: "Setting USERGROUPS_ENAB no in /etc/login.defs may change the expected behavior of useradd and userdel. Setting USERGROUPS_ENAB yes in /etc/login.defs userdel will remove the user's group if it contains no more members useradd will create by default a group with the name of the user."
-    remediation: 'Run the following command and remove or modify the umask of any returned files: # grep -RPi ''(^|^[^#]*)\s*umask\s+([0-7][0-7][01][0-7]\b|[0-7][0-7][0-7][06]\b|[0-7][01][0-7]\b|[0-7][0-7][06]\b|(u=[rwx]{0,3},)?(g=[rwx]{0,3},)?o=[rwx]+\b|(u=[rwx]{1,3},)?g=[^rx]{1,3}( ,o=[rwx]{0,3})?\b)'' /etc/login.defs /etc/profile* /etc/bash.bashrc* Follow one of the following methods to set the default user umask: Edit /etc/login.defs and edit the UMASK and USERGROUPS_ENAB lines as follows: UMASK 027 USERGROUPS_ENAB no Edit /etc/pam.d/common-session and add or edit the following: session optional pam_umask.so OR Configure umask in one of the following files: A file in the /etc/profile.d/ directory ending in .sh /etc/profile /etc/bash.bashrc Example: /etc/profile.d/set_umask.sh umask 027 Note: this method only applies to bash and shell. If other shells are supported on the system, it is recommended that their configuration files also are checked. Default Value: UMASK 022'
+    remediation: 'Run the following command and remove or modify the umask of any returned files: # grep -RPi ''(^|^[^#]*)\\s*umask\s+([0-7][0-7][01][0-7]\b|[0-7][0-7][0-7][06]\b|[0-7][01][0-7]\b|[0-7][0-7][06]\b|(u=[rwx]{0,3},)?(g=[rwx]{0,3},)?o=[rwx]+\b|(u=[rwx]{1,3},)?g=[^rx]{1,3}( ,o=[rwx]{0,3})?\b)'' /etc/login.defs /etc/profile* /etc/bash.bashrc* Follow one of the following methods to set the default user umask: Edit /etc/login.defs and edit the UMASK and USERGROUPS_ENAB lines as follows: UMASK 027 USERGROUPS_ENAB no Edit /etc/pam.d/common-session and add or edit the following: session optional pam_umask.so OR Configure umask in one of the following files: A file in the /etc/profile.d/ directory ending in .sh /etc/profile /etc/bash.bashrc Example: /etc/profile.d/set_umask.sh umask 027 Note: this method only applies to bash and shell. If other shells are supported on the system, it is recommended that their configuration files also are checked. Default Value: UMASK 022'
     references: "1. pam_umask(8) Additional Information: Other methods of setting a default user umask exist If other methods are in use in your environment they should be audited The default user umask can be overridden with a user specific umask The user creating the directories or files has the discretion of changing the permissions: o Using the chmod command o Setting a different default umask by adding the umask command into a User Shell Configuration File, (.bashrc), in their home directory o Manually changing the umask for the duration of a login session by running the umask command"
     compliance:
       - cis: ["5.5.4"]
