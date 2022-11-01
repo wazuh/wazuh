@@ -27,6 +27,8 @@
 #include "ports/portImpl.h"
 #include "packages/berkeleyRpmDbHelper.h"
 #include "packages/packageLinuxDataRetriever.h"
+#include "linuxInfoHelper.h"
+
 struct DirDeleter
 {
     void operator()(DIR* dir)
@@ -36,8 +38,6 @@ struct DirDeleter
 };
 
 using DirPtr = std::unique_ptr<DIR, DirDeleter>;
-
-#include "linuxInfoHelper.h"
 
 struct ProcTableDeleter
 {
@@ -240,7 +240,6 @@ int SysInfo::getCpuMHz() const
         retVal /= 1000;  // Convert frequency from KHz to MHz
     }
 
-
     return retVal;
 }
 
@@ -409,30 +408,20 @@ nlohmann::json SysInfo::getNetworks() const
     return networks;
 }
 
-std::pair<int32_t, std::string> parseProcessInfo(char path[])
+std::string parseProcessInfo(char path[])
 {
-    // Open stat file
-    std::pair<int32_t, std::string> processInfo{0, UNKNOWN_VALUE};
-    std::ifstream file(path, std::ios::in | std::ios::binary);
+    // Get stat file content.
+    std::string processInfo{UNKNOWN_VALUE};
+    std::string statContent = Utils::getFileContent(path);
 
-    // Get stat file content
-    if (file.is_open())
+    // Parse PID and process name. The expected format is: PID+space+(process_name).
+    const auto openParenthesisPos = statContent.find("(");
+    const auto closeParenthesisPos = statContent.find(")");
+
+    if (openParenthesisPos != std::string::npos &&
+            closeParenthesisPos != std::string::npos)
     {
-        std::string statContent{};
-        std::getline(file, statContent);
-
-        // Parse PID and process name. The expected format is: PID+space+(process_name)
-        const auto openParenthesisPos = statContent.find("(");
-        const auto closeParenthesisPos = statContent.find(")");
-        const auto spacePos = statContent.find(" ");
-
-        if (openParenthesisPos != std::string::npos &&
-                closeParenthesisPos != std::string::npos &&
-                spacePos != std::string::npos)
-        {
-            processInfo.first = std::stoi(statContent.substr(0, spacePos));
-            processInfo.second = statContent.substr(openParenthesisPos + 1, closeParenthesisPos - openParenthesisPos - 1);
-        }
+        processInfo = statContent.substr(openParenthesisPos + 1, closeParenthesisPos - openParenthesisPos - 1);
     }
 
     return processInfo;
@@ -440,77 +429,107 @@ std::pair<int32_t, std::string> parseProcessInfo(char path[])
 
 void findInodeMatch(char path[], std::vector<int64_t>& inodes, bool& matchInode, const nlohmann::json& JSONInput)
 {
-    // Read symbolic link files
+    // Read symbolic link files.
     char fdFileContent[KByte] {0};
 
     if (readlink(path, fdFileContent, sizeof(fdFileContent)) > 0)
     {
-        // Parse inode from symbolic link. The expected format is: socket[<inode_number>]
-        const int openBracketPos = std::string(fdFileContent).find("[");
-        const int closeBracketPos = std::string(fdFileContent).find("]");
-        const std::string match = std::string(fdFileContent).substr(openBracketPos + 1, closeBracketPos - openBracketPos - 1);
-        const int64_t matchN = std::stoi(match);
-
-        if (std::any_of(JSONInput.cbegin(), JSONInput.cend(), [&](const auto it)
-    {
-        return it.at("inode") == matchN;
-        }))
+        if (std::string(fdFileContent).find("socket") != std::string::npos)
         {
-            matchInode = true;
-            inodes.push_back(matchN);
+            // Parse inode from symbolic link. The expected format is: socket[<inode_number>].
+            const int openBracketPos = std::string(fdFileContent).find("[");
+            const int closeBracketPos = std::string(fdFileContent).find("]");
+            const std::string match = std::string(fdFileContent).substr(openBracketPos + 1, closeBracketPos - openBracketPos - 1);
+            const int64_t matchN = std::stoi(match);
+
+            if (std::any_of(JSONInput.cbegin(), JSONInput.cend(), [&](const auto it)
+        {
+            return it.at("inode") == matchN;
+            }))
+            {
+                matchInode = true;
+                inodes.push_back(matchN);
+            }
         }
     }
 }
 
-void parseProcFS(const char path[], bool contRecursion, nlohmann::json& JSONInput, bool& matchInode, std::vector<int64_t>& inodes)
+void parseProcFS(const char path[], nlohmann::json& JSONInput)
 {
     struct dirent* dirent = nullptr;
-    DirPtr dir(opendir(path));
+    DirPtr procDir(opendir(path));
 
-    if (nullptr != dir.get())
+    // Open proc directory.
+    if (nullptr != procDir.get())
     {
-        while (nullptr != (dirent = readdir(dir.get())))
+        // Iterate over files in proc directory.
+        while (nullptr != (dirent = readdir(procDir.get())))
         {
-            if (dirent->d_name[0] != '.')
+            if ('.' != dirent->d_name[0])
             {
-                char subPath[KByte] {0};
-                snprintf(subPath, sizeof(subPath), "%s/%s", path, dirent->d_name);
+                // Proc files path (includes PID directories).
+                char pidPath[KByte] {0};
+                snprintf(pidPath, sizeof(pidPath), "%s/%s", path, dirent->d_name);
 
-                struct stat attr;
-                stat(subPath, &attr);
-
-                if (S_ISDIR(attr.st_mode) && contRecursion)
+                if (Utils::isNumber(dirent->d_name))
                 {
-                    if (Utils::isNumber(dirent->d_name))
+                    struct dirent* dirent2 = nullptr;
+                    DirPtr pidDir(opendir(pidPath));
+
+                    // Open PID directory.
+                    if (nullptr == pidDir)
                     {
-                        inodes.clear();
-                        matchInode = false;
-                        parseProcFS(subPath, true, JSONInput, matchInode, inodes);
+                        // Sometimes the PID folder couldn't be open due to library limitation, but it must continue.
+                        continue;
                     }
 
-                    if (!strcmp(dirent->d_name, "fd"))
+                    // Iterate over files in PID directory.
+                    std::vector<int64_t> inodes;
+                    bool matchInode{false};
+
+                    while (nullptr != (dirent2 = readdir(pidDir.get())))
                     {
-                        parseProcFS(subPath, false, JSONInput, matchInode, inodes);
-                    }
-                }
-                else if (!strcmp(dirent->d_name, "stat"))
-                {
-                    if (matchInode)
-                    {
-                        for (auto& it : JSONInput)
+                        if ('.' != dirent2->d_name[0])
                         {
-                            if (std::find(inodes.begin(), inodes.end(), it.at("inode")) != inodes.end())
+                            // Pid files path (includes fd directory and stat file).
+                            char pidFilesPath[KByte] {0};
+                            snprintf(pidFilesPath, sizeof(pidFilesPath), "%s/%s", pidPath, dirent2->d_name);
+
+                            if (!strcmp(dirent2->d_name, "fd"))
                             {
-                                const auto processInfo{parseProcessInfo(subPath)};
-                                it.at("pid") = processInfo.first;
-                                it.at("process") = processInfo.second;
+                                struct dirent* dirent3 = nullptr;
+                                DirPtr fdDir(opendir(pidFilesPath));
+
+                                // Iterate over files in fd directory.
+                                while (nullptr != (dirent3 = readdir(fdDir.get())))
+                                {
+                                    if ('.' != dirent3->d_name[0])
+                                    {
+                                        // Fd files path.
+                                        char fdFilesPath[KByte] {0};
+                                        snprintf(fdFilesPath, sizeof(fdFilesPath), "%s/%s", pidFilesPath, dirent3->d_name);
+                                        findInodeMatch(fdFilesPath, inodes, matchInode, JSONInput);
+                                    }
+                                }
+                            }
+
+                            if (!strcmp(dirent2->d_name, "stat"))
+                            {
+                                if (matchInode)
+                                {
+                                    // Add information to original JSON object.
+                                    for (auto& it : JSONInput)
+                                    {
+                                        if (std::find(inodes.begin(), inodes.end(), it.at("inode")) != inodes.end())
+                                        {
+                                            it.at("pid") = std::stoi(dirent->d_name);
+                                            it.at("process") = parseProcessInfo(pidFilesPath);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
-                }
-                else if (S_ISSOCK(attr.st_mode) && !contRecursion)
-                {
-                    findInodeMatch(subPath, inodes, matchInode, JSONInput);
                 }
             }
         }
@@ -544,9 +563,7 @@ nlohmann::json SysInfo::getPorts() const
         }
     }
 
-    bool matchInode = false;
-    std::vector<int64_t> inodes;
-    parseProcFS(WM_SYS_PROC_DIR, true, ports, matchInode, inodes);
+    parseProcFS(WM_SYS_PROC_DIR, ports);
 
     return ports;
 }
