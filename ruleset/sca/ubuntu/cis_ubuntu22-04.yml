@@ -2697,7 +2697,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat-Lc \"%n %a\" {} + -> !r:[0,2,4,6][0,4]0"
+      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%n %a\" {} + -> !r:[0,2,4,6][0,4]0"
 
   # 4.1.4.6 Ensure audit configuration files are owned by root (Automated)
   - id: 28610
@@ -2864,7 +2864,7 @@ checks:
   # 4.2.1.1.2 Ensure systemd-journal-remote is configured (Manual) - Not implemented
   # 4.2.1.1.3 Ensure systemd-journal-remote is enabled (Manual) - Not implemented
   # 4.2.1.1.4 Ensure journald is not configured to recieve logs from a remote client (Automated)
-  - id: 28616
+  - id: 28617
     title: "Ensure journald is not configured to recieve logs from a remote client."
     description: "Journald supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts. NOTE: The same package, systemd-journal-remote, is used for both sending logs to remote hosts and receiving incoming logs. With regards to receiving logs, there are two services; systemd-journalremote.socket and systemd-journal-remote.service."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
@@ -2886,7 +2886,7 @@ checks:
       - "c:systemctl is-enabled systemd-journal-remote.socket -> r:disabled"
 
   # 4.2.1.2 Ensure journald service is enabled (Automated)
-  - id: 28617
+  - id: 28618
     title: "Ensure journald service is enabled."
     description: "Ensure that the systemd-journald service is enabled to allow capturing of logging events."
     rationale: "If the systemd-journald service is not enabled to start on boot, the system will not capture logging events."
@@ -2907,7 +2907,7 @@ checks:
       - "c:systemctl is-enabled systemd-journald.service -> r:static"
 
   # 4.2.1.3 Ensure journald is configured to compress large log files (Automated)
-  - id: 28618
+  - id: 28619
     title: "Ensure journald is configured to compress large log files."
     description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large."
     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
@@ -2926,7 +2926,7 @@ checks:
       - "f:/etc/systemd/journald.conf -> r:Compress=yes"
 
   # 4.2.1.4 Ensure journald is configured to write logfiles to persistent disk (Automated)
-  - id: 28619
+  - id: 28620
     title: "Ensure journald is configured to write logfiles to persistent disk."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss due to a reboot."
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
@@ -2948,7 +2948,7 @@ checks:
       - "f:/etc/systemd/journald.conf -> r:Storage=persistent"
 
   # 4.2.1.5 Ensure journald is not configured to send logs to rsyslog (Manual)
-  - id: 28620
+  - id: 28621
     title: "Ensure journald is not configured to send logs to rsyslog."
     description: "Data from journald should be kept in the confines of the service and not forwarded on to other services."
     rationale: "IF journald is the method for capturing logs, all logs of the system should be handled by journald and not forwarded to other logging mechanisms."
@@ -2972,7 +2972,7 @@ checks:
   # 4.2.1.7 Ensure journald default file permissions configured (Manual) - Not implemented
   # 4.2.2 Configure rsyslog
   # 4.2.2.1 Ensure rsyslog is installed (Automated)
-  - id: 28623
+  - id: 28622
     title: "Ensure rsyslog is installed."
     description: "The rsyslog software is recommended in environments where journald does not meet operation requirements."
     rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
@@ -2993,7 +2993,7 @@ checks:
       - "c:dpkg-query -s rsyslog -> r:install ok installed"
 
   # 4.2.2.2 Ensure rsyslog service is enabled (Automated)
-  - id: 28624
+  - id: 28623
     title: "Ensure rsyslog service is enabled."
     description: "Once the rsyslog package is installed, ensure that the service is enabled."
     rationale: "If the rsyslog service is not enabled to start on boot, the system will not capture logging events."
@@ -3014,7 +3014,7 @@ checks:
       - "c:systemctl is-enabled rsyslog -> r:enabled"
 
   # 4.2.2.3 Ensure journald is configured to send logs to rsyslog (Manual)
-  - id: 28625
+  - id: 28624
     title: "Ensure journald is configured to send logs to rsyslog."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of journald logs, however, use of the RSyslog service provides a consistent means of log collection and export."
     rationale: "IF RSyslog is the preferred method for capturing logs, all logs of the system should be sent to it for further processing."
@@ -3032,7 +3032,7 @@ checks:
       - "f:/etc/systemd/journald.conf -> r:^ForwardToSyslog=yes$"
 
   # 4.2.2.4 Ensure rsyslog default file permissions are configured (Automated)
-  - id: 28626
+  - id: 28625
     title: "Ensure rsyslog default file permissions are configured"
     description: "RSyslog will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
@@ -3057,7 +3057,7 @@ checks:
   # 4.2.2.5 Ensure logging is configured (Manual) - Not implemented
   # 4.2.2.6 Ensure rsyslog is configured to send logs to a remote log host (Manual) - Not implemented
   # 4.2.2.7 Ensure rsyslog is not configured to receive logs from a remote client (Automated)
-  - id: 28629
+  - id: 28626
     title: "Ensure rsyslog is not configured to receive logs from a remote client."
     description: "RSyslog supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
@@ -3088,7 +3088,7 @@ checks:
 
   # 5.1 Configure time-based job schedulers
   # 5.1.1 Ensure cron daemon is enabled and running (Automated)
-  - id: 28631
+  - id: 28627
     title: "Ensure cron daemon is enabled and running."
     description: "The cron daemon is used to execute batch jobs on the system. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy"
     rationale: "While there may not be user jobs that need to be run on the system, the system does have maintenance jobs that may include security monitoring that have to run, and cron is used to execute them."
@@ -3103,7 +3103,7 @@ checks:
       - "c:systemctl is-enabled cron -> r:enabled"
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured (Automated)
-  - id: 28632
+  - id: 28628
     title: "Ensure permissions on /etc/crontab are configured."
     description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy"
     rationale: "This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges. Read access to these files could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
@@ -3126,7 +3126,7 @@ checks:
       - 'c:stat /etc/crontab -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
-  - id: 28632
+  - id: 28629
     title: "Ensure permissions on /etc/cron.hourly are configured."
     description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy"
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
@@ -3149,7 +3149,7 @@ checks:
       - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
-  - id: 28632
+  - id: 28630
     title: "Ensure permissions on /etc/cron.daily are configured"
     description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy"
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
@@ -3172,7 +3172,7 @@ checks:
       - 'c:stat /etc/cron.daily/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
-  - id: 28632
+  - id: 28631
     title: "Ensure permissions on /etc/cron.weekly are configured."
     description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
@@ -3218,7 +3218,7 @@ checks:
       - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # Ensure permissions on /etc/cron.d are configured (Automated)
-  - id: 28632
+  - id: 28633
     title: "Ensure permissions on /etc/cron.d are configured"
     description: "The /etc/cron.d directory contains system cron jobs that need to run in a similar manner to the hourly, daily weekly and monthly jobs from /etc/crontab, but require more granular control as to when they run. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
@@ -3241,7 +3241,7 @@ checks:
       - 'c:stat /etc/cron.d/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.8 Ensure cron is restricted to authorized users (Automated)
-  - id: 28632
+  - id: 28634
     title: "Ensure cron is restricted to authorized users."
     description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy Even though a given user is not listed in cron.allow, cron jobs can still be run as that user The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
     rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
@@ -3265,7 +3265,7 @@ checks:
       - 'c:stat /etc/cron.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.9 Ensure at is restricted to authorized users (Automated)
-  - id: 28633
+  - id: 28635
     title: "Ensure at is restricted to authorized users."
     description: "Configure /etc/at.allow to allow specific users to use this service. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not specifically defined in this file is allowed to use at. By removing the file, only users in /etc/at.allow are allowed to use at. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, at should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
@@ -3289,277 +3289,349 @@ checks:
       - 'c:stat /etc/at.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.2 Configure SSH Server
-  - id: 28634
-    title: "Ensure permissions on /etc/ssh/sshd_config are configured"
+  # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured (Automated)
+  - id: 28636
+    title: "Ensure permissions on /etc/ssh/sshd_config are configured."
     description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
     rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non-privileged users."
-    impact: ""
-    remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config: # chown root:root /etc/ssh/sshd_config # chmod og-rwx /etc/ssh/sshd_config"
-    references: ""
+    remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config: # chown root:root /etc/ssh/sshd_config # chmod og-rwx /etc/ssh/sshd_config."
     compliance:
       - cis: ["5.2.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1098","T1098.004","T1543","T1543.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_sp_800-53: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
     condition: all
     rules:
-      - ""
+      - "c:stat /etc/ssh/sshd_config -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\t*\(\s*\t*0/\s*root\)\s*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)"
 
-  - id: 28635
-    title: "Ensure permissions on SSH private host key files are configured"
-    description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, the possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
-    rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated"
-    impact: ""
-    remediation: 'Run the following script to set mode, ownership, and group on the private SSH host key files: #!/usr/bin/env bash { l_skgn="ssh_keys" # Group designated to own openSSH keys l_skgid="$(awk -F: ''($1 == "''"$l_skgn"''"){print $3}'' /etc/group)" awk ''{print}'' <<< "$(find /etc/ssh -xdev -type f -name ''ssh_host_*_key'' - exec stat -L -c "%n %#a %U %G %g" {} +)" | (while read -r l_file l_mode l_owner l_group l_gid; do [ -n "$l_skgid" ] && l_cga="$l_skgn" || l_cga="root" [ "$l_gid" = "$l_skgid" ] && l_pmask="0137" || l_pmask="0177" l_maxperm="$( printf ''%o'' $(( 0777 & ~$l_pmask )) )" if [ $(( $l_mode & $l_pmask )) -gt 0 ]; then echo -e " - File: \"$l_file\" is mode \"$l_mode\" changing to mode: \"$l_maxperm\"" if [ -n "$l_skgid" ]; then chmod u-x,g-wx,o-rwx "$l_file" else chmod u-x,go-rwx "$l_file" fi fi if [ "$l_owner" != "root" ]; then echo -e " - File: \"$l_file\" is owned by: \"$l_owner\" changing owner to \"root\"" chown root "$l_file" fi if [ "$l_group" != "root" ] && [ "$l_gid" != "$l_skgid" ]; then echo -e " - File: \"$l_file\" is owned by group \"$l_group\" should belong to group \"$l_cga\"" chgrp "$l_cga" "$l_file" fi done ) }'
-    references: ""
-    compliance:
-      - cis: ["5.2.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ""
-
-  - id: 28636
-    title: "Ensure permissions on SSH public host key files are configured"
+  # 5.2.3 Ensure permissions on SSH public host key files are configured (Automated)
+  - id: 28637
+    title: "Ensure permissions on SSH public host key files are configured."
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    impact: ""
     remediation: "Run the following commands to set permissions and ownership on the SSH host public key files # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,gowx {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\; Default Value: Access: (0644/-rw-r--r--) Uid: ( 0/ root) Gid: ( 0/ root)"
-    references: ""
     compliance:
       - cis: ["5.2.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
+      - cis_csc_v7: ["5.1"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1557"]
+      - mitre_tactics: ["TA0003","TA0006"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_sp_800-53: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
+    condition: none
     rules:
-      - ""
+      - "c:find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec stat -Lc \"%A\" {} \\; -> !r:^-rw-\.--\.--$"
 
-  - id: 28637
-    title: "Ensure SSH access is limited"
+  # 5.2.4 Ensure SSH access is limited (Automated)
+  - id: 28638
+    title: "Ensure SSH access is limited."
     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: AllowUsers: o The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. AllowGroups: o The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. DenyUsers: o The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. DenyGroups: o The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file or a included configuration file to set one or more of the parameter as follows: AllowUsers <userlist> OR AllowGroups <grouplist> OR DenyUsers <userlist> OR DenyGroups <grouplist> Default Value: None"
-    references: "1. SSHD_CONFIG(5)"
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["4.3"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1021","T1021.004"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_mitigations: ["M1018"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_sp_800-53: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
     condition: all
     rules:
-      - ""
-
-  - id: 28638
-    title: "Ensure SSH LogLevel is appropriate"
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^(Allow|Deny)(Users|Groups)"
+      - "f:/etc/ssh/sshd_config -> r:^(Allow|Deny)(Users|Groups)"
+      -
+  # 5.2.5 Ensure SSH LogLevel is appropriate (Automated)
+  - id: 28639
+    title: "Ensure SSH LogLevel is appropriate."
     description: "INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel VERBOSE OR LogLevel INFO Default Value: LogLevel INFO"
-    references: "1. https://www.ssh.com/ssh/sshd_config/"
+    references:
+      - https://www.ssh.com/ssh/sshd_config/
     compliance:
       - cis: ["5.2.5"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["6.2","6.3"]
+      - cis_csc_v8: ["8.2"]
+      - mitre_techniques: ["T1562","T1562.006"]
+      - mitre_tactics: ["TA0005"]
+      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
+      - hipaa: [ "164.312(b)" ]
+      - pci_dss_3.2.1: [ "10.2","10.3" ]
+      - pci_dss_4.0: [ "5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2" ]
+      - nist_sp_800-53: [ "AU-7" ]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^loglevel (VERBOSE|INFO)"
+      - "not f:/etc/ssh/sshd_config -> r:^LogLevel && !r:(VERBOSE|INFO)"
 
-  - id: 28639
-    title: "Ensure SSH PAM is enabled"
+  # 5.2.6 Ensure SSH PAM is enabled (Automated)
+  - id: 28640
+    title: "Ensure SSH PAM is enabled."
     description: "The UsePAM directive enables the Pluggable Authentication Module (PAM) interface. If set to yes this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication directives in addition to PAM account and session module processing for all authentication types."
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server"
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes"
-    references: "1. SSHD_CONFIG(5)"
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.6"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["5.1"]
+      - cis_csc_v8: ["4.1"]
+      - mitre_techniques: ["T1021","T1021.004"]
+      - mitre_tactics: ["TA0001"]
+      - mitre_mitigations: ["M1035"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
+      - pci_dss_3.2.1: [ "2.2","11.5" ]
+      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
+      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
+      - soc_2: [ "CC7.1","CC8.1" ]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^usepam yes"
+      - "not f:/etc/ssh/sshd_config -> r:^UsePAM no"
 
-  - id: 28640
+  # 5.2.7 Ensure SSH root login is disabled (Automated)
+  - id: 28641
     title: "Ensure SSH root login is disabled"
     description: "The PermitRootLogin parameter specifies if the root user can log in using SSH. The default is prohibit-password."
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root. This limits opportunity for nonrepudiation and provides a clear audit trail in the event of a security incident."
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no Default Value: PermitRootLogin without-password"
-    references: "1. SSHD_CONFIG(5)"
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.7"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["4.3"]
+      - cis_csc_v8: ["5.4"]
+      - mitre_techniques: ["T1021"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_mitigations: ["M1042"]
+      - cmmc_v2.0: [ "AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - nist_sp_800-53: [ "AC-6(2)","AC-6(5)" ]
+      - soc_2: [ "CC6.1","CC6.3" ]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^permitrootlogin no"
+      - "f:/etc/ssh/sshd_config -> r:^PermitRootLogin no"
 
-  - id: 28641
-    title: "Ensure SSH HostbasedAuthentication is disabled"
+  # 5.2.8 Ensure SSH HostbasedAuthentication is disabled (Automated)
+  - id: 28642
+    title: "Ensure SSH HostbasedAuthentication is disabled."
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
     impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no Default Value: HostbasedAuthentication no"
-    references: "1. SSHD_CONFIG(5)"
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.8"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["16.3"]
+      - cis_csc_v8: ["4.1"]
+      - mitre_techniques: ["T1078","T1078.001","T1078.003"]
+      - mitre_tactics: ["TA0001"]
+      - mitre_mitigations: ["M1042"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
+      - pci_dss_3.2.1: [ "2.2","11.5" ]
+      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
+      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
+      - soc_2: [ "CC7.1","CC8.1" ]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^hostbasedauthentication no"
+      - "not f:/etc/ssh/sshd_config -> r:^HostBasedAuthentication yes"
 
-  - id: 28642
-    title: "Ensure SSH PermitEmptyPasswords is disabled"
+  # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled (Automated)
+  - id: 28643
+    title: "Ensure SSH PermitEmptyPasswords is disabled."
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no Default Value: PermitEmptyPasswords no"
-    references: "1. SSHD_CONFIG(5)"
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.9"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["16.3"]
+      - cis_csc_v8: ["4.1"]
+      - mitre_techniques: ["T1021"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_mitigations: ["M1042"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
+      - pci_dss_3.2.1: [ "2.2","11.5" ]
+      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
+      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
+      - soc_2: [ "CC7.1","CC8.1" ]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^permitemptypasswords no"
+      - "not f:/etc/ssh/sshd_config -> r:^PermitEmptyPasswords yes"
 
-  - id: 28643
-    title: "Ensure SSH PermitUserEnvironment is disabled"
+  # 5.2.10 Ensure SSH PermitUserEnvironment is disabled (Automated)
+  - id: 28644
+    title: "Ensure SSH PermitUserEnvironment is disabled."
     description: "The PermitUserEnvironment option allows users to present environment options to the SSH daemon."
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has SSH executing trojan'd programs)"
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no Default Value: PermitUserEnvironment no"
-    references: "1. SSHD_CONFIG(5)"
+    references:
+      - 1. SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.10"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["5.1"]
+      - cis_csc_v8: ["4.1"]
+      - mitre_techniques: ["T1021"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_mitigations: ["M1042"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
+      - pci_dss_3.2.1: [ "2.2","11.5" ]
+      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
+      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
+      - soc_2: [ "CC7.1","CC8.1" ]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^permituserenvironment no"
+      - "not f:/etc/ssh/sshd_config -> r:^PermitUserEnvironment yes"
 
-  - id: 28644
-    title: "Ensure SSH IgnoreRhosts is enabled"
+  # 5.2.11 Ensure SSH IgnoreRhosts is enabled (Automated)
+  - id: 28645
+    title: "Ensure SSH IgnoreRhosts is enabled."
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with SSH."
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes Default Value: IgnoreRhosts yes"
-    references: "1. SSHD_CONFIG(5)"
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.11"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.2"]
+      - cis_csc_v8: ["4.1"]
+      - mitre_techniques: ["T1078","T1078.001","T1078.003"]
+      - mitre_tactics: ["TA0001"]
+      - mitre_mitigations: ["M1027"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
+      - pci_dss_3.2.1: [ "2.2","11.5" ]
+      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
+      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
+      - soc_2: [ "CC7.1","CC8.1" ]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^ignorerhosts yes"
+      - "not f:/etc/ssh/sshd_config -> r:^IgnoreRhosts no"
 
-  - id: 28645
-    title: "Ensure SSH X11 forwarding is disabled"
+  # 5.2.12 Ensure SSH X11 forwarding is disabled (Automated)
+  - id: 28646
+    title: "Ensure SSH X11 forwarding is disabled."
     description: "The X11Forwarding parameter provides the ability to tunnel X11 traffic through the connection to enable remote graphic connections."
     rationale: "Disable X11 forwarding unless there is an operational requirement to use X11 applications directly. There is a small risk that the remote X11 servers of users who are logged in via SSH with X11 forwarding could be compromised by other users on the X11 server. Note that even if X11 forwarding is disabled, users can always install their own forwarders."
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: X11Forwarding no"
-    references: ""
     compliance:
       - cis: ["5.2.12"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.2"]
+      - cis_csc_v8: ["4.8"]
+      - mitre_techniques: ["T1210"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_mitigations: ["M1042"]
+      - cmmc_v2.0: [ "CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6" ]
+      - pci_dss_3.2.1: [ "1.1.6","1.2.1","2.2.2","2.2.5" ]
+      - pci_dss_4.0: [ "1.2.5","2.2.4","6.4.1" ]
+      - soc_2: [ "CC6.3","CC6.6" ]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^x11forwarding no"
+      - "not f:/etc/ssh/sshd_config -> r:^x11forwarding yes"
 
-  - id: 28646
-    title: "Ensure only strong Ciphers are used"
+  # 5.2.13 Ensure only strong Ciphers are used (Automated)
+  - id: 28647
+    title: "Ensure only strong Ciphers are used."
     description: 'This variable limits the ciphers that SSH can use during communication. Note: Some organizations may have stricter requirements for approved ciphers. Ensure that ciphers used are in compliance with site policy. The only "strong" ciphers currently FIPS 140-2 compliant are: o aes256-ctr o aes192-ctr o aes128-ctr Supported ciphers in openSSH 8.2: 3des-cbc aes128-cbc aes192-cbc aes256-cbc aes128-ctr aes192-ctr aes256-ctr aes128-gcm@openssh.com aes256-gcm@openssh.com chacha20-poly1305@openssh.com'
     rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. The Triple DES ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain clear text data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack. Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plain text data from an arbitrary block of cipher text in an SSH session via unknown vectors.'
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the Ciphers line to contain a comma separated list of the site approved ciphers. Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr Default Value: Ciphers chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128gcm@openssh.com,aes256-gcm@openssh.com"
-    references: "1. https://nvd.nist.gov/vuln/detail/CVE-2016-2183 2. https://www.openssh.com/txt/cbc.adv 3. https://nvd.nist.gov/vuln/detail/CVE-2008-5161 4. https://www.openssh.com/txt/cbc.adv 5. SSHD_CONFIG(5)"
+    references:
+      - https://nvd.nist.gov/vuln/detail/CVE-2016-2183
+      - https://www.openssh.com/txt/cbc.adv
+      - https://nvd.nist.gov/vuln/detail/CVE-2008-5161
+      - https://www.openssh.com/txt/cbc.adv 5. SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.13"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
+      - cis_csc_v7: ["14.4"]
+      - cis_csc_v8: ["3.10"]
+      - mitre_techniques: ["T1040","T1557"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_mitigations: ["M1041"]
+      - cmmc_v2.0: [ "AC.L2-3.1.17","AC.L2-3.1.13","IA.L2-3.5.10","SC.L2-3.13.11","SC.L2-3.13.8","SC.L2-3.13.15" ]
+      - hipaa: [ "164.312(a)(2)(iv)","164.312(e)(1)","164.312(e)(2)(i)","164.312(e)(2)(ii)" ]
+      - pci_dss_3.2.1: [ "2.1.1","4.1","4.1.1","8.2.1" ]
+      - pci_dss_4.0: [ "2.2.7","4.1.1","4.2.1","4.2.1.2","4.2.2","8.3.2" ]
+      - nist_sp_800-53: [ "AC-17(2)","SC-8","SC-8(1)" ]
+    condition: none
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^Ciphers && r:(3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc)"
 
-  - id: 28647
-    title: "Ensure only strong MAC algorithms are used"
+  # 5.2.14 Ensure only strong MAC algorithms are used (Automated)
+  - id: 28648
+    title: "Ensure only strong MAC algorithms are used."
     description: 'This variable limits the types of MAC algorithms that SSH can use during communication. Note: Some organizations may have stricter requirements for approved MACs. Ensure that MACs used are in compliance with site policy. The only "strong" MACs currently FIPS 140-2 approved are: o hmac-sha2-256 o hmac-sha2-512 The Supported MACs are: hmac-md5 hmac-md5-96 hmac-sha1 hmac-sha1-96 hmac-sha2-256 hmac-sha2-512 umac-64@openssh.com umac-128@openssh.com hmac-md5-etm@openssh.com hmac-md5-96-etm@openssh.com hmac-sha1-etm@openssh.com hmac-sha1-96-etm@openssh.com hmac-sha2-256-etm@openssh.com hmac-sha2-512-etm@openssh.com umac-64-etm@openssh.com umac-128-etm@openssh.com'
     rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information."
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site approved MACs. Example: MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2512,hmac-sha2-256 Default Value: MACs umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1etm@openssh.com,umac-64@openssh.com,umac-128@openssh.com,hmac-sha2256,hmac-sha2-512,hmac-sha1"
-    references: "1. More information on SSH downgrade attacks can be found here: http://www.mitls.org/pages/attacks/SLOTH 2. SSHD_CONFIG(5)"
+    references:
+      - http://www.mitls.org/pages/attacks/SLOTH
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.14"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
+      - cis_csc_v7: ["14.4","16.5"]
+      - cis_csc_v8: ["3.10"]
+      - mitre_techniques: ["T1040","T1557"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_mitigations: ["M1041"]
+      - cmmc_v2.0: [ "AC.L2-3.1.17","AC.L2-3.1.13","IA.L2-3.5.10","SC.L2-3.13.11","SC.L2-3.13.8","SC.L2-3.13.15" ]
+      - hipaa: [ "164.312(a)(2)(iv)","164.312(e)(1)","164.312(e)(2)(i)","164.312(e)(2)(ii)" ]
+      - pci_dss_3.2.1: [ "2.1.1","4.1","4.1.1","8.2.1" ]
+      - pci_dss_4.0: [ "2.2.7","4.1.1","4.2.1","4.2.1.2","4.2.2","8.3.2" ]
+      - nist_sp_800-53: [ "AC-17(2)","SC-8","SC-8(1)" ]
+    condition: none
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^MACs && r:(hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com)"
 
-  - id: 28648
+  # 5.2.15 Ensure only strong Key Exchange algorithms are used (Automated)
+  - id: 28649
     title: "Ensure only strong Key Exchange algorithms are used"
     description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received Notes: Kex algorithms have a higher preference the earlier they appear in the list Some organizations may have stricter requirements for approved Key exchange algorithms Ensure that Key exchange algorithms used are in compliance with site policy The only Key Exchange Algorithms currently FIPS 140-2 approved are: o ecdh-sha2-nistp256 o ecdh-sha2-nistp384 o ecdh-sha2-nistp521 o diffie-hellman-group-exchange-sha256 o diffie-hellman-group16-sha512 o diffie-hellman-group18-sha512 o diffie-hellman-group14-sha256 The Key Exchange algorithms supported by OpenSSH 8.2 are: curve25519-sha256 curve25519-sha256@libssh.org diffie-hellman-group1-sha1 diffie-hellman-group14-sha1 diffie-hellman-group14-sha256 diffie-hellman-group16-sha512 diffie-hellman-group18-sha512 diffie-hellman-group-exchange-sha1 diffie-hellman-group-exchange-sha256 ecdh-sha2-nistp256 ecdh-sha2-nistp384 ecdh-sha2-nistp521 sntrup4591761x25519-sha512@tinyssh.org"
     rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-themiddle attacks"
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellmangroup14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffiehellman-group-exchange-sha256 Default Value: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchangesha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellmangroup14-sha256"
-    references: ""
     compliance:
       - cis: ["5.2.15"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
+      - cis_csc_v7: ["14.4"]
+      - cis_csc_v8: ["3.10"]
+      - mitre_techniques: ["T1040","T1557"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_mitigations: ["M1041"]
+      - cmmc_v2.0: [ "AC.L2-3.1.17","AC.L2-3.1.13","IA.L2-3.5.10","SC.L2-3.13.11","SC.L2-3.13.8","SC.L2-3.13.15" ]
+      - hipaa: [ "164.312(a)(2)(iv)","164.312(e)(1)","164.312(e)(2)(i)","164.312(e)(2)(ii)" ]
+      - pci_dss_3.2.1: [ "2.1.1","4.1","4.1.1","8.2.1" ]
+      - pci_dss_4.0: [ "2.2.7","4.1.1","4.2.1","4.2.1.2","4.2.2","8.3.2" ]
+      - nist_sp_800-53: [ "AC-17(2)","SC-8","SC-8(1)" ]
+    condition: none
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^kexalgorithms && r:(diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1)"
 
-  - id: 28649
+  - id: 28650
     title: "Ensure SSH AllowTcpForwarding is disabled"
     description: "SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines."
     rationale: "Leaving port forwarding enabled can expose the organization to security risks and backdoors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
@@ -3577,7 +3649,7 @@ checks:
     rules:
       - ""
 
-  - id: 28650
+  - id: 28651
     title: "Ensure SSH warning banner is configured"
     description: "The Banner parameter specifies a file whose contents must be sent to the remote user before authentication is permitted. By default, no banner is displayed."
     rationale: "Banners are used to warn connecting users of the particular site's policy regarding connection. Presenting a warning message prior to the normal user login may assist the prosecution of trespassers on the computer system."
@@ -3595,7 +3667,7 @@ checks:
     rules:
       - ""
 
-  - id: 28651
+  - id: 28652
     title: "Ensure SSH MaxAuthTries is set to 4 or less"
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
@@ -3613,7 +3685,7 @@ checks:
     rules:
       - ""
 
-  - id: 28652
+  - id: 28653
     title: "Ensure SSH MaxStartups is configured"
     description: "The MaxStartups parameter specifies the maximum number of concurrent unauthenticated connections to the SSH daemon."
     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
@@ -3631,7 +3703,7 @@ checks:
     rules:
       - ""
 
-  - id: 28653
+  - id: 28654
     title: "Ensure SSH MaxSessions is set to 10 or less"
     description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
@@ -3649,7 +3721,7 @@ checks:
     rules:
       - ""
 
-  - id: 28654
+  - id: 28655
     title: "Ensure SSH Idle Timeout Interval is configured"
     description: "NOTE: To clarify, the two settings described below is only meant for idle connections from a protocol perspective and not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not and never had, intentionally, the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they where abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus it can no longer be abused disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option en-abled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination."
     rationale: "In order to prevent resource exhaustion, appropriate values should be set for both ClientAliveInterval and ClientAliveCountMax. Specifically, looking at the source code, ClientAliveCountMax must be greater than zero in order to utilize the ability of SSH to drop idle connections. If connections are allowed to stay open indefinately, this can potentially be used as a DDOS attack or simple resource exhaustion could occur over unreliable networks. The example set here is a 45 second timeout. Consult your site policy for network timeouts and apply as appropriate."
@@ -3667,7 +3739,7 @@ checks:
     rules:
       - ""
 
-  - id: 28655
+  - id: 28656
     title: "Ensure sudo commands use pty"
     description: "sudo can be configured to run only from a pseudo terminal (pseudo-pty)."
     rationale: "Attackers can run a malicious program using sudo which would fork a background process that remains even when the main program has finished executing."
@@ -3685,7 +3757,7 @@ checks:
     rules:
       - ""
 
-  - id: 28656
+  - id: 28657
     title: "Ensure sudo log file exists"
     description: "sudo can use a custom log file"
     rationale: "A sudo log file simplifies auditing of sudo commands"
@@ -3703,7 +3775,7 @@ checks:
     rules:
       - ""
 
-  - id: 28657
+  - id: 28658
     title: "Ensure users must provide password for privilege escalation"
     description: "The operating system must be configured so that users must provide a password for privilege escalation."
     rationale: "Without (re-)authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical the user (re-)authenticate."
@@ -3721,7 +3793,7 @@ checks:
     rules:
       - ""
 
-  - id: 28658
+  - id: 28659
     title: "Ensure sudo authentication timeout is configured correctly"
     description: "sudo caches used credentials for a default of 15 minutes. This is for ease of use when there are multiple administrative tasks to perform. The timeout can be modified to suit local security policies. This default is distribution specific. See audit section for further information."
     rationale: "Setting a timeout value reduces the window of opportunity for unauthorized privileged access to another user."
@@ -3739,7 +3811,7 @@ checks:
     rules:
       - ""
 
-  - id: 28659
+  - id: 28660
     title: "Ensure access to the su command is restricted"
     description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in a specific groups to execute su. This group should be empty to reinforce the use of sudo for privileged access."
     rationale: "Restricting the use of su , and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo , whereas su can only record that a user executed the su program."
@@ -3757,7 +3829,7 @@ checks:
     rules:
       - ""
 
-  - id: 28660
+  - id: 28661
     title: "Ensure password creation requirements are configured"
     description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: Password Length: o minlen = 14 - password must be 14 characters or more Password complexity: o minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR o dcredit = -1 - provide at least one digit o ucredit = -1 - provide at least one uppercase character o ocredit = -1 - provide at least one special character o lcredit = -1 - provide at least one lowercase character"
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
@@ -3775,7 +3847,7 @@ checks:
     rules:
       - ""
 
-  - id: 28661
+  - id: 28662
     title: "Ensure lockout for failed password attempts is configured"
     description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. deny - Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries. fail_interval - The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out unlock_time - The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be reenabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
@@ -3793,7 +3865,7 @@ checks:
     rules:
       - ""
 
-  - id: 28662
+  - id: 28663
     title: "Ensure password reuse is limited"
     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password."
@@ -3811,7 +3883,7 @@ checks:
     rules:
       - ""
 
-  - id: 28663
+  - id: 28664
     title: "Ensure password hashing algorithm is up to date with the latest standards"
     description: "The commands below change password encryption to yescrypt. All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The yescrypt algorithm provides much stronger hashing than previous available algorithms, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: these change only apply to accounts configured on the local system."
@@ -3829,7 +3901,7 @@ checks:
     rules:
       - ""
 
-  - id: 28664
+  - id: 28665
     title: "Ensure all current passwords uses the configured hashing algorithm (Manual)"
     description: "Currently used passwords with out of date hashing algorithms may pose a security risk to the system."
     rationale: "In use passwords should always match the configured hashing algorithm for the system."
@@ -3847,7 +3919,7 @@ checks:
     rules:
       - ""
 
-  - id: 28665
+  - id: 28666
     title: "Ensure minimum days between password changes is configured"
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 1 or more days."
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
@@ -3865,7 +3937,7 @@ checks:
     rules:
       - ""
 
-  - id: 28666
+  - id: 28667
     title: "Ensure password expiration is 365 days or less"
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity. It is recommended that the PASS_MAX_DAYS parameter does not exceed 365 days and is greater than the value of PASS_MIN_DAYS."
@@ -3883,7 +3955,7 @@ checks:
     rules:
       - ""
 
-  - id: 28667
+  - id: 28668
     title: "Ensure password expiration warning days is 7 or more"
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
@@ -3901,7 +3973,7 @@ checks:
     rules:
       - ""
 
-  - id: 28668
+  - id: 28669
     title: "Ensure inactive password lock is 30 days or less"
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
@@ -3919,7 +3991,7 @@ checks:
     rules:
       - ""
 
-  - id: 28669
+  - id: 28670
     title: "Ensure all users last password change date is in the past"
     description: "All users should have a password change date in the past."
     rationale: "If a users recorded password change date is in the future then they could bypass any set password expiration."
@@ -3937,7 +4009,7 @@ checks:
     rules:
       - ""
 
-  - id: 28670
+  - id: 28671
     title: "Ensure system accounts are secured"
     description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell."
     rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
@@ -3955,7 +4027,7 @@ checks:
     rules:
       - ""
 
-  - id: 28671
+  - id: 28672
     title: "Ensure default group for the root account is GID 0"
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
@@ -3973,7 +4045,7 @@ checks:
     rules:
       - ""
 
-  - id: 28672
+  - id: 28673
     title: "Ensure default user umask is 027 or more restrictive"
     description: "The user file-creation mode mask (umask) is use to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rwrw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. umask can be set with either octal or Symbolic values Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. Setting the default umask: pam_umask module: o will set the umask according to the system default in /etc/login.defs and user settings, solving the problem of different umask settings with different shells, display managers, remote sessions etc. o umask=<mask> value in the /etc/login.defs file is interpreted as Octal o Setting USERGROUPS_ENAB to yes in /etc/login.defs (default): will enable setting of the umask group bits to be the same as owner bits. (examples: 022 -> 002, 077 -> 007) for non-root users, if the uid is the same as gid, and username is the same as the primary group name userdel will remove the user's group if it contains no more members, and useradd will create by default a group with the name of the user System Wide Shell Configuration File: o /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter o /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. o /etc/bash.bashrc - System wide version of .bashrc. etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bash.bashrc User Shell Configuration Files: ~/.profile - Is executed to configure your shell before the initial command prompt. Is only read by login shells. ~/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login"
     rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
@@ -3991,7 +4063,7 @@ checks:
     rules:
       - ""
 
-  - id: 28673
+  - id: 28674
     title: "Ensure default user shell timeout is 900 seconds or less"
     description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables timeout. readonly TMOUT- Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. export TMOUT - exports the TMOUT variable System Wide Shell Configuration Files: /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the -login parameter. /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. /etc/bash.bashrc - System wide version of bash.bashrc. etc/bash.bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bash.bashrc."
     rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session."
@@ -4009,7 +4081,7 @@ checks:
     rules:
       - ""
 
-  - id: 28674
+  - id: 28675
     title: "Ensure permissions on /etc/passwd are configured"
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -4027,7 +4099,7 @@ checks:
     rules:
       - ""
 
-  - id: 28675
+  - id: 28676
     title: "Ensure permissions on /etc/group are configured"
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
@@ -4045,7 +4117,7 @@ checks:
     rules:
       - ""
 
-  - id: 28676
+  - id: 28677
     title: "Ensure permissions on /etc/shadow are configured"
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
@@ -4063,7 +4135,7 @@ checks:
     rules:
       - ""
 
-  - id: 28677
+  - id: 28678
     title: "Ensure permissions on /etc/gshadow are configured"
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
@@ -4081,7 +4153,7 @@ checks:
     rules:
       - ""
 
-  - id: 28678
+  - id: 28679
     title: "Ensure no world writable files exist"
     description: "Unix-based systems support variable settings to control access to files. World writable files are the least secure. See the chmod(2) man page for more information."
     rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity."
@@ -4099,7 +4171,7 @@ checks:
     rules:
       - ""
 
-  - id: 28679
+  - id: 28680
     title: "Ensure no unowned files or directories exist"
     description: "Sometimes when administrators delete users from the password file they neglect to remove all files owned by those users from the system."
     rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended."
@@ -4117,7 +4189,7 @@ checks:
     rules:
       - ""
 
-  - id: 28680
+  - id: 28681
     title: "Ensure no ungrouped files or directories exist"
     description: "Sometimes when administrators delete users or groups from the system they neglect to remove all files owned by those users or groups."
     rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended."
@@ -4135,7 +4207,7 @@ checks:
     rules:
       - ""
 
-  - id: 28681
+  - id: 28682
     title: "Audit SUID executables (Manual)"
     description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SUID program is to enable users to perform functions (such as changing their password) that require root privileges."
     rationale: "There are valid reasons for SUID programs, but it is important to identify and review such programs to ensure they are legitimate."
@@ -4153,7 +4225,7 @@ checks:
     rules:
       - ""
 
-  - id: 28682
+  - id: 28683
     title: "Audit SGID executables (Manual)"
     description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SGID program is to enable users to perform functions (such as changing their password) that require root privileges."
     rationale: "There are valid reasons for SGID programs, but it is important to identify and review such programs to ensure they are legitimate. Review the files returned by the action in the audit section and check to see if system binaries have a different md5 checksum than what from the package. This is an indication that the binary may have been replaced."
@@ -4171,7 +4243,7 @@ checks:
     rules:
       - ""
 
-  - id: 28683
+  - id: 28684
     title: "Ensure accounts in /etc/passwd use shadowed passwords"
     description: "Local accounts can uses shadowed passwords. With shadowed passwords, The passwords are saved in shadow password file, /etc/shadow, encrypted by a salted oneway hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
     rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack. Note: All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user. A user account with an empty second field in /etc/passwd allows the account to be logged into by providing only the username."
@@ -4189,7 +4261,7 @@ checks:
     rules:
       - ""
 
-  - id: 28684
+  - id: 28685
     title: "Ensure /etc/shadow password fields are not empty"
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
@@ -4207,7 +4279,7 @@ checks:
     rules:
       - ""
 
-  - id: 28685
+  - id: 28686
     title: "Ensure all groups in /etc/passwd exist in /etc/group"
     description: "Over time, system administration errors and changes can lead to groups being defined in /etc/passwd but not in /etc/group ."
     rationale: "Groups defined in the /etc/passwd file but not in the /etc/group file pose a threat to system security since group permissions are not properly managed."
@@ -4225,7 +4297,7 @@ checks:
     rules:
       - ""
 
-  - id: 28686
+  - id: 28687
     title: "Ensure no duplicate UIDs exist"
     description: "Although the useradd program will not let you create a duplicate User ID (UID), it is possible for an administrator to manually edit the /etc/passwd file and change the UID field."
     rationale: "Users must be assigned unique UIDs for accountability and to ensure appropriate access protections."
@@ -4243,7 +4315,7 @@ checks:
     rules:
       - ""
 
-  - id: 28687
+  - id: 28688
     title: "Ensure local interactive users own their home directories"
     description: "The user home directory is space defined for the particular user to set local environment variables and to store personal files."
     rationale: "Since the user is accountable for files stored in the user home directory, the user must be the owner of the directory."
@@ -4261,7 +4333,7 @@ checks:
     rules:
       - ""
 
-  - id: 28688
+  - id: 28689
     title: "Ensure local interactive user home directories are mode 750 or more restrictive"
     description: "While the system administrator can establish secure permissions for users' home directories, the users can easily override these."
     rationale: "Group or world-writable user home directories may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
@@ -4279,7 +4351,7 @@ checks:
     rules:
       - ""
 
-  - id: 28689
+  - id: 28690
     title: "Ensure local interactive user dot files are not group or world writable"
     description: 'While the system administrator can establish secure permissions for users'' "dot" files, the users can easily override these.'
     rationale: "Group or world-writable user configuration files may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
