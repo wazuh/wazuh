@@ -44,7 +44,7 @@ function stop_wazuh_agent
     )
 
     $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
-    Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
+    # Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
     taskkill /pid $process_id /f /T
     Start-Sleep 5
     $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
