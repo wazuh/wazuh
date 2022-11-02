@@ -600,14 +600,14 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
 
         if (create_merged) {
             fclose(finalfp);
-            OS_MD5_Str(finalbuf, finalsize, md5sum);
+            OS_MD5_Str(finalbuf, finalsize, md5sum_tmp);
             if ((OS_MD5_File(merged, md5sum, OS_TEXT) != 0) || (strcmp(md5sum_tmp, md5sum) != 0)) {
                 if (finalfp = fopen(merged, "w"), finalfp == NULL) {
                     merror("Unable to open file: '%s' due to [(%d)-(%s)].", merged, errno, strerror(errno));
                     os_free(finalbuf);
                     return;
                 }
-                fprintf(finalfp, "%s", finalbuf);
+                fwrite(finalbuf, finalsize, 1, finalfp);
                 fclose(finalfp);
             }
             os_free(finalbuf);

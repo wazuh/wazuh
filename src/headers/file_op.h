@@ -207,7 +207,7 @@ void DeleteState();
  * @param path_offset Offset for recursion.
  * @return 1 if the merged file was created, 0 on error.
  */
-int MergeAppendFile(FILE *finalfp, const char *files, int path_offset) __attribute__((nonnull(1)));
+int MergeAppendFile(FILE *finalfp, const char *files, int path_offset) __attribute__((nonnull(1, 2)));
 
 
 /**

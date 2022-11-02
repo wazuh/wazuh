@@ -210,11 +210,8 @@ int __wrap_w_fseek(FILE *x, int64_t pos, __attribute__((unused)) int mode) {
     return mock_type(int);
 }
 
-int __wrap_MergeAppendFile(const char *finalpath, __attribute__((unused)) const char *files, const char *tag, int path_offset) {
-    check_expected(finalpath);
-    if (tag) {
-        check_expected(tag);
-    }
+int __wrap_MergeAppendFile(FILE *finalfp, __attribute__((unused)) const char *files, int path_offset) {
+    check_expected(finalfp);
     check_expected(path_offset);
     return mock_type(int);
 }
