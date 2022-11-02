@@ -99,14 +99,9 @@ checks:
       - 'not f:/etc/inetd.conf -> r:^\s*tftp'
       - 'not f:/etc/inetd.conf -> r:^\s*bootps'
       - 'not f:/etc/inetd.conf -> r:^\s*kshell'
+      - 'not f:/etc/inetd.conf -> r:^\s*klogin'
       - 'not f:/etc/inetd.conf -> r:^\s*rpc.rquotad'
       - 'not f:/etc/inetd.conf -> r:^\s*rpc.ttdbserver'
-      - 'not f:/etc/inetd.conf -> r:^\s*finger'
-      - 'not f:/etc/inetd.conf -> r:^\s*finger'
-      - 'not f:/etc/inetd.conf -> r:^\s*finger'
-      - 'not f:/etc/inetd.conf -> r:^\s*finger'
-      - 'not f:/etc/inetd.conf -> r:^\s*finger'
-      - 'not f:/etc/inetd.conf -> r:^\s*finger'
 
   - id: 25003
     title: "Only enable telnet if absolutely necessary."
@@ -238,6 +233,8 @@ checks:
       - "f:/etc/rc.config.d/namesvrs -> r:^NIS_MASTER_SERVER=0"
       - "f:/etc/rc.config.d/namesvrs -> r:^NIS_CLIENT=0"
       - "f:/etc/rc.config.d/namesvrs -> r:^NIS_SLAVE_SERVER=0"
+      - "f:/etc/rc.config.d/namesvrs -> r:^NISPLUS_SERVER=0"
+      - "f:/etc/rc.config.d/namesvrs -> r:^NISPLUS_CLIENT=0"
 
   - id: 25014
     title: "Disable printer daemons, if possible."
@@ -250,6 +247,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/rc.config.d/lp -> r:^LP=0"
+      - 'f:/etc/rc.config.d/lp -> r:^XPRINTSERVERS="''''"'
 
   - id: 25015
     title: "Disable the CDE GUI login, if possible."
@@ -262,7 +260,7 @@ checks:
     condition: any
     rules:
       - "not f:/etc/rc.config.d/desktop"
-      - "f:/etc/rc.config.d/desktop -> r:DESKTOP=$"
+      - 'f:/etc/rc.config.d/desktop -> r:DESKTOP=""$'
 
   - id: 25016
     title: "Disable email server, if possible."
@@ -278,6 +276,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/rc.config.d/mailservs -> r:SENDMAIL_SERVER=0"
+      - 'c:crontab -l -> r:^0\.*sendmail -q'
 
   - id: 25017
     title: "Disable SNMP and OpenView Agents, if remote management or monitoring are not needed.."
@@ -439,12 +438,12 @@ checks:
     rules:
       - "c:ndd -get /dev/tcp tcp_syn_rcvd_max -> r:4096"
       - "c:ndd -get /dev/arp arp_cleanup_interval -> r:60000"
-      - "c:ndd -get /dev/ip ip_forward_src_routed -> r:0"
-      - "c:ndd -get /dev/ip ip_forward_directed_broadcasts -> r:0"
-      - "c:ndd -get /dev/ip ip_respond_to_timestamp -> r:0"
-      - "c:ndd -get /dev/ip ip_respond_to_timestamp_broadcast -> r:0"
-      - "c:ndd -get /dev/ip ip_respond_to_address_mask_broadcast -> r:0"
-      - "c:ndd -get /dev/ip ip_respond_to_echo_broadcast -> r:0"
+      - "c:ndd -get /dev/ip ip_forward_src_routed -> r:^0$"
+      - "c:ndd -get /dev/ip ip_forward_directed_broadcasts -> r:^0$"
+      - "c:ndd -get /dev/ip ip_respond_to_timestamp -> r:^0$"
+      - "c:ndd -get /dev/ip ip_respond_to_timestamp_broadcast -> r:^0$"
+      - "c:ndd -get /dev/ip ip_respond_to_address_mask_broadcast -> r:^0$"
+      - "c:ndd -get /dev/ip ip_respond_to_echo_broadcast -> r:^0$"
 
   - id: 25028
     title: "Use more random TCP sequence numbers."
@@ -456,7 +455,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - "c:ndd -get /dev/tcp tcp_isn_passphrase -> r:1"
+      - "not c:ndd -get /dev/tcp tcp_isn_passphrase -> r:^0$"
 
   - id: 25029
     title: "Additional network parameter modifications."
@@ -468,8 +467,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - "c:ndd -get /dev/ip ip_forwarding -> r:0"
-      - "c:ndd -get /dev/ip ip_send_redirects -> r:0"
+      - "c:ndd -get /dev/ip ip_forwarding -> r:^0$"
+      - "c:ndd -get /dev/ip ip_send_redirects -> r:^0$"
 
   #################################################################
   # 1.5 File/Directory Permissions/Access
@@ -595,7 +594,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c: sh -c "ls -la /var/spool/cron/crontabs | grep -v  -e ^-.*root.*sys | grep -v -e ^d | grep -v total" -> r:^$'
+      - 'not c:sh -c "ls -la /var/spool/cron/crontabs | grep -v  -e ^-.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
 
   - id: 25038
     title: "Restrict root logins to system console."
@@ -609,7 +608,7 @@ checks:
     rules:
       - "f:/etc/securetty"
       - "f:/etc/securetty -> r:console"
-      - 'c: sh -c "ls -la /etc/securetty | grep  -e ^-.*root.*sys | grep -v total" -> r:/etc/securetty'
+      - 'c:sh -c "ls -la /etc/securetty | grep  -e ^-.*root.*sys | grep -v total" -> r:/etc/securetty'
 
   - id: 25039
     title: "Disable nobody access for secure RPC."
@@ -691,7 +690,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - "c:logins -p -> r:^$"
+      - 'not c:logins -p -> r:^\w'
 
   - id: 25044
     title: "Set account expiration parameters on active accounts."
@@ -734,8 +733,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - "not f:/etc/passwd -> r:^+"
-      - "not f:/etc/group -> r:^+"
+      - "not f:/etc/passwd -> r:^+:"
+      - "not f:/etc/group -> r:^+:"
 
   - id: 25047
     title: "Set default umask for users."
@@ -748,6 +747,10 @@ checks:
     condition: all
     rules:
       - 'f:/etc/default/security -> r:^\s*UMASK=077'
+      - 'f:/etc/profile -> r:^\s*umask 077'
+      - 'f:/etc/csh.login -> r:^\s*umask 077'
+      - 'f:/etc/d.profile -> r:^\s*umask 077'
+      - 'f:/etc/d.login -> r:^\s*umask 077'
 
   - id: 25048
     title: "Set 'mesg n' as default for all users."
@@ -780,6 +783,8 @@ checks:
     rules:
       - "f:/etc/motd"
       - "f:/etc/issue"
+      - 'c: sh -c "ls -la /etc/motd | grep -e ^-.*root.*sys | grep -v total" -> r:/etc/motd'
+      - 'c: sh -c "ls -la /etc/issue | grep -e ^-.*root.*root | grep -v total" -> r:/etc/issue'
 
   - id: 25050
     title: "Create warning banners for FTP daemon."
@@ -791,6 +796,6 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - "f:/etc/ftpd"
-      - 'c: sh -c "ls -la /etc/ftpd | grep  -e ^-.*root.*sys | grep -v total" -> r:ftpd'
-      - 'c: sh -c "ls -la /etc/ftpd/ftpaccess | grep  -e ^-.*root.*sys | grep -v total" -> r:ftpaccess'
+      - "d:/etc/ftpd"
+      - 'c: sh -c "ls -la /etc/ftpd | grep -e ^-.*root.*sys | grep -v total" -> r:ftpd'
+      - 'c: sh -c "ls -la /etc/ftpd/ftpaccess | grep -e ^-.*root.*sys | grep -v total" -> r:ftpaccess'
