@@ -1120,8 +1120,8 @@ void wdb_check_fragmentation() {
             if (wdb_get_last_vacuum_data(node, &last_vacuum_time, &last_vacuum_value) != OS_SUCCESS) {
                 merror("Couldn't get last vacuum info for the database '%s'", node->id);
             } else {
-                if ((current_free_pages_percentage > wconfig.free_pages_percentage) && (current_fragmentation > wconfig.max_fragmentation) &&
-                    ((last_vacuum_time == 0 ) || (last_vacuum_time > 0 && current_fragmentation > last_vacuum_value + wconfig.max_fragmentation_delta))) {
+                if (current_free_pages_percentage >= wconfig.free_pages_percentage && (current_fragmentation > wconfig.max_fragmentation ||
+                    (current_fragmentation > wconfig.fragmentation_threshold && (last_vacuum_time == 0  || (last_vacuum_time > 0 && current_fragmentation > last_vacuum_value + wconfig.fragmentation_delta))))) {
                     struct timespec ts_start, ts_end;
 
                     if (wdb_commit2(node) < 0) {
@@ -1838,9 +1838,10 @@ cJSON* wdb_get_internal_config() {
     cJSON_AddNumberToObject(wazuh_db_config, "commit_time_min", wconfig.commit_time_min);
     cJSON_AddNumberToObject(wazuh_db_config, "open_db_limit", wconfig.open_db_limit);
     cJSON_AddNumberToObject(wazuh_db_config, "worker_pool_size", wconfig.worker_pool_size);
-    cJSON_AddNumberToObject(wazuh_db_config, "max_fragmentation", wconfig.max_fragmentation);
-    cJSON_AddNumberToObject(wazuh_db_config, "max_fragmentation_delta", wconfig.max_fragmentation_delta);
+    cJSON_AddNumberToObject(wazuh_db_config, "fragmentation_threshold", wconfig.fragmentation_threshold);
+    cJSON_AddNumberToObject(wazuh_db_config, "fragmentation_delta", wconfig.fragmentation_delta);
     cJSON_AddNumberToObject(wazuh_db_config, "free_pages_percentage", wconfig.free_pages_percentage);
+    cJSON_AddNumberToObject(wazuh_db_config, "max_fragmentation", wconfig.max_fragmentation);
     cJSON_AddNumberToObject(wazuh_db_config, "check_fragmentation_interval", wconfig.check_fragmentation_interval);
 
     cJSON_AddItemToObject(root, "wazuh_db", wazuh_db_config);
