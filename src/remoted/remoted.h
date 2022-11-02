@@ -43,19 +43,6 @@ typedef struct message_t {
     size_t counter;
 } message_t;
 
-/* Status structure */
-
-typedef struct remoted_state_t {
-    unsigned int discarded_count;
-    unsigned int tcp_sessions;
-    unsigned int evt_count;
-    unsigned int ctrl_msg_count;
-    unsigned int queued_msgs;
-    unsigned long sent_bytes;
-    unsigned long recv_bytes;
-    unsigned int dequeued_after_close;
-} remoted_state_t;
-
 /* Network buffer structure */
 
 typedef struct sockbuffer_t {
@@ -109,8 +96,11 @@ void *update_shared_files(void *none);
 /* Save control messages */
 void save_controlmsg(const keyentry * key, char *msg, size_t msg_length, int *wdb_sock);
 
-// Request listener thread entry point
-void * req_main(void * arg);
+// Initialize request module
+void req_init();
+
+// Request sender
+void req_sender(int peer, char *buffer, ssize_t length);
 
 // Save request data (ack or response). Return 0 on success or -1 on error.
 int req_save(const char * counter, const char * buffer, size_t length);
@@ -147,20 +137,7 @@ size_t rem_get_tsize();
 // Free message
 void rem_msgfree(message_t * message);
 
-// Status functions
-void * rem_state_main();
-void rem_inc_tcp();
-void rem_dec_tcp();
-void rem_inc_evt();
-void rem_inc_ctrl_msg();
-void rem_inc_msg_queued();
-void rem_add_send(unsigned long bytes);
-void rem_inc_discarded();
-void rem_add_recv(unsigned long bytes);
-void rem_inc_dequeued();
-
 // Read config
-size_t rem_getconfig(const char * section, char ** output);
 cJSON *getRemoteConfig(void);
 cJSON *getRemoteInternalConfig(void);
 cJSON *getRemoteGlobalConfig(void);
@@ -189,11 +166,12 @@ int nb_send(netbuffer_t * buffer, int socket);
  * @param socket socket id where send message.
  * @param crypt_msg msg to send.
  * @param msg_size message size.
+ * @param agent_id message agent id.
  *
  * @return -1 on error.
  * @return 0 on success.
  */
-int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size);
+int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size, char * agent_id);
 
 /* Network counter */
 

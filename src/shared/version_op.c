@@ -661,11 +661,27 @@ os_info *get_unix_version()
             } else if(strcmp(strtok_r(buff, "\n", &save_ptr),"Darwin") == 0){
                 info->os_platform = strdup("darwin");
 
-                if (cmd_output_ver = popen("sw_vers -productName", "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (sw_vers -productName).");
-                    } else {
-                        w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_name);
+                if (cmd_output_ver = popen("system_profiler SPSoftwareDataType", "r"), cmd_output_ver) {
+                    while (fgets(buff, sizeof(buff), cmd_output_ver) != NULL) {
+                        char *key = strtok_r(buff, ":", &save_ptr);
+                        if (key) {
+                            const char *expected_key = "System Version";
+                            char *trimmed_key = w_strtrim(key);
+                            if (NULL != trimmed_key && strncmp(trimmed_key, expected_key, strlen(expected_key)) == 0) {
+                                char *value = strtok_r(NULL, " ", &save_ptr);
+                                if (value) {
+                                    w_strdup(value, info->os_name);
+                                } else {
+                                    mdebug1("Cannot parse System Version value (system_profiler SPSoftwareDataType).");
+                                }
+                            }
+                            if(info->os_name) {
+                                break;
+                            }
+                        }
+                    }
+                    if (NULL == info->os_name) {
+                        mdebug1("Cannot read from command output (system_profiler SPSoftwareDataType).");
                     }
                     pclose(cmd_output_ver);
                 }

@@ -4,7 +4,7 @@
 
 import os
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
@@ -95,6 +95,65 @@ def test_hourly_data():
     assert result[0]['interactions'] == 0
 
 
+@pytest.mark.parametrize('agents_list, expected_socket_response, expected_result', [
+    (None,
+     {'timestamp': 1658400850,
+      'uptime': 1658400850,
+      'stats': 'value'},
+     {'timestamp': datetime(2022, 7, 21, 10, 54, 10, tzinfo=timezone.utc),
+      'uptime': datetime(2022, 7, 21, 10, 54, 10, tzinfo=timezone.utc),
+      'stats': 'value'}),
+
+    ([1, 2, 3],
+     {'timestamp': 1658400850,
+      'agents': [{'id': agent_id, 'uptime': 1658400850} for agent_id in [1, 2, 3]]},
+     {'timestamp': datetime(2022, 7, 21, 10, 54, 10, tzinfo=timezone.utc),
+      'agents': [{'id': agent_id, 'uptime': datetime(2022, 7, 21, 10, 54, 10, tzinfo=timezone.utc)} for agent_id in
+                 [1, 2, 3]]}),
+
+    ('all',
+     {'data': {'timestamp': 1658400850,
+               'agents': [{'id': agent_id, 'uptime': 1658400850} for agent_id in [1, 2, 3]]}},
+     {'data': {'timestamp': datetime(2022, 7, 21, 10, 54, 10, tzinfo=timezone.utc),
+               'agents': [{'id': agent_id, 'uptime': datetime(2022, 7, 21, 10, 54, 10, tzinfo=timezone.utc)} for
+                          agent_id in [1, 2, 3]]}})
+])
+@patch('wazuh.core.wazuh_socket.WazuhSocketJSON.close')
+@patch('wazuh.core.wazuh_socket.WazuhSocketJSON.send')
+@patch('wazuh.core.wazuh_socket.WazuhSocketJSON.__init__', return_value=None)
+def test_get_daemons_stats_socket(mock__init__, mock_send, mock_close, agents_list, expected_socket_response,
+                                  expected_result):
+    """Verify get_daemons_stats_socket(socket : str) function works as expected"""
+    socket = '/test_path/socket'
+    expected_msg = {'version': 1, 'origin': {'module': 'framework'},
+                    'command': 'getagentsstats' if agents_list else 'getstats'}
+    if agents_list:
+        expected_msg |= {'parameters': {'agents': agents_list}}
+        if agents_list == 'all':
+            expected_msg['parameters'] |= {'last_id': 0}
+
+    with patch('wazuh.core.wazuh_socket.WazuhSocketJSON.receive',
+               return_value=expected_socket_response) as mock_receive:
+        result = stats.get_daemons_stats_socket(socket, agents_list=agents_list,
+                                                last_id=0 if agents_list == 'all' else None)
+
+        mock__init__.assert_called_once_with(socket)
+        mock_send.assert_called_once_with(expected_msg)
+        mock_receive.assert_called_once()
+        mock_close.assert_called_once()
+        assert result == expected_result
+
+
+@pytest.mark.parametrize('agents_list', [
+    None, [1, 2, 3]
+])
+def test_get_daemons_stats_socket_ko(agents_list):
+    """Test get_daemons_stats_socket(socket : str) function exception works"""
+    socket = '/test_path/socket'
+    with pytest.raises(WazuhInternalError, match=f".* 1121 .*: {socket}"):
+        stats.get_daemons_stats_socket(socket, agents_list=agents_list)
+
+
 def test_get_daemons_stats_():
     """Verify get_daemons_stats_() function works as expected"""
     with patch("builtins.open", mock_open(read_data='# Queue size\nqueue_size=\'0\'')):
@@ -120,17 +179,17 @@ def test_get_daemons_stats_ko():
 ])
 def test_get_daemons_stats_from_socket(agent_id, daemon, response):
     """Check that get_daemons_stats_from_socket() function uses the expected params and returns expected result"""
-    with patch('wazuh.core.stats.WazuhSocket.__init__', return_value=None) as mock_socket:
-        with patch('wazuh.core.stats.WazuhSocket.send', side_effect=None) as mock_send:
-            with patch('wazuh.core.stats.WazuhSocket.receive', return_value=response.encode()):
-                with patch('wazuh.core.stats.WazuhSocket.close', side_effect=None):
+    with patch('wazuh.core.wazuh_socket.WazuhSocket.__init__', return_value=None) as mock_socket:
+        with patch('wazuh.core.wazuh_socket.WazuhSocket.send', side_effect=None) as mock_send:
+            with patch('wazuh.core.wazuh_socket.WazuhSocket.receive', return_value=response.encode()):
+                with patch('wazuh.core.wazuh_socket.WazuhSocket.close', side_effect=None):
                     stats.get_daemons_stats_from_socket(agent_id, daemon)
 
         if agent_id == '000':
             mock_socket.assert_called_once_with(os.path.join(common.WAZUH_PATH, "queue", "sockets", "logcollector"))
             mock_send.assert_called_once_with(b'getstate')
         else:
-            mock_socket.assert_called_once_with(os.path.join(common.WAZUH_PATH, "queue", "sockets", "request"))
+            mock_socket.assert_called_once_with(os.path.join(common.WAZUH_PATH, "queue", "sockets", "remote"))
             mock_send.assert_called_once_with(f"{str(agent_id).zfill(3)} {daemon} getstate".encode())
 
 
@@ -145,13 +204,13 @@ def test_get_daemons_stats_from_socket_ko():
     with pytest.raises(WazuhInternalError, match=r'\b1121\b'):
         stats.get_daemons_stats_from_socket('000', 'logcollector')
 
-    with patch('wazuh.core.stats.WazuhSocket.__init__', return_value=None):
-        with patch('wazuh.core.stats.WazuhSocket.send', side_effect=None):
-            with patch('wazuh.core.configuration.WazuhSocket.receive', side_effect=ValueError):
+    with patch('wazuh.core.wazuh_socket.WazuhSocket.__init__', return_value=None):
+        with patch('wazuh.core.wazuh_socket.WazuhSocket.send', side_effect=None):
+            with patch('wazuh.core.wazuh_socket.WazuhSocket.receive', side_effect=ValueError):
                 with pytest.raises(WazuhInternalError, match=r'\b1118\b'):
                     stats.get_daemons_stats_from_socket('000', 'logcollector')
 
-            with patch('wazuh.core.configuration.WazuhSocket.receive', return_value="err Error message test".encode()):
-                with patch('wazuh.core.stats.WazuhSocket.close', side_effect=None):
+            with patch('wazuh.core.wazuh_socket.WazuhSocket.receive', return_value="err Error message test".encode()):
+                with patch('wazuh.core.wazuh_socket.WazuhSocket.close', side_effect=None):
                     with pytest.raises(WazuhError, match=r'\b1117\b'):
                         stats.get_daemons_stats_from_socket('000', 'logcollector')

@@ -142,6 +142,13 @@ void *__wrap_OSHash_Get_ex(const OSHash *self, const char *key) {
     return mock_type(void*);
 }
 
+void *__wrap_OSHash_Numeric_Get_ex(const OSHash *self, int key) {
+    check_expected(self);
+    check_expected(key);
+
+    return mock_type(void*);
+}
+
 void *__wrap_OSHash_Next(const OSHash *self,
                          __attribute__((unused)) unsigned int *i,
                          __attribute__((unused)) OSHashNode *current) {

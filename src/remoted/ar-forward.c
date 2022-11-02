@@ -12,6 +12,7 @@
 
 #include "shared.h"
 #include "remoted.h"
+#include "state.h"
 #include "os_net/os_net.h"
 
 
@@ -109,7 +110,9 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                     if (keys.keyentries[i]->rcvd >= (time(0) - logr.global.agents_disconnection_time)) {
                         strncpy(agent_id, keys.keyentries[i]->id, KEYSIZE);
                         key_unlock();
-                        send_msg(agent_id, msg_to_send, -1);
+                        if (send_msg(agent_id, msg_to_send, -1) >= 0) {
+                            rem_inc_send_ar(agent_id);
+                        }
                         key_lock_read();
                     }
                 }
@@ -119,7 +122,9 @@ void *AR_Forward(__attribute__((unused)) void *arg)
 
             /* Send to the remote agent that generated the event or to a pre-defined agent */
             else if (ar_location & (REMOTE_AGENT | SPECIFIC_AGENT)) {
-                send_msg(ar_agent_id, msg_to_send, -1);
+                if (send_msg(ar_agent_id, msg_to_send, -1) >= 0) {
+                    rem_inc_send_ar(ar_agent_id);
+                }
             }
         }
     }
