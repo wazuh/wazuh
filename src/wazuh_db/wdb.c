@@ -288,6 +288,16 @@ STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last
 /* Store the fragmentation data of the last vacuum in the metadata table. */
 STATIC int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const char *last_vacuum_value);
 
+/**
+ * @brief Execute a select query that returns a single integer value.
+ *
+ * @param[in] wdb Database to query for the table existence.
+ * @param[in] query Query to be executed.
+ * @param[out] value Integer where the select value of the query will be stored.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on error.
+ */
+STATIC int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, int *value);
+
 wdb_config wconfig;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 wdb_t * db_pool_begin;
@@ -852,7 +862,7 @@ int wdb_get_db_free_pages_percentage(wdb_t * wdb) {
 }
 
 /* Execute a select query that returns a single integer value. Returns OS_SUCCESS on success or OS_INVALID on error. */
-int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, int *value) {
+STATIC int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, int *value) {
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
 
