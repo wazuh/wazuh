@@ -3637,115 +3637,159 @@ condition: all
     rules:
       - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^kexalgorithms && r:(diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1)"
 
+  # 5.2.16 Ensure SSH AllowTcpForwarding is disabled (Automated)
   - id: 28650
-    title: "Ensure SSH AllowTcpForwarding is disabled"
+    title: "Ensure SSH AllowTcpForwarding is disabled."
     description: "SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines."
     rationale: "Leaving port forwarding enabled can expose the organization to security risks and backdoors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
     impact: "SSH tunnels are widely used in many corporate environments. In some environments the applications themselves may have very limited native support for security. By utilizing tunneling, compliance with SOX, HIPAA, PCI-DSS, and other standards can be achieved without having to modify the applications."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: AllowTcpForwarding no Default Value: AllowTcpForwarding yes"
-    references: "1. https://www.ssh.com/ssh/tunneling/example"
+    references:
+      - https://www.ssh.com/ssh/tunneling/example
     compliance:
       - cis: ["5.2.16"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.2"]
+      - cis_csc_v8: ["4.1"]
+      - mitre_techniques: ["T1048","T1048.002","T1572"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_mitigations: ["M1042"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
+      - pci_dss_3.2.1: [ "2.2","11.5" ]
+      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
+      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
+      - soc_2: [ "CC7.1","CC8.1" ]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^allowtcpforwarding && r:no$"
+      - "not f:/etc/ssh/sshd_config -> r:^AllowTcpForwarding yes"
 
+  # 5.2.17 Ensure SSH warning banner is configured (Automated)
   - id: 28651
-    title: "Ensure SSH warning banner is configured"
+    title: "Ensure SSH warning banner is configured."
     description: "The Banner parameter specifies a file whose contents must be sent to the remote user before authentication is permitted. By default, no banner is displayed."
     rationale: "Banners are used to warn connecting users of the particular site's policy regarding connection. Presenting a warning message prior to the normal user login may assist the prosecution of trespassers on the computer system."
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: Banner /etc/issue.net"
-    references: ""
     compliance:
       - cis: ["5.2.17"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["5.1"]
+      - cis_csc_v8: ["4.1"]
+      - mitre_tactics: ["TA0001","TA0007"]
+      - mitre_mitigations: ["M1035"]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^banner && r:/etc/issue.net$"
 
+  # 5.2.18 Ensure SSH MaxAuthTries is set to 4 or less (Automated)
   - id: 28652
-    title: "Ensure SSH MaxAuthTries is set to 4 or less"
+    title: "Ensure SSH MaxAuthTries is set to 4 or less."
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4 Default Value: MaxAuthTries 6"
-    references: "1. SSHD_CONFIG(5)"
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.18"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["16.13"]
+      - cis_csc_v8: ["8.5"]
+      - mitre_techniques: ["T1110","T1110.001","T1110.003"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_mitigations: ["M1036"]
+      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
+      - pci_dss_3.2.1: [ "10.1","10.2.2","10.2.4","10.2.5","10.3" ]
+      - pci_dss_4.0: [ "9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5" ]
+      - nist_sp_800-53: [ "AU-3(1)","AU-7" ]
+      - soc_2: [ "CC5.2","CC7.2" ]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^maxauthtries\\s+(\\d+) compare <= 4"
+      - "not f:/etc/ssh/sshd_config -> n:^maxauthtries\\s+(\\d+) compare > 4"
 
+  # 5.2.19 Ensure SSH MaxStartups is configured (Automated)
   - id: 28653
-    title: "Ensure SSH MaxStartups is configured"
+    title: "Ensure SSH MaxStartups is configured."
     description: "The MaxStartups parameter specifies the maximum number of concurrent unauthenticated connections to the SSH daemon."
     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxStartups 10:30:60 Default Value: MaxStartups 10:30:100"
-    references: "1. SSHD_CONFIG(5)"
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.19"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["5.1"]
+      - cis_csc_v8: ["4.1"]
+      - mitre_techniques: ["T1499","T1499.002"]
+      - mitre_tactics: ["TA0040"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
+      - pci_dss_3.2.1: [ "2.2","11.5" ]
+      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
+      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
+      - soc_2: [ "CC7.1","CC8.1" ]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^maxstartups && r:10:30:60"
+      - "not f:/etc/ssh/sshd_config -> r:^maxstartups && !r:10:30:60"
 
+  # 5.2.20 Ensure SSH MaxSessions is set to 10 or less (Automated)
   - id: 28654
     title: "Ensure SSH MaxSessions is set to 10 or less"
     description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
-    impact: ""
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10 Default Value: MaxSessions 10"
-    references: '1. SSHD_CONFIG(5) MITRE ATT&CK Mappings: Techniques / Subtechniques T1499, T1499.002 Tactics TA0040 Mitigations 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less Profile Applicability: Level 1 - Server Level 1 - Workstation Description: The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access. Rationale: Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds (1 Minute), set the number based on site policy. Audit: Run the following command and verify that output LoginGraceTime is between 1 and 60 seconds or 1m: # sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk ''{print $1}'')" | grep logingracetime Verify the output matches: logingracetime 60 Run the following command and verify the output: # grep -Ei ''^\s*LoginGraceTime\\s+(0|6[1-9]|[7-9][0-9]|[1-9][0-9][09]+|[^1]m)'' /etc/ssh/sshd_config Nothing should be returned. Remediation: Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60 Default Value: LoginGraceTime 120 References: 1. SSHD_CONFIG(5)'
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10"
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.20"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - mitre_techniques: ["T1499","T1499.002"]
+      - mitre_tactics: ["TA0040"]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^maxsessions\\s*\\t*(\\d+) compare <= 10"
+      - "not f:/etc/ssh/sshd_config -> n:^MaxSessions\\s+(\\d+) compare > 10"
 
+  # 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 28655
-    title: "Ensure SSH Idle Timeout Interval is configured"
+      title: "Ensure SSH LoginGraceTime is set to one minute or less."
+      description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access"
+      rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
+      remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60"
+      references:
+        - SSHD_CONFIG(5)
+      compliance:
+        - cis: [ "5.2.21" ]
+        - cis_csc_v7: [ "5.1" ]
+        - cis_csc_v8: [ "4.1" ]
+        - mitre_techniques: [ "T1110","T1110.001","T1110.003","T1110.004","T1499","T1499.002" ]
+        - mitre_tactics: [ "TA0006" ]
+        - mitre_mitigations: [ "M1036" ]
+        - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
+        - pci_dss_3.2.1: [ "2.2","11.5" ]
+        - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
+        - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
+        - soc_2: [ "CC7.1","CC8.1" ]
+      condition: all
+      rules:
+        - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^logingracetime\\s*\\t*(\\d+)  <= 60"
+        - "not f:/etc/ssh/sshd_config -> n:^LoginGraceTime\\s+(\\d+) compare > 60"
+
+  # 5.2.22 Ensure SSH Idle Timeout Interval is configured (Automated)
+  - id: 28656
+    title: "Ensure SSH Idle Timeout Interval is configured."
     description: "NOTE: To clarify, the two settings described below is only meant for idle connections from a protocol perspective and not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not and never had, intentionally, the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they where abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus it can no longer be abused disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option en-abled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination."
     rationale: "In order to prevent resource exhaustion, appropriate values should be set for both ClientAliveInterval and ClientAliveCountMax. Specifically, looking at the source code, ClientAliveCountMax must be greater than zero in order to utilize the ability of SSH to drop idle connections. If connections are allowed to stay open indefinately, this can potentially be used as a DDOS attack or simple resource exhaustion could occur over unreliable networks. The example set here is a 45 second timeout. Consult your site policy for network timeouts and apply as appropriate."
-    impact: ""
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameters according to site policy. Example: ClientAliveInterval 15 ClientAliveCountMax 3 Default Value: ClientAliveInterval 0 ClientAliveCountMax 3"
-    references: "1. https://man.openbsd.org/sshd_config Additional Information: https://bugzilla.redhat.com/show_bug.cgi?id=1873547 https://github.com/openssh/openssh-portable/blob/V_8_9/serverloop.c#L137 MITRE ATT&CK Mappings: Techniques / Subtechniques T1078, T1078.001, T1078.002, T1078.003 Tactics TA0001 Mitigations M1026"
+    references:
+      - https://man.openbsd.org/sshd_config
     compliance:
       - cis: ["5.2.22"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - mitre_techniques: ["T1078","T1078.001","T1078.002","T1078.003"]
+      - mitre_tactics: ["TA0001"]
+      - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - ""
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^clientaliveinterval\\s*\\t*(\\d+)  >= 0"
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^clientalivecountmax\\s*\\t*(\\d+)  >= 0"
 
-  - id: 28656
+  # 5.3 Configure privilege escalation
+  - id: 28657
     title: "Ensure sudo commands use pty"
     description: "sudo can be configured to run only from a pseudo terminal (pseudo-pty)."
     rationale: "Attackers can run a malicious program using sudo which would fork a background process that remains even when the main program has finished executing."
@@ -3763,7 +3807,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28657
+  - id: 28658
     title: "Ensure sudo log file exists"
     description: "sudo can use a custom log file"
     rationale: "A sudo log file simplifies auditing of sudo commands"
@@ -3781,7 +3825,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28658
+  - id: 28659
     title: "Ensure users must provide password for privilege escalation"
     description: "The operating system must be configured so that users must provide a password for privilege escalation."
     rationale: "Without (re-)authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical the user (re-)authenticate."
@@ -3799,7 +3843,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28659
+  - id: 28660
     title: "Ensure sudo authentication timeout is configured correctly"
     description: "sudo caches used credentials for a default of 15 minutes. This is for ease of use when there are multiple administrative tasks to perform. The timeout can be modified to suit local security policies. This default is distribution specific. See audit section for further information."
     rationale: "Setting a timeout value reduces the window of opportunity for unauthorized privileged access to another user."
@@ -3817,7 +3861,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28660
+  - id: 28661
     title: "Ensure access to the su command is restricted"
     description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in a specific groups to execute su. This group should be empty to reinforce the use of sudo for privileged access."
     rationale: "Restricting the use of su , and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo , whereas su can only record that a user executed the su program."
@@ -3835,7 +3879,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28661
+  - id: 28662
     title: "Ensure password creation requirements are configured"
     description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: Password Length: o minlen = 14 - password must be 14 characters or more Password complexity: o minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR o dcredit = -1 - provide at least one digit o ucredit = -1 - provide at least one uppercase character o ocredit = -1 - provide at least one special character o lcredit = -1 - provide at least one lowercase character"
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
@@ -3853,7 +3897,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28662
+  - id: 28663
     title: "Ensure lockout for failed password attempts is configured"
     description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. deny - Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries. fail_interval - The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out unlock_time - The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be reenabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
@@ -3871,7 +3915,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28663
+  - id: 28664
     title: "Ensure password reuse is limited"
     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password."
@@ -3889,7 +3933,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28664
+  - id: 28665
     title: "Ensure password hashing algorithm is up to date with the latest standards"
     description: "The commands below change password encryption to yescrypt. All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The yescrypt algorithm provides much stronger hashing than previous available algorithms, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: these change only apply to accounts configured on the local system."
@@ -3907,7 +3951,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28665
+  - id: 28666
     title: "Ensure all current passwords uses the configured hashing algorithm (Manual)"
     description: "Currently used passwords with out of date hashing algorithms may pose a security risk to the system."
     rationale: "In use passwords should always match the configured hashing algorithm for the system."
@@ -3925,7 +3969,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28666
+  - id: 28667
     title: "Ensure minimum days between password changes is configured"
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 1 or more days."
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
@@ -3943,7 +3987,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28667
+  - id: 28668
     title: "Ensure password expiration is 365 days or less"
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity. It is recommended that the PASS_MAX_DAYS parameter does not exceed 365 days and is greater than the value of PASS_MIN_DAYS."
@@ -3961,7 +4005,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28668
+  - id: 28669
     title: "Ensure password expiration warning days is 7 or more"
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
@@ -3979,7 +4023,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28669
+  - id: 28670
     title: "Ensure inactive password lock is 30 days or less"
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
@@ -3997,7 +4041,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28670
+  - id: 28671
     title: "Ensure all users last password change date is in the past"
     description: "All users should have a password change date in the past."
     rationale: "If a users recorded password change date is in the future then they could bypass any set password expiration."
@@ -4015,7 +4059,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28671
+  - id: 28672
     title: "Ensure system accounts are secured"
     description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell."
     rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
@@ -4033,7 +4077,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28672
+  - id: 28673
     title: "Ensure default group for the root account is GID 0"
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
@@ -4051,7 +4095,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28673
+  - id: 28674
     title: "Ensure default user umask is 027 or more restrictive"
     description: "The user file-creation mode mask (umask) is use to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rwrw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. umask can be set with either octal or Symbolic values Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. Setting the default umask: pam_umask module: o will set the umask according to the system default in /etc/login.defs and user settings, solving the problem of different umask settings with different shells, display managers, remote sessions etc. o umask=<mask> value in the /etc/login.defs file is interpreted as Octal o Setting USERGROUPS_ENAB to yes in /etc/login.defs (default): will enable setting of the umask group bits to be the same as owner bits. (examples: 022 -> 002, 077 -> 007) for non-root users, if the uid is the same as gid, and username is the same as the primary group name userdel will remove the user's group if it contains no more members, and useradd will create by default a group with the name of the user System Wide Shell Configuration File: o /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter o /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. o /etc/bash.bashrc - System wide version of .bashrc. etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bash.bashrc User Shell Configuration Files: ~/.profile - Is executed to configure your shell before the initial command prompt. Is only read by login shells. ~/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login"
     rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
@@ -4069,7 +4113,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28674
+  - id: 28675
     title: "Ensure default user shell timeout is 900 seconds or less"
     description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables timeout. readonly TMOUT- Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. export TMOUT - exports the TMOUT variable System Wide Shell Configuration Files: /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the -login parameter. /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. /etc/bash.bashrc - System wide version of bash.bashrc. etc/bash.bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bash.bashrc."
     rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session."
@@ -4087,7 +4131,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28675
+  - id: 28676
     title: "Ensure permissions on /etc/passwd are configured"
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -4105,7 +4149,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28676
+  - id: 28677
     title: "Ensure permissions on /etc/group are configured"
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
@@ -4123,7 +4167,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28677
+  - id: 28678
     title: "Ensure permissions on /etc/shadow are configured"
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
@@ -4141,7 +4185,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28678
+  - id: 28679
     title: "Ensure permissions on /etc/gshadow are configured"
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
@@ -4159,7 +4203,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28679
+  - id: 28680
     title: "Ensure no world writable files exist"
     description: "Unix-based systems support variable settings to control access to files. World writable files are the least secure. See the chmod(2) man page for more information."
     rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity."
@@ -4177,7 +4221,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28680
+  - id: 28681
     title: "Ensure no unowned files or directories exist"
     description: "Sometimes when administrators delete users from the password file they neglect to remove all files owned by those users from the system."
     rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended."
@@ -4195,7 +4239,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28681
+  - id: 28682
     title: "Ensure no ungrouped files or directories exist"
     description: "Sometimes when administrators delete users or groups from the system they neglect to remove all files owned by those users or groups."
     rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended."
@@ -4213,7 +4257,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28682
+  - id: 28683
     title: "Audit SUID executables (Manual)"
     description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SUID program is to enable users to perform functions (such as changing their password) that require root privileges."
     rationale: "There are valid reasons for SUID programs, but it is important to identify and review such programs to ensure they are legitimate."
@@ -4231,7 +4275,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28683
+  - id: 28684
     title: "Audit SGID executables (Manual)"
     description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SGID program is to enable users to perform functions (such as changing their password) that require root privileges."
     rationale: "There are valid reasons for SGID programs, but it is important to identify and review such programs to ensure they are legitimate. Review the files returned by the action in the audit section and check to see if system binaries have a different md5 checksum than what from the package. This is an indication that the binary may have been replaced."
@@ -4249,7 +4293,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28684
+  - id: 28685
     title: "Ensure accounts in /etc/passwd use shadowed passwords"
     description: "Local accounts can uses shadowed passwords. With shadowed passwords, The passwords are saved in shadow password file, /etc/shadow, encrypted by a salted oneway hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
     rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack. Note: All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user. A user account with an empty second field in /etc/passwd allows the account to be logged into by providing only the username."
@@ -4267,7 +4311,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28685
+  - id: 28686
     title: "Ensure /etc/shadow password fields are not empty"
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
@@ -4285,7 +4329,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28686
+  - id: 28687
     title: "Ensure all groups in /etc/passwd exist in /etc/group"
     description: "Over time, system administration errors and changes can lead to groups being defined in /etc/passwd but not in /etc/group ."
     rationale: "Groups defined in the /etc/passwd file but not in the /etc/group file pose a threat to system security since group permissions are not properly managed."
@@ -4303,7 +4347,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28687
+  - id: 28688
     title: "Ensure no duplicate UIDs exist"
     description: "Although the useradd program will not let you create a duplicate User ID (UID), it is possible for an administrator to manually edit the /etc/passwd file and change the UID field."
     rationale: "Users must be assigned unique UIDs for accountability and to ensure appropriate access protections."
@@ -4321,7 +4365,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28688
+  - id: 28689
     title: "Ensure local interactive users own their home directories"
     description: "The user home directory is space defined for the particular user to set local environment variables and to store personal files."
     rationale: "Since the user is accountable for files stored in the user home directory, the user must be the owner of the directory."
@@ -4339,7 +4383,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28689
+  - id: 28690
     title: "Ensure local interactive user home directories are mode 750 or more restrictive"
     description: "While the system administrator can establish secure permissions for users' home directories, the users can easily override these."
     rationale: "Group or world-writable user home directories may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
@@ -4357,7 +4401,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28690
+  - id: 28691
     title: "Ensure local interactive user dot files are not group or world writable"
     description: 'While the system administrator can establish secure permissions for users'' "dot" files, the users can easily override these.'
     rationale: "Group or world-writable user configuration files may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
