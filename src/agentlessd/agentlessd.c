@@ -8,6 +8,10 @@
  * Foundation
  */
 
+#ifdef WAZUH_UNIT_TESTING
+#define static
+#endif
+
 #include "shared.h"
 #include "os_crypto/md5/md5_op.h"
 #include "agentlessd.h"
@@ -497,10 +501,13 @@ void Agentlessd()
 
             sleep(i);
         }
-
+#ifdef WAZUH_UNIT_TESTING
+        break;
+#else
         /* We only check every minute */
         test_it = 0;
         sleep(60);
+#endif
     }
 }
 

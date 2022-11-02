@@ -20,7 +20,11 @@
 /** Prototypes **/
 
 /* Main monitord */
+#ifdef WAZUH_UNIT_TESTING
+void Agentlessd(void);
+#else
 void Agentlessd(void) __attribute__((noreturn));
+#endif
 
 // Read config
 cJSON *getAgentlessConfig(void);
