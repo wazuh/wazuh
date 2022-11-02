@@ -43,10 +43,12 @@ function stop_wazuh_agent
         $process_name
     )
 
-    $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
-    # Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
-    taskkill /pid $process_id /f /T
-    Start-Sleep 5
+    write-output "$(Get-Date -format u) - stop_wazuh_agent function starts." >> .\upgrade\upgrade.log
+
+    write-output "$(Get-Date -format u) - Trying to stop Wazuh service." >> .\upgrade\upgrade.log
+
+    Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
+    Start-Sleep 2
     $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
     $counter = 5
 
@@ -55,14 +57,19 @@ function stop_wazuh_agent
         write-output "$(Get-Date -format u) - Trying to stop Wazuh service again. Remaining attempts: $counter." >> .\upgrade\upgrade.log
         $counter--
         Get-Service -Name "Wazuh" | Stop-Service
-        Start-Sleep 5
+        Start-Sleep 2
         $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
     }
 
     if ($process_id -ne $null) {
+        write-output "$(Get-Date -format u) - Killing process." >> .\upgrade\upgrade.log
+
         taskkill /pid $process_id /f /T
         Start-Sleep 10
     }
+
+    write-output "$(Get-Date -format u) - stop_wazuh_agent function ends." >> .\upgrade\upgrade.log
+
 }
 
 function backup_home
@@ -165,6 +172,8 @@ function uninstall_wazuh {
 # Check new version and restart the Wazuh service
 function check-installation
 {
+    write-output "$(Get-Date -format u) -  check-installation function starts." >> .\upgrade\upgrade.log
+
     $new_version = (Get-Content VERSION)
     $counter = 5
     while($new_version -eq $current_version -And $counter -gt 0)
@@ -176,6 +185,8 @@ function check-installation
     }
     write-output "$(Get-Date -format u) - Restarting Wazuh-Agent service." >> .\upgrade\upgrade.log
     Get-Service -Name "Wazuh" | Start-Service
+
+    write-output "$(Get-Date -format u) -  check-installation function ends." >> .\upgrade\upgrade.log
 }
 
 function restore
@@ -220,10 +231,14 @@ function restore
 # Stop UI and launch the msi installer
 function install
 {
+    write-output "$(Get-Date -format u) - install function starts." >> .\upgrade\upgrade.log
+
     kill -processname win32ui -ErrorAction SilentlyContinue -Force
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
     write-output "$(Get-Date -format u) - Starting upgrade processs." >> .\upgrade\upgrade.log
     cmd /c start (Get-Item ".\wazuh-agent*.msi").Name -quiet -norestart -log installer.log
+
+    write-output "$(Get-Date -format u) - install function ends." >> .\upgrade\upgrade.log
 }
 
 
@@ -316,3 +331,4 @@ Else
 
 Remove-Item $Env:WAZUH_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
 Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
+write-output "$(Get-Date -format u) - Exiting." >> .\upgrade\upgrade.log
