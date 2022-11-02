@@ -366,9 +366,10 @@ typedef struct wdb_config {
     int commit_time_min;
     int commit_time_max;
     int open_db_limit;
-    int max_fragmentation;
-    int max_fragmentation_delta;
+    int fragmentation_threshold;
+    int fragmentation_delta;
     int free_pages_percentage;
+    int max_fragmentation;
     int check_fragmentation_interval;
     wdb_backup_settings_node** wdb_backup_settings;
 } wdb_config;
