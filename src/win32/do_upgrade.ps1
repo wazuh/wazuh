@@ -330,5 +330,5 @@ Else
 }
 
 Remove-Item $Env:WAZUH_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
-Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
+Remove-Item -Path ".\upgrade\*"  -recurse -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
 write-output "$(Get-Date -format u) - Exiting." >> .\upgrade\upgrade.log
