@@ -855,6 +855,7 @@ int Read_Global_limits_eps(XML_NODE node, _Config *Config) {
     static const char *xml_timeframe_eps = "timeframe";
     if (Config) {
         Config->eps.maximum_found = false;
+        Config->eps.timeframe = EPS_LIMITS_DEFAULT_TIMEFRAME;
     }
 
     for (int i = 0; node[i]; i++) {

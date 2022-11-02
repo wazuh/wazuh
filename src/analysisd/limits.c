@@ -53,7 +53,7 @@ void load_limits(unsigned int eps, unsigned int timeframe, bool maximum_found) {
         minfo("EPS limit enabled, EPS: '%d', timeframe: '%d'", eps, timeframe);
     } else {
         limits.enabled = false;
-        if (!maximum_found) {
+        if (!maximum_found && timeframe > 0) {
             mwarn("EPS limit disabled. The maximum value is missing in the configuration block.");
         } else {
             minfo("EPS limit disabled");
