@@ -926,6 +926,17 @@ class Handler(asyncio.Protocol):
             return self.end_file(data)
         elif command == b'cancel_task':
             return self.cancel_task(data)
+        elif command == b'dapi_err':
+            dapi_client, error_msg = data.split(b' ', 1)
+            if dapi_client.decode() in self.server.local_server.clients:
+                try:
+                    asyncio.create_task(
+                        self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
+                except exception.WazuhClusterError:
+                    raise exception.WazuhClusterError(3025)
+            else:
+                raise exception.WazuhClusterError(3032, extra_message=dapi_client.decode())
+            return b'ok', b'DAPI error forwarded to worker'
         else:
             return self.process_unknown_cmd(command)
 
