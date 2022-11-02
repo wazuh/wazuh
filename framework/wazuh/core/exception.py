@@ -543,7 +543,8 @@ class WazuhException(Exception):
 
         # Vulnerability detector
         8000: {'message': 'Error trying to request vulnerability detector scan. A scan is already running'},
-        8001: {'message': 'Unexpected error trying to request vulnerability detector scan'}
+        8001: {'message': 'Unexpected error trying to request vulnerability detector scan'},
+        8002: {'message': 'Vulnerability Detector has not been set up'}
 
         # > 9000: Authd
     }
