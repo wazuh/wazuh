@@ -16,7 +16,7 @@ policy:
   name: "CIS HP-UX 11i Benchmark"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for HPUX version 11i. This guide was tested against HP-UX using Bastille"
   references:
-    - https://www.cisecurity.org/cis-benchmarks/
+    - https://www.cisecurity.org/wp-content/uploads/2017/04/CIS_HP-UX_11i_Benchmark_v1.5.0.pdf
     - https://myenterpriselicense.hpe.com/cwp-ui/free-software/B6849AA
 
 requirements:
@@ -85,6 +85,23 @@ checks:
     condition: all
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.inetd_general="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_builtin="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_finger="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_ident="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_ntalk="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_recserv="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_time="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_uucp="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_dttools="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_printer="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_telnet="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_ftp="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_rtools="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_tftp="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_printer="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_ktools="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_bootp="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_rquotad="Y"'
 
   - id: 30004
     title: "Only enable telnet if absolutely necessary."
@@ -226,7 +243,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Printing.printing="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Printing.xprintserver="N"'
 
   - id: 30016
     title: "Disable the CDE GUI login, if possible."
@@ -254,6 +271,7 @@ checks:
     condition: all
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Sendmail.sendmaildaemon="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Sendmail.sendmailcron="N"'
 
   - id: 30018
     title: "Disable SNMP and OpenView Agents, if remote management or monitoring are not needed."
@@ -429,20 +447,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:find /bin \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /diskaldata \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /lib \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /opt \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /tmp \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /core \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /etc \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /sbin \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /usr \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /dev \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /home \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /net \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /stand \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /var \( -nouser -o -nogroup \) -> r:\w'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.unowned_files"Y"'
 
   #################################################################
   # 1.6 System Access, Authentication, and Authorization
@@ -470,7 +475,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:FTP.ftpusers="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:FTP.ftpusers="Y"'
 
   - id: 30034
     title: "Prevent Syslog from accepting messages from the network."
@@ -530,7 +535,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.cronuser="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.cronuser="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.atuser="Y"'
 
   - id: 30039
     title: "Restrict crontab file permissions."
@@ -566,7 +572,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nobody_secure_rpc="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nobody_secure_rpc="Y"'
 
   #################################################################
   # 1.7 Logging
@@ -647,9 +653,9 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.PASSWORD_MAXDAYS="Y"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.PASSWORD_MINDAYS="Y"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.PASSWORD_WARNDAYS="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_MAXDAYS="(\d+) compare > 1"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_MINDAYS="(\d+) compare > 1"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_WARNDAYS="(\d+)" compare > 1'
 
   - id: 30048
     title: "Set strong password enforcement policies."
@@ -661,8 +667,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.PASSWORD_HISTORY_DEPTH="Y"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.MIN_PASSWORD_LENGTH="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_HISTORY_DEPTH="(\d+) compare > 1"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.MIN_PASSWORD_LENGTH="(\d+) compare > 1"'
 
   - id: 30049
     description: "'+' entries in various passwd and group files served as markers for systems to insert data from NIS maps at a certain point in a system configuration file. HP-UX does not use these markers, but they may exist in files that have been imported from other platforms. They should be deleted if they exist."
@@ -685,7 +691,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.root_path="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.root_path="Y"'
 
   - id: 30051
     title: "Secure user home directories."
@@ -709,7 +715,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.user_dot_files="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.user_dot_files="Y"'
 
   - id: 30053
     title: "Remove user .netrc, .rhosts and .shosts files."
@@ -721,7 +727,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.user_rc_files="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.user_rc_files="Y"'
 
   - id: 30054
     title: "Set default umask for users."
@@ -733,7 +739,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.umask="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.umask="027"'
 
   - id: 30055
     title: "Set 'mesg n' as default for all users."
