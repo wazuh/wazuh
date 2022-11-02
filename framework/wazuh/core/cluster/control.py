@@ -50,7 +50,7 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
         arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
                      'select': select, 'filter_type': filter_type}
 
-    response = await lc.execute(command=b'get_nodes', data=json.dumps(arguments).encode(), wait_for_complete=False)
+    response = await lc.execute(command=b'get_nodes', data=json.dumps(arguments).encode())
     result = json.loads(response, object_hook=as_wazuh_object)
 
     if isinstance(result, Exception):
@@ -86,7 +86,7 @@ async def get_node(lc: local_client.LocalClient, filter_node=None, select=None):
     arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.DATABASE_LIMIT, 'sort': None, 'search': None,
                  'select': select, 'filter_type': 'all'}
 
-    response = await lc.execute(command=b'get_nodes', data=json.dumps(arguments).encode(), wait_for_complete=False)
+    response = await lc.execute(command=b'get_nodes', data=json.dumps(arguments).encode())
     node_info_array = json.loads(response, object_hook=as_wazuh_object)
 
     if isinstance(node_info_array, Exception):
@@ -113,7 +113,7 @@ async def get_health(lc: local_client.LocalClient, filter_node=None):
     result : dict
         Basic information of each node and synchronization process related information.
     """
-    response = await lc.execute(command=b'get_health', data=json.dumps(filter_node).encode(), wait_for_complete=False)
+    response = await lc.execute(command=b'get_health', data=json.dumps(filter_node).encode())
     result = json.loads(response, object_hook=as_wazuh_object)
 
     if isinstance(result, Exception):
@@ -153,9 +153,7 @@ async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_stat
                   'wait_for_complete': False
                   }
 
-    response = await lc.execute(command=b'dapi',
-                                data=json.dumps(input_json, cls=WazuhJSONEncoder).encode(),
-                                wait_for_complete=False)
+    response = await lc.execute(command=b'dapi', data=json.dumps(input_json, cls=WazuhJSONEncoder).encode())
     result = json.loads(response, object_hook=as_wazuh_object)
 
     if isinstance(result, Exception):
@@ -198,7 +196,7 @@ async def get_node_ruleset_integrity(lc: local_client.LocalClient) -> dict:
     dict
         Dictionary with results
     """
-    response = await lc.execute(command=b"get_hash", data=b"", wait_for_complete=False)
+    response = await lc.execute(command=b"get_hash", data=b"")
     result = json.loads(response, object_hook=as_wazuh_object)
 
     if isinstance(result, Exception):

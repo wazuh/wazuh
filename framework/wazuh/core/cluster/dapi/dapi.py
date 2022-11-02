@@ -420,8 +420,7 @@ class DistributedAPI:
         client = self.get_client()
         node_response = await client.execute(command=b'dapi',
                                              data=json.dumps(self.to_dict(),
-                                                             cls=c_common.WazuhJSONEncoder).encode(),
-                                             wait_for_complete=self.wait_for_complete)
+                                                             cls=c_common.WazuhJSONEncoder).encode())
         return json.loads(node_response,
                           object_hook=c_common.as_wazuh_object)
 
@@ -468,8 +467,8 @@ class DistributedAPI:
                                                              "{} {}".format(node_name,
                                                                             json.dumps(kcopy,
                                                                                        cls=c_common.WazuhJSONEncoder)
-                                                                            ).encode(),
-                                                             self.wait_for_complete),
+                                                                            ).encode()
+                                                             ),
                                         object_hook=c_common.as_wazuh_object)
                 except WazuhClusterError as e:
                     if e.code == 3022:
