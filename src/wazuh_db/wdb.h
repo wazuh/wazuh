@@ -368,6 +368,7 @@ typedef struct wdb_config {
     int open_db_limit;
     int max_fragmentation;
     int max_fragmentation_delta;
+    int free_pages_percentage;
     int check_fragmentation_interval;
     wdb_backup_settings_node** wdb_backup_settings;
 } wdb_config;
@@ -700,8 +701,31 @@ int wdb_rootcheck_delete(wdb_t * wdb);
 /* Rebuild database. Returns 0 on success or -1 on error. */
 int wdb_vacuum(sqlite3 *db);
 
-/* Calculate the fragmentation state of a db. Returns 0-100 on success or OS_INVALID on error. */
+/**
+ * @brief Calculate the fragmentation state of a db.
+ *
+ * @param[in] wdb Database to query for the table existence.
+ * @return Returns 0-100 on success or OS_INVALID on error.
+ */
 int wdb_get_db_state(wdb_t * wdb);
+
+/**
+ * @brief Calculate the percentage of free pages of a db.
+ *
+ * @param[in] wdb Database to query for the table existence.
+ * @return Returns zero or greater than zero on success or OS_INVALID on error.
+ */
+int wdb_get_db_free_pages_percentage(wdb_t * wdb);
+
+/**
+ * @brief Execute a select query that returns a single integer value.
+ *
+ * @param[in] wdb Database to query for the table existence.
+ * @param[in] query Query to be executed.
+ * @param[out] value Integer where the select value of the query will be stored.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on error.
+ */
+int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, int *value);
 
 /* Insert key-value pair into info table */
 int wdb_insert_info(const char *key, const char *value);

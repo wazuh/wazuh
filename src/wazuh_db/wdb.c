@@ -43,6 +43,8 @@ static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(ro
 static const char *SQL_TRUNCATE_TEMP_TABLE = "DELETE FROM s;";
 static const char *SQL_INSERT_INTO_TEMP_TABLE = "INSERT INTO s(pageno) SELECT pageno FROM dbstat ORDER BY path;";
 static const char *SQL_SELECT_TEMP_TABLE = "SELECT sum(s1.pageno+1==s2.pageno)*1.0/count(*) FROM s AS s1, s AS s2 WHERE s1.rowid+1=s2.rowid;";
+static const char *SQL_SELECT_PAGE_COUNT = "SELECT page_count  FROM pragma_page_count();";
+static const char *SQL_SELECT_PAGE_FREE = "SELECT freelist_count  FROM pragma_freelist_count();";
 static const char *SQL_VACUUM = "VACUUM;";
 static const char *SQL_METADATA_UPDATE_FRAGMENTATION_DATA = "INSERT INTO metadata (key, value) VALUES ('last_vacuum_time', ?), ('last_vacuum_value', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value;";
 static const char *SQL_METADATA_GET_FRAGMENTATION_DATA = "SELECT key, value FROM metadata WHERE key in ('last_vacuum_time', 'last_vacuum_value');";
@@ -831,6 +833,46 @@ int wdb_get_db_state(wdb_t * wdb) {
     return result;
 }
 
+/* Calculate the percentage of free pages of a db. Returns zero or greater than zero on success or OS_INVALID on error.*/
+int wdb_get_db_free_pages_percentage(wdb_t * wdb) {
+    int total_pages = 0;
+    int free_pages = 0;
+
+    if (wdb_execute_single_int_select_query(wdb, SQL_SELECT_PAGE_COUNT, &total_pages) != OS_SUCCESS) {
+        mdebug1("Error getting total_pages for '%s' database.", wdb->id);
+        return OS_INVALID;
+    }
+
+    if (wdb_execute_single_int_select_query(wdb, SQL_SELECT_PAGE_FREE, &free_pages) != OS_SUCCESS) {
+        mdebug1("Error getting free_pages for '%s' database.", wdb->id);
+        return OS_INVALID;
+    }
+
+    return (int)(((float)free_pages / (float)total_pages) * 100.00);
+}
+
+/* Execute a select query that returns a single integer value. Returns OS_SUCCESS on success or OS_INVALID on error. */
+int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, int *value) {
+    sqlite3_stmt *stmt = NULL;
+    int result = OS_INVALID;
+
+    if (sqlite3_prepare_v2(wdb->db, query, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    if (result = wdb_step(stmt), SQLITE_ROW == result) {
+        *value = sqlite3_column_int(stmt, 0);
+        result = OS_SUCCESS;
+    } else {
+        mdebug1("wdb_step(): %s", sqlite3_errmsg(wdb->db));
+    }
+
+    sqlite3_finalize(stmt);
+
+    return result;
+}
+
 /* Run a query without selecting any fields */
 STATIC int wdb_execute_non_select_query(sqlite3 *db, const char *query) {
     sqlite3_stmt *stmt = NULL;
@@ -1057,6 +1099,7 @@ void wdb_check_fragmentation() {
         int last_vacuum_time;
         int last_vacuum_value;
         int current_fragmentation;
+        int current_free_pages_percentage;
         int fragmentation_after_vacuum;
         next = i->next;
 
@@ -1069,13 +1112,15 @@ void wdb_check_fragmentation() {
         }
 
         w_mutex_lock(&node->mutex);
-        if (current_fragmentation = wdb_get_db_state(node), current_fragmentation == OS_INVALID) {
-            merror("Couldn't get current fragmentation for the database '%s'", node->id);
+        current_fragmentation = wdb_get_db_state(node);
+        current_free_pages_percentage = wdb_get_db_free_pages_percentage(node);
+        if (current_fragmentation == OS_INVALID || current_free_pages_percentage == OS_INVALID) {
+            merror("Couldn't get current state for the database '%s'", node->id);
         } else {
             if (wdb_get_last_vacuum_data(node, &last_vacuum_time, &last_vacuum_value) != OS_SUCCESS) {
                 merror("Couldn't get last vacuum info for the database '%s'", node->id);
             } else {
-                if ((current_fragmentation > wconfig.max_fragmentation) &&
+                if ((current_free_pages_percentage > wconfig.free_pages_percentage) && (current_fragmentation > wconfig.max_fragmentation) &&
                     ((last_vacuum_time == 0 ) || (last_vacuum_time > 0 && current_fragmentation > last_vacuum_value + wconfig.max_fragmentation_delta))) {
                     struct timespec ts_start, ts_end;
 
@@ -1795,6 +1840,7 @@ cJSON* wdb_get_internal_config() {
     cJSON_AddNumberToObject(wazuh_db_config, "worker_pool_size", wconfig.worker_pool_size);
     cJSON_AddNumberToObject(wazuh_db_config, "max_fragmentation", wconfig.max_fragmentation);
     cJSON_AddNumberToObject(wazuh_db_config, "max_fragmentation_delta", wconfig.max_fragmentation_delta);
+    cJSON_AddNumberToObject(wazuh_db_config, "free_pages_percentage", wconfig.free_pages_percentage);
     cJSON_AddNumberToObject(wazuh_db_config, "check_fragmentation_interval", wconfig.check_fragmentation_interval);
 
     cJSON_AddItemToObject(root, "wazuh_db", wazuh_db_config);

@@ -96,6 +96,7 @@ int main(int argc, char ** argv)
 
     wconfig.max_fragmentation = getDefine_Int("wazuh_db", "max_fragmentation", 0, 100);
     wconfig.max_fragmentation_delta = getDefine_Int("wazuh_db", "max_fragmentation_delta", 0, 100);
+    wconfig.free_pages_percentage = getDefine_Int("wazuh_db", "free_pages_percentage", 0, 999000);
     wconfig.check_fragmentation_interval = getDefine_Int("wazuh_db", "check_fragmentation_interval", 1, 525600);
 
     // Allocating memory for configuration structures and setting default values
