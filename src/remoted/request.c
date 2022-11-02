@@ -124,6 +124,8 @@ void * req_dispatch(req_node_t * node) {
     struct timeval now = { 0, 0 };
     int protocol = -1;
 
+    char * msg_to_send = NULL;
+    bool isForceReconnect = false;
     mdebug2("Running request dispatcher thread. Counter=%s", node->counter);
 
     w_mutex_lock(&node->mutex);
@@ -137,6 +139,12 @@ void * req_dispatch(req_node_t * node) {
     *_payload = '\0';
     _payload++;
 
+    if (strstr(_payload, "force_reconnect") != NULL) {
+        isForceReconnect = true;
+        os_calloc(OS_MAXSTR, sizeof(char), msg_to_send);
+        snprintf(msg_to_send, OS_MAXSTR, "%s%s", CONTROL_HEADER, _payload);
+    }
+
     os_strdup(node->buffer, agentid);
     ldata = strlen(CONTROL_HEADER) + strlen(HC_REQUEST) + strlen(node->counter) + 1 + node->length - (_payload - node->buffer);
     os_malloc(ldata + 1, payload);
@@ -148,7 +156,7 @@ void * req_dispatch(req_node_t * node) {
     os_free(node->buffer);
     node->length = 0;
 
-    mdebug2("Sending request: '%s'", payload);
+    mdebug2("Sending request: '%s'", isForceReconnect ? msg_to_send : payload);
 
     // The following code is used to get the protocol that the client is using in order to answer accordingly
     key_lock_read();
@@ -161,11 +169,15 @@ void * req_dispatch(req_node_t * node) {
 
     for (attempts = 0; attempts < max_attempts; attempts++) {
         // Try to send message
-        if (send_msg(agentid, payload, ldata) < 0) {
+        ldata = isForceReconnect ? strlen(msg_to_send) : ldata;
+        if (send_msg(agentid, (isForceReconnect == true) ? msg_to_send : payload, ldata) < 0) {
             merror("Cannot send request to agent '%s'", agentid);
             OS_SendSecureTCP(node->sock, strlen(WR_SEND_ERROR), WR_SEND_ERROR);
             goto cleanup;
         } else {
+            if (OS_SendSecureTCP(node->sock, strlen("ack"), "ack") < 0) {
+                mwarn("Couldn't report sending error to client.");
+            }
             rem_inc_send_request(agentid);
         }
 
@@ -247,6 +259,7 @@ cleanup:
     req_free(node);
     os_free(agentid);
     os_free(payload);
+    os_free(msg_to_send);
     req_pool_post();
 
     return NULL;
