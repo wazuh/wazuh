@@ -896,10 +896,10 @@ condition: all
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\\s*linux && r:apparmor=1'
-      - 'f:/boot/grub/grub.cfg -> r:^\\s*linux && r:security=apparmor'
-      - 'not f:/boot/grub/grub.cfg -> r:^\\s*linux && !r:apparmor=1'
-      - 'not f:/boot/grub/grub.cfg -> r:^\\s*linux && !r:security=apparmor'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:apparmor=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:security=apparmor'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor'
 
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode (Automated)
   - id: 28535
@@ -921,8 +921,8 @@ condition: all
     condition: all
     rules:
       - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
-      - 'c:apparmor_status -> n:^0\s+profiles\s+are\s+in\s+kill'
-      - 'c:apparmor_status -> n:^0\s+profiles\s+are\\s+in\s+unconfined'
+      - 'c:apparmor_status -> n:^0\s+profiles\s+are\s+in\s+kill\s+mode'
+      - 'c:apparmor_status -> n:^0\s+profiles\s+are\s+in\s+unconfined\s+mode'
       - "c:apparmor_status -> r:^0 processes are unconfined"
 
   # 1.6.1.4 Ensure all AppArmor Profiles are enforcing (Automated)
@@ -948,7 +948,7 @@ condition: all
       - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
       - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0'
       - 'c:apparmor_status -> n:^0\s+profiles\s+are\s+in\s+kill\s+mode'
-      - 'c:apparmor_status -> n:^0\s+profiles\s+are\\s+in\s+unconfined\s+mode'
+      - 'c:apparmor_status -> n:^0\s+profiles\s+are\s+in\s+unconfined\s+mode'
       - 'c:apparmor_status -> r:^0\s*profiles\s+are\s+in\s+complain\s+mode'
       - 'c:apparmor_status -> r:^0\s*processes\s+are\s+unconfined'
 
@@ -965,7 +965,7 @@ condition: all
       - mitre_tactics: ["TA0007"]
     condition: any
     rules:
-      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
+      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\s|Debian|Ubuntu'
       - "not f:/etc/motd"
 
   # 1.7.2 Ensure local login warning banner is configured properly (Automated)
@@ -1017,7 +1017,7 @@ condition: all
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
     rules:
-      - 'c:stat /etc/motd -> r:Access:\\s*\(0644/-rw-r--r--\)\\s*Uid:\\s*\(\\s*0/\\s*root\)\\s*\t*Gid:\\s*\(\\s*0/\\s*root\)'
+      - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
       - "not f:/etc/motd"
 
   # 1.7.5 Ensure permissions on /etc/issue are configured (Automated)
@@ -1041,7 +1041,7 @@ condition: all
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/issue -> r:Access:\\s*\(0644/-rw-r--r--\)\\s*Uid:\\s*\(\\s*0/\\s*root\)\\s*\t*Gid:\\s*\(\\s*0/\\s*root\)'
+      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
 
   # 1.7.6 Ensure permissions on /etc/issue.net are configured (Automated)
   - id: 28542
@@ -1064,7 +1064,7 @@ condition: all
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/issue.net -> r:Access:\\s*\(0644/-rw-r--r--\)\\s*Uid:\\s*\(\\s*0/\\s*root\)\\s*\t*Gid:\\s*\(\\s*0/\\s*root\)'
+      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
 
   # 1.8 GNOME Display Manager
   # 1.8.1 Ensure GNOME Display Manager is removed (Automated)
@@ -1115,7 +1115,7 @@ condition: all
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not f:/etc/gdm3/custom.conf -> r:^\\s*Enable\\s*=\\s*true'
+      - 'not f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
 
   # 1.9 Ensure updates, patches, and additional security software are installed (Manual) - Not implemented
 
@@ -1577,7 +1577,7 @@ condition: all
       - soc_2: ["CC6.3", " CC6.6"]
     condition: all
     rules:
-      - 'not c:ss -lntu -> r:\.*:25\\s && r:127.0.0.1:25\\s+|::1]:25\\s+'
+      - 'not c:ss -lntu -> r:\.*:25\s && r:127.0.0.1:25\s+|::1]:25\s+'
 
   # 2.2.16 Ensure rsync service is either not installed or masked (Automated)
   - id: 28565
@@ -1837,7 +1837,7 @@ condition: all
     rules:
       - "c:systemctl is-enabled ufw.service -> r:^enabled"
       - "c:systemctl is-active ufw -> r:^active"
-      - 'c:ufw status -> r:Status:\\s+active'
+      - 'c:ufw status -> r:Status:\s+active'
 
   # 3.5.1.4 Ensure ufw loopback traffic is configured (Automated)
   - id: 28575
@@ -1859,12 +1859,12 @@ condition: all
     condition: all
     rules:
       - "c:dpkg -s ufw -> r:Status: install ok installed"
-      - 'c:ufw status verbose -> r:Anywhere on lo\\s*ALLOW IN\\s*Anywhere'
-      - 'c:ufw status verbose -> r:Anywhere\\s*DENY IN\\s*127.0.0.0/8'
-      - 'c:ufw status verbose -> r:Anywhere \(v6\) on lo\\s*ALLOW IN\\s*Anywhere \(v6\)'
-      - 'c:ufw status verbose -> r:Anywhere \(v6\)\\s*DENY IN\\s*::1'
-      - 'c:ufw status verbose -> r:Anywhere\\s*\t*ALLOW OUT\\s*Anywhere on lo'
-      - 'c:ufw status verbose -> r:Anywhere \(v6\)\\s*ALLOW OUT\\s*Anywhere \(v6\) on lo'
+      - 'c:ufw status verbose -> r:Anywhere on lo\s*ALLOW IN\s*Anywhere'
+      - 'c:ufw status verbose -> r:Anywhere\s*DENY IN\s*127.0.0.0/8'
+      - 'c:ufw status verbose -> r:Anywhere \(v6\) on lo\s*ALLOW IN\s*Anywhere \(v6\)'
+      - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*DENY IN\s*::1'
+      - 'c:ufw status verbose -> r:Anywhere\s*\t*ALLOW OUT\s*Anywhere on lo'
+      - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*ALLOW OUT\s*Anywhere \(v6\) on lo'
 
   # 3.5.1.5 Ensure ufw outbound connections are configured (Manual) - Not implemented
   # 3.5.1.6 Ensure ufw firewall rules exist for all open ports (Automated) - Not implemented
@@ -1889,9 +1889,9 @@ condition: all
     condition: all
     rules:
       - "c:dpkg -s ufw -> r:Status: install ok installed"
-      - 'c:ufw status verbose -> r:^Default: && r:deny\\s+\(incoming\)|reject\\s+\(incoming\)'
-      - 'c:ufw status verbose -> r:^Default: && r:deny\\s+\(outgoing\)|reject\\s+\(outgoing\)'
-      - 'c:ufw status verbose -> r:^Default: && r:deny\\s+\(routed\)|reject\\s+\(routed\)'
+      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(incoming\)|reject\s+\(incoming\)'
+      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(outgoing\)|reject\s+\(outgoing\)'
+      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(routed\)|reject\s+\(routed\)'
 
   # 3.5.2 Configure nftables
   # 3.5.2.1 Ensure nftables is installed (Automated)
@@ -1966,9 +1966,9 @@ condition: all
     condition: all
     rules:
       - "c:dpkg -s nftables -> r:Status: install ok installed"
-      - 'c:nft list ruleset -> r:type\\s+filter\\s+hook\\s+input\\s+priority;'
-      - 'c:nft list ruleset -> r:type\\s+filter\\s+hook\\s+forward\\s+priority;'
-      - 'c:nft list ruleset -> r:type\\s+filter\\s+hook\\s+output\\s+priority;'
+      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+input\s+priority;'
+      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+forward\s+priority;'
+      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+output\s+priority;'
 
   # 3.5.2.6 Ensure nftables loopback traffic is configured (Automated) - Not implemented
   # 3.5.2.7 Ensure nftables outbound and established connections are configured (Manual) - Not implemented
@@ -2265,7 +2265,7 @@ condition: all
       - nist_sp_800-53: ["AU-7"]
     condition: none
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\\s*linux && !r:audit=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:audit=1'
 
   # 4.1.1.4 Ensure audit_backlog_limit is sufficient (Automated)
   - id: 28592
@@ -2286,7 +2286,7 @@ condition: all
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
-      - "f:/boot/grub/grub.cfg -> r:^\\\s*linux && r:audit=1"
+      - "f:/boot/grub/grub.cfg -> r:^\\s*linux && r:audit=1"
 
   # 4.1.2 Configure Data Retention
   # 4.1.2.1 Ensure audit log storage size is configured (Automated)
@@ -2407,7 +2407,7 @@ condition: all
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\\s*always,exit && r:-F\\s*arch=b(64|32) && r:-C\\s*(euid!=uid|uid!=euid) && r:-F\\s*auid!=(unset|-1|4294967295) && r:-S\\s*execve && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\s*always,exit && r:-F\s*arch=b(64|32) && r:-C\s*(euid!=uid|uid!=euid) && r:-F\s*auid!=(unset|-1|4294967295) && r:-S\s*execve && r:(key= |-k)\s*.+$'
 
   # 4.1.3.3 Ensure events that modify the sudo log file are collected (Automated) - Not implemented
   # 4.1.3.4 Ensure events that modify date and time information are collected (Automated)
@@ -2431,8 +2431,8 @@ condition: all
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\\s*always,exit && r:-F\\s*arch=b(64|32) && r:-S\\s*(adjtimex|settimeofday|clock_settime) && r:(key= |-k)\\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/localtime && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\s*always,exit && r:-F\s*arch=b(64|32) && r:-S\s*(adjtimex|settimeofday|clock_settime) && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/localtime && r:-p\s*wa && r:(key= |-k)\s*.+$'
 
   # 4.1.3.5 Ensure events that modify the system's network environment are collected (Automated)
   - id: 28599
@@ -2456,11 +2456,11 @@ condition: all
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\\s*always,exit && r:-F\\s*arch=b(64|32) && r:-S\\s*(setdomainname|sethostname) && r:(key= |-k)\\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/issue && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/issue.net && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/networks && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/network/ && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\s*always,exit && r:-F\s*arch=b(64|32) && r:-S\s*(setdomainname|sethostname) && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue.net && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/networks && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/network/ && r:-p\s*wa && r:(key= |-k)\s*.+$'
 
   # 4.1.3.6 Ensure use of privileged commands are collected (Automated) - Not implemented
   # 4.1.3.7 Ensure unsuccessful file access attempts are collected (Automated) - Not implemented
@@ -2486,11 +2486,11 @@ condition: all
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/group && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/passwd && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/gshadow && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/shadow && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/security/opasswd && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/group && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/passwd && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/gshadow && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/shadow && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/security/opasswd && r:-p\s*wa && r:(key= |-k)\s*.+$'
 
   # 4.1.3.9 Ensure discretionary access control permission modification events are collected (Automated) - Not implemented
   # 4.1.3.10 Ensure successful file system mounts are collected (Automated) - Not implemented
@@ -2515,9 +2515,9 @@ condition: all
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/var/run/utmp && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/var/log/wtmp && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/var/log/btmp && r:-p\\s*wa && r:(key= |-k)\\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/run/utmp && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/log/wtmp && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/log/btmp && r:-p\s*wa && r:(key= |-k)\s*.+$'
 
   # 4.1.3.12 Ensure login and logout events are collected (Automated)
   - id: 28602
@@ -2540,8 +2540,8 @@ condition: all
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/var/run/faillock && r:-p\\s*wa && r:(key= |-k)\\s*\w+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/var/log/lastlog && r:-p\\s*wa && r:(key= |-k)\\s*\w+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/run/faillock && r:-p\s*wa && r:(key= |-k)\s*\w+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/log/lastlog && r:-p\s*wa && r:(key= |-k)\s*\w+$'
 
   # 4.1.3.13 Ensure file deletion events by users are collected (Automated) - Not implemented
   # 4.1.3.14 Ensure events that modify the system's Mandatory Access Controls are collected (Automated)
@@ -2566,8 +2566,8 @@ condition: all
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/apparmor/ && r:-p\\s*wa && r:(key= |-k)\\s*\w+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\\s*/etc/apparmor.d/ && r:-p\\s*wa && r:(key= |-k)\\s*\w+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/apparmor/ && r:-p\s*wa && r:(key= |-k)\s*\w+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/apparmor.d/ && r:-p\s*wa && r:(key= |-k)\s*\w+$'
 
   # 4.1.3.15 Ensure successful and unsuccessful attempts to use the chcon command are recorded (Automated) - Not implemented
   # 4.1.3.16 Ensure successful and unsuccessful attempts to use the setfacl command are recorded (Automated) - Not implemented
@@ -3133,7 +3133,7 @@ condition: all
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:Access:\\s*\(0600/-rw-------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
+      - 'c:stat /etc/crontab -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
   - id: 28629
@@ -3156,7 +3156,7 @@ condition: all
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly/ -> r:Access:\\s*\(0700/drwx------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
+      - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 28630
@@ -3179,7 +3179,7 @@ condition: all
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily/ -> r:Access:\\s*\(0700/drwx------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
+      - 'c:stat /etc/cron.daily/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
   - id: 28631
@@ -3202,7 +3202,7 @@ condition: all
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly/ -> r:Access:\\s*\(0700/drwx------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
+      - 'c:stat /etc/cron.weekly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 28632
@@ -3225,7 +3225,7 @@ condition: all
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly/ -> r:Access:\\s*\(0700/drwx------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
+      - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 28633
@@ -3248,7 +3248,7 @@ condition: all
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.d/ -> r:Access:\\s*\(0700/drwx------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
+      - 'c:stat /etc/cron.d/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.8 Ensure cron is restricted to authorized users (Automated)
   - id: 28634
@@ -3272,7 +3272,7 @@ condition: all
     condition: all
     rules:
       - "not f:/etc/cron.deny"
-      - 'c:stat /etc/cron.allow/ -> r:Access:\\s*\(0640/-rw-r-----\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
+      - 'c:stat /etc/cron.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.9 Ensure at is restricted to authorized users (Automated)
   - id: 28635
@@ -3296,7 +3296,7 @@ condition: all
     condition: all
     rules:
       - "not f:/etc/at.deny"
-      - 'c:stat /etc/at.allow/ -> r:Access:\\s*\(0640/-rw-r-----\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)\\s*\t*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)'
+      - 'c:stat /etc/at.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.2 Configure SSH Server
   # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured (Automated)
@@ -3320,7 +3320,7 @@ condition: all
       - soc_2: [ "CC5.2","CC6.1" ]
     condition: all
     rules:
-      - "c:stat /etc/ssh/sshd_config -> r:Access:\\s*\(0600/-rw-------\)\\s*Uid:\\s*\t*\(\\s*\t*0/\\s*root\)\\s*Gid:\\s*\t*\(\\s*\t*0/\\s*\t*root\)"
+      - "c:stat /etc/ssh/sshd_config -> r:Access:\\s*\(0600/-rw-------\)\\s*Uid:\\s*\\t*\(\\s*\\t*0/\\s*root\)\\s*Gid:\\s*\\t*\(\\s*\\t*0/\\s*\\t*root\)"
 
   # 5.2.3 Ensure permissions on SSH public host key files are configured (Automated)
   - id: 28637
