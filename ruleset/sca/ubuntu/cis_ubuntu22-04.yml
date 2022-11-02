@@ -920,8 +920,10 @@ condition: all
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:apparmor_status -> r:^(\d+)\\s+profiles\\s+are\\s+loaded compare > 0'
-      - "c:apparmor_status -> r:0 processes are unconfined"
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+      - 'c:apparmor_status -> n:^0\s+profiles\s+are\s+in\s+kill'
+      - 'c:apparmor_status -> n:^0\s+profiles\s+are\\s+in\s+unconfined'
+      - "c:apparmor_status -> r:^0 processes are unconfined"
 
   # 1.6.1.4 Ensure all AppArmor Profiles are enforcing (Automated)
   - id: 28536
@@ -943,10 +945,12 @@ condition: all
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:apparmor_status -> n:^(\d+)\\s+profiles\\s+are\\s+loaded compare > 0'
-      - 'c:apparmor_status -> n:^(\d+)\\s+profiles\\s+are\\s+in\\s+enforce\\s+mode compare > 0'
-      - 'c:apparmor_status -> r:^0\\s*profiles\\s+are\\s+in\\s+complain\\s+mode'
-      - 'c:apparmor_status -> r:^0\\s*processes\\s+are\\s+unconfined'
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0'
+      - 'c:apparmor_status -> n:^0\s+profiles\s+are\s+in\s+kill\s+mode'
+      - 'c:apparmor_status -> n:^0\s+profiles\s+are\\s+in\s+unconfined\s+mode'
+      - 'c:apparmor_status -> r:^0\s*profiles\s+are\s+in\s+complain\s+mode'
+      - 'c:apparmor_status -> r:^0\s*processes\s+are\s+unconfined'
 
   # 1.7 Command Line Warning Banners
   # 1.7.1 Ensure message of the day is configured properly (Automated)
