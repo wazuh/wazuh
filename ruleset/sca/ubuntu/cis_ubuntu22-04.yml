@@ -3793,97 +3793,145 @@ condition: all
       - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^clientalivecountmax\\s*\\t*(\\d+)  >= 0"
 
   # 5.3 Configure privilege escalation
+  # 5.3.1 Ensure sudo is installed
   - id: 28657
-    title: "Ensure sudo commands use pty"
+    title: "Ensure sudo is installed."
+    description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
+    rationale: "sudo supports a plug-in architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plug-ins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers and any entries in /etc/sudoers.d. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
+    remediation: "First determine is LDAP functionality is required. If so, then install sudo-ldap, else install  sudo. Example: # apt install sudo"
+    references:
+      - SUDO(8)
+    compliance:
+      - cis: ["5.3.1"]
+      - cis_csc_v7: ["4.3"]
+      - cis_csc_v8: ["5.4"]
+      - mitre_techniques: ["T1078","T1078.003"]
+      - mitre_tactics: ["TA0001"]
+      - cmmc_v2.0: [ "AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - nist_sp_800-53: [ "AC-6(2)","AC-6(5)" ]
+      - soc_2: [ "CC6.1","CC6.3" ]
+    condition: all
+    rules:
+      - "c:dpkg -s sudo -> r:install ok installed"
+      - "c:dpkg -s sudo-ldap -> r:install ok installed"
+
+  # 5.3.2 Ensure sudo commands use pty (Automated)
+  - id: 28658
+    title: "Ensure sudo commands use pty."
     description: "sudo can be configured to run only from a pseudo terminal (pseudo-pty)."
     rationale: "Attackers can run a malicious program using sudo which would fork a background process that remains even when the main program has finished executing."
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
     remediation: "Edit the file /etc/sudoers with visudo or a file in /etc/sudoers.d/ with visudo -f <PATH TO FILE> and add the following line: Defaults use_pty"
-    references: "1. SUDO(8) 2. VISUDO(8)"
+    references:
+      - SUDO(8)
+      - VISUDO(8)"
     compliance:
       - cis: ["5.3.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
+      - cis_csc_v7: ["5.1"]
+      - cis_csc_v8: ["5.4"]
+      - mitre_techniques: ["T1548","T1548.003"]
+      - mitre_tactics: ["TA0003"]
+      - cmmc_v2.0: [ "AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - nist_sp_800-53: [ "AC-6(2)","AC-6(5)" ]
+      - soc_2: [ "CC6.1","CC6.3" ]
+    condition: any
     rules:
-      - ""
+      - "f:/etc/sudoers -> r:Defaults\\s+use_pty"
+      - 'd:/etc/sudoers.d -> r:Defaults\s+use_pty'
 
-  - id: 28658
-    title: "Ensure sudo log file exists"
+  # 5.3.3 Ensure sudo log file exists (Automated)
+  - id: 28659
+    title: "Ensure sudo log file exists."
     description: "sudo can use a custom log file"
     rationale: "A sudo log file simplifies auditing of sudo commands"
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
     remediation: "Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Example: Defaults logfile='/var/log/sudo.log'"
-    references: "1. SUDO(8) 2. VISUDO(8) Additional Information: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks for parse errors. If the sudoers file is currently being edited you will receive a message to try again later."
+    references:
+      - SUDO(8)
+      - VISUDO(8)
     compliance:
       - cis: ["5.3.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
+      - cis_csc_v7: ["6.3"]
+      - cis_csc_v8: ["8.5"]
+      - mitre_techniques: ["T1562","T1562.006"]
+      - mitre_tactics: ["TA0004"]
+      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
+      - pci_dss_3.2.1: [ "10.1","10.2.2","10.2.4","10.2.5","10.3" ]
+      - pci_dss_4.0: [ "9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5" ]
+      - nist_sp_800-53: [ "AU-3(1)","AU-7" ]
+      - soc_2: [ "CC5.2","CC7.2" ]
+    condition: any
     rules:
-      - ""
+      - 'f:/etc/sudoers -> r:Defaults\s+logfile=\S+.log'
+      - 'd:/etc/sudoers.d -> r:Defaults\s+logfile=\S+.log'
 
-  - id: 28659
+  # 5.3.4 Ensure users must provide password for privilege escalation (Automated)
+  - id: 28660
     title: "Ensure users must provide password for privilege escalation"
     description: "The operating system must be configured so that users must provide a password for privilege escalation."
     rationale: "Without (re-)authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical the user (re-)authenticate."
     impact: "This will prevent automated processes from being able to elevate privileges."
     remediation: "Based on the outcome of the audit procedure, use visudo -f <PATH TO FILE> to edit the relevant sudoers file. Remove any line with occurrences of NOPASSWD tags in the file."
-    references: ""
     compliance:
       - cis: ["5.3.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
+      - cis_csc_v7: ["4.3"]
+      - cis_csc_v8: ["5.4"]
+      - cmmc_v2.0: [ "AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - nist_sp_800-53: [ "AC-6(2)","AC-6(5)" ]
+      - soc_2: [ "CC6.1","CC6.3" ]
+    condition: none
     rules:
-      - ""
+      - 'f:/etc/sudoers -> r:NOPASSWD'
+      - 'd:/etc/sudoers.d -> r:NOPASSWD'
 
-  - id: 28660
-    title: "Ensure sudo authentication timeout is configured correctly"
-    description: "sudo caches used credentials for a default of 15 minutes. This is for ease of use when there are multiple administrative tasks to perform. The timeout can be modified to suit local security policies. This default is distribution specific. See audit section for further information."
-    rationale: "Setting a timeout value reduces the window of opportunity for unauthorized privileged access to another user."
-    impact: ""
-    remediation: "If the currently configured timeout is larger than 15 minutes, edit the file listed in the audit section with visudo -f <PATH TO FILE> and modify the entry timestamp_timeout= to 15 minutes or less as per your site policy. The value is in minutes. This particular entry may appear on its own, or on the same line as env_reset. See the following two examples: Defaults Defaults Defaults env_reset, timestamp_timeout=15 timestamp_timeout=15 env_reset"
-    references: "1. https://www.sudo.ws/man/1.9.0/sudoers.man.html"
-    compliance:
-      - cis: ["5.3.6"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ""
-
+  # 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally (Automated)
   - id: 28661
-    title: "Ensure access to the su command is restricted"
+    title: "Ensure re-authentication for privilege escalation is not disabled globally."
+    description: "The operating system must be configured so that users must re-authenticate for privilege escalation."
+    rationale: "Without re-authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical the user re-authenticate."
+    remediation: "Configure the operating system to require users to reauthenticate for privilege escalation. Based on the outcome of the audit procedure, use visudo -f <PATH TO FILE> to edit the relevant sudoers file. Remove any occurrences of !authenticate tags in the file(s)."
+    compliance:
+      - cis: [ "5.3.5" ]
+      - cis_csc_v7: [ "4.3" ]
+      - cis_csc_v8: [ "5.4" ]
+      - cmmc_v2.0: [ "AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - nist_sp_800-53: [ "AC-6(2)","AC-6(5)" ]
+      - soc_2: [ "CC6.1","CC6.3" ]
+    condition: none
+    rules:
+      - 'f:/etc/sudoers -> r:!authenticate'
+      - 'd:/etc/sudoers.d -> r:!authenticate'
+
+  # 5.3.6 Ensure sudo authentication timeout is configured correctly (Automated) - Not implemented
+  # 5.3.7 Ensure access to the su command is restricted (Automated)
+  - id: 28662
+    title: "Ensure access to the su command is restricted."
     description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in a specific groups to execute su. This group should be empty to reinforce the use of sudo for privileged access."
     rationale: "Restricting the use of su , and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo , whereas su can only record that a user executed the su program."
-    impact: ""
     remediation: "Create an empty group that will be specified for use of the su command. The group should be named according to site policy. Example: # groupadd sugroup Add the following line to the /etc/pam.d/su file, specifying the empty group: auth required pam_wheel.so use_uid group=sugroup"
-    references: ""
     compliance:
       - cis: ["5.3.7"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1548"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1026"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_sp_800-53: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
     condition: all
     rules:
-      - ""
+      - 'f:/etc/pam.d/su -> !r:^# && r:auth\s*required\s*pam_wheel.so && r:use_uid && r:group='
 
-  - id: 28662
+  # 5.4 Configure PAM
+  - id: 28663
     title: "Ensure password creation requirements are configured"
     description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: Password Length: o minlen = 14 - password must be 14 characters or more Password complexity: o minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR o dcredit = -1 - provide at least one digit o ucredit = -1 - provide at least one uppercase character o ocredit = -1 - provide at least one special character o lcredit = -1 - provide at least one lowercase character"
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
@@ -3901,7 +3949,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28663
+  - id: 28664
     title: "Ensure lockout for failed password attempts is configured"
     description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. deny - Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries. fail_interval - The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out unlock_time - The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be reenabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
@@ -3919,7 +3967,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28664
+  - id: 28665
     title: "Ensure password reuse is limited"
     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password."
@@ -3937,7 +3985,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28665
+  - id: 28666
     title: "Ensure password hashing algorithm is up to date with the latest standards"
     description: "The commands below change password encryption to yescrypt. All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The yescrypt algorithm provides much stronger hashing than previous available algorithms, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: these change only apply to accounts configured on the local system."
@@ -3955,7 +4003,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28666
+  - id: 28667
     title: "Ensure all current passwords uses the configured hashing algorithm (Manual)"
     description: "Currently used passwords with out of date hashing algorithms may pose a security risk to the system."
     rationale: "In use passwords should always match the configured hashing algorithm for the system."
@@ -3973,7 +4021,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28667
+  - id: 28668
     title: "Ensure minimum days between password changes is configured"
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 1 or more days."
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
@@ -3991,7 +4039,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28668
+  - id: 28669
     title: "Ensure password expiration is 365 days or less"
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity. It is recommended that the PASS_MAX_DAYS parameter does not exceed 365 days and is greater than the value of PASS_MIN_DAYS."
@@ -4009,7 +4057,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28669
+  - id: 28670
     title: "Ensure password expiration warning days is 7 or more"
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
@@ -4027,7 +4075,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28670
+  - id: 28671
     title: "Ensure inactive password lock is 30 days or less"
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
@@ -4045,7 +4093,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28671
+  - id: 28672
     title: "Ensure all users last password change date is in the past"
     description: "All users should have a password change date in the past."
     rationale: "If a users recorded password change date is in the future then they could bypass any set password expiration."
@@ -4063,7 +4111,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28672
+  - id: 28673
     title: "Ensure system accounts are secured"
     description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell."
     rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
@@ -4081,7 +4129,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28673
+  - id: 28674
     title: "Ensure default group for the root account is GID 0"
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
@@ -4099,7 +4147,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28674
+  - id: 28675
     title: "Ensure default user umask is 027 or more restrictive"
     description: "The user file-creation mode mask (umask) is use to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rwrw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. umask can be set with either octal or Symbolic values Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. Setting the default umask: pam_umask module: o will set the umask according to the system default in /etc/login.defs and user settings, solving the problem of different umask settings with different shells, display managers, remote sessions etc. o umask=<mask> value in the /etc/login.defs file is interpreted as Octal o Setting USERGROUPS_ENAB to yes in /etc/login.defs (default): will enable setting of the umask group bits to be the same as owner bits. (examples: 022 -> 002, 077 -> 007) for non-root users, if the uid is the same as gid, and username is the same as the primary group name userdel will remove the user's group if it contains no more members, and useradd will create by default a group with the name of the user System Wide Shell Configuration File: o /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter o /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. o /etc/bash.bashrc - System wide version of .bashrc. etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bash.bashrc User Shell Configuration Files: ~/.profile - Is executed to configure your shell before the initial command prompt. Is only read by login shells. ~/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login"
     rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
@@ -4117,7 +4165,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28675
+  - id: 28676
     title: "Ensure default user shell timeout is 900 seconds or less"
     description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables timeout. readonly TMOUT- Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. export TMOUT - exports the TMOUT variable System Wide Shell Configuration Files: /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the -login parameter. /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. /etc/bash.bashrc - System wide version of bash.bashrc. etc/bash.bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bash.bashrc."
     rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session."
@@ -4135,7 +4183,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28676
+  - id: 28677
     title: "Ensure permissions on /etc/passwd are configured"
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -4153,7 +4201,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28677
+  - id: 28678
     title: "Ensure permissions on /etc/group are configured"
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
@@ -4171,7 +4219,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28678
+  - id: 28679
     title: "Ensure permissions on /etc/shadow are configured"
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
@@ -4189,7 +4237,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28679
+  - id: 28680
     title: "Ensure permissions on /etc/gshadow are configured"
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
@@ -4207,7 +4255,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28680
+  - id: 28681
     title: "Ensure no world writable files exist"
     description: "Unix-based systems support variable settings to control access to files. World writable files are the least secure. See the chmod(2) man page for more information."
     rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity."
@@ -4225,7 +4273,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28681
+  - id: 28682
     title: "Ensure no unowned files or directories exist"
     description: "Sometimes when administrators delete users from the password file they neglect to remove all files owned by those users from the system."
     rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended."
@@ -4243,7 +4291,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28682
+  - id: 28683
     title: "Ensure no ungrouped files or directories exist"
     description: "Sometimes when administrators delete users or groups from the system they neglect to remove all files owned by those users or groups."
     rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended."
@@ -4261,7 +4309,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28683
+  - id: 28684
     title: "Audit SUID executables (Manual)"
     description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SUID program is to enable users to perform functions (such as changing their password) that require root privileges."
     rationale: "There are valid reasons for SUID programs, but it is important to identify and review such programs to ensure they are legitimate."
@@ -4279,7 +4327,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28684
+  - id: 28685
     title: "Audit SGID executables (Manual)"
     description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SGID program is to enable users to perform functions (such as changing their password) that require root privileges."
     rationale: "There are valid reasons for SGID programs, but it is important to identify and review such programs to ensure they are legitimate. Review the files returned by the action in the audit section and check to see if system binaries have a different md5 checksum than what from the package. This is an indication that the binary may have been replaced."
@@ -4297,7 +4345,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28685
+  - id: 28686
     title: "Ensure accounts in /etc/passwd use shadowed passwords"
     description: "Local accounts can uses shadowed passwords. With shadowed passwords, The passwords are saved in shadow password file, /etc/shadow, encrypted by a salted oneway hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
     rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack. Note: All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user. A user account with an empty second field in /etc/passwd allows the account to be logged into by providing only the username."
@@ -4315,7 +4363,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28686
+  - id: 28687
     title: "Ensure /etc/shadow password fields are not empty"
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
@@ -4333,7 +4381,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28687
+  - id: 28688
     title: "Ensure all groups in /etc/passwd exist in /etc/group"
     description: "Over time, system administration errors and changes can lead to groups being defined in /etc/passwd but not in /etc/group ."
     rationale: "Groups defined in the /etc/passwd file but not in the /etc/group file pose a threat to system security since group permissions are not properly managed."
@@ -4351,7 +4399,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28688
+  - id: 28689
     title: "Ensure no duplicate UIDs exist"
     description: "Although the useradd program will not let you create a duplicate User ID (UID), it is possible for an administrator to manually edit the /etc/passwd file and change the UID field."
     rationale: "Users must be assigned unique UIDs for accountability and to ensure appropriate access protections."
@@ -4369,7 +4417,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28689
+  - id: 28690
     title: "Ensure local interactive users own their home directories"
     description: "The user home directory is space defined for the particular user to set local environment variables and to store personal files."
     rationale: "Since the user is accountable for files stored in the user home directory, the user must be the owner of the directory."
@@ -4387,7 +4435,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28690
+  - id: 28691
     title: "Ensure local interactive user home directories are mode 750 or more restrictive"
     description: "While the system administrator can establish secure permissions for users' home directories, the users can easily override these."
     rationale: "Group or world-writable user home directories may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
@@ -4405,7 +4453,7 @@ condition: all
     rules:
       - ""
 
-  - id: 28691
+  - id: 28692
     title: "Ensure local interactive user dot files are not group or world writable"
     description: 'While the system administrator can establish secure permissions for users'' "dot" files, the users can easily override these.'
     rationale: "Group or world-writable user configuration files may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
