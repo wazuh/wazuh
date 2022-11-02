@@ -718,16 +718,6 @@ int wdb_get_db_state(wdb_t * wdb);
  */
 int wdb_get_db_free_pages_percentage(wdb_t * wdb);
 
-/**
- * @brief Execute a select query that returns a single integer value.
- *
- * @param[in] wdb Database to query for the table existence.
- * @param[in] query Query to be executed.
- * @param[out] value Integer where the select value of the query will be stored.
- * @return Returns OS_SUCCESS on success or OS_INVALID on error.
- */
-int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, int *value);
-
 /* Insert key-value pair into info table */
 int wdb_insert_info(const char *key, const char *value);
 
