@@ -43,6 +43,7 @@ checks:
     references:
       - http://www.openssh.org/
       - http://h20392.www2.hp.com/portal/swdepot/displayProductInfo.do?productNumber=T1471AA
+      - http://h20293.www2.hp.com/portal/swdepot/displayInstallInfo.do?productNumber=T1471AA
     condition: all
     rules:
       - "c:swlist -l bundle SecureShell -> r:HP-UX Secure Shell"
@@ -53,7 +54,9 @@ checks:
       - 'f:/opt/ssh/etc/sshd_config -> r:^\s*RhostsRSAAuthentication no'
       - 'f:/opt/ssh/etc/sshd_config -> r:^\s*PermitRootLogin no'
       - 'f:/opt/ssh/etc/sshd_config -> r:^\s*PermitEmptyPasswords no'
-      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*Banner /\.+'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*Banner /etc/issue'
+      - 'not c:sh -c "ls -la /opt/ssh/etc/sshd_config | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
+      - 'not c:sh -c "ls -la /opt/ssh/etc/ssh_config | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
 
   - id: 30002
     title: "Use Bastille to report security configuration state."
@@ -102,7 +105,7 @@ checks:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_ktools="Y"'
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_bootp="Y"'
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_rquotad="Y"'
-      - 'not c:sh -c "ls -la /var/spool/cron/crontabs | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
+      - 'not c:sh -c "ls -la /etc/inetd.conf | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
 
   - id: 30004
     title: "Only enable telnet if absolutely necessary."
@@ -364,7 +367,7 @@ checks:
     title: "Only enable Web server if absolutely necessary."
     description: "Re-enable the Web server suite. Even if this machine is a Web server, the local site may choose not to use the Web server provided with HP-UX in favor of a locally developed and supported Web environment. If the machine is a Web server, the administrator is encouraged to search the Web for additional documentation on Web server security. A good starting point is http://httpd.apache.org/docs-2.0/misc/security_tips.html. Note that this action only disables the default web server shipped with the system. Other webservers instances may still be running."
     rationale: "There is a mission-critical reason why this system must run a Web server."
-    remediation: "Perform the following: mv -f /sbin/rc2.d/.NOS400nfs.core \ /sbin/rc2.d/400nfs.core ch_rc -a -p NS_FTRACK=1 ch_rc -a -p APACHE_START=1 ch_rc -a -p HPWS_APACHE32_START=1 ch_rc -a -p HPWS_TOMCAT_START=1 ch_rc -a -p NS_FTRACK=1 ch_rc -a -p HPWS_WEBMIN_START=1 /etc/rc.config.d/ns-ftrack /etc/rc.config.d/apacheconf /etc/rc.config.d/hpws_apache32conf /etc/rc.config.d/hpws_tomcatconf /etc/rc.config.d/ns-ftrack /etc/rc.config.d/hpws_webminconf"
+    remediation: "Perform the following: ch_rc -a -p NS_FTRACK=1 /etc/rc.config.d/ns-ftrack ch_rc -a -p APACHE_START=1 /etc/rc.config.d/apacheconf ch_rc -a -p HPWS_APACHE32_START=1 /etc/rc.config.d/hpws_apache32conf ch_rc -a -p HPWS_TOMCAT_START=1 /etc/rc.config.d/hpws_tomcatconf ch_rc -a -p NS_FTRACK=1 /etc/rc.config.d/ns-ftrack ch_rc -a -p HPWS_WEBMIN_START=1 /etc/rc.config.d/hpws_webminconf"
     compliance:
       - cis: ["1.3.13"]
     condition: all
@@ -573,7 +576,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nobody_secure_rpc="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nobody_secure_rpc="N"'
 
   #################################################################
   # 1.7 Logging
