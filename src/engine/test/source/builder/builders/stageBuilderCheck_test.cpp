@@ -94,7 +94,7 @@ TEST_F(StageBuilderCheckTest, ListBuildsCorrectExpression)
     ASSERT_TRUE(expression->isAnd());
     for (auto term : expression->getPtr<And>()->getOperands())
     {
-        ASSERT_TRUE(term->isTerm());
+        ASSERT_TRUE(term->isTerm() || term->isAnd());
     }
 }
 
