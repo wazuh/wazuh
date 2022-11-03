@@ -101,6 +101,7 @@ checks:
       - 'not f:/etc/inetd.conf -> r:^\s*klogin'
       - 'not f:/etc/inetd.conf -> r:^\s*rpc.rquotad'
       - 'not f:/etc/inetd.conf -> r:^\s*rpc.ttdbserver'
+      - 'not c:sh -c "ls -la /var/spool/cron/crontabs | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
 
   - id: 25003
     title: "Only enable telnet if absolutely necessary."
@@ -131,7 +132,7 @@ checks:
     remediation: "Perform the following to re-enable rlogin/remsh/rcp: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the shell and login service definitions. 3. Save /etc/inetd.conf. The following script will perform the above procedure: sed 's/^#shell/shell/; s/^#login/login/' \ inetd.conf > inetd.conf.new cp inetd.conf.new inetd.conf rm -f /etc/inetd.conf.new"
     compliance:
       - cis: ["1.2.4"]
-    condition: any
+    condition: all
     rules:
       - 'not f:/etc/inetd.conf -> r:^\s*shell'
       - 'not f:/etc/inetd.conf -> r:^\s*login'
@@ -246,7 +247,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/rc.config.d/lp -> r:^LP=0"
-      - 'f:/etc/rc.config.d/lp -> r:^XPRINTSERVERS="''''"'
+      - 'f:/etc/rc.config.d/tps -> r:^XPRINTSERVERS="''''"'
 
   - id: 25015
     title: "Disable the CDE GUI login, if possible."
@@ -278,7 +279,7 @@ checks:
       - 'c:crontab -l -> r:^0\.*sendmail -q'
 
   - id: 25017
-    title: "Disable SNMP and OpenView Agents, if remote management or monitoring are not needed.."
+    title: "Disable SNMP and OpenView Agents, if remote management or monitoring are not needed."
     description: "Disable SNMP and OpenView agents if they are not needed. Note: If SNMP is used, it is recommended to change the default SNMP community string by modifying the get-community and set-community parameters in the SNMP configuration file /etc/SnmpAgent.d/snmpd.conf."
     rationale: "If SNMP and OpenView agents are not needed, avoid potential security vulnerabilities in these programs by disabling them."
     remediation: "Perform the following to disable the SNMP and OpenView Agents: cd /sbin/rc2.d mv -f S570SnmpFddi .NOS570SnmpFddi ch_rc -a -p SNMP_HPUNIX_START=0 \ /etc/rc.config.d/SnmpHpunix ch_rc -a -p SNMP_MASTER_START=0 \ /etc/rc.config.d/SnmpMaster ch_rc -a -p SNMP_MIB2_START=0 \ /etc/rc.config.d/SnmpMib2 ch_rc -a -p SNMP_TRAPDEST_START=0 \ /etc/rc.config.d/SnmpTrpDst ch_rc -a -p OSPFMIB=0 \ /etc/rc.config.d/netdaemons ch_rc -a -p OPCAGT=0 \ /etc/rc.config.d/opcagt"
@@ -371,6 +372,8 @@ checks:
     condition: all
     rules:
       - "f:/etc/rc.config.d/nfsconf -> r:NFS_CLIENT=0"
+      - "f:/etc/rc.config.d/nfsconf -> r:NUM_NFSD=0"
+      - "f:/etc/rc.config.d/nfsconf -> r:NUM_NFSIOD=0"
 
   - id: 25023
     title: "Only enable RPC-based services if absolutely necessary."
@@ -443,6 +446,7 @@ checks:
       - "c:ndd -get /dev/ip ip_respond_to_timestamp_broadcast -> r:^0$"
       - "c:ndd -get /dev/ip ip_respond_to_address_mask_broadcast -> r:^0$"
       - "c:ndd -get /dev/ip ip_respond_to_echo_broadcast -> r:^0$"
+      - 'not c:sh -c "ls -la /etc/rc.config.d/nddconf | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
 
   - id: 25028
     title: "Use more random TCP sequence numbers."
@@ -454,7 +458,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - "not c:ndd -get /dev/tcp tcp_isn_passphrase -> r:^0$"
+      - "not c:ndd -get /dev/tcp tcp_isn_passphrase -> r:^\\w+$"
+      - 'not c:sh -c "ls -la /sbin/rc2.d/S999tcpisn | grep -v -e ^-r-xr-xr-x.*root.*bin | grep -v -e ^d | grep -v total" -> r:^\w'
 
   - id: 25029
     title: "Additional network parameter modifications."
@@ -468,6 +473,7 @@ checks:
     rules:
       - "c:ndd -get /dev/ip ip_forwarding -> r:^0$"
       - "c:ndd -get /dev/ip ip_send_redirects -> r:^0$"
+      - 'not c:sh -c "ls -la /etc/rc.config.d/nddconf | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
 
   #################################################################
   # 1.5 File/Directory Permissions/Access
@@ -526,7 +532,17 @@ checks:
     condition: all
     rules:
       - "f:/etc/ftpd/ftpusers"
+      - "f:/etc/ftpd/ftpusers -> r:^root$"
+      - "f:/etc/ftpd/ftpusers -> r:^daemon$"
+      - "f:/etc/ftpd/ftpusers -> r:^bin$"
+      - "f:/etc/ftpd/ftpusers -> r:^adm$"
+      - "f:/etc/ftpd/ftpusers -> r:^uucp$"
+      - "f:/etc/ftpd/ftpusers -> r:^nuucp$"
+      - "f:/etc/ftpd/ftpusers -> r:^nobody$"
+      - "f:/etc/ftpd/ftpusers -> r:^hpdb$"
+      - "f:/etc/ftpd/ftpusers -> r:^useradm$"
       - "f:/etc/initd.conf -> r:^ftp"
+      - 'not c:sh -c "ls -la /etc/ftpd/ftpusers | grep -v -e ^-rw-r--r--.*bin.*bin | grep -v -e ^d | grep -v total" -> r:^\w'
 
   - id: 25033
     title: "Prevent Syslog from accepting messages from the network."
@@ -582,6 +598,8 @@ checks:
       - "f:/var/adm/cron/at.allow"
       - "f:/var/adm/cron/cron.allow -> r:root"
       - "f:/var/adm/cron/at.allow -> r:root"
+      - 'not c:sh -c "ls -la /var/adm/cron/cron.allow | grep -v -e ^-r--------.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
+      - 'not c:sh -c "ls -la /var/adm/cron/at.allow | grep -v -e ^-r--------.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
 
   - id: 25037
     title: "Restrict crontab file permissions."
@@ -678,6 +696,10 @@ checks:
       - "f:/etc/passwd -> r:^daemon && r:/bin/false"
       - "f:/etc/passwd -> r:^bin && r:/bin/false"
       - "f:/etc/passwd -> r:^lp && r:/bin/false"
+      - "f:/etc/passwd -> r:^nobody && r:/bin/false"
+      - "f:/etc/passwd -> r:^noaccess && r:/bin/false"
+      - "f:/etc/passwd -> r:^hpdb && r:/bin/false"
+      - "f:/etc/passwd -> r:^useradm && r:/bin/false"
 
   - id: 25043
     title: "Verify that there are no accounts with empty password fields."
@@ -701,9 +723,9 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/etc/default/security -> r:^\s*PASSWORD_MAXDAYS='
-      - 'f:/etc/default/security -> r:^\s*PASSWORD_WARNDAYS='
-      - 'f:/etc/default/security -> r:^\s*PASSWORD_MINDAYS='
+      - 'f:/etc/default/security -> n:^\s*PASSWORD_MAXDAYS=(\d+) compare >= 91'
+      - 'f:/etc/default/security -> n:^\s*PASSWORD_WARNDAYS=(\d+) compare >= 28'
+      - 'f:/etc/default/security -> n:^\s*PASSWORD_MINDAYS=(\d+) compare >= 7'
 
   - id: 25045
     title: "Set strong password enforcement policies."
@@ -715,12 +737,12 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/etc/default/security -> r:^\s*MIN_PASSORD_LENGTH='
-      - 'f:/etc/default/security -> r:^\s*PASSWORD_HISTORY_DEPTH='
-      - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_UPPER_CASE_CHARS='
-      - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_DIGIT_CHARS='
-      - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_SPECIAL_CHARS='
-      - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_LOWER_CASE_CHARS='
+      - 'f:/etc/default/security -> r:^\s*MIN_PASSORD_LENGTH=(\d+) compare >= 7'
+      - 'f:/etc/default/security -> r:^\s*PASSWORD_HISTORY_DEPTH=(\d+) compare >= 10'
+      - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_UPPER_CASE_CHARS=(\d+) compare >= 1'
+      - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_DIGIT_CHARS=(\d+) compare >= 1'
+      - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_SPECIAL_CHARS=(\d+) compare >= 1'
+      - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_LOWER_CASE_CHARS=(\d+) compare >= 1'
 
   - id: 25046
     title: "Verify no legacy '+' entries exist in passwd and group files."
@@ -782,8 +804,8 @@ checks:
     rules:
       - "f:/etc/motd"
       - "f:/etc/issue"
-      - 'c: sh -c "ls -la /etc/motd | grep -e ^-.*root.*sys | grep -v total" -> r:/etc/motd'
-      - 'c: sh -c "ls -la /etc/issue | grep -e ^-.*root.*root | grep -v total" -> r:/etc/issue'
+      - 'c:not sh -c "ls -la /etc/motd | grep -e ^-rw-r--r--.*root.*sys | grep -v total" -> r:/etc/motd'
+      - 'c:not sh -c "ls -la /etc/issue | grep -e ^-rw-r--r--.*root.*root | grep -v total" -> r:/etc/issue'
 
   - id: 25050
     title: "Create warning banners for FTP daemon."
@@ -796,5 +818,6 @@ checks:
     condition: all
     rules:
       - "d:/etc/ftpd"
-      - 'c: sh -c "ls -la /etc/ftpd | grep -e ^-.*root.*sys | grep -v total" -> r:ftpd'
-      - 'c: sh -c "ls -la /etc/ftpd/ftpaccess | grep -e ^-.*root.*sys | grep -v total" -> r:ftpaccess'
+      - "f:/etc/ftpd/ftpaccess -> r:^banner /etc/issue"
+      - 'c:sh -c "ls -la /etc/ftpd | grep -e ^-rw-------.*root.*sys | grep -v total" -> r:ftpd'
+      - 'c:sh -c "ls -la /etc/ftpd/ftpaccess | grep -e ^-rw-------.*root.*sys | grep -v total" -> r:ftpaccess'

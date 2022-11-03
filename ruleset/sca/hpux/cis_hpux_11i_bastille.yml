@@ -46,7 +46,7 @@ checks:
     condition: all
     rules:
       - "c:swlist -l bundle SecureShell -> r:HP-UX Secure Shell"
-      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*protocol 2'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*Protocol 2'
       - 'f:/opt/ssh/etc/sshd_config -> r:^\s*X11Forwarding yes'
       - 'f:/opt/ssh/etc/sshd_config -> r:^\s*IgnoreRhosts yes'
       - 'f:/opt/ssh/etc/sshd_config -> r:^\s*RhostsAuthentication no'
@@ -57,8 +57,8 @@ checks:
 
   - id: 30002
     title: "Use Bastille to report security configuration state."
-    description: "Bastille is a security hardening, lockdown tool supplied with HP-UX to assist administrators in securing their systems.  Included is an assessment function that covers a wide range of lockdown items including most all items in this Benchmark.   Bastille can serve as a reporting and audit tool.   Appendix D provides a mapping of Benchmark items to related Bastille configuration items."
-    rationale: "An automated, tested, and vendor supported reporting tool such as Bastille is more efficient and less error-prone than most manual or custom scripted methods. Without this, many other checks may not work"
+    description: "Bastille is a security hardening, lockdown tool supplied with HP-UX to assist administrators in securing their systems. Included is an assessment function that covers a wide range of lockdown items including most all items in this Benchmark. Bastille can serve as a reporting and audit tool. Appendix D provides a mapping of Benchmark items to related Bastille configuration items."
+    rationale: "An automated, tested, and vendor supported reporting tool such as Bastille is more efficient and less error-prone than most manual or custom scripted methods."
     remediation: "Run Bastille to create an assessment report as shown: /opt/sec_mgmt/bastille/bin/bastille --assessnobrowser"
     compliance:
       - cis: ["1.1.3"]
@@ -84,7 +84,7 @@ checks:
       - http://docs.hp.com/en/B2355-60130/inetd.conf.4.html
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.inetd_general="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.inetd_general="Y"'
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_builtin="Y"'
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_finger="Y"'
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_ident="Y"'
@@ -102,6 +102,7 @@ checks:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_ktools="Y"'
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_bootp="Y"'
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_rquotad="Y"'
+      - 'not c:sh -c "ls -la /var/spool/cron/crontabs | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
 
   - id: 30004
     title: "Only enable telnet if absolutely necessary."
@@ -216,7 +217,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.serial_port_login="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.serial_port_login="Y"'
 
   - id: 30014
     title: "Disable NIS/NIS+ related processes, if possible."
@@ -228,10 +229,10 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nis_client="N"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nis_server="N"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nisplus_server="N"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nisplus_client="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nis_client="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nis_server="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nisplus_server="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nisplus_client="Y"'
 
   - id: 30015
     title: "Disable printer daemons, if possible."
@@ -243,7 +244,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Printing.xprintserver="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Printing.xprintserver="Y"'
 
   - id: 30016
     title: "Disable the CDE GUI login, if possible."
@@ -255,7 +256,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecutity.gui_login="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecutity.gui_login="Y"'
 
   - id: 30017
     title: "Disable email server, if possible."
@@ -270,8 +271,8 @@ checks:
       - http://www.sendmail.org/
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Sendmail.sendmaildaemon="N"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Sendmail.sendmailcron="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Sendmail.sendmaildaemon="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Sendmail.sendmailcron="Y"'
 
   - id: 30018
     title: "Disable SNMP and OpenView Agents, if remote management or monitoring are not needed."
@@ -283,7 +284,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.snmpd="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.snmpd="Y"'
 
   - id: 30019
     title: "Disable rarely used standard boot services."
@@ -296,13 +297,13 @@ checks:
     condition: all
     rules:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.disable_rbootd="Y"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_server="N"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_client="N"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.disable_ptydaemon="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_server="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_client="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.disable_ptydaemon="Y"'
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Apache.deactivate_hpws_apache="Y"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.snmpd="N"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.license_server="N"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_core="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.snmpd="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.license_server="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_core="Y"'
 
   - id: 30020
     title: "Only enable Windows-compatibility server processes if absolutely necessary."
@@ -335,7 +336,7 @@ checks:
       - cis: ["1.3.10"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_server="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_server="Y"'
 
   - id: 30023
     title: "Only enable NFS client processes if absolutely necessary."
@@ -346,7 +347,7 @@ checks:
       - cis: ["1.3.11"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_client="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_client="Y"'
 
   - id: 30024
     title: "Only enable RPC-based services if absolutely necessary."
@@ -357,7 +358,7 @@ checks:
       - cis: ["1.3.12"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_core="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_core="Y"'
 
   - id: 30025
     title: "Only enable Web server if absolutely necessary."
@@ -499,7 +500,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.xaccess="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.xaccess="Y"'
 
   - id: 30036
     title: "Set default locking screensaver timeout."
@@ -523,7 +524,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:IPFilter.configure_ipfilter="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:IPFilter.configure_ipfilter="N"'
 
   - id: 30038
     title: "Restrict at/cron to authorized users."
@@ -653,9 +654,9 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_MAXDAYS="(\d+) compare > 1"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_MINDAYS="(\d+) compare > 1"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_WARNDAYS="(\d+)" compare > 1'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_MAXDAYS="(\d+)" compare >= 91'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_MINDAYS="(\d+)" compare >= 7'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_WARNDAYS="(\d+)" compare >= 28'
 
   - id: 30048
     title: "Set strong password enforcement policies."
@@ -667,8 +668,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_HISTORY_DEPTH="(\d+) compare > 1"'
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.MIN_PASSWORD_LENGTH="(\d+) compare > 1"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_HISTORY_DEPTH="(\d+) compare >= 10"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.MIN_PASSWORD_LENGTH="(\d+) compare >= 0"'
 
   - id: 30049
     description: "'+' entries in various passwd and group files served as markers for systems to insert data from NIS maps at a certain point in a system configuration file. HP-UX does not use these markers, but they may exist in files that have been imported from other platforms. They should be deleted if they exist."
@@ -679,7 +680,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nis_client="N"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nis_client="Y"'
 
   - id: 30050
     title: "No '.' or group/world-writable directory in root $PATH."
@@ -739,7 +740,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.umask="027"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.umask="077"'
 
   - id: 30055
     title: "Set 'mesg n' as default for all users."
