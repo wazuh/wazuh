@@ -11,6 +11,6 @@ GOTO end
 
 :background
 SLEEP 5 2> NUL || ping -n 5 127.0.0.1 > NUL
-powershell -noprofile -c Start-Process powershell.exe 'do_upgrade.ps1'
+powershell -noprofile -c "Start-Process powershell.exe '.\do_upgrade.ps1'"
 
 :end
