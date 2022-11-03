@@ -12,6 +12,7 @@ if ((Get-WmiObject Win32_OperatingSystem).OSArchitecture -eq "64-bit" -And [Syst
 } else {
     Set-Alias Start-NativePowerShell "$env:windir\System32\WindowsPowerShell\v1.0\powershell.exe"
 }
+write-output "$(Get-Date -format u) Starting do_upgrade" >> .\upgrade\upgrade.log
 
 # Check unistall
 function is_wazuh_installed
