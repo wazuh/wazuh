@@ -275,7 +275,7 @@ main () {
         set_auto_enrollment_tag_value "server_ca_path" "${WAZUH_REGISTRATION_CA}"
         set_auto_enrollment_tag_value "agent_certificate_path" "${WAZUH_REGISTRATION_CERTIFICATE}"
         set_auto_enrollment_tag_value "agent_key_path" "${WAZUH_REGISTRATION_KEY}"
-        set_auto_enrollment_tag_value "authorization_pass_path" ${WAZUH_REGISTRATION_PASSWORD_PATH}
+        set_auto_enrollment_tag_value "authorization_pass_path" "${WAZUH_REGISTRATION_PASSWORD_PATH}"
         set_auto_enrollment_tag_value "agent_name" "${WAZUH_AGENT_NAME}"
         set_auto_enrollment_tag_value "groups" "${WAZUH_AGENT_GROUP}"
         set_auto_enrollment_tag_value "delay_after_enrollment" "${ENROLLMENT_DELAY}"
@@ -285,9 +285,9 @@ main () {
 
 
     if [ ! -z "${WAZUH_REGISTRATION_PASSWORD}" ]; then
-        echo "${WAZUH_REGISTRATION_PASSWORD}" > "${INSTALLDIR}"/${WAZUH_REGISTRATION_PASSWORD_PATH}
-        chmod 640 "${INSTALLDIR}"/${WAZUH_REGISTRATION_PASSWORD_PATH}
-        chown root:wazuh "${INSTALLDIR}"/${WAZUH_REGISTRATION_PASSWORD_PATH}
+        echo "${WAZUH_REGISTRATION_PASSWORD}" > "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
+        chmod 640 "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
+        chown root:wazuh "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
     fi
 
     if [ ! -z ${WAZUH_MANAGER} ]; then
