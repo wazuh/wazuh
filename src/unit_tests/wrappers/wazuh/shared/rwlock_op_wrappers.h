@@ -7,9 +7,13 @@
  * Foundation
  */
 
-#ifndef QUEUE_WRAPPERS_H
-#define QUEUE_WRAPPERS_H
+#ifndef RWLOCK_OP_WRAPPERS_H
+#define RWLOCK_OP_WRAPPERS_H
 
-int __wrap_rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock);
+#include <rwlock_op.h>
+
+void __wrap_rwlock_lock_read(rwlock_t * rwlock);
+void __wrap_rwlock_lock_write(rwlock_t * rwlock);
+void __wrap_rwlock_unlock(rwlock_t * rwlock);
 
 #endif

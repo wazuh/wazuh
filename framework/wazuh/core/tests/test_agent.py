@@ -1066,15 +1066,15 @@ def test_agent_group_exists_ko():
         Agent.group_exists('default**')
 
 
-@patch('wazuh.core.agent.WazuhDBConnection.run_wdb_command', return_value=('ok', '["payload"]'))
+@patch('wazuh.core.agent.WazuhDBConnection.send', return_value=('ok', '["payload"]'))
 @patch('socket.socket.connect')
-def test_agent_get_agent_groups(socket_connect_mock, wdb_command_mock):
+def test_agent_get_agent_groups(socket_connect_mock, send_mock):
     """Test if get_agent_groups() asks for agent's groups correctly."""
     agent_id = '001'
     agent_groups = Agent.get_agent_groups(agent_id)
 
     wdb_command = 'global select-group-belong :agent_id:'
-    wdb_command_mock.assert_called_once_with(wdb_command.replace(':agent_id:', agent_id))
+    send_mock.assert_called_once_with(wdb_command.replace(':agent_id:', agent_id), raw=True)
     assert agent_groups == ['payload']
 
 
@@ -1084,9 +1084,9 @@ def test_agent_get_agent_groups(socket_connect_mock, wdb_command_mock):
     (True, True, 'remove'),
     (False, True, 'override')
 ])
-@patch('wazuh.core.agent.WazuhDBConnection.run_wdb_command')
+@patch('wazuh.core.agent.WazuhDBConnection.send')
 @patch('socket.socket.connect')
-def test_agent_set_agent_group_relationship(socket_connect_mock, wdb_command_mock, remove, override, expected_mode):
+def test_agent_set_agent_group_relationship(socket_connect_mock, send_mock, remove, override, expected_mode):
     """Test if set_agent_group_relationship() uses the correct command to create/remove the relationship between
     an agent and a group.
 
@@ -1106,7 +1106,7 @@ def test_agent_set_agent_group_relationship(socket_connect_mock, wdb_command_moc
 
     # Default relationship -> add an agent to a group
     Agent.set_agent_group_relationship(agent_id, group_id, remove, override)
-    match = re.match(wdb_command, wdb_command_mock.call_args[0][0])
+    match = re.match(wdb_command, send_mock.call_args[0][0])
     assert match, 'WDB command has changed'
     assert (expected_mode, agent_id, group_id) == match.groups(), 'Unexpected mode when setting agent-group ' \
                                                                   'relationship'
@@ -1182,7 +1182,7 @@ def test_agent_unset_single_group_agent_ko(socket_mock, agent_information_mock):
             Agent.unset_single_group_agent('002', 'default', force=True)
 
 
-@patch('wazuh.core.configuration.WazuhSocket')
+@patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_config(socket_mock, send_mock, mock_wazuh_socket):
@@ -1193,7 +1193,7 @@ def test_agent_get_config(socket_mock, send_mock, mock_wazuh_socket):
     assert result == {"test": "conf"}, 'Result message is not as expected.'
 
 
-@patch('wazuh.core.configuration.WazuhSocket')
+@patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
@@ -1215,7 +1215,7 @@ def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
         agent.get_config('com', 'active-response', 'Wazuh v3.6.0')
 
 
-@patch('wazuh.core.stats.WazuhSocket')
+@patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_stats(socket_mock, send_mock, mock_wazuh_socket):
@@ -1226,7 +1226,7 @@ def test_agent_get_stats(socket_mock, send_mock, mock_wazuh_socket):
     assert result == {"test": 0}, 'Result message is not as expected.'
 
 
-@patch('wazuh.core.stats.WazuhSocket')
+@patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
@@ -1307,7 +1307,7 @@ def test_expand_group(socket_mock, group, wdb_response, expected_agents):
     group : str
         Name of the group to be expanded.
     wdb_response: list
-        Mock return values for the `WazuhDBConnection.run_wdb_command` method.
+        Mock return values for the `WazuhDBConnection.send` method.
     expected_agents : set
         Expected agent IDs for the selected group.
     """
@@ -1315,7 +1315,7 @@ def test_expand_group(socket_mock, group, wdb_response, expected_agents):
     reset_context_cache()
     test_get_agents_info()
 
-    with patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command', side_effect=wdb_response):
+    with patch('wazuh.core.wdb.WazuhDBConnection.send', side_effect=wdb_response):
         assert expand_group(group) == expected_agents, 'Agent IDs do not match with the expected result'
 
 

@@ -25,7 +25,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 
         from wazuh.core.cluster import client, worker, common as cluster_common
         from wazuh.core import common as core_common
-        from wazuh.core.wdb import WazuhDBConnection
+        from wazuh.core.wdb import AsyncWazuhDBConnection
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 loop = asyncio.new_event_loop()
@@ -670,7 +670,7 @@ async def test_worker_compare_agent_groups_checksums(socket_mock):
             self._debug2.append(debug2)
 
     logger = LoggerMock()
-    wdb_conn = WazuhDBConnection()
+    wdb_conn = AsyncWazuhDBConnection()
     w_handler = get_worker_handler()
     w_handler.connected = True
     sync_object = cluster_common.SyncWazuhdb(manager=w_handler, logger=logger, cmd=b'syn_g_m_w',
@@ -887,7 +887,7 @@ async def test_worker_handler_sync_integrity(request_permission_mock, run_in_poo
 @patch("wazuh.core.cluster.worker.WorkerHandler.general_agent_sync_task")
 async def test_worker_handler_setup_sync_agent_info(general_agent_sync_mock, socket_mock):
     """Check that the agent-info task is properly configured."""
-    wdb_conn = WazuhDBConnection()
+    wdb_conn = AsyncWazuhDBConnection()
     w_handler = get_worker_handler()
     sync_object = cluster_common.SyncWazuhdb(manager=w_handler, logger=logger, cmd=b'syn_a_w_m',
                                              data_retriever=wdb_conn.run_wdb_command,
@@ -906,7 +906,7 @@ async def test_worker_handler_setup_sync_agent_info(general_agent_sync_mock, soc
 @patch("wazuh.core.cluster.worker.WorkerHandler.general_agent_sync_task")
 async def test_worker_handler_setup_sync_agent_groups(general_agent_sync_mock, socket_mock):
     """Check that the agent-groups task is properly configured."""
-    wdb_conn = WazuhDBConnection()
+    wdb_conn = AsyncWazuhDBConnection()
     w_handler = get_worker_handler()
     sync_object = cluster_common.SyncWazuhdb(manager=w_handler, logger=logger, cmd=b'syn_a_w_m',
                                              data_retriever=wdb_conn.run_wdb_command,
@@ -952,7 +952,7 @@ async def test_worker_handler_general_agent_sync_task(socket_mock):
 
         return True
 
-    wdb_conn = WazuhDBConnection()
+    wdb_conn = AsyncWazuhDBConnection()
     w_handler = get_worker_handler()
     w_handler.connected = True
     sync_object = cluster_common.SyncWazuhdb(manager=w_handler, logger=logger, cmd=b'syn_a_w_m',
@@ -1194,8 +1194,13 @@ async def test_worker_handler_process_files_from_master_ko(send_request_mock, js
     wait_mock.assert_called_once_with(event_mock.wait(),
                                       timeout=cluster_items['intervals']['communication']['timeout_receiving_file'])
 
-    wait_mock.side_effect = Exception
+    wait_mock.side_effect = asyncio.TimeoutError
     with pytest.raises(exception.WazuhClusterError, match=r".* 3039 .*"):
+        await worker_handler.process_files_from_master(name="task_id", file_received=event_mock)
+    send_request_mock.assert_called_with(command=b'cancel_task', data=b'task_id ')
+
+    wait_mock.side_effect = Exception
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3040 .*"):
         await worker_handler.process_files_from_master(name="task_id", file_received=event_mock)
     send_request_mock.assert_called_with(command=b'cancel_task', data=b'task_id ')
 

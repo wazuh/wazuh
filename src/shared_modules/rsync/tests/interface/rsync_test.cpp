@@ -17,6 +17,7 @@
 #include "rsync.hpp"
 #include "dbsync.h"
 #include "dbsync.hpp"
+#include "cjsonSmartDeleter.hpp"
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
 constexpr auto SQL_STMT_INFO
@@ -62,18 +63,6 @@ static void callbackRSyncWrapper(const void* payload, size_t size, void* userDat
     }
 }
 
-struct CJsonDeleter
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-    void operator()(cJSON* json)
-    {
-        cJSON_Delete(json);
-    }
-};
-
 static void logFunction(const char* msg)
 {
     if (msg)
@@ -110,7 +99,7 @@ TEST_F(RSyncTest, startSyncWithInvalidParams)
     {
         R"({"table":"entry_path"})"
     };
-    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
     sync_callback_data_t callbackData { callback, nullptr };
 
     ASSERT_NE(0, rsync_start_sync(nullptr, dbsyncHandle, jsSelect.get(), {}));
@@ -131,7 +120,7 @@ TEST_F(RSyncTest, startSyncWithoutExtraParams)
     {
         R"({"table":"entry_path"})"
     };
-    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
 
     ASSERT_NE(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), {}));
 }
@@ -171,7 +160,7 @@ TEST_F(RSyncTest, startSyncWithBadSelectQuery)
                }],
             })"
     };
-    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
 
     ASSERT_NE(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), {}));
 }
@@ -235,7 +224,9 @@ TEST_F(RSyncTest, startSyncWithIntegrityClear)
                 }
             })"
     };
-    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    std::atomic<uint64_t> messageCounter { 0 };
+    constexpr auto TOTAL_EXPECTED_MESSAGES { 1ull };
 
     const auto checkExpected
     {
@@ -249,6 +240,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClear)
             if (std::string::npos != firstSegment && std::string::npos != secondSegment)
             {
                 retVal = ::testing::AssertionSuccess();
+                ++messageCounter;
             }
 
             return retVal;
@@ -265,6 +257,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClear)
     sync_callback_data_t callbackData { callbackRSyncWrapper, &callbackWrapper };
 
     ASSERT_EQ(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), callbackData));
+    EXPECT_EQ(messageCounter.load(), TOTAL_EXPECTED_MESSAGES);
 }
 
 TEST_F(RSyncTest, startSyncIntegrityGlobal)
@@ -318,7 +311,9 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
                 }
             })"
     };
-    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    std::atomic<uint64_t> messageCounter { 0 };
+    constexpr auto TOTAL_EXPECTED_MESSAGES { 1ull };
 
     const auto checkExpected
     {
@@ -332,6 +327,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
             if (std::string::npos != firstSegment && std::string::npos != secondSegment)
             {
                 retVal = ::testing::AssertionSuccess();
+                ++messageCounter;
             }
 
             return retVal;
@@ -350,6 +346,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
     ASSERT_EQ(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), callbackData));
 
     dbsync_teardown();
+    EXPECT_EQ(messageCounter.load(), TOTAL_EXPECTED_MESSAGES);
 }
 TEST_F(RSyncTest, registerIncorrectSyncId)
 {
@@ -476,7 +473,7 @@ TEST_F(RSyncTest, RegisterAndPush)
     EXPECT_CALL(wrapper, callbackMock(expectedResult6)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult7)).Times(1);
 
-    const std::unique_ptr<cJSON, CJsonDeleter> spRegisterConfigStmt{ cJSON_Parse(registerConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> spRegisterConfigStmt{ cJSON_Parse(registerConfigStmt) };
     ASSERT_EQ(0, rsync_register_sync_id(handle_rsync, "test_id", handle_dbsync, spRegisterConfigStmt.get(), callbackData));
 
     std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
@@ -551,7 +548,7 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
 
     sync_callback_data_t callbackData { callback, &wrapper };
 
-    const std::unique_ptr<cJSON, CJsonDeleter> spRegisterConfigStmt{ cJSON_Parse(registerConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> spRegisterConfigStmt{ cJSON_Parse(registerConfigStmt) };
     ASSERT_EQ(0, rsync_register_sync_id(handle_rsync, "test_id", handle_dbsync, spRegisterConfigStmt.get(), callbackData));
 
     std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
@@ -750,6 +747,9 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPP)
             })"
     };
 
+    std::atomic<uint64_t> messageCounter{0};
+    constexpr auto TOTAL_EXPECTED_MESSAGES { 1ull };
+
     const auto checkExpected
     {
         [&](const std::string & payload) -> ::testing::AssertionResult
@@ -762,6 +762,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPP)
             if (std::string::npos != firstSegment && std::string::npos != secondSegment)
             {
                 retVal = ::testing::AssertionSuccess();
+                ++messageCounter;
             }
 
             return retVal;
@@ -785,6 +786,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPP)
     };
 
     EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), nlohmann::json::parse(startConfigStmt), callbackData));
+    EXPECT_EQ(messageCounter.load(), TOTAL_EXPECTED_MESSAGES);
 }
 
 TEST_F(RSyncTest, startSyncWithIntegrityClearCPPSelectByInode)

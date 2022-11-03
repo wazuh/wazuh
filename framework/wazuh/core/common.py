@@ -233,12 +233,14 @@ MULTI_GROUPS_PATH = os.path.join(WAZUH_PATH, 'var', 'multigroups')
 
 
 # ================================================ Wazuh path - Sockets ================================================
+ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'analysis')
 AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'ar')
 EXECQ_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'execq')
 AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth')
 WCOM_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'com')
 LOGTEST_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'logtest')
 UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'upgrade')
+REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote')
 TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
 WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
 

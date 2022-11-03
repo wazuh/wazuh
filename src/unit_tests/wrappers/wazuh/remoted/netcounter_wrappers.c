@@ -15,14 +15,9 @@
 #include <stdlib.h>
 #include <shared.h>
 #include <os_net/os_net.h>
+#include "netcounter_wrappers.h"
 
-#include "remoted/remoted.h"
-#include "queue.h"
-
-int __wrap_rem_msgpush(__attribute__((unused)) const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock) {
-    check_expected(sock);
-    check_expected_ptr(addr);
-    check_expected(size);
-
-    return mock();
+void __wrap_rem_setCounter(int fd, size_t counter) {
+    check_expected(fd);
+    check_expected(counter);
 }

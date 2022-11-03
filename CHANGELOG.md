@@ -153,7 +153,48 @@ All notable changes to this project will be documented in this file.
 - Prevented the Ruleset test suite from restarting the manager. ([#10773](https://github.com/wazuh/wazuh/pull/10773))
 
 
-## [v4.3.7]
+## [v4.3.9] - 2022-10-13 
+
+### Agent
+
+#### Fixed
+
+- Fixed remote policy detection in SCA. ([#15007](https://github.com/wazuh/wazuh/pull/15007))
+- Fixed agent upgrade module settings parser to set a default CA file. ([#15023](https://github.com/wazuh/wazuh/pull/15023))
+
+#### Removed
+
+- Removed obsolete Windows Audit SCA policy file. ([#14497](https://github.com/wazuh/wazuh/issues/14497))
+
+### Other
+
+#### Changed
+
+- Updated external protobuf python dependency to 3.19.6. ([#15067](https://github.com/wazuh/wazuh/pull/15067))
+
+
+## [v4.3.8] - 2022-09-19
+
+### Manager
+
+#### Fixed
+
+- Fixed wrong field assignation in Audit decoders (thanks to @pyama86). ([#14752](https://github.com/wazuh/wazuh/pull/14752))
+- Prevented wazuh-remoted from cleaning the multigroup folder in worker nodes. ([#14825](https://github.com/wazuh/wazuh/pull/14825))
+- Fixed rule skipping in wazuh-analysisd when the option if_sid is invalid. ([#14772](https://github.com/wazuh/wazuh/pull/14772))
+
+### Agent
+
+#### Changed
+
+- Updated root CA certificate in agents to validate WPK upgrades. ([#14842](https://github.com/wazuh/wazuh/pull/14842))
+
+#### Fixed
+
+- Fixed a path traversal flaw in Active Response affecting agents from v3.6.1 to v4.3.7 (reported by @guragainroshan0). ([#14801](https://github.com/wazuh/wazuh/pull/14801))
+
+
+## [v4.3.7] - 2022-08-24
 
 ### Manager
 
@@ -187,7 +228,7 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- Improved performance for MITRE API endpoints. ([#14208](https://github.com/wazuh/wazuh/pull/14208)
+- Improved performance for MITRE API endpoints. ([#14208](https://github.com/wazuh/wazuh/pull/14208))
 
 ### Ruleset
 
@@ -207,7 +248,7 @@ All notable changes to this project will be documented in this file.
 - Fixed OS detection in Ubuntu 20.04 LTS SCA policy. ([#14678](https://github.com/wazuh/wazuh/pull/14678))
 
 
-## [v4.3.6] 2022-07-20
+## [v4.3.6] - 2022-07-20
 
 - Added support for Ubuntu 22 (Jammy) in Vulnerability Detector. ([#14085](https://github.com/wazuh/wazuh/pull/14085))
 - Addded support for Red Hat 9 in Vulnerability Detector. ([#14117](https://github.com/wazuh/wazuh/pull/14117))
@@ -257,7 +298,7 @@ All notable changes to this project will be documented in this file.
 - Disabled filebeat logging metrics. ([#14121](https://github.com/wazuh/wazuh/pull/14121))
 
 
-## [v4.3.5] 2022-06-29
+## [v4.3.5] - 2022-06-29
 
 ### Manager
 
@@ -1468,7 +1509,14 @@ All notable changes to this project will be documented in this file.
 - Removed compatibility with deprecated configuration at Vulnerability Detector. ([#5879](https://github.com/wazuh/wazuh/pull/5879))
 
 
-## [v3.13.4]
+## [v3.13.6] - 2022-09-19
+
+### Fixed
+
+- Fixed a path traversal flaw in Active Response affecting agents from v3.6.1 (reported by @guragainroshan0). ([#14823](https://github.com/wazuh/wazuh/pull/14823))
+
+
+## [v3.13.4] - 2022-05-30
 
 ### Fixed
 

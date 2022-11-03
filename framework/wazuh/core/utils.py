@@ -747,14 +747,14 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
 
 
 def check_remote_commands(data):
-    """Check if remote commands are allowed.
-    If not, it will check if the found command is in the list of exceptions.
+    """Check if remote commands are allowed. If not, it will check if the found command is in the list of exceptions.
 
     Parameters
     ----------
     data : str
         Configuration file
     """
+    blocked_configurations = configuration.api_conf['upload_configuration']
 
     def check_section(command_regex, section, split_section):
         try:
@@ -764,20 +764,45 @@ def check_remote_commands(data):
                 if command_matches and \
                         (line.count('<command>') > 1 or
                          command_matches.group(2) not in
-                         configuration.api_conf['remote_commands'][section]['exceptions']):
+                         blocked_configurations['remote_commands'][section].get('exceptions', [])):
                     raise WazuhError(1124)
         except IndexError:
             pass
 
-    if configuration.api_conf['remote_commands']['localfile']['enabled'] is not None and \
-            not configuration.api_conf['remote_commands']['localfile']['enabled']:
+    if not blocked_configurations['remote_commands']['localfile']['allow']:
         command_section = re.compile(r"<localfile>(.*)</localfile>", flags=re.MULTILINE | re.DOTALL)
         check_section(command_section, section='localfile', split_section='</localfile>')
 
-    if configuration.api_conf['remote_commands']['wodle_command']['enabled'] is not None and not \
-            configuration.api_conf['remote_commands']['wodle_command']['enabled']:
+    if not blocked_configurations['remote_commands']['wodle_command']['allow']:
         command_section = re.compile(r"<wodle name=\"command\">(.*)</wodle>", flags=re.MULTILINE | re.DOTALL)
         check_section(command_section, section='wodle_command', split_section='<wodle name=\"command\">')
+
+
+def check_disabled_limits_in_conf(data):
+    """Check if Wazuh limits are allowed.
+
+    Parameters
+    ----------
+    data : str
+        Configuration file.
+
+    Raises
+    -------
+    WazuhError(1127)
+        Raised if one of the disabled limits is present in the configuration to upload.
+    """
+    blocked_configurations = configuration.api_conf['upload_configuration']
+
+    xml_file = fromstring(data)
+    found_limits = []
+    for global_section in xml_file.findall("global"):
+        found_limits += [limit_section for limit_section in global_section.findall("limits") or []]
+    if len(found_limits) == 0:
+        return
+
+    for disabled_limit in [conf for conf, allowed in blocked_configurations['limits'].items() if not allowed['allow']]:
+        if any([conf_limit.find(disabled_limit) for conf_limit in found_limits]):
+            raise WazuhError(1127, extra_message=f"global > limits > {disabled_limit}")
 
 
 def load_wazuh_xml(xml_path, data=None):
@@ -1097,20 +1122,19 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     This class describes a wazuh db backend that executes database queries
     """
 
-    def __init__(self, agent_id=None, query_format='agent', max_size=6144, request_slice=500):
+    def __init__(self, agent_id=None, query_format='agent', request_slice=500):
         if query_format == 'agent' and not path.exists(path.join(common.WDB_PATH, f"{agent_id}.db")):
             raise WazuhError(2007, extra_message=f"There is no database for agent {agent_id}. "
                                                  "Please check if the agent has connected to the manager")
 
         self.agent_id = agent_id
         self.query_format = query_format
-        self.max_size = max_size
         self.request_slice = request_slice
 
         super().__init__()
 
     def connect_to_db(self):
-        return WazuhDBConnection(max_size=self.max_size, request_slice=self.request_slice)
+        return WazuhDBConnection(request_slice=self.request_slice)
 
     def close_connection(self):
         self.conn.close()
@@ -1704,7 +1728,6 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
     config_file : bool
         Validate remote commands if True.
     """
-
     # -- characters are not allowed in XML comments
     content = replace_in_comments(content, '--', '%wildcard%')
 
@@ -1724,7 +1747,9 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
         final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
 
         # Check if remote commands are allowed if it is a configuration file
-        config_file and check_remote_commands(final_xml)
+        if config_file:
+            check_remote_commands(final_xml)
+            check_disabled_limits_in_conf(final_xml)
         # Check xml format
         load_wazuh_xml(xml_path='', data=final_xml)
     except ExpatError:
