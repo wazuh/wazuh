@@ -363,19 +363,14 @@ End Function
 Public Function CheckSvcRunning()
     Dim FSO
     Set FSO = CreateObject("Scripting.FileSystemObject")
-    Set outputFile = FSO.CreateTextFile("./WazuhInstallerScript.log")
+    Set outputFile = FSO.CreateTextFile("C:\WazuhInstallerScript.log")
 	Set wmi = GetObject("winmgmts://./root/cimv2")
 
-    outputFile.WriteLine("------ DEBUG TRACE ------")
-
-
-    On Error Resume Next
-    Err.Clear
+    outputFile.WriteLine("------ CheckSvcRunning Trace ------")
     SERVICE = "OssecSvc"
     outputFile.WriteLine("First Query = {Select * from Win32_Service where Name = '" & SERVICE & "'}")
     Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
 
-    outputFile.WriteLine("--> Iterating over query results")
     For Each obj in svc
         outputFile.WriteLine("Name: " & obj.Name)
         outputFile.WriteLine("DisplayName: " & obj.DisplayName)
@@ -385,16 +380,13 @@ Public Function CheckSvcRunning()
         outputFile.WriteLine("StartMode: " & obj.StartMode)
         outputFile.WriteLine("Status: " & obj.Status)
         Session.Property("OSSECRUNNING") = obj.State
-        outputFile.WriteLine("---")
     Next
-    outputFile.WriteLine("<--")
     
 
     SERVICE = "WazuhSvc"
     outputFile.WriteLine("Second Query = {Select * from Win32_Service where Name = '" & SERVICE & "'}")
     Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
 
-    outputFile.WriteLine("--> Iterating over query results")
     For Each obj in svc
         outputFile.WriteLine("Name: " & obj.Name)
         outputFile.WriteLine("DisplayName: " & obj.DisplayName)
@@ -404,9 +396,7 @@ Public Function CheckSvcRunning()
         outputFile.WriteLine("StartMode: " & obj.StartMode)
         outputFile.WriteLine("Status: " & obj.Status)
         Session.Property("WAZUHRUNNING") = obj.State
-        outputFile.WriteLine("---")
     Next
-    outputFile.WriteLine("<--")
 
     outputFile.WriteLine("------------")
     set FSO = Nothing
