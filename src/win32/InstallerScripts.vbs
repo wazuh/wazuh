@@ -89,7 +89,7 @@ public function config()
 
                 unique_protocol_list=get_unique_array_values(protocol_list)
 
-                if ( UBound(protocol_list) >= UBound(ip_list) And UBound(unique_protocol_list) = 1 ) Or WAZUH_PROTOCOL = "" Or ( UBound(unique_protocol_list) = 1 And LCase(unique_protocol_list(0)) = "tcp" ) Then
+                if ( UBound(protocol_list) >= UBound(ip_list) And UBound(unique_protocol_list) = 0 ) Or (WAZUH_PROTOCOL = "") Or ( UBound(unique_protocol_list) = 0 And LCase(unique_protocol_list(0)) = "tcp" ) Then
                     ip_list=get_unique_array_values(ip_list) 
                 End If
 
