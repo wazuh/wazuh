@@ -13,6 +13,7 @@ namespace builder::internals::syntax
 constexpr char REFERENCE_ANCHOR {'$'};
 constexpr char FUNCTION_HELPER_ANCHOR {'+'};
 constexpr char FUNCTION_HELPER_ARG_ANCHOR {'/'};
+constexpr char JSON_PATH_SEPARATOR {'.'};
 
 } // namespace builder::internals::syntax
 

@@ -68,6 +68,6 @@ TEST_F(StageBuilderMapTest, BuildsCorrectExpression)
     ASSERT_TRUE(expression->isChain());
     for (auto term : expression->getPtr<Chain>()->getOperands())
     {
-        ASSERT_TRUE(term->isTerm());
+        ASSERT_TRUE(term->isTerm() || term->isChain());
     }
 }

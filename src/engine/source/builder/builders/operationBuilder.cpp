@@ -1,6 +1,7 @@
 #include "operationBuilder.hpp"
 
 #include <any>
+#include <vector>
 
 #include <json/json.hpp>
 
@@ -124,11 +125,11 @@ Expression operationBuilder(const std::any& definition, OperationType type)
             std::runtime_error("[builders::operationBuilder(<definition, type>)] "
                                "Received unexpected arguments."));
     }
-    field = Json::formatJsonPath(field);
 
     // Call apropiate builder based on value
     if (value.isString() && value.getString().value().front() == syntax::REFERENCE_ANCHOR)
     {
+        field = Json::formatJsonPath(field);
         auto reference = Json::formatJsonPath(value.getString().value().substr(1));
         switch (type)
         {
@@ -146,6 +147,7 @@ Expression operationBuilder(const std::any& definition, OperationType type)
     else if (value.isString()
              && value.getString().value().front() == syntax::FUNCTION_HELPER_ANCHOR)
     {
+        field = Json::formatJsonPath(field);
         std::string helperName;
         std::vector<std::string> helperArgs;
         auto helperString = value.getString().value().substr(1);
@@ -168,8 +170,63 @@ Expression operationBuilder(const std::any& definition, OperationType type)
                             helperName)));
         }
     }
+    else if (value.isArray())
+    {
+        if (value.size() == 0)
+        {
+            throw std::runtime_error(
+                fmt::format("[builders::operationBuilder(<definition, type>)] "
+                            "Empty array not allowed"));
+        }
+
+        auto array = value.getArray().value();
+        std::vector<base::Expression> expressions;
+        for (auto i = 0; i < array.size(); i++)
+        {
+            auto path = field + syntax::JSON_PATH_SEPARATOR + std::to_string(i);
+            expressions.push_back(
+                operationBuilder(std::make_tuple(path, array[i]), type));
+        }
+
+        switch (type)
+        {
+            case OperationType::FILTER:
+                return base::And::create("array", std::move(expressions));
+            case OperationType::MAP:
+                return base::Chain::create("array", std::move(expressions));
+            default:
+                throw std::runtime_error(
+                    fmt::format("[builders::operationBuilder(<definition, type>)] "
+                                "Unsupported operation type: {}",
+                                static_cast<int>(type)));
+        }
+    }
+    else if (value.isObject())
+    {
+        auto object = value.getObject().value();
+        std::vector<base::Expression> expressions;
+        for (auto& [key, value] : object)
+        {
+            auto path = field + syntax::JSON_PATH_SEPARATOR + key;
+            expressions.push_back(operationBuilder(std::make_tuple(path, value), type));
+        }
+
+        switch (type)
+        {
+            case OperationType::FILTER:
+                return base::And::create("object", std::move(expressions));
+            case OperationType::MAP:
+                return base::Chain::create("object", std::move(expressions));
+            default:
+                throw std::runtime_error(
+                    fmt::format("[builders::operationBuilder(<definition, type>)] "
+                                "Unsupported operation type: {}",
+                                static_cast<int>(type)));
+        }
+    }
     else
     {
+        field = Json::formatJsonPath(field);
         switch (type)
         {
             case OperationType::FILTER:
