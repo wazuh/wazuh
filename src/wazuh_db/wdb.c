@@ -871,7 +871,7 @@ STATIC int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, i
         return OS_INVALID;
     }
 
-    if (result = wdb_step(stmt), SQLITE_ROW == result) {
+    if (wdb_step(stmt) == SQLITE_ROW) {
         *value = sqlite3_column_int(stmt, 0);
         result = OS_SUCCESS;
     } else {
