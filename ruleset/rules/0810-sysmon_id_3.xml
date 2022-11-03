@@ -21,10 +21,9 @@
 
   <rule id="92102" level="6">
     <if_sid>92101</if_sid>
-    <field name="win.eventdata.image" type="pcre2">(?i)\\powershell\.exe</field>
     <field name="win.eventdata.destinationPort">^135$</field>
     <options>no_full_log</options>
-    <description>Suspicious DCOM/RPC activity from Powershell process.</description>
+    <description>Suspicious DCOM/RPC activity from Powershell process</description>
     <mitre>
       <id>T1110</id>
     </mitre>
@@ -34,7 +33,7 @@
     <if_sid>92101</if_sid>
     <field name="win.eventdata.destinationPort">^389$</field>
     <options>no_full_log</options>
-    <description>LDAP activity from Powershell process, possible remote system discovery.</description>
+    <description>LDAP activity from Powershell process, possible remote system discovery</description>
     <mitre>
       <id>T1018</id>
     </mitre>
@@ -75,7 +74,7 @@
     <field name="win.eventdata.image" type="pcre2">\\(c|w)script\.exe</field>
     <field name="win.eventdata.protocol" type="pcre2">tcp</field>
     <options>no_full_log</options>
-    <description>Script generated suspicious network activity over TCP protocol.</description>
+    <description>Script generated suspicious network activity over TCP protocol</description>
     <mitre>
       <id>T1095</id>
     </mitre>
@@ -85,7 +84,7 @@
     <if_group>sysmon_event3</if_group>
     <field name="win.eventdata.destinationPort" type="pcre2">3389</field>
     <options>no_full_log</options>
-    <description>Detected RDP port network activity from $(win.eventdata.sourceIp) to $(win.eventdata.destinationIp).</description>
+    <description>Detected RDP port network activity from $(win.eventdata.sourceIp) to $(win.eventdata.destinationIp)</description>
     <mitre>
       <id>T1021.001</id>
     </mitre>
@@ -96,7 +95,7 @@
     <field name="win.eventdata.destinationIp" type="pcre2">0:0:0:0:0:0:0:1|127\.0\.0\.1</field>
     <field name="win.eventdata.sourceIp" type="pcre2">0:0:0:0:0:0:0:1|127\.0\.0\.1</field>
     <options>no_full_log</options>
-    <description>Network activity using RDP port from-to loopback address, possible exploit using reverse tunneling.</description>
+    <description>Network activity using RDP port from-to loopback address, possible exploit using reverse tunneling</description>
     <mitre>
       <id>T1021.001</id>
     </mitre>
