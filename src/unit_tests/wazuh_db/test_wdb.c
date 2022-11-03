@@ -33,7 +33,6 @@
 int wdb_execute_non_select_query(sqlite3 *db, const char *query);
 int wdb_select_from_temp_table(sqlite3 *db);
 int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value);
-int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const char *last_vacuum_value);
 int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, int *value);
 
 extern wdb_t * db_pool_begin;
