@@ -176,7 +176,9 @@ def send_event(msg, agent = None):
     if not agent or agent["id"] == "000":
         string = '1:virustotal:{0}'.format(json.dumps(msg))
     else:
-        string = '1:[{0}] ({1}) {2}->virustotal:{3}'.format(agent["id"], agent["name"], agent["ip"] if "ip" in agent else "any", json.dumps(msg))
+        location = '[{0}] ({1}) {2}'.format(agent["id"], agent["name"], agent["ip"] if "ip" in agent else "any")
+        location = location.replace("|", "||").replace(":", "|:")
+        string = '1:{0}->virustotal:{1}'.format(location, json.dumps(msg))
 
     debug(string)
     sock = socket(AF_UNIX, SOCK_DGRAM)
