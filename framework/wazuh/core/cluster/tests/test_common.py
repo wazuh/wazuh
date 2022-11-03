@@ -998,6 +998,24 @@ def test_handler_process_request():
     """Check if request commands are correctly defined."""
     handler = cluster_common.Handler(fernet_key, cluster_items)
 
+    class ClientsMock:
+        """Auxiliary class."""
+
+        def send_request(self, command, error_msg):
+            pass
+
+    class LocalServerDapiMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self.clients = {"dapi_client": ClientsMock()}
+
+    class ManagerMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self.local_server = LocalServerDapiMock()
+
     with patch('wazuh.core.cluster.common.Handler.echo') as echo_mock:
         handler.process_request(b"echo", b"data")
         echo_mock.assert_called_once_with(b"data")
@@ -1022,9 +1040,47 @@ def test_handler_process_request():
     with patch('wazuh.core.cluster.common.Handler.cancel_task') as cancel_task_mock:
         handler.process_request(b"cancel_task", b"data")
         cancel_task_mock.assert_called_once_with(b"data")
+    with patch("asyncio.create_task", return_value=b"ok") as create_task_mock:
+        handler.server = ManagerMock()
+        with patch.object(ClientsMock, "send_request") as send_request_mock:
+            handler.process_request(command=b"dapi_err", data=b"dapi_client error_msg")
+            send_request_mock.assert_called_once_with(b"dapi_err", b"error_msg")
+            create_task_mock.assert_called_once()
     with patch('wazuh.core.cluster.common.Handler.process_unknown_cmd') as process_unknown_cmd_mock:
         handler.process_request(b"something random", b"data")
         process_unknown_cmd_mock.assert_called_once_with(b"something random")
+
+def test_handler_process_request_ko():
+    """Test the correct exception raise at method 'process_request'."""
+
+    class ClientsMock:
+        """Auxiliary class."""
+
+        def send_request(self, command, error_msg):
+            pass
+
+    class LocalServerDapiMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self.clients = {"not_data": ClientsMock()}
+
+    class ManagerMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self.local_server = LocalServerDapiMock()
+
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3032 .*"):
+        handler.server = ManagerMock()
+        handler.process_request(command=b"dapi_err", data=b"data 2")
+
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3025 .*"):
+        with patch("asyncio.create_task", side_effect=exception.WazuhClusterError(1001)):
+            handler.server = ManagerMock()
+            handler.server.local_server.clients = {"data": ClientsMock()}
+            handler.process_request(command=b"dapi_err", data=b"data 2")
 
 
 def test_handler_process_response():
