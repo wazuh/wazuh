@@ -718,6 +718,16 @@ int wdb_get_db_state(wdb_t * wdb);
  */
 int wdb_get_db_free_pages_percentage(wdb_t * wdb);
 
+/**
+ * @brief Store the fragmentation data of the last vacuum in the metadata table.
+ *
+ * @param[in] wdb Database to query for the table existence.
+ * @param[in] last_vacuum_time Timestamp to store in the metadata table.
+ * @param[in] last_vacuum_value Value to store in the metadata table.
+ * @return Returns OS_SUCCES on success or OS_INVALID on error.
+ */
+int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const char *last_vacuum_value);
+
 /* Insert key-value pair into info table */
 int wdb_insert_info(const char *key, const char *value);
 

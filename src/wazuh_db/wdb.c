@@ -285,9 +285,6 @@ STATIC int wdb_select_from_temp_table(sqlite3 *db);
 /* Get the fragmentation data of the last vacuum stored in the metadata table. */
 STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value);
 
-/* Store the fragmentation data of the last vacuum in the metadata table. */
-STATIC int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const char *last_vacuum_value);
-
 /**
  * @brief Execute a select query that returns a single integer value.
  *
@@ -1233,7 +1230,7 @@ STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last
     return result;
 }
 
-STATIC int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const char *last_vacuum_value) {
+int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const char *last_vacuum_value) {
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
 
