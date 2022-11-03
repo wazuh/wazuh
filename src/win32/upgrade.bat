@@ -6,7 +6,7 @@ COPY upgrade\upgrade.bat . > NUL
 COPY upgrade\do_upgrade.ps1 . > NUL
 COPY upgrade\wazuh-agent-*.msi . > NUL
 
-START upgrade.bat B
+CMD /C upgrade.bat B
 GOTO end
 
 :background
