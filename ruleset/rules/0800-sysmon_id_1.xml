@@ -12,7 +12,7 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(c|w)script\.exe</field>
     <options>no_full_log</options>
-    <description>Scripting interpreter spawned a new process.</description>
+    <description>Scripting interpreter spawned a new process</description>
     <mitre>
       <id>T1059.005</id>
     </mitre>
@@ -22,7 +22,7 @@
     <if_sid>92000</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)\\(c|w)script\.exe.+\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
     <options>no_full_log</options>
-    <description>Scripting interpreter spawned new scripting interpreter.</description>
+    <description>Scripting interpreter spawned new scripting interpreter</description>
     <mitre>
       <id>T1059</id>
     </mitre>
@@ -32,7 +32,7 @@
     <if_sid>92000</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">\\cmd\.exe</field>
     <options>no_full_log</options>
-    <description>Scripting interpreter spawned Windows command shell instance.</description>
+    <description>Scripting interpreter spawned Windows command shell instance</description>
     <mitre>
       <id>T1059.003</id>
     </mitre>
@@ -42,7 +42,7 @@
     <if_sid>92000</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)[c-z]:(\\\\Users\\\\Public\\\\|\\\\Users\\\\.+\\\\AppData\\\\local\\\\temp)</field>
     <options>no_full_log</options>
-    <description>Scripting interpreter spawned a process from a suspicious path.</description>
+    <description>Scripting interpreter spawned a process from a suspicious path</description>
     <mitre>
       <id>T1059</id>
     </mitre>
@@ -53,7 +53,7 @@
     <field name="win.eventdata.commandLine" type="pcre2">\\cmd\.exe</field>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\powershell\.exe</field>
     <options>no_full_log</options>
-    <description>Powershell process spawned Windows command shell instance.</description>
+    <description>Powershell process spawned Windows command shell instance</description>
     <mitre>
       <id>T1059.003</id>
     </mitre>
@@ -64,7 +64,7 @@
     <field name="win.eventdata.commandLine" type="pcre2">(?i)\\(c|w)script\.exe.+[c-z]:\\(Windows\\Temp)|Users\\.+\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
     <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)cmd\.exe.+/(c|k)</field>
     <options>no_full_log</options>
-    <description>Command shell started script with /c modifier.</description>
+    <description>Command shell started script with /c modifier</description>
     <mitre>
       <id>T1059</id>
     </mitre>
@@ -75,7 +75,7 @@
     <field name="win.eventdata.image" type="pcre2">(?i)\\csc\.exe</field>
     <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)powershell.+ExecutionPolicy\s+bypass</field>
     <options>no_full_log</options>
-    <description>Powershell script compiling code using CSC.exe, possible malware drop.</description>
+    <description>Powershell script compiling code using CSC.exe, possible malware drop</description>
     <mitre>
       <id>T1027.004</id>
     </mitre>
@@ -86,7 +86,7 @@
     <field name="win.eventdata.image" type="pcre2">(?i)\\powershell\.exe</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)Set-MpPreference</field>
     <options>no_full_log</options>
-    <description>Possible tampering on Windows Defender configuration by Powershell command.</description>
+    <description>Possible tampering on Windows Defender configuration by Powershell command</description>
     <mitre>
       <id>T1562</id>
     </mitre>
@@ -96,7 +96,7 @@
     <if_sid>92007</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(DisableRealtimeMonitoring|drtm)\s+(\$true|1)</field>
     <options>no_full_log</options>
-    <description>Windows Defender real time monitoring was disabled by Powershell command.</description>
+    <description>Windows Defender real time monitoring was disabled by Powershell command</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -106,7 +106,7 @@
     <if_sid>92007</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(DisableIntrusionPreventionSystem|dips)\s+(\$true|1)</field>
     <options>no_full_log</options>
-    <description>Windows Defender Intrusion prevention system was disabled by Powershell command.</description>
+    <description>Windows Defender Intrusion prevention system was disabled by Powershell command</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -116,7 +116,7 @@
     <if_sid>92007</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(DisableIOAVProtection|dioavp)\s+(\$true|1)</field>
     <options>no_full_log</options>
-    <description>Windows Defender downloaded file scanning was disabled by Powershell command.</description>
+    <description>Windows Defender downloaded file scanning was disabled by Powershell command</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -126,7 +126,7 @@
     <if_sid>92007</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(DisableScriptScanning|dscrptsc)\s+(\$true|1)</field>
     <options>no_full_log</options>
-    <description>Windows Defender script scanning was disabled by Powershell command.</description>
+    <description>Windows Defender script scanning was disabled by Powershell command</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -136,7 +136,7 @@
     <if_sid>92007</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)EnableControlledFolderAccess\s+(disabled|AuditMode)</field>
     <options>no_full_log</options>
-    <description>Windows Defender Controlled folder access was disabled by Powershell command.</description>
+    <description>Windows Defender Controlled folder access was disabled by Powershell command</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -146,7 +146,7 @@
     <if_sid>92007</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)EnableNetworkProtection\s+(disabled|AuditMode)</field>
     <options>no_full_log</options>
-    <description>Windows Defender network protection was disabled by Powershell command.</description>
+    <description>Windows Defender network protection was disabled by Powershell command</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -156,7 +156,7 @@
     <if_sid>92007</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)MAPSReporting\s+(disabled|AuditMode)</field>
     <options>no_full_log</options>
-    <description>Microsoft Active Protection Service (MAPS) was disabled by Powershell command.</description>
+    <description>Microsoft Active Protection Service (MAPS) was disabled by Powershell command</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -166,7 +166,7 @@
     <if_sid>92007</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)SubmitSamplesConsent\s+NeverSend</field>
     <options>no_full_log</options>
-    <description>Windows Defender sample submit was disabled by Powershell command.</description>
+    <description>Windows Defender sample submit was disabled by Powershell command</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -177,7 +177,7 @@
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)CertUtil\.exe</field>
     <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)CertUtil\.exe</field>
     <options>no_full_log</options>
-    <description>Masqueraded CertUtil.exe with a different file name. Possible use to decode malware.</description>
+    <description>Masqueraded CertUtil.exe with a different file name. Possible use to decode malware</description>
     <mitre>
       <id>T1036.003</id>
       <id>T1140</id>
@@ -188,7 +188,7 @@
     <if_sid>92016</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)decode\s+(.+)\s+.+\.exe</field>
     <options>no_full_log</options>
-    <description>Masqueraded CertUtil.exe used to decode binary file.</description>
+    <description>Masqueraded CertUtil.exe used to decode binary file</description>
     <mitre>
       <id>T1036.003</id>
       <id>T1140</id>
@@ -200,7 +200,7 @@
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)CertUtil\.exe</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)decode\s+(.+)\s+.+\.exe</field>
     <options>no_full_log</options>
-    <description>CertUtil.exe used to decode binary file.</description>
+    <description>CertUtil.exe used to decode binary file</description>
     <mitre>
       <id>T1140</id>
     </mitre>
@@ -211,7 +211,7 @@
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)MsMpEng\.exe</field>
     <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)[c-z]:\\\\(ProgramData\\\\Microsoft|Program Files)\\\\Windows Defender</field>
     <options>no_full_log</options>
-    <description>Windows Defender executed from suspicious path, possible DLL side-loading.</description>
+    <description>Windows Defender executed from suspicious path, possible DLL side-loading</description>
     <mitre>
       <id>T1574.002</id>
     </mitre>
@@ -222,7 +222,7 @@
     <field name="win.eventdata.originalFileName" type="pcre2">PSCP</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)-scp</field>
     <options>no_full_log</options>
-    <description>A file was copied to other system over SSH using pscp.exe.</description>
+    <description>A file was copied to other system over SSH using pscp.exe</description>
     <mitre>
       <id>T1021.004</id>
     </mitre>
@@ -233,7 +233,7 @@
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)PowerShell\.EXE</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(Remove-Item|ri|rm|rmdir|del|erase|rd)\b</field>
     <options>no_full_log</options>
-    <description>Powershell was used to delete files or directories.</description>
+    <description>Powershell was used to delete files or directories</description>
     <mitre>
       <id>T1070.004</id>
     </mitre>
@@ -244,7 +244,7 @@
     <field name="win.eventdata.originalFileName" type="pcre2">qwinsta</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)\/server</field>
     <options>no_full_log</options>
-    <description>Gathered user information from Remote Desktop Service sessions.</description>
+    <description>Gathered user information from Remote Desktop Service sessions</description>
     <mitre>
       <id>T1033</id>
     </mitre>
@@ -255,7 +255,7 @@
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)PowerShell.EXE</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)\\\\HarddiskVolumeShadowCopy.+\\\\(SAM|SECURITY)</field>
     <options>no_full_log</options>
-    <description>Suspicious Powershell activity with VSS and Windows SAM hive.</description>
+    <description>Suspicious Powershell activity with VSS and Windows SAM hive</description>
     <mitre>
       <id>T1003.002</id>
       <id>T1059.001</id>
@@ -266,7 +266,7 @@
     <if_sid>92023</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)\[System.IO.File\]::Copy</field>
     <options>no_full_log</options>
-    <description>Powershell used to copy SAM hive from VSS.</description>
+    <description>Powershell used to copy SAM hive from VSS</description>
     <mitre>
       <id>T1003.002</id>
       <id>T1059.001</id>
@@ -286,10 +286,9 @@
 
   <rule id="92026" level="14">
     <if_sid>92025</if_sid>
-    <field name="win.eventdata.originalFileName" type="pcre2">(?i)reg.EXE</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)save.+\\\\SAM</field>
     <options>no_full_log</options>
-    <description>Reg.exe used to dump SAM hive.</description>
+    <description>Reg.exe used to dump SAM hive</description>
     <mitre>
       <id>T1003.002</id>
     </mitre>
@@ -308,7 +307,7 @@
 
   <rule id="92028" level="0">
     <if_group>sysmon_event1</if_group>
-    <field name="win.eventdata.commandLine" type="pcre2">(?i)\.ps1</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)powershell\.exe$</field>
     <options>no_full_log</options>
     <description>Powershell executed script</description>
@@ -342,7 +341,7 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)(net\.EXE|net1\.EXE)</field>
     <options>no_full_log</options>
-    <description>Discovery activity executed.</description>
+    <description>Discovery activity executed</description>
     <mitre>
       <id>T1087</id>
     </mitre>
@@ -396,7 +395,7 @@
     <if_sid>92032</if_sid>
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)(SystemPropertiesAdvanced|net)\.EXE</field>
     <options>no_full_log</options>
-    <description>A $(win.eventdata.image) binary was started by a Windows cmd shell.</description>
+    <description>A $(win.eventdata.image) binary was started by a Windows cmd shell</description>
     <mitre>
       <id>T1059.003</id>
       <id>T1574.001</id>
@@ -407,7 +406,7 @@
     <if_sid>92031, 92033</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)use\s</field>
     <options>no_full_log</options>
-    <description>A net.exe connection to a remote resource was started by $(win.eventdata.parentImage).</description>
+    <description>A net.exe connection to a remote resource was started by $(win.eventdata.parentImage)</description>
     <mitre>
       <id>T1567</id>
     </mitre>
@@ -417,7 +416,7 @@
     <if_sid>92037</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(live|outlook|google|drive|microsoft|dropbox)</field>
     <options>no_full_log</options>
-    <description>A connection to cloud resource was started by $(win.eventdata.parentImage).</description>
+    <description>A connection to cloud resource was started by $(win.eventdata.parentImage)</description>
     <mitre>
       <id>T1102</id>
       <id>T1567.002</id>
@@ -428,7 +427,7 @@
     <if_sid>92031</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)user\s</field>
     <options>no_full_log</options>
-    <description>A net.exe account discovery command was initiated.</description>
+    <description>A net.exe account discovery command was initiated</description>
     <mitre>
       <id>T1087</id>
     </mitre>
@@ -438,7 +437,7 @@
     <if_sid>92039</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)add\s</field>
     <options>no_full_log</options>
-    <description>$(win.eventdata.originalFileName) executed a user creation command.</description>
+    <description>$(win.eventdata.originalFileName) executed a user creation command</description>
     <mitre>
       <id>T1136.001</id>
     </mitre>
@@ -616,7 +615,7 @@
     <field name="win.eventdata.parentImage" type="pcre2">(?i)powershell\.exe</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)powershell\.exe.+\-\b(encodedcommand|e|ea|ec|encodeda|encode|en|enco)\b</field>
     <options>no_full_log</options>
-    <description>Powershell.exe spawned a powershell process which executed a base64 encoded command.</description>
+    <description>Powershell.exe spawned a powershell process which executed a base64 encoded command</description>
     <mitre>
       <id>T1059.001</id>
     </mitre>
@@ -626,7 +625,7 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)sdbinst\.EXE</field>
     <options>no_full_log</options>
-    <description>Application Compatibility Database launched.</description>
+    <description>Application Compatibility Database launched</description>
     <mitre>
       <id>T1546.011</id>
     </mitre>
@@ -636,7 +635,7 @@
     <if_sid>92058</if_sid>
     <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)powershell\.exe.+\-(encodedcommand|e|ea|ec|encodeda|encode|en|enco)</field>
     <options>no_full_log</options>
-    <description>Possible Shimming. Application Compatibility Database launched from an encoded powershell command.</description>
+    <description>Possible Shimming. Application Compatibility Database launched from an encoded powershell command</description>
     <mitre>
       <id>T1059.001</id>
       <id>T1546.011</id>
@@ -659,7 +658,7 @@
     <field name="win.eventdata.parentImage" type="pcre2">(?i)(cmd\.exe|powershell\.exe)</field>
     <field name="win.eventdata.integrityLevel" type="pcre2">(?i)(medium|high)</field>
     <options>no_full_log</options>
-    <description>Windows backup and restore tool $(win.eventdata.originalFileName) launched via $(win.eventdata.parentImage) with $(win.eventdata.integrityLevel) integrity level.</description>
+    <description>Windows backup and restore tool $(win.eventdata.originalFileName) launched via $(win.eventdata.parentImage) with $(win.eventdata.integrityLevel) integrity level</description>
     <mitre>
       <id>T1548</id>
       <id>T1059.003</id>
@@ -672,7 +671,7 @@
     <field name="win.eventdata.integrityLevel" type="pcre2">(?i)high</field>
     <field name="win.eventdata.image" type="pcre2">(?i)powershell\.exe</field>
     <options>no_full_log</options>
-    <description>Powershell launched with a $(win.eventdata.integrityLevel) integrity level by $(win.eventdata.parentImage).</description>
+    <description>Powershell launched with a $(win.eventdata.integrityLevel) integrity level by $(win.eventdata.parentImage)</description>
     <mitre>
       <id>T1548</id>
       <id>T1548.002</id>
@@ -705,7 +704,7 @@
     <field name="win.eventdata.parentImage" type="pcre2">(?i)Windows\\\\Temp.+\.(exe|dll)</field>
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)PowerShell\.exe</field>
     <options>no_full_log</options>
-    <description>Powershell.exe launched by binary $(win.eventdata.parentImage) in a suspicious location.</description>
+    <description>Powershell.exe launched by binary $(win.eventdata.parentImage) in a suspicious location</description>
     <mitre>
       <id>T1059.001</id>
     </mitre>
@@ -716,7 +715,7 @@
     <field name="win.eventdata.parentImage" type="pcre2">(?i)powershell.exe</field>
     <field name="win.eventdata.image" type="pcre2">(?i)Windows\\\\(SysWOW64|Temp).+\.exe</field>
     <options>no_full_log</options>
-    <description>$(win.eventdata.image) binary in a suspicious location launched by $(win.eventdata.parentImage).</description>
+    <description>$(win.eventdata.image) binary in a suspicious location launched by $(win.eventdata.parentImage)</description>
     <mitre>
       <id>T1059.001</id>
     </mitre>
@@ -726,7 +725,7 @@
     <if_sid>92066</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)\.(zip|7z|rar)</field>
     <options>no_full_log</options>
-    <description>$(win.eventdata.image) launched by $(win.eventdata.parentImage) executed a compressed file creation command.</description>
+    <description>$(win.eventdata.image) launched by $(win.eventdata.parentImage) executed a compressed file creation command</description>
     <mitre>
       <id>T1560.001</id>
     </mitre>
