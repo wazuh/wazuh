@@ -18,8 +18,6 @@ Json operations {R"([
     {"boolT": true},
     {"boolF": false},
     {"null": null},
-    {"array": [1, 2, 3]},
-    {"object": {"a": 1, "b": 2}},
 
     {"nested.string": "value"},
     {"nested.int": 1},
@@ -27,8 +25,6 @@ Json operations {R"([
     {"nested.boolT": true},
     {"nested.boolF": false},
     {"nested.null": null},
-    {"nested.array": [1, 2, 3]},
-    {"nested.object": {"a": 1, "b": 2}},
 
     {"stringRef": "$string"},
     {"intRef": "$int"},
@@ -216,6 +212,204 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
     }
 }
 
+TEST(OperationConditionBuilderTest, BuildsOperatesArray)
+{
+    std::string targetField = "array";
+    json::Json operation(R"([
+        "string",
+        1,
+        1.2,
+        true,
+        false,
+        null,
+        [
+            "string",
+            1,
+            1.2,
+            true,
+            false,
+            null
+        ]
+    ])");
+    auto definition = std::make_tuple(targetField, operation);
+
+    auto eventOk = std::make_shared<Json>(R"({
+        "array": [
+            "string",
+            1,
+            1.2,
+            true,
+            false,
+            null,
+            [
+                "string",
+                1,
+                1.2,
+                true,
+                false,
+                null
+            ]
+        ]
+    })");
+
+    auto eventNotOk = std::make_shared<Json>(R"({
+        "array": [
+            "otherstring",
+            2,
+            2.2,
+            false,
+            true,
+            "null",
+            [
+                "otherstring",
+                2,
+                2.2,
+                false,
+                true,
+                "null"
+            ]
+        ]
+    })");
+
+    auto expression = operationConditionBuilder(definition);
+    auto expressionRootLevel = expression->getPtr<base::Operation>()->getOperands();
+    auto expressionNestedLevel =
+        expressionRootLevel[6]->getPtr<base::Operation>()->getOperands();
+
+    for (auto i = 0; i < 6; i++)
+    {
+        auto result = expressionRootLevel[i]->getPtr<Term<EngineOp>>()->getFn()(eventOk);
+        if (!result)
+        {
+            GTEST_COUT << "Expected Success, Failed: " << result.trace() << std::endl;
+        }
+        ASSERT_TRUE(result);
+
+        result = expressionRootLevel[i]->getPtr<Term<EngineOp>>()->getFn()(eventNotOk);
+        if (result)
+        {
+            GTEST_COUT << "Expected Failure, Success: " << result.trace() << std::endl;
+        }
+        ASSERT_FALSE(result);
+    }
+
+    for (auto op : expressionNestedLevel)
+    {
+        auto result = op->getPtr<Term<EngineOp>>()->getFn()(eventOk);
+        if (!result)
+        {
+            GTEST_COUT << "Expected Success, Failed: " << result.trace() << std::endl;
+        }
+        ASSERT_TRUE(result);
+
+        result = op->getPtr<Term<EngineOp>>()->getFn()(eventNotOk);
+        if (result)
+        {
+            GTEST_COUT << "Expected Failure, Success: " << result.trace() << std::endl;
+        }
+        ASSERT_FALSE(result);
+    }
+}
+
+TEST(OperationConditionBuilderTest, BuildsOperatesObject)
+{
+    std::string targetField = "object";
+    json::Json operation(R"({
+        "string": "string",
+        "int": 1,
+        "double": 1.2,
+        "boolT": true,
+        "boolF": false,
+        "null": null,
+        "object": {
+            "string": "string",
+            "int": 1,
+            "double": 1.2,
+            "boolT": true,
+            "boolF": false,
+            "null": null
+        }
+    })");
+    auto definition = std::make_tuple(targetField, operation);
+
+    auto eventOk = std::make_shared<Json>(R"({
+        "object": {
+            "string": "string",
+            "int": 1,
+            "double": 1.2,
+            "boolT": true,
+            "boolF": false,
+            "null": null,
+            "object": {
+                "string": "string",
+                "int": 1,
+                "double": 1.2,
+                "boolT": true,
+                "boolF": false,
+                "null": null
+            }
+        }
+    })");
+
+    auto eventNotOk = std::make_shared<Json>(R"({
+        "object": {
+            "string": "otherstring",
+            "int": 2,
+            "double": 2.2,
+            "boolT": false,
+            "boolF": true,
+            "null": "null",
+            "object": {
+                "string": "otherstring",
+                "int": 2,
+                "double": 2.2,
+                "boolT": false,
+                "boolF": true,
+                "null": "null"
+            }
+        }
+    })");
+
+    auto expression = operationConditionBuilder(definition);
+    auto expressionRootLevel = expression->getPtr<base::Operation>()->getOperands();
+    auto expressionNestedLevel =
+        expressionRootLevel[6]->getPtr<base::Operation>()->getOperands();
+
+    for (auto i = 0; i < 6; i++)
+    {
+        auto result = expressionRootLevel[i]->getPtr<Term<EngineOp>>()->getFn()(eventOk);
+        if (!result)
+        {
+            GTEST_COUT << "Expected Success, Failed: " << result.trace() << std::endl;
+        }
+        ASSERT_TRUE(result);
+
+        result = expressionRootLevel[i]->getPtr<Term<EngineOp>>()->getFn()(eventNotOk);
+        if (result)
+        {
+            GTEST_COUT << "Expected Failure, Success: " << result.trace() << std::endl;
+        }
+        ASSERT_FALSE(result);
+    }
+
+    for (auto op : expressionNestedLevel)
+    {
+        auto result = op->getPtr<Term<EngineOp>>()->getFn()(eventOk);
+        if (!result)
+        {
+            GTEST_COUT << "Expected Success, Failed: " << result.trace() << std::endl;
+        }
+        ASSERT_TRUE(result);
+
+        result = op->getPtr<Term<EngineOp>>()->getFn()(eventNotOk);
+        if (result)
+        {
+            GTEST_COUT << "Expected Failure, Success: " << result.trace() << std::endl;
+        }
+        ASSERT_FALSE(result);
+    }
+}
+
 TEST(OperationMapBuilderTest, Builds)
 {
     for (auto operationDef : operationArray)
@@ -234,7 +428,7 @@ TEST(OperationMapBuilderTest, UnexpectedDefinition)
 }
 
 // TODO: add failed map reference test.
-TEST(OperationMapBuilderTest, BuildsOperates)
+TEST(OperationMapBuilderTest, BuildsOperatesLiterals)
 {
     auto expected = std::make_shared<Json>(R"({
         "string": "value",
@@ -284,7 +478,14 @@ TEST(OperationMapBuilderTest, BuildsOperates)
         "nestedObjectRef": {"a": 1, "b": 2}
 
 })");
-    auto eventOk = std::make_shared<Json>(R"({})");
+    auto eventOk = std::make_shared<Json>(R"({
+        "array": [1, 2, 3],
+        "object": {"a": 1, "b": 2},
+        "nested": {
+            "array": [1, 2, 3],
+            "object": {"a": 1, "b": 2}
+        }
+    })");
 
     for (auto operationDef : operationArray)
     {
@@ -297,5 +498,144 @@ TEST(OperationMapBuilderTest, BuildsOperates)
         }
         ASSERT_TRUE(result);
     }
-    ASSERT_EQ(expected->str(), eventOk->str());
+    ASSERT_EQ(*expected, *eventOk);
+}
+
+TEST(OperationMapBuilderTest, BuildsOperatesArray)
+{
+    std::string targetField("array");
+    json::Json operationJson(R"([
+        "string",
+        1,
+        1.2,
+        true,
+        false,
+        null,
+        [
+            "string",
+            1,
+            1.2,
+            true,
+            false,
+            null
+        ]
+    ])");
+    auto definition = std::make_tuple(targetField, operationJson);
+
+    auto expected = std::make_shared<Json>(R"({
+        "array": [
+            "string",
+            1,
+            1.2,
+            true,
+            false,
+            null,
+            [
+                "string",
+                1,
+                1.2,
+                true,
+                false,
+                null
+            ]
+        ]
+    })");
+    auto event = std::make_shared<Json>();
+    auto expression = operationMapBuilder(definition);
+    auto expressionsRootLevel = expression->getPtr<base::Operation>()->getOperands();
+    auto expressionsNestedLevel =
+        expressionsRootLevel[6]->getPtr<base::Operation>()->getOperands();
+
+    for (auto i = 0; i < 6; i++)
+    {
+        auto result =
+            expressionsRootLevel[i]->getPtr<base::Term<EngineOp>>()->getFn()(event);
+        if (!result)
+        {
+            GTEST_COUT << "Expected Success, Failed: " << result.trace() << std::endl;
+        }
+        ASSERT_TRUE(result);
+    }
+
+    for (auto op : expressionsNestedLevel)
+    {
+        auto result = op->getPtr<base::Term<EngineOp>>()->getFn()(event);
+        if (!result)
+        {
+            GTEST_COUT << "Expected Success, Failed: " << result.trace() << std::endl;
+        }
+        ASSERT_TRUE(result);
+    }
+
+    ASSERT_EQ(*expected, *event);
+}
+
+TEST(OperationMapBuilderTest, BuildsOperatesObject)
+{
+    std::string targetField = "object";
+    json::Json operationJson(R"({
+        "string": "value",
+        "int": 1,
+        "double": 1.2,
+        "boolT": true,
+        "boolF": false,
+        "null": null,
+        "object": {
+            "string": "value",
+            "int": 1,
+            "double": 1.2,
+            "boolT": true,
+            "boolF": false,
+            "null": null
+        }
+    })");
+    auto definition = std::make_tuple(targetField, operationJson);
+
+    auto expected = std::make_shared<Json>(R"({
+        "object": {
+            "string": "value",
+            "int": 1,
+            "double": 1.2,
+            "boolT": true,
+            "boolF": false,
+            "null": null,
+            "object": {
+                "string": "value",
+                "int": 1,
+                "double": 1.2,
+                "boolT": true,
+                "boolF": false,
+                "null": null
+            }
+        }
+    })");
+
+    auto event = std::make_shared<Json>();
+    auto expression = operationMapBuilder(definition);
+    auto expressionsRootLevel = expression->getPtr<base::Operation>()->getOperands();
+    auto expressionsNestedLevel =
+        expressionsRootLevel[6]->getPtr<base::Operation>()->getOperands();
+
+    for (auto i = 0; i < 6; i++)
+    {
+        auto result =
+            expressionsRootLevel[i]->getPtr<base::Term<EngineOp>>()->getFn()(event);
+        if (!result)
+        {
+            GTEST_COUT << "Expected Success, Failed: " << result.trace() << std::endl;
+        }
+        ASSERT_TRUE(result);
+    }
+
+    for (auto op : expressionsNestedLevel)
+    {
+        auto result = op->getPtr<base::Term<EngineOp>>()->getFn()(event);
+        if (!result)
+        {
+            GTEST_COUT << "Expected Success, Failed: " << result.trace() << std::endl;
+        }
+        ASSERT_TRUE(result);
+    }
+
+    ASSERT_EQ(*expected, *event);
 }
