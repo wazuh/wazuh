@@ -28,7 +28,6 @@ requirements:
     - "f:/etc/redhat-release -> r:^Oracle && r:release 9"
     - "f:/etc/redhat-release -> r:^Better && r:release 9"
     - "f:/etc/redhat-release -> r:^OpenVZ && r:release 9"
-    - 'f:/etc/os-release -> r:^PRETTY_NAME="Fedora Linux && r:34|35|36|37'
 
 variables:
   $sshd_file: /etc/ssh/sshd_config
