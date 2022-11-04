@@ -1086,7 +1086,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' gdm3 -> r:gdm\\s+unknown\\s+ok\\s+not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' gdm3 -> r:gdm\\s+unknown\\s+ok\\s+not-installed|no\\s+packages\\s+found\\s+matching\\s+gdm3"
 
   # 1.8.2 Ensure GDM login banner is configured (Automated) - Not implemented
   # 1.8.3 Ensure GDM disable-user-list option is enabled (Automated) - Not implemented
@@ -1113,8 +1113,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
+    condition: any
     rules:
+      - 'not f:/etc/gdm3'
       - 'not f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
 
   # 1.9 Ensure updates, patches, and additional security software are installed (Manual) - Not implemented
