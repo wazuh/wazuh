@@ -16,7 +16,6 @@
 
 extern int test_mode;
 extern int activate_full_db;
-extern int stmt_mode;
 
 int FOREVER();
 

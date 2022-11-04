@@ -19,7 +19,6 @@
 time_t time_mock_value;
 int test_mode = 0;
 int activate_full_db = 0;
-int stmt_mode = 0;
 
 int FOREVER() {
     return 1;

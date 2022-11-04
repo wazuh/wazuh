@@ -3576,6 +3576,9 @@ void test_wdb_parse_global_vacuum_success_get_db_state_error(void **state) {
 
     os_strdup("global vacuum", query);
 
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: vacuum");
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
@@ -3602,6 +3605,9 @@ void test_wdb_parse_global_vacuum_success_update_vacuum_data_error(void **state)
     char *query = NULL;
 
     os_strdup("global vacuum", query);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: vacuum");
@@ -3691,6 +3697,9 @@ void test_wdb_parse_global_get_fragmentation_free_pages_error(void **state) {
     char *query = NULL;
 
     os_strdup("global get_fragmentation", query);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get_fragmentation");
