@@ -125,9 +125,8 @@
             <Custom Action="DeleteOssecService" After="StopOssecService">OSSECINSTALLED</Custom>
 
             <!-- Install functions -->
-            <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
-            <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
-
+            <Custom Action="SetCustomActionDataValue" After="InstallInitialize">(NOT WIX_UPGRADE_DETECTED) AND (NOT PATCH) AND (NOT Installed)</Custom>
+            <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">(NOT WIX_UPGRADE_DETECTED) AND (NOT PATCH) AND (NOT Installed)</Custom>
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
