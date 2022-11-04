@@ -112,6 +112,7 @@ static void expect_fim_db_create_file_success() {
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     will_return(__wrap_sqlite3_open_v2, 1);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -137,7 +138,10 @@ void expect_fim_db_bind_range(const char *start, const char *top, int retval) {
  * Successfully wrappes a fim_db_cache() call
  * */
 static void wraps_fim_db_cache() {
-    will_return_count(__wrap_sqlite3_prepare_v2, SQLITE_OK, FIMDB_STMT_SIZE);
+    for (int i = 0; i < FIMDB_STMT_SIZE; i++) {
+        will_return(__wrap_sqlite3_prepare_v2, 1);
+        will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    }
 }
 
 void expect_fim_db_decode_string_array(int column_count, const char **array) {
@@ -382,6 +386,7 @@ void test_fim_db_init_failed_file_creation_prepare(void **state) {
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
 
+    will_return(__wrap_sqlite3_prepare_v2, NULL);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
@@ -400,6 +405,7 @@ void test_fim_db_init_failed_file_creation_step(void **state) {
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -421,6 +427,7 @@ void test_fim_db_init_failed_file_creation_chmod(void **state) {
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -464,6 +471,7 @@ void test_fim_db_init_failed_cache(void **state) {
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, NULL);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
@@ -480,10 +488,12 @@ void test_fim_db_init_failed_cache_memory(void **state) {
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     will_return(__wrap_sqlite3_open_v2, 1);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, 0);
+    will_return(__wrap_sqlite3_prepare_v2, NULL);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
@@ -830,6 +840,7 @@ void test_fim_db_check_transaction_success(void **state) {
 \**********************************************************************************************************************/
 void test_fim_db_cache_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_sqlite3_prepare_v2, NULL);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
@@ -945,6 +956,7 @@ void test_fim_db_clean_stmt_reset_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_reset, SQLITE_ERROR);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     int ret = fim_db_clean_stmt(test_data->fim_sql, 0);
     assert_int_equal(ret, FIMDB_OK);
@@ -954,6 +966,7 @@ void test_fim_db_clean_stmt_reset_and_prepare_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_reset, SQLITE_ERROR);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, NULL);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     will_return(__wrap_sqlite3_extended_errcode, 111);
