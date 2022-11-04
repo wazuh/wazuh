@@ -843,7 +843,7 @@ checks:
       - 'd:/etc/security/limits.d -> r:\. -> !r:^\s*# && r:hard\s+core\s+0'
       - 'f:/etc/security/limits.conf -> !r:^\s*# && r:hard\s+core\s+0'
       - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled"
-condition: all
+  condition: all
   rules:
     - "c:sysctl fs.suid_dumpable -> r:^fs.suid_dumpable = 0"
     - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled"
