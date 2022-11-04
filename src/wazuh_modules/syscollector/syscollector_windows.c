@@ -1202,7 +1202,19 @@ void sys_hw_windows(const char* LOCATION){
     if(checkVista()) {
 
         CallFunc1 _get_baseboard_serial;
-        HMODULE sys_library = LoadLibrary("syscollector_win_ext.dll");
+
+        char file_name[MAX_PATH] = { 0 };
+        snprintf(file_name, MAX_PATH - 1, "%s", "syscollector_win_ext.dll");
+
+        // Get full path of DLL in the same directory as the executable
+        // This is needed because the DLL is not in the System32 folder.
+        // The DLL is in the same directory as the executable.
+        // The executable is in the same directory as the DLL.
+
+        char full_path[OS_MAXSTR] =  { 0 };
+        GetFullPathName(file_name, OS_MAXSTR, full_path, NULL);
+
+        HMODULE sys_library = LoadLibrary(full_path);
         if (sys_library == NULL)
         {
             DWORD error = GetLastError();
@@ -1738,7 +1750,19 @@ void sys_network_windows(const char* LOCATION){
     CallFunc _get_network_vista = NULL;
 
     if (checkVista()) {
-        sys_library = LoadLibrary("syscollector_win_ext.dll");
+
+        char file_name[MAX_PATH] = { 0 };
+        snprintf(file_name, MAX_PATH - 1, "%s", "syscollector_win_ext.dll");
+
+        // Get full path of DLL in the same directory as the executable
+        // This is needed because the DLL is not in the System32 folder.
+        // The DLL is in the same directory as the executable.
+        // The executable is in the same directory as the DLL.
+
+        char full_path[OS_MAXSTR] =  { 0 };
+        GetFullPathName(file_name, OS_MAXSTR, full_path, NULL);
+
+        sys_library = LoadLibrary(full_path);
         if (sys_library != NULL){
             _get_network_vista = (CallFunc)GetProcAddress(sys_library, "get_network_vista");
             if (!_get_network_vista){

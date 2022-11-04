@@ -131,6 +131,23 @@ int local_start()
     WSADATA wsaData;
     DWORD  threadID;
     DWORD  threadID2;
+
+    // Change search order for DLLs
+    // This is needed to avoid side loading of DLLs from the current directory.
+    // This is a security feature of Windows.
+
+    // Check if the SetDefaultDllDirectories API is available.
+    // This API is available on Windows 8 and later.
+
+    HMODULE hKernel32 = GetModuleHandle("kernel32.dll");
+    if (hKernel32) {
+        typedef BOOL(WINAPI *SetDefaultDllDirectories_t)(DWORD);
+        SetDefaultDllDirectories_t pSetDefaultDllDirectories = (SetDefaultDllDirectories_t)GetProcAddress(hKernel32, "SetDefaultDllDirectories");
+        if (pSetDefaultDllDirectories) {
+            pSetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32);
+        }
+     }
+
     win_debug_level = getDefine_Int("windows", "debug", 0, 2);
 
     /* Start agent */
@@ -595,7 +612,18 @@ char *get_win_agent_ip(){
             } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
         } else {
             if (!sys_library) {
-                sys_library = LoadLibrary("syscollector_win_ext.dll");
+                char file_name[MAX_PATH] = { 0 };
+                snprintf(file_name, MAX_PATH - 1, "%s", "syscollector_win_ext.dll");
+
+                // Get full path of DLL in the same directory as the executable
+                // This is needed because the DLL is not in the System32 folder.
+                // The DLL is in the same directory as the executable.
+                // The executable is in the same directory as the DLL.
+
+                char full_path[OS_MAXSTR] =  { 0 };
+                GetFullPathName(file_name, OS_MAXSTR, full_path, NULL);
+
+                sys_library = LoadLibrary(full_path);
             }
 
             if (sys_library && !_get_network_vista) {
