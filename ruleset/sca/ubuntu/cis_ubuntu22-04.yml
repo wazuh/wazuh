@@ -1642,13 +1642,13 @@ checks:
     condition: all
     rules:
       - "c:dpkg-query -s nis -> r:package 'nis' is not installed"
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> no packages found matching nis|deinstall|not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> r:no packages found matching nis|deinstall|not-installed"
 
   # 2.3.2 Ensure rsh client is not installed (Automated)
   - id: 28568
     title: "Ensure rsh client is not installed."
     description: "The rsh-client package contains the client commands for the rsh services."
-    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin ."
+    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh, rcp and rlogin."
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
     remediation: "Uninstall rsh: # apt purge rsh-client"
     compliance:
@@ -1665,7 +1665,7 @@ checks:
     condition: all
     rules:
       - "c:dpkg-query -s rsh-client -> r:package 'rsh-client' is not installed"
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rsh-client -> no packages found matching rsh-client|deinstall|not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rsh-client -> r:no packages found matching rsh-client|deinstall|not-installed"
 
   # 2.3.3 Ensure talk client is not installed (Automated)
   - id: 28569
@@ -1688,7 +1688,7 @@ checks:
     condition: all
     rules:
       - "c:dpkg-query -s talk -> r:package 'talk' is not installed"
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' talk -> no packages found matching talk|deinstall|not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' talk -> r:no packages found matching talk|deinstall|not-installed"
 
   # 2.3.4 Ensure telnet client is not installed (Automated)
   - id: 28570
@@ -1711,7 +1711,7 @@ checks:
     condition: all
     rules:
       - "c:dpkg-query -s telnet -> r:package 'telnet' is not installed"
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' telnet -> no packages found matching telnet|deinstall|not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' telnet -> r:no packages found matching telnet|deinstall|not-installed"
 
   # 2.3.5 Ensure LDAP client is not installed (Automated)
   - id: 28571
@@ -1734,7 +1734,7 @@ checks:
     condition: all
     rules:
       - "c:dpkg-query -s ldap-utils -> r:package 'ldap-utils' is not installed"
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ldap-utils -> no packages found matching ldap-utils|deinstall|not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ldap-utils -> r:no packages found matching ldap-utils|deinstall|not-installed"
 
   # 2.3.6 Ensure RPC is not installed (Automated)
   - id: 28572
@@ -1756,7 +1756,7 @@ checks:
     condition: all
     rules:
       - "c:dpkg-query -s rpcbind -> r:package 'rpcbind' is not installed"
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rpcbind -> no packages found matching rpcbind|deinstall|not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rpcbind -> r:no packages found matching rpcbind|deinstall|not-installed"
 
   # 2.4 Ensure nonessential services are removed or masked (Manual) - Not implemented
 
