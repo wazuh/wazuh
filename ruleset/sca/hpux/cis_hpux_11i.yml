@@ -365,7 +365,7 @@ checks:
     rules:
       - "f:/etc/rc.config.d/nfsconf -> r:NFS_SERVER=0"
       - "f:/etc/rc.config.d/nfsconf -> r:NUM_NFSD=0"
-      - "f:/etc/rc.config.d/nfsconf -> r:UM_NFSIOD=0"
+      - "f:/etc/rc.config.d/nfsconf -> r:NUM_NFSIOD=0"
 
   - id: 25022
     title: "Only enable NFS client processes if absolutely necessary."
