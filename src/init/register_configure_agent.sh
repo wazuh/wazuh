@@ -337,7 +337,7 @@ main () {
         PROTOCOLS=( $(tolower "${WAZUH_PROTOCOL//,/ }") )
         # Get uniques values if all protocols are the same
         if ( [ "${#PROTOCOLS[@]}" -ge "${#ADDRESSES[@]}" ] && ( ( ! echo "${PROTOCOLS[@]}" | grep -q -w "tcp" ) || ( ! echo "${PROTOCOLS[@]}" | grep -q -w "udp" ) ) ) || [ ${#PROTOCOLS[@]} -eq 0 ] || ( ! echo "${PROTOCOLS[@]}" | grep -q -w "udp" ) ; then
-            ADDRESSES=( $(echo "${ADDRESSES[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ') ) 
+            ADDRESSES=( $(echo "${ADDRESSES[@]}" |  tr ' ' '\n' | cat -n | sort -uk2 | sort -n | cut -f2- | tr '\n' ' ') ) 
         fi
         
         add_adress_block
