@@ -821,7 +821,7 @@ checks:
       - soc_2: ["CC6.3", " CC6.6"]
     condition: all
     rules:
-      - "systemctl is-enabled apport.service -> r:disabled"
+      - "c:systemctl is-enabled apport.service -> r:disabled"
       - "not f:/etc/default/apport -> n:enabled=(\\d+) compare != 0"
       - "not c:systemctl is-active apport.service -> r:active"
 
