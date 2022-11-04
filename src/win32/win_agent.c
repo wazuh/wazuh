@@ -20,6 +20,7 @@
 #include "os_execd/execd.h"
 #include "os_crypto/md5/md5_op.h"
 #include "external/cJSON/cJSON.h"
+#include "hooking.h"
 
 #ifndef ARGV0
 #define ARGV0 "ossec-agent"
@@ -146,7 +147,9 @@ int local_start()
         if (pSetDefaultDllDirectories) {
             pSetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32);
         }
-     }
+    }
+
+    hook_LdrLoadDll();
 
     win_debug_level = getDefine_Int("windows", "debug", 0, 2);
 
