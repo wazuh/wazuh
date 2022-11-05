@@ -17,8 +17,7 @@
 #include "wazuh_modules/wmodules.h"
 
 #define COUNTER_LENGTH 64
-#define HC_FORCE_RECONNECT "force_reconnect"
-
+static const char * ACK = "ack";
 // Dispatcher theads entry point
 static void * req_dispatch(req_node_t * node);
 
@@ -178,7 +177,7 @@ void * req_dispatch(req_node_t * node) {
         }
 
         if (isForceReconnect) {
-            if (OS_SendSecureTCP(node->sock, strlen("ack"), "ack") != 0) {
+            if (OS_SendSecureTCP(node->sock, strlen(ACK), ACK) != 0) {
                 mwarn("At OS_SendSecureTCP(): %s", strerror(errno));
             }
             goto cleanup;
