@@ -120,7 +120,7 @@
             <Custom Action="SetAgentGroup" Before="SetCustomActionDataValue">GROUP &lt;&gt; "" AND WAZUH_AGENT_GROUP = ""</Custom>
 
             <!-- Delete OSSEC service if it exist -->
-            <Custom Action="CheckSvcRunning" After="AppSearch"></Custom>
+            <Custom Action="CheckSvcRunning" After="AppSearch">(WIX_UPGRADE_DETECTED OR PATCH) AND Installed</Custom>
             <Custom Action="StopOssecService" After="InstallInitialize">OSSECINSTALLED</Custom>
             <Custom Action="DeleteOssecService" After="StopOssecService">OSSECINSTALLED</Custom>
 

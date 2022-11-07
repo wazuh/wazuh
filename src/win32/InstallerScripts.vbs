@@ -361,45 +361,35 @@ Private Function GetVersion()
 End Function
 
 Public Function CheckSvcRunning()
-    Dim FSO
-    Set FSO = CreateObject("Scripting.FileSystemObject")
-    Set outputFile = FSO.CreateTextFile("C:\WazuhInstallerScript.log")
+    Set shell = CreateObject("WScript.Shell")
 	Set wmi = GetObject("winmgmts://./root/cimv2")
+    set popup_message = "The service could not be fetched from WMI implementation. The installation will continue with the default procedure (Start Wazuh service automatically)." & vbcrlf & vbcrlf & "Please review your WMI status and permissions."
 
-    outputFile.WriteLine("------ CheckSvcRunning Trace ------")
+    ' Checking if OssecSvc is defined in the host and if it's running
     SERVICE = "OssecSvc"
-    outputFile.WriteLine("First Query = {Select * from Win32_Service where Name = '" & SERVICE & "'}")
     Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
 
     For Each obj in svc
-        outputFile.WriteLine("Name: " & obj.Name)
-        outputFile.WriteLine("DisplayName: " & obj.DisplayName)
-        outputFile.WriteLine("State: " & obj.State)
-        outputFile.WriteLine("ExitCode: " & obj.ExitCode)
-        outputFile.WriteLine("ProcessId: " & obj.ProcessId)
-        outputFile.WriteLine("StartMode: " & obj.StartMode)
-        outputFile.WriteLine("Status: " & obj.Status)
-        Session.Property("OSSECRUNNING") = obj.State
+        If typename(obj) == "Empty" Then 
+            shell.Popup popup_message, 20, "Information", 64
+            Session.Property("OSSECRUNNING") = "Stopped"
+        Else
+            Session.Property("OSSECRUNNING") = obj.State
+        End If
     Next
     
-
+    ' Checking if WazuhSvc is defined in the host and if it's running
     SERVICE = "WazuhSvc"
-    outputFile.WriteLine("Second Query = {Select * from Win32_Service where Name = '" & SERVICE & "'}")
     Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
 
     For Each obj in svc
-        outputFile.WriteLine("Name: " & obj.Name)
-        outputFile.WriteLine("DisplayName: " & obj.DisplayName)
-        outputFile.WriteLine("State: " & obj.State)
-        outputFile.WriteLine("ExitCode: " & obj.ExitCode)
-        outputFile.WriteLine("ProcessId: " & obj.ProcessId)
-        outputFile.WriteLine("StartMode: " & obj.StartMode)
-        outputFile.WriteLine("Status: " & obj.Status)
-        Session.Property("WAZUHRUNNING") = obj.State
+        If typename(obj) == "Empty" Then 
+            shell.Popup popup_message, 20, "Information", 64
+            Session.Property("WAZUHRUNNING") = "Running"
+        Else
+            Session.Property("WAZUHRUNNING") = obj.State
+        End If
     Next
-
-    outputFile.WriteLine("------------")
-    set FSO = Nothing
 
 	CheckSvcRunning = 0
 End Function
