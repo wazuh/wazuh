@@ -187,6 +187,9 @@ static OSHash *multi_groups;
 static time_t _stime;
 int INTERVAL;
 
+/* Use disk storage to create temporal merged files */
+int disk_storage = 0;
+
 /* For the last message tracking */
 static w_linked_queue_t *pending_queue;
 OSHash *pending_data;
@@ -490,6 +493,7 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
     os_md5 md5sum_tmp;
     struct stat attrib;
     char merged[PATH_MAX + 1];
+    char merged_tmp[PATH_MAX + 1];
     char group_path[PATH_MAX + 1];
     FILE *finalfp = NULL;
     char *finalbuf = NULL;
@@ -502,6 +506,7 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
     }
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, SHAREDCFG_FILENAME);
+    snprintf(merged_tmp, PATH_MAX + 1, "%s/%s/%s.tmp", sharedcfg_dir, group, SHAREDCFG_FILENAME);
 
     if (create_merged && (r_group = w_parser_get_group(group), r_group)) {
         if (r_group->current_polling_time <= 0) {
@@ -564,10 +569,17 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
 
     if ((!r_group || !r_group->merged_is_downloaded) && (!is_multigroup || create_merged)) {
         if (create_merged) {
-            if (finalfp = open_memstream(&finalbuf, &finalsize), finalfp == NULL) {
-                merror("Unable to open memory stream due to [(%d)-(%s)].", errno, strerror(errno));
-                os_free(finalbuf);
-                return;
+            if (disk_storage) {
+                if (finalfp = fopen(merged_tmp, "w"), finalfp == NULL) {
+                    merror("Unable to create merged file: '%s' due to [(%d)-(%s)].", merged_tmp, errno, strerror(errno));
+                    return;
+                }
+            } else {
+                if (finalfp = open_memstream(&finalbuf, &finalsize), finalfp == NULL) {
+                    merror("Unable to open memory stream due to [(%d)-(%s)].", errno, strerror(errno));
+                    os_free(finalbuf);
+                    return;
+                }
             }
             fprintf(finalfp, "#%s\n", group);
         }
@@ -600,17 +612,36 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
 
         if (create_merged) {
             fclose(finalfp);
-            OS_MD5_Str(finalbuf, finalsize, md5sum_tmp);
-            if ((OS_MD5_File(merged, md5sum, OS_TEXT) != 0) || (strcmp(md5sum_tmp, md5sum) != 0)) {
-                if (finalfp = fopen(merged, "w"), finalfp == NULL) {
-                    merror("Unable to open file: '%s' due to [(%d)-(%s)].", merged, errno, strerror(errno));
-                    os_free(finalbuf);
+
+            if (disk_storage) {
+                if (OS_MD5_File(merged_tmp, md5sum_tmp, OS_TEXT) != 0) {
+                    merror("Accessing file '%s'", merged_tmp);
                     return;
                 }
-                fwrite(finalbuf, finalsize, 1, finalfp);
-                fclose(finalfp);
+            } else {
+                OS_MD5_Str(finalbuf, finalsize, md5sum_tmp);
             }
-            os_free(finalbuf);
+
+            if ((OS_MD5_File(merged, md5sum, OS_TEXT) != 0) || (strcmp(md5sum_tmp, md5sum) != 0)) {
+                if (disk_storage) {
+                    OS_MoveFile(merged_tmp, merged);
+                } else {
+                    if (finalfp = fopen(merged, "w"), finalfp == NULL) {
+                        merror("Unable to open file: '%s' due to [(%d)-(%s)].", merged, errno, strerror(errno));
+                        os_free(finalbuf);
+                        return;
+                    }
+                    fwrite(finalbuf, finalsize, 1, finalfp);
+                    fclose(finalfp);
+                    os_free(finalbuf);
+                }
+            } else {
+                if (disk_storage) {
+                    unlink(merged_tmp);
+                } else {
+                    os_free(finalbuf);
+                }
+            }
         }
     }
 
@@ -1546,6 +1577,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
     return NULL;
 }
+
 /* Update shared files */
 void *update_shared_files(__attribute__((unused)) void *none)
 {
@@ -1595,6 +1627,8 @@ void manager_init()
 
     groups = OSHash_Create();
     multi_groups = OSHash_Create();
+
+    disk_storage = getDefine_Int("remoted", "disk_storage", 0, 1);
 
     /* Run initial groups and multigroups scan */
     c_files(true);
