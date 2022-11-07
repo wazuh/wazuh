@@ -275,7 +275,7 @@
 
   <rule id="92225" level="6">
     <if_group>sysmon_event_11</if_group>
-    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\\\ProgramData\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\StartUp.+\.(exe|com|dll|vbs|js|bat|cmd|pif|wsh|ps1|lnk|txt|msi)</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\\\ProgramData\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\StartUp.+\.(exe|com|dll|vbs|js|bat|cmd|pif|wsh|ps1|lnk|msi)</field>
     <options>no_full_log</options>
     <description>An executable file has been copied to Windows start-up folder</description>
     <mitre>
