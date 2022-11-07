@@ -148,3 +148,18 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
 
     return nullptr;
 }
+
+std::vector<std::string> KVDBManager::getAvailableKVDBs()
+{
+    std::vector<std::string> list;
+
+    if (m_availableKVDBs.size() > 0)
+    {
+        for (const auto& var : m_availableKVDBs)
+        {
+            list.emplace_back(var.first);
+        }
+    }
+
+    return list;
+}

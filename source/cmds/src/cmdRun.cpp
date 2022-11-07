@@ -12,6 +12,7 @@
 #include <api/api.hpp>
 #include <api/catalog/catalog.hpp>
 #include <api/catalog/commands.hpp>
+#include <api/kvdb/commands.hpp>
 #include <builder/builder.hpp>
 #include <builder/register.hpp>
 #include <hlp/logpar.hpp>
@@ -100,6 +101,9 @@ void run(const std::string& kvdbPath,
                 WAZUH_LOG_INFO("Engine \"run\" command: KVDB terminated.");
                 kvdb->clear();
             });
+
+        // Register KVDB commands
+        api::kvdb::cmds::registerAllCmds(server->getRegistry());
 
         store = std::make_shared<store::FileDriver>(fileStorage);
         WAZUH_LOG_INFO("Engine \"run\" command: Store successfully initialized.");

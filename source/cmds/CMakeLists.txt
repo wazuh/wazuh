@@ -2,7 +2,7 @@ add_library(cmds STATIC
     src/cmdGraph.cpp
     src/cmdRun.cpp
     src/cmdTest.cpp
-    src/cmdKvdb.cpp
+    src/cmdApiKvdb.cpp
     src/cmdApiCatalog.cpp
     src/cmdApiEnvironment.cpp
     src/apiclnt/connection.cpp
