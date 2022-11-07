@@ -27,8 +27,9 @@ typedef struct _limits_t {
  * @brief Load the limits structure
  * @param eps eps amount
  * @param timeframe timeframe size
+ * @param maximum_found eps amount block found
  */
-void load_limits(unsigned int eps, unsigned int timeframe);
+void load_limits(unsigned int eps, unsigned int timeframe, bool maximum_found);
 
 /**
  * @brief Update and validate limits
