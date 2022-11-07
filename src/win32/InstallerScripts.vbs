@@ -382,6 +382,7 @@ Public Function CheckSvcRunning()
     SERVICE = "WazuhSvc"
     Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
 
+    shell.Popup popup_message, 20, "Information", 64
     For Each obj in svc
         If typename(obj) = "Empty" Then 
             shell.Popup popup_message, 20, "Information", 64
