@@ -651,7 +651,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: none
     rules:
-      - "f:/etc/shadow -> r:^root:*:|^root:!:"
+      - 'f:/etc/shadow -> r:^root:\p:'
 
   # 1.5 Additional Process Hardening
 
@@ -724,11 +724,9 @@ checks:
     condition: all
     rules:
       - "c:sysctl fs.suid_dumpable -> r:=^fs.suid_dumpable = 0"
-      - 'd:/etc/sysctl.d -> r:\. -> r:^\s*fs.suid_dumpable = 0'
-      - 'f:/etc/sysctl.conf -> r:^\s*fs.suid_dumpable = 0'
-      - 'f:/etc/security/limits.conf -> !r:^\s*# && r:hard\s+core\s+0'
-      - 'd:/etc/security/limits.d -> r:\. -> !r:^\s*# && r:hard\s+core\s+0'
       - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled"
+      - 'c:grep -Rh "fs.suid_dumpable" /etc/sysctl.conf /etc/sysctl.d/ -> !r:^\s*\t*# && r:fs.suid_dumpable = 0'
+      - 'c:grep -Rh "hard core 0" /etc/security/limits.conf /etc/security/limits.d/ -> !r:^\s*\t*# && r:\p hard core 0'
 
   # 1.6 Mandatory Access Control
 
@@ -787,7 +785,7 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:apparmor_status -> r:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
       - "c:apparmor_status -> r:0 processes are unconfined"
 
   # 1.6.1.4 Ensure all AppArmor Profiles are enforcing (Automated)
@@ -3641,7 +3639,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare > 0'
-      - 'not f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+:\S*:\d*:(\d+) compare < 1'
+      - 'not f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:(\d+) compare < 1'
 
   # 5.5.1.2 Ensure password expiration is 365 days or less (Automated)
   - id: 19178
@@ -3662,7 +3660,7 @@ checks:
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare > 0'
-      - 'not f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+:\S*:\d*:\d*:(\d+) compare > 365'
+      - 'not f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:(\d+) compare > 365'
 
   # 5.5.1.3 Ensure password expiration warning days is 7 or more (Automated)
   - id: 19179
@@ -3680,7 +3678,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
-      - 'not f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+:\S*:\d*:\d*:\d*:(\d+) compare < 7'
+      - 'not f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:\d*:(\d+) compare < 7'
 
   # 5.5.1.4 Ensure inactive password lock is 30 days or less (Automated)
   - id: 19180
@@ -3700,7 +3698,7 @@ checks:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare >= 30'
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare == 0'
       - "c:useradd -D -> r:^INACTIVE=-1"
-      - 'f:/etc/shadow -> !r:^\w+:! && !r:^\w+:* && n:^\w+:\S*:\d*:\d*:\d*:\d+:(\d+) compare > 30'
+      - 'f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:\d*:\d+:(\d+) compare > 30'
 
   # 5.5.1.5 Ensure all users last password change date is in the past (Automated) - Not implemented
   # 5.5.2 Ensure system accounts are secured (Automated) - Not implemented
