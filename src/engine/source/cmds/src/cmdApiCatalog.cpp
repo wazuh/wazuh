@@ -243,7 +243,7 @@ void loadRuleset(const std::string& socketPath,
     }
 
     // Iterate directory and send requests to create items
-    for (const auto& dirEntry : std::filesystem::directory_iterator(collectionPath, ec))
+    for (const auto& dirEntry : std::filesystem::recursive_directory_iterator(collectionPath, ec))
     {
         // If error ignore entry and continue
         if (ec)

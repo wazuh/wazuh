@@ -3,6 +3,21 @@ name: decoder/dbsync/0
 sources:
   - decoder/queue-dbsync/0
 
+metadata:
+    module: wazuh-agent/dbsync/dbsync
+    title: DBSync Decoder
+    description: >
+        Decodes dbsync messages
+    compatibility: >
+        This decoder has been tested on Wazuh version 4.3.
+    author:
+        name: Wazuh, Inc.
+        email: info@wazuh.com
+        url: https://wazuh.com
+        date: 2022/08/15
+    references:
+        - https://github.com/wazuh/wazuh/issues/13521
+
 check:
   - event.original: +s_starts/{
 
