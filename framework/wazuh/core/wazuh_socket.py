@@ -25,6 +25,8 @@ class WazuhSocket:
         try:
             self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.s.connect(self.path)
+        except FileNotFoundError:
+            raise WazuhInternalError(1013, extra_message=os.path.basename(self.path))
         except ConnectionRefusedError:
             raise WazuhInternalError(1121, extra_message=f"Socket '{os.path.basename(self.path)}' cannot receive "
                                                          "connections")
