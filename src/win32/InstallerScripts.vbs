@@ -370,7 +370,7 @@ Public Function CheckSvcRunning()
     Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
 
     For Each obj in svc
-        If typename(obj) == "Empty" Then 
+        If typename(obj) = "Empty" Then 
             shell.Popup popup_message, 20, "Information", 64
             Session.Property("OSSECRUNNING") = "Stopped"
         Else
@@ -383,7 +383,7 @@ Public Function CheckSvcRunning()
     Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
 
     For Each obj in svc
-        If typename(obj) == "Empty" Then 
+        If typename(obj) = "Empty" Then 
             shell.Popup popup_message, 20, "Information", 64
             Session.Property("WAZUHRUNNING") = "Running"
         Else
