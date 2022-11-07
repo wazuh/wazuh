@@ -27,6 +27,7 @@ public:
     bool createDBfromCDB(const std::filesystem::path& path, bool createIfMissing = true);
     bool deleteDB(const std::string& name);
     KVDBHandle getDB(const std::string& name);
+    std::vector<std::string> getAvailableKVDBs();
     void clear()
     {
         if (m_availableKVDBs.size() > 0)
