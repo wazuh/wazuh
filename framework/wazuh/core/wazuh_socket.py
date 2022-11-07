@@ -1,14 +1,14 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-from wazuh.core.exception import WazuhException, WazuhInternalError
-from wazuh import common
+import asyncio
+import os.path
 import socket
 from json import dumps, loads
 from struct import pack, unpack
-import asyncio
 
+from wazuh import common
+from wazuh.core.exception import WazuhException, WazuhInternalError
 
 SOCKET_COMMUNICATION_PROTOCOL_VERSION = 1
 
@@ -25,6 +25,9 @@ class WazuhSocket:
         try:
             self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.s.connect(self.path)
+        except ConnectionRefusedError:
+            raise WazuhInternalError(1121, extra_message=f"Socket '{os.path.basename(self.path)}' cannot receive "
+                                                         "connections")
         except Exception as e:
             raise WazuhException(1013, str(e))
 
