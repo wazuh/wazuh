@@ -271,7 +271,9 @@
 #define FIM_REALTIME_MAXNUM_WATCHES         "(6364): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
 #define FIM_ADDED_RULE_TO_FILE              "(6365): Added directory '%s' to audit rules file."
 #define FIM_WHODATA_STATE_CHECKER           "(6366): Starting check of Windows Audit Policies and SACLs."
-
+#define FIM_WHODATA_POLICY_OPENED           "(6367): Audit policy opened correctly. AuditingMode enabled."
+#define FIM_WHODATA_OBJECT_ACCESS           "(6368): Detected Audit Object Access category, checking subcategories. GUID: %s"
+#define FIM_WHODATA_SUCCESS_POLICY          "(6369): Found Audit %s subcategory configured to success. GUID: %s"
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"

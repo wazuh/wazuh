@@ -5384,11 +5384,11 @@ void test_whodata_callback_4719_success(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    policies_checked = 2;
+    policies_checked = 1;
 
     successful_whodata_event_render(event, raw_data);
 
-    expect_string(__wrap__mwarn, formatted_msg, FIM_WHODATA_POLICY_CHANGE);
+    expect_string(__wrap__mwarn, formatted_msg, FIM_WHODATA_POLICY_CHANGE_CHANNEL);
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -7455,7 +7455,7 @@ void test_state_checker_not_match_policy(void **state) {
                                    2, TRUE,
                                    pol_data->paudit_policy, TRUE);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6952): Audit policy change detected. Switching directories to realtime.");
+    expect_string(__wrap__mwarn, formatted_msg, FIM_WHODATA_POLICY_CHANGE_CHECKER);
 
     ret = state_checker(input);
 

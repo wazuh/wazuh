@@ -956,8 +956,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 break;
 
             case 4719:
-                if (policies_checked > 1) {
-                    mwarn(FIM_WHODATA_POLICY_CHANGE);
+                if (policies_checked) {
+                    mwarn(FIM_WHODATA_POLICY_CHANGE_CHANNEL);
                     win_whodata_release_resources(&syscheck.wdata);
                 }
             break;
@@ -1022,6 +1022,8 @@ int policy_check() {
                 ULONG policyAuditEventType = 0;
                 char guid_string[40];
 
+                mdebug2(FIM_WHODATA_POLICY_OPENED);
+
                 while (policyAuditEventType < AuditEvents->MaximumAuditEventCount) {
                     if(AuditLookupCategoryGuidFromCategoryId((POLICY_AUDIT_EVENT_TYPE)policyAuditEventType, &auditCategoryId) == FALSE) {
                         goto error;
@@ -1032,6 +1034,8 @@ int policy_check() {
                                                 auditCategoryId.Data4[4], auditCategoryId.Data4[5], auditCategoryId.Data4[6], auditCategoryId.Data4[7]);
 
                     if(!strcasecmp(guid_string, guid_ObjectAccess)) {
+                        mdebug2(FIM_WHODATA_OBJECT_ACCESS, guid_string);
+
                         if(AuditEnumerateSubCategories(&auditCategoryId, FALSE, &pAuditSubCategoryGuids, &subCategoryCount) == FALSE) {
                             goto error;
                         }
@@ -1052,15 +1056,15 @@ int policy_check() {
                             if(currentPolicy.AuditingInformation & POLICY_AUDIT_EVENT_SUCCESS) {
                                 if(!strcasecmp(guid_string, guid_FileSystem)) {
                                     file_system_success = 1;
+                                    mdebug2(FIM_WHODATA_SUCCESS_POLICY, "File System", guid_string);
                                 }
                                 if(!strcasecmp(guid_string, guid_Handle)) {
                                     handle_manipulation_success = 1;
+                                    mdebug2(FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_string);
                                 }
                                 if(file_system_success && handle_manipulation_success) {
                                     LsaFreeMemory(AuditEvents);
                                     LsaClose(PolicyHandle);
-
-                                    policies_checked++;
 
                                     return 0;
                                 }
@@ -1124,7 +1128,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
 
         // Check File System and Handle Manipulation policies. Switch to realtime in case these policies are disabled.
         if (policy_check() == 1) {
-            mwarn(FIM_WHODATA_POLICY_CHANGE);
+            mwarn(FIM_WHODATA_POLICY_CHANGE_CHECKER);
             win_whodata_release_resources(&syscheck.wdata);
             break;
         }
@@ -1229,6 +1233,10 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
         w_rwlock_unlock(&syscheck.wdata.directories->mutex);
 
         sleep(interval);
+
+        if (!policies_checked) {
+            policies_checked = 1;
+        }
     }
 
     return 0;
