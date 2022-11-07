@@ -914,8 +914,8 @@ checks:
     condition: all
     rules:
       - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
-      - 'c:apparmor_status -> n:^0\s+profiles\s+are\s+in\s+kill\s+mode'
-      - 'c:apparmor_status -> n:^0\s+profiles\s+are\s+in\s+unconfined\s+mode'
+      - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+kill\s+mode'
+      - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+unconfined\s+mode'
       - "c:apparmor_status -> r:^0 processes are unconfined"
 
   # 1.6.1.4 Ensure all AppArmor Profiles are enforcing (Automated)
@@ -940,8 +940,8 @@ checks:
     rules:
       - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
       - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0'
-      - 'c:apparmor_status -> n:^0\s+profiles\s+are\s+in\s+kill\s+mode'
-      - 'c:apparmor_status -> n:^0\s+profiles\s+are\s+in\s+unconfined\s+mode'
+      - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+kill\s+mode'
+      - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+unconfined\s+mode'
       - 'c:apparmor_status -> r:^0\s*profiles\s+are\s+in\s+complain\s+mode'
       - 'c:apparmor_status -> r:^0\s*processes\s+are\s+unconfined'
 
