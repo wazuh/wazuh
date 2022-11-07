@@ -11,7 +11,7 @@ GOTO end
 
 :background
 SLEEP 5 2> NUL || ping -n 5 127.0.0.1 > NUL
-powershell -ExecutionPolicy ByPass -File startprocess.ps1
+powershell -noprofile -c Start-Process powershell.exe '-ExecutionPolicy Bypass -File \"%programfiles(x86)%\ossec-agent\do_upgrade.ps1\"'
 
 DEL do_upgrade.ps1
 DEL wazuh-agent-*.msi
