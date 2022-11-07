@@ -86,7 +86,7 @@
     <field name="win.eventdata.details" type="pcre2">(?i)\.exe</field>
     <field name="win.eventdata.targetObject" type="pcre2">(?i)System\\\\CurrentControlSet\\\\Services</field>
     <options>no_full_log</options>
-    <description>Evidence of New service creation found in registry under $(win.eventdata.targetObject) binary is: $(win.eventdata.details)</description>
+    <description>Evidence of new service creation found in registry under $(win.eventdata.targetObject) binary is: $(win.eventdata.details)</description>
     <mitre>
       <id>T1543.003</id>
     </mitre>
