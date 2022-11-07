@@ -13,4 +13,6 @@ GOTO end
 SLEEP 5 2> NUL || ping -n 5 127.0.0.1 > NUL
 powershell -NoProfile -ExecutionPolicy Bypass -Command "& {Start-Process powershell '-File \".\do_upgrade.ps1\"'}"
 
+DEL upgrade.bat
+
 :end
