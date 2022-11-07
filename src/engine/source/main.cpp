@@ -12,7 +12,7 @@
 #include <cmds/cmdApiCatalog.hpp>
 #include <cmds/cmdApiEnvironment.hpp>
 #include <cmds/cmdGraph.hpp>
-#include <cmds/cmdKvdb.hpp>
+#include <cmds/cmdApiKvdb.hpp>
 #include <cmds/cmdRun.hpp>
 #include <cmds/cmdTest.hpp>
 
@@ -26,6 +26,15 @@ constexpr auto SUBCOMMAND_RUN = "start";
 constexpr auto SUBCOMMAND_LOGTEST = "test";
 constexpr auto SUBCOMMAND_GRAPH = "graph";
 constexpr auto SUBCOMMAND_KVDB = "kvdb";
+
+// Kvdb subcommands
+constexpr auto SUBCOMMAND_KVDB_LIST = "list";
+constexpr auto SUBCOMMAND_KVDB_CREATE = "create";
+constexpr auto SUBCOMMAND_KVDB_DUMP = "dump";
+constexpr auto SUBCOMMAND_KVDB_DELETE = "delete";
+constexpr auto SUBCOMMAND_KVDB_GET = "get";
+constexpr auto SUBCOMMAND_KVDB_INSERT = "insert";
+constexpr auto SUBCOMMAND_KVDB_REMOVE = "remove";
 
 // Catalog subcommand
 constexpr auto SUBCOMMAND_CATALOG = "catalog";
@@ -241,28 +250,21 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
     CLI::App* kvdb = app->add_subcommand(args::SUBCOMMAND_KVDB,
                                          "Manage the key-value databases (KVDBs).");
 
-    // KVDB path
-    kvdb->add_option("-p, --path", args::kvdb_path, "Sets the path to the KVDB folder.")
-        ->default_val(ENGINE_KVDB_PATH)
-        ->check(CLI::ExistingDirectory);
+    // Endpoint
+    kvdb->add_option("-a, --api_socket", args::apiEndpoint, "engine api address")
+        ->default_val(ENGINE_API_SOCK);
 
+    // KVDB list subcommand
+    auto list_subcommand = kvdb->add_subcommand(
+        args::SUBCOMMAND_KVDB_LIST,
+        "list: List all KeyValueDB availables.");
+
+    //     ->add_option(
+    //         name, args::catalogName, nameDesc + "collection to list: item-type[/item-id]")
+    //     ->required();
     // KVDB name
-    kvdb->add_option("-n, --name", args::kvdb_name, "Name of the KVDB to be added.")
-        ->required();
+    //kvdb->add_option("-n, --name", args::kvdb_name, "KVDB name to be added.")->required();
 
-    // KVDB input file
-    kvdb->add_option("-i, --input_file",
-                     args::kvdb_input_file,
-                     "Sets the path to the file that contains the KVDB data.")
-        ->required()
-        ->check(CLI::ExistingFile);
-
-    // KVDB input file type
-    kvdb->add_option("-t, --input_type",
-                     args::kvdb_input_type,
-                     "Type of the input file. Allowed values: json")
-        ->check(CLI::IsMember({"json"}))
-        ->required();
 }
 
 void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
@@ -513,10 +515,54 @@ int main(int argc, char* argv[])
         }
         else if (app->get_subcommand(args::SUBCOMMAND_KVDB)->parsed())
         {
+            // Set the action based on the subcommand parsed
+            auto kvdbSubcommand = app->get_subcommand(args::SUBCOMMAND_KVDB);
+            std::string action;
+
+            if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_LIST)
+                    ->parsed())
+            {
+                action = args::SUBCOMMAND_KVDB_LIST;
+            }
+            else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_CREATE)
+                    ->parsed())
+            {
+                action = args::SUBCOMMAND_KVDB_CREATE;
+            }
+            else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_DUMP)
+                    ->parsed())
+            {
+                action = args::SUBCOMMAND_KVDB_DUMP;
+            }
+            else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_DELETE)
+                    ->parsed())
+            {
+                action = args::SUBCOMMAND_KVDB_DELETE;
+            }
+            else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_GET)
+                    ->parsed())
+            {
+                action = args::SUBCOMMAND_KVDB_GET;
+            }
+            else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_INSERT)
+                    ->parsed())
+            {
+                action = args::SUBCOMMAND_KVDB_INSERT;
+            }
+            else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_REMOVE)
+                    ->parsed())
+            {
+                action = args::SUBCOMMAND_KVDB_REMOVE;
+            }
+            else
+            {
+                // TODO: ASK -> shouldn't we throw error wrong command ?
+            }
+
             cmd::kvdb(args::kvdb_path,
                       args::kvdb_name,
-                      args::kvdb_input_file,
-                      cmd::stringToInputType(args::kvdb_input_type));
+                      args::apiEndpoint,
+                      action);
         }
         else if (app->get_subcommand(args::SUBCOMMAND_CATALOG)->parsed())
         {
