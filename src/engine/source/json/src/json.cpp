@@ -80,13 +80,13 @@ bool Json::operator==(const Json& other) const
 std::string Json::formatJsonPath(std::string_view dotPath)
 {
     // TODO: Handle array indices and pointer path operators.
-    std::string ptrPath {dotPath};
+    std::string pointerPath {dotPath};
 
     // Some helpers may indiate that the field is root element
     // In this case the path will be defined as "."
-    if (ptrPath == ".")
+    if ("." == pointerPath)
     {
-        ptrPath = "";
+        pointerPath = "";
     }
     else
     {
@@ -110,11 +110,11 @@ std::string Json::formatJsonPath(std::string_view dotPath)
         // Add / at the beginning
         if (ptrPath.front() != '/')
         {
-            ptrPath.insert(0, "/");
+            pointerPath.insert(0, "/");
         }
     }
 
-    return ptrPath;
+    return pointerPath;
 }
 
 Json::Json(Json&& other) noexcept
