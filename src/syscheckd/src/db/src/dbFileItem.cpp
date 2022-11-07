@@ -30,11 +30,6 @@ void FileItem::createFimEntry()
             data->attributes = const_cast<char*>(m_attributes.c_str());
             data->uid = static_cast<char*>(std::calloc(uid_size + 1, sizeof(char)));
 
-            if (!m_permJSON.empty())
-            {
-                data->perm_json = cJSON_Parse(m_permJSON.dump().c_str());
-            }
-
             if (data->uid)
             {
                 std::strncpy(data->uid, std::to_string(m_uid).c_str(), uid_size);
@@ -110,16 +105,7 @@ void FileItem::createJSON()
     data["dev"] = m_dev;
     data["inode"] = m_inode;
     data["size"] = m_size;
-
-    if (m_permJSON.empty())
-    {
-        data["perm"] = m_perm;
-    }
-    else
-    {
-        data["perm"] = m_permJSON;
-    }
-
+    data["perm"] = m_perm;
     data["attributes"] = m_attributes;
     data["uid"] = m_uid;
     data["gid"] = m_gid;

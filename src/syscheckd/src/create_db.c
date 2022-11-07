@@ -68,14 +68,18 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->options & CHECK_PERM) {
         if (aux = cJSON_GetObjectItem(changed_data, "perm"), aux != NULL) {
+#ifndef WIN32
             cJSON_AddStringToObject(old_attributes, "perm", cJSON_GetStringValue(aux));
+#else
+            cJSON_AddItemToObject(old_attributes, "perm", cJSON_Parse(cJSON_GetStringValue(aux)));
+#endif
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
 
         } else {
 #ifndef WIN32
             cJSON_AddStringToObject(old_attributes, "perm", data->perm);
 #else
-            cJSON_AddItemToObject(old_attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
+            cJSON_AddItemToObject(old_attributes, "perm", cJSON_Parse(data->perm));
 #endif
         }
     }
@@ -836,6 +840,11 @@ void fim_event_callback(void* data, void * ctx)
             cJSON_AddStringToObject(data_json, "tags", ctx_data->config->tag);
         }
 
+#ifdef WIN32
+        cJSON* attributes_json = cJSON_GetObjectItem(data_json, "attributes");
+        char* perm_string = cJSON_GetStringValue(cJSON_GetObjectItem(attributes_json, "perm"));
+        cJSON_ReplaceItemInObject(attributes_json, "perm", cJSON_Parse(perm_string));
+#endif
         send_syscheck_msg(json_event);
     }
 }
@@ -1318,7 +1327,9 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
 void init_fim_data_entry(fim_file_data *data) {
     data->size = 0;
     data->perm = NULL;
+#ifdef WIN32
     data->perm_json = NULL;
+#endif
     data->attributes = NULL;
     data->uid = NULL;
     data->gid = NULL;
@@ -1446,7 +1457,7 @@ cJSON * fim_attributes_json(const fim_file_data * data) {
 #ifndef WIN32
         cJSON_AddStringToObject(attributes, "perm", data->perm);
 #else
-        cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
+        cJSON_AddItemToObject(attributes, "perm", cJSON_Parse(data->perm));
 #endif
     }
 
