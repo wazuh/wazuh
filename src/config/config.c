@@ -217,7 +217,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, agent_upgrade) == 0)) {
-            if ((modules & CWMODULE) && (Read_AgentUpgrade(xml, node[i], d1) < 0)) {
+            if ((modules & CWMODULE) && !(modules & CAGENT_CONFIG) && (Read_AgentUpgrade(xml, node[i], d1) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
