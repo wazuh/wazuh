@@ -12,7 +12,7 @@
     <if_group>sysmon_event_11</if_group>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\(Windows\\\\Temp|Users).+\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
     <options>no_full_log</options>
-    <description>Scripting file created under system or User folder</description>
+    <description>Scripting file created under Windows Temp or User folder</description>
     <mitre>
       <id>T1059</id>
       <id>T1105</id>
@@ -23,7 +23,7 @@
     <if_sid>92200</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\((c|w)script|powershell)\.exe</field>
     <options>no_full_log</options>
-    <description>$(win.eventdata.image) created a new scripting file under User data folder</description>
+    <description>$(win.eventdata.image) created a new scripting file under Windows Temp or User data folder</description>
     <mitre>
       <id>T1105</id>
       <id>T1059</id>
@@ -33,7 +33,7 @@
   <rule id="92202" level="6">
     <if_group>sysmon_event_11</if_group>
     <field name="win.eventdata.image" type="pcre2">(?i)PAExec.</field>
-    <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+(.exe$|\.dll)$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+\.(exe|dll|bin|msi)$</field>
     <options>no_full_log</options>
     <description>Binary dropped in Windows root folder by $(win.eventdata.image) process. Possible abuse of Windows admin shares</description>
     <mitre>
@@ -87,7 +87,7 @@
     <if_group>sysmon_event_11</if_group>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\Public\\\\.*\.(exe|bin|dll|vbs|bat|js|msi)</field>
     <options>no_full_log</options>
-    <description>Executable file dropped in Users\Public folder.</description>
+    <description>Executable file dropped in Users\Public folder</description>
     <mitre>
       <id>T1105</id>
     </mitre>
@@ -147,7 +147,7 @@
 
   <rule id="92213" level="15">
     <if_group>sysmon_event_11</if_group>
-    <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\.+\\\\AppData\\\\Local\\\\Temp\\\\.+\.(exe|bin|dll|vbs|bat|js)</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\.+\\\\AppData\\\\Local\\\\Temp\\\\.+\.(exe|bin|dll|vbs|bat|js|msi)</field>
     <options>no_full_log</options>
     <description>Executable file dropped in folder commonly used by malware</description>
     <mitre>
@@ -157,10 +157,10 @@
 
   <rule id="92214" level="15">
     <if_group>sysmon_event_11</if_group>
-    <field name="win.eventdata.image" type="pcre2">(?i)(winword|excel|powerpnt)\.exe</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)(winword|excel|powerpnt|outlook)\.exe</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)appdata\\\\.+\.lnk</field>
     <options>no_full_log</options>
-    <description>Suspicious file created by Microsoft Office process: $(win.eventdata.image) created $(win.eventdata.targetFilename)</description>
+    <description>Suspicious .lnk file created by Microsoft Office process: $(win.eventdata.image) created $(win.eventdata.targetFilename)</description>
     <mitre>
       <id>T1027</id>
     </mitre>
@@ -169,7 +169,7 @@
   <rule id="92215" level="12">
     <if_group>sysmon_event_11</if_group>
     <field name="win.eventdata.image" type="pcre2">(?i)mshta\.exe</field>
-    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(exe|bat|dll)</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(exe|bat|dll|bin|msi|vbs|js)</field>
     <options>no_full_log</options>
     <description>Executable file created by mshta: $(win.eventdata.targetFilename)</description>
     <mitre>
@@ -191,9 +191,9 @@
 
   <rule id="92217" level="6">
     <if_group>sysmon_event_11</if_group>
-    <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+(.exe$|\.dll)$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+\.(exe|dll|bin|msi)$</field>
     <options>no_full_log</options>
-    <description>Binary dropped in Windows root folder.</description>
+    <description>Binary dropped in Windows root folder</description>
     <mitre>
       <id>T1570</id>
     </mitre>
@@ -203,7 +203,7 @@
     <if_sid>92217</if_sid>
     <field name="win.eventdata.image" type="pcre2">^System$</field>
     <options>no_full_log</options>
-    <description>Possible abuse of Windows admin shares by binary dropped in Windows root folder by system process.</description>
+    <description>Possible abuse of Windows admin shares by binary dropped in Windows root folder by system process</description>
     <mitre>
       <id>T1570</id>
     </mitre>
@@ -212,7 +212,7 @@
   <rule id="92219" level="6">
     <if_sid>92217</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)svchost\.exe</field>
-    <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+(\.dll)$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+\.dll$</field>
     <options>no_full_log</options>
     <description>Possible DLL search order hijack by $(win.eventdata.targetFilename) created in Windows root folder.</description>
     <mitre>
@@ -225,7 +225,7 @@
     <if_sid>92217</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)wsmprovhost\.exe</field>
     <options>no_full_log</options>
-    <description>$(win.eventdata.targetFilename) binary created in Windows root folder by WinRM process $(win.eventdata.image).</description>
+    <description>$(win.eventdata.targetFilename) binary created in Windows root folder by WinRM process $(win.eventdata.image)</description>
     <mitre>
       <id>T1574</id>
       <id>T1570</id>
@@ -275,7 +275,7 @@
 
   <rule id="92225" level="6">
     <if_group>sysmon_event_11</if_group>
-    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\\\ProgramData\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\StartUp.+\.(exe|com|dll|vbs|js|bat|cmd|pif|wsh|ps1|lnk|txt)</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\\\ProgramData\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\StartUp.+\.(exe|com|dll|vbs|js|bat|cmd|pif|wsh|ps1|lnk|txt|msi)</field>
     <options>no_full_log</options>
     <description>An executable file has been copied to Windows start-up folder</description>
     <mitre>
