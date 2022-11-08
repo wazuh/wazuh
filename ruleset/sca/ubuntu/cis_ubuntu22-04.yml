@@ -4109,268 +4109,250 @@ checks:
     remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30 Modify user parameters for all users with a password set to match: # chage --inactive 30 <user> Default Value: INACTIVE=-1 Additional Information: A value of -1 would disable this setting"
     compliance:
       - cis: ["5.5.1.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
+      - cis_csc_v7: ["4.4"]
+      - cis_csc_v8: ["5.2"]
+      - mitre_techniques: ["T1078","T1078.002","T1078.003"]
+      - mitre_tactics: ["TA0001"]
+      - mitre_mitigations: ["M1027"]
+      - cmmc_v2.0: [ "IA.L2-3.5.7" ]
+      - pci_dss_4.0: [ "2.2.2","8.3.5","8.3.6","8.6.3" ]
+      - soc_2: [ "CC6.1" ]
+    condition: none
     rules:
-      - 'c:useradd -D -> n:INACTIVE=(\d+) compare <= 30'
-      - 'c:useradd -D -> n:INACTIVE=(\d+) compare > 0'
+      - 'c:useradd -D -> n:^INACTIVE=(\d+) compare >= 30'
+      - 'c:useradd -D -> n:^INACTIVE=(\d+) compare == 0'
+      - 'c:useradd -D -> r:^INACTIVE=-1'
+      - 'f:/etc/shadow -> !r:^\w+:! && !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:d+:\d+:(\d+) compare > 30'
 
-
-  - id: 28672
-    title: "Ensure all users last password change date is in the past"
-    description: "All users should have a password change date in the past."
-    rationale: "If a users recorded password change date is in the future then they could bypass any set password expiration."
-    impact: ""
-    remediation: "Investigate any users with a password change date in the future and correct them. Locking the account, expiring the password, or resetting the password manually may be appropriate."
-    references: ""
-    compliance:
-      - cis: ["5.5.1.5"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ""
-
-  - id: 28673
-    title: "Ensure system accounts are secured"
-    description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell."
-    rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
-    impact: ""
-    remediation: 'Set the shell for any accounts returned by the audit to nologin: # usermod -s $(which nologin) <user> Lock any non root accounts returned by the audit: # usermod -L <user> The following command will set all system accounts to a non login shell: # awk -F: ''$1!~/(root|sync|shutdown|halt|^\+)/ && $3<''"$(awk ''/^\\s*UID_MIN/{print $2}'' /etc/login.defs)"'' && $7!~/((\/usr)?\/sbin\/nologin)/ && $7!~/(\/bin)?\/false/ {print $1}'' /etc/passwd | while read -r user; do usermod -s "$(which nologin)" "$user"; done The following command will automatically lock not root system accounts: # awk -F: ''($1!~/(root|^\+)/ && $3<''"$(awk ''/^\\s*UID_MIN/{print $2}'' /etc/login.defs)"'') {print $1}'' /etc/passwd | xargs -I ''{}'' passwd -S ''{}'' | awk ''($2!~/LK?/) {print $1}'' | while read -r user; do usermod -L "$user"; done'
-    references: ""
-    compliance:
-      - cis: ["5.5.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ""
-
+  # 5.5.1.5 Ensure all users last password change date is in the past (Automated) -Not implemented
+  # 5.5.2 Ensure system accounts are secured (Automated) - Not implemented
+  # 5.5.3 Ensure default group for the root account is GID 0 (Automated)
   - id: 28674
     title: "Ensure default group for the root account is GID 0"
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
-    impact: ""
     remediation: "Run the following command to set the root user default group to GID 0 : # usermod -g 0 root"
-    references: ""
     compliance:
       - cis: ["5.5.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1548"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1026"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_sp_800-53: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
     condition: all
     rules:
-      - ""
+      - 'f:/etc/passwd -> r:^root:\S*:\S*:0:'
 
-  - id: 28675
-    title: "Ensure default user umask is 027 or more restrictive"
-    description: "The user file-creation mode mask (umask) is use to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rwrw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. umask can be set with either octal or Symbolic values Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. Setting the default umask: pam_umask module: o will set the umask according to the system default in /etc/login.defs and user settings, solving the problem of different umask settings with different shells, display managers, remote sessions etc. o umask=<mask> value in the /etc/login.defs file is interpreted as Octal o Setting USERGROUPS_ENAB to yes in /etc/login.defs (default): will enable setting of the umask group bits to be the same as owner bits. (examples: 022 -> 002, 077 -> 007) for non-root users, if the uid is the same as gid, and username is the same as the primary group name userdel will remove the user's group if it contains no more members, and useradd will create by default a group with the name of the user System Wide Shell Configuration File: o /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter o /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. o /etc/bash.bashrc - System wide version of .bashrc. etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bash.bashrc User Shell Configuration Files: ~/.profile - Is executed to configure your shell before the initial command prompt. Is only read by login shells. ~/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login"
-    rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
-    impact: "Setting USERGROUPS_ENAB no in /etc/login.defs may change the expected behavior of useradd and userdel. Setting USERGROUPS_ENAB yes in /etc/login.defs userdel will remove the user's group if it contains no more members useradd will create by default a group with the name of the user."
-    remediation: 'Run the following command and remove or modify the umask of any returned files: # grep -RPi ''(^|^[^#]*)\\s*umask\s+([0-7][0-7][01][0-7]\b|[0-7][0-7][0-7][06]\b|[0-7][01][0-7]\b|[0-7][0-7][06]\b|(u=[rwx]{0,3},)?(g=[rwx]{0,3},)?o=[rwx]+\b|(u=[rwx]{1,3},)?g=[^rx]{1,3}( ,o=[rwx]{0,3})?\b)'' /etc/login.defs /etc/profile* /etc/bash.bashrc* Follow one of the following methods to set the default user umask: Edit /etc/login.defs and edit the UMASK and USERGROUPS_ENAB lines as follows: UMASK 027 USERGROUPS_ENAB no Edit /etc/pam.d/common-session and add or edit the following: session optional pam_umask.so OR Configure umask in one of the following files: A file in the /etc/profile.d/ directory ending in .sh /etc/profile /etc/bash.bashrc Example: /etc/profile.d/set_umask.sh umask 027 Note: this method only applies to bash and shell. If other shells are supported on the system, it is recommended that their configuration files also are checked. Default Value: UMASK 022'
-    references: "1. pam_umask(8) Additional Information: Other methods of setting a default user umask exist If other methods are in use in your environment they should be audited The default user umask can be overridden with a user specific umask The user creating the directories or files has the discretion of changing the permissions: o Using the chmod command o Setting a different default umask by adding the umask command into a User Shell Configuration File, (.bashrc), in their home directory o Manually changing the umask for the duration of a login session by running the umask command"
-    compliance:
-      - cis: ["5.5.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ""
+  # 5.5.4 Ensure default user umask is 027 or more restrictive (Automated) - Not implemented
+  # 5.5.5 Ensure default user shell timeout is 900 seconds or less (Automated) - Not implemented
 
-  - id: 28676
-    title: "Ensure default user shell timeout is 900 seconds or less"
-    description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables timeout. readonly TMOUT- Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. export TMOUT - exports the TMOUT variable System Wide Shell Configuration Files: /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the -login parameter. /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. /etc/bash.bashrc - System wide version of bash.bashrc. etc/bash.bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bash.bashrc."
-    rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session."
-    impact: ""
-    remediation: "Review /etc/bash.bashrc, /etc/profile, and all files ending in *.sh in the /etc/profile.d/ directory and remove or edit all TMOUT=_n_ entries to follow local site policy. TMOUT should not exceed 900 or be equal to 0. Configure TMOUT in one of the following files: A file in the /etc/profile.d/ directory ending in .sh /etc/profile /etc/bash.bashrc TMOUT configuration examples: As multiple lines: TMOUT=900 readonly TMOUT export TMOUT As a single line: readonly TMOUT=900 ; export TMOUT Additional Information: The audit and remediation in this recommendation apply to bash and shell. If other shells are supported on the system, it is recommended that their configuration files are also checked Other methods of setting a timeout exist not covered here"
-    references: ""
-    compliance:
-      - cis: ["5.5.5"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ""
+  ############################################################
+  #6 System Maintenance
+  ############################################################
 
+  # 6.1 System File Permissions
+  # 6.1.1 Ensure permissions on /etc/passwd are configured (Automated)
   - id: 28677
-    title: "Ensure permissions on /etc/passwd are configured"
+    title: "Ensure permissions on /etc/passwd are configured."
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
-    impact: ""
     remediation: "Run the following command to set permissions on /etc/passwd: # chown root:root /etc/passwd # chmod u-x,go-wx /etc/passwd"
-    references: ""
     compliance:
       - cis: ["6.1.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1003","T1003.008","T1222","T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_sp_800-53: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
     condition: all
     rules:
-      - ""
+      - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
+  # 6.1.2 Ensure permissions on /etc/passwd- are configured (Automated)
+  - id: 28678
+    title: "Ensure permissions on /etc/group are configured."
+    description: "The /etc/passwd- file contains backup user account information."
+    rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run the following command to set permissions on /etc/passwd- : # chown root:root /etc/passwd- # chmod u-x,go-wx /etc/passwd-"
+    compliance:
+      - cis: [ "6.1.2" ]
+      - cis_csc_v7: [ "14.6" ]
+      - cis_csc_v8: [ "3.3" ]
+      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
+      - mitre_tactics: [ "TA0005" ]
+      - mitre_mitigations: [ "M1022" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_sp_800-53: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
+    condition: all
+    rules:
+      - 'c:stat /etc/passwd- -> r:-rw-\.--\.-- && r:Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 6.1.3 Ensure permissions on /etc/group are configured (Automated)
   - id: 28678
     title: "Ensure permissions on /etc/group are configured"
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
-    impact: ""
     remediation: "Run the following command to set permissions on /etc/group : # chown root:root /etc/group # chmod u-x,go-wx /etc/group"
-    references: ""
     compliance:
       - cis: ["6.1.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: [ "14.6" ]
+      - cis_csc_v8: [ "3.3" ]
+      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
+      - mitre_tactics: [ "TA0005" ]
+      - mitre_mitigations: [ "M1022" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_sp_800-53: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
     condition: all
     rules:
-      - ""
+      - 'c:stat /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
+  # 6.1.4 Ensure permissions on /etc/group- are configured (Automated)
+  - id: 28679
+    title: "Ensure permissions on /etc/group- are configured"
+    description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
+    rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run the following command to set permissions on /etc/group- : # chown root:root /etc/group- # chmod u-x,go-wx /etc/group"
+    compliance:
+      - cis: [ "6.1.4" ]
+      - cis_csc_v7: [ "14.6" ]
+      - cis_csc_v8: [ "3.3" ]
+      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
+      - mitre_tactics: [ "TA0005" ]
+      - mitre_mitigations: [ "M1022" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_sp_800-53: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
+    condition: all
+    rules:
+      - 'c:stat /etc/group- -> r:-rw-\.--\.-- && r:Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 6.1.5 Ensure permissions on /etc/shadow are configured (Automated)
   - id: 28679
     title: "Ensure permissions on /etc/shadow are configured"
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
-    impact: ""
     remediation: "Run one of the following commands to set ownership of /etc/shadow to root and group to either root or shadow: # chown root:root /etc/shadow # chown root:shadow /etc/shadow Run the following command to remove excess permissions form /etc/shadow: # chmod u-x,g-wx,o-rwx /etc/shadow"
-    references: ""
     compliance:
       - cis: ["6.1.5"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: [ "14.6" ]
+      - cis_csc_v8: [ "3.3" ]
+      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
+      - mitre_tactics: [ "TA0005" ]
+      - mitre_mitigations: [ "M1022" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_sp_800-53: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
+    condition: any
+    rules:
+      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
+
+  # 6.1.6 Ensure permissions on /etc/shadow- are configured (Automated)
+  - id: 28680
+    title: "Ensure permissions on /etc/shadow- are configured."
+    description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
+    rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run one of the following commands to set ownership of /etc/shadow- to root and group to either root or shadow: # chown root:root /etc/shadow- # chown root:shadow /etc/shadowRun the following command to remove excess permissions form /etc/shadow-: # chmod u-x,g-wx,o-rwx /etc/shadow-"
+    compliance:
+      - cis: ["6.1.6"]
+      - cis_csc_v7: [ "14.6" ]
+      - cis_csc_v8: [ "3.3" ]
+      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
+      - mitre_tactics: [ "TA0005" ]
+      - mitre_mitigations: [ "M1022" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_sp_800-53: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
     condition: all
     rules:
-      - ""
+      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
+  # 6.1.7 Ensure permissions on /etc/gshadow are configured (Automated)
   - id: 28680
     title: "Ensure permissions on /etc/gshadow are configured"
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
-    impact: ""
     remediation: "Run one of the following commands to set ownership of /etc/gshadow to root and group to either root or shadow: # chown root:root /etc/gshadow # chown root:shadow /etc/gshadow Run the following command to remove excess permissions form /etc/gshadow: # chmod u-x,g-wx,o-rwx /etc/gshadow"
-    references: ""
     compliance:
       - cis: ["6.1.7"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: [ "14.6" ]
+      - cis_csc_v8: [ "3.3" ]
+      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
+      - mitre_tactics: [ "TA0005" ]
+      - mitre_mitigations: [ "M1022" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_sp_800-53: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
     condition: all
     rules:
-      - ""
+      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
+
+  # 6.1.8 Ensure permissions on /etc/gshadow- are configured (Automated)
   - id: 28681
-    title: "Ensure no world writable files exist"
-    description: "Unix-based systems support variable settings to control access to files. World writable files are the least secure. See the chmod(2) man page for more information."
-    rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity."
-    impact: ""
-    remediation: 'Removing write access for the "other" category ( chmod o-w <filename> ) is advisable, but always consult relevant vendor documentation to avoid breaking any application dependencies on a given file.'
-    references: ""
+    title: "Ensure permissions on /etc/gshadow- are configured"
+    description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
+    rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: 'Run one of the following commands to set ownership of /etc/gshadow- to root and group to either root or shadow: # chown root:root /etc/gshadow- # chown root:shadow /etc/gshadowRun the following command to remove excess permissions form /etc/gshadow-: # chmod u-x,g-wx,o-rwx /etc/gshadow-'
     compliance:
-      - cis: ["6.1.9"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis: [ "6.1.8" ]
+      - cis_csc_v7: [ "14.6" ]
+      - cis_csc_v8: [ "3.3" ]
+      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
+      - mitre_tactics: [ "TA0005" ]
+      - mitre_mitigations: [ "M1022" ]
+      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
+      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
+      - pci_dss_4.0: [ "1.3.1","7.1" ]
+      - nist_sp_800-53: [ "AC-5","AC-6" ]
+      - soc_2: [ "CC5.2","CC6.1" ]
     condition: all
     rules:
-      - ""
+      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
-  - id: 28682
-    title: "Ensure no unowned files or directories exist"
-    description: "Sometimes when administrators delete users from the password file they neglect to remove all files owned by those users from the system."
-    rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended."
-    impact: ""
-    remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
-    references: ""
-    compliance:
-      - cis: ["6.1.10"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ""
+  # 6.1.9 Ensure no world writable files exist (Automated) - Not implemented
+  # 6.1.10 Ensure no unowned files or directories exist (Automated) - Not implemented
+  # 6.1.11 Ensure no ungrouped files or directories exist (Automated) - Not implemented
+  # 6.1.12 Audit SUID executables (Manual) - Not implemented
+  # 6.1.13 Audit SGID executables (Manual) - Not implemented
 
-  - id: 28683
-    title: "Ensure no ungrouped files or directories exist"
-    description: "Sometimes when administrators delete users or groups from the system they neglect to remove all files owned by those users or groups."
-    rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended."
-    impact: ""
-    remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
-    references: ""
-    compliance:
-      - cis: ["6.1.11"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ""
-
-  - id: 28684
-    title: "Audit SUID executables (Manual)"
-    description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SUID program is to enable users to perform functions (such as changing their password) that require root privileges."
-    rationale: "There are valid reasons for SUID programs, but it is important to identify and review such programs to ensure they are legitimate."
-    impact: ""
-    remediation: "Ensure that no rogue SUID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries."
-    references: ""
-    compliance:
-      - cis: ["6.1.12"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ""
-
-  - id: 28685
-    title: "Audit SGID executables (Manual)"
-    description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SGID program is to enable users to perform functions (such as changing their password) that require root privileges."
-    rationale: "There are valid reasons for SGID programs, but it is important to identify and review such programs to ensure they are legitimate. Review the files returned by the action in the audit section and check to see if system binaries have a different md5 checksum than what from the package. This is an indication that the binary may have been replaced."
-    impact: ""
-    remediation: "Ensure that no rogue SGID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries."
-    references: ""
-    compliance:
-      - cis: ["6.1.13"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ""
+  # 6.2 Local User and Group Settings
 
   - id: 28686
     title: "Ensure accounts in /etc/passwd use shadowed passwords"
@@ -4389,6 +4371,7 @@ checks:
     condition: all
     rules:
       - ""
+
 
   - id: 28687
     title: "Ensure /etc/shadow password fields are not empty"
