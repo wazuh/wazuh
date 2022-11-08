@@ -96,7 +96,7 @@ int main(int argc, char ** argv)
 
     wconfig.fragmentation_threshold = getDefine_Int("wazuh_db", "fragmentation_threshold", 0, 100);
     wconfig.fragmentation_delta = getDefine_Int("wazuh_db", "fragmentation_delta", 0, 100);
-    wconfig.free_pages_percentage = getDefine_Int("wazuh_db", "free_pages_percentage", 0, 999000);
+    wconfig.free_pages_percentage = getDefine_Int("wazuh_db", "free_pages_percentage", 0, 99);
     wconfig.max_fragmentation = getDefine_Int("wazuh_db", "max_fragmentation", 0, 100);
     wconfig.check_fragmentation_interval = getDefine_Int("wazuh_db", "check_fragmentation_interval", 1, 30758400);
 
