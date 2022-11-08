@@ -156,6 +156,43 @@ class LocalClient(client.AbstractClientManager):
         except Exception as e:
             raise exception.WazuhInternalError(3009, str(e))
 
+    async def wait_for_response(self, timeout):
+        """Wait for cluster response.
+
+        Wait until response is ready. Every ['intervals']['worker']['keep_alive'] seconds, a keepalive command
+        is sent to the local server so that this client is not disconnected for inactivity.
+
+        Parameters
+        ----------
+        timeout : int
+            Time after which an exception is raised if the response is not ready.
+
+        Returns
+        -------
+        str
+            Response from local server.
+        """
+        start_time = time.perf_counter()
+
+        while True:
+            elapsed_time = time.perf_counter() - start_time
+            min_timeout = min(max(timeout - elapsed_time, 0), self.cluster_items['intervals']['worker']['keep_alive'])
+            try:
+                await asyncio.wait_for(self.protocol.response_available.wait(), timeout=min_timeout)
+                return self.protocol.response.decode()
+            except asyncio.TimeoutError:
+                if min_timeout < self.cluster_items['intervals']['worker']['keep_alive']:
+                    raise exception.WazuhInternalError(3020)
+                else:
+                    try:
+                        # Keepalive is sent so local server does not close communication with this client.
+                        await self.protocol.send_request(b'echo-c', b'keepalive')
+                    except exception.WazuhClusterError as e:
+                        if e.code == 3018:
+                            raise exception.WazuhInternalError(3020)
+                        else:
+                            raise e
+
     async def send_api_request(self, command: bytes, data: bytes) -> str:
         """Send DAPI request to the server and wait for response.
 
@@ -168,8 +205,8 @@ class LocalClient(client.AbstractClientManager):
 
         Returns
         -------
-        request_result : dict
-            API response.
+        request_result : str
+            Response from local server.
         """
         try:
             result = (await self.protocol.send_request(command, data)).decode()
@@ -182,36 +219,13 @@ class LocalClient(client.AbstractClientManager):
 
         if result == 'There are no connected worker nodes':
             request_result = {}
+        elif command in self.ASYNC_COMMANDS or result == 'Sent request to master node':
+            request_result = await self.wait_for_response(
+                self.cluster_items['intervals']['communication']['timeout_dapi_request']
+            )
+        # If no more data is expected, immediately return send_request's output.
         else:
-            # Wait for expected data if it is not returned by send_request().
-            if command in self.ASYNC_COMMANDS or result == 'Sent request to master node':
-                start_time = time.perf_counter()
-                while True:
-                    elapsed_time = time.perf_counter() - start_time
-                    timeout = min(
-                        max(self.cluster_items['intervals']['communication']['timeout_dapi_request'] - elapsed_time, 0),
-                        self.cluster_items['intervals']['worker']['keep_alive']
-                    )
-                    try:
-                        await asyncio.wait_for(self.protocol.response_available.wait(), timeout=timeout)
-                        request_result = self.protocol.response.decode()
-                        break
-                    except asyncio.TimeoutError:
-                        if timeout < self.cluster_items['intervals']['worker']['keep_alive']:
-                            raise exception.WazuhInternalError(3020)
-                        else:
-                            try:
-                                # Keepalive is sent so local server does not close communication with this client.
-                                await self.protocol.send_request(b'echo-c', b'keepalive')
-                            except exception.WazuhClusterError as e:
-                                if e.code == 3018:
-                                    raise exception.WazuhInternalError(3020)
-                                else:
-                                    raise e
-
-            # If no data is expected (only the send_request() result), immediately return the output of send_request.
-            else:
-                request_result = result
+            request_result = result
 
         return request_result
 

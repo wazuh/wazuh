@@ -163,6 +163,26 @@ async def test_localclient_start_ko(mock_get_running_loop):
         with pytest.raises(WazuhInternalError, match=r'.* 3012 .*'):
             await LocalClient().start()
 
+@pytest.mark.asyncio
+async def test_wait_for_response():
+    """Verify whether keepalive messages are sent while waiting for response."""
+
+    class Protocol:
+        response = b"Async"
+
+        def __init__(self):
+            self.response_available = asyncio.Event()
+
+    lc = LocalClient()
+    lc.protocol = Protocol()
+    lc.protocol.send_request = AsyncMock()
+    lc.protocol.send_request.side_effect = [b"None", exception.WazuhClusterError(3018)]
+
+    with patch("asyncio.Event.wait", side_effect=asyncio.TimeoutError):
+        with pytest.raises(WazuhInternalError, match=rf".* 3020 .*"):
+            await lc.wait_for_response(timeout=200)
+    lc.protocol.send_request.assert_has_calls([call(b'echo-c', b'keepalive'), call(b'echo-c', b'keepalive')])
+
 
 @pytest.mark.asyncio
 @patch("wazuh.core.cluster.client.asyncio.get_running_loop")
