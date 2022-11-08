@@ -1,9 +1,11 @@
 #include <api/kvdb/commands.hpp>
 #include <gtest/gtest.h>
 
+// TODO: why this namespace?
 namespace
 {
 
+// TODO: Move the listKvdbCmd tests to its section
 class commandKVDBTest : public ::testing::Test
 {
 
@@ -94,3 +96,17 @@ TEST_F(commandKVDBTest, listKvdbCmdMultiple)
 }
 
 }
+
+// TODO: "createKvdbCmd" tests section (To avoid conflicts) ------------------------------
+
+// TODO: "deleteKvdbCmd" tests section (To avoid conflicts) ------------------------------
+
+// TODO: "dumpKvdbCmd" tests section (To avoid conflicts) --------------------------------
+
+// TODO: "getKvdbCmd" tests section (To avoid conflicts) ---------------------------------
+
+// TODO: "insertKvdbCmd" tests section (To avoid conflicts) ------------------------------
+
+// TODO: "listKvdbCmd" tests section (To avoid conflicts) --------------------------------
+
+// TODO: "removeKvdbCmd" tests section (To avoid conflicts) ------------------------------
