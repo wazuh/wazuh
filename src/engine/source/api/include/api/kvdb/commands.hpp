@@ -10,7 +10,7 @@
 namespace api::kvdb::cmds
 {
 
-api::CommandFn lisKvdbCmd();
+api::CommandFn listKvdbCmd();
 
 void registerAllCmds(std::shared_ptr<api::Registry> registry);
 
