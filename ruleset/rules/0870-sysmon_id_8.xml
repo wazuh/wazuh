@@ -43,7 +43,7 @@
     <if_group>sysmon_event8</if_group>
     <field name="win.eventdata.targetImage" type="pcre2">(?i)lsass\.exe</field>
     <options>no_full_log</options>
-    <description>Local Security Authority Subsystem Service (LSASS) process was accessed by $(win.eventdata.sourceImage), possible code injection for credential dumping.</description>
+    <description>Local Security Authority Subsystem Service (LSASS) process was accessed by $(win.eventdata.sourceImage), possible code injection for credential dumping</description>
     <mitre>
       <id>T1055</id>
     </mitre>
