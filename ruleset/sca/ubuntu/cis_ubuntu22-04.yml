@@ -3330,7 +3330,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/sshd_config -> r:Access:\\s*\(0600/-rw-------\)\\s*Uid:\\s*\\t*\(\\s*\\t*0/\\s*root\)\\s*Gid:\\s*\\t*\(\\s*\\t*0/\\s*\\t*root\)'
+      - 'c:stat /etc/ssh/sshd_config -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\t*\(\s*\t*0/\s*root\)\s*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.2.3 Ensure permissions on SSH public host key files are configured (Automated)
   - id: 28638
