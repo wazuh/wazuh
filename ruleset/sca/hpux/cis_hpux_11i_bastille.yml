@@ -20,12 +20,13 @@ policy:
     - https://myenterpriselicense.hpe.com/cwp-ui/free-software/B6849AA
 
 requirements:
-  title: "Check HPUX version."
+  title: "Check HPUX version, bastille is installed and a bastille report is present."
   description: "Requirements for running the SCA scan against HPUX family."
   condition: all
   rules:
     - "c:swlist HPUX*OE* -> r:HPUX11i"
     - "d:/opt/sec_mgmt/bastille/"
+    - "f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config"
 
 checks:
   #################################################################
@@ -69,7 +70,8 @@ checks:
       - https://www.hp.com/go/bastille
     condition: all
     rules:
-      - "c:/opt/sec_mgmt/bastille/bin/bastille --assessnobrowser -> f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config"
+      - "f:/opt/sec_mgmt/bastille/bin/bastille"
+      - "f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config"
 
   #################################################################
   # 1.2 Minimize inetd network services
@@ -259,7 +261,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecutity.gui_login="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.gui_login="Y"'
 
   - id: 30017
     title: "Disable email server, if possible."
@@ -675,6 +677,7 @@ checks:
       - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.MIN_PASSWORD_LENGTH="(\d+) compare >= 7"'
 
   - id: 30049
+    title: "Verify no legacy '+' entries exist in passwd and group files."
     description: "'+' entries in various passwd and group files served as markers for systems to insert data from NIS maps at a certain point in a system configuration file. HP-UX does not use these markers, but they may exist in files that have been imported from other platforms. They should be deleted if they exist."
     rationale: "Legacy '+' entries are no longer required on HP-UX systems, and may provide an avenue for attackers to gain privileged access on the system."
     remediation: "Perform the following to remove any legacy '+' entries in passwd and group files: 1. Display legacy '+' entries: grep '^+:' /etc/passwd /etc/group 2. Remove any entries found from the passwd and group files."

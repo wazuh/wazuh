@@ -19,7 +19,7 @@ policy:
     - https://www.cisecurity.org/wp-content/uploads/2017/04/CIS_HP-UX_11i_Benchmark_v1.5.0.pdf
 
 requirements:
-  title: "Check HPUX version."
+  title: "Check HPUX version and bastille is not installed."
   description: "Requirements for running the SCA scan against HPUX family."
   condition: all
   rules:
@@ -350,8 +350,9 @@ checks:
     remediation: "Perform the following: ch_rc -a -p RUN_CIFSCLIENT=1 /etc/rc.config.d/cifsclient"
     compliance:
       - cis: ["1.3.9"]
-    condition: all
+    condition: any
     rules:
+      - "not f:/etc/rc.config.d/cifsclient"
       - "f:/etc/rc.config.d/cifsclient -> r:RUN_CIFSCLIENT=0"
 
   - id: 25021
@@ -807,8 +808,8 @@ checks:
     rules:
       - "f:/etc/motd"
       - "f:/etc/issue"
-      - 'c:not sh -c "ls -la /etc/motd | grep -e ^-rw-r--r--.*root.*sys | grep -v total" -> r:/etc/motd'
-      - 'c:not sh -c "ls -la /etc/issue | grep -e ^-rw-r--r--.*root.*root | grep -v total" -> r:/etc/issue'
+      - 'c:ls -la /etc/motd -> r:^-rw-r--r--\.*root\.*sys'
+      - 'c:ls -la /etc/issue -> r:^-rw-r--r--\.*root\.*root'
 
   - id: 25050
     title: "Create warning banners for FTP daemon."
