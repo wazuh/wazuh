@@ -4397,7 +4397,7 @@ checks:
 
   # 6.2.3 Ensure all groups in /etc/passwd exist in /etc/group (Automated) - Not implemented
   # 6.2.4 Ensure shadow group is empty (Automated)
-  - id: 19194
+  - id: 28683
     title: "Ensure shadow group is empty."
     description: "The shadow group allows system programs which require access the ability to read the /etc/shadow file. No users should be assigned to the shadow group."
     rationale: "Any users assigned to the shadow group would be granted read access to the /etc/shadow file. If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed passwords to break them. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert additional user accounts."
@@ -4419,14 +4419,13 @@ checks:
     rules:
       - 'f:/etc/group -> !r:^# && r:shadow:\w*:\w*:\d+'
 
-
   # 6.2.5 Ensure no duplicate UIDs exist (Automated) - Not implemented
   # 6.2.6 Ensure no duplicate GIDs exist (Automated) - Not implemented
   # 6.2.7 Ensure no duplicate user names exist (Automated) - Not implemented
   # 6.2.8 Ensure no duplicate group names exist (Automated) - Not implemented
   # 6.2.9 Ensure root PATH Integrity (Automated) - Not implemented
   # 6.2.10 Ensure root is the only UID 0 account (Automated)
-  - id: 28685
+  - id: 28684
     title: "Ensure root is the only UID 0 account."
     description: "Any account with UID 0 has superuser privileges on the system."
     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
