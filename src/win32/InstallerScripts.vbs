@@ -30,21 +30,22 @@ strArgs = Session.Property("CustomActionData")
 args = Split(strArgs, "/+/")
 
 home_dir= Replace(args(0), Chr(34), "")
-WAZUH_MANAGER = Replace(args(1), Chr(34), "")
-WAZUH_MANAGER_PORT = Replace(args(2), Chr(34), "")
-WAZUH_PROTOCOL = Replace(args(3), Chr(34), "")
-NOTIFY_TIME = Replace(args(4), Chr(34), "")
-WAZUH_REGISTRATION_SERVER = Replace(args(5), Chr(34), "")
-WAZUH_REGISTRATION_PORT = Replace(args(6), Chr(34), "")
-WAZUH_REGISTRATION_PASSWORD = Replace(args(7), Chr(34), "")
-WAZUH_KEEP_ALIVE_INTERVAL = Replace(args(8), Chr(34), "")
-WAZUH_TIME_RECONNECT = Replace(args(9), Chr(34), "")
-WAZUH_REGISTRATION_CA = Replace(args(10), Chr(34), "")
-WAZUH_REGISTRATION_CERTIFICATE = Replace(args(11), Chr(34), "")
-WAZUH_REGISTRATION_KEY = Replace(args(12), Chr(34), "")
-WAZUH_AGENT_NAME = Replace(args(13), Chr(34), "")
-WAZUH_AGENT_GROUP = Replace(args(14), Chr(34), "")
-ENROLLMENT_DELAY = Replace(args(15), Chr(34), "")
+OS_VERSION = Replace(args(1), Chr(34), "")
+WAZUH_MANAGER = Replace(args(2), Chr(34), "")
+WAZUH_MANAGER_PORT = Replace(args(3), Chr(34), "")
+WAZUH_PROTOCOL = Replace(args(4), Chr(34), "")
+NOTIFY_TIME = Replace(args(5), Chr(34), "")
+WAZUH_REGISTRATION_SERVER = Replace(args(6), Chr(34), "")
+WAZUH_REGISTRATION_PORT = Replace(args(7), Chr(34), "")
+WAZUH_REGISTRATION_PASSWORD = Replace(args(8), Chr(34), "")
+WAZUH_KEEP_ALIVE_INTERVAL = Replace(args(9), Chr(34), "")
+WAZUH_TIME_RECONNECT = Replace(args(10), Chr(34), "")
+WAZUH_REGISTRATION_CA = Replace(args(11), Chr(34), "")
+WAZUH_REGISTRATION_CERTIFICATE = Replace(args(12), Chr(34), "")
+WAZUH_REGISTRATION_KEY = Replace(args(13), Chr(34), "")
+WAZUH_AGENT_NAME = Replace(args(14), Chr(34), "")
+WAZUH_AGENT_GROUP = Replace(args(15), Chr(34), "")
+ENROLLMENT_DELAY = Replace(args(16), Chr(34), "")
 
 ' Only try to set the configuration if variables are setted
 
@@ -236,8 +237,8 @@ End If
     strNewText = objFile.ReadAll
     objFile.Close
 
-    If objFSO.fileExists(home_dir & "profile.template") Then
-        Set file = objFSO.OpenTextFile(home_dir & "profile.template", ForReading)
+    If objFSO.fileExists(home_dir & "profile-" & OS_VERSION & ".template") Then
+        Set file = objFSO.OpenTextFile(home_dir & "profile-" & OS_VERSION & ".template", ForReading)
         newline = file.ReadAll
         file.Close
         re.Pattern = "(</server>)"
@@ -281,8 +282,8 @@ End If
         strNewText = re.Replace(strNewText, newline)
     End If
 
-    If objFSO.fileExists(home_dir & "syscheck.template") Then
-        Set file = objFSO.OpenTextFile(home_dir & "syscheck.template", ForReading)
+    If objFSO.fileExists(home_dir & "syscheck-" & OS_VERSION & ".template") Then
+        Set file = objFSO.OpenTextFile(home_dir & "syscheck-" & OS_VERSION & ".template", ForReading)
         newline = file.ReadAll
         file.Close
         re.Pattern = "  <syscheck>" & vbCrLf & "(.*" & vbCrLf & ")*  </syscheck>"
@@ -290,8 +291,8 @@ End If
         strNewText = re.Replace(strNewText, newline)
     End If
 
-    If objFSO.fileExists(home_dir & "localfile-events.template") Then
-        Set file = objFSO.OpenTextFile(home_dir & "localfile-events.template", ForReading)
+    If objFSO.fileExists(home_dir & "localfile-events-" & OS_VERSION & ".template") Then
+        Set file = objFSO.OpenTextFile(home_dir & "localfile-events-" & OS_VERSION & ".template", ForReading)
         newline = file.ReadAll
         file.Close
         re.Pattern = "  <localfile>" & vbCrLf	& ".*Application(.*" & vbCrLf & ")*.*Security(.*" & vbCrLf & ")*.*System.*" & vbCrLf & ".*" & vbCrLf & "  </localfile>"
