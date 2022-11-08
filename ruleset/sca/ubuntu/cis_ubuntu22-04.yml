@@ -4127,7 +4127,7 @@ checks:
   # 5.5.1.5 Ensure all users last password change date is in the past (Automated) -Not implemented
   # 5.5.2 Ensure system accounts are secured (Automated) - Not implemented
   # 5.5.3 Ensure default group for the root account is GID 0 (Automated)
-  - id: 28674
+  - id: 28672
     title: "Ensure default group for the root account is GID 0"
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
@@ -4158,7 +4158,7 @@ checks:
 
   # 6.1 System File Permissions
   # 6.1.1 Ensure permissions on /etc/passwd are configured (Automated)
-  - id: 28677
+  - id: 28673
     title: "Ensure permissions on /etc/passwd are configured."
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -4181,7 +4181,7 @@ checks:
       - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.2 Ensure permissions on /etc/passwd- are configured (Automated)
-  - id: 28678
+  - id: 28674
     title: "Ensure permissions on /etc/group are configured."
     description: "The /etc/passwd- file contains backup user account information."
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -4204,7 +4204,7 @@ checks:
       - 'c:stat /etc/passwd- -> r:-rw-\.--\.-- && r:Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.3 Ensure permissions on /etc/group are configured (Automated)
-  - id: 28678
+  - id: 28675
     title: "Ensure permissions on /etc/group are configured"
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
@@ -4227,7 +4227,7 @@ checks:
       - 'c:stat /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.4 Ensure permissions on /etc/group- are configured (Automated)
-  - id: 28679
+  - id: 28676
     title: "Ensure permissions on /etc/group- are configured"
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -4250,7 +4250,7 @@ checks:
       - 'c:stat /etc/group- -> r:-rw-\.--\.-- && r:Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.5 Ensure permissions on /etc/shadow are configured (Automated)
-  - id: 28679
+  - id: 28677
     title: "Ensure permissions on /etc/shadow are configured"
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
@@ -4274,7 +4274,7 @@ checks:
       - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 6.1.6 Ensure permissions on /etc/shadow- are configured (Automated)
-  - id: 28680
+  - id: 28678
     title: "Ensure permissions on /etc/shadow- are configured."
     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -4298,7 +4298,7 @@ checks:
       - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 6.1.7 Ensure permissions on /etc/gshadow are configured (Automated)
-  - id: 28680
+  - id: 28679
     title: "Ensure permissions on /etc/gshadow are configured"
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
@@ -4323,7 +4323,7 @@ checks:
 
 
   # 6.1.8 Ensure permissions on /etc/gshadow- are configured (Automated)
-  - id: 28681
+  - id: 28680
     title: "Ensure permissions on /etc/gshadow- are configured"
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -4354,7 +4354,7 @@ checks:
 
   # 6.2 Local User and Group Settings
 
-  - id: 28686
+  - id: 28681
     title: "Ensure accounts in /etc/passwd use shadowed passwords"
     description: "Local accounts can uses shadowed passwords. With shadowed passwords, The passwords are saved in shadow password file, /etc/shadow, encrypted by a salted oneway hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
     rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack. Note: All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user. A user account with an empty second field in /etc/passwd allows the account to be logged into by providing only the username."
@@ -4373,7 +4373,7 @@ checks:
       - ""
 
 
-  - id: 28687
+  - id: 28682
     title: "Ensure /etc/shadow password fields are not empty"
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
@@ -4391,7 +4391,7 @@ checks:
     rules:
       - ""
 
-  - id: 28688
+  - id: 28683
     title: "Ensure all groups in /etc/passwd exist in /etc/group"
     description: "Over time, system administration errors and changes can lead to groups being defined in /etc/passwd but not in /etc/group ."
     rationale: "Groups defined in the /etc/passwd file but not in the /etc/group file pose a threat to system security since group permissions are not properly managed."
@@ -4409,7 +4409,7 @@ checks:
     rules:
       - ""
 
-  - id: 28689
+  - id: 28684
     title: "Ensure no duplicate UIDs exist"
     description: "Although the useradd program will not let you create a duplicate User ID (UID), it is possible for an administrator to manually edit the /etc/passwd file and change the UID field."
     rationale: "Users must be assigned unique UIDs for accountability and to ensure appropriate access protections."
@@ -4427,7 +4427,7 @@ checks:
     rules:
       - ""
 
-  - id: 28690
+  - id: 28685
     title: "Ensure local interactive users own their home directories"
     description: "The user home directory is space defined for the particular user to set local environment variables and to store personal files."
     rationale: "Since the user is accountable for files stored in the user home directory, the user must be the owner of the directory."
@@ -4445,7 +4445,7 @@ checks:
     rules:
       - ""
 
-  - id: 28691
+  - id: 28686
     title: "Ensure local interactive user home directories are mode 750 or more restrictive"
     description: "While the system administrator can establish secure permissions for users' home directories, the users can easily override these."
     rationale: "Group or world-writable user home directories may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
@@ -4463,7 +4463,7 @@ checks:
     rules:
       - ""
 
-  - id: 28692
+  - id: 28687
     title: "Ensure local interactive user dot files are not group or world writable"
     description: 'While the system administrator can establish secure permissions for users'' "dot" files, the users can easily override these.'
     rationale: "Group or world-writable user configuration files may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
