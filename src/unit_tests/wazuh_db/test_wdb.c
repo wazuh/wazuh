@@ -1084,6 +1084,18 @@ void test_wdb_get_db_free_pages_percentage_success_10(void **state) {
     os_free(wdb);
 }
 
+void test_wdb_execute_single_int_select_query_query_null(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+    int value;
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_execute_single_int_select_query(): null query.");
+
+    assert_int_equal(OS_INVALID, wdb_execute_single_int_select_query(wdb, NULL, &value));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
 void test_wdb_execute_single_int_select_query_prepare_error(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
@@ -3146,6 +3158,7 @@ int main() {
         cmocka_unit_test(test_wdb_get_db_free_pages_percentage_page_free_error),
         cmocka_unit_test(test_wdb_get_db_free_pages_percentage_success_10),
         // wdb_execute_single_int_select_query
+        cmocka_unit_test(test_wdb_execute_single_int_select_query_query_null),
         cmocka_unit_test(test_wdb_execute_single_int_select_query_prepare_error),
         cmocka_unit_test(test_wdb_execute_single_int_select_query_step_error),
         cmocka_unit_test(test_wdb_execute_single_int_select_query_success_1),

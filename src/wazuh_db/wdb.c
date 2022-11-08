@@ -882,7 +882,7 @@ STATIC int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, i
     int result = OS_INVALID;
 
     if (query == NULL) {
-        mdebug1("wdb_execute_non_select_query(): null query.");
+        mdebug1("wdb_execute_single_int_select_query(): null query.");
         return OS_INVALID;
     }
 
