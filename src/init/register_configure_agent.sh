@@ -341,9 +341,6 @@ main () {
         fi
         
         add_adress_block
-        if [ -z "${WAZUH_REGISTRATION_SERVER}" ]; then
-            WAZUH_REGISTRATION_SERVER="${ADDRESSES[0]}"
-        fi
     fi
 
     edit_value_tag "port" "${WAZUH_MANAGER_PORT}"
