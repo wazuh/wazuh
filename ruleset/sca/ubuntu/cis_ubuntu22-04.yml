@@ -842,7 +842,6 @@ checks:
       - 'c:grep -Rh "fs.suid_dumpable" /etc/sysctl.conf /etc/sysctl.d/ -> !r:^\s*\t*# && r:fs.suid_dumpable = 0'
       - 'c:grep -Rh "hard core 0" /etc/security/limits.conf /etc/security/limits.d/ -> !r:^\s*\t*# && r:\p hard core 0'
 
-
   # 1.6 Mandatory Access Control
   # 1.6.1 Configure AppArmor
   # 1.6.1.1 Ensure AppArmor is installed (Automated)
@@ -1108,7 +1107,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - 'not f:/etc/gdm3'
+      - "not f:/etc/gdm3"
       - 'not f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
 
   # 1.9 Ensure updates, patches, and additional security software are installed (Manual) - Not implemented
@@ -1173,14 +1172,14 @@ checks:
     rationale: "systemd-timesyncd needs to be enabled and running in order to synchronize the system to a timeserver. Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations"
     remediation: "IF systemd-timesyncd is in use on the system, run the following commands: Run the following command to unmask systemd-timesyncd.service: # systemctl unmask systemd-timesyncd.service Run the following command to enable and start systemd-timesyncd.service: # systemctl --now enable systemd-timesyncd.service OR If another time synchronization service is in use on the system, run the following command to stop and mask systemd-timesyncd: # systemctl --now mask systemd-timesyncd.service"
     compliance:
-      - cis: [ "2.1.3.2" ]
-      - cis_csc_v7: [ "6.1" ]
-      - cis_csc_v8: [ "8.4" ]
-      - cmmc_v2.0: [ "AU.L2-3.3.7" ]
-      - pci_dss_v3.2.1: [ "10.4" ]
-      - pci_dss_v4.0: [ "10.6", "10.6.1", "10.6.2", "10.6.3" ]
-      - nist_sp_800-53: [ "AU-7" ]
-      - soc_2: [ "CC4.1", "CC5.2" ]
+      - cis: ["2.1.3.2"]
+      - cis_csc_v7: ["6.1"]
+      - cis_csc_v8: ["8.4"]
+      - cmmc_v2.0: ["AU.L2-3.3.7"]
+      - pci_dss_v3.2.1: ["10.4"]
+      - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
+      - nist_sp_800-53: ["AU-7"]
+      - soc_2: ["CC4.1", "CC5.2"]
     rules:
       - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
       - "c:systemctl is-active systemd-timesyncd.service -> r:active"
@@ -3320,18 +3319,18 @@ checks:
       - cis: ["5.2.1"]
       - cis_csc_v7: ["14.6"]
       - cis_csc_v8: ["3.3"]
-      - mitre_techniques: ["T1098","T1098.004","T1543","T1543.002"]
+      - mitre_techniques: ["T1098", "T1098.004", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
-      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - pci_dss_4.0: [ "1.3.1","7.1" ]
-      - nist_sp_800-53: [ "AC-5","AC-6" ]
-      - soc_2: [ "CC5.2","CC6.1" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - "c:stat /etc/ssh/sshd_config -> r:Access:\\s*\(0600/-rw-------\)\\s*Uid:\\s*\\t*\(\\s*\\t*0/\\s*root\)\\s*Gid:\\s*\\t*\(\\s*\\t*0/\\s*\\t*root\)"
+      - 'c:stat /etc/ssh/sshd_config -> r:Access:\\s*\(0600/-rw-------\)\\s*Uid:\\s*\\t*\(\\s*\\t*0/\\s*root\)\\s*Gid:\\s*\\t*\(\\s*\\t*0/\\s*\\t*root\)'
 
   # 5.2.3 Ensure permissions on SSH public host key files are configured (Automated)
   - id: 28638
@@ -3344,17 +3343,17 @@ checks:
       - cis_csc_v7: ["5.1"]
       - cis_csc_v8: ["3.3"]
       - mitre_techniques: ["T1557"]
-      - mitre_tactics: ["TA0003","TA0006"]
+      - mitre_tactics: ["TA0003", "TA0006"]
       - mitre_mitigations: ["M1022"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
-      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - pci_dss_4.0: [ "1.3.1","7.1" ]
-      - nist_sp_800-53: [ "AC-5","AC-6" ]
-      - soc_2: [ "CC5.2","CC6.1" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec stat -Lc \"%A\" {} \\; -> !r:^-rw-\.--\.--$"
+      - 'c:find /etc/ssh -xdev -type f -name ''ssh_host_*_key'' -exec stat -Lc \"%A\" {} \\; -> !r:^-rw-\.--\.--$'
 
   # 5.2.4 Ensure SSH access is limited (Automated)
   - id: 28639
@@ -3368,18 +3367,18 @@ checks:
       - cis: ["5.2.4"]
       - cis_csc_v7: ["4.3"]
       - cis_csc_v8: ["3.3"]
-      - mitre_techniques: ["T1021","T1021.004"]
+      - mitre_techniques: ["T1021", "T1021.004"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1018"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
-      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - pci_dss_4.0: [ "1.3.1","7.1" ]
-      - nist_sp_800-53: [ "AC-5","AC-6" ]
-      - soc_2: [ "CC5.2","CC6.1" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^(Allow|Deny)(Users|Groups)"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^(Allow|Deny)(Users|Groups)'
       - "f:/etc/ssh/sshd_config -> r:^(Allow|Deny)(Users|Groups)"
       -
   # 5.2.5 Ensure SSH LogLevel is appropriate (Automated)
@@ -3392,18 +3391,18 @@ checks:
       - https://www.ssh.com/ssh/sshd_config/
     compliance:
       - cis: ["5.2.5"]
-      - cis_csc_v7: ["6.2","6.3"]
+      - cis_csc_v7: ["6.2", "6.3"]
       - cis_csc_v8: ["8.2"]
-      - mitre_techniques: ["T1562","T1562.006"]
+      - mitre_techniques: ["T1562", "T1562.006"]
       - mitre_tactics: ["TA0005"]
-      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
-      - hipaa: [ "164.312(b)" ]
-      - pci_dss_3.2.1: [ "10.2","10.3" ]
-      - pci_dss_4.0: [ "5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2" ]
-      - nist_sp_800-53: [ "AU-7" ]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - hipaa: ["164.312(b)"]
+      - pci_dss_3.2.1: ["10.2", "10.3"]
+      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^loglevel (VERBOSE|INFO)"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^loglevel (VERBOSE|INFO)'
       - "not f:/etc/ssh/sshd_config -> r:^LogLevel && !r:(VERBOSE|INFO)"
 
   # 5.2.6 Ensure SSH PAM is enabled (Automated)
@@ -3418,17 +3417,17 @@ checks:
       - cis: ["5.2.6"]
       - cis_csc_v7: ["5.1"]
       - cis_csc_v8: ["4.1"]
-      - mitre_techniques: ["T1021","T1021.004"]
+      - mitre_techniques: ["T1021", "T1021.004"]
       - mitre_tactics: ["TA0001"]
       - mitre_mitigations: ["M1035"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
-      - pci_dss_3.2.1: [ "2.2","11.5" ]
-      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
-      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
-      - soc_2: [ "CC7.1","CC8.1" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^usepam yes"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^usepam yes'
       - "not f:/etc/ssh/sshd_config -> r:^UsePAM no"
 
   # 5.2.7 Ensure SSH root login is disabled (Automated)
@@ -3446,13 +3445,13 @@ checks:
       - mitre_techniques: ["T1021"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
-      - cmmc_v2.0: [ "AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - nist_sp_800-53: [ "AC-6(2)","AC-6(5)" ]
-      - soc_2: [ "CC6.1","CC6.3" ]
+      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - soc_2: ["CC6.1", "CC6.3"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^permitrootlogin no"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^permitrootlogin no'
       - "f:/etc/ssh/sshd_config -> r:^PermitRootLogin no"
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled (Automated)
@@ -3468,17 +3467,17 @@ checks:
       - cis: ["5.2.8"]
       - cis_csc_v7: ["16.3"]
       - cis_csc_v8: ["4.1"]
-      - mitre_techniques: ["T1078","T1078.001","T1078.003"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
       - mitre_tactics: ["TA0001"]
       - mitre_mitigations: ["M1042"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
-      - pci_dss_3.2.1: [ "2.2","11.5" ]
-      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
-      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
-      - soc_2: [ "CC7.1","CC8.1" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^hostbasedauthentication no"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^hostbasedauthentication no'
       - "not f:/etc/ssh/sshd_config -> r:^HostBasedAuthentication yes"
 
   # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled (Automated)
@@ -3496,14 +3495,14 @@ checks:
       - mitre_techniques: ["T1021"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
-      - pci_dss_3.2.1: [ "2.2","11.5" ]
-      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
-      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
-      - soc_2: [ "CC7.1","CC8.1" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^permitemptypasswords no"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^permitemptypasswords no'
       - "not f:/etc/ssh/sshd_config -> r:^PermitEmptyPasswords yes"
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled (Automated)
@@ -3521,14 +3520,14 @@ checks:
       - mitre_techniques: ["T1021"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
-      - pci_dss_3.2.1: [ "2.2","11.5" ]
-      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
-      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
-      - soc_2: [ "CC7.1","CC8.1" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^permituserenvironment no"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^permituserenvironment no'
       - "not f:/etc/ssh/sshd_config -> r:^PermitUserEnvironment yes"
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled (Automated)
@@ -3543,17 +3542,17 @@ checks:
       - cis: ["5.2.11"]
       - cis_csc_v7: ["9.2"]
       - cis_csc_v8: ["4.1"]
-      - mitre_techniques: ["T1078","T1078.001","T1078.003"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
       - mitre_tactics: ["TA0001"]
       - mitre_mitigations: ["M1027"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
-      - pci_dss_3.2.1: [ "2.2","11.5" ]
-      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
-      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
-      - soc_2: [ "CC7.1","CC8.1" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^ignorerhosts yes"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^ignorerhosts yes'
       - "not f:/etc/ssh/sshd_config -> r:^IgnoreRhosts no"
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled (Automated)
@@ -3569,13 +3568,13 @@ checks:
       - mitre_techniques: ["T1210"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
-      - cmmc_v2.0: [ "CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6" ]
-      - pci_dss_3.2.1: [ "1.1.6","1.2.1","2.2.2","2.2.5" ]
-      - pci_dss_4.0: [ "1.2.5","2.2.4","6.4.1" ]
-      - soc_2: [ "CC6.3","CC6.6" ]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^x11forwarding no"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^x11forwarding no'
       - "not f:/etc/ssh/sshd_config -> r:^x11forwarding yes"
 
   # 5.2.13 Ensure only strong Ciphers are used (Automated)
@@ -3593,17 +3592,17 @@ checks:
       - cis: ["5.2.13"]
       - cis_csc_v7: ["14.4"]
       - cis_csc_v8: ["3.10"]
-      - mitre_techniques: ["T1040","T1557"]
+      - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
-      - cmmc_v2.0: [ "AC.L2-3.1.17","AC.L2-3.1.13","IA.L2-3.5.10","SC.L2-3.13.11","SC.L2-3.13.8","SC.L2-3.13.15" ]
-      - hipaa: [ "164.312(a)(2)(iv)","164.312(e)(1)","164.312(e)(2)(i)","164.312(e)(2)(ii)" ]
-      - pci_dss_3.2.1: [ "2.1.1","4.1","4.1.1","8.2.1" ]
-      - pci_dss_4.0: [ "2.2.7","4.1.1","4.2.1","4.2.1.2","4.2.2","8.3.2" ]
-      - nist_sp_800-53: [ "AC-17(2)","SC-8","SC-8(1)" ]
+      - cmmc_v2.0: ["AC.L2-3.1.17", "AC.L2-3.1.13", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.8", "SC.L2-3.13.15"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
+      - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
+      - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
     condition: none
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^Ciphers && r:(3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc)"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^Ciphers && r:(3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc)'
 
   # 5.2.14 Ensure only strong MAC algorithms are used (Automated)
   - id: 28649
@@ -3616,19 +3615,19 @@ checks:
       - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.14"]
-      - cis_csc_v7: ["14.4","16.5"]
+      - cis_csc_v7: ["14.4", "16.5"]
       - cis_csc_v8: ["3.10"]
-      - mitre_techniques: ["T1040","T1557"]
+      - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
-      - cmmc_v2.0: [ "AC.L2-3.1.17","AC.L2-3.1.13","IA.L2-3.5.10","SC.L2-3.13.11","SC.L2-3.13.8","SC.L2-3.13.15" ]
-      - hipaa: [ "164.312(a)(2)(iv)","164.312(e)(1)","164.312(e)(2)(i)","164.312(e)(2)(ii)" ]
-      - pci_dss_3.2.1: [ "2.1.1","4.1","4.1.1","8.2.1" ]
-      - pci_dss_4.0: [ "2.2.7","4.1.1","4.2.1","4.2.1.2","4.2.2","8.3.2" ]
-      - nist_sp_800-53: [ "AC-17(2)","SC-8","SC-8(1)" ]
+      - cmmc_v2.0: ["AC.L2-3.1.17", "AC.L2-3.1.13", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.8", "SC.L2-3.13.15"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
+      - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
+      - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
     condition: none
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^MACs && r:(hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com)"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^MACs && r:(hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com)'
 
   # 5.2.15 Ensure only strong Key Exchange algorithms are used (Automated)
   - id: 28650
@@ -3640,17 +3639,17 @@ checks:
       - cis: ["5.2.15"]
       - cis_csc_v7: ["14.4"]
       - cis_csc_v8: ["3.10"]
-      - mitre_techniques: ["T1040","T1557"]
+      - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
-      - cmmc_v2.0: [ "AC.L2-3.1.17","AC.L2-3.1.13","IA.L2-3.5.10","SC.L2-3.13.11","SC.L2-3.13.8","SC.L2-3.13.15" ]
-      - hipaa: [ "164.312(a)(2)(iv)","164.312(e)(1)","164.312(e)(2)(i)","164.312(e)(2)(ii)" ]
-      - pci_dss_3.2.1: [ "2.1.1","4.1","4.1.1","8.2.1" ]
-      - pci_dss_4.0: [ "2.2.7","4.1.1","4.2.1","4.2.1.2","4.2.2","8.3.2" ]
-      - nist_sp_800-53: [ "AC-17(2)","SC-8","SC-8(1)" ]
+      - cmmc_v2.0: ["AC.L2-3.1.17", "AC.L2-3.1.13", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.8", "SC.L2-3.13.15"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
+      - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
+      - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
     condition: none
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^kexalgorithms && r:(diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1)"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^kexalgorithms && r:(diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1)'
 
   # 5.2.16 Ensure SSH AllowTcpForwarding is disabled (Automated)
   - id: 28651
@@ -3665,17 +3664,17 @@ checks:
       - cis: ["5.2.16"]
       - cis_csc_v7: ["9.2"]
       - cis_csc_v8: ["4.1"]
-      - mitre_techniques: ["T1048","T1048.002","T1572"]
+      - mitre_techniques: ["T1048", "T1048.002", "T1572"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
-      - pci_dss_3.2.1: [ "2.2","11.5" ]
-      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
-      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
-      - soc_2: [ "CC7.1","CC8.1" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^allowtcpforwarding && r:no$"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^allowtcpforwarding && r:no$'
       - "not f:/etc/ssh/sshd_config -> r:^AllowTcpForwarding yes"
 
   # 5.2.17 Ensure SSH warning banner is configured (Automated)
@@ -3688,11 +3687,11 @@ checks:
       - cis: ["5.2.17"]
       - cis_csc_v7: ["5.1"]
       - cis_csc_v8: ["4.1"]
-      - mitre_tactics: ["TA0001","TA0007"]
+      - mitre_tactics: ["TA0001", "TA0007"]
       - mitre_mitigations: ["M1035"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^banner && r:/etc/issue.net$"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^banner && r:/etc/issue.net$'
 
   # 5.2.18 Ensure SSH MaxAuthTries is set to 4 or less (Automated)
   - id: 28653
@@ -3706,14 +3705,14 @@ checks:
       - cis: ["5.2.18"]
       - cis_csc_v7: ["16.13"]
       - cis_csc_v8: ["8.5"]
-      - mitre_techniques: ["T1110","T1110.001","T1110.003"]
+      - mitre_techniques: ["T1110", "T1110.001", "T1110.003"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1036"]
-      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
-      - pci_dss_3.2.1: [ "10.1","10.2.2","10.2.4","10.2.5","10.3" ]
-      - pci_dss_4.0: [ "9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5" ]
-      - nist_sp_800-53: [ "AU-3(1)","AU-7" ]
-      - soc_2: [ "CC5.2","CC7.2" ]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
+      - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
       - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^maxauthtries\\s+(\\d+) compare <= 4"
@@ -3731,16 +3730,16 @@ checks:
       - cis: ["5.2.19"]
       - cis_csc_v7: ["5.1"]
       - cis_csc_v8: ["4.1"]
-      - mitre_techniques: ["T1499","T1499.002"]
+      - mitre_techniques: ["T1499", "T1499.002"]
       - mitre_tactics: ["TA0040"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
-      - pci_dss_3.2.1: [ "2.2","11.5" ]
-      - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
-      - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
-      - soc_2: [ "CC7.1","CC8.1" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> r:^maxstartups && r:10:30:60"
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^maxstartups && r:10:30:60'
       - "not f:/etc/ssh/sshd_config -> r:^maxstartups && !r:10:30:60"
 
   # 5.2.20 Ensure SSH MaxSessions is set to 10 or less (Automated)
@@ -3753,7 +3752,7 @@ checks:
       - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.20"]
-      - mitre_techniques: ["T1499","T1499.002"]
+      - mitre_techniques: ["T1499", "T1499.002"]
       - mitre_tactics: ["TA0040"]
     condition: all
     rules:
@@ -3762,28 +3761,28 @@ checks:
 
   # 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 28656
-      title: "Ensure SSH LoginGraceTime is set to one minute or less."
-      description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access"
-      rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
-      remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60"
-      references:
-        - SSHD_CONFIG(5)
-      compliance:
-        - cis: [ "5.2.21" ]
-        - cis_csc_v7: [ "5.1" ]
-        - cis_csc_v8: [ "4.1" ]
-        - mitre_techniques: [ "T1110","T1110.001","T1110.003","T1110.004","T1499","T1499.002" ]
-        - mitre_tactics: [ "TA0006" ]
-        - mitre_mitigations: [ "M1036" ]
-        - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7" ]
-        - pci_dss_3.2.1: [ "2.2","11.5" ]
-        - pci_dss_4.0: [ "1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1" ]
-        - nist_sp_800-53: [ "CM-7(1)","CM-9","SA-10" ]
-        - soc_2: [ "CC7.1","CC8.1" ]
-      condition: all
-      rules:
-        - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^logingracetime\\s*\\t*(\\d+)  <= 60"
-        - "not f:/etc/ssh/sshd_config -> n:^LoginGraceTime\\s+(\\d+) compare > 60"
+    title: "Ensure SSH LoginGraceTime is set to one minute or less."
+    description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access"
+    rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60"
+    references:
+      - SSHD_CONFIG(5)
+    compliance:
+      - cis: ["5.2.21"]
+      - cis_csc_v7: ["5.1"]
+      - cis_csc_v8: ["4.1"]
+      - mitre_techniques: ["T1110", "T1110.001", "T1110.003", "T1110.004", "T1499", "T1499.002"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_mitigations: ["M1036"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^logingracetime\\s*\\t*(\\d+)  <= 60"
+      - "not f:/etc/ssh/sshd_config -> n:^LoginGraceTime\\s+(\\d+) compare > 60"
 
   # 5.2.22 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 28657
@@ -3795,7 +3794,7 @@ checks:
       - https://man.openbsd.org/sshd_config
     compliance:
       - cis: ["5.2.22"]
-      - mitre_techniques: ["T1078","T1078.001","T1078.002","T1078.003"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003"]
       - mitre_tactics: ["TA0001"]
       - mitre_mitigations: ["M1026"]
     condition: all
@@ -3816,12 +3815,12 @@ checks:
       - cis: ["5.3.1"]
       - cis_csc_v7: ["4.3"]
       - cis_csc_v8: ["5.4"]
-      - mitre_techniques: ["T1078","T1078.003"]
+      - mitre_techniques: ["T1078", "T1078.003"]
       - mitre_tactics: ["TA0001"]
-      - cmmc_v2.0: [ "AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - nist_sp_800-53: [ "AC-6(2)","AC-6(5)" ]
-      - soc_2: [ "CC6.1","CC6.3" ]
+      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - soc_2: ["CC6.1", "CC6.3"]
     condition: all
     rules:
       - "c:dpkg -s sudo -> r:install ok installed"
@@ -3841,12 +3840,12 @@ checks:
       - cis: ["5.3.2"]
       - cis_csc_v7: ["5.1"]
       - cis_csc_v8: ["5.4"]
-      - mitre_techniques: ["T1548","T1548.003"]
+      - mitre_techniques: ["T1548", "T1548.003"]
       - mitre_tactics: ["TA0003"]
-      - cmmc_v2.0: [ "AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - nist_sp_800-53: [ "AC-6(2)","AC-6(5)" ]
-      - soc_2: [ "CC6.1","CC6.3" ]
+      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - soc_2: ["CC6.1", "CC6.3"]
     condition: any
     rules:
       - "f:/etc/sudoers -> r:Defaults\\s+use_pty"
@@ -3866,13 +3865,13 @@ checks:
       - cis: ["5.3.3"]
       - cis_csc_v7: ["6.3"]
       - cis_csc_v8: ["8.5"]
-      - mitre_techniques: ["T1562","T1562.006"]
+      - mitre_techniques: ["T1562", "T1562.006"]
       - mitre_tactics: ["TA0004"]
-      - cmmc_v2.0: [ "AU.L2-3.3.1" ]
-      - pci_dss_3.2.1: [ "10.1","10.2.2","10.2.4","10.2.5","10.3" ]
-      - pci_dss_4.0: [ "9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5" ]
-      - nist_sp_800-53: [ "AU-3(1)","AU-7" ]
-      - soc_2: [ "CC5.2","CC7.2" ]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
+      - soc_2: ["CC5.2", "CC7.2"]
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:Defaults\s+logfile=\S+.log'
@@ -3889,14 +3888,14 @@ checks:
       - cis: ["5.3.4"]
       - cis_csc_v7: ["4.3"]
       - cis_csc_v8: ["5.4"]
-      - cmmc_v2.0: [ "AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - nist_sp_800-53: [ "AC-6(2)","AC-6(5)" ]
-      - soc_2: [ "CC6.1","CC6.3" ]
+      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - soc_2: ["CC6.1", "CC6.3"]
     condition: none
     rules:
-      - 'f:/etc/sudoers -> r:NOPASSWD'
-      - 'd:/etc/sudoers.d -> r:NOPASSWD'
+      - "f:/etc/sudoers -> r:NOPASSWD"
+      - "d:/etc/sudoers.d -> r:NOPASSWD"
 
   # 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally (Automated)
   - id: 28662
@@ -3905,17 +3904,17 @@ checks:
     rationale: "Without re-authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical the user re-authenticate."
     remediation: "Configure the operating system to require users to reauthenticate for privilege escalation. Based on the outcome of the audit procedure, use visudo -f <PATH TO FILE> to edit the relevant sudoers file. Remove any occurrences of !authenticate tags in the file(s)."
     compliance:
-      - cis: [ "5.3.5" ]
-      - cis_csc_v7: [ "4.3" ]
-      - cis_csc_v8: [ "5.4" ]
-      - cmmc_v2.0: [ "AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - nist_sp_800-53: [ "AC-6(2)","AC-6(5)" ]
-      - soc_2: [ "CC6.1","CC6.3" ]
+      - cis: ["5.3.5"]
+      - cis_csc_v7: ["4.3"]
+      - cis_csc_v8: ["5.4"]
+      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - soc_2: ["CC6.1", "CC6.3"]
     condition: none
     rules:
-      - 'f:/etc/sudoers -> r:!authenticate'
-      - 'd:/etc/sudoers.d -> r:!authenticate'
+      - "f:/etc/sudoers -> r:!authenticate"
+      - "d:/etc/sudoers.d -> r:!authenticate"
 
   # 5.3.6 Ensure sudo authentication timeout is configured correctly (Automated) - Not implemented
   # 5.3.7 Ensure access to the su command is restricted (Automated)
@@ -3931,12 +3930,12 @@ checks:
       - mitre_techniques: ["T1548"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1026"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
-      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - pci_dss_4.0: [ "1.3.1","7.1" ]
-      - nist_sp_800-53: [ "AC-5","AC-6" ]
-      - soc_2: [ "CC5.2","CC6.1" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
       - 'f:/etc/pam.d/su -> !r:^# && r:auth\s*required\s*pam_wheel.so && r:use_uid && r:group='
@@ -3952,12 +3951,12 @@ checks:
       - cis: ["5.4.1"]
       - cis_csc_v7: ["4.4"]
       - cis_csc_v8: ["5.2"]
-      - mitre_techniques: ["T1078","T1078.001","T1078.002","T1078.003","T1078.004","T1110","T1110.001","T1110.002","T1110.003"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1027"]
-      - cmmc_v2.0: [ "IA.L2-3.5.7" ]
-      - pci_dss_4.0: [ "2.2.2","8.3.5","8.3.6","8.6.3" ]
-      - soc_2: [ "CC6.1" ]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'f:/etc/security/pwquality.conf -> r:minlen\s+=\s+14'
@@ -3974,15 +3973,15 @@ checks:
       - cis: ["5.4.2"]
       - cis_csc_v7: ["16.7"]
       - cis_csc_v8: ["6.2"]
-      - mitre_techniques: ["T1110","T1110.001","T1110.003"]
+      - mitre_techniques: ["T1110", "T1110.001", "T1110.003"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1027"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1" ]
-      - hipaa: [ "164.308(a)(3)(ii)(C)" ]
-      - pci_dss_3.2.1: [ "8.1.3" ]
-      - pci_dss_4.0: [ "8.2.4","8.2.5" ]
-      - nist_sp_800-53: [ "AC-2(1)" ]
-      - soc_2: [ "CC6.2","CC6.3" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1"]
+      - hipaa: ["164.308(a)(3)(ii)(C)"]
+      - pci_dss_3.2.1: ["8.1.3"]
+      - pci_dss_4.0: ["8.2.4", "8.2.5"]
+      - nist_sp_800-53: ["AC-2(1)"]
+      - soc_2: ["CC6.2", "CC6.3"]
     condition: all
     rules:
       - 'f:/etc/pam.d/common-auth -> r:auth required\s+pam_faillock.so\s+preauth'
@@ -4003,10 +4002,10 @@ checks:
       - cis: ["5.4.3"]
       - cis_csc_v7: ["4.4"]
       - cis_csc_v8: ["5.2"]
-      - mitre_techniques: ["T1078","T1078.001","T1078.002","T1078.003","T1078.004","T1110","T1110.004"]
-      - cmmc_v2.0: [ "IA.L2-3.5.7" ]
-      - pci_dss_4.0: [ "2.2.2","8.3.5","8.3.6","8.6.3" ]
-      - soc_2: [ "CC6.1" ]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.004"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'f:/etc/pam.d/common-password -> r:password\s+[success=1\s+default=ignore]\s+pam_unix.so\s+obscure'
@@ -4022,19 +4021,19 @@ checks:
       - cis: ["5.4.4"]
       - cis_csc_v7: ["16.4"]
       - cis_csc_v8: ["3.11"]
-      - mitre_techniques: ["T1003","T1003.008","T1110","T1110.002"]
+      - mitre_techniques: ["T1003", "T1003.008", "T1110", "T1110.002"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
-      - cmmc_v2.0: [ "AC.L2-3.1.19","IA.L2-3.5.10","MP.L2-3.8.1","SC.L2-3.13.11","SC.L2-3.13.16" ]
-      - hipaa: [ "164.312(a)(2)(iv)","164.312(e)(2)(ii)" ]
-      - pci_dss_3.2.1: [ "3.4","3.4.1","8.2.1" ]
-      - pci_dss_4.0: [ "3.1.1","3.3.2","3.3.3","3.5.1","3.5.1.2","3.5.1.3","8.3.2" ]
-      - nist_sp_800-53: [ "SC-28","SC-28(1)" ]
-      - soc_2: [ "CC6.1" ]
+      - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
+      - pci_dss_3.2.1: ["3.4", "3.4.1", "8.2.1"]
+      - pci_dss_4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
+      - nist_sp_800-53: ["SC-28", "SC-28(1)"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'not f:/etc/pam.d/common-password -> r:(yescrypt|md5|bigcrypt|sha256|sha512|blowfish)'
-      - 'f:/etc/login.defs -> r:ENCRYPT_METHOD yescrypt'
+      - "not f:/etc/pam.d/common-password -> r:(yescrypt|md5|bigcrypt|sha256|sha512|blowfish)"
+      - "f:/etc/login.defs -> r:ENCRYPT_METHOD yescrypt"
 
   # 5.4.5 Ensure all current passwords uses the configured hashing algorithm (Manual) - Not implemented
   # 5.5 User Accounts and Environment
@@ -4049,12 +4048,12 @@ checks:
       - cis: ["5.5.1.1"]
       - cis_csc_v7: ["4.4"]
       - cis_csc_v8: ["5.2"]
-      - mitre_techniques: ["T1078","T1078.001","T1078.002","T1078.003","T1078.004","T1110","T1110.004"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.004"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1027"]
-      - cmmc_v2.0: [ "IA.L2-3.5.7" ]
-      - pci_dss_4.0: [ "2.2.2","8.3.5","8.3.6","8.6.3" ]
-      - soc_2: [ "CC6.1" ]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:PASS_MIN_DAYS\s+(\d+) compare >=1'
@@ -4071,15 +4070,14 @@ checks:
       - cis: ["5.5.1.2"]
       - cis_csc_v7: ["4.4"]
       - cis_csc_v8: ["5.2"]
-      - mitre_techniques: ["T1078","T1078.001","T1078.002","T1078.003","T1078.004","T1110","T1110.001","T1110.002","T1110.003","T1110.004"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - pci_dss_4.0: ["2.2.2","8.3.5","8.3.6","8.6.3"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:PASS_MAX_DAYS (\d+) compare <= 365'
       - 'f:/etc/shadow -> !r:^\w+:! && !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:(\d+) compare <= 365'
-
 
   # 5.5.1.3 Ensure password expiration warning days is 7 or more (Automated)
   - id: 28670
@@ -4093,9 +4091,9 @@ checks:
       - cis_csc_v8: ["5.2"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1027"]
-      - cmmc_v2.0: [ "IA.L2-3.5.7" ]
-      - pci_dss_4.0: [ "2.2.2","8.3.5","8.3.6","8.6.3" ]
-      - soc_2: [ "CC6.1" ]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:PASS_WARN_AGE (\d+) compare >= 7'
@@ -4111,17 +4109,17 @@ checks:
       - cis: ["5.5.1.4"]
       - cis_csc_v7: ["4.4"]
       - cis_csc_v8: ["5.2"]
-      - mitre_techniques: ["T1078","T1078.002","T1078.003"]
+      - mitre_techniques: ["T1078", "T1078.002", "T1078.003"]
       - mitre_tactics: ["TA0001"]
       - mitre_mitigations: ["M1027"]
-      - cmmc_v2.0: [ "IA.L2-3.5.7" ]
-      - pci_dss_4.0: [ "2.2.2","8.3.5","8.3.6","8.6.3" ]
-      - soc_2: [ "CC6.1" ]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: none
     rules:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare >= 30'
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare == 0'
-      - 'c:useradd -D -> r:^INACTIVE=-1'
+      - "c:useradd -D -> r:^INACTIVE=-1"
       - 'f:/etc/shadow -> !r:^\w+:! && !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:d+:\d+:(\d+) compare > 30'
 
   # 5.5.1.5 Ensure all users last password change date is in the past (Automated) -Not implemented
@@ -4139,12 +4137,12 @@ checks:
       - mitre_techniques: ["T1548"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1026"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
-      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - pci_dss_4.0: [ "1.3.1","7.1" ]
-      - nist_sp_800-53: [ "AC-5","AC-6" ]
-      - soc_2: [ "CC5.2","CC6.1" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
       - 'f:/etc/passwd -> r:^root:\S*:\S*:0:'
@@ -4167,15 +4165,15 @@ checks:
       - cis: ["6.1.1"]
       - cis_csc_v7: ["14.6"]
       - cis_csc_v8: ["3.3"]
-      - mitre_techniques: ["T1003","T1003.008","T1222","T1222.002"]
+      - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
-      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - pci_dss_4.0: [ "1.3.1","7.1" ]
-      - nist_sp_800-53: [ "AC-5","AC-6" ]
-      - soc_2: [ "CC5.2","CC6.1" ]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
       - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -4187,18 +4185,18 @@ checks:
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following command to set permissions on /etc/passwd- : # chown root:root /etc/passwd- # chmod u-x,go-wx /etc/passwd-"
     compliance:
-      - cis: [ "6.1.2" ]
-      - cis_csc_v7: [ "14.6" ]
-      - cis_csc_v8: [ "3.3" ]
-      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
-      - mitre_tactics: [ "TA0005" ]
-      - mitre_mitigations: [ "M1022" ]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
-      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - pci_dss_4.0: [ "1.3.1","7.1" ]
-      - nist_sp_800-53: [ "AC-5","AC-6" ]
-      - soc_2: [ "CC5.2","CC6.1" ]
+      - cis: ["6.1.2"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
       - 'c:stat /etc/passwd- -> r:-rw-\.--\.-- && r:Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -4211,17 +4209,17 @@ checks:
     remediation: "Run the following command to set permissions on /etc/group : # chown root:root /etc/group # chmod u-x,go-wx /etc/group"
     compliance:
       - cis: ["6.1.3"]
-      - cis_csc_v7: [ "14.6" ]
-      - cis_csc_v8: [ "3.3" ]
-      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
-      - mitre_tactics: [ "TA0005" ]
-      - mitre_mitigations: [ "M1022" ]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
-      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - pci_dss_4.0: [ "1.3.1","7.1" ]
-      - nist_sp_800-53: [ "AC-5","AC-6" ]
-      - soc_2: [ "CC5.2","CC6.1" ]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
       - 'c:stat /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -4233,18 +4231,18 @@ checks:
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following command to set permissions on /etc/group- : # chown root:root /etc/group- # chmod u-x,go-wx /etc/group"
     compliance:
-      - cis: [ "6.1.4" ]
-      - cis_csc_v7: [ "14.6" ]
-      - cis_csc_v8: [ "3.3" ]
-      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
-      - mitre_tactics: [ "TA0005" ]
-      - mitre_mitigations: [ "M1022" ]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
-      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - pci_dss_4.0: [ "1.3.1","7.1" ]
-      - nist_sp_800-53: [ "AC-5","AC-6" ]
-      - soc_2: [ "CC5.2","CC6.1" ]
+      - cis: ["6.1.4"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
       - 'c:stat /etc/group- -> r:-rw-\.--\.-- && r:Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -4257,17 +4255,17 @@ checks:
     remediation: "Run one of the following commands to set ownership of /etc/shadow to root and group to either root or shadow: # chown root:root /etc/shadow # chown root:shadow /etc/shadow Run the following command to remove excess permissions form /etc/shadow: # chmod u-x,g-wx,o-rwx /etc/shadow"
     compliance:
       - cis: ["6.1.5"]
-      - cis_csc_v7: [ "14.6" ]
-      - cis_csc_v8: [ "3.3" ]
-      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
-      - mitre_tactics: [ "TA0005" ]
-      - mitre_mitigations: [ "M1022" ]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
-      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - pci_dss_4.0: [ "1.3.1","7.1" ]
-      - nist_sp_800-53: [ "AC-5","AC-6" ]
-      - soc_2: [ "CC5.2","CC6.1" ]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: any
     rules:
       - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -4281,17 +4279,17 @@ checks:
     remediation: "Run one of the following commands to set ownership of /etc/shadow- to root and group to either root or shadow: # chown root:root /etc/shadow- # chown root:shadow /etc/shadowRun the following command to remove excess permissions form /etc/shadow-: # chmod u-x,g-wx,o-rwx /etc/shadow-"
     compliance:
       - cis: ["6.1.6"]
-      - cis_csc_v7: [ "14.6" ]
-      - cis_csc_v8: [ "3.3" ]
-      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
-      - mitre_tactics: [ "TA0005" ]
-      - mitre_mitigations: [ "M1022" ]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
-      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - pci_dss_4.0: [ "1.3.1","7.1" ]
-      - nist_sp_800-53: [ "AC-5","AC-6" ]
-      - soc_2: [ "CC5.2","CC6.1" ]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
       - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -4305,42 +4303,41 @@ checks:
     remediation: "Run one of the following commands to set ownership of /etc/gshadow to root and group to either root or shadow: # chown root:root /etc/gshadow # chown root:shadow /etc/gshadow Run the following command to remove excess permissions form /etc/gshadow: # chmod u-x,g-wx,o-rwx /etc/gshadow"
     compliance:
       - cis: ["6.1.7"]
-      - cis_csc_v7: [ "14.6" ]
-      - cis_csc_v8: [ "3.3" ]
-      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
-      - mitre_tactics: [ "TA0005" ]
-      - mitre_mitigations: [ "M1022" ]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
-      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - pci_dss_4.0: [ "1.3.1","7.1" ]
-      - nist_sp_800-53: [ "AC-5","AC-6" ]
-      - soc_2: [ "CC5.2","CC6.1" ]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
       - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
       - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
-
 
   # 6.1.8 Ensure permissions on /etc/gshadow- are configured (Automated)
   - id: 28680
     title: "Ensure permissions on /etc/gshadow- are configured"
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
-    remediation: 'Run one of the following commands to set ownership of /etc/gshadow- to root and group to either root or shadow: # chown root:root /etc/gshadow- # chown root:shadow /etc/gshadowRun the following command to remove excess permissions form /etc/gshadow-: # chmod u-x,g-wx,o-rwx /etc/gshadow-'
+    remediation: "Run one of the following commands to set ownership of /etc/gshadow- to root and group to either root or shadow: # chown root:root /etc/gshadow- # chown root:shadow /etc/gshadowRun the following command to remove excess permissions form /etc/gshadow-: # chmod u-x,g-wx,o-rwx /etc/gshadow-"
     compliance:
-      - cis: [ "6.1.8" ]
-      - cis_csc_v7: [ "14.6" ]
-      - cis_csc_v8: [ "3.3" ]
-      - mitre_techniques: [ "T1003","T1003.008","T1222","T1222.002" ]
-      - mitre_tactics: [ "TA0005" ]
-      - mitre_mitigations: [ "M1022" ]
-      - cmmc_v2.0: [ "AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2" ]
-      - hipaa: [ "164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)" ]
-      - pci_dss_3.2.1: [ "7.1","7.1.1","7.1.2","7.1.3" ]
-      - pci_dss_4.0: [ "1.3.1","7.1" ]
-      - nist_sp_800-53: [ "AC-5","AC-6" ]
-      - soc_2: [ "CC5.2","CC6.1" ]
+      - cis: ["6.1.8"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
       - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -4371,7 +4368,6 @@ checks:
     condition: all
     rules:
       - ""
-
 
   - id: 28682
     title: "Ensure /etc/shadow password fields are not empty"
