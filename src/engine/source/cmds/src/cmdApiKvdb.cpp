@@ -60,7 +60,7 @@ void listKvdbs(const std::string& socketPath)
                   << response.getString("/message").value_or("-") << std::endl;
         return;
     }
-    else if (kvdbList.value().empty())
+    else if (!kvdbList.has_value())
     {
         std::cout << "No KVDB found" << std::endl;
         return;
@@ -77,6 +77,41 @@ void listKvdbs(const std::string& socketPath)
 
 }
 
+void createKvdb(const std::string& socketPath, const std::string& kvdb_name)
+{
+    // create request
+    json::Json data {};
+    data.setObject();
+    data.setString("create", "/action");
+    data.setString(kvdb_name, "/name");
+
+    std::string finalCommand = "create_kvdb";
+
+    auto req = api::WazuhRequest::create(finalCommand, "api", data);
+
+    // send request
+    json::Json response {};
+    try
+    {
+        auto responseStr = apiclnt::connection(socketPath, req.toStr());
+        response = json::Json {responseStr.c_str()};
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Error sending request: " << e.what() << std::endl;
+        return;
+    }
+
+    if (response.getInt("/error").value_or(-1) != 200)
+    {
+        std::cerr << "Error creating KVDB: "
+                  << response.getString("/message").value_or("-") << std::endl;
+        return;
+    }
+
+    std::cout << " KVDB name:" << kvdb_name << " created." << std::endl;
+}
+
 }
 
 void kvdb(const std::string& kvdbPath,
@@ -89,7 +124,10 @@ void kvdb(const std::string& kvdbPath,
     {
         listKvdbs(socketPath);
     }
-
+    else if(action == "create")
+    {
+        createKvdb(socketPath,kvdbName);
+    }
     return;
 }
 
