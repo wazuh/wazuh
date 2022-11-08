@@ -53,7 +53,8 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,wdb_global_restore_backup -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                              -Wl,--wrap,wdb_global_select_group_belong -Wl,--wrap,wdb_global_set_agent_groups -Wl,--wrap,wdb_global_sync_agent_groups_get \
                              -Wl,--wrap,wdb_global_get_group_agents -Wl,--wrap,w_inc_queries_total -Wl,--wrap,w_inc_global -Wl,--wrap,gettimeofday \
-                             -Wl,--wrap,w_inc_global_sql -Wl,--wrap,w_inc_global_sql_time \
+                             -Wl,--wrap,w_inc_global_sql -Wl,--wrap,w_inc_global_sql_time -Wl,--wrap,w_inc_global_vacuum -Wl,--wrap,w_inc_global_vacuum_time \
+                             -Wl,--wrap,w_inc_global_get_fragmentation -Wl,--wrap,w_inc_global_get_fragmentation_time \
                              -Wl,--wrap,w_inc_global_agent_insert_agent -Wl,--wrap,w_inc_global_agent_insert_agent_time -Wl,--wrap,w_inc_global_agent_update_agent_name \
                              -Wl,--wrap,w_inc_global_agent_update_agent_name_time -Wl,--wrap,w_inc_global_agent_update_agent_data -Wl,--wrap,w_inc_global_agent_update_agent_data_time \
                              -Wl,--wrap,w_inc_global_labels_get_labels -Wl,--wrap,w_inc_global_labels_get_labels_time -Wl,--wrap,w_inc_global_agent_update_keepalive \

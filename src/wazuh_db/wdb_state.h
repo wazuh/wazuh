@@ -100,11 +100,15 @@ typedef struct _agent_breakdown_t {
     uint64_t commit_queries;
     uint64_t remove_queries;
     uint64_t sql_queries;
+    uint64_t vacuum_queries;
+    uint64_t get_fragmentation_queries;
     struct timeval begin_time;
     struct timeval close_time;
     struct timeval commit_time;
     struct timeval remove_time;
     struct timeval sql_time;
+    struct timeval vacuum_time;
+    struct timeval get_fragmentation_time;
     agent_ciscat_t ciscat;
     agent_rootcheck_t rootcheck;
     agent_sca_t sca;
@@ -181,8 +185,12 @@ typedef struct _global_labels_t {
 typedef struct _global_breakdown_t {
     uint64_t backup_queries;
     uint64_t sql_queries;
+    uint64_t vacuum_queries;
+    uint64_t get_fragmentation_queries;
     struct timeval backup_time;
     struct timeval sql_time;
+    struct timeval vacuum_time;
+    struct timeval get_fragmentation_time;
     global_agent_t agent;
     global_belongs_t belongs;
     global_group_t group;
@@ -334,6 +342,30 @@ void w_inc_agent_close();
  *
  */
 void w_inc_agent_close_time(struct timeval time);
+
+/**
+ * @brief Increment vacuum agent queries counter
+ *
+ */
+void w_inc_agent_vacuum();
+
+/**
+ * @brief Increment vacuum agent time counter
+ *
+ */
+void w_inc_agent_vacuum_time(struct timeval time);
+
+/**
+ * @brief Increment get_fragmentation agent queries counter
+ *
+ */
+void w_inc_agent_get_fragmentation();
+
+/**
+ * @brief Increment get_fragmentation agent time counter
+ *
+ */
+void w_inc_agent_get_fragmentation_time(struct timeval time);
 
 /**
  * @brief Increment rootcheck agent queries counter
@@ -940,6 +972,30 @@ void w_inc_global_labels_get_labels();
  *
  */
 void w_inc_global_labels_get_labels_time(struct timeval time);
+
+/**
+ * @brief Increment vacuum global queries counter
+ *
+ */
+void w_inc_global_vacuum();
+
+/**
+ * @brief Increment vacuum global time counter
+ *
+ */
+void w_inc_global_vacuum_time(struct timeval time);
+
+/**
+ * @brief Increment get_fragmentation global queries counter
+ *
+ */
+void w_inc_global_get_fragmentation();
+
+/**
+ * @brief Increment get_fragmentation global time counter
+ *
+ */
+void w_inc_global_get_fragmentation_time(struct timeval time);
 
 /**
  * @brief Increment task queries counter

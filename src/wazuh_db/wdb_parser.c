@@ -644,6 +644,8 @@ int wdb_parse(char * input, char * output, int peer) {
                 w_inc_agent_syscollector_times(diff, result);
             }
         } else if (strcmp(query, "vacuum") == 0) {
+            w_inc_agent_vacuum();
+            gettimeofday(&begin, 0);
             if (wdb_commit2(wdb) < 0) {
                 mdebug1("DB(%s) Cannot end transaction.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
@@ -688,7 +690,12 @@ int wdb_parse(char * input, char * output, int peer) {
                     }
                 }
             }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_agent_vacuum_time(diff);
         } else if (strcmp(query, "get_fragmentation") == 0) {
+            w_inc_agent_get_fragmentation();
+            gettimeofday(&begin, 0);
             int state = wdb_get_db_state(wdb);
             int free_pages = wdb_get_db_free_pages_percentage(wdb);
             if (state < 0 || free_pages < 0) {
@@ -706,6 +713,9 @@ int wdb_parse(char * input, char * output, int peer) {
                 cJSON_Delete(json_fragmentation);
                 result = 0;
             }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_agent_get_fragmentation_time(diff);
         } else {
             mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
             mdebug2("DB(%s) query error near: %s", sagent_id, query);
@@ -1221,6 +1231,8 @@ int wdb_parse(char * input, char * output, int peer) {
                 w_inc_global_backup_time(diff);
             }
         } else if (strcmp(query, "vacuum") == 0) {
+            w_inc_global_vacuum();
+            gettimeofday(&begin, 0);
             if (wdb_commit2(wdb) < 0) {
                 mdebug1("Global DB Cannot end transaction.");
                 snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
@@ -1265,7 +1277,12 @@ int wdb_parse(char * input, char * output, int peer) {
                     }
                 }
             }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_vacuum_time(diff);
         } else if (strcmp(query, "get_fragmentation") == 0) {
+            w_inc_global_get_fragmentation();
+            gettimeofday(&begin, 0);
             int state = wdb_get_db_state(wdb);
             int free_pages = wdb_get_db_free_pages_percentage(wdb);
             if (state < 0 || free_pages < 0) {
@@ -1283,6 +1300,9 @@ int wdb_parse(char * input, char * output, int peer) {
                 cJSON_Delete(json_fragmentation);
                 result = 0;
             }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_get_fragmentation_time(diff);
         } else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
