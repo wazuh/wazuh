@@ -619,7 +619,9 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
                     return;
                 }
             } else {
-                OS_MD5_Str(finalbuf, finalsize, md5sum_tmp);
+                if (finalbuf) {
+                    OS_MD5_Str(finalbuf, finalsize, md5sum_tmp);
+                }
             }
 
             if ((OS_MD5_File(merged, md5sum, OS_TEXT) != 0) || (strcmp(md5sum_tmp, md5sum) != 0)) {
