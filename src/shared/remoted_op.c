@@ -22,7 +22,7 @@
  * @retval A string pointer to the architecture. NULL if not found.
  */
 char * get_os_arch(char * os_header) {
-    const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "i86pc", "ia64", "AIX", "armv6", "armv7", NULL };
+    const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "i86pc", "ia64", "AIX", "armv6", "armv7", "aarch64", NULL };
     char * os_arch = NULL;
     int i;
 

@@ -96,6 +96,7 @@ get_rbac_actions:
           - GET /agents/{agent_id}/config/{component}/{configuration}
           - GET /agents/{agent_id}/group/is_sync
           - GET /agents/{agent_id}/key
+          - GET /agents/{agent_id}/daemons/stats
           - GET /agents/{agent_id}/stats/{component}
           - GET /groups/{group_id}/agents
           - GET /agents/no_group
@@ -276,6 +277,7 @@ get_rbac_actions:
           - GET /cluster/{node_id}/status
           - GET /cluster/{node_id}/info
           - GET /cluster/{node_id}/configuration
+          - GET /cluster/{node_id}/daemons/stats
           - GET /cluster/{node_id}/stats
           - GET /cluster/{node_id}/stats/hourly
           - GET /cluster/{node_id}/stats/weekly
@@ -417,6 +419,7 @@ get_rbac_actions:
           - GET /manager/status
           - GET /manager/info
           - GET /manager/configuration
+          - GET /manager/daemons/stats
           - GET /manager/stats
           - GET /manager/stats/hourly
           - GET /manager/stats/weekly

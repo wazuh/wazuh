@@ -64,14 +64,21 @@ default_api_configuration = {
         "block_time": 300,
         "max_request_per_minute": 300
     },
-    "remote_commands": {
-        "localfile": {
-            "enabled": True,
-            "exceptions": []
+    "upload_configuration": {
+        "remote_commands": {
+            "localfile": {
+                "allow": True,
+                "exceptions": []
+            },
+            "wodle_command": {
+                "allow": True,
+                "exceptions": []
+            }
         },
-        "wodle_command": {
-            "enabled": True,
-            "exceptions": []
+        "limits": {
+            "eps": {
+                "allow": True
+            }
         }
     }
 }
@@ -269,14 +276,6 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
 
     return configuration
 
-
-# Check if the default configuration is valid according to its jsonschema, so we are forced to update the schema if any
-# change is performed to the configuration.
-try:
-    validate(instance=default_security_configuration, schema=security_config_schema)
-    validate(instance=default_api_configuration, schema=api_config_schema)
-except ValidationError as e:
-    raise APIError(2000, details=e.message)
 
 # Configuration - global object
 api_conf = read_yaml_config()

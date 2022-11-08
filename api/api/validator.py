@@ -141,27 +141,48 @@ api_config_schema = {
                 "max_request_per_minute": {"type": "integer"},
             },
         },
-        "remote_commands": {
+        "upload_configuration": {
             "type": "object",
             "additionalProperties": False,
             "properties": {
-                "localfile": {
+                "remote_commands": {
                     "type": "object",
                     "additionalProperties": False,
                     "properties": {
-                        "enabled": {"type": "boolean"},
-                        "exceptions": {"type": "array", "items": {"type": "string"}},
+                        "localfile": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "allow": {"type": "boolean"},
+                                "exceptions": {"type": "array", "items": {"type": "string"}},
+                            },
+                        },
+                        "wodle_command": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "allow": {"type": "boolean"},
+                                "exceptions": {"type": "array", "items": {"type": "string"}},
+                            },
+                        },
                     },
                 },
-                "wodle_command": {
+                "limits": {
                     "type": "object",
                     "additionalProperties": False,
                     "properties": {
-                        "enabled": {"type": "boolean"},
-                        "exceptions": {"type": "array", "items": {"type": "string"}},
-                    },
-                },
-            },
+                        "eps": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "allow": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         },
     },
 }
@@ -180,6 +201,7 @@ WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
         'monitor': {"global", "internal"},
         'request': {"global", "remote", "internal"},
         'syscheck': {"syscheck", "rootcheck", "internal"},
+        'wazuh-db': {"wdb", "internal"},
         'wmodules': {"wmodules"}
     }
 )
@@ -290,7 +312,7 @@ def check_component_configuration_pair(component: str, configuration: str) -> Wa
         is returned and not raised because we use the object to create a problem on API level.
     """
     if configuration not in WAZUH_COMPONENT_CONFIGURATION_MAPPING[component]:
-        return WazuhError(1127, extra_message=f"Valid configuration values for '{component}': "
+        return WazuhError(1128, extra_message=f"Valid configuration values for '{component}': "
                                               f"{WAZUH_COMPONENT_CONFIGURATION_MAPPING[component]}")
 
 

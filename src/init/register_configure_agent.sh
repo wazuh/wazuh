@@ -366,6 +366,8 @@ main () {
             
     if [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then
         echo "${WAZUH_REGISTRATION_PASSWORD}" > "${INSTALLDIR}/${WAZUH_REGISTRATION_PASSWORD_PATH}"
+        chmod 640 "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
+        chown root:wazuh "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
     fi
 
     # Options to be modified in ossec.conf
