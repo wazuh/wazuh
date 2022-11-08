@@ -43,8 +43,8 @@ static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(ro
 static const char *SQL_TRUNCATE_TEMP_TABLE = "DELETE FROM s;";
 static const char *SQL_INSERT_INTO_TEMP_TABLE = "INSERT INTO s(pageno) SELECT pageno FROM dbstat ORDER BY path;";
 static const char *SQL_SELECT_TEMP_TABLE = "SELECT sum(s1.pageno+1==s2.pageno)*1.0/count(*) FROM s AS s1, s AS s2 WHERE s1.rowid+1=s2.rowid;";
-static const char *SQL_SELECT_PAGE_COUNT = "SELECT page_count  FROM pragma_page_count();";
-static const char *SQL_SELECT_PAGE_FREE = "SELECT freelist_count  FROM pragma_freelist_count();";
+static const char *SQL_SELECT_PAGE_COUNT = "SELECT page_count FROM pragma_page_count();";
+static const char *SQL_SELECT_PAGE_FREE = "SELECT freelist_count FROM pragma_freelist_count();";
 static const char *SQL_VACUUM = "VACUUM;";
 static const char *SQL_METADATA_UPDATE_FRAGMENTATION_DATA = "INSERT INTO metadata (key, value) VALUES ('last_vacuum_time', ?), ('last_vacuum_value', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value;";
 static const char *SQL_METADATA_GET_FRAGMENTATION_DATA = "SELECT key, value FROM metadata WHERE key in ('last_vacuum_time', 'last_vacuum_value');";
@@ -276,14 +276,22 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYS_PROGRAMS_SET_TRIAGED] = "UPDATE SYS_PROGRAMS SET TRIAGED = 1;",
 };
 
-/* Run a query without selecting any fields */
+/**
+ * @brief Run a non-select query on the temporary table.
+ *
+ * @param[in] db Database to query for the table existence.
+ * @param[in] query query to run.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on error.
+ */
 STATIC int wdb_execute_non_select_query(sqlite3 *db, const char *query);
 
-/* Select from temp table */
+/**
+ * @brief Run a select query on the temporary table.
+ *
+ * @param[in] db Database to query for the table existence.
+ * @return Returns 0..100 on success or OS_INVALID on error.
+ */
 STATIC int wdb_select_from_temp_table(sqlite3 *db);
-
-/* Get the fragmentation data of the last vacuum stored in the metadata table. */
-STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value);
 
 /**
  * @brief Execute a select query that returns a single integer value.
@@ -294,6 +302,16 @@ STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last
  * @return Returns OS_SUCCESS on success or OS_INVALID on error.
  */
 STATIC int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, int *value);
+
+/**
+ * @brief Get the fragmentation data of the last vacuum stored in the metadata table.
+ *
+ * @param[in] wdb Database to query for the table existence.
+ * @param[out] last_vacuum_time Integer where the last_vacuum_time value will be stored.
+ * @param[out] last_vacuum_value Integer where the last_vacuum_value value will be stored.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on error.
+ */
+STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value);
 
 wdb_config wconfig;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -863,6 +881,11 @@ STATIC int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, i
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
 
+    if (query == NULL) {
+        mdebug1("wdb_execute_non_select_query(): null query.");
+        return OS_INVALID;
+    }
+
     if (sqlite3_prepare_v2(wdb->db, query, -1, &stmt, NULL) != SQLITE_OK) {
         mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
@@ -1127,6 +1150,14 @@ void wdb_check_fragmentation() {
             if (wdb_get_last_vacuum_data(node, &last_vacuum_time, &last_vacuum_value) != OS_SUCCESS) {
                 merror("Couldn't get last vacuum info for the database '%s'", node->id);
             } else {
+                // conditions for running a vacuum:
+                // 'current_free_pages_percentage >= wconfig.free_pages_percentage' is always necessary
+                // one of the following conditions is also required:
+                // 'current_fragmentation > wconfig.max_fragmentation'
+                // OR
+                // 'current_fragmentation > wconfig.fragmentation_threshold' AND 'last_vacuum_time == 0'
+                // OR
+                // 'current_fragmentation > wconfig.fragmentation_threshold' AND 'last_vacuum_time > 0' AND 'current_fragmentation > last_vacuum_value + wconfig.fragmentation_delta'
                 if (current_free_pages_percentage >= wconfig.free_pages_percentage && (current_fragmentation > wconfig.max_fragmentation ||
                     (current_fragmentation > wconfig.fragmentation_threshold && (last_vacuum_time == 0  || (last_vacuum_time > 0 && current_fragmentation > last_vacuum_value + wconfig.fragmentation_delta))))) {
                     struct timespec ts_start, ts_end;
@@ -1209,9 +1240,9 @@ STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last
             if (key_json == NULL || value_json == NULL) {
                 merror("It was not possible to get key or value from database response.");
             } else {
-                if(strcmp(key_json->valuestring, "last_vacuum_time") == 0) {
+                if (strcmp(key_json->valuestring, "last_vacuum_time") == 0) {
                     tmp_vacuum_time = atoi(value_json->valuestring);
-                } else if(strcmp(key_json->valuestring, "last_vacuum_value") == 0) {
+                } else if (strcmp(key_json->valuestring, "last_vacuum_value") == 0) {
                     tmp_vacuum_value = atoi(value_json->valuestring);
                 }
             }

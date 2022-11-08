@@ -403,12 +403,10 @@ extern char *schema_upgrade_v6_sql;
 extern char *schema_upgrade_v7_sql;
 extern char *schema_upgrade_v8_sql;
 extern char *schema_upgrade_v9_sql;
-extern char *schema_upgrade_v10_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
 extern char *schema_global_upgrade_v4_sql;
-extern char *schema_global_upgrade_v5_sql;
 
 extern wdb_config wconfig;
 extern pthread_mutex_t pool_mutex;
@@ -699,7 +697,12 @@ int wdb_create_file(const char *path, const char *source);
 /* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
 int wdb_rootcheck_delete(wdb_t * wdb);
 
-/* Rebuild database. Returns 0 on success or -1 on error. */
+/**
+ * @brief Rebuild database.
+ *
+ * @param[in] db Database to query for the table existence.
+ * @return Returns 0 on success or -1 on error.
+ */
 int wdb_vacuum(sqlite3 *db);
 
 /**
@@ -840,6 +843,9 @@ void wdb_close_old();
 
 int wdb_remove_database(const char * agent_id);
 
+/**
+ * @brief Checks and vacuums (if necessary) the databases in the DB pool.
+ */
 void wdb_check_fragmentation();
 
 /**
