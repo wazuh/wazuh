@@ -852,7 +852,20 @@ get_rbac_actions:
           - GET /vulnerability/{agent_id}
           - GET /vulnerability/{agent_id}/last_scan
           - GET /vulnerability/{agent_id}/summary/{field}
-
+      vulnerability:run:
+        description: Allow running a vulnerability detector scan
+        resources:
+          - node:id
+          - "*:*"
+        example:
+          actions:
+            - vulnerability:run
+          resources:
+            - node:id:worker1
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - PUT /vulnerability
 
 get_rbac_resources:
   - params:

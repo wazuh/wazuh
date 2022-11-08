@@ -539,7 +539,12 @@ class WazuhException(Exception):
         # Logtest
         7000: {'message': 'Error trying to get logtest response'},
         7001: {'message': 'Error trying to read logtest session token',
-               'remediation': 'Make sure you introduce the token within the field "token"'}
+               'remediation': 'Make sure you introduce the token within the field "token"'},
+
+        # Vulnerability detector
+        8000: {'message': 'Error trying to request vulnerability detector scan. A scan is already running'},
+        8001: {'message': 'Unexpected error trying to request vulnerability detector scan'},
+        8002: {'message': 'Vulnerability detector has not been set up'}
 
         # > 9000: Authd
     }

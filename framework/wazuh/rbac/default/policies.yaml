@@ -353,3 +353,19 @@ default_policies:
         resources:
           - agent:id:*
         effect: allow
+
+  vulnerability_run:
+    description: Allow running a vulnerability detector scan.
+    policies:
+      resourceless:
+        actions:
+          - vulnerability:run
+        resources:
+          - '*:*:*'
+        effect: allow
+      nodes:
+        actions:
+          - vulnerability:run
+        resources:
+          - node:id:*
+        effect: allow
