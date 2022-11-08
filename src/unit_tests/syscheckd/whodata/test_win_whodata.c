@@ -86,6 +86,10 @@ int SIZE_EVENTS;
 const PWCHAR WCS_TEST_PATH = L"C:\\Windows\\a\\path";
 const char *STR_TEST_PATH = "c:\\windows\\a\\path";
 
+static const char *guid_ObjectAccess = "{6997984A-797A-11D9-BED3-505054503030}";
+static const char *guid_FileSystem = "{0CCE921D-69AE-11D9-BED3-505054503030}";
+static const char *guid_Handle =  "{0CCE9223-69AE-11D9-BED3-505054503030}";
+
 typedef struct PolicyInfo {
     GUID *category_guid;
     GUID *subcategory_guid1;
@@ -6855,6 +6859,10 @@ void test_state_checker_no_files_to_check(void **state) {
     policy_info *pol_data = *state;
     int ret;
     void *input = NULL;
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -6862,12 +6870,21 @@ void test_state_checker_no_files_to_check(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     OSList_CleanNodes(syscheck.directories);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -6889,6 +6906,10 @@ void test_state_checker_file_not_whodata(void **state) {
     policy_info *pol_data = *state;
     int ret;
     void *input = NULL;
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -6899,12 +6920,20 @@ void test_state_checker_file_not_whodata(void **state) {
     // Leverage Free_Syscheck not free the wdata struct
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_CHECK_WHODATA;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -6927,6 +6956,10 @@ void test_state_checker_file_does_not_exist(void **state) {
     int ret;
     void *input = NULL;
     SYSTEMTIME st;
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     memset(&st, 0, sizeof(SYSTEMTIME));
     st.wYear = 2020;
@@ -6939,12 +6972,20 @@ void test_state_checker_file_does_not_exist(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -6979,6 +7020,10 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
     void *input = NULL;
     ACL acl;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     acl.AceCount = 1;
 
@@ -6988,12 +7033,20 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7094,6 +7147,10 @@ void test_state_checker_file_with_valid_sacl(void **state) {
     void *input = NULL;
     SYSTEMTIME st;
     ACL acl;
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     memset(&st, 0, sizeof(SYSTEMTIME));
     st.wYear = 2020;
@@ -7108,12 +7165,20 @@ void test_state_checker_file_with_valid_sacl(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7211,6 +7276,10 @@ void test_state_checker_dir_readded_error(void **state) {
     int ret;
     void *input = NULL;
     char debug_msg[OS_MAXSTR];
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -7220,12 +7289,20 @@ void test_state_checker_dir_readded_error(void **state) {
 
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_STATUS_EXISTS;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7279,6 +7356,10 @@ void test_state_checker_dir_readded_succesful(void **state) {
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEMTIME st;
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     acl.AceCount = 1;
 
@@ -7296,12 +7377,20 @@ void test_state_checker_dir_readded_succesful(void **state) {
     st.wMonth = 3;
     st.wDay = 3;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7434,6 +7523,9 @@ void test_state_checker_not_match_policy(void **state) {
     policy_info *pol_data = *state;
     int ret;
     void *input = NULL;
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -7441,12 +7533,19 @@ void test_state_checker_not_match_policy(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     OSList_CleanNodes(syscheck.directories);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     pol_data->paudit_policy[0].AuditingInformation = POLICY_AUDIT_EVENT_FAILURE;
     expect_policy_check_match_call((NTSTATUS)0,
@@ -7467,16 +7566,28 @@ void test_state_checker_not_match_policy(void **state) {
 void test_state_checker_dirs_cleanup_no_nodes(void ** state) {
     policy_info *pol_data = *state;
     int ret;
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7500,16 +7611,28 @@ void test_state_checker_dirs_cleanup_single_non_stale_node(void ** state) {
     int ret;
     whodata_directory * w_dir;
     FILETIME current_time;
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7544,16 +7667,28 @@ void test_state_checker_dirs_cleanup_single_stale_node(void ** state) {
     policy_info *pol_data = *state;
     int ret;
     whodata_directory * w_dir;
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7593,16 +7728,28 @@ void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
     int ret;
     FILETIME current_time;
     int i;
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7647,16 +7794,28 @@ void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
     int ret;
     FILETIME current_time;
     int i;
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7714,16 +7873,28 @@ void test_state_checker_dirs_cleanup_multiple_nodes_all_stale(void ** state) {
     policy_info *pol_data = *state;
     int ret;
     int i;
+    char debug_msg1[OS_SIZE_1024];
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+    snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7853,6 +8024,17 @@ void test_whodata_audit_start_success(void **state) {
 void test_policy_check_match(void **state) {
     policy_info *pol_data = *state;
     int ret;
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg3[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg3, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "File System", guid_FileSystem);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg3);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7868,6 +8050,14 @@ void test_policy_check_match(void **state) {
 void test_policy_check_not_match(void **state) {
     policy_info *pol_data = *state;
     int ret;
+    char debug_msg2[OS_SIZE_1024];
+    char debug_msg4[OS_SIZE_1024];
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
+    snprintf(debug_msg4, OS_SIZE_1024, FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_Handle);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     pol_data->paudit_policy[0].AuditingInformation = POLICY_AUDIT_EVENT_FAILURE;
     expect_policy_check_match_call((NTSTATUS)0,
@@ -7917,6 +8107,8 @@ void test_policy_check_AuditLookupCategoryGuidFromCategoryId_fail(void **state) 
     policy_info *pol_data = *state;
     int ret;
 
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
                                    pol_data->category_guid, FALSE,
@@ -7931,6 +8123,11 @@ void test_policy_check_AuditLookupCategoryGuidFromCategoryId_fail(void **state) 
 void test_policy_check_AuditEnumerateSubCategories_fail(void **state) {
     policy_info *pol_data = *state;
     int ret;
+    char debug_msg2[OS_SIZE_1024];
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7946,6 +8143,11 @@ void test_policy_check_AuditEnumerateSubCategories_fail(void **state) {
 void test_policy_check_AuditQuerySystemPolicy_fail(void **state) {
     policy_info *pol_data = *state;
     int ret;
+    char debug_msg2[OS_SIZE_1024];
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
+    snprintf(debug_msg2, OS_SIZE_1024, FIM_WHODATA_OBJECT_ACCESS, guid_ObjectAccess);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
