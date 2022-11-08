@@ -255,16 +255,16 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
         ->default_val(ENGINE_API_SOCK);
 
     // KVDB list subcommand
-    auto list_subcommand = kvdb->add_subcommand(
-        args::SUBCOMMAND_KVDB_LIST,
-        "list: List all KeyValueDB availables.");
+    auto list_subcommand = kvdb->add_subcommand(args::SUBCOMMAND_KVDB_LIST,
+                                                "list: List all KeyValueDB availables.");
 
-    //     ->add_option(
-    //         name, args::catalogName, nameDesc + "collection to list: item-type[/item-id]")
-    //     ->required();
+    // KVDB list subcommand
+    auto create_subcommand =
+        kvdb->add_subcommand(args::SUBCOMMAND_KVDB_CREATE,
+                             "create db-name: Creates a KeyValueDB with named db-name.");
     // KVDB name
-    //kvdb->add_option("-n, --name", args::kvdb_name, "KVDB name to be added.")->required();
-
+    create_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be added.")
+        ->required();
 }
 
 void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)

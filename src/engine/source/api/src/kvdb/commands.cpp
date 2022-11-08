@@ -5,7 +5,7 @@
 namespace api::kvdb::cmds
 {
 
-api::CommandFn lisKvdbCmd()
+api::CommandFn listKvdbCmd()
 {
     return [](const json::Json& params) -> api::WazuhResponse
     {
@@ -24,11 +24,45 @@ api::CommandFn lisKvdbCmd()
     };
 }
 
+api::CommandFn createKvdbCmd()
+{
+    return [](const json::Json& params) -> api::WazuhResponse {
+        // get json params
+        auto kvdbName = params.getString("/name");
+        if (!kvdbName)
+        {
+            return api::WazuhResponse {
+                json::Json {"{}"}, 400, "Missing [name] string parameter"};
+        }
+
+        try
+        {
+            auto kvdbHandle = KVDBManager::get().addDb(kvdbName.value());
+            if (kvdbHandle == nullptr)
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"},
+                    400,
+                    fmt::format("DB with name [{}] already exists.", kvdbName.value())};
+            }
+        }
+        catch (const std::exception& e)
+        {
+            return api::WazuhResponse {
+                json::Json {"{}"}, 400, "Missing [name] string parameter"};
+        }
+
+        json::Json data;
+        return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
+    };
+}
+
 void registerAllCmds(std::shared_ptr<api::Registry> registry)
 {
     try
     {
-        registry->registerCommand("list_kvdb", lisKvdbCmd());
+        registry->registerCommand("list_kvdb", listKvdbCmd());
+        registry->registerCommand("create_kvdb", createKvdbCmd());
     }
     catch (...)
     {
