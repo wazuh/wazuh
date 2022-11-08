@@ -85,7 +85,6 @@ else()
   configure_file("config_files/test_local_internal_options.conf" "syscheckd/local_internal_options.conf" COPYONLY)
   configure_file("config_files/test_syscheck_top_level.conf" "syscheckd/test_syscheck_top_level.conf" COPYONLY)
   configure_file("config_files/test_syscheck.conf" "syscheckd/test_syscheck_config.conf" COPYONLY)
-  #configure_file("config_files/test_agentlessd.conf" "agentlessd/internal_options.conf" COPYONLY)
 endif()
 
 # Coverage

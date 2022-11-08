@@ -73,11 +73,12 @@ void test_gen_diff_alert(void **state) {
     will_return(__wrap_fprintf, 0);
 
     expect_fclose((FILE *)2, 0);
-    // save_agentless_entry() call
 
+    // save_agentless_entry() call
     expect_fclose((FILE *)1, 0);
 
-    gen_diff_alert(HOST, SCRIPT, ADT);
+    int rc = gen_diff_alert(HOST, SCRIPT, ADT);
+    assert_int_equal(rc, 0);
 }
 
 void test_send_log_msg_ok(void **state) {
@@ -88,7 +89,45 @@ void test_send_log_msg_ok(void **state) {
     expect_any(__wrap_SendMSG, loc);
     will_return(__wrap_SendMSG, 0);
 
-    send_log_msg(SCRIPT, HOST, MSG);
+    int rc = send_log_msg(SCRIPT, HOST, MSG);
+    assert_int_equal(rc, 0);
+}
+
+void test_send_log_msg_wrong_sm(void **state) {
+    (void) state;
+
+    // message can´t sent
+    expect_SendMSG_call(MSG, "(" SCRIPT ") " HOST "->" SYSCHECK,
+                LOCALFILE_MQ, -1);
+    
+    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
+    expect_StartMQ_call(DEFAULTQUEUE, WRITE, 0);
+
+    // try again... message can´t sent
+    expect_SendMSG_call(MSG, "(" SCRIPT ") " HOST "->" SYSCHECK,
+                LOCALFILE_MQ, -1);
+
+    int rc = send_log_msg(SCRIPT, HOST, MSG);
+    // anyway it'll be zero
+    assert_int_equal(rc, 0);
+}
+
+void test_send_log_msg_fatal_exit(void **state) {
+    (void) state;
+
+    // message can´t sent
+    expect_SendMSG_call(MSG, "(" SCRIPT ") " HOST "->" SYSCHECK,
+                LOCALFILE_MQ, -1);
+    
+    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
+    expect_StartMQ_call(DEFAULTQUEUE, WRITE, -1);
+
+    // enough space ever
+    char msg[sizeof(QUEUE_FATAL) + sizeof(DEFAULTQUEUE)];
+    snprintf(msg, sizeof(msg), QUEUE_FATAL, DEFAULTQUEUE);
+    expect_string(__wrap__merror_exit, formatted_msg, msg);
+
+    expect_assert_failure(send_log_msg(SCRIPT, HOST, MSG));
 }
 
 void test_send_intcheck_msg_ok(void **state) {
@@ -99,7 +138,8 @@ void test_send_intcheck_msg_ok(void **state) {
     expect_any(__wrap_SendMSG, loc);
     will_return(__wrap_SendMSG, 0);
 
-    send_intcheck_msg(SCRIPT, HOST, MSG);
+    int rc = send_intcheck_msg(SCRIPT, HOST, MSG);
+    assert_int_equal(rc, 0);
 }
 
 void test_save_agentless_entry_ok(void **state) {
@@ -116,8 +156,10 @@ void test_save_agentless_entry_ok(void **state) {
     expect_any(__wrap_fclose, _File);
     will_return(__wrap_fclose, 0);
 
-    save_agentless_entry(HOST, SCRIPT, AGTTYPE);
+    int rc = save_agentless_entry(HOST, SCRIPT, AGTTYPE);
+    assert_int_equal(rc, 0);
 }
+
 
 void test_Agentlessd_ok(void **state) {
     (void) state;
@@ -126,15 +168,19 @@ void test_Agentlessd_ok(void **state) {
     os_calloc(1, sizeof(agentlessd_entries), lessdc.entries[0]);
     lessdc.entries[1] = NULL;
 
-    lessdc.entries[0]->server = NULL;
     lessdc.entries[0]->command = NULL;
     lessdc.entries[0]->options = "";
     lessdc.entries[0]->type = NULL;
-    lessdc.entries[0]->frequency = 86400;
-    lessdc.entries[0]->state = 0;
-    lessdc.entries[0]->current_state = 0;
     lessdc.entries[0]->port = 0;
     lessdc.entries[0]->error_flag = 0;
+    
+    // enable call to run_periodic_cmd(), minimally...
+    // TODO: increase test on run_periodic_cmd() call
+    char* pserver = NULL;
+    lessdc.entries[0]->server = &pserver;
+    lessdc.entries[0]->current_state = 0;
+    lessdc.entries[0]->frequency = 86400;
+    lessdc.entries[0]->state = LESSD_STATE_PERIODIC;
 
     expect_StartMQ_call(DEFAULTQUEUE, WRITE, 0);
 
@@ -148,6 +194,8 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_gen_diff_alert, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_send_log_msg_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_log_msg_wrong_sm, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_log_msg_fatal_exit, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_send_intcheck_msg_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_save_agentless_entry_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_Agentlessd_ok, test_setup, test_teardown)

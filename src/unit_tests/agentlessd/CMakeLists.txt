@@ -23,8 +23,6 @@ target_link_libraries(OS_AGENTLESSD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 list(APPEND agentlessd_names "test_agentlessd")
-#list(APPEND agentlessd_flags "-Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup ${DEBUG_OP_WRAPPERS} \
-#                                -Wl,--wrap,StartMQ -Wl,--wrap,CreateThread ${STDIO_OP_WRAPPERS}")
 list(APPEND agentlessd_flags "${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS} \
                             -Wl,--wrap,StartMQ -Wl,--wrap,CreateThread -Wl,--wrap,fprintf \
                             -Wl,--wrap,SendMSG")
