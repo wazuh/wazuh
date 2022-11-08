@@ -266,26 +266,28 @@ main () {
 
     get_deprecated_vars
 
-    edit_value_tag "port" ${WAZUH_MANAGER_PORT}
+    edit_value_tag "port" "${WAZUH_MANAGER_PORT}"
 
-    if [ ! -z ${WAZUH_REGISTRATION_SERVER} ] || [ ! -z ${WAZUH_REGISTRATION_PORT} ] || [ ! -z ${WAZUH_REGISTRATION_CA} ] || [ ! -z ${WAZUH_REGISTRATION_CERTIFICATE} ] || [ ! -z ${WAZUH_REGISTRATION_KEY} ] || [ ! -z ${WAZUH_AGENT_NAME} ] || [ ! -z ${WAZUH_AGENT_GROUP} ] || [ ! -z ${ENROLLMENT_DELAY} ] || [ ! -z ${WAZUH_REGISTRATION_PASSWORD} ]; then
+    if [ ! -z "${WAZUH_REGISTRATION_SERVER}" ] || [ ! -z "${WAZUH_REGISTRATION_PORT}" ] || [ ! -z "${WAZUH_REGISTRATION_CA}" ] || [ ! -z "${WAZUH_REGISTRATION_CERTIFICATE}" ] || [ ! -z "${WAZUH_REGISTRATION_KEY}" ] || [ ! -z "${WAZUH_AGENT_NAME}" ] || [ ! -z "${WAZUH_AGENT_GROUP}" ] || [ ! -z "${ENROLLMENT_DELAY}" ] || [ ! -z "${WAZUH_REGISTRATION_PASSWORD}" ]; then
         add_auto_enrollment
-        set_auto_enrollment_tag_value "manager_address" ${WAZUH_REGISTRATION_SERVER}
-        set_auto_enrollment_tag_value "port" ${WAZUH_REGISTRATION_PORT}
-        set_auto_enrollment_tag_value "server_ca_path" ${WAZUH_REGISTRATION_CA}
-        set_auto_enrollment_tag_value "agent_certificate_path" ${WAZUH_REGISTRATION_CERTIFICATE}
-        set_auto_enrollment_tag_value "agent_key_path" ${WAZUH_REGISTRATION_KEY}
-        set_auto_enrollment_tag_value "authorization_pass_path" ${WAZUH_REGISTRATION_PASSWORD_PATH}
-        set_auto_enrollment_tag_value "agent_name" ${WAZUH_AGENT_NAME}
-        set_auto_enrollment_tag_value "groups" ${WAZUH_AGENT_GROUP}
-        set_auto_enrollment_tag_value "delay_after_enrollment" ${ENROLLMENT_DELAY}
-        delete_blank_lines ${TMP_ENROLLMENT}
+        set_auto_enrollment_tag_value "manager_address" "${WAZUH_REGISTRATION_SERVER}"
+        set_auto_enrollment_tag_value "port" "${WAZUH_REGISTRATION_PORT}"
+        set_auto_enrollment_tag_value "server_ca_path" "${WAZUH_REGISTRATION_CA}"
+        set_auto_enrollment_tag_value "agent_certificate_path" "${WAZUH_REGISTRATION_CERTIFICATE}"
+        set_auto_enrollment_tag_value "agent_key_path" "${WAZUH_REGISTRATION_KEY}"
+        set_auto_enrollment_tag_value "authorization_pass_path" "${WAZUH_REGISTRATION_PASSWORD_PATH}"
+        set_auto_enrollment_tag_value "agent_name" "${WAZUH_AGENT_NAME}"
+        set_auto_enrollment_tag_value "groups" "${WAZUH_AGENT_GROUP}"
+        set_auto_enrollment_tag_value "delay_after_enrollment" "${ENROLLMENT_DELAY}"
+        delete_blank_lines "${TMP_ENROLLMENT}"
         concat_conf
     fi
 
-            
-    if [ ! -z ${WAZUH_REGISTRATION_PASSWORD} ]; then
-        echo ${WAZUH_REGISTRATION_PASSWORD} > ${INSTALLDIR}/${WAZUH_REGISTRATION_PASSWORD_PATH}
+
+    if [ ! -z "${WAZUH_REGISTRATION_PASSWORD}" ]; then
+        echo "${WAZUH_REGISTRATION_PASSWORD}" > "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
+        chmod 640 "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
+        chown root:wazuh "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
     fi
 
     if [ ! -z ${WAZUH_MANAGER} ]; then
