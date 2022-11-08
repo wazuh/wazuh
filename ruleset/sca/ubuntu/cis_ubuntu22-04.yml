@@ -1180,6 +1180,7 @@ checks:
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - nist_sp_800-53: ["AU-7"]
       - soc_2: ["CC4.1", "CC5.2"]
+    condition: all
     rules:
       - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
       - "c:systemctl is-active systemd-timesyncd.service -> r:active"
@@ -1544,7 +1545,7 @@ checks:
     condition: all
     rules:
       - "c:dpkg-query -s snmp -> r:package 'snmp' is not installed"
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' snmp -> no packages found matching snmp|deinstall|not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' snmp -> r:no packages found matching snmp|deinstall|not-installed"
 
   # 2.2.14 Ensure NIS Server is not installed (Automated)
   - id: 28564
