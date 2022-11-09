@@ -14,7 +14,7 @@ metadata:
         name: Wazuh, Inc.
         email: info@wazuh.com
         url: https://wazuh.com
-        date: 2022/08/15
+        date: 2022/11/08
     references:
         - https://documentation.wazuh.com/current/user-manual/capabilities/policy-monitoring/rootcheck/index.html
         - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/rootcheck.html

@@ -75,6 +75,7 @@ bool catalogYmlFormat;
 std::string catalogContent;
 std::string catalogPath;
 std::string environmentTarget;
+bool catalogRecursive;
 
 // Default values
 constexpr auto ENGINE_EVENT_SOCK = "/var/ossec/queue/sockets/queue";
@@ -343,6 +344,9 @@ void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
             "path", args::catalogPath, "Path to the directory containing the item files.")
         ->required()
         ->check(CLI::ExistingDirectory);
+    load_subcommand
+        ->add_flag(
+            "-r, --recursive", args::catalogRecursive, "Recursive loading of the directory.");
 }
 
 void configureSubCommandEnvironment(std::shared_ptr<CLI::App> app)
@@ -543,7 +547,8 @@ int main(int argc, char* argv[])
                          args::catalogName,
                          formatString,
                          args::catalogContent,
-                         args::catalogPath);
+                         args::catalogPath,
+                         args::catalogRecursive);
         }
         else if (app->get_subcommand(args::SUBCOMMAND_ENVIRONMENT)->parsed())
         {
