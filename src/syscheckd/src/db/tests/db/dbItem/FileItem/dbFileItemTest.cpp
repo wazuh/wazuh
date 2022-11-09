@@ -34,7 +34,6 @@ void FileItemTest::SetUp()
     data->mtime = 1578075431;
     data->options = 131583;
     data->perm = const_cast<char*>("-rw-rw-r--");
-    data->perm_json = NULL;
     data->scanned = 1;
     data->size = 4925;
     data->uid = const_cast<char*>("0");

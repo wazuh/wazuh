@@ -33,7 +33,6 @@ void FileItemTest::SetUp()
     data->mode = FIM_SCHEDULED;
     data->mtime = 1578075431;
     data->options = 131583;
-    data->perm_json = cJSON_CreateObject();
     cJSON * permission = cJSON_CreateObject();
     cJSON * permission1 = cJSON_CreateObject();
     cJSON * allowed = cJSON_CreateArray();
@@ -45,7 +44,6 @@ void FileItemTest::SetUp()
     cJSON_AddItemToArray(allowed, cJSON_CreateString("read_data"));
     cJSON_AddItemToObject(permission, "allowed", allowed);
     cJSON_AddItemToObject(permission, "name", cJSON_CreateString("Administradores"));
-    cJSON_AddItemToObject(data->perm_json, "S-1-5-32-544", permission);
     cJSON * allowed1 = cJSON_CreateArray();
     cJSON_AddItemToArray(allowed1, cJSON_CreateString("delete"));
     cJSON_AddItemToArray(allowed1, cJSON_CreateString("read_control"));
@@ -55,7 +53,6 @@ void FileItemTest::SetUp()
     cJSON_AddItemToArray(allowed1, cJSON_CreateString("read_data"));
     cJSON_AddItemToObject(permission1, "allowed", allowed1);
     cJSON_AddItemToObject(permission1, "name", cJSON_CreateString("System"));
-    cJSON_AddItemToObject(data->perm_json, "S-1-5-32-545", permission1);
     data->scanned = 1;
     data->size = 4925;
     data->uid = const_cast<char*>("0");
@@ -155,7 +152,6 @@ TEST_F(FileItemTest, fileItemConstructorFromFIMWithNullParameters)
     data->size = 0;
     data->uid = NULL;
     data->user_name = NULL;
-    data->perm_json = NULL;
     fimEntryTestNull->file_entry.data = data;
     EXPECT_NO_THROW(
     {
@@ -195,7 +191,6 @@ TEST_F(FileItemTest, getFIMEntryWithFimCtr)
     ASSERT_EQ(fileEntry->file_entry.data->mode, fimEntryTest->file_entry.data->mode);
     ASSERT_EQ(fileEntry->file_entry.data->mtime, fimEntryTest->file_entry.data->mtime);
     ASSERT_EQ(fileEntry->file_entry.data->options, fimEntryTest->file_entry.data->options);
-    ASSERT_EQ(std::strcmp(cJSON_Print(fileEntry->file_entry.data->perm_json), cJSON_Print(fimEntryTest->file_entry.data->perm_json)), 0);
     ASSERT_EQ(fileEntry->file_entry.data->scanned, fimEntryTest->file_entry.data->scanned);
     ASSERT_EQ(fileEntry->file_entry.data->size, fimEntryTest->file_entry.data->size);
     ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->uid, fimEntryTest->file_entry.data->uid), 0);
@@ -220,7 +215,6 @@ TEST_F(FileItemTest, getFIMEntryWithJSONCtr)
     ASSERT_EQ(fileEntry->file_entry.data->mode, fimEntryTest->file_entry.data->mode);
     ASSERT_EQ(fileEntry->file_entry.data->mtime, fimEntryTest->file_entry.data->mtime);
     ASSERT_EQ(fileEntry->file_entry.data->options, fimEntryTest->file_entry.data->options);
-    ASSERT_EQ(std::strcmp(cJSON_Print(fileEntry->file_entry.data->perm_json), cJSON_Print(fimEntryTest->file_entry.data->perm_json)), 0);
     ASSERT_EQ(fileEntry->file_entry.data->scanned, fimEntryTest->file_entry.data->scanned);
     ASSERT_EQ(fileEntry->file_entry.data->size, fimEntryTest->file_entry.data->size);
     ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->uid, fimEntryTest->file_entry.data->uid), 0);

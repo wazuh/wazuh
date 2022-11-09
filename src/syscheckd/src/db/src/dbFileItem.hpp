@@ -126,7 +126,6 @@ class FileItem final : public DBItem
         std::string                                     m_sha1;
         std::string                                     m_sha256;
         std::string                                     m_username;
-        nlohmann::json                                  m_permJSON;
         std::unique_ptr<fim_entry, FimFileDataDeleter>  m_fimEntry;
         std::unique_ptr<nlohmann::json>                 m_statementConf;
 
