@@ -19,5 +19,6 @@
             "description": "Wazuh internal field.",
             "ecs_type": null
         }
-    }
+    },
+    "definitions":{}
 }

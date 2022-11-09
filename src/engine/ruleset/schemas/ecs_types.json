@@ -1,13 +1,13 @@
 [
-  "date",
   "ip",
-  "object",
-  "text",
   "long",
-  "boolean",
+  "object",
   "geo_point",
-  "scaled_float",
   "keyword",
   "nested",
+  "scaled_float",
+  "text",
+  "boolean",
+  "date",
   "float"
 ]
