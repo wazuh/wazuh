@@ -10,16 +10,79 @@ except ImportError:
 # Settings 8.5.0
 CUSTOM_ECS_TEMPLATE = "custom-ecs-field.template.json"
 CUSTOM_ECS_OUTPUT = "custom-ecs-field.json"
-ECS_URL = 'https://raw.githubusercontent.com/elastic/ecs/v8.5.0-rc1/generated/ecs/ecs_flat.yml'
+ECS_NESTED_URL = 'https://raw.githubusercontent.com/elastic/ecs/v8.5.0-rc1/generated/ecs/ecs_nested.yml'
+ECS_FLAT_URL = 'https://raw.githubusercontent.com/elastic/ecs/v8.5.0-rc1/generated/ecs/ecs_flat.yml'
 
 LOGPAR_TYPES_TEMPLATE = "wazuh-logpar-types.template.json"
 LOGPAR_TYPES_OUTPUT = "wazuh-logpar-types.json"
 LOGPAR_TYPES_STORE_OUTPUT = "schema/wazuh-logpar-types"
 
-# ECS integrations
-INTEGRATIONS = [
+def make_error(msg):
+    print(msg)
+    print("Aborted.")
+    exit(1)
 
-]
+def transformToSupportedType(ecsRype):
+    if "match_only_text" == ecsRype:
+        return "text"
+    if "constant_keyword" == ecsRype:
+        return "keyword"
+    if "wildcard" == ecsRype:
+        return "keyword"
+    if "flattened" == ecsRype:
+        return "object"
+    if "number" == ecsRype:
+        return "long"
+
+    return ecsRype
+
+def strip_fields(field_value):
+    entry = {}
+    entry['description'] = 'Not available'
+    entry['ecs_type'] = 'keyword'
+    if 'description' in field_value:
+        entry['description'] = field_value['description']
+    if 'type' in field_value:
+        entry['ecs_type'] = transformToSupportedType(field_value['type'])
+
+    entry['description'] += "\n\nECS type: {}".format(entry['ecs_type'])
+
+    if len(field_value['normalize']) > 0:
+        entry['type'] = field_value['normalize']
+    else:
+        json_type = ecs_type_to_json_type(entry['ecs_type'])
+        entry['type'] = [json_type]
+    if 'string' not in entry['type']:
+        entry['type'].append('string')
+        entry['pattern'] = '^\\+.+'
+
+    return entry
+
+def ecs_type_to_json_type(ecs_type):
+    if ecs_type == 'date':
+        return 'string'
+    elif ecs_type == 'ip':
+        return 'string'
+    elif ecs_type == 'object':
+        return 'object'
+    elif ecs_type == 'text':
+        return 'string'
+    elif ecs_type == 'long':
+        return 'integer'
+    elif ecs_type == 'boolean':
+        return 'boolean'
+    elif ecs_type == 'geo_point':
+        return 'string'
+    elif ecs_type == 'scaled_float':
+        return 'number'
+    elif ecs_type == 'keyword':
+        return 'string'
+    elif ecs_type == 'nested':
+        return 'object'
+    elif ecs_type == "float":
+        return "number"
+    else:
+        return 'string'
 
 def main():
     print("Generating schemas...")
@@ -31,44 +94,119 @@ def main():
 
     if not custom_ecs_field:
         make_error("Failed to load custom_ecs_field template.")
-        return
     else:
         print("Loaded.")
 
-    print(F"Getting yaml ECS [{ECS_URL}]...")
-    r = requests.get(ECS_URL)
-    if not r.ok:
-        make_error("Error: {}".format(r.status_code))
-        return
+    # Get ECS schemas
+    print(F"Getting yaml ECS [{ECS_FLAT_URL}]...")
+    rFlat = requests.get(ECS_FLAT_URL)
+    if not rFlat.ok:
+        make_error("Error: {}".format(rFlat.status_code))
+    else:
+        print("Success.")
+
+    print(F"Getting yaml ECS [{ECS_NESTED_URL}]...")
+    rNested = requests.get(ECS_NESTED_URL)
+    if not rNested.ok:
+        make_error("Error: {}".format(rNested.status_code))
     else:
         print("Success.")
 
     # Load yaml file from response
-    print("Loading yaml file...")
-    ecs_schema = load(r.text, Loader=Loader)
-    if not ecs_schema:
+    print("Loading yaml files...")
+    ecs_nested_schema = load(rNested.text, Loader=Loader)
+    if not ecs_nested_schema:
         make_error("Error: failed to load yaml file.")
-        return
-    else:
-        print("Success.")
-    # Strip unnecessary fields from schema and add json types
-    print("Stripping unnecessary fields from schema...")
-    stripped_schema = {field: strip_fields(value) for field, value in ecs_schema.items()}
-    if not stripped_schema:
-        make_error("Error: failed to strip unnecessary fields from schema.")
-        return
     else:
         print("Success.")
 
-    # Rename @timestamp to timestamp
-    # print("Renaming @timestamp to timestamp...")
-    # stripped_schema['timestamp'] = stripped_schema.pop('@timestamp')
-    # print("Success.")
+    # Load yaml file from response
+    print("Loading yaml files...")
+    ecs_flat_schema = load(rFlat.text, Loader=Loader)
+    if not ecs_flat_schema:
+        make_error("Error: failed to load yaml file.")
+    else:
+        print("Success.")
 
-    # Generate json schema
-    print("Generating json schema from template and stripped schema...")
-    custom_ecs_field['properties'] = {**custom_ecs_field['properties'], **stripped_schema}
-    print("Success.")
+    # Load all leaf fields and add them to definitions
+    print("Generating Wazuh custom ECS fields...")
+    wazuh_ecs_schema = {field: strip_fields(value) for field, value in ecs_flat_schema.items()}
+    custom_ecs_field['definitions'] = wazuh_ecs_schema
+
+    # Add all groups and leaf fields to properties, leaf fields are added as references to definitions
+    nested_map = {}
+    for key in wazuh_ecs_schema.keys():
+        splitted = key.split('.')
+        if len(splitted) > 1:
+            base = splitted[0]
+            # Add base if not exists
+            if base not in nested_map:
+                nested_map[base] = dict()
+
+                # Base ecs field
+                if base in ecs_nested_schema:
+                    nested_map[base]['description'] = ecs_nested_schema[base]['description']
+                else:
+                    # Weird case only for tracing as of now
+                    print(F"Base field {base} not found in ecs_nested_schema")
+                    nested_map[base]['description'] = 'Not available'
+
+                nested_map[base]['type'] = ['object', 'string']
+                nested_map[base]['pattern'] = '^\\+.+'
+                nested_map[base]['properties'] = dict()
+
+            # Add group childs
+            current = nested_map[base]['properties']
+            for i in range(1, len(splitted)):
+                if splitted[i] not in current:
+                    current[splitted[i]] = dict()
+                    # Search if current field is in ecs_flat_schema
+                    search_key = '.'.join(splitted[:i+1])
+                    if search_key in ecs_flat_schema:
+                        # If type is object or nested this is a group
+                        if ecs_flat_schema[search_key]['type'] == 'object' or ecs_flat_schema[search_key]['type'] == 'nested':
+                            # if normalize contains a value as of now is an array
+                            if 'normalize' in ecs_flat_schema[search_key] and len(ecs_flat_schema[search_key]['normalize']) == 1:
+                                current[splitted[i]]['type'] = ecs_flat_schema[search_key]['normalize']
+                            # If not is an object
+                            else:
+                                current[splitted[i]]['type'] = ['object']
+                        # If not is a field, set up the reference and add the propertie if not added
+                        else:
+                            current[splitted[i]]['$ref'] = '#/definitions/' + search_key
+                            if search_key not in custom_ecs_field['properties']:
+                                custom_ecs_field['properties'][search_key] = {}
+                                custom_ecs_field['properties'][search_key]['$ref'] = '#/definitions/' + search_key
+                    # If not, it is an object group not defined in ecs
+                    else:
+                        current[splitted[i]]['type'] = ['object']
+
+                    #If we added a group, add properties/items and add string helper type
+                    if 'type' in current[splitted[i]]:
+                        current[splitted[i]]['type'].append('string')
+                        current[splitted[i]]['pattern'] = '^\\+.+'
+                        if'object' in current[splitted[i]]['type']:
+                            current[splitted[i]]['properties'] = dict()
+                            current[splitted[i]]['additionalProperties'] = False
+                        # If array, add items
+                        elif 'array' in current[splitted[i]]['type']:
+                            current[splitted[i]]['items'] = {'type': 'object', 'properties': dict()}
+                            current[splitted[i]]['items']['additionalProperties'] = False
+                        else:
+                            make_error(F"Error: {search_key} is not an object or array")
+
+                # Update current to next level
+                if i < len(splitted) - 1:
+                    if 'object' in current[splitted[i]]['type']:
+                        current = current[splitted[i]]['properties']
+                    elif 'array' in current[splitted[i]]['type']:
+                        current = current[splitted[i]]['items']['properties']
+                    else:
+                        make_error(F"Error: {search_key} is not an object or array")
+
+
+    # Add all groups to properties
+    custom_ecs_field['properties'] = {**custom_ecs_field['properties'], **nested_map}
 
     # Write json schema to file
     print(F"Writing json schema to file [{CUSTOM_ECS_OUTPUT}]...")
@@ -85,14 +223,13 @@ def main():
 
     if not logpar_types:
         make_error("Failed to load logpar_types template.")
-        return
     else:
         print("Loaded.")
 
     # Add custom_ecs_field to logpar_types
     print("Adding ECS field types to logpar_types...")
     # Only add fields that have ecs_type set
-    logpar_types = {**logpar_types, **{field: value['ecs_type'] for field, value in custom_ecs_field['properties'].items() if value.get('ecs_type')}}
+    logpar_types = {**logpar_types, **{field: value['ecs_type'] for field, value in custom_ecs_field['definitions'].items() if value.get('ecs_type')}}
     print("Success.")
     # Write logpar_types to file
     print(F"Writing logpar_types to file [{LOGPAR_TYPES_OUTPUT}]...")
@@ -104,48 +241,12 @@ def main():
         json.dump(logpar_types, f)
     print("Success.")
 
-    ecs_types = list({field['ecs_type'] for field in custom_ecs_field['properties'].values() if field.get('ecs_type')})
+    ecs_types = list({field['ecs_type'] for field in custom_ecs_field['definitions'].values() if field.get('ecs_type')})
     with open('ecs_types.json', "w") as f:
         json.dump(ecs_types, f, indent=2)
 
 
     print("All done.")
-    return
-
-def flatten(schema, root):
-    prefix = f'{root}.{schema[0]["name"]}'
-    return {f'{prefix}.{field["name"]}': field for field in schema[0]['fields']}
-
-def strip_unsupported_types(ecsRype):
-    if "match_only_text" == ecsRype:
-        return "text"
-    if "constant_keyword" == ecsRype:
-        return "keyword"
-    if "wildcard" == ecsRype:
-        return "keyword"
-    if "flattened" == ecsRype:
-        return "object"
-    if "number" == ecsRype:
-        return "long"
-
-    return ecsRype
-
-def strip_fields(field_value):
-    description = 'Not available'
-    ecs_type = 'keyword'
-    if 'description' in field_value:
-        description = field_value['description']
-    if 'type' in field_value:
-        ecs_type = strip_unsupported_types(field_value['type'])
-
-    description += "\n\nECS type: {}".format(ecs_type)
-
-    return {'description': description,
-            'ecs_type': ecs_type}
-
-def make_error(msg):
-    print(msg)
-    print("Aborted.")
     return
 
 if __name__ == '__main__':
