@@ -5,52 +5,15 @@
 namespace api::kvdb::cmds
 {
 
-// TODO: change position of createKvdbCmd and listKvdbCmd to keep the functions alphabetycally ordered
-api::CommandFn listKvdbCmd()
-{
-    return [](const json::Json& params) -> api::WazuhResponse {
-        auto kvdbLists = KVDBManager::get().getAvailableKVDBs();
-        json::Json data;
-        data.setArray("/data");
-        if (kvdbLists.size())
-        {
-            for (const auto& dbName : kvdbLists)
-            {
-                data.appendString(dbName);
-            }
-        }
-
-        return api::WazuhResponse {std::move(data), 200, "OK"};
-    };
-}
-
-api::CommandFn deleteKvdbCmd(void)
-{
-
-}
-api::CommandFn dumpKvdbCmd(void)
-{
-
-}
-api::CommandFn getKvdbCmd(void)
-{
-
-}
-api::CommandFn insertKvdbCmd(void)
-{
-
-}
-
-// TODO: change position of createKvdbCmd and listKvdbCmd to keep the functions alphabetycally ordered
 api::CommandFn createKvdbCmd()
 {
     return [](const json::Json& params) -> api::WazuhResponse {
         // get json params
         auto kvdbName = params.getString("/name");
-        if (!kvdbName)
+        if (!kvdbName || !kvdbName.has_value() || kvdbName.value().empty())
         {
             return api::WazuhResponse {
-                json::Json {"{}"}, 400, "Missing [name] string parameter"};
+                json::Json {"{}"}, 400, "Missing [name] or empty string parameter"};
         }
 
         try
@@ -72,6 +35,41 @@ api::CommandFn createKvdbCmd()
 
         json::Json data;
         return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
+    };
+}
+
+api::CommandFn deleteKvdbCmd(void)
+{
+
+}
+api::CommandFn dumpKvdbCmd(void)
+{
+
+}
+api::CommandFn getKvdbCmd(void)
+{
+
+}
+api::CommandFn insertKvdbCmd(void)
+{
+
+}
+
+api::CommandFn listKvdbCmd()
+{
+    return [](const json::Json& params) -> api::WazuhResponse {
+        auto kvdbLists = KVDBManager::get().getAvailableKVDBs();
+        json::Json data;
+        data.setArray("/data");
+        if (kvdbLists.size())
+        {
+            for (const auto& dbName : kvdbLists)
+            {
+                data.appendString(dbName);
+            }
+        }
+
+        return api::WazuhResponse {std::move(data), 200, "OK"};
     };
 }
 
