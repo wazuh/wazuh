@@ -4058,7 +4058,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/login.defs -> n:PASS_MIN_DAYS\s+(\d+) compare >=1'
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS^\s*\t*(\d+) compare >=1'
+      - 'f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:(\d+): compare < 1'
 
   # 5.5.1.2 Ensure password expiration is 365 days or less (Automated)
   - id: 28669
@@ -4078,8 +4079,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/login.defs -> n:PASS_MAX_DAYS (\d+) compare <= 365'
-      - 'f:/etc/shadow -> !r:^\w+:! && !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:(\d+) compare <= 365'
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
+      - 'f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:(\d+) compare <= 365'
 
   # 5.5.1.3 Ensure password expiration warning days is 7 or more (Automated)
   - id: 28670
@@ -4098,15 +4099,15 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/login.defs -> n:PASS_WARN_AGE (\d+) compare >= 7'
-      - 'f:/etc/shadow -> !r:^\w+:! && !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:d+:(\d) compare >= 7'
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
+      - 'f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:\d+:(\d+): compare >= 7'
 
   # 5.5.1.4 Ensure inactive password lock is 30 days or less (Automated)
   - id: 28671
     title: "Ensure inactive password lock is 30 days or less"
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
-    remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30 Modify user parameters for all users with a password set to match: # chage --inactive 30 <user> Default Value: INACTIVE=-1 Additional Information: A value of -1 would disable this setting"
+    remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30 Modify user parameters for all users with a password set to match: # chage --inactive 30 <user>"
     compliance:
       - cis: ["5.5.1.4"]
       - cis_csc_v7: ["4.4"]
@@ -4122,7 +4123,7 @@ checks:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare >= 30'
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare == 0'
       - "c:useradd -D -> r:^INACTIVE=-1"
-      - 'f:/etc/shadow -> !r:^\w+:! && !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:d+:\d+:(\d+) compare > 30'
+      - 'f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:\d+:\d+:(\d+) compare > 30'
 
   # 5.5.1.5 Ensure all users last password change date is in the past (Automated) -Not implemented
   # 5.5.2 Ensure system accounts are secured (Automated) - Not implemented
