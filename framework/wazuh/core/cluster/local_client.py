@@ -156,7 +156,7 @@ class LocalClient(client.AbstractClientManager):
         except Exception as e:
             raise exception.WazuhInternalError(3009, str(e))
 
-    async def wait_for_response(self, timeout):
+    async def wait_for_response(self, timeout: int) -> str:
         """Wait for cluster response.
 
         Wait until response is ready. Every ['intervals']['worker']['keep_alive'] seconds, a keepalive command
