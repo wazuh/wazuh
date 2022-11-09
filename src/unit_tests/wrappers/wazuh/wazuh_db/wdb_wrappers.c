@@ -374,3 +374,12 @@ int __wrap_wdb_vacuum(__attribute__((unused))sqlite3 * db) {
 int __wrap_wdb_get_db_state(__attribute__((unused))wdb_t * wdb) {
     return mock();
 }
+
+int __wrap_wdb_update_last_vacuum_data(__attribute__((unused))wdb_t* wdb, __attribute__((unused))const char *last_vacuum_time, const char *last_vacuum_value) {
+    check_expected(last_vacuum_value);
+    return mock();
+}
+
+int __wrap_wdb_get_db_free_pages_percentage(__attribute__((unused))wdb_t * wdb) {
+    return mock();
+}

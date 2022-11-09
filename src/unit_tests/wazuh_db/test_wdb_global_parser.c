@@ -3525,11 +3525,19 @@ void test_wdb_parse_global_vacuum_commit_error(void **state) {
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
 
+    expect_function_call(__wrap_w_inc_global_vacuum);
+    expect_function_call(__wrap_gettimeofday);
+
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: vacuum");
     will_return(__wrap_wdb_commit2, OS_INVALID);
 
+    expect_function_call(__wrap_wdb_finalize_all_statements);
+
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot end transaction.");
+
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_vacuum_time);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -3549,17 +3557,100 @@ void test_wdb_parse_global_vacuum_vacuum_error(void **state) {
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
 
+    expect_function_call(__wrap_w_inc_global_vacuum);
+    expect_function_call(__wrap_gettimeofday);
+
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: vacuum");
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
+
+    expect_function_call(__wrap_wdb_finalize_all_statements);
 
     will_return(__wrap_wdb_vacuum, OS_INVALID);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot vacuum database.");
 
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_vacuum_time);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot vacuum database");
+    assert_int_equal(result, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_global_vacuum_success_get_db_state_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char *query = NULL;
+
+    os_strdup("global vacuum", query);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+
+    expect_function_call(__wrap_w_inc_global_vacuum);
+    expect_function_call(__wrap_gettimeofday);
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: vacuum");
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
+
+    expect_function_call(__wrap_wdb_finalize_all_statements);
+
+    will_return(__wrap_wdb_vacuum, OS_SUCCESS);
+
+    will_return(__wrap_wdb_get_db_state, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Couldn't get fragmentation after vacuum for the database.");
+
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_vacuum_time);
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Vacuum performed, but couldn't get fragmentation information after vacuum");
+    assert_int_equal(result, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_global_vacuum_success_update_vacuum_data_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char *query = NULL;
+
+    os_strdup("global vacuum", query);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+
+    expect_function_call(__wrap_w_inc_global_vacuum);
+    expect_function_call(__wrap_gettimeofday);
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: vacuum");
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
+
+    expect_function_call(__wrap_wdb_finalize_all_statements);
+
+    will_return(__wrap_wdb_vacuum, OS_SUCCESS);
+
+    will_return(__wrap_wdb_get_db_state, 10);
+
+    expect_string(__wrap_wdb_update_last_vacuum_data, last_vacuum_value, "10");
+    will_return(__wrap_wdb_update_last_vacuum_data, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Couldn't update last vacuum info for the database.");
+
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_vacuum_time);
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Vacuum performed, but last vacuum information couldn't be updated in the metadata table");
     assert_int_equal(result, OS_INVALID);
 
     os_free(query);
@@ -3575,15 +3666,28 @@ void test_wdb_parse_global_vacuum_success(void **state) {
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
 
+    expect_function_call(__wrap_w_inc_global_vacuum);
+    expect_function_call(__wrap_gettimeofday);
+
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: vacuum");
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
 
+    expect_function_call(__wrap_wdb_finalize_all_statements);
+
     will_return(__wrap_wdb_vacuum, OS_SUCCESS);
+
+    will_return(__wrap_wdb_get_db_state, 10);
+
+    expect_string(__wrap_wdb_update_last_vacuum_data, last_vacuum_value, "10");
+    will_return(__wrap_wdb_update_last_vacuum_data, OS_SUCCESS);
+
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_vacuum_time);
 
     result = wdb_parse(query, data->output, 0);
 
-    assert_string_equal(data->output, "ok");
+    assert_string_equal(data->output, "ok {\"fragmentation_after_vacuum\":10}");
     assert_int_equal(result, OS_SUCCESS);
 
     os_free(query);
@@ -3591,7 +3695,7 @@ void test_wdb_parse_global_vacuum_success(void **state) {
 
 /* wdb_parse_global_get_fragmentation */
 
-void test_wdb_parse_global_get_fragmentation_error(void **state) {
+void test_wdb_parse_global_get_fragmentation_db_state_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int result = OS_INVALID;
     char *query = NULL;
@@ -3601,12 +3705,51 @@ void test_wdb_parse_global_get_fragmentation_error(void **state) {
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
 
+    expect_function_call(__wrap_w_inc_global_get_fragmentation);
+    expect_function_call(__wrap_gettimeofday);
+
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get_fragmentation");
 
     will_return(__wrap_wdb_get_db_state, OS_INVALID);
+    will_return(__wrap_wdb_get_db_free_pages_percentage, 10);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot get database fragmentation.");
+
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_get_fragmentation_time);
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Cannot get database fragmentation");
+    assert_int_equal(result, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_global_get_fragmentation_free_pages_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char *query = NULL;
+
+    os_strdup("global get_fragmentation", query);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+
+    expect_function_call(__wrap_w_inc_global_get_fragmentation);
+    expect_function_call(__wrap_gettimeofday);
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get_fragmentation");
+
+    will_return(__wrap_wdb_get_db_state, 10);
+    will_return(__wrap_wdb_get_db_free_pages_percentage, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot get database fragmentation.");
+
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_get_fragmentation_time);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -3626,14 +3769,21 @@ void test_wdb_parse_global_get_fragmentation_success(void **state) {
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
 
+    expect_function_call(__wrap_w_inc_global_get_fragmentation);
+    expect_function_call(__wrap_gettimeofday);
+
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get_fragmentation");
 
     will_return(__wrap_wdb_get_db_state, 50);
+    will_return(__wrap_wdb_get_db_free_pages_percentage, 10);
+
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_get_fragmentation_time);
 
     result = wdb_parse(query, data->output, 0);
 
-    assert_string_equal(data->output, "ok {\"fragmentation\":50}");
+    assert_string_equal(data->output, "ok {\"fragmentation\":50,\"free_pages_percentage\":10}");
     assert_int_equal(result, OS_SUCCESS);
 
     os_free(query);
@@ -3806,9 +3956,12 @@ int main()
         /* wdb_parse_global_vacuum */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_commit_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_vacuum_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_success_get_db_state_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_success_update_vacuum_data_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_success, test_setup, test_teardown),
         /* wdb_parse_global_get_fragmentation */
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_fragmentation_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_fragmentation_db_state_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_fragmentation_free_pages_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_fragmentation_success, test_setup, test_teardown),
     };
 

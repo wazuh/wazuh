@@ -644,11 +644,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 w_inc_agent_syscollector_times(diff, result);
             }
         } else if (strcmp(query, "vacuum") == 0) {
+            w_inc_agent_vacuum();
+            gettimeofday(&begin, 0);
             if (wdb_commit2(wdb) < 0) {
                 mdebug1("DB(%s) Cannot end transaction.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
                 result = -1;
             }
+
+            wdb_finalize_all_statements(wdb);
 
             if (result != -1) {
                 if (wdb_vacuum(wdb->db) < 0) {
@@ -656,19 +660,52 @@ int wdb_parse(char * input, char * output, int peer) {
                     snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
                     result = -1;
                 } else {
-                    snprintf(output, OS_MAXSTR + 1, "ok");
-                    result = 0;
+                    int fragmentation_after_vacuum;
+
+                    // save fragmentation after vacuum
+                    if (fragmentation_after_vacuum = wdb_get_db_state(wdb), fragmentation_after_vacuum == OS_INVALID) {
+                        mdebug1("DB(%s) Couldn't get fragmentation after vacuum for the database.", wdb->id);
+                        snprintf(output, OS_MAXSTR + 1, "err Vacuum performed, but couldn't get fragmentation information after vacuum");
+                        result = -1;
+                    } else {
+                        char str_vacuum_time[OS_SIZE_128] = { '\0' };
+                        char str_vacuum_value[OS_SIZE_128] = { '\0' };
+
+                        snprintf(str_vacuum_time, OS_SIZE_128, "%ld", time(0));
+                        snprintf(str_vacuum_value, OS_SIZE_128, "%d", fragmentation_after_vacuum);
+                        if (wdb_update_last_vacuum_data(wdb, str_vacuum_time, str_vacuum_value) != OS_SUCCESS) {
+                            mdebug1("DB(%s) Couldn't update last vacuum info for the database.", wdb->id);
+                            snprintf(output, OS_MAXSTR + 1, "err Vacuum performed, but last vacuum information couldn't be updated in the metadata table");
+                            result = -1;
+                        } else {
+                            cJSON *json_fragmentation = cJSON_CreateObject();
+                            cJSON_AddNumberToObject(json_fragmentation, "fragmentation_after_vacuum", fragmentation_after_vacuum);
+                            char *out = cJSON_PrintUnformatted(json_fragmentation);
+                            snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+                            os_free(out);
+                            cJSON_Delete(json_fragmentation);
+                            result = 0;
+                        }
+                    }
                 }
             }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_agent_vacuum_time(diff);
         } else if (strcmp(query, "get_fragmentation") == 0) {
+            w_inc_agent_get_fragmentation();
+            gettimeofday(&begin, 0);
             int state = wdb_get_db_state(wdb);
-            if (state < 0) {
+            int free_pages = wdb_get_db_free_pages_percentage(wdb);
+            if (state < 0 || free_pages < 0) {
                 mdebug1("DB(%s) Cannot get database fragmentation.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot get database fragmentation");
                 result = -1;
             } else {
                 cJSON *json_fragmentation = cJSON_CreateObject();
                 cJSON_AddNumberToObject(json_fragmentation, "fragmentation", state);
+                cJSON_AddNumberToObject(json_fragmentation, "free_pages_percentage", free_pages);
                 char *out = cJSON_PrintUnformatted(json_fragmentation);
                 snprintf(output, OS_MAXSTR + 1, "ok %s", out);
 
@@ -676,6 +713,9 @@ int wdb_parse(char * input, char * output, int peer) {
                 cJSON_Delete(json_fragmentation);
                 result = 0;
             }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_agent_get_fragmentation_time(diff);
         } else {
             mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
             mdebug2("DB(%s) query error near: %s", sagent_id, query);
@@ -1191,11 +1231,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 w_inc_global_backup_time(diff);
             }
         } else if (strcmp(query, "vacuum") == 0) {
+            w_inc_global_vacuum();
+            gettimeofday(&begin, 0);
             if (wdb_commit2(wdb) < 0) {
                 mdebug1("Global DB Cannot end transaction.");
                 snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
                 result = -1;
             }
+
+            wdb_finalize_all_statements(wdb);
 
             if (result != -1) {
                 if (wdb_vacuum(wdb->db) < 0) {
@@ -1203,19 +1247,52 @@ int wdb_parse(char * input, char * output, int peer) {
                     snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
                     result = -1;
                 } else {
-                    snprintf(output, OS_MAXSTR + 1, "ok");
-                    result = 0;
+                    int fragmentation_after_vacuum;
+
+                    // save fragmentation after vacuum
+                    if (fragmentation_after_vacuum = wdb_get_db_state(wdb), fragmentation_after_vacuum == OS_INVALID) {
+                        mdebug1("Global DB Couldn't get fragmentation after vacuum for the database.");
+                        snprintf(output, OS_MAXSTR + 1, "err Vacuum performed, but couldn't get fragmentation information after vacuum");
+                        result = -1;
+                    } else {
+                        char str_vacuum_time[OS_SIZE_128] = { '\0' };
+                        char str_vacuum_value[OS_SIZE_128] = { '\0' };
+
+                        snprintf(str_vacuum_time, OS_SIZE_128, "%ld", time(0));
+                        snprintf(str_vacuum_value, OS_SIZE_128, "%d", fragmentation_after_vacuum);
+                        if (wdb_update_last_vacuum_data(wdb, str_vacuum_time, str_vacuum_value) != OS_SUCCESS) {
+                            mdebug1("Global DB Couldn't update last vacuum info for the database.");
+                            snprintf(output, OS_MAXSTR + 1, "err Vacuum performed, but last vacuum information couldn't be updated in the metadata table");
+                            result = -1;
+                        } else {
+                            cJSON *json_fragmentation = cJSON_CreateObject();
+                            cJSON_AddNumberToObject(json_fragmentation, "fragmentation_after_vacuum", fragmentation_after_vacuum);
+                            char *out = cJSON_PrintUnformatted(json_fragmentation);
+                            snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+                            os_free(out);
+                            cJSON_Delete(json_fragmentation);
+                            result = 0;
+                        }
+                    }
                 }
             }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_vacuum_time(diff);
         } else if (strcmp(query, "get_fragmentation") == 0) {
+            w_inc_global_get_fragmentation();
+            gettimeofday(&begin, 0);
             int state = wdb_get_db_state(wdb);
-            if (state < 0) {
+            int free_pages = wdb_get_db_free_pages_percentage(wdb);
+            if (state < 0 || free_pages < 0) {
                 mdebug1("Global DB Cannot get database fragmentation.");
                 snprintf(output, OS_MAXSTR + 1, "err Cannot get database fragmentation");
                 result = -1;
             } else {
                 cJSON *json_fragmentation = cJSON_CreateObject();
                 cJSON_AddNumberToObject(json_fragmentation, "fragmentation", state);
+                cJSON_AddNumberToObject(json_fragmentation, "free_pages_percentage", free_pages);
                 char *out = cJSON_PrintUnformatted(json_fragmentation);
                 snprintf(output, OS_MAXSTR + 1, "ok %s", out);
 
@@ -1223,6 +1300,9 @@ int wdb_parse(char * input, char * output, int peer) {
                 cJSON_Delete(json_fragmentation);
                 result = 0;
             }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_get_fragmentation_time(diff);
         } else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
