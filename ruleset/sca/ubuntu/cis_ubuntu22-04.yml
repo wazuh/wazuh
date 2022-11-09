@@ -2275,16 +2275,16 @@ checks:
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
-    condition: none
+    condition: all
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:audit=1'
+      - 'not d:/boot -> r:\.*grub.cfg -> r:^\s*\t*linux && r:audit=1'
 
   # 4.1.1.4 Ensure audit_backlog_limit is sufficient (Automated)
   - id: 28593
     title: "Ensure audit_backlog_limit is sufficient."
     description: "In the kernel-level audit subsystem, a socket buffer queue is used to hold audit events. Whenever a new audit event is received, it is logged and prepared to be added to this queue. The kernel boot parameter audit_backlog_limit=N, with N representing the amount of messages, will ensure that a queue cannot grow beyond a certain size. If an audit event is logged which would grow the queue beyond this limit, then a failure occurs and is handled according to the system configuration."
     rationale: "If an audit event is logged which would grow the queue beyond the audit_backlog_limit, then a failure occurs, auditd records will be lost, and potential malicious activity could go undetected."
-    remediation: 'Edit /etc/default/grub and add audit_backlog_limit=N to GRUB_CMDLINE_LINUX. The recommended size for N is 8192 or larger. Example: GRUB_CMDLINE_LINUX="audit_backlog_limit=8192" Run the following command to update the grub2 configuration: # update-grub Default Value: if audit_backlog_limit is not set, the system defaults to audit_backlog_limit=64.'
+    remediation: 'Edit /etc/default/grub and add audit_backlog_limit=N to GRUB_CMDLINE_LINUX. The recommended size for N is 8192 or larger. Example: GRUB_CMDLINE_LINUX="audit_backlog_limit=8192" Run the following command to update the grub2 configuration: # update-grub'
     compliance:
       - cis: ["4.1.1.4"]
       - cis_csc_v7: ["6.2", "6.3"]
@@ -2298,7 +2298,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:audit=1'
+      - 'not d:/boot -> r:\.*grub.cfg -> r:^\s*\t*/boot && r:audit_backlog_limit=\d+'
 
   # 4.1.2 Configure Data Retention
   # 4.1.2.1 Ensure audit log storage size is configured (Automated)
@@ -2373,9 +2373,9 @@ checks:
   # 4.1.3.1 Ensure changes to system administration scope (sudoers) is collected (Automated)
   - id: 28597
     title: "Ensure changes to system administration scope (sudoers) is collected."
-    description: 'Monitor scope changes for system administrations. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers will be written to when the file or its attributes have changed. The audit records will be tagged with the identifier "scope.". Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
+    description: 'Monitor scope changes for system administrators. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers will be written to when the file or its attributes have changed. The audit records will be tagged with the identifier "scope.". Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Changes in the /etc/sudoers and /etc/sudoers.d files can indicate that an unauthorized change has been made to the scope of system administrator activity."
-    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor scope changes for system administrators. Example: # printf " -w /etc/sudoers -p wa -k scope -w /etc/sudoers.d -p wa -k scope " >> /etc/audit/rules.d/50-scope.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. Merge and load the rules into active configuration: # augenrules --load Check if reboot is required.'
+    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor scope changes for system administrators. Example: # printf " -w /etc/sudoers -p wa -k scope -w /etc/sudoers.d -p wa -k scope " >> /etc/audit/rules.d/50-scope.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi Additional Information: Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page.'
     compliance:
       - cis: ["4.1.3.1"]
       - cis_csc_v7: ["4.8"]
@@ -2471,6 +2471,7 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^\s*\t*-a\s*always,exit|^\s*\t*-a\s*exit,always && r:-F\s*arch=b64|-F\s*arch=b32 && r:-S\s*(setdomainname|sethostname) && r:key=\s*\.+$|-k\s*\.+$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue.net && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/hosts && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/networks && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/network/ && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
 
@@ -2511,7 +2512,7 @@ checks:
     title: "Ensure session initiation information is collected."
     description: 'Monitor session initiation events. The parameters in this section track changes to the files associated with session events. /var/run/utmp - tracks all currently logged in users. /var/log/wtmp - file tracks logins, logouts, shutdown, and reboot events. /var/log/btmp - keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp. All audit records will be tagged with the identifier "session."'
     rationale: "Monitoring these files for changes could alert a system administrator to logins occurring at unusual hours, which could indicate intruder activity (i.e. a user logging in at a time when they do not normally log in)."
-    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor session initiation information. Example: # printf " -w /var/run/utmp -p wa -k session -w /var/log/wtmp -p wa -k session -w /var/log/btmp -p wa -k session " >> /etc/audit/rules.d/50-session.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\ "; fi'
+    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor session initiation information. Example: # printf " -w /var/run/utmp -p wa -k session -w /var/log/wtmp -p wa -k session -w /var/log/btmp -p wa -k session " >> /etc/audit/rules.d/50-session.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\ "; fi Additional Information: Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page.'
     compliance:
       - cis: ["4.1.3.11"]
       - cis_csc_v7: ["4.9", "16.13"]
@@ -2536,7 +2537,7 @@ checks:
     title: "Ensure login and logout events are collected."
     description: "Monitor login and logout events. The parameters below track changes to files associated with login/logout events. /var/log/lastlog - maintain records of the last time a user successfully logged in. /var/run/faillock - directory maintains records of login failures via the pam_faillock module."
     rationale: "Monitoring login/logout events could provide a system administrator with information associated with brute force attacks against user logins."
-    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor login and logout events. Example: # printf " -w /var/log/lastlog -p wa -k logins -w /var/run/faillock -p wa -k logins " >> /etc/audit/rules.d/50-login.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\ "; fi.'
+    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor login and logout events. Example: # printf " -w /var/log/lastlog -p wa -k logins -w /var/run/faillock -p wa -k logins " >> /etc/audit/rules.d/50-login.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\ "; fi. Additional Information: Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page.'
     compliance:
       - cis: ["4.1.3.12"]
       - cis_csc_v7: ["4.9", "16.11", "16.13"]
