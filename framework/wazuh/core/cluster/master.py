@@ -315,8 +315,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return self.process_dapi_res(data)
         elif command == b'dapi_err':
             dapi_client, error_msg = data.split(b' ', 1)
-            asyncio.create_task(
-                self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
+            asyncio.create_task(self.log_exceptions(
+                self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg)))
             return b'ok', b'DAPI error forwarded to worker'
         elif command == b'get_nodes':
             cmd, res = self.get_nodes(json.loads(data))
@@ -574,17 +574,25 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         if sync_type == b'syn_i_w_m':
-            self.sync_integrity_free, sync_function = [False, utils.get_utc_now()], ReceiveIntegrityTask
+            self.sync_integrity_free = [False, utils.get_utc_now()]
+            sync_function = ReceiveIntegrityTask
+            logger_tag = 'Integrity check'
         elif sync_type == b'syn_e_w_m':
             sync_function = ReceiveExtraValidTask
+            logger_tag = 'Integrity sync'
         elif sync_type == b'syn_a_w_m':
-            self.sync_agent_info_free, sync_function = False, ReceiveAgentInfoTask
+            self.sync_agent_info_free = False
+            sync_function = ReceiveAgentInfoTask
+            logger_tag = 'Agent-info sync'
         elif sync_type == b'syn_g_w_m':
-            self.sync_agent_groups_free, sync_function = False, ReceiveAgentGroupsTask
+            self.sync_agent_groups_free = False
+            sync_function = ReceiveAgentGroupsTask
+            logger_tag = 'Agent-groups sync'
         else:
             sync_function = None
+            logger_tag = ''
 
-        return super().setup_receive_file(sync_function, data)
+        return super().setup_receive_file(receive_task_class=sync_function, data=data, logger_tag=logger_tag)
 
     def setup_send_info(self, sync_type: bytes) -> Tuple[bytes, bytes]:
         """Start synchronization process.
@@ -603,10 +611,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         if sync_type == b'syn_w_g_c':
             sync_function = SendEntireAgentGroupsTask
+            logger_tag = 'Agent-groups send full'
         else:
             sync_function = None
+            logger_tag = ''
 
-        return super().setup_send_info(sync_function)
+        return super().setup_send_info(send_task_class=sync_function, logger_tag=logger_tag)
 
     def process_sync_error_from_worker(self, error_msg: bytes) -> Tuple[bytes, bytes]:
         """Manage error during synchronization process reported by a worker.
@@ -626,7 +636,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         self.sync_integrity_free[0] = True
-        return super().error_receiving_file(error_msg.decode())
+        return super().error_receiving_file(task_id_and_error_details=error_msg.decode(), logger_tag='Integrity sync')
 
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
         """Finish receiving a file and start the function to process it.
@@ -643,7 +653,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        return super().end_receiving_file(task_and_file_names)
+        return super().end_receiving_file(task_and_file_names=task_and_file_names, logger_tag='Integrity check')
 
     async def setup_sync_wazuh_db_information(self, task_id: bytes, info_type: str):
         """Create a process to send to the local wazuh-db the chunks of data received from a worker.

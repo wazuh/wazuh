@@ -461,31 +461,6 @@ async def test_AbstractServer_check_clients_keepalive(sleep_mock):
                 mock_error.assert_called_once_with("No keep alives have been received from "
                                                    "worker_test in the last minute. Disconnecting", exc_info=False)
 
-
-@pytest.mark.asyncio
-@patch("asyncio.sleep", side_effect=IndexError)
-@patch("asyncio.get_running_loop", new=Mock())
-async def test_AbstractServer_echo(sleep_mock):
-    """Check that the echo function sends a message to all clients and that the information is written to the log."""
-
-    class ClientMock:
-        async def send_request(self, command, data):
-            return data + b" mock"
-
-    logger = Logger("test_echo")
-    with patch.object(logger, "debug") as mock_debug:
-        with patch.object(logger, "info") as mock_info:
-            abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                             cluster_items={"test4": 4}, enable_ssl=True, logger=logger)
-            abstract_server.clients = {b"worker_test": ClientMock()}
-            try:
-                await abstract_server.echo()
-            except IndexError:
-                pass
-            mock_debug.assert_called_once_with("Sending echo to worker b'worker_test'")
-            mock_info.assert_called_once_with("keepalive worker_test mock")
-
-
 @pytest.mark.asyncio
 @freeze_time("2022-01-01")
 @patch("asyncio.sleep", side_effect=IndexError)
