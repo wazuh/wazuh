@@ -19,10 +19,9 @@
 
     <rule id="89502" level="14">
         <if_sid>89501</if_sid>
-        <if_group>sysmon_event_20</if_group>
         <field name="win.eventdata.destination" type="pcre2">(?i)(powershell|rundll32.exe|cmd.exe)</field>
         <options>no_full_log</options>
-        <description>WmiConsumerEvent created, possible persistence tactic using executables</description>
+        <description>WmiConsumerEvent created, possible persistence tactic using command-executing binaries</description>
         <mitre>
             <id>T1546.003</id>
         </mitre>
