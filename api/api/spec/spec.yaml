@@ -15064,6 +15064,54 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /events:
+    post:
+      tags:
+        - Events
+      summary: "Forward log event"
+      description: "Forward log event to Wazuh analysisd"
+      operationId: api.controllers.event_controller.forward_event
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:create'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event:
+                  description: "Security event log"
+                  type: string
+              required:
+                - event
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: "Event was successfully forwarded"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /experimental/rootcheck:
     delete:
       tags:
@@ -19016,56 +19064,6 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /events:
-    post:
-      tags:
-        - Events
-      summary: "Forward log event"
-      description: "Forward log event to Wazuh analysisd"
-      operationId: api.controllers.event_controller.forward_event
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:create'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                event:
-                  description: "Security event log"
-                  type: string
-              required:
-                - event
-      responses:
-        '200':
-          description: "Forward a security event log"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AgentIdKey'
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
