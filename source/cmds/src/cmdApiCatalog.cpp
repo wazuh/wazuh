@@ -13,6 +13,7 @@
 #include <api/wazuhResponse.hpp>
 #include <json/json.hpp>
 #include <name.hpp>
+#include <variant>
 
 namespace cmd
 {
@@ -209,9 +210,10 @@ void singleRequest(const std::string& socketPath,
 }
 
 void loadRuleset(const std::string& socketPath,
-                    const std::string& collectionNameStr,
-                    const std::string& collectionPathStr,
-                    const std::string& format)
+                 const std::string& collectionNameStr,
+                 const std::string& collectionPathStr,
+                 const std::string& format,
+                 const bool recursive)
 {
     // Build and check collection path
     std::error_code ec;
@@ -242,51 +244,70 @@ void loadRuleset(const std::string& socketPath,
         return;
     }
 
-    // Iterate directory and send requests to create items
-    for (const auto& dirEntry : std::filesystem::recursive_directory_iterator(collectionPath, ec))
-    {
-        // If error ignore entry and continue
-        if (ec)
-        {
-            std::cerr << "Error reading " << dirEntry.path() << ": " << ec.message()
-                      << std::endl;
-            ec.clear();
-            continue;
-        }
-
-        if (dirEntry.is_regular_file(ec))
+    auto loadEntry =
+        [&](decltype(*std::filesystem::directory_iterator(collectionPath, ec)) dirEntry)
         {
             // If error ignore entry and continue
             if (ec)
             {
                 std::cerr << "Error reading " << dirEntry.path() << ": " << ec.message()
-                          << std::endl;
+                        << std::endl;
                 ec.clear();
-                continue;
+                return;
             }
 
-            // Read file content
-            std::string content;
-
-            try
+            if (dirEntry.is_regular_file(ec))
             {
-                std::ifstream file(dirEntry.path());
-                content = std::string(std::istreambuf_iterator<char>(file),
-                                      std::istreambuf_iterator<char>());
-            }
-            catch (const std::exception& e)
-            {
-                std::cerr << "Error reading " << dirEntry.path() << ": " << e.what()
-                          << std::endl;
-                continue;
-            }
+                // If error ignore entry and continue
+                if (ec)
+                {
+                    std::cerr << "Error reading " << dirEntry.path() << ": " << ec.message()
+                            << std::endl;
+                    ec.clear();
+                    return;
+                }
 
-            // Send request
-            singleRequest(socketPath,
-                          actionToString(Action::CREATE),
-                          collectionNameStr,
-                          format,
-                          content);
+                // Read file content
+                std::string content;
+
+                try
+                {
+                    std::ifstream file(dirEntry.path());
+                    content = std::string(std::istreambuf_iterator<char>(file),
+                                        std::istreambuf_iterator<char>());
+                }
+                catch (const std::exception& e)
+                {
+                    std::cerr << "Error reading " << dirEntry.path() << ": " << e.what()
+                            << std::endl;
+                    return;
+                }
+
+                // Send request
+                singleRequest(socketPath,
+                            actionToString(Action::CREATE),
+                            collectionNameStr,
+                            format,
+                            content);
+            }
+    };
+
+    if (recursive)
+    {
+        // Iterate directory recursively and send requests to create items
+        for (const auto& dirEntry :
+             std::filesystem::recursive_directory_iterator(collectionPath, ec))
+        {
+            loadEntry(dirEntry);
+        }
+    }
+    else
+    {
+        // Iterate directory and send requests to create items
+        for (const auto& dirEntry :
+             std::filesystem::directory_iterator(collectionPath, ec))
+        {
+            loadEntry(dirEntry);
         }
     }
 }
@@ -298,7 +319,8 @@ void catalog(const std::string& socketPath,
              const std::string& nameStr,
              const std::string& format,
              const std::string& content,
-             const std::string& path)
+             const std::string& path,
+             const bool recursive)
 {
     auto action = catalog_details::stringToAction(actionStr.c_str());
     switch (action)
@@ -313,7 +335,7 @@ void catalog(const std::string& socketPath,
                 socketPath, actionStr, nameStr, format, content);
             break;
         case catalog_details::Action::LOAD:
-            catalog_details::loadRuleset(socketPath, nameStr, path, format);
+            catalog_details::loadRuleset(socketPath, nameStr, path, format, recursive);
             break;
         default: std::cerr << "Invalid action: " << actionStr << std::endl; break;
     }
