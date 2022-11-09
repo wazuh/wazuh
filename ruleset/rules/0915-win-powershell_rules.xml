@@ -58,10 +58,10 @@
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-ItemProperty</field>
     <options>no_full_log</options>
-    <description>Powershell script did a query on using Get-ItemProperty</description>
+    <description>Powershell script did a query using Get-ItemProperty</description>
   </rule>
 
-  <rule id="91808" level="0">
+  <rule id="91808" level="3">
     <if_sid>91807</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)-Path\sHK(CU|LM)</field>
     <options>no_full_log</options>
@@ -105,7 +105,7 @@
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Remove-Item\s-Path</field>
     <options>no_full_log</options>
-    <description>Powershell script executed an object deletion.</description>
+    <description>Powershell script executed an object deletion</description>
     <mitre>
       <id>T1112</id>
     </mitre>
@@ -115,7 +115,7 @@
     <if_sid>91812</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)\sHK(LM|CU)\:</field>
     <options>no_full_log</options>
-    <description>Powershell script deleted a registry key from an object.</description>
+    <description>Powershell script deleted a registry key from an object</description>
     <mitre>
       <id>T1112</id>
     </mitre>
@@ -125,7 +125,7 @@
     <if_sid>91813</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)\\\\Software\\\\Classes\\\\Folder</field>
     <options>no_full_log</options>
-    <description>Powershell script deleted an auto start entry registry key.</description>
+    <description>Powershell script deleted an auto start entry registry key</description>
     <mitre>
       <id>T1112</id>
     </mitre>
@@ -155,7 +155,7 @@
     <if_sid>91816, 91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)ConvertSidToStringSid</field>
     <options>no_full_log</options>
-    <description>Powershell script executed "ConvertSidToStringSid" API. Possible domain SID enumeration.</description>
+    <description>Powershell script executed "ConvertSidToStringSid" API. Possible domain SID enumeration</description>
     <mitre>
       <id>T1033</id>
       <id>T1082</id>
@@ -259,7 +259,7 @@
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Set-WmiInstance</field>
     <options>no_full_log</options>
-    <description>Powershell executed "Set-WmiInstance". Possible creation or update of a WMI instance.</description>
+    <description>Powershell executed "Set-WmiInstance". Possible creation or update of a WMI instance</description>
     <mitre>
       <id>T1560</id>
     </mitre>
@@ -279,7 +279,7 @@
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)GetComputerNameEx</field>
     <options>no_full_log</options>
-    <description>Powershell executed "GetComputerNameEx". Possible system configuration discovery.</description>
+    <description>Powershell executed "GetComputerNameEx". Possible system configuration discovery</description>
     <mitre>
       <id>T1082</id>
     </mitre>
@@ -289,7 +289,7 @@
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)NetWkstaGetInfo</field>
     <options>no_full_log</options>
-    <description>Powershell executed "NetWkstaGetInfo". Possible network configuration discovery.</description>
+    <description>Powershell executed "NetWkstaGetInfo". Possible network configuration discovery</description>
     <mitre>
       <id>T1016</id>
     </mitre>
@@ -299,7 +299,7 @@
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)GetUserNameEx</field>
     <options>no_full_log</options>
-    <description>Powershell executed "GetUserNameEx". Possible user information discovery.</description>
+    <description>Powershell executed "GetUserNameEx". Possible user information discovery</description>
     <mitre>
       <id>T1033</id>
     </mitre>
@@ -309,7 +309,7 @@
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)CreateToolhelp32Snapshot</field>
     <options>no_full_log</options>
-    <description>Powershell executed "CreateToolhelp32Snapshot". Possible process discovery.</description>
+    <description>Powershell executed "CreateToolhelp32Snapshot". Possible process discovery</description>
     <mitre>
       <id>T1057</id>
     </mitre>
