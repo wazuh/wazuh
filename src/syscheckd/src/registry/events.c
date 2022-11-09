@@ -47,10 +47,10 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
 
     if (configuration->opts & CHECK_PERM) {
         if (aux = cJSON_GetObjectItem(old_data, "perm"), aux != NULL) {
-            cJSON_AddItemToObject(old_attributes, "perm", cJSON_Duplicate(aux, 1));
+            cJSON_AddItemToObject(old_attributes, "perm", cJSON_Parse(cJSON_GetStringValue(aux)));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
         } else {
-            cJSON_AddItemToObject(old_attributes, "perm", cJSON_Duplicate(registry_data->perm_json, 1));
+            cJSON_AddItemToObject(old_attributes, "perm", cJSON_Parse(registry_data->perm));
         }
     }
 
@@ -361,7 +361,7 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
 
     if (data) {
         if (configuration->opts & CHECK_PERM) {
-            cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
+            cJSON_AddItemToObject(attributes, "perm", cJSON_Parse(data->perm));
         }
 
         if (configuration->opts & CHECK_OWNER) {
@@ -392,7 +392,7 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
 
         if (configuration->opts & CHECK_PERM) {
             if (perm = cJSON_GetObjectItem(dbsync_event, "perm"), perm != NULL) {
-                cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(perm, 1));
+                cJSON_AddItemToObject(attributes, "perm", cJSON_Parse(cJSON_GetStringValue(perm)));
             }
         }
 
