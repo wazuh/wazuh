@@ -373,4 +373,28 @@ TEST_F(KVDBTest, KVDBConcurrency)
     del.join();
     kvdbManager->deleteDB(dbName);
 }
+
+TEST_F(KVDBTest, ListAvailableKVDBs)
+{
+    auto kvdbLists = kvdbManager.getAvailableKVDBs();
+    ASSERT_EQ(kvdbLists.size(),1);
+
+    auto ret = kvdbManager.addDb("NEW_DB");
+    ASSERT_TRUE(ret);
+    kvdbLists = kvdbManager.getAvailableKVDBs();
+    ASSERT_EQ(kvdbLists.size(),2);
+
+    ret = kvdbManager.addDb("NEW_DB_2");
+    ASSERT_TRUE(ret);
+    kvdbLists = kvdbManager.getAvailableKVDBs();
+    ASSERT_EQ(kvdbLists.size(),3);
+    
+    kvdbManager.deleteDB("NEW_DB");
+    kvdbLists = kvdbManager.getAvailableKVDBs();
+    
+    ASSERT_EQ(kvdbLists.size(),2);
+    ASSERT_EQ(kvdbLists.at(0),"NEW_DB_2");
+    ASSERT_EQ(kvdbLists.at(1),kTestDBName);
+}
+
 } // namespace
