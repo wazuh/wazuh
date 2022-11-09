@@ -2277,7 +2277,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: none
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:audit=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:audit=1'
 
   # 4.1.1.4 Ensure audit_backlog_limit is sufficient (Automated)
   - id: 28593
@@ -2298,7 +2298,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
-      - "f:/boot/grub/grub.cfg -> r:^\\s*linux && r:audit=1"
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:audit=1'
 
   # 4.1.2 Configure Data Retention
   # 4.1.2.1 Ensure audit log storage size is configured (Automated)
@@ -2365,17 +2365,17 @@ checks:
     rules:
       - "d:/etc/audit"
       - "f:/etc/audit/auditd.conf"
-      - "f:/etc/audit/auditd.conf -> r:^\\s*space_left_action\\s*=\\s*email"
-      - "f:/etc/audit/auditd.conf -> r:^\\s*action_mail_acct\\s*=\\s*root"
-      - "f:/etc/audit/auditd.conf -> r:^\\s*admin_space_left_action\\s*=\\s*(halt|single))"
+      - "f:/etc/audit/auditd.conf -> r:^\\s*\\t*space_left_action\\s*=\\s*email"
+      - "f:/etc/audit/auditd.conf -> r:^\\s*\\t*action_mail_acct\\s*=\\s*root"
+      - "f:/etc/audit/auditd.conf -> r:^\\s*\\t*admin_space_left_action\\s*=\\s* && r:halt|single"
 
   # 4.1.3 Configure auditd rules
   # 4.1.3.1 Ensure changes to system administration scope (sudoers) is collected (Automated)
   - id: 28597
     title: "Ensure changes to system administration scope (sudoers) is collected."
     description: 'Monitor scope changes for system administrations. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers will be written to when the file or its attributes have changed. The audit records will be tagged with the identifier "scope.". Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
-    rationale: "Changes in the /etc/sudoers file can indicate that an unauthorized change has been made to scope of system administrator activity."
-    remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-scope.rules Add the following lines: -w /etc/sudoers -p wa -k scope -w /etc/sudoers.d/ -p wa -k scope"
+    rationale: "Changes in the /etc/sudoers and /etc/sudoers.d files can indicate that an unauthorized change has been made to the scope of system administrator activity."
+    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor scope changes for system administrators. Example: # printf " -w /etc/sudoers -p wa -k scope -w /etc/sudoers.d -p wa -k scope " >> /etc/audit/rules.d/50-scope.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. Merge and load the rules into active configuration: # augenrules --load Check if reboot is required.'
     compliance:
       - cis: ["4.1.3.1"]
       - cis_csc_v7: ["4.8"]
@@ -2419,7 +2419,7 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\s*always,exit && r:-F\s*arch=b(64|32) && r:-C\s*(euid!=uid|uid!=euid) && r:-F\s*auid!=(unset|-1|4294967295) && r:-S\s*execve && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^\s*\t*-a\s*always,exit|^\s*\t*-a\s*exit,always && r:-F\s*arch=b64|-F\s*arch=b32 && r:-C\s*euid!=uid|-C\s*uid!=euid && r:-F\s*auid!=unset|-F\s*auid!=-1|-F\s*auid!=4294967295 && r:-S\s*execve && r:key=\s\.+$|-k\s*\.+$'
 
   # 4.1.3.3 Ensure events that modify the sudo log file are collected (Automated) - Not implemented
   # 4.1.3.4 Ensure events that modify date and time information are collected (Automated)
@@ -2443,8 +2443,8 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\s*always,exit && r:-F\s*arch=b(64|32) && r:-S\s*(adjtimex|settimeofday|clock_settime) && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/localtime && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^\s*\t*-a\s*always,exit|^\s*\t*-a\s*exit,always && r:-F\s*arch=b64|-F\s*arch=b32 && r:-S\s*adjtimex|-S\s*settimeofday|-S\s*clock_settime && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/localtime && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
 
   # 4.1.3.5 Ensure events that modify the system's network environment are collected (Automated)
   - id: 28600
@@ -2468,11 +2468,11 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a\s*always,exit && r:-F\s*arch=b(64|32) && r:-S\s*(setdomainname|sethostname) && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue.net && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/networks && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/network/ && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^\s*\t*-a\s*always,exit|^\s*\t*-a\s*exit,always && r:-F\s*arch=b64|-F\s*arch=b32 && r:-S\s*(setdomainname|sethostname) && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue.net && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/networks && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/network/ && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
 
   # 4.1.3.6 Ensure use of privileged commands are collected (Automated) - Not implemented
   # 4.1.3.7 Ensure unsuccessful file access attempts are collected (Automated) - Not implemented
@@ -2498,11 +2498,11 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/group && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/passwd && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/gshadow && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/shadow && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/security/opasswd && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/group && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/passwd && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/gshadow && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/shadow && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/security/opasswd && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
 
   # 4.1.3.9 Ensure discretionary access control permission modification events are collected (Automated) - Not implemented
   # 4.1.3.10 Ensure successful file system mounts are collected (Automated) - Not implemented
@@ -2527,9 +2527,9 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/run/utmp && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/log/wtmp && r:-p\s*wa && r:(key= |-k)\s*.+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/log/btmp && r:-p\s*wa && r:(key= |-k)\s*.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/run/utmp && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/log/wtmp && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/log/btmp && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
 
   # 4.1.3.12 Ensure login and logout events are collected (Automated)
   - id: 28603
@@ -2552,8 +2552,8 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/run/faillock && r:-p\s*wa && r:(key= |-k)\s*\w+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/log/lastlog && r:-p\s*wa && r:(key= |-k)\s*\w+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/run/faillock && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/var/log/lastlog && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
 
   # 4.1.3.13 Ensure file deletion events by users are collected (Automated) - Not implemented
   # 4.1.3.14 Ensure events that modify the system's Mandatory Access Controls are collected (Automated)
@@ -2578,8 +2578,8 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/apparmor/ && r:-p\s*wa && r:(key= |-k)\s*\w+$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/apparmor.d/ && r:-p\s*wa && r:(key= |-k)\s*\w+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/apparmor/ && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/apparmor.d/ && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
 
   # 4.1.3.15 Ensure successful and unsuccessful attempts to use the chcon command are recorded (Automated) - Not implemented
   # 4.1.3.16 Ensure successful and unsuccessful attempts to use the setfacl command are recorded (Automated) - Not implemented
@@ -2607,7 +2607,7 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-e\h+2$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-e\s+2$'
 
   # 4.1.3.21 Ensure the running and on disk configuration is the same (Manual) - Not implemented
   # 4.1.4.1 Ensure audit log files are mode 0640 or less permissive (Automated)
