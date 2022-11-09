@@ -83,7 +83,8 @@ void singleRequest(const std::string& socketPath,
 void loadRuleset(const std::string& socketPath,
                     const std::string& name,
                     const std::string& collectionPath,
-                    const std::string& format);
+                    const std::string& format,
+                    const bool recursive);
 
 } // namespace catalog_details
 
@@ -95,13 +96,15 @@ void loadRuleset(const std::string& socketPath,
  * @param nameStr Name of the item to operate on
  * @param format Format of the content: json, yaml
  * @param content  Content of the request, depending on the action
+ * @param recursive Option to recursively traverse or not a directory
  */
 void catalog(const std::string& socketPath,
              const std::string& actionStr,
              const std::string& nameStr,
              const std::string& format,
              const std::string& content,
-             const std::string& path);
+             const std::string& path,
+             const bool recursive);
 } // namespace cmd
 
 #endif // _CMD_APICLNT_CATALOG_HPP
