@@ -2126,9 +2126,9 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:iptables -L -> r:Chain INPUT \(policy (DROP|REJECT)\)'
-      - 'c:iptables -L -> r:Chain FORWARD \(policy (DROP|REJECT)\)'
-      - 'c:iptables -L -> r:Chain OUTPUT \(policy (DROP|REJECT)\)'
+      - 'c:iptables -L -> r:Chain INPUT \(policy && r:DROP\)|REJECT\)'
+      - 'c:iptables -L -> r:Chain FORWARD \(policy && r:DROP\)|REJECT\)'
+      - 'c:iptables -L -> r:Chain OUTPUT \(policy && r:DROP\)|REJECT\)'
 
   # 3.5.3.2.2 Ensure iptables loopback traffic is configured (Automated)
   - id: 28587
