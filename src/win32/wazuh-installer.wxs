@@ -32,7 +32,7 @@
         <Property Id="KEY" Secure="yes"/>
         <Property Id="AGENT_NAME" Secure="yes"/>
 
-        <Property Id="OS_VERSION"/>
+        <Property Id="OS_VERSION" Secure="yes"/>
 
         <Property Id="MsiLogging" Value="v" />
         <Icon Id="icon.ico" SourceFile="ui\favicon.ico" />
@@ -112,6 +112,7 @@
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
         <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
         <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
+        <CustomAction Id="StartWazuhSvc" Directory="APPLICATIONFOLDER" ExeCommand="NET START WazuhSvc" Execute="deferred" Impersonate="no" Return="ignore" />
 
         <UI>
             <UIRef Id="WixUI_Advanced" />
@@ -161,6 +162,7 @@
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
+            <Custom Action="StartWazuhSvc" After="CustomAction_RemoveAllScript">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>
 
         </InstallExecuteSequence>
 
@@ -203,7 +205,7 @@
                         </File>
                     </Component>
                     <Component Id="INTERNAL_OPTIONS.CONF" DiskId="1" Guid="D2F2A5B9-1A98-4BB8-8AC4-D948CA97DD0E">
-                        <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf" DefaultVersion="1.0"/>
+                        <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf"/>
                     </Component>
                     <Component Id="LICENSE.TXT" DiskId="1" Guid="556F08A0-D372-4BB5-BC44-73CE45957084">
                         <File Id="LICENSE.TXT" Name="LICENSE.txt" Source="LICENSE.txt" />
@@ -223,7 +225,7 @@
                     <Component Id="WAZUH_AGENT_EVENTCHANNEL.EXE" DiskId="1" Guid="044E7997-12B6-4178-BD00-B90500DBA53F">
                         <File Id="WAZUH_AGENT_EVENTCHANNEL.EXE" Name="wazuh-agent.exe" Source="wazuh-agent-eventchannel.exe" />
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_eventchannel" />
-                        <ServiceControl Id="svc_uninstall_eventchannel" Name="WazuhSvc" Remove="uninstall" Stop="uninstall" Wait="yes" />
+                        <ServiceControl Id="svc_uninstall_eventchannel" Name="WazuhSvc" Remove="uninstall" Stop="both" Wait="yes" />
                         <Condition>VersionNT &gt;= 600</Condition>
                     </Component>
                     <Component Id="WAZUH_AGENT.EXE" DiskId="1" Guid="5CCEA6DC-8434-4137-9486-55AE3949266B">
@@ -231,18 +233,6 @@
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install" />
                         <ServiceControl Id="ServiceControl" Name="WazuhSvc" Stop="both" Remove="uninstall" Wait="yes" />
                         <Condition>VersionNT &lt; 600</Condition>
-                    </Component>
-                    <Component Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" DiskId="1" Guid="FB49A2F0-3433-47D4-A668-4139718AFDAC">
-                        <File Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" Name="wazuh-agent.exe" Source="wazuh-agent-eventchannel.exe" />
-                        <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_upgrade_ossec" />
-                        <ServiceControl Id="ServiceControl_ossec_upgrade" Name="WazuhSvc" Remove="uninstall" Start="install" Stop="both" Wait="yes" />
-                        <Condition>((OSSECINSTALLED AND (OSSECRUNNING = "Running")) OR ((WAZUHINSTALLED = "Wazuh") AND (WAZUHRUNNING = "Running"))) AND (VersionNT &gt;= 600)</Condition>
-                    </Component>
-                    <Component Id="WAZUH_AGENT_UPGRADE_OSSEC_NOEC.EXE" DiskId="1" Guid="B19AF43F-43AD-40D2-95B7-512E429DF099">
-                        <File Id="WAZUH_AGENT_UPGRADE_OSSEC_NOEC.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
-                        <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_upgrade_ossec_noec" />
-                        <ServiceControl Id="ServiceControl_ossec_upgrade_noec" Name="WazuhSvc" Remove="uninstall" Start="install" Stop="both" Wait="yes" />
-                        <Condition>((OSSECINSTALLED AND (OSSECRUNNING = "Running")) OR ((WAZUHINSTALLED = "Wazuh") AND (WAZUHRUNNING = "Running"))) AND (VersionNT &lt; 600)</Condition>
                     </Component>
                     <Component Id="VISTA_SEC.TXT" DiskId="1" Guid="20EF5801-369B-4EC2-87A2-59DCE56308D9">
                         <File Id="VISTA_SEC.TXT" Name="vista_sec.txt" Source="vista_sec.txt" />
@@ -617,8 +607,6 @@
             <ComponentRef Id="MANAGE_AGENTS.EXE" />
             <ComponentRef Id="WAZUH_AGENT_EVENTCHANNEL.EXE" />
             <ComponentRef Id="WAZUH_AGENT.EXE" />
-            <ComponentRef Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" />
-            <ComponentRef Id="WAZUH_AGENT_UPGRADE_OSSEC_NOEC.EXE" />
             <ComponentRef Id="VISTA_SEC.TXT" />
             <ComponentRef Id="RESTART_WAZUH.EXE" />
             <ComponentRef Id="ROUTE_NULL.EXE" />
