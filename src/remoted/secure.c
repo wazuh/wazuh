@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "remoted.h"
+#include "state.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 
 #ifdef WAZUH_UNIT_TESTING
@@ -29,6 +30,10 @@ netbuffer_t netbuffer_send;
 wnotify_t * notify = NULL;
 
 size_t global_counter;
+
+OSHash *remoted_agents_state;
+
+extern remoted_state_t remoted_state;
 
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
@@ -67,14 +72,6 @@ static void _push_request(const char *request,const char *type);
 static int key_request_connect();
 static int key_request_reconnect();
 
-/* Defines to switch according to different OS_AddSocket or, failing that, the case of using UDP protocol */
-#define OS_ADDSOCKET_ERROR          0   ///< OSHash_Set_ex returns 0 on error (* see OS_AddSocket and OSHash_Set_ex)
-#define OS_ADDSOCKET_KEY_UPDATED    1   ///< OSHash_Set_ex returns 1 when key existed, so it is update (*)
-#define OS_ADDSOCKET_KEY_ADDED      2   ///< OSHash_Set_ex returns 2 when key didn't existed, so it is added  (*)
-#define REMOTED_USING_UDP           42  ///< When using UDP, OS_AddSocket isn't called, so an arbitrary value is used
-
-#define USING_UDP_NO_CLIENT_SOCKET  -1  ///< When using UDP, no valid client socket FD is set
-
 /* Handle secure connections */
 void HandleSecure()
 {
@@ -83,6 +80,18 @@ void HandleSecure()
 
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
+
+    /* Global stats uptime */
+    remoted_state.uptime = time(NULL);
+
+    /* Create OSHash for agents statistics */
+    remoted_agents_state = OSHash_Create();
+    if (!remoted_agents_state) {
+        merror_exit(HASH_ERROR);
+    }
+    if (!OSHash_setSize(remoted_agents_state, 2048)) {
+        merror_exit(HSETSIZE_ERROR, "remoted_agents_state");
+    }
 
     /* Initialize manager */
     manager_init();
@@ -102,8 +111,11 @@ void HandleSecure()
     /* Create Security configuration assessment forwarder thread */
     w_create_thread(SCFGA_Forward, NULL);
 
-    // Create Request listener thread
-    w_create_thread(req_main, NULL);
+    // Initialize request module
+    req_init();
+
+    // Create com request thread
+    w_create_thread(remcom_main, NULL);
 
     // Create State writer thread
     w_create_thread(rem_state_main, NULL);
@@ -343,7 +355,7 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
         if (message->sock == USING_UDP_NO_CLIENT_SOCKET || message->counter > rem_getCounter(message->sock)) {
             HandleSecureMessage(message, &wdb_sock);
         } else {
-            rem_inc_dequeued();
+            rem_inc_recv_dequeued();
         }
         rem_msgfree(message);
     }
@@ -360,7 +372,9 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args) {
 
     while (1) {
         mdebug2("Checking for keys file changes.");
-        check_keyupdate();
+        if (check_keyupdate() == 1) {
+            rem_inc_keys_reload();
+        }
         sleep(seconds);
     }
 }
@@ -419,6 +433,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     char srcmsg[OS_FLSIZE + 1];
     char srcip[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1] = {0};
+    char *agentid_str = NULL;
     char buffer[OS_MAXSTR + 1] = "";
     char *tmp_msg;
     size_t msg_length;
@@ -436,6 +451,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         break;
     default:
         merror("IP address family not supported.");
+        rem_inc_recv_unknown();
         return;
     }
 
@@ -465,6 +481,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                 _close_sock(&keys, message->sock);
             }
 
+            rem_inc_recv_unknown();
             return;
         }
 
@@ -494,20 +511,25 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                 _close_sock(&keys, message->sock);
             }
 
+            rem_inc_recv_unknown();
             return;
         } else {
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
             if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
+                mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+
                 w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                 key_unlock();
-                mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
 
                 if (message->sock >= 0) {
                     _close_sock(&keys, message->sock);
                 }
+
+                rem_inc_recv_unknown();
                 return;
             }
+
             w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
     } else if (strncmp(buffer, "#ping", 5) == 0) {
@@ -525,6 +547,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                 mwarn("Ping operation could not be delivered completely (%d)", retval);
             }
 
+            rem_inc_recv_ping();
             return;
 
     } else {
@@ -534,6 +557,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
         if (agentid < 0) {
             key_unlock();
+
             mwarn(DENYIP_WARN " Source agent ID is unknown.", srcip);
 
             // Send key request by ip
@@ -542,19 +566,22 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                 _close_sock(&keys, message->sock);
             }
 
+            rem_inc_recv_unknown();
             return;
         } else {
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
             if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
+                mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+
                 w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                 key_unlock();
-                mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
 
                 if (message->sock >= 0) {
                     _close_sock(&keys, message->sock);
                 }
 
+                rem_inc_recv_unknown();
                 return;
             } else {
                 ip_found = 1;
@@ -573,6 +600,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             _close_sock(&keys, message->sock);
         }
 
+        rem_inc_recv_unknown();
         return;
     }
 
@@ -594,6 +622,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             _close_sock(&keys, message->sock);
         }
 
+        rem_inc_recv_unknown();
         return;
     }
 
@@ -640,7 +669,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
         // The critical section for readers closes within this function
         save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
-        rem_inc_ctrl_msg();
+        rem_inc_recv_ctrl(key->id);
 
         OS_FreeKey(key);
         return;
@@ -651,13 +680,14 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     snprintf(srcmsg, OS_FLSIZE, "[%s] (%s) %s", keys.keyentries[agentid]->id,
              keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
 
+    os_strdup(keys.keyentries[agentid]->id, agentid_str);
+
     key_unlock();
 
     /* If we can't send the message, try to connect to the
      * socket again. If it not exit.
      */
-    if (SendMSG(logr.m_queue, tmp_msg, srcmsg,
-                SECURE_MQ) < 0) {
+    if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
         // Try to reconnect infinitely
@@ -668,15 +698,21 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
             // Something went wrong sending a message after an immediate reconnection...
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+        } else {
+            rem_inc_recv_evt(agentid_str);
         }
     } else {
-        rem_inc_evt();
+        rem_inc_recv_evt(agentid_str);
     }
+
+    os_free(agentid_str);
 }
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock) {
     int retval = 0;
+
+    rem_setCounter(sock, global_counter);
 
     key_lock_read();
     retval = OS_DeleteSocket(keys, sock);
@@ -688,7 +724,6 @@ int _close_sock(keystore * keys, int sock) {
         rem_dec_tcp();
     }
 
-    rem_setCounter(sock, global_counter);
     mdebug1("TCP peer disconnected [%d]", sock);
 
     return retval;

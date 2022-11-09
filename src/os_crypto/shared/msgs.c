@@ -27,14 +27,14 @@ static void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
 static char *CheckSum(char *msg, size_t length) __attribute((nonnull));
 
 /* Sending counts */
-static _Atomic unsigned int global_count = 0;
-static _Atomic unsigned int local_count  = 0;
+static _Atomic (unsigned int) global_count = 0;
+static _Atomic (unsigned int) local_count  = 0;
 
 /* Average compression rates */
-static _Atomic unsigned int evt_count = 0;
-static _Atomic unsigned int rcv_count = 0;
-static _Atomic size_t c_orig_size = 0;
-static _Atomic size_t c_comp_size = 0;
+static _Atomic (unsigned int) evt_count = 0;
+static _Atomic (unsigned int) rcv_count = 0;
+static _Atomic (size_t) c_orig_size = 0;
+static _Atomic (size_t) c_comp_size = 0;
 
 /* Global variables (read from define file) */
 unsigned int _s_comp_print = 0;

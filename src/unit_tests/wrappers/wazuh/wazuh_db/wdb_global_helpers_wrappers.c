@@ -37,6 +37,14 @@ cJSON* __wrap_wdb_get_agent_info(int id, __attribute__((unused)) int *sock) {
 
 int* __wrap_wdb_get_agents_by_connection_status(const char* status, __attribute__((unused)) int *sock) {
     check_expected(status);
+
+    return mock_ptr_type(int*);
+}
+
+int* __wrap_wdb_get_agents_ids_of_current_node(const char* status, __attribute__((unused)) int *sock, int last_id, int limit) {
+    check_expected(status);
+    check_expected(last_id);
+    check_expected(limit);
     return mock_ptr_type(int*);
 }
 

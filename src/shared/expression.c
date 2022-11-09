@@ -244,7 +244,6 @@ void w_expression_PCRE2_fill_regex_match(int captured_groups, const char * str_t
     os_realloc(*sub_strings, sizeof(char *) * captured_groups, *sub_strings);
     memset((void *) *sub_strings, 0, sizeof(char *) * captured_groups);
     str_sizes->sub_strings_size = sizeof(char *) * captured_groups;
-    str_sizes->prts_str_alloc_size = sizeof(char *) * (captured_groups - 1);
 
     ovector = pcre2_get_ovector_pointer(match_data);
     for (int i = 1; i < captured_groups; i++) {
