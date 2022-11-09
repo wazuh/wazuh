@@ -147,7 +147,7 @@
 
   <rule id="92213" level="15">
     <if_group>sysmon_event_11</if_group>
-    <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\.+\\\\AppData\\\\Local\\\\Temp\\\\.+\.(exe|com|dll|vbs|js|bat|cmd|pif|wsh|ps1|lnk|msi|vbe)</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\.+\\\\AppData\\\\Local\\\\Temp\\\\.+\.(exe|com|dll|vbs|js|bat|cmd|pif|wsh|ps1|msi|vbe)</field>
     <options>no_full_log</options>
     <description>Executable file dropped in folder commonly used by malware</description>
     <mitre>
@@ -160,7 +160,7 @@
     <field name="win.eventdata.image" type="pcre2">(?i)(winword|excel|powerpnt|outlook)\.exe</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)appdata\\\\.+\.lnk</field>
     <options>no_full_log</options>
-    <description>Suspicious .lnk file created by Microsoft Office process: $(win.eventdata.image) created $(win.eventdata.targetFilename)</description>
+    <description>Suspicious file created by Microsoft Office process: $(win.eventdata.image) created $(win.eventdata.targetFilename)</description>
     <mitre>
       <id>T1027</id>
     </mitre>
@@ -284,8 +284,9 @@
   </rule>
 
   <rule id="92226" level="14">
-    <if_sid>92225</if_sid>
+    <if_sid>92203,92225</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)powershell\.exe</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\\\ProgramData\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\StartUp</field>
     <options>no_full_log</options>
     <description>Powershell process has copied an executable file to Windows start-up folder</description>
     <mitre>
