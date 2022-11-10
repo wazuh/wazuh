@@ -40,19 +40,145 @@ api::CommandFn createKvdbCmd()
 
 api::CommandFn deleteKvdbCmd(void)
 {
-
+    return [](const json::Json& params) -> api::WazuhResponse {};
 }
+
 api::CommandFn dumpKvdbCmd(void)
 {
-
+    return [](const json::Json& params) -> api::WazuhResponse {};
 }
+
 api::CommandFn getKvdbCmd(void)
 {
-
+    return [](const json::Json& params) -> api::WazuhResponse {};
 }
+
 api::CommandFn insertKvdbCmd(void)
 {
+    return [](const json::Json& params) -> api::WazuhResponse
+        {
+            std::string kvdbName {};
+            std::string key {};
+            std::string value {};
 
+            try
+            {
+                auto optKvdbName = params.getString("/name");
+
+                if (!optKvdbName)
+                {
+                    return api::WazuhResponse {
+                        json::Json {"{}"}, 400, "Field \"name\" is missing."};
+                }
+
+                kvdbName = optKvdbName.value();
+            }
+            catch (const std::exception& e)
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"},
+                    400,
+                    std::string("An error ocurred while obtaining the \"name\" field: ")
+                        + e.what()};
+            }
+
+            if (kvdbName.empty())
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Field \"name\" is empty."};
+            }
+
+            try
+            {
+                auto optKey = params.getString("/key");
+
+                if (!optKey)
+                {
+                    return api::WazuhResponse {
+                        json::Json {"{}"}, 400, "Field \"key\" is missing."};
+                }
+
+                key = optKey.value();
+            }
+            catch (const std::exception& e)
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"},
+                    400,
+                    std::string("An error ocurred while obtaining the \"key\" field: ")
+                        + e.what()};
+            }
+
+            if (key.empty())
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Field \"key\" is empty."};
+            }
+
+            try
+            {
+                auto optValue = params.getString("/value");
+                if (!optValue)
+                {
+                    return api::WazuhResponse {
+                        json::Json {"{}"}, 400, "Field \"value\" is missing."};
+                }
+
+                // TODO: is it allowed to have an empty value?
+                value = optValue.value();
+            }
+            catch (const std::exception& e)
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"},
+                    400,
+                    std::string("An error ocurred while obtaining the \"value\" field: ")
+                        + e.what()};
+            }
+
+            KVDBHandle kvdbHandle {};
+            try
+            {
+                kvdbHandle = KVDBManager::get().getDB(kvdbName);
+            }
+            catch(const std::exception& e)
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"},
+                    400,
+                    std::string("An error ocurred while obtaining the database handle: ")
+                        + e.what()};
+            }
+
+            if (nullptr == kvdbHandle)
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Database could not be found."};
+            }
+
+            bool retVal {false};
+
+            try
+            {
+                retVal = kvdbHandle->write(key, value);
+            }
+            catch(const std::exception& e)
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"},
+                    400,
+                    std::string("An error ocurred while writing the key-value: ")
+                        + e.what()};
+            }
+
+            if (!retVal)
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Key-value could not be written."};
+            }
+
+            return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
+        };
 }
 
 api::CommandFn listKvdbCmd()
@@ -75,7 +201,7 @@ api::CommandFn listKvdbCmd()
 
 api::CommandFn removeKvdbCmd(void)
 {
-
+    return [](const json::Json& params) -> api::WazuhResponse {};
 }
 
 void registerAllCmds(std::shared_ptr<api::Registry> registry)

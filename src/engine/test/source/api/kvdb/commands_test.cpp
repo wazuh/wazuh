@@ -121,6 +121,44 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdNameWithSpaces)
 
 // TODO: "insertKvdbCmd" tests section (To avoid conflicts) ------------------------------
 
+class kvdbAPIInsertCommand : public ::testing::Test
+{
+
+protected:
+    static constexpr auto DB_NAME = "TEST_DB";
+    static constexpr auto DB_DIR = "/tmp/";
+
+    bool init = []()
+    {
+        static bool once = false;
+        if (!once)
+        {
+            once = true;
+            KVDBManager::init(kvdbAPIInsertCommand::DB_DIR);
+        }
+
+        return true;
+    }();
+
+    KVDBManager& kvdbManager = KVDBManager::get();
+
+    virtual void SetUp()
+    {
+        if (!kvdbManager.getDB(DB_NAME))
+        {
+            kvdbManager.addDb(DB_NAME);
+        }
+    }
+
+    virtual void TearDown() { kvdbManager.deleteDB(DB_NAME); }
+};
+
+TEST_F(kvdbAPIInsertCommand, test)
+{
+    api::CommandFn cmd {};
+    ASSERT_NO_THROW(cmd = api::kvdb::cmds::insertKvdbCmd());
+}
+
 // TODO: "listKvdbCmd" tests section (To avoid conflicts) --------------------------------
 
 class kvdbAPIListCommand : public ::testing::Test
