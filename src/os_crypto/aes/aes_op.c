@@ -95,7 +95,7 @@ int decrypt_AES(const unsigned char *ciphertext, int ciphertext_len, unsigned ch
     }
 
 	plaintext_len += len;
-
+    plaintext[plaintext_len] = '\0';
 end:
 	EVP_CIPHER_CTX_free(ctx);
 	return plaintext_len;
