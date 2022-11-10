@@ -2298,7 +2298,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
-      - 'not d:/boot -> r:\.*grub.cfg -> r:^\s*\t*/boot && r:audit_backlog_limit=\d+'
+      - 'not d:/boot -> r:\.*grub.cfg -> r:audit_backlog_limit=\d+'
 
   # 4.1.2 Configure Data Retention
   # 4.1.2.1 Ensure audit log storage size is configured (Automated)
@@ -2468,7 +2468,7 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^\s*\t*-a\s*always,exit|^\s*\t*-a\s*exit,always && r:-F\s*arch=b64|-F\s*arch=b32 && r:-S\s*(setdomainname|sethostname) && r:key=\s*\.+$|-k\s*\.+$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^\s*\t*-a\s*always,exit|^\s*\t*-a\s*exit,always && r:-F\s*arch=b64|-F\s*arch=b32 && r:-S\s*setdomainname|-S\s*sethostname && r:key=\s*\.+$|-k\s*\.+$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/issue.net && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w\s*/etc/hosts && r:-p\s*wa && r:key=\s*\.+$|-k\s*\.+$'
