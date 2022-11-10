@@ -3513,9 +3513,9 @@ checks:
     title: "Ensure SSH PermitUserEnvironment is disabled."
     description: "The PermitUserEnvironment option allows users to present environment options to the SSH daemon."
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has SSH executing trojan'd programs)"
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no Default Value: PermitUserEnvironment no"
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no"
     references:
-      - 1. SSHD_CONFIG(5)
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.10"]
       - cis_csc_v7: ["5.1"]
@@ -3538,7 +3538,7 @@ checks:
     title: "Ensure SSH IgnoreRhosts is enabled."
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with SSH."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes Default Value: IgnoreRhosts yes"
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -3583,14 +3583,15 @@ checks:
   # 5.2.13 Ensure only strong Ciphers are used (Automated)
   - id: 28648
     title: "Ensure only strong Ciphers are used."
-    description: 'This variable limits the ciphers that SSH can use during communication. Note: Some organizations may have stricter requirements for approved ciphers. Ensure that ciphers used are in compliance with site policy. The only "strong" ciphers currently FIPS 140-2 compliant are: o aes256-ctr o aes192-ctr o aes128-ctr Supported ciphers in openSSH 8.2: 3des-cbc aes128-cbc aes192-cbc aes256-cbc aes128-ctr aes192-ctr aes256-ctr aes128-gcm@openssh.com aes256-gcm@openssh.com chacha20-poly1305@openssh.com'
-    rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. The Triple DES ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain clear text data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack. Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plain text data from an arbitrary block of cipher text in an SSH session via unknown vectors.'
-    remediation: "Edit the /etc/ssh/sshd_config file add/modify the Ciphers line to contain a comma separated list of the site approved ciphers. Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr Default Value: Ciphers chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128gcm@openssh.com,aes256-gcm@openssh.com"
+    description: 'This variable limits the ciphers that SSH can use during communication. Note: - Some organizations may have stricter requirements for approved ciphers. - Ensure that ciphers used are in compliance with site policy. - The only "strong" ciphers currently FIPS 140-2 compliant are: > aes256-ctr > aes192-ctr > aes128-ctr - Supported ciphers in openSSH 8.2: 3des-cbc aes128-cbc aes192-cbc aes256-cbc aes128-ctr aes192-ctr aes256-ctr aes128-gcm@openssh.com aes256-gcm@openssh.com chacha20-poly1305@openssh.com'
+    rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. - The Triple DES ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain clear text data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack. - Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plain text data from an arbitrary block of cipher text in an SSH session via unknown vectors.'
+    remediation: "Edit the /etc/ssh/sshd_config file add/modify the Ciphers line to contain a comma separated list of the site approved ciphers. Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128- gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
     references:
       - https://nvd.nist.gov/vuln/detail/CVE-2016-2183
       - https://www.openssh.com/txt/cbc.adv
       - https://nvd.nist.gov/vuln/detail/CVE-2008-5161
-      - https://www.openssh.com/txt/cbc.adv 5. SSHD_CONFIG(5)
+      - https://www.openssh.com/txt/cbc.adv
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.13"]
       - cis_csc_v7: ["14.4"]
@@ -3605,14 +3606,14 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
     condition: none
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^Ciphers && r:(3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc)'
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^Ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc'
 
   # 5.2.14 Ensure only strong MAC algorithms are used (Automated)
   - id: 28649
     title: "Ensure only strong MAC algorithms are used."
-    description: 'This variable limits the types of MAC algorithms that SSH can use during communication. Note: Some organizations may have stricter requirements for approved MACs. Ensure that MACs used are in compliance with site policy. The only "strong" MACs currently FIPS 140-2 approved are: o hmac-sha2-256 o hmac-sha2-512 The Supported MACs are: hmac-md5 hmac-md5-96 hmac-sha1 hmac-sha1-96 hmac-sha2-256 hmac-sha2-512 umac-64@openssh.com umac-128@openssh.com hmac-md5-etm@openssh.com hmac-md5-96-etm@openssh.com hmac-sha1-etm@openssh.com hmac-sha1-96-etm@openssh.com hmac-sha2-256-etm@openssh.com hmac-sha2-512-etm@openssh.com umac-64-etm@openssh.com umac-128-etm@openssh.com'
+    description: 'This variable limits the types of MAC algorithms that SSH can use during communication. Note: - Some organizations may have stricter requirements for approved MACs. - Ensure that MACs used are in compliance with site policy. - The only "strong" MACs currently FIPS 140-2 approved are: > hmac-sha2-256 > hmac-sha2-512 - The Supported MACs are: hmac-md5 hmac-md5-96 hmac-sha1 hmac-sha1-96 hmac-sha2-256 hmac-sha2-512 umac-64@openssh.com umac-128@openssh.com hmac-md5-etm@openssh.com hmac-md5-96-etm@openssh.com hmac-sha1-etm@openssh.com hmac-sha1-96-etm@openssh.com hmac-sha2-256-etm@openssh.com hmac-sha2-512-etm@openssh.com umac-64-etm@openssh.com umac-128-etm@openssh.com'
     rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information."
-    remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site approved MACs. Example: MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2512,hmac-sha2-256 Default Value: MACs umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1etm@openssh.com,umac-64@openssh.com,umac-128@openssh.com,hmac-sha2256,hmac-sha2-512,hmac-sha1"
+    remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site approved MACs. Example: MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256"
     references:
       - http://www.mitls.org/pages/attacks/SLOTH
       - SSHD_CONFIG(5)
@@ -3630,14 +3631,14 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
     condition: none
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^MACs && r:(hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com)'
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com'
 
   # 5.2.15 Ensure only strong Key Exchange algorithms are used (Automated)
   - id: 28650
     title: "Ensure only strong Key Exchange algorithms are used"
-    description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received Notes: Kex algorithms have a higher preference the earlier they appear in the list Some organizations may have stricter requirements for approved Key exchange algorithms Ensure that Key exchange algorithms used are in compliance with site policy The only Key Exchange Algorithms currently FIPS 140-2 approved are: o ecdh-sha2-nistp256 o ecdh-sha2-nistp384 o ecdh-sha2-nistp521 o diffie-hellman-group-exchange-sha256 o diffie-hellman-group16-sha512 o diffie-hellman-group18-sha512 o diffie-hellman-group14-sha256 The Key Exchange algorithms supported by OpenSSH 8.2 are: curve25519-sha256 curve25519-sha256@libssh.org diffie-hellman-group1-sha1 diffie-hellman-group14-sha1 diffie-hellman-group14-sha256 diffie-hellman-group16-sha512 diffie-hellman-group18-sha512 diffie-hellman-group-exchange-sha1 diffie-hellman-group-exchange-sha256 ecdh-sha2-nistp256 ecdh-sha2-nistp384 ecdh-sha2-nistp521 sntrup4591761x25519-sha512@tinyssh.org"
-    rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-themiddle attacks"
-    remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellmangroup14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffiehellman-group-exchange-sha256 Default Value: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchangesha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellmangroup14-sha256"
+    description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received. Notes: - Kex algorithms have a higher preference the earlier they appear in the list - Some organizations may have stricter requirements for approved Key exchange algorithms - Ensure that Key exchange algorithms used are in compliance with site policy - The only Key Exchange Algorithms currently FIPS 140-2 approved are: > ecdh-sha2-nistp256 > ecdh-sha2-nistp384 > ecdh-sha2-nistp521 > diffie-hellman-group-exchange-sha256 > diffie-hellman-group16-sha512 > diffie-hellman-group18-sha512 > diffie-hellman-group14-sha256 - The Key Exchange algorithms supported by OpenSSH 8.2 are: curve25519-sha256 curve25519-sha256@libssh.org diffie-hellman-group1-sha1 diffie-hellman-group14-sha1 diffie-hellman-group14-sha256 diffie-hellman-group16-sha512 diffie-hellman-group18-sha512 diffie-hellman-group-exchange-sha1 diffie-hellman-group-exchange-sha256 ecdh-sha2-nistp256 ecdh-sha2-nistp384 ecdh-sha2-nistp521 sntrup4591761x25519-sha512@tinyssh.org"
+    rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks."
+    remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie- hellman-group-exchange-sha256"
     compliance:
       - cis: ["5.2.15"]
       - cis_csc_v7: ["14.4"]
@@ -3652,7 +3653,7 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
     condition: none
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^kexalgorithms && r:(diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1)'
+      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1'
 
   # 5.2.16 Ensure SSH AllowTcpForwarding is disabled (Automated)
   - id: 28651
@@ -3660,7 +3661,7 @@ checks:
     description: "SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines."
     rationale: "Leaving port forwarding enabled can expose the organization to security risks and backdoors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
     impact: "SSH tunnels are widely used in many corporate environments. In some environments the applications themselves may have very limited native support for security. By utilizing tunneling, compliance with SOX, HIPAA, PCI-DSS, and other standards can be achieved without having to modify the applications."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: AllowTcpForwarding no Default Value: AllowTcpForwarding yes"
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: AllowTcpForwarding no"
     references:
       - https://www.ssh.com/ssh/tunneling/example
     compliance:
@@ -3692,6 +3693,11 @@ checks:
       - cis_csc_v8: ["4.1"]
       - mitre_tactics: ["TA0001", "TA0007"]
       - mitre_mitigations: ["M1035"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^banner && r:/etc/issue.net$'
@@ -3701,7 +3707,7 @@ checks:
     title: "Ensure SSH MaxAuthTries is set to 4 or less."
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4 Default Value: MaxAuthTries 6"
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -3726,7 +3732,7 @@ checks:
     title: "Ensure SSH MaxStartups is configured."
     description: "The MaxStartups parameter specifies the maximum number of concurrent unauthenticated connections to the SSH daemon."
     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxStartups 10:30:60 Default Value: MaxStartups 10:30:100"
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxStartups 10:30:60"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -3742,8 +3748,21 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^maxstartups && r:10:30:60'
-      - "not f:/etc/ssh/sshd_config -> r:^maxstartups && !r:10:30:60"
+      - 'c:sshd -T -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10 && n:^\s*maxstartups\s+(\d+):\d+:\d+ compare >= 1'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30 && n:^\s*maxstartups\s+(\d+):\d+:\d+ compare >= 1'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60 && n:^\s*maxstartups\s+(\d+):\d+:\d+ compare >= 1'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare > 10'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare == 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare > 10'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare == 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare > 30'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare == 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare > 30'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare == 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare == 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare > 60'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare == 0'
 
   # 5.2.20 Ensure SSH MaxSessions is set to 10 or less (Automated)
   - id: 28655
@@ -3784,15 +3803,18 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^logingracetime\\s*\\t*(\\d+)  <= 60"
-      - "not f:/etc/ssh/sshd_config -> n:^LoginGraceTime\\s+(\\d+) compare > 60"
+      - 'c:sshd -T -> n:^\s*logingracetime\s*(\d+) compare <= 60 && n:^\s*logingracetime\s*(\d+) compare >= 1'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*(\d+) compare == 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*LoginGraceTime\s*(\d+) compare > 60'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*LoginGraceTime\s*(\d+) compare == 0'
 
   # 5.2.22 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 28657
     title: "Ensure SSH Idle Timeout Interval is configured."
-    description: "NOTE: To clarify, the two settings described below is only meant for idle connections from a protocol perspective and not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not and never had, intentionally, the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they where abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus it can no longer be abused disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option en-abled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination."
+    description: "NOTE: To clarify, the two settings described below is only meant for idle connections from a protocol perspective and not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not and never had, intentionally, the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they where abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus it can no longer be abused disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: - ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. - ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option en‐abled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination."
     rationale: "In order to prevent resource exhaustion, appropriate values should be set for both ClientAliveInterval and ClientAliveCountMax. Specifically, looking at the source code, ClientAliveCountMax must be greater than zero in order to utilize the ability of SSH to drop idle connections. If connections are allowed to stay open indefinately, this can potentially be used as a DDOS attack or simple resource exhaustion could occur over unreliable networks. The example set here is a 45 second timeout. Consult your site policy for network timeouts and apply as appropriate."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameters according to site policy. Example: ClientAliveInterval 15 ClientAliveCountMax 3 Default Value: ClientAliveInterval 0 ClientAliveCountMax 3"
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameters according to site policy. Example: ClientAliveInterval 15 ClientAliveCountMax 3"
     references:
       - https://man.openbsd.org/sshd_config
     compliance:
@@ -3802,8 +3824,8 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^clientaliveinterval\\s*\\t*(\\d+)  >= 0"
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^clientalivecountmax\\s*\\t*(\\d+)  >= 0"
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^clientaliveinterval\\s*\\t*(\\d+) compare > 0"
+      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^clientalivecountmax\\s*\\t*(\\d+) compare > 0"
 
   # 5.3 Configure privilege escalation
   # 5.3.1 Ensure sudo is installed
@@ -3824,7 +3846,7 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition: all
+    condition: any
     rules:
       - "c:dpkg -s sudo -> r:install ok installed"
       - "c:dpkg -s sudo-ldap -> r:install ok installed"
@@ -3851,8 +3873,8 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: any
     rules:
-      - "f:/etc/sudoers -> r:Defaults\\s+use_pty"
-      - 'd:/etc/sudoers.d -> r:Defaults\s+use_pty'
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s+use_pty'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s+use_pty'
 
   # 5.3.3 Ensure sudo log file exists (Automated)
   - id: 28660
@@ -3877,8 +3899,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: any
     rules:
-      - 'f:/etc/sudoers -> r:Defaults\s+logfile=\S+.log'
-      - 'd:/etc/sudoers.d -> r:Defaults\s+logfile=\S+.log'
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s+logfile=\S+.log'
+      - 'd:/etc/sudoers.d -> \.* -> r:^\s*\t*Defaults\s+logfile=\S+.log'
 
   # 5.3.4 Ensure users must provide password for privilege escalation (Automated)
   - id: 28661
@@ -3897,8 +3919,8 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: none
     rules:
-      - "f:/etc/sudoers -> r:NOPASSWD"
-      - "d:/etc/sudoers.d -> r:NOPASSWD"
+      - 'f:/etc/sudoers -> r:^\s*\t*NOPASSWD'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*NOPASSWD'
 
   # 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally (Automated)
   - id: 28662
@@ -3916,8 +3938,8 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: none
     rules:
-      - "f:/etc/sudoers -> r:!authenticate"
-      - "d:/etc/sudoers.d -> r:!authenticate"
+      - 'f:/etc/sudoers -> r:^\s*\t*!authenticate'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*!authenticate'
 
   # 5.3.6 Ensure sudo authentication timeout is configured correctly (Automated) - Not implemented
   # 5.3.7 Ensure access to the su command is restricted (Automated)
@@ -3947,9 +3969,9 @@ checks:
   # 5.4.1 Ensure password creation requirements are configured (Automated)
   - id: 28664
     title: "Ensure password creation requirements are configured"
-    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: Password Length: o minlen = 14 - password must be 14 characters or more Password complexity: o minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR o dcredit = -1 - provide at least one digit o ucredit = -1 - provide at least one uppercase character o ocredit = -1 - provide at least one special character o lcredit = -1 - provide at least one lowercase character"
+    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: - Password Length: > minlen = 14 - password must be 14 characters or more - Password complexity: > minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR > dcredit = -1 - provide at least one digit > ucredit = -1 - provide at least one uppercase character o ocredit = -1 - provide at least one special character > lcredit = -1 - provide at least one lowercase character"
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
-    remediation: "The following setting is a recommend example policy. Alter these values to conform to your own organization's password policies. Run the following command to install the pam_pwquality module: # apt install libpam-pwquality Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy: Option 1 minclass = 4 Option 2 dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1 Additional Information: Additional module options may be set, recommendation requirements only cover including try_first_pass and minlen set to 14 or more. NOTE: As of this writing it is not possible to customize the maximum number of retries for the creation of a password within recommended methods. The command pam-authupdate is used to manage certain PAM configurations via profiles, such as /etc/pam.d/common-password. Making a manual change to this file will cause pam-authupdate to overwrite it on the next run and is thus against recommendations. Alternatively, pam_pwquality (via /etc/security/pwquality.conf) fully supports the configuration of the maximum number of retries for a password change with the configuration entry retry = XXX. The issue is that the template /usr/share/pamconfigs/pwquality contains retry=3 which will override any retry setting in /etc/security/pwquality.conf as PAM entries takes precedence. This template file should not be modified as any package update will overwrite the change. Thus it is not possible, in any recommended way, to modify password retries."
+    remediation: "The following setting is a recommend example policy. Alter these values to conform to your own organization's password policies. Run the following command to install the pam_pwquality module: # apt install libpam-pwquality Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy: Option 1: minclass = 4 Option 2: dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1"
     compliance:
       - cis: ["5.4.1"]
       - cis_csc_v7: ["4.4"]
@@ -3962,16 +3984,16 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> r:minlen\s+=\s+14'
-      - 'f:/etc/security/pwquality.conf -> r:minclass\s+=\s+4'
+      - 'f:/etc/security/pwquality.conf -> r:^\s*\t*minlen\s+=\s+14'
+      - 'f:/etc/security/pwquality.conf -> r:^\s*\t*minclass\s+=\s+4'
 
   # 5.4.2 Ensure lockout for failed password attempts is configured (Automated)
   - id: 28665
     title: "Ensure lockout for failed password attempts is configured."
-    description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. deny - Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries. fail_interval - The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out unlock_time - The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be reenabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
+    description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. - deny - Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries. - fail_interval - The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out - unlock_time - The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be re-enabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
     impact: "It is critical to test and validate any PAM changes before deploying. Any misconfiguration could cause the system to be inaccessible."
-    remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file. # here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth # Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail # Added to enable faillock auth sufficient pam_faillock.so authsucc # Added to enable faillock # here''s the fallback if no module succeeds auth requisite pam_deny.so # prime the stack with a positive return value if there isn''t one already; # this avoids us returning an error just because nothing sets a success code # since the modules above will each just jump around auth required pam_permit.so # and here are more per-package modules (the "Additional" block) auth optional pam_cap.so # end of pam-auth-update config Common account Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. account required pam_faillock.so Fail lock configuration Edit /etc/security/faillock.conf and configure it per your site policy. Example: deny = 4 fail_interval = 900 unlock time = 600 Additional Information: If a user has been locked out because they have reached the maximum consecutive failure count defined by deny= in the pam_faillock.so module, the user can be unlocked by issuing the command /usr/sbin/faillock --user username --reset. This command sets the failed count to 0, effectively unlocking the user.'
+    remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file. # here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth # Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail # Added to enable faillock auth sufficient pam_faillock.so authsucc # Added to enable faillock # here''s the fallback if no module succeeds auth requisite pam_deny.so # prime the stack with a positive return value if there isn''t one already; # this avoids us returning an error just because nothing sets a success code # since the modules above will each just jump around auth required pam_permit.so # and here are more per-package modules (the "Additional" block) auth optional pam_cap.so # end of pam-auth-update config Common account Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. account required pam_faillock.so Fail lock configuration Edit /etc/security/faillock.conf and configure it per your site policy. Example: deny = 4 fail_interval = 900 unlock time = 600'
     compliance:
       - cis: ["5.4.2"]
       - cis_csc_v7: ["16.7"]
@@ -3987,13 +4009,13 @@ checks:
       - soc_2: ["CC6.2", "CC6.3"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-auth -> r:auth required\s+pam_faillock.so\s+preauth'
-      - 'f:/etc/pam.d/common-auth -> r:[default=die]\s+pam_faillock.so\s+authfail'
-      - 'f:/etc/pam.d/common-auth -> r:auth sufficient\s+pam_faillock.so\s+authsucc'
-      - 'f: /etc/pam.d/common-account -> r:account\s+required\s+pam_faillock.so'
-      - 'f:/etc/security/faillock.conf -> n:deny\s+=\s+(\d+) compare <= 4'
-      - 'f:/etc/security/faillock.conf -> n:fail_interval\s+=\s+(\d+) compare <= 900'
-      - 'f:/etc/security/faillock.conf -> n:unlock_time\s+=\s+(\d+) compare >= 600'
+      - 'f:/etc/pam.d/common-auth -> r:^\s*\t*auth\s*\t*required\s*\t*pam_faillock.so\s*\t*preauth'
+      - 'f:/etc/pam.d/common-auth -> r:^\s*\t*auth\s*\t*[default=die]\s*\t*pam_faillock.so\s*\t*authfail'
+      - 'f:/etc/pam.d/common-auth -> r:^\s*\t*auth\s*\t*sufficient\s*\t*pam_faillock.so\s*\t*authsucc'
+      - 'f:/etc/pam.d/common-account -> r:^\s*\t*account\s*\t*required\s*\t*pam_faillock.so'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*deny\s+=\s+(\d+) compare <= 4'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*fail_interval\s+=\s+(\d+) compare <= 900'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s+=\s+(\d+) compare >= 600 and n:unlock_time\s+=\s+(\d+) compare == 0'
 
   # 5.4.3 Ensure password reuse is limited (Automated)
   - id: 28666
@@ -4011,15 +4033,15 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> r:password\s+[success=1\s+default=ignore]\s+pam_unix.so\s+obscure'
-      - 'f:/etc/pam.d/common-password -> n:use_authtok\s+try_first_pass\s+yescrypt\s+remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/common-password -> r:^\s*\t*password\s*\t*[success=1\s*\t*default=ignore]\s*\t*pam_unix.so\s*\t*obscure'
+      - 'f:/etc/pam.d/common-password -> n:^\s*\t*use_authtok\s*\t*try_first_pass\s*\t*yescrypt\s*\t*remember=(\d+) compare >= 5'
 
   # 5.4.4 Ensure password hashing algorithm is up to date with the latest standards (Automated)
   - id: 28667
     title: "Ensure password hashing algorithm is up to date with the latest standards."
     description: "The commands below change password encryption to yescrypt. All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The yescrypt algorithm provides much stronger hashing than previous available algorithms, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: these change only apply to accounts configured on the local system."
-    remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. PAM Edit the /etc/pam.d/common-password file and ensure that no hashing algorithm option for pam_unix.so is set: password [success=1 default=ignore] try_first_pass remember=5 pam_unix.so obscure use_authtok Login definitions Edit /etc/login.defs and ensure that ENCRYPT_METHOD is set to yescrypt. Additional Information: Additional module options may be set, recommendation only covers those listed here."
+    remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. PAM Edit the /etc/pam.d/common-password file and ensure that no hashing algorithm option for pam_unix.so is set: password [success=1 default=ignore] pam_unix.so obscure use_authtok try_first_pass remember=5 Login definitions: Edit /etc/login.defs and ensure that ENCRYPT_METHOD is set to yescrypt."
     compliance:
       - cis: ["5.4.4"]
       - cis_csc_v7: ["16.4"]
@@ -4035,8 +4057,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - "not f:/etc/pam.d/common-password -> r:(yescrypt|md5|bigcrypt|sha256|sha512|blowfish)"
-      - "f:/etc/login.defs -> r:ENCRYPT_METHOD yescrypt"
+      - 'not f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:yescrypt|md5|bigcrypt|sha256|sha512|blowfish'
+      - 'f:/etc/login.defs -> r:^\s*\t*ENCRYPT_METHOD yescrypt'
 
   # 5.4.5 Ensure all current passwords uses the configured hashing algorithm (Manual) - Not implemented
   # 5.5 User Accounts and Environment
