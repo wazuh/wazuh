@@ -4280,7 +4280,7 @@ checks:
     title: "Ensure permissions on /etc/shadow- are configured."
     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
-    remediation: "Run one of the following commands to set ownership of /etc/shadow- to root and group to either root or shadow: # chown root:root /etc/shadow- # chown root:shadow /etc/shadowRun the following command to remove excess permissions form /etc/shadow-: # chmod u-x,g-wx,o-rwx /etc/shadow-"
+    remediation: "Run one of the following commands to set ownership of /etc/shadow- to root and group to either root or shadow: # chown root:root /etc/shadow- # chown root:shadow /etc/shadow Run the following command to remove excess permissions form /etc/shadow-: # chmod u-x,g-wx,o-rwx /etc/shadow-"
     compliance:
       - cis: ["6.1.6"]
       - cis_csc_v7: ["14.6"]
@@ -4417,7 +4417,7 @@ checks:
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: none
+    condition: all
     rules:
       - 'f:/etc/group -> !r:^# && r:shadow:\w*:\d+:$'
 
