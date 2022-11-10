@@ -54,7 +54,7 @@ def strip_fields(field_value):
         entry['type'] = [json_type]
     if 'string' not in entry['type']:
         entry['type'].append('string')
-        entry['pattern'] = '^\\+.+'
+        entry['pattern'] = '^[\\+\\$].+'
 
     return entry
 
@@ -152,7 +152,7 @@ def main():
                     nested_map[base]['description'] = 'Not available'
 
                 nested_map[base]['type'] = ['object', 'string']
-                nested_map[base]['pattern'] = '^\\+.+'
+                nested_map[base]['pattern'] = '^[\\+\\$].+'
                 nested_map[base]['properties'] = dict()
 
             # Add group childs
@@ -184,7 +184,7 @@ def main():
                     #If we added a group, add properties/items and add string helper type
                     if 'type' in current[splitted[i]]:
                         current[splitted[i]]['type'].append('string')
-                        current[splitted[i]]['pattern'] = '^\\+.+'
+                        current[splitted[i]]['pattern'] = '^[\\+\\$].+'
                         if'object' in current[splitted[i]]['type']:
                             current[splitted[i]]['properties'] = dict()
                             current[splitted[i]]['additionalProperties'] = False
