@@ -7,7 +7,8 @@
     "description": "Schema for Wazuh assets",
     "additionalProperties": false,
     "required": [
-        "name"
+        "name",
+        "metadata"
     ],
     "anyOf": [
         {
@@ -91,7 +92,65 @@
         },
         "metadata": {
             "type": "object",
-            "description": "Metadata of the asset"
+            "description": "Metadata of this item",
+            "additionalProperties": false,
+            "required": [
+                "module",
+                "title",
+                "description",
+                "compatibility",
+                "author",
+                "references"
+            ],
+            "properties": {
+                "module": {
+                    "type": "string",
+                    "description": "The module this item belongs to"
+                },
+                "title": {
+                    "type": "string",
+                    "description": "Short and concise description of this item"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Long description of this item, explaining what it does and how it works"
+                },
+                "compatibility": {
+                    "type": "string",
+                    "description": "Description of the supported services and versions of the logs processed by this item"
+                },
+                "author": {
+                    "type": "object",
+                    "description": "Author",
+                    "additionalProperties": false,
+                    "required": [
+                        "name",
+                        "date"
+                    ],
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Name/Organization"
+                        },
+                        "email": {
+                            "type": "string",
+                            "description": "Email"
+                        },
+                        "url": {
+                            "type": "string",
+                            "description": "URL linking to the author's website"
+                        },
+                        "date": {
+                            "type": "string",
+                            "description": "Date of the author"
+                        }
+                    }
+                },
+                "references": {
+                    "type": "array",
+                    "description": "References to external resources"
+                }
+            }
         },
         "sources": {
             "type": "array",
@@ -141,6 +200,11 @@
             "type": "array",
             "description": "Outputs of the asset. All outputs are performed in declaration order and on best effort, this stage is a list composed of specific outputs types.",
             "minItems": 1
+        },
+        "definitions": {
+            "type": "object",
+            "description": "Variable definitions, used to define variables that can be reused in other parts of the item",
+            "minProperties": 1
         }
     },
     "definitions": {
