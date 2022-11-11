@@ -3124,12 +3124,12 @@ checks:
     condition: all
     rules:
       - "c:systemctl is-enabled cron -> r:enabled"
-      - "c:systemctl status cron -> r:Active: active (running)"
+      - "c:systemctl status cron -> r:Active: active \\(running\\)"
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured (Automated)
   - id: 28629
     title: "Ensure permissions on /etc/crontab are configured."
-    description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy"
+    description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges. Read access to these files could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
     remediation: "Run the following commands to set ownership and permissions on /etc/crontab : # chown root:root /etc/crontab # chmod og-rwx /etc/crontab"
     compliance:
@@ -3147,7 +3147,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:Access:\s*\t*\(0600/-rw-------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/crontab -> r:Access:\s*\t*\(0600/-rw-------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
   - id: 28630
@@ -3170,7 +3170,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 28631
@@ -3193,7 +3193,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily/ -> r:Access:\s*\t*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.daily/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
   - id: 28632
@@ -3216,7 +3216,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.weekly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 28633
@@ -3239,9 +3239,9 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
-  # Ensure permissions on /etc/cron.d are configured (Automated)
+  # 5.1.7 Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 28634
     title: "Ensure permissions on /etc/cron.d are configured"
     description: "The /etc/cron.d directory contains system cron jobs that need to run in a similar manner to the hourly, daily weekly and monthly jobs from /etc/crontab, but require more granular control as to when they run. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
@@ -3267,7 +3267,7 @@ checks:
   # 5.1.8 Ensure cron is restricted to authorized users (Automated)
   - id: 28635
     title: "Ensure cron is restricted to authorized users."
-    description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy Even though a given user is not listed in cron.allow, cron jobs can still be run as that user The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
+    description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Note: - Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy - Even though a given user is not listed in cron.allow, cron jobs can still be run as that user - The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs"
     rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
     remediation: "Run the following commands to remove /etc/cron.deny: # rm /etc/cron.deny Run the following command to create /etc/cron.allow # touch /etc/cron.allow Run the following commands to set permissions and ownership for /etc/cron.allow: # chmod g-wx,o-rwx /etc/cron.allow # chown root:root /etc/cron.allow."
     compliance:
@@ -3286,7 +3286,7 @@ checks:
     condition: all
     rules:
       - "not f:/etc/cron.deny"
-      - 'c:stat /etc/cron.allow/ -> r:Access:\s*\t*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.allow/ -> r:Access:\s*\t*\(0640/-rw-r-----\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.9 Ensure at is restricted to authorized users (Automated)
   - id: 28636
@@ -3310,7 +3310,7 @@ checks:
     condition: all
     rules:
       - "not f:/etc/at.deny"
-      - 'c:stat /etc/at.allow/ -> r:Access:\s*\t*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/at.allow/ -> r:Access:\s*\t*\(0640/-rw-r-----\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.2 Configure SSH Server
   # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured (Automated)
@@ -3334,7 +3334,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/sshd_config -> r:Access:\s*\t*\(0600/-rw-------\)\s*Uid:\s*\t*\(\s*\t*0/\s*root\)\s*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/ssh/sshd_config -> r:Access:\s*\t*\(0600/-rw-------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*root\)\s*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.2.3 Ensure permissions on SSH public host key files are configured (Automated)
   - id: 28638
@@ -3357,7 +3357,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - 'c:find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec stat -Lc \"%A\" {} \\; -> !r:^-rw-r--r--$'
+      - 'c:find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec stat -Lc \"%A\" {} \; -> !r:^-rw-r--r--$'
 
   # 5.2.4 Ensure SSH access is limited (Automated)
   - id: 28639
@@ -3408,7 +3408,7 @@ checks:
     condition: all
     rules:
       - "c:sshd -T -> r:^loglevel VERBOSE && r:^loglevel INFO)"
-      - "not f:/etc/ssh/sshd_config -> !r:^\\s*\\t*loglevel\\s*\\t*VERBOSE && !r:^loglevel\\s*\\t*INFO))"
+      - "not f:/etc/ssh/sshd_config -> !r:^\\s*\\t*loglevel\\s*\\t*VERBOSE && !r:^\\s*\\t*loglevel\\s*\\t*INFO"
 
   # 5.2.6 Ensure SSH PAM is enabled (Automated)
   - id: 28641
@@ -3456,7 +3456,7 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^permitrootlogin no'
+      - "c:sshd -T -> r:^permitrootlogin no"
       - "f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitRootLogin\\s*\\t*no"
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled (Automated)
