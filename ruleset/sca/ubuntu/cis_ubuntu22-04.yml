@@ -2632,7 +2632,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:stat -Lc \"%n %a\" \"$(dirname $( awk -F\"=\" '/^\\s*log_file\\s*=\\s*/ {print $2}' /etc/audit/auditd.conf | xargs))\"/* -> !r:[0,2,4,6][0,4]0"
+      - "c:stat -Lc \"%n %a\" \"$(dirname $( awk -F\"=\" '/^\\s*log_file\\s*=\\s*/ {print $2}' /etc/audit/auditd.conf | xargs))\"/* -> !r:000|040|200|400|600|240|440|640"
 
   # 4.1.4.2 Ensure only authorized users own audit log files (Automated)
   - id: 28607
@@ -2654,7 +2654,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:stat -Lc \"%n %U\" \"$(dirname $(awk -F\"=\" '/^\\s*log_file\\s*=\\s*/ {print $2}'/etc/audit/auditd.conf | xargs))\"/* -> !r:root"
+      - "c:stat -Lc \"%n %U\" \"$(dirname $(awk -F\"=\" '/^\\s*log_file\\s*=\\s*/ {print $2}' /etc/audit/auditd.conf | xargs))\"/* -> !r:root"
 
   # 4.1.4.3 Ensure only authorized groups are assigned ownership of audit log files (Automated)
   - id: 28608
@@ -2666,7 +2666,7 @@ checks:
       - cis: ["4.1.4.3"]
       - cis_csc_v7: ["14.6"]
       - cis_csc_v8: ["3.3"]
-      - mitre_techniques: ["T1070", "T1070.002"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
       - mitre_tactics: ["TA0007"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
@@ -2676,7 +2676,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - 'f:/etc/audit/auditd.conf -> r:log_group\h*= && !r:(adm|root)'
+      - 'f:/etc/audit/auditd.conf -> r:log_group\h*= && !r:adm|root'
 
   # 4.1.4.4 Ensure the audit log directory is 0750 or more restrictive (Automated)
   - id: 28609
@@ -2698,7 +2698,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:stat -Lc \"%n %a\" \"$(dirname $( :Ñ: -F\"=\" '/^\\s*log_file\\s*=\\s*/ {print $2}'/etc/audit/auditd.conf))\" -> !r:[0,5,7][0,5]0"
+      - "c:stat -Lc \"%n %a\" \"$(dirname $( :Ñ: -F\"=\" '/^\\s*log_file\\s*=\\s*/ {print $2}' /etc/audit/auditd.conf))\" -> !r:000|050|500|550|700|750"
 
   # 4.1.4.5 Ensure audit configuration files are 640 or more restrictive (Automated)
   - id: 28610
@@ -2720,7 +2720,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%n %a\" {} + -> !r:[0,2,4,6][0,4]0"
+      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%n %a\" {} + -> !r:000|040|200|400|600|240|440|640"
 
   # 4.1.4.6 Ensure audit configuration files are owned by root (Automated)
   - id: 28611
@@ -2742,7 +2742,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:find /etc/audit/ -type f \\( -name '*.rules' -o -name '*.conf' \\) -exec stat -Lc \"%U\" {} + -> !r:root"
+      - "c:find /etc/audit/ -type f \\( -name '*.rules' -o -name '*.conf' \\) -exec stat -Lc \"%U\" {} + -> !r:root|\\s*"
 
   # 4.1.4.7 Ensure audit configuration files belong to group root (Automated)
   - id: 28612
@@ -2764,7 +2764,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%U\" {} + -> !r:root"
+      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%U\" {} + -> !r:root|\\s*"
 
   # 4.1.4.8 Ensure audit tools are 755 or more restrictive (Automated)
   - id: 28613
@@ -2788,7 +2788,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - 'c:stat -c "%n %a" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> !r:[0-7][0,1,4,5][0,1,4,5]'
+      - 'c:stat -c "%n %a" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
 
   # 4.1.4.9 Ensure audit tools are owned by root (Automated)
   - id: 28614
@@ -2810,7 +2810,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - 'c:stat -c "%n %U" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> !r:root'
+      - 'c:stat -c "%n %U" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> !r:root|\\s*'
 
   # 4.1.4.10 Ensure audit tools belong to group root (Automated)
   - id: 28615
@@ -2832,7 +2832,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - 'c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> !r:([0-7][0,1,4,5][0,1,4,5])\h+root\h+root'
+      - 'c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755 && r:\s*\t*root\s*\t*root'
 
   # 4.1.4.11 Ensure cryptographic mechanisms are used to protect the integrity of audit tools (Automated)
   - id: 28616
@@ -2853,12 +2853,12 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'f:/etc/aide/aide.conf -> r:/sbin/auditctl\h+p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/auditd\h+p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/ausearch\h+p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/aureport\h+p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/autrace\h+p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/augenrules\h+p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/auditctl\s*\t*p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/auditd\s*\t*p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/ausearch\s*\t*p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/aureport\s*\t*p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/autrace\s*\t*p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/augenrules\s*\t*p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
 
   # 4.2 Configure Logging
   # 4.2.1 Configure journald
@@ -2906,7 +2906,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
-      - "c:systemctl is-enabled systemd-journal-remote.socket -> r:disabled"
+      - "c:systemctl is-enabled systemd-journal-remote.socket -> r:disabled|No such file or directory"
 
   # 4.2.1.2 Ensure journald service is enabled (Automated)
   - id: 28619
@@ -2918,7 +2918,7 @@ checks:
       - cis: ["4.2.1.2"]
       - cis_csc_v7: ["6.2", "6.3"]
       - cis_csc_v8: ["8.2"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
@@ -2946,7 +2946,7 @@ checks:
       - soc_2: ["A1.1"]
     condition: all
     rules:
-      - "f:/etc/systemd/journald.conf -> r:Compress=yes"
+      - "f:/etc/systemd/journald.conf -> r:^\\s*\\t*Compress=yes"
 
   # 4.2.1.4 Ensure journald is configured to write logfiles to persistent disk (Automated)
   - id: 28621
@@ -2968,7 +2968,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
-      - "f:/etc/systemd/journald.conf -> r:Storage=persistent"
+      - "f:/etc/systemd/journald.conf -> r:^\\s*\\t*Storage=persistent"
 
   # 4.2.1.5 Ensure journald is not configured to send logs to rsyslog (Manual)
   - id: 28622
@@ -2989,7 +2989,7 @@ checks:
       - soc_2: ["PL1.4"]
     condition: all
     rules:
-      - "f:/etc/systemd/journald.conf -> !r:ForwardToSyslog=yes"
+      - "f:/etc/systemd/journald.conf -> !r:^\\s*\\t*ForwardToSyslog=yes"
 
   # 4.2.1.6 Ensure journald log rotation is configured per site policy (Manual) - Not implemented
   # 4.2.1.7 Ensure journald default file permissions configured (Manual) - Not implemented
@@ -3052,7 +3052,7 @@ checks:
       - soc_2: ["PL1.4"]
     condition: all
     rules:
-      - "f:/etc/systemd/journald.conf -> r:^ForwardToSyslog=yes$"
+      - "f:/etc/systemd/journald.conf -> r::^\\s*\\t*ForwardToSyslog=yes$"
 
   # 4.2.2.4 Ensure rsyslog default file permissions are configured (Automated)
   - id: 28626
@@ -3074,8 +3074,8 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
-      - 'f:/etc/rsyslog.conf -> r:\$FileCreateMode 0640'
-      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:\$FileCreateMode 0640'
+      - 'f:/etc/rsyslog.conf -> r:^\s*\t*\$FileCreateMode 0640'
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\s*\t*\$FileCreateMode 0640'
 
   # 4.2.2.5 Ensure logging is configured (Manual) - Not implemented
   # 4.2.2.6 Ensure rsyslog is configured to send logs to a remote log host (Manual) - Not implemented
@@ -3098,10 +3098,10 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: none
     rules:
-      - 'f:/etc/rsyslog.conf -> r:module\(load="imtcp"\)'
-      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:module\(load="imtcp"\)'
-      - 'f:/etc/rsyslog.conf -> r:input\(type="imtcp" port="514"\)'
-      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:input\(type="imtcp" port="514"\)'
+      - 'f:/etc/rsyslog.conf -> r:^\s*\t*module\(load="imtcp"\)'
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\s*\t*module\(load="imtcp"\)'
+      - 'f:/etc/rsyslog.conf -> r:^\s*\t*input\(type="imtcp" port="514"\)'
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\s*\t*input\(type="imtcp" port="514"\)'
 
   # 4.2.3 Ensure all logfiles have appropriate permissions and ownership (Automated) - Not implemented
 
