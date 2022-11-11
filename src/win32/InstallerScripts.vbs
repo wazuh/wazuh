@@ -435,21 +435,13 @@ Private Function RunCommand(command)
         Else
             cmd = "cmd /c """ & command & """ "
         End If
-        MsgBox "Command: " & cmd
         Set exec = shell.Exec(cmd)
         ctr = 0
         Do
-            MsgBox "1Error: " & Err.Number & ", Desc: " & Err.Description
-            MsgBox "Status: " & exec.Status
-            MsgBox "Ctr: " & ctr
             ctr = ctr + 1
-        Loop While (ctr < 10 AND exec.Status = 0)
+        Loop While (ctr < 1000 AND exec.Status = 0)
         arr = Array(exec.Status, exec.StdOut.ReadAll, exec.StdErr.ReadAll)
-        MsgBox "Status: " & arr(0) & ", Ctr: " & ctr
-        MsgBox "StdOut: " & arr(1)
-        MsgBox "StdErr: " & arr(2)
         RunCommand = arr
-        MsgBox "Error number: " & Err.Number
 
         If Err.Number <> 0 Then
             record.StringData(0) = "(RunCommand): Error running command, Error: " & CStr(Err.Number) & ", Description: " & Err.Description 
