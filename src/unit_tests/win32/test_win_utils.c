@@ -37,6 +37,14 @@ int mock_sysinfo_networks_func(cJSON **object) {
 
     static const char *ip_update_success =
     "{ \"iface\": [ { \"gateway\":\"mock_gateway\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
+    static const char *ipv6_gw_ipv4_addr_update_success =
+    "{ \"iface\": [ { \"gateway\":\"fe80::\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
+    static const char *ipv6_gw_ipv6_addr_update_success =
+    "{ \"iface\": [ { \"gateway\":\"fe80::\", \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
+    static const char *ipv4_gw_ipv4_addr_update_success =
+    "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
+    static const char *ipv4_gw_ipv6_addr_update_success =
+    "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
     static const char *iface_bad_name = "{\"iface_fail\":[]}";
     static const char *iface_no_elements = "{\"iface\":[]";
     static const char *gateway_unknown = "{ \"iface\": [ { \"gateway\":\"unknown\" } ] }";
@@ -54,6 +62,18 @@ int mock_sysinfo_networks_func(cJSON **object) {
         break;
     case 4:
         json_string = gateway_unknown;
+        break;
+    case 5:
+        json_string = ipv6_gw_ipv4_addr_update_success;
+        break;
+    case 6:
+        json_string = ipv6_gw_ipv6_addr_update_success;
+        break;
+    case 7:
+        json_string = ipv4_gw_ipv4_addr_update_success;
+        break;
+    case  8:
+        json_string = ipv4_gw_ipv6_addr_update_success;
         break;
     }
 
@@ -87,6 +107,58 @@ static void test_get_agent_ip_update_ip_success(void **state) {
     agent_ip = get_agent_ip();
 
     assert_string_equal(agent_ip, address);
+}
+
+static void test_get_agent_ip_update_ipv6_gateway_ipv6_success(void ** state) {
+
+    const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
+    time_mock_value += TIME_INCREMENT + 1;
+    error_code_sysinfo_network = 0;
+    test_case_selector = 6;
+
+    char * agent_ip = = get_agent_ip();
+
+    assert_string_equal(agent_ip, address);
+    os_free(agent_ip);
+}
+
+static void test_get_agent_ip_update_ipv6_gateway_ipv4_success(void ** state) {
+
+    const char * address = {"111.222.333.444"};
+    time_mock_value += TIME_INCREMENT + 1;
+    error_code_sysinfo_network = 0;
+    test_case_selector = 5;
+
+    char * agent_ip = get_agent_ip();
+
+    assert_string_equal(agent_ip, address);
+    os_free(agent_ip);
+}
+
+static void test_get_agent_ip_update_ipv4_gateway_ipv4_success(void ** state) {
+
+    const char * address = {"111.222.333.444"};
+    time_mock_value += TIME_INCREMENT + 1;
+    error_code_sysinfo_network = 0;
+    test_case_selector = 7;
+
+    char * agent_ip = get_agent_ip();
+
+    assert_string_equal(agent_ip, address);
+    os_free(agent_ip);
+}
+
+static void test_get_agent_ip_update_ipv4_gateway_ipv6_success(void ** state) {
+
+    const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
+    time_mock_value += TIME_INCREMENT + 1;
+    error_code_sysinfo_network = 0;
+    test_case_selector = 8;
+
+    char * agent_ip = get_agent_ip();
+
+    assert_string_equal(agent_ip, address);
+    os_free(agent_ip);
 }
 
 static void test_get_agent_ip_sysinfo_error(void **state) {
@@ -241,6 +313,10 @@ int main(void) {
         cmocka_unit_test(test_get_agent_ip_update_ip_success), cmocka_unit_test(test_get_agent_ip_sysinfo_error),
         cmocka_unit_test(test_get_agent_ip_iface_bad_name),    cmocka_unit_test(test_get_agent_ip_iface_no_elements),
         cmocka_unit_test(test_get_agent_ip_gateway_unknown),   cmocka_unit_test(test_get_agent_ip_no_update),
+        cmocka_unit_test(test_get_agent_ip_update_ipv6_gateway_ipv6_success),
+        cmocka_unit_test(test_get_agent_ip_update_ipv6_gateway_ipv4_success),
+        cmocka_unit_test(test_get_agent_ip_update_ipv4_gateway_ipv4_success),
+        cmocka_unit_test(test_get_agent_ip_update_ipv4_gateway_ipv6_success),
         cmocka_unit_test(test_SendMSGAction_mutex_abandoned), cmocka_unit_test(test_SendMSGAction_mutex_error),
         cmocka_unit_test(test_SendMSGAction_non_escape), cmocka_unit_test(test_SendMSGAction_escape),
         cmocka_unit_test(test_SendMSGAction_multi_escape),
