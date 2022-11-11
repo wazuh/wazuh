@@ -70,6 +70,8 @@
             <RegistrySearch Id="WazuhInstalled" Type="raw" Root="HKLM" Key="System\CurrentControlSet\Services\WazuhSvc" Name="DisplayName" />
         </Property>
 
+        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixQuietExec"/>
+
         <!-- This script will remove all of the files and folders from the root folder on uninstall, *except* some files indicated in RemoveAllScript.vbs. -->
         <!-- Especially, "ossec.conf" and "client.keys" will be kept, and a couple of other files too. -->
         <Binary Id="RemoveAllScript" SourceFile="RemoveAllScript.vbs" />
@@ -112,7 +114,8 @@
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
         <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
         <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
-        <CustomAction Id="StartWazuhSvc" Directory="APPLICATIONFOLDER" ExeCommand="NET START WazuhSvc" Execute="deferred" Impersonate="no" Return="ignore" />
+        <CustomAction Id="StartWazuhSvc_cmd" Property="WixQuietExecCmdLine" Value='"NET" START &quot;WazuhSvc&quot;' />
+        <CustomAction Id="StartWazuhSvc" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="immediate" Return="check" Impersonate="no"/>
 
         <UI>
             <UIRef Id="WixUI_Advanced" />
@@ -162,8 +165,8 @@
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
-            <Custom Action="StartWazuhSvc" After="CustomAction_RemoveAllScript">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>
-
+            <Custom Action="StartWazuhSvc_cmd" After="CustomAction_RemoveAllScript"/>
+            <Custom Action="StartWazuhSvc" After="StartWazuhSvc_cmd">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>
         </InstallExecuteSequence>
 
         <Directory Id="TARGETDIR" Name="SourceDir">
@@ -391,9 +394,6 @@
                         <Directory Id="SECURITY_CONFIGURATION_ASSESSMENT" Name="sca">
                             <Component Id="REMOVE_OLD_POLICIES" Guid="1007B392-F0CF-401E-B670-6EFAD5A374BA">
                                 <RemoveFile Id="remove_policies" Name="*" On="install"/>
-                            </Component>
-                            <Component Id="SCA_WIN_AUDIT.YML" DiskId="1" Guid="1164B8AA-1968-48D3-BAEB-68E6E0BFDBD8">
-                                <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\ruleset\sca\windows\sca_win_audit.yml" />
                             </Component>
                             <Component Id="SCA_WIN10" DiskId="1" Guid="A6B0FCA6-522F-4129-95B7-0FF9EB2EA907">
                                 <File Id="SCA_WIN10" Name="cis_win10_enterprise.yml" Source="..\..\ruleset\sca\windows\cis_win10_enterprise.yml" />
@@ -631,7 +631,6 @@
             <ComponentRef Id="CMP_RULESET" />
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />
             <ComponentRef Id="REMOVE_OLD_POLICIES" />
-            <ComponentRef Id="SCA_WIN_AUDIT.YML" />
             <ComponentRef Id="SCA_WIN10" />
             <ComponentRef Id="SCA_WIN11" />
             <ComponentRef Id="SCA_WIN2012R2" />
