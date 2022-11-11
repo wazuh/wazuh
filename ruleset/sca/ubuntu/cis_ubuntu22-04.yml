@@ -3754,16 +3754,10 @@ checks:
       - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60 && n:^\s*maxstartups\s+(\d+):\d+:\d+ compare >= 1'
       - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare > 10'
       - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare == 0'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare > 10'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare == 0'
       - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare > 30'
       - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare == 0'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare > 30'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare == 0'
       - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare > 60'
       - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare == 0'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare > 60'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare == 0'
 
   # 5.2.20 Ensure SSH MaxSessions is set to 10 or less (Automated)
   - id: 28655
@@ -3807,8 +3801,6 @@ checks:
       - 'c:sshd -T -> n:^\s*logingracetime\s*(\d+) compare <= 60 && n:^\s*\t*logingracetime\s*(\d+) compare >= 1'
       - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*LoginGraceTime\s*(\d+) compare > 60'
       - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*LoginGraceTime\s*(\d+) compare == 0'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*\t*LoginGraceTime\s*(\d+) compare > 60'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*\t*LoginGraceTime\s*(\d+) compare == 0'
 
   # 5.2.22 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 28657
@@ -3991,7 +3983,7 @@ checks:
   # 5.4.1 Ensure password creation requirements are configured (Automated)
   - id: 28665
     title: "Ensure password creation requirements are configured"
-    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: - Password Length: > minlen = 14 - password must be 14 characters or more - Password complexity: > minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR > dcredit = -1 - provide at least one digit > ucredit = -1 - provide at least one uppercase character o ocredit = -1 - provide at least one special character > lcredit = -1 - provide at least one lowercase character"
+    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: - Password Length: > minlen = 14 - password must be 14 characters or more - Password complexity: > minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR > dcredit = -1 - provide at least one digit > ucredit = -1 - provide at least one uppercase character > ocredit = -1 - provide at least one special character > lcredit = -1 - provide at least one lowercase character"
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
     remediation: "The following setting is a recommend example policy. Alter these values to conform to your own organization's password policies. Run the following command to install the pam_pwquality module: # apt install libpam-pwquality Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy: Option 1: minclass = 4 Option 2: dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1"
     compliance:
@@ -4064,7 +4056,7 @@ checks:
     title: "Ensure password hashing algorithm is up to date with the latest standards."
     description: "The commands below change password encryption to yescrypt. All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The yescrypt algorithm provides much stronger hashing than previous available algorithms, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: these change only apply to accounts configured on the local system."
-    remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Edit the /etc/pam.d/common-password file to include the remember option and conform to site policy as shown: password [success=1 default=ignore] pam_unix.so obscure use_authtok try_first_pass yescrypt remember=5"
+    remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. PAM: Edit the /etc/pam.d/common-password file and ensure that no hashing algorithm option for pam_unix.so is set:: password [success=1 default=ignore] pam_unix.so obscure use_authtok try_first_pass yescrypt remember=5. Login definitions: Edit /etc/login.defs and ensure that ENCRYPT_METHOD is set to yescrypt."
     compliance:
       - cis: ["5.4.4"]
       - cis_csc_v7: ["16.4"]
