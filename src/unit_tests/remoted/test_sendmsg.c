@@ -79,7 +79,7 @@ void test_send_msg_tcp_ok(void ** state) {
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
@@ -108,7 +108,7 @@ void test_send_msg_tcp_ok(void ** state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     int ret = send_msg(agent_id, msg, msg_length);
 
@@ -156,7 +156,7 @@ void test_send_msg_tcp_err(void ** state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
 
     int ret = send_msg(agent_id, msg, msg_length);
 

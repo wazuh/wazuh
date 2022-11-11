@@ -18,6 +18,7 @@ HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
 CHECK_CENTOS5 := $(shell sh -c 'grep "CentOS release 5." /etc/redhat-release > /dev/null && echo YES || echo not')
+CHECK_ALPINE := $(shell sh -c 'grep "Alpine Linux" /etc/os-release 2>&1 > /dev/null && echo YES || echo not')
 
 ARCH_FLAGS =
 
@@ -135,6 +136,10 @@ else
 endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
+ifeq (${CHECK_ALPINE},YES)
+		OSSEC_LIBS+=-lintl
+		DEFINES+=-DALPINE
+endif
 		OSSEC_LIBS+=-lrt -ldl -lm
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 		AR_LDFLAGS+=-pthread -lrt -ldl
@@ -1000,9 +1005,12 @@ PROCPS_INCLUDE=-I./${EXTERNAL_PROCPS}
 
 procps_c := $(wildcard ${EXTERNAL_PROCPS}*.c)
 procps_o := $(procps_c:.c=.o)
+ifeq (${CHECK_ALPINE},YES)
+ALPINE_DEBUG := "-DPATH_MAX=4096"
+endif
 
 ${EXTERNAL_PROCPS}%.o: ${EXTERNAL_PROCPS}%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${ALPINE_DEBUG} -fPIC -c $^ -o $@
 
 $(PROCPS_LIB): ${procps_o}
 	${OSSEC_LINK} $@ $^
