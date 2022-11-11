@@ -70,29 +70,32 @@ static void test_find_module_not_found(void ** state) {
 
 static void test_module_query_no_args(void ** state) {
     char input[] = "none";
+    const char EXPECTED_OUTPUT[] = "err {\"error\":1,\"message\":\"Module query needs arguments\"}";
 
     size_t n = wm_module_query(input, (char **)state);
 
-    assert_string_equal(*state, "err {\"message\": \"module query needs arguments\"}");
-    assert_int_equal(n, 47);
+    assert_string_equal(*state, EXPECTED_OUTPUT);
+    assert_int_equal(n, strlen(EXPECTED_OUTPUT));
 }
 
 static void test_module_query_no_module(void ** state) {
     char input[] = "C some-command";
+    const char EXPECTED_OUTPUT[] = "err {\"error\":2,\"message\":\"Module not found or not configured\"}";
 
     size_t n = wm_module_query(input, (char **)state);
 
-    assert_string_equal(*state, "err {\"message\": \"running module not found\"}");
-    assert_int_equal(n, 43);
+    assert_string_equal(*state, EXPECTED_OUTPUT);
+    assert_int_equal(n, strlen(EXPECTED_OUTPUT));
 }
 
 static void test_module_query_no_queries(void ** state) {
     char input[] = "B some-command";
+    const char EXPECTED_OUTPUT[] = "err {\"error\":3,\"message\":\"This module does not support queries\"}";
 
     size_t n = wm_module_query(input, (char **)state);
 
-    assert_string_equal(*state, "err {\"message\": \"module does not support queries\"}");
-    assert_int_equal(n, 50);
+    assert_string_equal(*state, EXPECTED_OUTPUT);
+    assert_int_equal(n, strlen(EXPECTED_OUTPUT));
 }
 
 static void test_module_query_echo(void ** state) {

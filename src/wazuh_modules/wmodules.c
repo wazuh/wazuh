@@ -344,7 +344,7 @@ size_t wm_module_query(char * query, char ** output) {
     char * args = strchr(query, ' ');
 
     if (args == NULL) {
-        os_strdup("err {\"message\": \"module query needs arguments\"}", *output);
+        os_strdup("err {\"error\":1,\"message\":\"Module query needs arguments\"}", *output);
         return strlen(*output);
     }
 
@@ -352,12 +352,12 @@ size_t wm_module_query(char * query, char ** output) {
 
     wmodule * module = wm_find_module(module_name);
     if (module == NULL) {
-        os_strdup("err {\"message\": \"running module not found\"}", *output);
+        os_strdup("err {\"error\":2,\"message\":\"Module not found or not configured\"}", *output);
         return strlen(*output);
     }
 
     if (module->context->query == NULL) {
-        os_strdup("err {\"message\": \"module does not support queries\"}", *output);
+        os_strdup("err {\"error\":3,\"message\":\"This module does not support queries\"}", *output);
         return strlen(*output);
     }
 
