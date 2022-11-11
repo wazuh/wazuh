@@ -509,3 +509,9 @@ Public Function CheckSvcRunning()
 
 	CheckSvcRunning = 0
 End Function
+
+Public Function StartWazuhSvc()
+	Set WshShell = CreateObject("WScript.Shell")
+    StartSvc = "NET START WazuhSvc"
+    WshShell.run StartSvc, 0, True
+End Function
