@@ -2235,7 +2235,7 @@ checks:
     rules:
       - "c:dpkg-query -s auditd -> r:install ok installed"
       - "c:dpkg-query -s audispd-plugins -> r:install ok installed"
-      -
+
   # 4.1.1.2 Ensure auditd service is enabled and active (Automated)
   - id: 28591
     title: "Ensure auditd service is enabled and active."
