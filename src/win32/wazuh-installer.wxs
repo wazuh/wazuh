@@ -88,7 +88,7 @@
         <CustomAction Id="SetRemoveAllDataValue" Return="check" Property="CustomAction_RemoveAllScript" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no"/>
 
-        <CustomAction Id="CheckSvcRunning" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="yes"/>
+        <CustomAction Id="CheckSvcRunning" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no"/>
 
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;/+/&quot;[WAZUH_MANAGER]&quot;/+/&quot;[WAZUH_MANAGER_PORT]&quot;/+/&quot;[WAZUH_PROTOCOL]&quot;/+/&quot;[NOTIFY_TIME]&quot;/+/&quot;[WAZUH_REGISTRATION_SERVER]&quot;/+/&quot;[WAZUH_REGISTRATION_PORT]&quot;/+/&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;/+/&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;/+/&quot;[WAZUH_TIME_RECONNECT]&quot;/+/&quot;[WAZUH_REGISTRATION_CA]&quot;/+/&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;/+/&quot;[WAZUH_REGISTRATION_KEY]&quot;/+/&quot;[WAZUH_AGENT_NAME]&quot;/+/&quot;[WAZUH_AGENT_GROUP]&quot;/+/&quot;[ENROLLMENT_DELAY]&quot;" />
         
