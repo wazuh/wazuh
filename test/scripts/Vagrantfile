@@ -111,9 +111,9 @@ Vagrant.configure("2") do |config|
         sleep 2s
 
         echo "--- Loading ruleset & enabling wazuh environment  ---"
-        $ENGINE_DIR/wazuh-engine catalog load decoder $ENGINE_SRC_DIR/ruleset/decoders/
-        $ENGINE_DIR/wazuh-engine catalog load output $ENGINE_SRC_DIR/ruleset/outputs/
-        $ENGINE_DIR/wazuh-engine catalog load environment $ENGINE_SRC_DIR/ruleset/environments/
+        $ENGINE_DIR/wazuh-engine catalog load --recursive decoder $ENGINE_SRC_DIR/ruleset/decoders/
+        $ENGINE_DIR/wazuh-engine catalog load --recursive output $ENGINE_SRC_DIR/ruleset/outputs/
+        $ENGINE_DIR/wazuh-engine catalog load --recursive environment $ENGINE_SRC_DIR/ruleset/environments/
         $ENGINE_DIR/wazuh-engine env set environment/wazuh/0
         echo
 
