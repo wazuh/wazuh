@@ -3749,15 +3749,15 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10 && n:^\s*maxstartups\s+(\d+):\d+:\d+ compare >= 1'
-      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30 && n:^\s*maxstartups\s+(\d+):\d+:\d+ compare >= 1'
-      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60 && n:^\s*maxstartups\s+(\d+):\d+:\d+ compare >= 1'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare > 10'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+(\d+):\d+:\d+ compare == 0'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare > 30'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:(\d+):\d+ compare == 0'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare > 60'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxStartups\s+\d+:\d+:(\d+) compare == 0'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10 && n:^maxstartups\s+(\d+):\d+:\d+ compare >= 1'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30 && n:^maxstartups\s+(\d+):\d+:\d+ compare >= 1'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60 && n:^maxstartups\s+(\d+):\d+:\d+ compare >= 1'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*(\d+):\d+:\d+ compare > 10'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*(\d+):\d+:\d+ compare == 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*\d+:(\d+):\d+ compare > 30'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*\d+:(\d+):\d+ compare == 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*\d+:\d+:(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*\d+:\d+:(\d+) compare == 0'
 
   # 5.2.20 Ensure SSH MaxSessions is set to 10 or less (Automated)
   - id: 28655
@@ -3798,9 +3798,9 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*logingracetime\s*(\d+) compare <= 60 && n:^\s*\t*logingracetime\s*(\d+) compare >= 1'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*LoginGraceTime\s*(\d+) compare > 60'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*LoginGraceTime\s*(\d+) compare == 0'
+      - 'c:sshd -T -> n:^\s*logingracetime\s*(\d+) compare <= 60 && n:^logingracetime\s*(\d+) compare >= 1'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*LoginGraceTime\s*\t*(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*LoginGraceTime\s*\t*(\d+) compare == 0'
 
   # 5.2.22 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 28657
@@ -4056,7 +4056,7 @@ checks:
     title: "Ensure password hashing algorithm is up to date with the latest standards."
     description: "The commands below change password encryption to yescrypt. All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The yescrypt algorithm provides much stronger hashing than previous available algorithms, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: these change only apply to accounts configured on the local system."
-    remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. PAM: Edit the /etc/pam.d/common-password file and ensure that no hashing algorithm option for pam_unix.so is set:: password [success=1 default=ignore] pam_unix.so obscure use_authtok try_first_pass yescrypt remember=5. Login definitions: Edit /etc/login.defs and ensure that ENCRYPT_METHOD is set to yescrypt."
+    remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. PAM: Edit the /etc/pam.d/common-password file and ensure that no hashing algorithm option for pam_unix.so is set:: password [success=1 default=ignore] pam_unix.so obscure use_authtok try_first_pass remember=5. Login definitions: Edit /etc/login.defs and ensure that ENCRYPT_METHOD is set to yescrypt."
     compliance:
       - cis: ["5.4.4"]
       - cis_csc_v7: ["16.4"]
