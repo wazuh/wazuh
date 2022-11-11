@@ -2869,7 +2869,7 @@ checks:
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Run the following command to install systemd-journal-remote: # apt install systemd-journal-remote"
     compliance:
-      - cis: ["4.2.1.1.4"]
+      - cis: ["4.2.1.1.1"]
       - cis_csc_v7: ["6.2", "6.3"]
       - cis_csc_v8: ["8.2"]
       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
@@ -3124,6 +3124,7 @@ checks:
     condition: all
     rules:
       - "c:systemctl is-enabled cron -> r:enabled"
+      - "c:systemctl status cron -> r:Active: active (running)"
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured (Automated)
   - id: 28629
@@ -3146,12 +3147,12 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/crontab -> r:Access:\s*\t*\(0600/-rw-------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
   - id: 28630
     title: "Ensure permissions on /etc/cron.hourly are configured."
-    description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy"
+    description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on the /etc/cron.hourly directory: # chown root:root /etc/cron.hourly/ # chmod og-rwx /etc/cron.hourly"
     compliance:
@@ -3169,12 +3170,12 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 28631
     title: "Ensure permissions on /etc/cron.daily are configured"
-    description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy"
+    description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on the /etc/cron.daily directory: # chown root:root /etc/cron.daily/ # chmod og-rwx /etc/cron.daily/"
     compliance:
@@ -3192,7 +3193,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.daily/ -> r:Access:\s*\t*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
   - id: 28632
@@ -3215,7 +3216,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.weekly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 28633
@@ -3238,7 +3239,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 28634
@@ -3261,7 +3262,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.d/ -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.d/ -> r:Access:\s*\t*\(0700/drwx------\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.8 Ensure cron is restricted to authorized users (Automated)
   - id: 28635
@@ -3285,12 +3286,12 @@ checks:
     condition: all
     rules:
       - "not f:/etc/cron.deny"
-      - 'c:stat /etc/cron.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/cron.allow/ -> r:Access:\s*\t*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.9 Ensure at is restricted to authorized users (Automated)
   - id: 28636
     title: "Ensure at is restricted to authorized users."
-    description: "Configure /etc/at.allow to allow specific users to use this service. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not specifically defined in this file is allowed to use at. By removing the file, only users in /etc/at.allow are allowed to use at. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, at should be removed, and the alternate method should be secured in accordance with local site policy."
+    description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Note: - Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy. - Even though a given user is not listed in cron.allow, cron jobs can still be run as that user. - The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron job."
     rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
     remediation: "Run the following commands to remove /etc/at.deny: # rm /etc/at.deny Run the following command to create /etc/at.allow # touch /etc/at.allow Run the following commands to set permissions and ownership for /etc/at.allow: # chmod g-wx,o-rwx /etc/at.allow # chown root:root /etc/at.allow."
     compliance:
@@ -3309,7 +3310,7 @@ checks:
     condition: all
     rules:
       - "not f:/etc/at.deny"
-      - 'c:stat /etc/at.allow/ -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/at.allow/ -> r:Access:\s*\t*\(0640/-rw-r-----\)\s*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.2 Configure SSH Server
   # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured (Automated)
@@ -3333,14 +3334,14 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/sshd_config -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\t*\(\s*\t*0/\s*root\)\s*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/ssh/sshd_config -> r:Access:\s*\t*\(0600/-rw-------\)\s*Uid:\s*\t*\(\s*\t*0/\s*root\)\s*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.2.3 Ensure permissions on SSH public host key files are configured (Automated)
   - id: 28638
     title: "Ensure permissions on SSH public host key files are configured."
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: "Run the following commands to set permissions and ownership on the SSH host public key files # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,gowx {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\; Default Value: Access: (0644/-rw-r--r--) Uid: ( 0/ root) Gid: ( 0/ root)"
+    remediation: "Run the following commands to set permissions and ownership on the SSH host public key files # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,gowx {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;"
     compliance:
       - cis: ["5.2.3"]
       - cis_csc_v7: ["5.1"]
@@ -3356,14 +3357,14 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - 'c:find /etc/ssh -xdev -type f -name ''ssh_host_*_key'' -exec stat -Lc \"%A\" {} \\; -> !r:^-rw-\.--\.--$'
+      - 'c:find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec stat -Lc \"%A\" {} \\; -> !r:^-rw-r--r--$'
 
   # 5.2.4 Ensure SSH access is limited (Automated)
   - id: 28639
     title: "Ensure SSH access is limited."
-    description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: AllowUsers: o The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. AllowGroups: o The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. DenyUsers: o The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. DenyGroups: o The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
+    description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: > The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: > The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: > The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. - DenyGroups: > The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
-    remediation: "Edit the /etc/ssh/sshd_config file or a included configuration file to set one or more of the parameter as follows: AllowUsers <userlist> OR AllowGroups <grouplist> OR DenyUsers <userlist> OR DenyGroups <grouplist> Default Value: None"
+    remediation: "Edit the /etc/ssh/sshd_config file or a included configuration file to set one or more of the parameter as follows: AllowUsers <userlist> OR AllowGroups <grouplist> OR DenyUsers <userlist> OR DenyGroups <grouplist>"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -3379,17 +3380,18 @@ checks:
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^(Allow|Deny)(Users|Groups)'
-      - "f:/etc/ssh/sshd_config -> r:^(Allow|Deny)(Users|Groups)"
-      -
+      - 'c:sshd -T -> r:^\s*\t*Allowusers\s*\t*\w+|^\s*\t*Denyusers\s*\t*\w+|^\s*\t*Allowgroups\s*\t*\w+|^\s*\t*Denygroups\s*\t*\w+'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*\t*Allowusers\s*\t*\w+|^\s*\t*Denyusers\s*\t*\w+|^\s*\t*Allowgroups\s*\t*\w+|^\s*\t*Denygroups\s*\t*\w+'
+      - 'd:/etc/ssh/sshd_config.d -> r:\.* -> r:^\s*\t*Allowusers\s*\t*\w+|^\s*\t*Denyusers\s*\t*\w+|^\s*\t*Allowgroups\s*\t*\w+|^\s*\t*Denygroups\s*\t*\w+'
+
   # 5.2.5 Ensure SSH LogLevel is appropriate (Automated)
   - id: 28640
     title: "Ensure SSH LogLevel is appropriate."
     description: "INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel VERBOSE OR LogLevel INFO Default Value: LogLevel INFO"
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel VERBOSE OR LogLevel INFO"
     references:
       - https://www.ssh.com/ssh/sshd_config/
     compliance:
@@ -3405,8 +3407,8 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^loglevel (VERBOSE|INFO)'
-      - "not f:/etc/ssh/sshd_config -> r:^LogLevel && !r:(VERBOSE|INFO)"
+      - "c:sshd -T -> r:^loglevel VERBOSE && r:^loglevel INFO)"
+      - "not f:/etc/ssh/sshd_config -> !r:^\\s*\\t*loglevel\\s*\\t*VERBOSE && !r:^loglevel\\s*\\t*INFO))"
 
   # 5.2.6 Ensure SSH PAM is enabled (Automated)
   - id: 28641
@@ -3430,15 +3432,15 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^usepam yes'
-      - "not f:/etc/ssh/sshd_config -> r:^UsePAM no"
+      - "c:sshd -T -> r:^usepam yes"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*UsePAM\\s*\\t*no"
 
   # 5.2.7 Ensure SSH root login is disabled (Automated)
   - id: 28642
     title: "Ensure SSH root login is disabled"
     description: "The PermitRootLogin parameter specifies if the root user can log in using SSH. The default is prohibit-password."
-    rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root. This limits opportunity for nonrepudiation and provides a clear audit trail in the event of a security incident."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no Default Value: PermitRootLogin without-password"
+    rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root. This limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -3455,15 +3457,14 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^permitrootlogin no'
-      - "f:/etc/ssh/sshd_config -> r:^PermitRootLogin no"
+      - "f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitRootLogin\\s*\\t*no"
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled (Automated)
   - id: 28643
     title: "Ensure SSH HostbasedAuthentication is disabled."
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
-    impact: ""
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no Default Value: HostbasedAuthentication no"
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -3480,15 +3481,15 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^hostbasedauthentication no'
-      - "not f:/etc/ssh/sshd_config -> r:^HostBasedAuthentication yes"
+      - "c:sshd -T -> r:^hostbasedauthentication no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*HostBasedAuthentication\\s*\\t*yes"
 
   # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled (Automated)
   - id: 28644
     title: "Ensure SSH PermitEmptyPasswords is disabled."
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no Default Value: PermitEmptyPasswords no"
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -3505,8 +3506,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^permitemptypasswords no'
-      - "not f:/etc/ssh/sshd_config -> r:^PermitEmptyPasswords yes"
+      - "c:sshd -T -> r:^permitemptypasswords no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitEmptyPasswords\\s*\\t*yes"
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled (Automated)
   - id: 28645
@@ -3530,8 +3531,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^permituserenvironment no'
-      - "not f:/etc/ssh/sshd_config -> r:^PermitUserEnvironment yes"
+      - "c:sshd -T -> r:^permituserenvironment no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitUserEnvironment\\s*\\t*yes"
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled (Automated)
   - id: 28646
@@ -3555,8 +3556,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^ignorerhosts yes'
-      - "not f:/etc/ssh/sshd_config -> r:^IgnoreRhosts no"
+      - "c:sshd -T -> r:^ignorerhosts yes"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*IgnoreRhosts\\s*\\t*no"
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 28647
@@ -3577,8 +3578,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^x11forwarding no'
-      - "not f:/etc/ssh/sshd_config -> r:^x11forwarding yes"
+      - "c:sshd -T -> r:^x11forwarding no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*x11forwarding\\s*\\t*yes"
 
   # 5.2.13 Ensure only strong Ciphers are used (Automated)
   - id: 28648
@@ -3606,7 +3607,7 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
     condition: none
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^Ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc'
+      - "c:sshd -T -> r:^Ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc"
 
   # 5.2.14 Ensure only strong MAC algorithms are used (Automated)
   - id: 28649
@@ -3631,7 +3632,7 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
     condition: none
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com'
+      - "c:sshd -T -> r:^MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
   # 5.2.15 Ensure only strong Key Exchange algorithms are used (Automated)
   - id: 28650
@@ -3653,7 +3654,7 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
     condition: none
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1'
+      - "c:sshd -T -> r:^kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
   # 5.2.16 Ensure SSH AllowTcpForwarding is disabled (Automated)
   - id: 28651
@@ -3678,8 +3679,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^allowtcpforwarding && r:no$'
-      - "not f:/etc/ssh/sshd_config -> r:^AllowTcpForwarding yes"
+      - "c:sshd -T -> r:^allowtcpforwarding && r:no$"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*AllowTcpForwarding\\s*\\t*yes"
 
   # 5.2.17 Ensure SSH warning banner is configured (Automated)
   - id: 28652
@@ -3700,7 +3701,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts  | awk ''{print $1}'')" -> r:^banner && r:/etc/issue.net$'
+      - "c:sshd -T -> r:^banner && r:/etc/issue.net$"
 
   # 5.2.18 Ensure SSH MaxAuthTries is set to 4 or less (Automated)
   - id: 28653
@@ -3724,8 +3725,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^maxauthtries\\s+(\\d+) compare <= 4"
-      - "not f:/etc/ssh/sshd_config -> n:^maxauthtries\\s+(\\d+) compare > 4"
+      - "c:sshd -T -> n:^maxauthtries\\s+(\\d+) compare <= 4"
+      - "not f:/etc/ssh/sshd_config -> n:^\\s*\\t*maxauthtries\\s+(\\d+) compare > 4"
 
   # 5.2.19 Ensure SSH MaxStartups is configured (Automated)
   - id: 28654
@@ -3778,8 +3779,8 @@ checks:
       - mitre_tactics: ["TA0040"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^maxsessions\\s*\\t*(\\d+) compare <= 10"
-      - "not f:/etc/ssh/sshd_config -> n:^MaxSessions\\s+(\\d+) compare > 10"
+      - "c:sshd -T -> n:^maxsessions\\s*\\t*(\\d+) compare <= 10"
+      - "not f:/etc/ssh/sshd_config -> n:^^\\s*\\t*MaxSessions\\s+(\\d+) compare > 10"
 
   # 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 28656
@@ -3824,8 +3825,8 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^clientaliveinterval\\s*\\t*(\\d+) compare > 0"
-      - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^clientalivecountmax\\s*\\t*(\\d+) compare > 0"
+      - "c:sshd -T -> -> n:^clientaliveinterval\\s*\\t*(\\d+) compare > 0"
+      - "c:sshd -T -> -> n:^clientalivecountmax\\s*\\t*(\\d+) compare > 0"
 
   # 5.3 Configure privilege escalation
   # 5.3.1 Ensure sudo is installed (Automated)
