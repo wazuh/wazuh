@@ -18,8 +18,6 @@
 '
 ' ------------------------------------------------'
 
-On Error Resume Next
-
 public function config()
 
 Const ForReading = 1
@@ -45,6 +43,7 @@ WAZUH_REGISTRATION_KEY = Replace(args(12), Chr(34), "")
 WAZUH_AGENT_NAME = Replace(args(13), Chr(34), "")
 WAZUH_AGENT_GROUP = Replace(args(14), Chr(34), "")
 ENROLLMENT_DELAY = Replace(args(15), Chr(34), "")
+
 
 ' Only try to set the configuration if variables are setted
 
@@ -351,46 +350,112 @@ config = 0
 
 End Function
 
-Private Function GetVersion()
-	Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
-	Set colItems = objWMIService.ExecQuery("Select * from Win32_OperatingSystem",,48)
 
-	For Each objItem in colItems
-		GetVersion = Split(objItem.Version,".")(0)
-	Next
+Private Function GetVersion()
+    Set record = Installer.CreateRecord(1)
+    Set shell = CreateObject("WScript.Shell")
+
+    On Error Resume Next
+        cmd = "reg query ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion"" /v ""CurrentVersion"""
+        Set exec = shell.Exec(cmd)
+        ctr = 0
+        Do
+            ctr = ctr + 1
+        Loop While (ctr < 10 AND exec.Status = 0)
+        arr = Array(exec.Status, exec.StdOut.ReadAll, exec.StdErr.ReadAll)
+        strVersion = Left(Right(Replace(arr(1), vbNewLine, ""), 3), 1)
+        GetVersion = CInt(strVersion)
+
+        If Err.Number <> 0 Then
+            record.StringData(0) = "(GetVersion): Error getting version, Error: " & CStr(Err.Number) & ", Description: " & Err.Description & ". Will assume default value, installation will continue."
+            Session.Message &H01000000, record
+            GetVersion = 6
+        End If
+
+        Err.Clear
+    On Error GoTo 0
 End Function
 
-Public Function CheckSvcRunning()
-    Set shell = CreateObject("WScript.Shell")
-	Set wmi = GetObject("winmgmts://./root/cimv2")
-    set popup_message = "The service could not be fetched from WMI implementation. The installation will continue with the default procedure (Start Wazuh service automatically)." & vbcrlf & vbcrlf & "Please review your WMI status and permissions."
 
-    ' Checking if OssecSvc is defined in the host and if it's running
-    SERVICE = "OssecSvc"
-    Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
-
-    For Each obj in svc
-        If typename(obj) = "Empty" Then 
-            shell.Popup popup_message, 20, "Information", 64
-            Session.Property("OSSECRUNNING") = "Stopped"
+Public Function CheckSvcRunning()    
+    ' Checking if ossec-agent.exe is running
+    On Error Resume Next
+        binary = "ossec-agent.exe"
+        strCommand = "qprocess " & binary
+        strOutput = RunCommand(strCommand)(1)
+        process = Right(Replace(strOutput, vbNewLine, ""), 15)
+        If process = binary Then
+            Session.Property("OSSECRUNNING") = "Running"
         Else
-            Session.Property("OSSECRUNNING") = obj.State
+            Session.Property("OSSECRUNNING") = "Stopped"
         End If
-    Next
-    
-    ' Checking if WazuhSvc is defined in the host and if it's running
-    SERVICE = "WazuhSvc"
-    Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
 
-    shell.Popup popup_message, 20, "Information", 64
-    For Each obj in svc
-        If typename(obj) = "Empty" Then 
-            shell.Popup popup_message, 20, "Information", 64
+        If Err.Number <> 0 Then
+            Session.Property("OSSECRUNNING") = "Stopped"
+        End If
+
+        Err.Clear
+    On Error GoTo 0
+
+    ' Checking if wazuh-agent.exe is running
+    On Error Resume Next
+        binary = "wazuh-agent.exe"
+        strCommand = "qprocess " & binary
+        strOutput = RunCommand(strCommand)(1)
+        process = Right(Replace(strOutput, vbNewLine, ""), 15)
+        If process = binary Then
             Session.Property("WAZUHRUNNING") = "Running"
         Else
-            Session.Property("WAZUHRUNNING") = obj.State
+            Session.Property("WAZUHRUNNING") = "Stopped"
         End If
-    Next
+
+        If Err.Number <> 0 Then
+            Session.Property("WAZUHRUNNING") = "Running"
+        End If
+
+        Err.Clear
+    On Error GoTo 0
 
 	CheckSvcRunning = 0
+End Function
+
+
+' Return: Array 
+'   -> Position 0, Command Status (Pending=0, Ready=1)
+'   -> Position 1, Command StdOut
+'   -> Position 2, Command StdErr
+Private Function RunCommand(command)
+    Err.Clear
+    Set record = Installer.CreateRecord(1)
+    Set shell = CreateObject("WScript.Shell")
+
+    On Error Resume Next
+        If GetVersion() >= 6 Then
+            cmd = "%systemroot%\SysNative\cmd.exe /c """ & command & """ "
+        Else
+            cmd = "cmd /c """ & command & """ "
+        End If
+        MsgBox "Command: " & cmd
+        Set exec = shell.Exec(cmd)
+        ctr = 0
+        Do
+            MsgBox "1Error: " & Err.Number & ", Desc: " & Err.Description
+            MsgBox "Status: " & exec.Status
+            MsgBox "Ctr: " & ctr
+            ctr = ctr + 1
+        Loop While (ctr < 10 AND exec.Status = 0)
+        arr = Array(exec.Status, exec.StdOut.ReadAll, exec.StdErr.ReadAll)
+        MsgBox "Status: " & arr(0) & ", Ctr: " & ctr
+        MsgBox "StdOut: " & arr(1)
+        MsgBox "StdErr: " & arr(2)
+        RunCommand = arr
+        MsgBox "Error number: " & Err.Number
+
+        If Err.Number <> 0 Then
+            record.StringData(0) = "(RunCommand): Error running command, Error: " & CStr(Err.Number) & ", Description: " & Err.Description 
+            Session.Message &H01000000, record
+        End If
+
+        ' Explicity not clear the error to manage in caller functions
+    On Error GoTo 0
 End Function
