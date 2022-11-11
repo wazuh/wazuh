@@ -2277,7 +2277,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
-      - 'not d:/boot -> r:\.*grub.cfg -> r:^\s*\t*linux && r:audit=1'
+      - 'not d:/boot -> r:\.*grub.cfg -> r:^\s*\t*linux && !r:audit=1'
 
   # 4.1.1.4 Ensure audit_backlog_limit is sufficient (Automated)
   - id: 28593
@@ -2298,7 +2298,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
-      - 'not d:/boot -> r:\.*grub.cfg -> r:audit_backlog_limit=\d+'
+      - 'not d:/boot -> r:\.*grub.cfg -> !r:audit_backlog_limit=\d+'
 
   # 4.1.2 Configure Data Retention
   # 4.1.2.1 Ensure audit log storage size is configured (Automated)
