@@ -3638,7 +3638,7 @@ checks:
     title: "Ensure only strong Key Exchange algorithms are used"
     description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received. Notes: - Kex algorithms have a higher preference the earlier they appear in the list - Some organizations may have stricter requirements for approved Key exchange algorithms - Ensure that Key exchange algorithms used are in compliance with site policy - The only Key Exchange Algorithms currently FIPS 140-2 approved are: > ecdh-sha2-nistp256 > ecdh-sha2-nistp384 > ecdh-sha2-nistp521 > diffie-hellman-group-exchange-sha256 > diffie-hellman-group16-sha512 > diffie-hellman-group18-sha512 > diffie-hellman-group14-sha256 - The Key Exchange algorithms supported by OpenSSH 8.2 are: curve25519-sha256 curve25519-sha256@libssh.org diffie-hellman-group1-sha1 diffie-hellman-group14-sha1 diffie-hellman-group14-sha256 diffie-hellman-group16-sha512 diffie-hellman-group18-sha512 diffie-hellman-group-exchange-sha1 diffie-hellman-group-exchange-sha256 ecdh-sha2-nistp256 ecdh-sha2-nistp384 ecdh-sha2-nistp521 sntrup4591761x25519-sha512@tinyssh.org"
     rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks."
-    remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie- hellman-group-exchange-sha256"
+    remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256"
     compliance:
       - cis: ["5.2.15"]
       - cis_csc_v7: ["14.4"]
@@ -3803,11 +3803,11 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*logingracetime\s*(\d+) compare <= 60 && n:^\s*logingracetime\s*(\d+) compare >= 1'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*(\d+) compare > 60'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*(\d+) compare == 0'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*LoginGraceTime\s*(\d+) compare > 60'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*LoginGraceTime\s*(\d+) compare == 0'
+      - 'c:sshd -T -> n:^\s*logingracetime\s*(\d+) compare <= 60 && n:^\s*\t*logingracetime\s*(\d+) compare >= 1'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*LoginGraceTime\s*(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*LoginGraceTime\s*(\d+) compare == 0'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*\t*LoginGraceTime\s*(\d+) compare > 60'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*\t*LoginGraceTime\s*(\d+) compare == 0'
 
   # 5.2.22 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 28657
@@ -3828,7 +3828,7 @@ checks:
       - "c:sshd -T -C user=root -C host=\"$(hostname)\" -C addr=\"$(grep $(hostname) /etc/hosts  | awk '{print $1}')\" -> n:^clientalivecountmax\\s*\\t*(\\d+) compare > 0"
 
   # 5.3 Configure privilege escalation
-  # 5.3.1 Ensure sudo is installed
+  # 5.3.1 Ensure sudo is installed (Automated)
   - id: 28658
     title: "Ensure sudo is installed."
     description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
@@ -3873,8 +3873,8 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: any
     rules:
-      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s+use_pty'
-      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s+use_pty'
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*use_pty'
 
   # 5.3.3 Ensure sudo log file exists (Automated)
   - id: 28660
@@ -3899,8 +3899,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: any
     rules:
-      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s+logfile=\S+.log'
-      - 'd:/etc/sudoers.d -> \.* -> r:^\s*\t*Defaults\s+logfile=\S+.log'
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile=\S+.log'
+      - 'd:/etc/sudoers.d -> \.* -> r:^\s*\t*Defaults\s*\t*logfile=\S+.log'
 
   # 5.3.4 Ensure users must provide password for privilege escalation (Automated)
   - id: 28661
@@ -4005,7 +4005,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - "c:apt list --installed libpam-pwquality"
+      - "c:apt list --installed libpam-pwquality -> r:libpam-pwquality"
       - 'f:/etc/security/pwquality.conf -> n:^\s*\t*minlen\s+=\s+(\d+) compare >=14'
       - 'f:/etc/security/pwquality.conf -> r:^\s*\t*minclass\s+=\s+4'
 
@@ -4035,16 +4035,16 @@ checks:
       - 'f:/etc/pam.d/common-auth -> r:^\s*\t*auth\s*\t*[default=die]\s*\t*pam_faillock.so\s*\t*authfail'
       - 'f:/etc/pam.d/common-auth -> r:^\s*\t*auth\s*\t*sufficient\s*\t*pam_faillock.so\s*\t*authsucc'
       - 'f:/etc/pam.d/common-account -> r:^\s*\t*account\s*\t*required\s*\t*pam_faillock.so'
-      - 'f:/etc/security/faillock.conf -> n:^\s*\t*deny\s+=\s+(\d+) compare <= 4'
-      - 'f:/etc/security/faillock.conf -> n:^\s*\t*fail_interval\s+=\s+(\d+) compare <= 900'
-      - 'f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s+=\s+(\d+) compare >= 600 and n:unlock_time\s+=\s+(\d+) compare == 0'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*deny\s*\t*=\s*\t*(\d+) compare <= 4'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*fail_interval\s*\t*=\s*\t*(\d+) compare <= 900'
+      - 'not f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare < 600 && n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare > 0'
 
   # 5.4.3 Ensure password reuse is limited (Automated)
   - id: 28667
     title: "Ensure password reuse is limited."
     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password."
-    remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Edit the /etc/pam.d/common-password file to include the remember option and conform to site policy as shown: password [success=1 default=ignore] pam_unix.so obscure use_authtok try_first_pass yescrypt remember=5 Additional Information: Changes only apply to accounts configured on the local system."
+    remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Edit the /etc/pam.d/common-password file to include the remember option and conform to site policy as shown: password [success=1 default=ignore] pam_unix.so obscure use_authtok try_first_pass yescrypt remember=5"
     compliance:
       - cis: ["5.4.3"]
       - cis_csc_v7: ["4.4"]
@@ -4080,7 +4080,7 @@ checks:
     condition: all
     rules:
       - 'not f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:yescrypt|md5|bigcrypt|sha256|sha512|blowfish'
-      - 'f:/etc/login.defs -> r:^\s*\t*ENCRYPT_METHOD yescrypt'
+      - 'f:/etc/login.defs -> r:^\s*\t*ENCRYPT_METHOD\s*\t*yescrypt'
 
   # 5.4.5 Ensure all current passwords uses the configured hashing algorithm (Manual) - Not implemented
   # 5.5 User Accounts and Environment
