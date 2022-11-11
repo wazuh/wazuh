@@ -2632,7 +2632,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:stat -Lc \"%n %a\" \"$(dirname $( awk -F\"=\" '/^\\s*log_file\\s*=\\s*/ {print $2}' /etc/audit/auditd.conf | xargs))\"/* -> !r:000|040|200|400|600|240|440|640"
+      - "c:stat -Lc \"%n %a\" \"$(dirname $( awk -F\"=\" '/^\\s*log_file\\s*=\\s*/ {print $2}' /etc/audit/auditd.conf | xargs))\"/* -> r:\\w+ && !r:000|040|200|400|600|240|440|640"
 
   # 4.1.4.2 Ensure only authorized users own audit log files (Automated)
   - id: 28607
@@ -2676,7 +2676,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - 'f:/etc/audit/auditd.conf -> r:log_group\h*= && !r:adm|root'
+      - 'f:/etc/audit/auditd.conf -> r:log_group\s*\t*= && !r:adm|root'
 
   # 4.1.4.4 Ensure the audit log directory is 0750 or more restrictive (Automated)
   - id: 28609
@@ -2698,7 +2698,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:stat -Lc \"%n %a\" \"$(dirname $( :Ñ: -F\"=\" '/^\\s*log_file\\s*=\\s*/ {print $2}' /etc/audit/auditd.conf))\" -> !r:000|050|500|550|700|750"
+      - "c:stat -Lc \"%n %a\" \"$(dirname $( awk -F\"=\" '/^\\s*log_file\\s*=\\s*/ {print $2}' /etc/audit/auditd.conf))\" -> r:\\w+ && !r:000|050|500|550|700|750"
 
   # 4.1.4.5 Ensure audit configuration files are 640 or more restrictive (Automated)
   - id: 28610
@@ -2720,7 +2720,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%n %a\" {} + -> !r:000|040|200|400|600|240|440|640"
+      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%n %a\" {} + -> r:\\w+ -> !r:000|040|200|400|600|240|440|640"
 
   # 4.1.4.6 Ensure audit configuration files are owned by root (Automated)
   - id: 28611
@@ -2788,7 +2788,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - 'c:stat -c "%n %a" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:\w+ && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
 
   # 4.1.4.9 Ensure audit tools are owned by root (Automated)
   - id: 28614
@@ -2853,12 +2853,13 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'f:/etc/aide/aide.conf -> r:/sbin/auditctl\s*\t*p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/auditd\s*\t*p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/ausearch\s*\t*p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/aureport\s*\t*p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/autrace\s*\t*p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/augenrules\s*\t*p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512'
+      - "f:/etc/aide/aide.conf"
+      - 'f:/etc/aide/aide.conf -> r:/sbin/auditctl\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/auditd\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/ausearch\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/aureport\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/autrace\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/augenrules\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
 
   # 4.2 Configure Logging
   # 4.2.1 Configure journald
