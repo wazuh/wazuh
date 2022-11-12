@@ -4,10 +4,15 @@ sources:
   - decoder/queue-syslog/0
   - decoder/queue-localfile/0
 
-definitions:
-  - use: user.info
-
 metadata:
+  module: un modulo
+  compatibility: ello
+  author:
+    name: manolo
+    date: ayer
+  references:
+    - ellas
+  title: Hola lorenzo
   description: Decoder for Apache HTTP Server
   product:
     - name: Apache HTTP Server
@@ -17,10 +22,11 @@ metadata:
 
 check:
   - event.original:
-      +ef_exists
+      "+r_match/^\\["
       # +r_match/Wed Oct 20 19:20:59.121211 2021
       # [Wed Oct 20 19:20:59.121211 2021] [rewrite:trace3] [pid 121591:tid 140413273032448] mod_rewrite.c(470): [client 10.121.192.8:38350] 10.121.192.8 - - [dev.elastic.co/sid#55a374e851c8][rid#7fb438083ac0/initial] applying pattern '^/import/?(.*)$' to uri '/'
+      # [Wed Oct 20 19:20:59.121211 202000] [rewrite:trace3] [pid 121591:tid 140413273032448] mod_rewrite.c(470): [client 10.121.192.8:38350] 10.121.192.8 - - [dev.elastic.co/sid#55a374e851c8][rid#7fb438083ac0/initial] applying pattern '^/import/?(.*)$' to uri '/'
 
 parse:
   logpar:
-    - event.original: "<@timestamp/APACHE_ERROR>"
+    - event.original: "[<~pedro/timestamp/APACHE_ERROR>]"
