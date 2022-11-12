@@ -1,75 +1,18 @@
-cmake_minimum_required(VERSION 3.12.4)
-
 project(syscollector)
 
-enable_testing()
-
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif()
-
-get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
-
-if(COVERITY)
-  add_definitions(-D__GNUC__=8)
-endif(COVERITY)
-
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread")
-
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-else()
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
-endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-
-if(FSANITIZE)
-  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
-endif(FSANITIZE)
-
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-if(APPLE)
-  set(CMAKE_MACOSX_RPATH 1)
-endif(APPLE)
-
-include_directories(${SRC_FOLDER}/)
-include_directories(${SRC_FOLDER}/headers/)
-include_directories(${SRC_FOLDER}/external/sqlite/)
-include_directories(${SRC_FOLDER}/external/nlohmann/)
-include_directories(${SRC_FOLDER}/external/cJSON/)
-include_directories(${SRC_FOLDER}/external/procps/)
-include_directories(${SRC_FOLDER}/external/bzip2/)
-include_directories(${SRC_FOLDER}/external/openssl/include/)
-include_directories(${SRC_FOLDER}/shared_modules/utils)
-include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
-include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
-include_directories(${SRC_FOLDER}/shared_modules/common/)
-include_directories(${SRC_FOLDER}/data_provider/include/)
-include_directories(${CMAKE_SOURCE_DIR}/include)
-
-link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
-link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
-link_directories(${SRC_FOLDER}/data_provider/build/lib)
-link_directories(${SRC_FOLDER})
-
-link_directories(${SRC_FOLDER}/external/openssl/)
-link_directories(${SRC_FOLDER}/external/sqlite/)
-link_directories(${SRC_FOLDER}/external/cJSON/)
-link_directories(${SRC_FOLDER}/external/procps/)
-link_directories(${SRC_FOLDER}/external/bzip2/)
-
+include_directories(${CMAKE_SOURCE_DIR}/wazuh_modules/syscollector/include)
+include_directories(${CMAKE_SOURCE_DIR}/data_provider/include)
+include_directories(${CMAKE_SOURCE_DIR}/shared_modules/dbsync/include)
+include_directories(${CMAKE_SOURCE_DIR}/shared_modules/rsync/include)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1
                   -D_WIN32_WINNT=0x600
                   -DWIN_EXPORT)
-endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+endif()
 
 file(GLOB SYSCOLLECTOR_SRC
-    "${CMAKE_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_SOURCE_DIR}/wazuh_modules/syscollector/src/*.cpp"
     )
 
 add_library(syscollector SHARED
@@ -87,8 +30,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 elseif(UNIX AND NOT APPLE)
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
-  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  endif()
+endif()
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
   target_link_libraries(syscollector dbsync rsync sysinfo wazuhext)
@@ -96,19 +39,20 @@ else()
   string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
   string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
   target_link_libraries(syscollector dbsync rsync sysinfo wazuhext -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
-endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+endif()
 
-if(UNIT_TEST)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_link_libraries(syscollector -fprofile-arcs)
   else()
     target_link_libraries(syscollector gcov)
-  endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  endif()
 
   add_subdirectory(tests)
 else()
   if(FSANITIZE)
     target_link_libraries(syscollector gcov)
-  endif(FSANITIZE)
-  add_subdirectory(testtool)
-endif(UNIT_TEST)
+  endif()
+endif()
+
+add_subdirectory(testtool)

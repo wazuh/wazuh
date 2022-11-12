@@ -8,16 +8,13 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include <fstream>
-#include <iostream>
-#include <regex>
+
 #include "sharedDefs.h"
 #include "stringHelper.h"
 #include "filesystemHelper.h"
 #include "cmdHelper.h"
 #include "osinfo/sysOsParsers.h"
 #include "sysInfo.hpp"
-#include "shared.h"
 #include "readproc.h"
 #include "networkUnixHelper.h"
 #include "networkHelper.h"
@@ -27,8 +24,9 @@
 #include "ports/portImpl.h"
 #include "packages/berkeleyRpmDbHelper.h"
 #include "packages/packageLinuxDataRetriever.h"
-
 #include "linuxInfoHelper.h"
+
+#include <sys/utsname.h>
 
 struct ProcTableDeleter
 {

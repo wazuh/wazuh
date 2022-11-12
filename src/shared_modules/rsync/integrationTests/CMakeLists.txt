@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.12.4)
-
 project(integration_tests)
 
 include_directories(${EXTERNAL_LIB}/googletest/googletest/include/)

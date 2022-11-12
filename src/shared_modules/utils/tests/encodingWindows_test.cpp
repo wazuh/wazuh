@@ -9,9 +9,9 @@
  * Foundation.
  */
 #ifdef WIN32
+#include "json.hpp"
 #include "encodingWindows_test.h"
 #include "encodingWindowsHelper.h"
-#include "json.hpp"
 
 void EncodingWindowsHelperTest::SetUp() {};
 

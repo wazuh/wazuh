@@ -9,6 +9,7 @@
  * Foundation.
  */
 #include <cstdio>
+#include "json.hpp"
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
 

@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#include "json.hpp"
 #include "sysInfoWin_test.h"
 #include "packages/packagesWindowsParserHelper.h"
 
