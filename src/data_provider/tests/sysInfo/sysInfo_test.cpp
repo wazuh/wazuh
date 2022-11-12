@@ -8,6 +8,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
+#include "json.hpp"
 #include "sysInfo_test.h"
 #include "sysInfo.hpp"
 #include "sysInfo.h"

@@ -1,17 +1,8 @@
-cmake_minimum_required(VERSION 3.12.4)
-
 project(rsync_implementation_unit_test)
-
-set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
-
-include_directories(${CMAKE_SOURCE_DIR}/include/)
-include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
-link_directories(${CMAKE_BINARY_DIR}/lib)
-
 
 file(GLOB INTERFACE_UNITTEST_SRC
     "*.cpp"
-    "${CMAKE_SOURCE_DIR}/src/*.cpp")
+    "${CMAKE_SOURCE_DIR}/shared_modules/rsync/src/*.cpp")
 
 file(GLOB DBSYNC_IMP_SRC
     "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
@@ -23,14 +14,10 @@ add_executable(rsync_implementation_unit_test
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(rsync_implementation_unit_test
-        debug gtestd
-        debug gmockd
-        debug gtest_maind
-        debug gmock_maind
-        optimized gtest
-        optimized gmock
-        optimized gtest_main
-        optimized gmock_main
+        gtest
+        gmock
+        gtest_main
+        gmock_main
         crypto
         cjson
         sqlite3
@@ -41,14 +28,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     )
 else()
     target_link_libraries(rsync_implementation_unit_test
-        debug gtestd
-        debug gmockd
-        debug gtest_maind
-        debug gmock_maind
-        optimized gtest
-        optimized gmock
-        optimized gtest_main
-        optimized gmock_main
+        gtest
+        gmock
+        gtest_main
+        gmock_main
         crypto
         cjson
         sqlite3

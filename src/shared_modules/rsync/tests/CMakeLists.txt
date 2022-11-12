@@ -1,15 +1,8 @@
-cmake_minimum_required(VERSION 3.12.4)
-
 project(unit_tests)
 
-include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
-include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
-include_directories(${CMAKE_SOURCE_DIR}/src/)
-include_directories(${SRC_FOLDER}/external/sqlite/)
+set(CMAKE_CXX_FLAGS "--coverage")
 
-link_directories(${SRC_FOLDER}/external/googletest/lib/)
-link_directories(${SRC_FOLDER}/external/googletest/lib/)
-link_directories(${SRC_FOLDER}/external/sqlite/)
+include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")

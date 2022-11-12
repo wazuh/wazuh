@@ -1,135 +1,80 @@
-cmake_minimum_required(VERSION 3.12.4)
-
 project(sysinfo)
 
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif()
+include_directories(${PROJECT_SOURCE_DIR}/src/)
+include_directories(${PROJECT_SOURCE_DIR}/include/)
 
-enable_testing()
-
-get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
-
-if(COVERITY)
-  add_definitions(-D__GNUC__=8)
-endif(COVERITY)
-
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
-
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-else()
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
-endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-
-if(FSANITIZE)
-  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
-endif(FSANITIZE)
-
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-include_directories(${CMAKE_SOURCE_DIR}/src/)
-include_directories(${CMAKE_SOURCE_DIR}/include/)
-include_directories(${SRC_FOLDER}/)
-include_directories(${SRC_FOLDER}/headers/)
-include_directories(${SRC_FOLDER}/external/sqlite/)
-include_directories(${SRC_FOLDER}/external/nlohmann/)
-include_directories(${SRC_FOLDER}/external/cJSON/)
-include_directories(${SRC_FOLDER}/external/procps/)
-include_directories(${SRC_FOLDER}/external/bzip2/)
-include_directories(${SRC_FOLDER}/external/openssl/include/)
-include_directories(${SRC_FOLDER}/shared_modules/utils)
-include_directories(${SRC_FOLDER}/shared_modules/common/)
-include_directories(${SRC_FOLDER}/external/openssl/include/)
-include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
-include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
 include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
 include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
 include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
-endif(NOT CMAKE_CHECK_CENTOS5)
 
-link_directories(${SRC_FOLDER})
-link_directories(${SRC_FOLDER}/external/sqlite/)
-link_directories(${SRC_FOLDER}/external/cJSON/)
-link_directories(${SRC_FOLDER}/external/procps/)
-link_directories(${SRC_FOLDER}/external/bzip2/)
-link_directories(${SRC_FOLDER}/external/libplist/bin/lib/)
-link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
-if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
 link_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
 link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
 link_directories(${SRC_FOLDER}/external/rpm/builddir/)
 endif(NOT CMAKE_CHECK_CENTOS5)
-link_directories(${SRC_FOLDER}/external/openssl/)
-
-
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   file(GLOB SYSINFO_SRC
-      "${CMAKE_SOURCE_DIR}/src/*Win.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsInfoWin.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/*Windows.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/*Windows.cpp")
+      "${PROJECT_SOURCE_DIR}/src/*Win.cpp"
+      "${PROJECT_SOURCE_DIR}/src/osinfo/sysOsInfoWin.cpp"
+      "${PROJECT_SOURCE_DIR}/src/network/*Windows.cpp"
+      "${PROJECT_SOURCE_DIR}/src/packages/*Windows.cpp")
   add_definitions(-DWIN32=1
                   -D_WIN32_WINNT=0x600
                   -DWIN_EXPORT)
 elseif(CMAKE_CHECK_CENTOS5)
   file(GLOB SYSINFO_SRC
-      "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/*Linux.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/packageLinuxParser.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/packageLinuxParserRpmLegacy.cpp")
+      "${PROJECT_SOURCE_DIR}/src/*Linux.cpp"
+      "${PROJECT_SOURCE_DIR}/src/network/*Linux.cpp"
+      "${PROJECT_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
+      "${PROJECT_SOURCE_DIR}/src/packages/packageLinuxParser.cpp"
+      "${PROJECT_SOURCE_DIR}/src/packages/packageLinuxParserRpmLegacy.cpp")
   add_definitions(-DLINUX_TYPE=LinuxType::LEGACY) # Partial compilation in legacy systems
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSINFO_SRC
-      "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/*Linux.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/packageLinux*.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/rpm*.cpp")
+      "${PROJECT_SOURCE_DIR}/src/*Linux.cpp"
+      "${PROJECT_SOURCE_DIR}/src/network/*Linux.cpp"
+      "${PROJECT_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
+      "${PROJECT_SOURCE_DIR}/src/packages/packageLinux*.cpp"
+      "${PROJECT_SOURCE_DIR}/src/packages/rpm*.cpp")
   add_definitions(-DLINUX_TYPE=LinuxType::STANDARD) # Standard compilation in compatible systems
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   file(GLOB SYSINFO_SRC
-      "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
-      "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+      "${PROJECT_SOURCE_DIR}/src/*Mac.cpp"
+      "${PROJECT_SOURCE_DIR}/src/*CommonBSD.cpp"
+      "${PROJECT_SOURCE_DIR}/src/packages/*Mac.cpp"
+      "${PROJECT_SOURCE_DIR}/src/network/*BSD.cpp"
+      "${PROJECT_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
   file(GLOB SYSINFO_SRC
-      "${CMAKE_SOURCE_DIR}/src/*FreeBSD.cpp"
-      "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+      "${PROJECT_SOURCE_DIR}/src/*FreeBSD.cpp"
+      "${PROJECT_SOURCE_DIR}/src/*CommonBSD.cpp"
+      "${PROJECT_SOURCE_DIR}/src/network/*BSD.cpp"
+      "${PROJECT_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
   file(GLOB SYSINFO_SRC
-      "${CMAKE_SOURCE_DIR}/src/*OpenBSD.cpp"
-      "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+      "${PROJECT_SOURCE_DIR}/src/*OpenBSD.cpp"
+      "${PROJECT_SOURCE_DIR}/src/*CommonBSD.cpp"
+      "${PROJECT_SOURCE_DIR}/src/network/*BSD.cpp"
+      "${PROJECT_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
   file(GLOB SYSINFO_SRC
-      "${CMAKE_SOURCE_DIR}/src/UtilsWrapperUnix.cpp"
-      "${CMAKE_SOURCE_DIR}/src/*Solaris.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/*Solaris.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/networkSolarisHelper.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/*Solaris.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+      "${PROJECT_SOURCE_DIR}/src/UtilsWrapperUnix.cpp"
+      "${PROJECT_SOURCE_DIR}/src/*Solaris.cpp"
+      "${PROJECT_SOURCE_DIR}/src/packages/*Solaris.cpp"
+      "${PROJECT_SOURCE_DIR}/src/network/networkSolarisHelper.cpp"
+      "${PROJECT_SOURCE_DIR}/src/network/*Solaris.cpp"
+      "${PROJECT_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 else()
   file(GLOB SYSINFO_SRC
-      "${CMAKE_SOURCE_DIR}/src/*Unix.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+      "${PROJECT_SOURCE_DIR}/src/*Unix.cpp"
+      "${PROJECT_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 
 add_library(sysinfo SHARED
     ${SYSINFO_SRC}
-    ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp )
+    ${PROJECT_SOURCE_DIR}/src/sysInfo.cpp )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(sysinfo psapi iphlpapi ws2_32)
@@ -162,7 +107,9 @@ if(APPLE)
     $<TARGET_FILE:sysinfo>)
 endif(APPLE)
 
-if(UNIT_TEST)
+add_subdirectory(testtool)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_link_libraries(sysinfo -fprofile-arcs)
   else()
@@ -174,5 +121,4 @@ else()
   if(FSANITIZE)
       target_link_libraries(sysinfo gcov)
   endif(FSANITIZE)
-  add_subdirectory(testtool)
-endif(UNIT_TEST)
+endif()

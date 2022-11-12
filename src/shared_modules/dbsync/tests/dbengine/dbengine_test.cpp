@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <string>
+#include "json.hpp"
 #include "dbengine_test.h"
 #include "sqlite_dbengine.h"
 #include "../mocks/sqlitewrapper_mock.h"

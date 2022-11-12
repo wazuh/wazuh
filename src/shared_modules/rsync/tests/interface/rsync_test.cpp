@@ -12,6 +12,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include "json.hpp"
 #include "rsync_test.h"
 #include "rsync.h"
 #include "rsync.hpp"
