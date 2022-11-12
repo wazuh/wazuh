@@ -29,4 +29,5 @@ check:
 
 parse:
   logpar:
+    - event.original: "[<~pedro1/timestamp/APACHE_ERROR>]"
     - event.original: "[<~pedro/timestamp/APACHE_ERROR>]"
