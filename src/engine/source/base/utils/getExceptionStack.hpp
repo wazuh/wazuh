@@ -17,7 +17,8 @@ namespace utils
 inline std::string getExceptionStack(const std::exception& e, int level = 0)
 {
     std::stringstream ss;
-    ss << std::string(level, ' ') << "exception: " << e.what() << '\n';
+    // TODO: is the level necessary?
+    ss << std::string(level, ' ') << e.what();
     try
     {
         std::rethrow_if_nested(e);
