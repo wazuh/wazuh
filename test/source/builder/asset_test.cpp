@@ -15,6 +15,13 @@ using namespace base;
 
 constexpr auto outputPath = "/tmp/file";
 
+auto initTest()
+{
+    auto registry = std::make_shared<Registry>();
+    registerBuilders(registry);
+    return registry;
+}
+
 class AssetTest : public ::testing::Test
 {
     void SetUp() override
@@ -23,7 +30,6 @@ class AssetTest : public ::testing::Test
         {
             std::filesystem::remove(outputPath);
         }
-        registerBuilders();
     }
 
     void TearDown() override
@@ -32,7 +38,6 @@ class AssetTest : public ::testing::Test
         {
             std::filesystem::remove(outputPath);
         }
-        Registry::clear();
     }
 };
 
@@ -54,11 +59,14 @@ TEST_F(AssetTest, ConstructorSimple)
 
 TEST_F(AssetTest, JsonNotObject)
 {
-    ASSERT_THROW(Asset(json::Json {"[]"}, Asset::Type::DECODER), std::runtime_error);
+    auto registry = initTest();
+    ASSERT_THROW(Asset(json::Json {"[]"}, Asset::Type::DECODER, registry),
+                 std::runtime_error);
 }
 
 TEST_F(AssetTest, JsonNoName)
 {
+    auto registry = initTest();
     auto asset = R"({
         "check": [
             {"decoder": 1}
@@ -71,7 +79,8 @@ TEST_F(AssetTest, JsonNoName)
             }
         ]
     })";
-    ASSERT_THROW(Asset(json::Json {asset}, Asset::Type::DECODER), std::runtime_error);
+    ASSERT_THROW(Asset(json::Json {asset}, Asset::Type::DECODER, registry),
+                 std::runtime_error);
     asset = R"({
         "name": 12,
         "check": [
@@ -85,11 +94,13 @@ TEST_F(AssetTest, JsonNoName)
             }
         ]
     })";
-    ASSERT_THROW(Asset(json::Json {asset}, Asset::Type::DECODER), std::runtime_error);
+    ASSERT_THROW(Asset(json::Json {asset}, Asset::Type::DECODER, registry),
+                 std::runtime_error);
 }
 
 TEST_F(AssetTest, BuildDecoder)
 {
+    auto registry = initTest();
     auto assetJson = R"({
         "name": "decoder1",
         "check": [
@@ -103,8 +114,8 @@ TEST_F(AssetTest, BuildDecoder)
             }
         ]
     })";
-    ASSERT_NO_THROW(Asset(json::Json {assetJson}, Asset::Type::DECODER));
-    auto asset = Asset(json::Json {assetJson}, Asset::Type::DECODER);
+    ASSERT_NO_THROW(Asset(json::Json {assetJson}, Asset::Type::DECODER, registry));
+    auto asset = Asset(json::Json {assetJson}, Asset::Type::DECODER, registry);
     ASSERT_EQ(asset.m_name, "decoder1");
     ASSERT_EQ(asset.m_type, Asset::Type::DECODER);
 
@@ -119,6 +130,7 @@ TEST_F(AssetTest, BuildDecoder)
 
 TEST_F(AssetTest, BuildRule)
 {
+    auto registry = initTest();
     auto assetJson = R"({
         "name": "rule1",
         "sources": ["ruleParent"],
@@ -133,8 +145,8 @@ TEST_F(AssetTest, BuildRule)
             }
         ]
     })";
-    ASSERT_NO_THROW(Asset(json::Json {assetJson}, Asset::Type::RULE));
-    auto asset = Asset(json::Json {assetJson}, Asset::Type::RULE);
+    ASSERT_NO_THROW(Asset(json::Json {assetJson}, Asset::Type::RULE, registry));
+    auto asset = Asset(json::Json {assetJson}, Asset::Type::RULE, registry);
     ASSERT_EQ(asset.m_name, "rule1");
     ASSERT_EQ(asset.m_type, Asset::Type::RULE);
     ASSERT_EQ(asset.m_parents.size(), 1);
@@ -151,6 +163,7 @@ TEST_F(AssetTest, BuildRule)
 
 TEST_F(AssetTest, BuildOutput)
 {
+    auto registry = initTest();
     auto assetJson = R"({
        "name": "output1",
         "check": [
@@ -164,8 +177,8 @@ TEST_F(AssetTest, BuildOutput)
             }
         ]
     })";
-    ASSERT_NO_THROW(Asset(json::Json {assetJson}, Asset::Type::OUTPUT));
-    auto asset = Asset(json::Json {assetJson}, Asset::Type::OUTPUT);
+    ASSERT_NO_THROW(Asset(json::Json {assetJson}, Asset::Type::OUTPUT, registry));
+    auto asset = Asset(json::Json {assetJson}, Asset::Type::OUTPUT, registry);
     ASSERT_EQ(asset.m_name, "output1");
     ASSERT_EQ(asset.m_type, Asset::Type::OUTPUT);
 
@@ -180,6 +193,7 @@ TEST_F(AssetTest, BuildOutput)
 
 TEST_F(AssetTest, BuildFilter)
 {
+    auto registry = initTest();
     auto assetJson = R"({
         "name": "filter1",
         "after": [
@@ -189,8 +203,8 @@ TEST_F(AssetTest, BuildFilter)
             {"filter": 1}
         ]
     })";
-    ASSERT_NO_THROW(Asset(json::Json {assetJson}, Asset::Type::FILTER));
-    auto asset = Asset(json::Json {assetJson}, Asset::Type::FILTER);
+    ASSERT_NO_THROW(Asset(json::Json {assetJson}, Asset::Type::FILTER, registry));
+    auto asset = Asset(json::Json {assetJson}, Asset::Type::FILTER, registry);
     ASSERT_EQ(asset.m_name, "filter1");
     ASSERT_EQ(asset.m_type, Asset::Type::FILTER);
     ASSERT_EQ(asset.m_parents.size(), 1);
