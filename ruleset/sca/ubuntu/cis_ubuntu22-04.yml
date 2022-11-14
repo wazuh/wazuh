@@ -3326,7 +3326,7 @@ checks:
     condition: all
     rules:
       - "c:sshd -T -> r:^loglevel VERBOSE|^loglevel INFO"
-      - "not f:/etc/ssh/sshd_config -> !r:^\\s*\\t*loglevel\\s*\\t*VERBOSE|^\\s*\\t*loglevel\\s*\\t*INFO"
+      - "not f:/etc/ssh/sshd_config -> !r:^\\s*\\t*loglevel\\s*\\t*VERBOSE"
 
   # 5.2.6 Ensure SSH PAM is enabled (Automated)
   - id: 28637
