@@ -48,7 +48,6 @@ relationships:
         - syscheck_read
         - syscollector_read
         - vulnerability_read
-        - vulnerability_run
       rule_ids: []
 
     users_admin:
