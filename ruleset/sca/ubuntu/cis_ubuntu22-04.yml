@@ -4057,7 +4057,7 @@ checks:
     title: "Ensure password hashing algorithm is up to date with the latest standards."
     description: "The commands below change password encryption to yescrypt. All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The yescrypt algorithm provides much stronger hashing than previous available algorithms, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: these change only apply to accounts configured on the local system."
-    remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. PAM: Edit the /etc/pam.d/common-password file and ensure that no hashing algorithm option for pam_unix.so is set:: password [success=1 default=ignore] pam_unix.so obscure use_authtok try_first_pass remember=5. Login definitions: Edit /etc/login.defs and ensure that ENCRYPT_METHOD is set to yescrypt."
+    remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. PAM: Edit the /etc/pam.d/common-password file and ensure that no hashing algorithm option for pam_unix.so is set: password [success=1 default=ignore] pam_unix.so obscure use_authtok try_first_pass remember=5. Login definitions: Edit /etc/login.defs and ensure that ENCRYPT_METHOD is set to yescrypt."
     compliance:
       - cis: ["5.4.4"]
       - cis_csc_v7: ["16.4"]
