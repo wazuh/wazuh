@@ -5,6 +5,7 @@
 #include <api/wazuhRequest.hpp>
 #include <api/wazuhResponse.hpp>
 #include <utils/stringUtils.hpp>
+#include <logging/logging.hpp>
 
 #include "apiclnt/connection.hpp"
 
@@ -20,7 +21,7 @@ void setEnv(const std::string& socketPath, const std::string& target)
     // target must be start with a '/'
     if (target.empty())
     {
-        std::cerr << "Engine API Environment: Invalid empty target." << std::endl;
+        WAZUH_LOG_ERROR("Engine API Environment: Invalid empty target.");
         return;
     }
 
@@ -32,33 +33,40 @@ void setEnv(const std::string& socketPath, const std::string& target)
 
     auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, "api", data);
 
+    WAZUH_LOG_DEBUG(
+        "Engine API Environment: \"{}\" method: Request: \"{}\".", __func__, req.toStr());
+
     // Send the request
     json::Json response {};
     std::string responseStr {};
     try
     {
         responseStr = apiclnt::connection(socketPath, req.toStr());
+
+        WAZUH_LOG_DEBUG("Engine API Environment: \"{}\" method: Response: \"{}\".",
+                        __func__,
+                        responseStr);
+
         response = json::Json {responseStr.c_str()};
     }
     catch (const std::exception& e)
     {
-        std::cerr << fmt::format("Engine API Environment: An error occurred while "
-                                 "sending the request \"{}\": {}",
-                                 req.toStr(),
-                                 e.what())
-                  << std::endl;
+        WAZUH_LOG_ERROR("Engine API Environment: An error occurred while sending a "
+                        "request: {}",
+                        e.what()); // Doesn't have a closing dot as the lower message does
         return;
     }
 
     if (response.getInt("/error").value_or(-1) != 0)
     {
-        std::cerr << fmt::format("Engine API Environment: Malformed response, no return "
-                                 "code (\"error\") field found: \"{}\".",
-                                 responseStr) << std::endl;
+        WAZUH_LOG_ERROR("Engine API Environment: Malformed response, no return code "
+                        "(\"error\") field found.");
         return;
     }
 
-    std::cout << response.getString("/message").value_or("OK");
+    const auto msg = response.getString("/message").value_or("OK");
+    WAZUH_LOG_INFO("Engine API Environment: Request's response: {}.", msg);
+    std::cout << msg << std::endl;
 }
 
 void getEnv(const std::string& socketPath, const std::string& target)
@@ -71,49 +79,58 @@ void getEnv(const std::string& socketPath, const std::string& target)
 
     auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, "api", data);
 
+    WAZUH_LOG_DEBUG(
+        "Engine API Environment: \"{}\" method: Request: \"{}\".", __func__, req.toStr());
+
     // Send the request
     json::Json response {};
     std::string responseStr {};
     try
     {
         responseStr = apiclnt::connection(socketPath, req.toStr());
+
+        WAZUH_LOG_DEBUG("Engine API Environment: \"{}\" method: Response: \"{}\".",
+                        __func__,
+                        responseStr);
+
         response = json::Json {responseStr.c_str()};
     }
     catch (const std::exception& e)
     {
-        std::cerr << fmt::format("Engine API Environment: An error occurred while "
-                                 "sending the request \"{}\": {}",
-                                 req.toStr(),
-                                 e.what())
-                  << std::endl;
+        WAZUH_LOG_ERROR("Engine API Environment: An error occurred while sending a "
+                        "request: {}",
+                        e.what()); // Doesn't have a closing dot as the lower message does
         return;
     }
 
     if (response.getInt("/error").value_or(-1) != 0)
     {
-        std::cerr << fmt::format("Engine API Environment: Malformed response, no return "
-                                 "code (\"error\") field found: \"{}\".",
-                                 responseStr) << std::endl;
+        WAZUH_LOG_ERROR("Engine API Environment: Malformed response, no return code "
+                        "(\"error\") field found.");
         return;
     }
 
     auto envs = response.getArray("/data");
     if (!envs)
     {
-        std::cerr << fmt::format("Engine API Environment: Malformed response, no return "
-                                 "code (\"data\") field found: \"{}\".",
-                                 responseStr) << std::endl;
+        WAZUH_LOG_ERROR(
+            "Engine API Environment: Malformed response, no \"data\" field found.");
         return;
     }
     else if (envs.value().empty())
     {
-        std::cout << "There are no active environments." << std::endl;
+        WAZUH_LOG_ERROR("Engine API Environment: There are no active environments.");
         return;
     }
     for (const auto& env : *envs)
     {
-        std::cout << "Active environment: "
-                  << env.getString().value_or("** Unexpected Error **") << std::endl;
+        if (env.isString())
+        {
+            const auto msg =
+                fmt::format("\"{}\" environment is active", env.getString().value());
+            WAZUH_LOG_INFO("Engine API Environment: {}.", msg);
+            std::cout << msg << std::endl;
+        }
     }
 }
 
@@ -123,8 +140,8 @@ void deleteEnv(const std::string& socketPath, const std::string& target)
     // target must be start with a '/'
     if (target.empty())
     {
-        std::cerr << "Engine API Environment: Delete environment: Target cannot be empty."
-                  << std::endl;
+        WAZUH_LOG_ERROR("Engine API Environment: An error occurred while trying to "
+                        "delete an environment: Target cannot be empty.");
     }
 
     // Create a request
@@ -135,33 +152,40 @@ void deleteEnv(const std::string& socketPath, const std::string& target)
 
     auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, "api", data);
 
+    WAZUH_LOG_DEBUG(
+        "Engine API Environment: \"{}\" method: Request: \"{}\".", __func__, req.toStr());
+
     // Send the request
     json::Json response {};
     std::string responseStr {};
     try
     {
         responseStr = apiclnt::connection(socketPath, req.toStr());
+
+        WAZUH_LOG_DEBUG("Engine API Environment: \"{}\" method: Response: \"{}\".",
+                        __func__,
+                        responseStr);
+
         response = json::Json {responseStr.c_str()};
     }
     catch (const std::exception& e)
     {
-        std::cerr << fmt::format("Engine API Environment: An error occurred while "
-                                 "sending the request \"{}\": {}",
-                                 req.toStr(),
-                                 e.what())
-                  << std::endl;
+        WAZUH_LOG_ERROR("Engine API Environment: An error occurred while sending a "
+                        "request: {}",
+                        e.what()); // Doesn't have a closing dot as the lower message does
         return;
     }
 
     if (response.getInt("/error").value_or(-1) != 0)
     {
-        std::cerr << fmt::format("Engine API Environment: Malformed response, no return "
-                                 "code (\"error\") field found: \"{}\".",
-                                 responseStr) << std::endl;
+        WAZUH_LOG_ERROR("Engine API Environment: Malformed response, no return code "
+                        "(\"error\") field found.");
         return;
     }
 
-    std::cout << response.getString("/message").value_or("OK");
+    const auto msg = response.getString("/message").value_or("OK");
+    WAZUH_LOG_INFO("Engine API Environment: Request's response: {}.", msg);
+    std::cout << msg << std::endl;
 }
 
 } // namespace
@@ -170,6 +194,10 @@ void environment(const std::string& socketPath,
                  const std::string& action,
                  const std::string& target)
 {
+    // TODO: logging level should be configured for every command
+    logging::LoggingConfig logConfig;
+    logConfig.logLevel = logging::LogLevel::Debug;
+    logging::loggingInit(logConfig);
 
     api::WazuhRequest request {};
     if (action == "set")
@@ -186,9 +214,8 @@ void environment(const std::string& socketPath,
     }
     else
     {
-        std::cerr << "Engine API Environment: Invalid action, expected \"set\" or "
-                     "\"get\" but got \""
-                  << action << "\"." << std::endl;
+        WAZUH_LOG_ERROR("Engine API Environment: Invalid action \"{}\", for more "
+                        "information use --help.");
         return;
     }
 

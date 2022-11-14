@@ -127,7 +127,7 @@ void run(const std::string& kvdbPath,
         if (std::holds_alternative<base::Error>(hlpParsers))
         {
             WAZUH_LOG_ERROR("Engine \"run\" command: Configuration file \"{}\" could not "
-                            "be obtained: {}",
+                            "be obtained: {}.",
                             hlpConfigFileName.fullName(),
                             std::get<base::Error>(hlpParsers).message);
 
@@ -157,7 +157,7 @@ void run(const std::string& kvdbPath,
         else
         {
             WAZUH_LOG_WARN("Engine \"run\" command: An error occurred while creating the "
-                           "default environment \"{}\": {}",
+                           "default environment \"{}\": {}.",
                            environment,
                            error.value().message);
         }
@@ -166,7 +166,7 @@ void run(const std::string& kvdbPath,
     {
         WAZUH_LOG_ERROR(
             "Engine \"run\" command: An error occurred while initializing the "
-            "engine modules: {}",
+            "engine modules: {}.",
             utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
@@ -180,7 +180,7 @@ void run(const std::string& kvdbPath,
     catch (const std::exception& e)
     {
         WAZUH_LOG_ERROR(
-            "Engine \"run\" command: An error occurred while executing the server: {}",
+            "Engine \"run\" command: An error occurred while executing the server: {}.",
             utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;

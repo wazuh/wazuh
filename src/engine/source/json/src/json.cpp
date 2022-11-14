@@ -7,13 +7,12 @@
 #include "rapidjson/schema.h"
 
 #include <fmt/format.h>
+#include <logging/logging.hpp>
 
 namespace
 {
-constexpr auto INVALID_POINTER_TYPE_MSG =
-    "Engine JSON: \"{}\" method: Invalid pointer path \"{}\".";
-constexpr auto PATH_NOT_FOUND_MSG = "Engine JSON: \"{}\" method: Path \"{}\" not found.";
-
+constexpr auto INVALID_POINTER_TYPE_MSG = "Invalid pointer path \"{}\"";
+constexpr auto PATH_NOT_FOUND_MSG = "Path \"{}\" not found";
 }
 
 namespace json
@@ -47,17 +46,22 @@ Json::Json(const char* json)
     rapidjson::ParseResult result = m_document.Parse(json);
     if (!result)
     {
-        throw std::runtime_error(
-            fmt::format("Engine JSON: JSON document could not be parsed: {} at {}.",
-                        rapidjson::GetParseError_En(result.Code()),
-                        result.Offset()));
+        WAZUH_LOG_DEBUG("Engine JSON: \"{}\" method: Parsing error at {}.",
+                        __func__,
+                        result.Offset());
+        throw std::runtime_error(fmt::format("JSON document could not be parsed: {}",
+                                             rapidjson::GetParseError_En(result.Code())));
     }
 
     auto error = checkDuplicateKeys();
     if (error)
     {
-        throw std::runtime_error(fmt::format(
-            "Engine JSON: JSON document has duplicated keys: {}.", error->message));
+        WAZUH_LOG_DEBUG(
+            "Engine JSON: \"{}\" method: JSON document has duplicated keys: {}.",
+            __func__,
+            error->message);
+        throw std::runtime_error(
+            fmt::format("JSON document has duplicated keys: {}", error->message));
     }
 }
 
@@ -184,8 +188,8 @@ void Json::set(std::string_view ptrPath, const Json& value)
     }
     else
     {
-        throw std::runtime_error(fmt::format(
-            "Engine JSON: \"{}\" method: Invalid Pointer Path \"{}\".", ptrPath));
+        WAZUH_LOG_DEBUG("\"{}\" method: Invalid Pointer Path \"{}\".", __func__, ptrPath);
+        throw std::runtime_error(fmt::format("Invalid Pointer Path \"{}\".", ptrPath));
     }
 }
 
@@ -416,6 +420,11 @@ size_t Json::size(std::string_view path) const
 {
     const auto pp = rapidjson::Pointer(path.data());
 
+    WAZUH_LOG_DEBUG("Engine JSON: \"{}\" method: Field \"{}\" type: \"{}\".",
+                    __func__,
+                    path,
+                    typeName(path));
+
     if (pp.IsValid())
     {
         const auto* value = pp.Get(m_document);
@@ -434,10 +443,8 @@ size_t Json::size(std::string_view path) const
                 // TODO: create tests
                 return value->GetStringLength();
             }
-            throw std::runtime_error(fmt::format(
-                "Engine JSON: \"{}\" method: Value \"{}\" size is not measurable.",
-                __func__,
-                path));
+            throw std::runtime_error(
+                fmt::format("Size of field \"{}\" is not measurable.", path));
         }
 
         throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));

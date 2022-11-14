@@ -318,7 +318,7 @@ void test(const std::string& kvdbPath,
         catch (const std::exception& e)
         {
             WAZUH_LOG_ERROR(
-                "Engine \"test\" command: An error ocurred while parsing a message: {}",
+                "Engine \"test\" command: An error occurred while parsing a message: {}",
                 e.what());
         }
     }
