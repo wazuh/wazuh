@@ -9,8 +9,6 @@ int main(int argc, char **argv)
     logConfig.logLevel = logging::LogLevel::Off;
     logging::loggingInit(logConfig);
 
-    KVDBManager::init("/tmp/");
-
     benchmark::Initialize(&argc, argv);
     if (benchmark::ReportUnrecognizedArguments(argc, argv))
         return 1;

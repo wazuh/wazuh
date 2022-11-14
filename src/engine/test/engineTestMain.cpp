@@ -5,8 +5,6 @@
 
 int main(int argc, char** argv)
 {
-    KVDBManager::init("/tmp/");
-
     logging::LoggingConfig logConfig;
     logConfig.logLevel = logging::LogLevel::Off;
     logging::loggingInit(logConfig);

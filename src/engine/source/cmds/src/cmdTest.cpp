@@ -25,13 +25,6 @@ namespace
 std::atomic<bool> gs_doRun = true;
 cmd::StackExecutor g_exitHanlder {};
 
-void destroy()
-{
-    WAZUH_LOG_INFO("Destroying Engine resources");
-    KVDBManager::get().~KVDBManager();
-    logging::loggingTerm();
-}
-
 void sigint_handler(const int signum)
 {
     gs_doRun = false;
@@ -64,8 +57,8 @@ void test(const std::string& kvdbPath,
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
 
-    KVDBManager::init(kvdbPath);
-    KVDBManager& kvdbManager = KVDBManager::get();
+    auto kvdb = std::make_shared<KVDBManager>(kvdbPath);
+    g_exitHanlder.add([kvdb]() { kvdb->clear(); });
 
     auto fileStore = std::make_shared<store::FileDriver>(fileStorage);
 
@@ -88,7 +81,7 @@ void test(const std::string& kvdbPath,
     auto registry = std::make_shared<builder::internals::Registry>();
     try
     {
-        builder::internals::registerBuilders(registry);
+        builder::internals::registerBuilders(registry, {kvdb});
     }
     catch (const std::exception& e)
     {

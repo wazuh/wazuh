@@ -14,32 +14,14 @@
 #include <utils/baseMacros.hpp>
 #include <utils/stringUtils.hpp>
 
-bool KVDBManager::mInitialized;
-std::filesystem::path KVDBManager::mDbFolder;
-bool KVDBManager::init(const std::filesystem::path& path)
-{
-    WAZUH_ASSERT_MSG(!mInitialized,
-                     "The manager should be initialized only once.");
-    mInitialized = true;
-
-    // TODO Remove this when Engine is integrated in Wazuh installation
-    std::filesystem::create_directories(path);
-    mDbFolder = path;
-
-    return true;
-}
-
-KVDBManager& KVDBManager::get()
-{
-    WAZUH_ASSERT_MSG(mInitialized, "Trying to use an un-initialized manager");
-    static KVDBManager instance;
-    return instance;
-}
-
-KVDBManager::KVDBManager()
+KVDBManager::KVDBManager(const std::filesystem::path& DbFolder)
 {
     // TODO should we read and load all the dbs inside the folder?
     // shouldn't be better to just load the configured ones at start instead?
+
+    // TODO Remove this when Engine is integrated in Wazuh installation
+    std::filesystem::create_directories(DbFolder);
+    mDbFolder = DbFolder;
 
     auto legacyPath = mDbFolder;
     legacyPath.append("legacy");
