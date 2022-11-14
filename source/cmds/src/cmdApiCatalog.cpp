@@ -227,7 +227,7 @@ void singleRequest(const std::string& socketPath,
     catch (const std::exception& e)
     {
         std::cerr
-            << "Engine API Catalog: An error ocurred while  procesing response from API: "
+            << "Engine API Catalog: An error occurred while  procesing response from API: "
             << e.what() << std::endl;
     }
 }
@@ -247,7 +247,7 @@ void loadRuleset(const std::string& socketPath,
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Engine API Catalog: An error ocurred while loading the ruleset: "
+        std::cerr << "Engine API Catalog: An error occurred while loading the ruleset: "
                   << e.what() << std::endl;
         return;
     }
@@ -372,9 +372,8 @@ void catalog(const std::string& socketPath,
             catalog_details::loadRuleset(socketPath, nameStr, path, format, recursive);
             break;
         default:
-            std::cerr << fmt::format(
-                "Engine API Catalog: Action \"{}\" is not supported.", actionStr)
-                      << std::endl;
+            WAZUH_LOG_ERROR(fmt::format(
+                "Engine API Catalog: Action \"{}\" is not supported.", actionStr));
             break;
     }
 }
