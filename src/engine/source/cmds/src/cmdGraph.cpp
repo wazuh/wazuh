@@ -37,8 +37,8 @@ void graph(const std::string& kvdbPath,
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
 
-    KVDBManager::init(kvdbPath);
-    g_exitHanlder.add([]() { KVDBManager::get().clear(); });
+    auto kvdb = std::make_shared<KVDBManager>(kvdbPath);
+    g_exitHanlder.add([kvdb]() { kvdb->clear(); });
 
     auto store = std::make_shared<store::FileDriver>(fileStorage);
     base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
@@ -58,7 +58,7 @@ void graph(const std::string& kvdbPath,
     auto registry = std::make_shared<builder::internals::Registry>();
     try
     {
-        builder::internals::registerBuilders(registry);
+        builder::internals::registerBuilders(registry, {kvdb});
     }
     catch (const std::exception& e)
     {
