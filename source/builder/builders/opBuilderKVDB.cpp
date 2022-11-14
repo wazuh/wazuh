@@ -17,7 +17,9 @@ namespace builder::internals::builders
 using builder::internals::syntax::REFERENCE_ANCHOR;
 using namespace helper::base;
 
-base::Expression KVDBExtract(const std::any& definition, bool merge)
+base::Expression KVDBExtract(const std::any& definition,
+                             bool merge,
+                             std::shared_ptr<KVDBManager> kvdbManager)
 {
     // Extract parameters from any
     auto [targetField, name, raw_parameters] =
@@ -36,12 +38,12 @@ base::Expression KVDBExtract(const std::any& definition, bool merge)
 
     // Get DB
     // TODO: Fix once KVDB is refactored
-    auto kvdb = KVDBManager::get().getDB(dbName);
+    auto kvdb = kvdbManager->getDB(dbName);
     if (!kvdb)
     {
-        KVDBManager::get().addDb(dbName, false);
+        kvdbManager->addDb(dbName, false);
     }
-    kvdb = KVDBManager::get().getDB(dbName);
+    kvdb = kvdbManager->getDB(dbName);
     if (!kvdb)
     {
         const auto msg {fmt::format("[{}] DB isn't available for usage", dbName)};
@@ -132,18 +134,26 @@ base::Expression KVDBExtract(const std::any& definition, bool merge)
 }
 
 // <field>: +kvdb_extract/<DB>/<ref_key>
-base::Expression opBuilderKVDBExtract(const std::any& definition)
+Builder getOpBuilderKVDBExtract(std::shared_ptr<KVDBManager> kvdbManager)
 {
-    return KVDBExtract(definition, false);
+    return [kvdbManager](const std::any& definition)
+    {
+        return KVDBExtract(definition, false, kvdbManager);
+    };
 }
 
 // <field>: +kvdb_extract_merge/<DB>/<ref_key>
-base::Expression opBuilderKVDBExtractMerge(const std::any& definition)
+Builder getOpBuilderKVDBExtractMerge(std::shared_ptr<KVDBManager> kvdbManager)
 {
-    return KVDBExtract(definition, true);
+    return [kvdbManager](const std::any& definition)
+    {
+        return KVDBExtract(definition, true, kvdbManager);
+    };
 }
 
-base::Expression opBuilderKVDBExistanceCheck(const std::any& definition, bool checkExist)
+base::Expression existanceCheck(const std::any& definition,
+                                bool checkExist,
+                                std::shared_ptr<KVDBManager> kvdbManager)
 {
 
     auto [targetField, name, arguments] = extractDefinition(definition);
@@ -156,12 +166,12 @@ base::Expression opBuilderKVDBExistanceCheck(const std::any& definition, bool ch
 
     // Get DB
     // TODO: Fix once KVDB is refactored
-    auto kvdb = KVDBManager::get().getDB(dbName);
+    auto kvdb = kvdbManager->getDB(dbName);
     if (!kvdb)
     {
-        KVDBManager::get().addDb(dbName, false);
+        kvdbManager->addDb(dbName, false);
     }
-    kvdb = KVDBManager::get().getDB(dbName);
+    kvdb = kvdbManager->getDB(dbName);
     if (!kvdb)
     {
         const auto msg {fmt::format("[{}] DB isn't available for usage", dbName)};
@@ -207,14 +217,20 @@ base::Expression opBuilderKVDBExistanceCheck(const std::any& definition, bool ch
 }
 
 // <field>: +kvdb_match/<DB>
-base::Expression opBuilderKVDBMatch(const std::any& definition)
+Builder getOpBuilderKVDBMatch(std::shared_ptr<KVDBManager> kvdbManager)
 {
-    return opBuilderKVDBExistanceCheck(definition, true);
+    return [kvdbManager](const std::any& definition)
+    {
+        return existanceCheck(definition, true, kvdbManager);
+    };
 }
 
 // <field>: +kvdb_not_match/<DB>
-base::Expression opBuilderKVDBNotMatch(const std::any& definition)
+Builder getOpBuilderKVDBNotMatch(std::shared_ptr<KVDBManager> kvdbManager)
 {
-    return opBuilderKVDBExistanceCheck(definition, false);
+    return [kvdbManager](const std::any& definition)
+    {
+        return existanceCheck(definition, false, kvdbManager);
+    };
 }
 } // namespace builder::internals::builders
