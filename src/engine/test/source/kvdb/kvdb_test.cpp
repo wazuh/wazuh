@@ -41,35 +41,29 @@ class KVDBTest : public ::testing::Test
 {
 
 protected:
-    KVDBManager& kvdbManager = KVDBManager::get();
-    virtual void SetUp()
-    {
-        kvdbManager.addDb(kTestDBName);
-    }
+    std::shared_ptr<KVDBManager> kvdbManager = std::make_shared<KVDBManager>("/tmp/");
+    virtual void SetUp() { kvdbManager->addDb(kTestDBName); }
 
-    virtual void TearDown()
-    {
-        kvdbManager.deleteDB(kTestDBName);
-    }
+    virtual void TearDown() { kvdbManager->deleteDB(kTestDBName); }
 };
 
 TEST_F(KVDBTest, CreateDeleteKvdbFile)
 {
-    auto ret = kvdbManager.addDb("NEW_DB");
+    auto ret = kvdbManager->addDb("NEW_DB");
     ASSERT_TRUE(ret);
-    auto newKvdb = kvdbManager.getDB("NEW_DB");
+    auto newKvdb = kvdbManager->getDB("NEW_DB");
     ASSERT_EQ(newKvdb->getName(), "NEW_DB");
     ASSERT_TRUE(newKvdb->isReady());
 
-    kvdbManager.deleteDB("NEW_DB");
-    auto deletedKvdb = kvdbManager.getDB("NEW_DB");
+    kvdbManager->deleteDB("NEW_DB");
+    auto deletedKvdb = kvdbManager->getDB("NEW_DB");
     ASSERT_EQ(deletedKvdb, nullptr);
 }
 
 TEST_F(KVDBTest, CreateDeleteColumns)
 {
     const std::string COLUMN_NAME = "NEW_COLUMN";
-    auto kvdb = kvdbManager.getDB(kTestDBName);
+    auto kvdb = kvdbManager->getDB(kTestDBName);
     bool ret = kvdb->createColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
     ret = kvdb->deleteColumn(COLUMN_NAME);
@@ -85,7 +79,7 @@ TEST_F(KVDBTest, ReadWrite)
     std::string valueRead;
     bool ret;
 
-    auto kvdb = kvdbManager.getDB(kTestDBName);
+    auto kvdb = kvdbManager->getDB(kTestDBName);
 
     ret = kvdb->write(KEY, VALUE);
     ASSERT_TRUE(ret);
@@ -120,7 +114,7 @@ TEST_F(KVDBTest, KeyOnlyWrite)
     // TODO Update FH tests too
     const std::string KEY = "dummy_key";
     bool ret;
-    auto kvdb = kvdbManager.getDB(kTestDBName);
+    auto kvdb = kvdbManager->getDB(kTestDBName);
 
     ret = kvdb->hasKey(KEY);
     ASSERT_FALSE(ret);
@@ -138,7 +132,7 @@ TEST_F(KVDBTest, ReadWriteColumn)
     std::string valueRead;
     bool ret;
 
-    auto kvdb = kvdbManager.getDB(kTestDBName);
+    auto kvdb = kvdbManager->getDB(kTestDBName);
 
     ret = kvdb->createColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
@@ -152,15 +146,14 @@ TEST_F(KVDBTest, ReadWriteColumn)
 
 TEST_F(KVDBTest, Transaction_ok)
 {
-    std::vector<std::pair<std::string, std::string>> vInput = {
-        {"key1", "value1"},
-        {"key2", "value2"},
-        {"key3", "value3"},
-        {"key4", "value4"},
-        {"key5", "value5"}};
+    std::vector<std::pair<std::string, std::string>> vInput = {{"key1", "value1"},
+                                                               {"key2", "value2"},
+                                                               {"key3", "value3"},
+                                                               {"key4", "value4"},
+                                                               {"key5", "value5"}};
     bool ret;
 
-    auto kvdb = kvdbManager.getDB(kTestDBName);
+    auto kvdb = kvdbManager->getDB(kTestDBName);
     ret = kvdb->writeToTransaction(vInput);
     ASSERT_TRUE(ret);
     for (auto pair : vInput)
@@ -173,7 +166,7 @@ TEST_F(KVDBTest, Transaction_ok)
 TEST_F(KVDBTest, Transaction_invalid_input)
 {
     bool ret;
-    auto kvdb = kvdbManager.getDB(kTestDBName);
+    auto kvdb = kvdbManager->getDB(kTestDBName);
 
     // Empty input
     std::vector<std::pair<std::string, std::string>> vEmptyInput = {};
@@ -181,14 +174,13 @@ TEST_F(KVDBTest, Transaction_invalid_input)
     ASSERT_FALSE(ret);
 
     // Invalid Column name
-    std::vector<std::pair<std::string, std::string>> vInput = {
-        {"key1", "value1"}};
+    std::vector<std::pair<std::string, std::string>> vInput = {{"key1", "value1"}};
     ret = kvdb->writeToTransaction(vInput, "InexistentColumn");
     ASSERT_FALSE(ret);
 
     // Partial input
-    std::vector<std::pair<std::string, std::string>> vPartialInput = {
-        {"", "value1"}, {"key2", "value2"}};
+    std::vector<std::pair<std::string, std::string>> vPartialInput = {{"", "value1"},
+                                                                      {"key2", "value2"}};
     ret = kvdb->writeToTransaction(vPartialInput);
     ASSERT_TRUE(ret);
     std::string valueRead = kvdb->read(vPartialInput[1].first);
@@ -208,7 +200,7 @@ TEST_F(KVDBTest, CleanColumn)
     std::string valueRead;
     bool ret;
 
-    auto kvdb = kvdbManager.getDB(kTestDBName);
+    auto kvdb = kvdbManager->getDB(kTestDBName);
 
     // default column
     ret = kvdb->write(KEY, VALUE);
@@ -236,7 +228,7 @@ TEST_F(KVDBTest, CleanColumn)
 TEST_F(KVDBTest, ValueKeyLength)
 {
     const std::string KEY = "dummy_key";
-    auto kvdb = kvdbManager.getDB(kTestDBName);
+    auto kvdb = kvdbManager->getDB(kTestDBName);
     std::string valueRead;
     std::string valueWrite;
     bool ret;
@@ -271,15 +263,14 @@ TEST_F(KVDBTest, ManagerConcurrency)
     std::thread create {[&]
                         {
                             auto ret = pthread_barrier_wait(&barrier);
-                            EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret ||
-                                        0 == ret);
-                            auto& m = KVDBManager::get();
+                            EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret || 0 == ret);
+                            auto m = kvdbManager;
                             for (int i = 0; i < kMaxTestIterations; ++i)
                             {
-                                auto db = m.getDB(dbName);
+                                auto db = m->getDB(dbName);
                                 if (db && !db->isValid())
                                 {
-                                    m.addDb(dbName);
+                                    m->addDb(dbName);
                                 }
                             }
                         }};
@@ -287,27 +278,25 @@ TEST_F(KVDBTest, ManagerConcurrency)
     std::thread read {[&]
                       {
                           auto ret = pthread_barrier_wait(&barrier);
-                          EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret ||
-                                      0 == ret);
-                          auto& m = KVDBManager::get();
+                          EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret || 0 == ret);
+                          auto m = kvdbManager;
                           for (int i = 0; i < kMaxTestIterations; ++i)
                           {
-                              auto db = m.getDB(dbName);
+                              auto db = m->getDB(dbName);
                           }
                       }};
 
     std::thread del {[&]
                      {
                          auto ret = pthread_barrier_wait(&barrier);
-                         EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret ||
-                                     0 == ret);
-                         auto& m = KVDBManager::get();
+                         EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret || 0 == ret);
+                         auto m = kvdbManager;
                          for (int i = 0; i < kMaxTestIterations; ++i)
                          {
-                             auto db = m.getDB(dbName);
+                             auto db = m->getDB(dbName);
                              if (db && db->isValid())
                              {
-                                 m.deleteDB(dbName);
+                                 m->deleteDB(dbName);
                              }
                          }
                      }};
@@ -329,40 +318,37 @@ TEST_F(KVDBTest, KVDBConcurrency)
     std::mt19937 gen(rd());
     std::uniform_int_distribution distrib(0, 100);
 
-    KVDBManager::get().addDb(dbName);
+    kvdbManager->addDb(dbName);
 
-    std::thread create {
-        [&]
-        {
-            auto ret = pthread_barrier_wait(&barrier);
-            EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret || 0 == ret);
-            auto db = KVDBManager::get().getDB(dbName);
-            for (int i = 0; i < kMaxTestIterations; ++i)
-            {
-                db->createColumn(fmt::format("colname.{}", distrib(gen)));
-            }
-        }};
+    std::thread create {[&]
+                        {
+                            auto ret = pthread_barrier_wait(&barrier);
+                            EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret || 0 == ret);
+                            auto db = kvdbManager->getDB(dbName);
+                            for (int i = 0; i < kMaxTestIterations; ++i)
+                            {
+                                db->createColumn(fmt::format("colname.{}", distrib(gen)));
+                            }
+                        }};
 
-    std::thread write {
-        [&]
-        {
-            auto ret = pthread_barrier_wait(&barrier);
-            EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret || 0 == ret);
-            auto db = KVDBManager::get().getDB(dbName);
-            for (int i = 0; i < kMaxTestIterations; ++i)
-            {
-                db->write(fmt::format("key{}", distrib(gen)),
-                          "value",
-                          fmt::format("colname.{}", distrib(gen)));
-            }
-        }};
+    std::thread write {[&]
+                       {
+                           auto ret = pthread_barrier_wait(&barrier);
+                           EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret || 0 == ret);
+                           auto db = kvdbManager->getDB(dbName);
+                           for (int i = 0; i < kMaxTestIterations; ++i)
+                           {
+                               db->write(fmt::format("key{}", distrib(gen)),
+                                         "value",
+                                         fmt::format("colname.{}", distrib(gen)));
+                           }
+                       }};
 
     std::thread read {[&]
                       {
                           auto ret = pthread_barrier_wait(&barrier);
-                          EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret ||
-                                      0 == ret);
-                          auto db = KVDBManager::get().getDB(dbName);
+                          EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret || 0 == ret);
+                          auto db = kvdbManager->getDB(dbName);
                           for (int i = 0; i < kMaxTestIterations; ++i)
                           {
                               db->read(fmt::format("key{}", distrib(gen)),
@@ -370,22 +356,21 @@ TEST_F(KVDBTest, KVDBConcurrency)
                           }
                       }};
 
-    std::thread del {
-        [&]
-        {
-            auto ret = pthread_barrier_wait(&barrier);
-            EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret || 0 == ret);
-            auto db = KVDBManager::get().getDB(dbName);
-            for (int i = 0; i < kMaxTestIterations; ++i)
-            {
-                db->deleteColumn(fmt::format("colname.{}", distrib(gen)));
-            }
-        }};
+    std::thread del {[&]
+                     {
+                         auto ret = pthread_barrier_wait(&barrier);
+                         EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret || 0 == ret);
+                         auto db = kvdbManager->getDB(dbName);
+                         for (int i = 0; i < kMaxTestIterations; ++i)
+                         {
+                             db->deleteColumn(fmt::format("colname.{}", distrib(gen)));
+                         }
+                     }};
 
     create.join();
     write.join();
     read.join();
     del.join();
-    KVDBManager::get().deleteDB(dbName);
+    kvdbManager->deleteDB(dbName);
 }
 } // namespace

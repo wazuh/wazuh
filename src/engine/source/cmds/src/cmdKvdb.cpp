@@ -34,10 +34,10 @@ void kvdb(const std::string& kvdbPath,
     logging::LoggingConfig logConfig;
     logConfig.logLevel = logging::LogLevel::Debug;
     logging::loggingInit(logConfig);
-
+    std::shared_ptr<KVDBManager> kvdbManager;
     try
     {
-        KVDBManager::init(kvdbPath);
+        kvdbManager = std::make_shared<KVDBManager>(kvdbPath);
     }
     catch (const std::exception& e)
     {
@@ -85,9 +85,8 @@ void kvdb(const std::string& kvdbPath,
                 return;
             }
             auto entries = jKv.getObject();
-            KVDBManager& kvdbManager = KVDBManager::get();
-            kvdbManager.addDb(kvdbName);
-            auto kvdbHandle = kvdbManager.getDB(kvdbName);
+            kvdbManager->addDb(kvdbName);
+            auto kvdbHandle = kvdbManager->getDB(kvdbName);
             for (const auto& [key, value] : entries.value())
             {
 

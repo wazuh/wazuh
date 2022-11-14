@@ -8,10 +8,11 @@
 #include <logging/logging.hpp>
 
 static constexpr char kBenchDbName[] = "bench";
+static auto kvdbManager = std::make_shared<KVDBManager>("/tmp/");
 
 static void dbSetup(const benchmark::State& s)
 {
-    auto db = KVDBManager::get().addDb(kBenchDbName);
+    auto db = kvdbManager->addDb(kBenchDbName);
 
     for (int i = 0; i < s.range(0); ++i)
     {
@@ -21,12 +22,12 @@ static void dbSetup(const benchmark::State& s)
 
 static void dbTeardown(const benchmark::State& s)
 {
-    KVDBManager::get().deleteDB(kBenchDbName);
+    kvdbManager->deleteDB(kBenchDbName);
 }
 
 static void kvdbRead(benchmark::State& state)
 {
-    auto db = KVDBManager::get().getDB(kBenchDbName);
+    auto db = kvdbManager->getDB(kBenchDbName);
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -48,7 +49,7 @@ BENCHMARK(kvdbRead)
 
 static void kvdbHasKey(benchmark::State& state)
 {
-    auto db = KVDBManager::get().getDB(kBenchDbName);
+    auto db = kvdbManager->getDB(kBenchDbName);
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -70,7 +71,7 @@ BENCHMARK(kvdbHasKey)
 
 static void kvdbWrite(benchmark::State& state)
 {
-    auto db = KVDBManager::get().getDB(kBenchDbName);
+    auto db = kvdbManager->getDB(kBenchDbName);
 
     std::vector<std::string> keys;
     for (int i = 0; i < state.range(0); ++i)
@@ -95,7 +96,7 @@ BENCHMARK(kvdbWrite)->Setup(dbSetup)->Teardown(dbTeardown)->Range(8, 16 << 10);
 
 static void kvdbWriteTx(benchmark::State& state)
 {
-    auto db = KVDBManager::get().getDB(kBenchDbName);
+    auto db = kvdbManager->getDB(kBenchDbName);
 
     std::vector<std::pair<std::string, std::string>> keysList;
     for (int i = 0; i < state.range(0); ++i)

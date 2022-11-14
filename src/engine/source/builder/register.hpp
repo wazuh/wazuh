@@ -22,25 +22,32 @@ namespace builder::internals
 {
 struct dependencies
 {
+    std::shared_ptr<KVDBManager> kvdbManager;
 };
 
-static void registerBuilders(std::shared_ptr<Registry> registry, const dependencies& dependencies = {})
+static void registerBuilders(std::shared_ptr<Registry> registry,
+                             const dependencies& dependencies = {})
 {
     // Basic operations
-    registry->registerBuilder(builders::getOperationMapBuilder(registry), "operation.map");
-    registry->registerBuilder(builders::getOperationConditionBuilder(registry), "operation.condition");
+    registry->registerBuilder(builders::getOperationMapBuilder(registry),
+                              "operation.map");
+    registry->registerBuilder(builders::getOperationConditionBuilder(registry),
+                              "operation.condition");
 
     // Stages
-    registry->registerBuilder(builders::getStageBuilderCheck(registry), "stage.check", "stage.allow");
+    registry->registerBuilder(
+        builders::getStageBuilderCheck(registry), "stage.check", "stage.allow");
     registry->registerBuilder(builders::getStageMapBuilder(registry), "stage.map");
-    registry->registerBuilder(builders::getStageNormalizeBuilder(registry), "stage.normalize");
+    registry->registerBuilder(builders::getStageNormalizeBuilder(registry),
+                              "stage.normalize");
 
     // Parsers
     registry->registerBuilder(builders::getStageBuilderParse(registry), "stage.parse");
     registry->registerBuilder(builders::opBuilderLogParser, "parser.logpar");
 
     // Outputs
-    registry->registerBuilder(builders::getStageBuilderOutputs(registry), "stage.outputs");
+    registry->registerBuilder(builders::getStageBuilderOutputs(registry),
+                              "stage.outputs");
     registry->registerBuilder(builders::opBuilderFileOutput, "output.file");
 
     // Filter Helpers
@@ -129,11 +136,16 @@ static void registerBuilders(std::shared_ptr<Registry> registry, const dependenc
     registry->registerBuilder(builders::opBuilderWdbUpdate, "helper.wdb_update");
 
     // KVDB
-    registry->registerBuilder(builders::opBuilderKVDBExtract, "helper.kvdb_get");
-    registry->registerBuilder(builders::opBuilderKVDBExtractMerge,
-                              "helper.kvdb_get_merge");
-    registry->registerBuilder(builders::opBuilderKVDBMatch, "helper.kvdb_match");
-    registry->registerBuilder(builders::opBuilderKVDBNotMatch, "helper.kvdb_not_match");
+    registry->registerBuilder(builders::getOpBuilderKVDBExtract(dependencies.kvdbManager),
+                              "helper.kvdb_get");
+    registry->registerBuilder(
+        builders::getOpBuilderKVDBExtractMerge(dependencies.kvdbManager),
+        "helper.kvdb_get_merge");
+    registry->registerBuilder(builders::getOpBuilderKVDBMatch(dependencies.kvdbManager),
+                              "helper.kvdb_match");
+    registry->registerBuilder(
+        builders::getOpBuilderKVDBNotMatch(dependencies.kvdbManager),
+        "helper.kvdb_not_match");
 
     // SCA decoder
     registry->registerBuilder(builders::opBuilderSCAdecoder, "helper.sca_decoder");
