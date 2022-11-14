@@ -13,21 +13,11 @@ using namespace base;
 
 #define GTEST_COUT std::cout << "[          ] [ INFO ] "
 
-class StageBuilderCheckTest : public ::testing::Test
+TEST(StageBuilderCheckTest, ListBuilds)
 {
-protected:
-    void SetUp() override
-    {
-        Registry::registerBuilder(operationConditionBuilder, "operation.condition");
-    }
-    void TearDown() override
-    {
-        Registry::clear();
-    }
-};
-
-TEST_F(StageBuilderCheckTest, ListBuilds)
-{
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(getOperationConditionBuilder(registry),
+                              "operation.condition");
     auto checkJson = Json {R"([
         {"string": "value"},
         {"int": 1},
@@ -39,18 +29,24 @@ TEST_F(StageBuilderCheckTest, ListBuilds)
         {"object": {"a": 1, "b": 2}}
 ])"};
 
-    ASSERT_NO_THROW(stageBuilderCheck(checkJson));
+    ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson));
 }
 
-TEST_F(StageBuilderCheckTest, UnexpectedDefinition)
+TEST(StageBuilderCheckTest, UnexpectedDefinition)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(getOperationConditionBuilder(registry),
+                              "operation.condition");
     auto checkJson = Json {R"({})"};
 
-    ASSERT_THROW(stageBuilderCheck(checkJson), std::runtime_error);
+    ASSERT_THROW(getStageBuilderCheck(registry)(checkJson), std::runtime_error);
 }
 
-TEST_F(StageBuilderCheckTest, ListArrayWrongSizeItem)
+TEST(StageBuilderCheckTest, ListArrayWrongSizeItem)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(getOperationConditionBuilder(registry),
+                              "operation.condition");
     auto checkJson = Json {R"([
         {"string": "value"},
         {"int": 1},
@@ -63,20 +59,26 @@ TEST_F(StageBuilderCheckTest, ListArrayWrongSizeItem)
         {"object": {"a": 1, "b": 2}}
 ])"};
 
-    ASSERT_THROW(stageBuilderCheck(checkJson), std::runtime_error);
+    ASSERT_THROW(getStageBuilderCheck(registry)(checkJson), std::runtime_error);
 }
 
-TEST_F(StageBuilderCheckTest, ListArrayWrongTypeItem)
+TEST(StageBuilderCheckTest, ListArrayWrongTypeItem)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(getOperationConditionBuilder(registry),
+                              "operation.condition");
     auto checkJson = Json {R"([
         ["string", "value"]
 ])"};
 
-    ASSERT_THROW(stageBuilderCheck(checkJson), std::runtime_error);
+    ASSERT_THROW(getStageBuilderCheck(registry)(checkJson), std::runtime_error);
 }
 
-TEST_F(StageBuilderCheckTest, ListBuildsCorrectExpression)
+TEST(StageBuilderCheckTest, ListBuildsCorrectExpression)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(getOperationConditionBuilder(registry),
+                              "operation.condition");
     auto checkJson = Json {R"([
         {"string": "value"},
         {"int": 1},
@@ -88,7 +90,7 @@ TEST_F(StageBuilderCheckTest, ListBuildsCorrectExpression)
         {"object": {"a": 1, "b": 2}}
 ])"};
 
-    auto expression = stageBuilderCheck(checkJson);
+    auto expression = getStageBuilderCheck(registry)(checkJson);
 
     ASSERT_TRUE(expression->isOperation());
     ASSERT_TRUE(expression->isAnd());
@@ -98,18 +100,24 @@ TEST_F(StageBuilderCheckTest, ListBuildsCorrectExpression)
     }
 }
 
-TEST_F(StageBuilderCheckTest, ExpressionBuilds)
+TEST(StageBuilderCheckTest, ExpressionBuilds)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(getOperationConditionBuilder(registry),
+                              "operation.condition");
     auto checkJson = Json {R"("field==value")"};
 
-    ASSERT_NO_THROW(stageBuilderCheck(checkJson));
+    ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson));
 }
 
-TEST_F(StageBuilderCheckTest, ExpressionBuildsCorrectExpression)
+TEST(StageBuilderCheckTest, ExpressionBuildsCorrectExpression)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(getOperationConditionBuilder(registry),
+                              "operation.condition");
     auto checkJson = Json {R"("field==value")"};
 
-    auto expression = stageBuilderCheck(checkJson);
+    auto expression = getStageBuilderCheck(registry)(checkJson);
 
     ASSERT_TRUE(expression->isTerm());
 }

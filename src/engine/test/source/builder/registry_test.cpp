@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "registry.hpp"
 #include "baseTypes.hpp"
+#include "registry.hpp"
 
 using namespace builder::internals;
 using namespace base;
@@ -12,79 +12,79 @@ Expression builderDummy(std::any)
     return expression;
 }
 
-class RegistryTest : public ::testing::Test
+TEST(RegistryTest, RegisterBuilder)
 {
-protected:
-    void TearDown() override
-    {
-        Registry::clear();
-    }
-};
-
-TEST_F(RegistryTest, RegisterBuilder)
-{
-    ASSERT_NO_THROW(Registry::registerBuilder(builderDummy, "test"));
+    Registry registry;
+    ASSERT_NO_THROW(registry.registerBuilder(builderDummy, "test"));
 }
 
-TEST_F(RegistryTest, RegisterBuilderMultipleNames)
+TEST(RegistryTest, RegisterBuilderMultipleNames)
 {
-    ASSERT_NO_THROW(Registry::registerBuilder(builderDummy, "test", "test2", "test3"));
+    Registry registry;
+    ASSERT_NO_THROW(registry.registerBuilder(builderDummy, "test", "test2", "test3"));
 }
 
-TEST_F(RegistryTest, RegisterBuilderDuplicateName)
+TEST(RegistryTest, RegisterBuilderDuplicateName)
 {
-    ASSERT_NO_THROW(Registry::registerBuilder(builderDummy, "test"));
-    ASSERT_THROW(Registry::registerBuilder(builderDummy, "test"), std::logic_error);
+    Registry registry;
+    ASSERT_NO_THROW(registry.registerBuilder(builderDummy, "test"));
+    ASSERT_THROW(registry.registerBuilder(builderDummy, "test"), std::logic_error);
 }
 
-TEST_F(RegistryTest, GetBuilder)
+TEST(RegistryTest, GetBuilder)
 {
-    ASSERT_NO_THROW(Registry::registerBuilder(builderDummy, "test"));
-    ASSERT_NO_THROW(Registry::getBuilder("test"));
+    Registry registry;
+    ASSERT_NO_THROW(registry.registerBuilder(builderDummy, "test"));
+    ASSERT_NO_THROW(registry.getBuilder("test"));
 }
 
-TEST_F(RegistryTest, GetBuilderMultipleNames)
+TEST(RegistryTest, GetBuilderMultipleNames)
 {
-    ASSERT_NO_THROW(Registry::registerBuilder(builderDummy, "test", "test2", "test3"));
-    ASSERT_NO_THROW(Registry::getBuilder("test"));
-    ASSERT_NO_THROW(Registry::getBuilder("test2"));
-    ASSERT_NO_THROW(Registry::getBuilder("test3"));
+    Registry registry;
+    ASSERT_NO_THROW(registry.registerBuilder(builderDummy, "test", "test2", "test3"));
+    ASSERT_NO_THROW(registry.getBuilder("test"));
+    ASSERT_NO_THROW(registry.getBuilder("test2"));
+    ASSERT_NO_THROW(registry.getBuilder("test3"));
 }
 
-TEST_F(RegistryTest, GetBuilderNotRegistered)
+TEST(RegistryTest, GetBuilderNotRegistered)
 {
-    ASSERT_THROW(Registry::getBuilder("test"), std::runtime_error);
+    Registry registry;
+    ASSERT_THROW(registry.getBuilder("test"), std::runtime_error);
 }
 
-TEST_F(RegistryTest, Clear)
+TEST(RegistryTest, Clear)
 {
-    ASSERT_NO_THROW(Registry::registerBuilder(builderDummy, "test"));
-    ASSERT_NO_THROW(Registry::clear());
-    ASSERT_THROW(Registry::getBuilder("test"), std::runtime_error);
+    Registry registry;
+    ASSERT_NO_THROW(registry.registerBuilder(builderDummy, "test"));
+    ASSERT_NO_THROW(registry.clear());
+    ASSERT_THROW(registry.getBuilder("test"), std::runtime_error);
 }
 
-TEST_F(RegistryTest, ClearTwice)
+TEST(RegistryTest, ClearTwice)
 {
-    ASSERT_NO_THROW(Registry::clear());
-    ASSERT_NO_THROW(Registry::clear());
+    Registry registry;
+    ASSERT_NO_THROW(registry.clear());
+    ASSERT_NO_THROW(registry.clear());
 }
 
-TEST_F(RegistryTest, UseCase)
+TEST(RegistryTest, UseCase)
 {
-    ASSERT_NO_THROW(Registry::registerBuilder(builderDummy, "test"));
+    Registry registry;
+    ASSERT_NO_THROW(registry.registerBuilder(builderDummy, "test"));
     Builder builder;
-    ASSERT_NO_THROW(builder = Registry::getBuilder("test"));
+    ASSERT_NO_THROW(builder = registry.getBuilder("test"));
     ASSERT_NO_THROW(builder(std::any {}));
 
-    ASSERT_THROW(Registry::getBuilder("test2"), std::runtime_error);
+    ASSERT_THROW(registry.getBuilder("test2"), std::runtime_error);
 
-    ASSERT_NO_THROW(Registry::registerBuilder(builderDummy, "test2"));
-    ASSERT_NO_THROW(builder = Registry::getBuilder("test2"));
+    ASSERT_NO_THROW(registry.registerBuilder(builderDummy, "test2"));
+    ASSERT_NO_THROW(builder = registry.getBuilder("test2"));
     ASSERT_NO_THROW(builder(std::any {}));
 
-    ASSERT_THROW(Registry::registerBuilder(builderDummy, "test"), std::logic_error);
+    ASSERT_THROW(registry.registerBuilder(builderDummy, "test"), std::logic_error);
 
-    ASSERT_NO_THROW(Registry::clear());
-    ASSERT_THROW(Registry::getBuilder("test"), std::runtime_error);
-    ASSERT_THROW(Registry::getBuilder("test2"), std::runtime_error);
+    ASSERT_NO_THROW(registry.clear());
+    ASSERT_THROW(registry.getBuilder("test"), std::runtime_error);
+    ASSERT_THROW(registry.getBuilder("test2"), std::runtime_error);
 }
