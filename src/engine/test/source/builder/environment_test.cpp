@@ -21,7 +21,6 @@ class EnvironmentTest : public ::testing::Test
         {
             std::filesystem::remove(outputPath);
         }
-        registerBuilders();
     }
 
     void TearDown() override
@@ -30,7 +29,6 @@ class EnvironmentTest : public ::testing::Test
         {
             std::filesystem::remove(outputPath);
         }
-        Registry::clear();
     }
 };
 
@@ -62,11 +60,13 @@ TEST_F(EnvironmentTest, GetAssets)
 
 TEST_F(EnvironmentTest, OneDecoderEnvironment)
 {
+    auto registry = std::make_shared<Registry>();
+    registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(
-        storeRead->get(base::Name ("environment/oneDecEnv/version")));
-    ASSERT_NO_THROW(Environment(envJson, storeRead));
-    auto env = Environment(envJson, storeRead);
+    auto envJson =
+        std::get<json::Json>(storeRead->get(base::Name("environment/oneDecEnv/version")));
+    ASSERT_NO_THROW(Environment(envJson, storeRead, registry));
+    auto env = Environment(envJson, storeRead, registry);
     ASSERT_EQ(env.name(), "environment/oneDecEnv/version");
     ASSERT_EQ(env.assets().size(), 1);
     ASSERT_NO_THROW(env.getExpression());
@@ -85,11 +85,13 @@ TEST_F(EnvironmentTest, OneDecoderEnvironment)
 
 TEST_F(EnvironmentTest, OneRuleEnvironment)
 {
+    auto registry = std::make_shared<Registry>();
+    registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(
         storeRead->get(base::Name {"environment/oneRuleEnv/version"}));
-    ASSERT_NO_THROW(Environment(envJson, storeRead));
-    auto env = Environment(envJson, storeRead);
+    ASSERT_NO_THROW(Environment(envJson, storeRead, registry));
+    auto env = Environment(envJson, storeRead, registry);
     ASSERT_EQ(env.name(), "environment/oneRuleEnv/version");
     ASSERT_EQ(env.assets().size(), 1);
     ASSERT_NO_THROW(env.getExpression());
@@ -108,11 +110,13 @@ TEST_F(EnvironmentTest, OneRuleEnvironment)
 
 TEST_F(EnvironmentTest, OneOutputEnvironment)
 {
+    auto registry = std::make_shared<Registry>();
+    registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(
         storeRead->get(base::Name {"environment/oneOutEnv/version"}));
-    ASSERT_NO_THROW(Environment(envJson, storeRead));
-    auto env = Environment(envJson, storeRead);
+    ASSERT_NO_THROW(Environment(envJson, storeRead, registry));
+    auto env = Environment(envJson, storeRead, registry);
     ASSERT_EQ(env.name(), "environment/oneOutEnv/version");
     ASSERT_EQ(env.assets().size(), 1);
     ASSERT_NO_THROW(env.getExpression());
@@ -131,38 +135,43 @@ TEST_F(EnvironmentTest, OneOutputEnvironment)
 
 TEST_F(EnvironmentTest, OneFilterEnvironment)
 {
+    auto registry = std::make_shared<Registry>();
+    registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(
         storeRead->get(base::Name {"environment/oneFilEnv/version"}));
-    ASSERT_THROW(Environment(envJson, storeRead),
-                 std::runtime_error);
+    ASSERT_THROW(Environment(envJson, storeRead, registry), std::runtime_error);
 }
 
 TEST_F(EnvironmentTest, OrphanAsset)
 {
+    auto registry = std::make_shared<Registry>();
+    registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(
         storeRead->get(base::Name {"environment/orphanAssetEnv/version"}));
-    ASSERT_THROW(Environment(envJson, storeRead),
-                 std::runtime_error);
+    ASSERT_THROW(Environment(envJson, storeRead, registry), std::runtime_error);
 }
 
 TEST_F(EnvironmentTest, OrphanFilter)
 {
+    auto registry = std::make_shared<Registry>();
+    registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(
         storeRead->get(base::Name {"environment/orphanFilterEnv/version"}));
-    ASSERT_THROW(Environment(envJson, storeRead),
-                 std::runtime_error);
+    ASSERT_THROW(Environment(envJson, storeRead, registry), std::runtime_error);
 }
 
 TEST_F(EnvironmentTest, CompleteEnvironment)
 {
+    auto registry = std::make_shared<Registry>();
+    registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(
         storeRead->get(base::Name {"environment/completeEnv/version"}));
-    ASSERT_NO_THROW(Environment(envJson, storeRead));
-    auto env = Environment(envJson, storeRead);
+    ASSERT_NO_THROW(Environment(envJson, storeRead, registry));
+    auto env = Environment(envJson, storeRead, registry);
     ASSERT_EQ(env.name(), "environment/completeEnv/version");
     ASSERT_EQ(env.assets().size(), 11);
     ASSERT_NO_THROW(env.getExpression());

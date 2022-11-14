@@ -2,19 +2,22 @@
 #define _STAGE_BUILDER_OUTPUTS_H
 
 #include <any>
+#include <memory>
 
-#include "expression.hpp"
+#include <expression.hpp>
+
+#include "registry.hpp"
 
 namespace builder::internals::builders
 {
 
 /**
- * @brief Builds stage outputs
+ * @brief Get the builder that builds stage outputs
  *
- * @param definition
- * @return base::Expression
+ * @param registry Registry of builders.
+ * @return Builder
  */
-base::Expression stageBuilderOutputs(const std::any& definition);
+Builder getStageBuilderOutputs(std::shared_ptr<Registry> registry);
 
 } // namespace builder::internals::builders
 

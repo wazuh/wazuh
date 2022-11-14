@@ -3,13 +3,22 @@
 #define _STAGE_BUILDER_MAP_H
 
 #include <any>
+#include <memory>
 
-#include "expression.hpp"
+#include <expression.hpp>
+
+#include "registry.hpp"
 
 namespace builder::internals::builders
 {
 
-base::Expression stageMapBuilder(std::any definition);
+/**
+ * @brief Get the Stage Map Builder
+ *
+ * @param registry Registry of builders.
+ * @return Builder
+ */
+Builder getStageMapBuilder(std::shared_ptr<Registry> registry);
 
 } // namespace builder::internals::builders
 

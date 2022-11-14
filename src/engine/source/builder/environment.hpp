@@ -16,6 +16,8 @@
 #include "expression.hpp"
 #include "graph.hpp"
 
+#include "registry.hpp"
+
 namespace builder
 {
 
@@ -61,7 +63,8 @@ private:
      */
     void buildGraph(const std::unordered_map<std::string, json::Json>& assetsDefinitons,
                     const std::string& graphName,
-                    Asset::Type type);
+                    Asset::Type type,
+                    std::shared_ptr<internals::Registry> registry);
 
     /**
      * @brief Inject Filters into specific subgraph.
@@ -88,7 +91,8 @@ public:
      * @throws std::runtime_error if the environment cannot be built.
      */
     Environment(const json::Json& jsonDefinition,
-                std::shared_ptr<const store::IStoreRead> storeRead)
+                std::shared_ptr<const store::IStoreRead> storeRead,
+                std::shared_ptr<internals::Registry> registry)
 
     {
         auto envObj = jsonDefinition.getObject().value();
@@ -121,26 +125,27 @@ public:
         if (envObj.end() != filtersPos)
         {
             auto filtersList = std::get<1>(*filtersPos).getArray().value();
-            std::transform(filtersList.begin(),
-                           filtersList.end(),
-                           std::inserter(m_assets, m_assets.begin()),
-                           [&](auto& json)
-                           {
-                               auto assetType = Asset::Type::FILTER;
-                               auto assetName = json.getString().value();
-                               auto assetJson = storeRead->get(base::Name {assetName});
-                               if (std::holds_alternative<base::Error>(assetJson))
-                               {
-                                   throw std::runtime_error(fmt::format(
-                                       "[Environment] Cannot retreive filter [{}]: {}",
-                                       assetName,
-                                       std::get<base::Error>(assetJson).message));
-                               }
-                               return std::make_pair(
-                                   assetName,
-                                   std::make_shared<Asset>(
-                                       std::get<json::Json>(assetJson), assetType));
-                           });
+            std::transform(
+                filtersList.begin(),
+                filtersList.end(),
+                std::inserter(m_assets, m_assets.begin()),
+                [&](auto& json)
+                {
+                    auto assetType = Asset::Type::FILTER;
+                    auto assetName = json.getString().value();
+                    auto assetJson = storeRead->get(base::Name {assetName});
+                    if (std::holds_alternative<base::Error>(assetJson))
+                    {
+                        throw std::runtime_error(
+                            fmt::format("[Environment] Cannot retreive filter [{}]: {}",
+                                        assetName,
+                                        std::get<base::Error>(assetJson).message));
+                    }
+                    return std::make_pair(
+                        assetName,
+                        std::make_shared<Asset>(
+                            std::get<json::Json>(assetJson), assetType, registry));
+                });
             envObj.erase(filtersPos);
         }
 
@@ -185,7 +190,7 @@ public:
                 });
 
             // Build graph
-            buildGraph(assetsDefinitions, name, getAssetType(name));
+            buildGraph(assetsDefinitions, name, getAssetType(name), registry);
 
             // Add filters
             addFilters(name);

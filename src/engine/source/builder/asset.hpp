@@ -1,15 +1,13 @@
 #ifndef _ASSET_H
 #define _ASSET_H
 
+#include <memory>
 #include <string>
 #include <unordered_set>
 
-//#include <fmt/format.h>
-
-///#include "definitions.hpp"
 #include "expression.hpp"
+#include "registry.hpp"
 #include <json/json.hpp>
-//#include "registry.hpp"
 
 namespace builder
 {
@@ -76,9 +74,13 @@ public:
      *
      * @param jsonDefinition JSON object containing the definition of the asset.
      * @param type Type of the asset.
+     * @param registry Registry of builders.
+
      * @throws std::runtime_error if the Asset could not be constructed.
      */
-    Asset(const json::Json& jsonDefinition, Type type);
+    Asset(const json::Json& jsonDefinition,
+          Type type,
+          std::shared_ptr<internals::Registry> registry);
 
     /**
      * @brief Get the Expression object of the Asset.

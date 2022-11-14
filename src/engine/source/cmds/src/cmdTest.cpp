@@ -1,6 +1,7 @@
 #include "cmds/cmdTest.hpp"
 
 #include <atomic>
+#include <memory>
 
 #include <re2/re2.h>
 
@@ -15,6 +16,7 @@
 #include "base/utils/getExceptionStack.hpp"
 #include "builder.hpp"
 #include "register.hpp"
+#include "registry.hpp"
 #include "server/wazuhStreamProtocol.hpp"
 #include "stackExecutor.hpp"
 
@@ -83,9 +85,10 @@ void test(const std::string& kvdbPath,
     // the parser mappings on start up for now
     hlp::configureParserMappings(std::get<json::Json>(hlpParsers).str());
 
+    auto registry = std::make_shared<builder::internals::Registry>();
     try
     {
-        builder::internals::registerBuilders();
+        builder::internals::registerBuilders(registry);
     }
     catch (const std::exception& e)
     {
@@ -141,7 +144,7 @@ void test(const std::string& kvdbPath,
     _testDriver->testEnvironment = envTmp;
 
     // TODO: Handle errors on construction
-    builder::Builder _builder(_testDriver);
+    builder::Builder _builder(_testDriver, registry);
     decltype(_builder.buildEnvironment({environment})) env;
     try
     {

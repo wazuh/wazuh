@@ -2,15 +2,30 @@
 #define _OPERATION_BUILDER_H
 
 #include <any>
+#include <memory>
 
-#include "expression.hpp"
+#include <expression.hpp>
+
+#include "registry.hpp"
 
 namespace builder::internals::builders
 {
 
-base::Expression operationConditionBuilder(std::any definition);
+/**
+ * @brief Get the Operation Condition Builder
+ *
+ * @param registry Registry of builders.
+ * @return Builder
+ */
+Builder getOperationConditionBuilder(std::shared_ptr<Registry> registry);
 
-base::Expression operationMapBuilder(std::any definition);
+/**
+ * @brief Get the Operation Map Builder
+ *
+ * @param registry Registry of builders.
+ * @return Builder
+ */
+Builder getOperationMapBuilder(std::shared_ptr<Registry> registry);
 
 } // namespace builder::internals::builders
 
