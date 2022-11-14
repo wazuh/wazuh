@@ -9,6 +9,8 @@
 #include <vector>
 
 #include <fmt/format.h>
+#include <logging/logging.hpp>
+
 
 #include "utils/stringUtils.hpp"
 
@@ -39,12 +41,19 @@ private:
 
     void assertSize(size_t size) const
     {
-        if (size < 1 || size > MAX_PARTS)
+        if (0 == size)
         {
-            throw std::runtime_error(fmt::format(
-                "Engine base name: Name size must be between 1 and {}, but it is {}.",
-                MAX_PARTS,
-                size));
+            throw std::runtime_error(fmt::format("Name cannot be empty"));
+        }
+        if (MAX_PARTS < size)
+        {
+            WAZUH_LOG_DEBUG(
+                "Engine base name: \"{}\" method: Name \"{}\".", __func__, fullName());
+
+            throw std::runtime_error(fmt::format("Name size must have {} parts at most "
+                                                 "at most, but the one inserted has {}",
+                                                 MAX_PARTS,
+                                                 size));
         }
     }
 
@@ -158,7 +167,9 @@ public:
             name.m_parts.end(),
             std::string(),
             [](const std::string& a, const std::string& b) -> std::string
-            { return a + (a.length() > 0 ? SEPARATOR_S : "") + b; });
+            {
+                return a + (a.length() > 0 ? SEPARATOR_S : "") + b;
+            });
         return os;
     }
 
