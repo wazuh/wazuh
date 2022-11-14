@@ -28,7 +28,7 @@ Asset::Asset(std::string name, Asset::Type type)
 {
 }
 
-Asset::Asset(const json::Json& jsonDefinition, Asset::Type type)
+Asset::Asset(const json::Json& jsonDefinition, Asset::Type type, std::shared_ptr<internals::Registry> registry)
     : m_type {type}
 {
     if (!jsonDefinition.isObject())
@@ -105,7 +105,7 @@ Asset::Asset(const json::Json& jsonDefinition, Asset::Type type)
         try
         {
             m_check =
-                internals::Registry::getBuilder("stage.check")({std::get<1>(*checkPos)});
+                registry->getBuilder("stage.check")({std::get<1>(*checkPos)});
             objectDefinition.erase(checkPos);
         }
         catch (const std::exception& e)
@@ -126,7 +126,7 @@ Asset::Asset(const json::Json& jsonDefinition, Asset::Type type)
         try
         {
             auto parseExpression =
-                internals::Registry::getBuilder("stage.parse")({std::get<1>(*parsePos)});
+                registry->getBuilder("stage.parse")({std::get<1>(*parsePos)});
             objectDefinition.erase(parsePos);
             if (m_check)
             {
@@ -153,7 +153,7 @@ Asset::Asset(const json::Json& jsonDefinition, Asset::Type type)
         auto stageName = "stage." + std::get<0>(tuple);
         auto stageDefinition = std::get<1>(tuple);
         auto stageExpression =
-            internals::Registry::getBuilder(stageName)({stageDefinition});
+            registry->getBuilder(stageName)({stageDefinition});
         asOp->getOperands().push_back(stageExpression);
     }
 }

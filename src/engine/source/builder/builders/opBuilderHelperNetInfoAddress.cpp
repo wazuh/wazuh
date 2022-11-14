@@ -13,7 +13,6 @@
 #include <variant>
 
 #include <baseHelper.hpp>
-#include <kvdb/kvdbManager.hpp>
 #include <wdb/wdb.hpp>
 
 namespace

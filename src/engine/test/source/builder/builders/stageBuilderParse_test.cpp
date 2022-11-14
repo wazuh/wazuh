@@ -10,50 +10,48 @@ using namespace builder::internals::builders;
 using namespace json;
 using namespace base;
 
-class StageBuilderParseTest : public ::testing::Test
+TEST(StageBuilderParseTest, Builds)
 {
-protected:
-    void SetUp() override
-    {
-        Registry::registerBuilder(opBuilderLogParser, "parser.logpar");
-    }
-
-    void TearDown() override { Registry::clear(); }
-};
-
-TEST_F(StageBuilderParseTest, Builds)
-{
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(opBuilderLogParser, "parser.logpar");
     Json doc = Json {R"({
             "logpar":[
                 {"~field": "<~field>"}
             ]
     })"};
-    ASSERT_NO_THROW(stageBuilderParse(doc));
+    ASSERT_NO_THROW(getStageBuilderParse(registry)(doc));
 }
 
-TEST_F(StageBuilderParseTest, NotJson)
+TEST(StageBuilderParseTest, NotJson)
 {
-    ASSERT_THROW(stageBuilderParse(std::string {}), std::runtime_error);
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(opBuilderLogParser, "parser.logpar");
+
+    ASSERT_THROW(getStageBuilderParse(registry)(std::string {}), std::runtime_error);
 }
 
-TEST_F(StageBuilderParseTest, NotObject)
+TEST(StageBuilderParseTest, NotObject)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(opBuilderLogParser, "parser.logpar");
     Json doc = Json {R"([
             {"logpar":[
                 {"~field": "<~field>"}
             ]}
     ])"};
-    ASSERT_THROW(stageBuilderParse(doc), std::runtime_error);
+    ASSERT_THROW(getStageBuilderParse(registry)(doc), std::runtime_error);
 }
 
-TEST_F(StageBuilderParseTest, BuildsCorrectExpression)
+TEST(StageBuilderParseTest, BuildsCorrectExpression)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(opBuilderLogParser, "parser.logpar");
     Json doc = Json {R"({
             "logpar":[
                 {"~field": "<~field>"}
             ]
     })"};
-    auto expression = stageBuilderParse(doc);
+    auto expression = getStageBuilderParse(registry)(doc);
     ASSERT_TRUE(expression->isOr());
     ASSERT_EQ(expression->getPtr<Operation>()->getOperands().size(), 1);
 }

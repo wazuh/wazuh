@@ -2,20 +2,23 @@
 #define _STAGE_BUILDER_PARSE_H
 
 #include <any>
+#include <memory>
 
-#include "expression.hpp"
+#include <expression.hpp>
+
+#include "registry.hpp"
 
 namespace builder::internals::builders
 {
 
 /**
- * @brief Builds parsing stage to be able to get information from the original
- * logged event
+ * @brief Return the builder that builds parsing stage to be able to get information from
+ * the original logged event
  *
- * @param definition JSON with the definition of the stage
- * @return base::Expression
+ * @param registry Registry of builders.
+ * @return Builder
  */
-base::Expression stageBuilderParse(const std::any& definition);
+Builder getStageBuilderParse(std::shared_ptr<Registry> registry);
 
 } // namespace builder::internals::builders
 

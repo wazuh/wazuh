@@ -24,6 +24,7 @@
 
 #include "base/utils/getExceptionStack.hpp"
 #include "register.hpp"
+#include "registry.hpp"
 #include "stackExecutor.hpp"
 
 namespace
@@ -100,7 +101,11 @@ void run(const std::string& kvdbPath,
         store = std::make_shared<store::FileDriver>(fileStorage);
         WAZUH_LOG_INFO("Store initialized");
 
-        builder = std::make_shared<builder::Builder>(store);
+        auto registry = std::make_shared<builder::internals::Registry>();
+        builder::internals::registerBuilders(registry);
+        WAZUH_LOG_INFO("Builders registered");
+
+        builder = std::make_shared<builder::Builder>(store, registry);
         WAZUH_LOG_INFO("Builder initialized");
 
         api::catalog::Config catalogConfig {store,
@@ -120,7 +125,8 @@ void run(const std::string& kvdbPath,
         auto hlpParsers = store->get(hlpConfigFileName);
         if (std::holds_alternative<base::Error>(hlpParsers))
         {
-            WAZUH_LOG_ERROR("Could not retreive configuration file [{}] needed by the HLP module, error: {}",
+            WAZUH_LOG_ERROR("Could not retreive configuration file [{}] needed by the "
+                            "HLP module, error: {}",
                             hlpConfigFileName.fullName(),
                             std::get<base::Error>(hlpParsers).message);
 
@@ -131,9 +137,6 @@ void run(const std::string& kvdbPath,
         // the parser mappings on start up for now
         hlp::configureParserMappings(std::get<json::Json>(hlpParsers).str());
         WAZUH_LOG_INFO("HLP initialized");
-
-        builder::internals::registerBuilders();
-        WAZUH_LOG_INFO("Builders registered");
 
         envManager = std::make_shared<router::EnvironmentManager>(
             builder, server->getEventQueue(), threads);

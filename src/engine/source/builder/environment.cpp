@@ -31,7 +31,8 @@ Asset::Type getAssetType(const std::string& name)
 void Environment::buildGraph(
     const std::unordered_map<std::string, json::Json>& assetsDefinitons,
     const std::string& graphName,
-    Asset::Type type)
+    Asset::Type type,
+    std::shared_ptr<internals::Registry> registry)
 {
     auto graphPos = std::find_if(m_graphs.begin(),
                                  m_graphs.end(),
@@ -44,7 +45,7 @@ void Environment::buildGraph(
         std::shared_ptr<Asset> asset;
         try
         {
-            asset = std::make_shared<Asset>(json, type);
+            asset = std::make_shared<Asset>(json, type, registry);
         }
         catch (const std::exception& e)
         {

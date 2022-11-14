@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <memory>
+
 #include "baseTypes.hpp"
 #include "builder/builders/operationBuilder.hpp"
 #include "builder/builders/stageBuilderMap.hpp"
@@ -13,21 +15,10 @@ using namespace base;
 
 #define GTEST_COUT std::cout << "[          ] [ INFO ] "
 
-class StageBuilderMapTest : public ::testing::Test
+TEST(StageBuilderMapTest, Builds)
 {
-protected:
-    void SetUp() override
-    {
-        Registry::registerBuilder(operationMapBuilder, "operation.map");
-    }
-    void TearDown() override
-    {
-        Registry::clear();
-    }
-};
-
-TEST_F(StageBuilderMapTest, Builds)
-{
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(getOperationMapBuilder(registry), "operation.map");
     auto mapJson = Json {R"([
         {"string": "value"},
         {"int": 1},
@@ -39,18 +30,22 @@ TEST_F(StageBuilderMapTest, Builds)
         {"object": {"a": 1, "b": 2}}
 ])"};
 
-    ASSERT_NO_THROW(stageMapBuilder(mapJson));
+    ASSERT_NO_THROW(getStageMapBuilder(registry)(mapJson));
 }
 
-TEST_F(StageBuilderMapTest, UnexpectedDefinition)
+TEST(StageBuilderMapTest, UnexpectedDefinition)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(getOperationMapBuilder(registry), "operation.map");
     auto mapJson = Json {R"({})"};
 
-    ASSERT_THROW(stageMapBuilder(mapJson), std::runtime_error);
+    ASSERT_THROW(getStageMapBuilder(registry)(mapJson), std::runtime_error);
 }
 
-TEST_F(StageBuilderMapTest, BuildsCorrectExpression)
+TEST(StageBuilderMapTest, BuildsCorrectExpression)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(getOperationMapBuilder(registry), "operation.map");
     auto mapJson = Json {R"([
         {"string": "value"},
         {"int": 1},
@@ -62,7 +57,7 @@ TEST_F(StageBuilderMapTest, BuildsCorrectExpression)
         {"object": {"a": 1, "b": 2}}
 ])"};
 
-    auto expression = stageMapBuilder(mapJson);
+    auto expression = getStageMapBuilder(registry)(mapJson);
 
     ASSERT_TRUE(expression->isOperation());
     ASSERT_TRUE(expression->isChain());

@@ -15,21 +15,10 @@ using namespace builder::internals::builders;
 using namespace json;
 using namespace base;
 
-class StageBuilderOutputsTest : public ::testing::Test
+TEST(StageBuilderOutputsTest, Builds)
 {
-protected:
-    void SetUp() override
-    {
-        Registry::registerBuilder(opBuilderFileOutput, "output.file");
-    }
-    void TearDown() override
-    {
-        Registry::clear();
-    }
-};
-
-TEST_F(StageBuilderOutputsTest, Builds)
-{
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(opBuilderFileOutput, "output.file");
     Json doc {R"([
             {"file":
                 {"path": "/tmp/stageOutputsTest1.txt"}
@@ -39,39 +28,47 @@ TEST_F(StageBuilderOutputsTest, Builds)
             }
     ])"};
 
-    ASSERT_NO_THROW(builders::stageBuilderOutputs(doc));
+    ASSERT_NO_THROW(builders::getStageBuilderOutputs(registry)(doc));
 }
 
-TEST_F(StageBuilderOutputsTest, UnexpectedDefinition)
+TEST(StageBuilderOutputsTest, UnexpectedDefinition)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(opBuilderFileOutput, "output.file");
     Json doc {R"({
             "file":
                 {"path": "/tmp/stageOutputsTest1.txt"}
     })"};
 
-    ASSERT_THROW(builders::stageBuilderOutputs(doc), std::runtime_error);
+    ASSERT_THROW(builders::getStageBuilderOutputs(registry)(doc), std::runtime_error);
 }
 
-TEST_F(StageBuilderOutputsTest, NotFoundOutput)
+TEST(StageBuilderOutputsTest, NotFoundOutput)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(opBuilderFileOutput, "output.file");
     Json doc {R"([
             {"nonExistingOutput":
                 {"path": "/tmp/stageOutputsTest1.txt"}
             }
     ])"};
 
-    ASSERT_THROW(builders::stageBuilderOutputs(doc), std::runtime_error);
+    ASSERT_THROW(builders::getStageBuilderOutputs(registry)(doc), std::runtime_error);
 }
 
-TEST_F(StageBuilderOutputsTest, EmptyList)
+TEST(StageBuilderOutputsTest, EmptyList)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(opBuilderFileOutput, "output.file");
     Json doc {R"([])"};
 
-    ASSERT_THROW(builders::stageBuilderOutputs(doc), std::runtime_error);
+    ASSERT_THROW(builders::getStageBuilderOutputs(registry)(doc), std::runtime_error);
 }
 
-TEST_F(StageBuilderOutputsTest, ArrayWrongSizeItem)
+TEST(StageBuilderOutputsTest, ArrayWrongSizeItem)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(opBuilderFileOutput, "output.file");
     Json doc {R"([
             {"file":
                 {"path": "/tmp/stageOutputsTest1.txt"},
@@ -79,11 +76,13 @@ TEST_F(StageBuilderOutputsTest, ArrayWrongSizeItem)
             }
     ])"};
 
-    ASSERT_THROW(builders::stageBuilderOutputs(doc), std::runtime_error);
+    ASSERT_THROW(builders::getStageBuilderOutputs(registry)(doc), std::runtime_error);
 }
 
-TEST_F(StageBuilderOutputsTest, BuildsCorrectExpression)
+TEST(StageBuilderOutputsTest, BuildsCorrectExpression)
 {
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(opBuilderFileOutput, "output.file");
     Json doc {R"([
             {"file":
                 {"path": "/tmp/stageOutputsTest1.txt"}
@@ -93,7 +92,7 @@ TEST_F(StageBuilderOutputsTest, BuildsCorrectExpression)
             }
     ])"};
 
-    auto expression = builders::stageBuilderOutputs(doc);
+    auto expression = builders::getStageBuilderOutputs(registry)(doc);
 
     ASSERT_TRUE(expression->isOperation());
     ASSERT_TRUE(expression->isBroadcast());

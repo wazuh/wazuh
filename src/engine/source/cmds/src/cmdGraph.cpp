@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <memory>
 
 #include <hlp/hlp.hpp>
 #include <kvdb/kvdbManager.hpp>
@@ -12,6 +13,7 @@
 #include "base/utils/getExceptionStack.hpp"
 #include "builder.hpp"
 #include "register.hpp"
+#include "registry.hpp"
 #include "stackExecutor.hpp"
 
 namespace
@@ -53,10 +55,10 @@ void graph(const std::string& kvdbPath,
     // TODO because builders don't have access to the catalog we are configuring
     // the parser mappings on start up for now
     hlp::configureParserMappings(std::get<json::Json>(hlpParsers).str());
-
+    auto registry = std::make_shared<builder::internals::Registry>();
     try
     {
-        builder::internals::registerBuilders();
+        builder::internals::registerBuilders(registry);
     }
     catch (const std::exception& e)
     {
@@ -66,7 +68,7 @@ void graph(const std::string& kvdbPath,
         return;
     }
 
-    builder::Builder _builder(store);
+    builder::Builder _builder(store, registry);
     decltype(_builder.buildEnvironment({environment})) env;
     try
     {

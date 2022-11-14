@@ -23,6 +23,7 @@ class Builder : public IValidator
 {
 private:
     std::shared_ptr<store::IStoreRead> m_storeRead;
+    std::shared_ptr<internals::Registry> m_registry;
 
     // TODO: Fix catalog to include asset type as a member of Catalog object
     enum class AssetType
@@ -36,8 +37,10 @@ private:
     };
 
 public:
-    Builder(std::shared_ptr<store::IStoreRead> storeRead)
+    Builder(std::shared_ptr<store::IStoreRead> storeRead,
+            std::shared_ptr<internals::Registry> registry)
         : m_storeRead {storeRead}
+        , m_registry {registry}
     {
     }
 
@@ -52,7 +55,8 @@ public:
                 std::get<base::Error>(envJson).message));
         }
 
-        auto environment = Environment {std::get<json::Json>(envJson), m_storeRead};
+        auto environment =
+            Environment {std::get<json::Json>(envJson), m_storeRead, m_registry};
 
         return environment;
     }
@@ -61,7 +65,7 @@ public:
     {
         try
         {
-            Environment env {json, m_storeRead};
+            Environment env {json, m_storeRead, m_registry};
             env.getExpression();
         }
         catch (const std::exception& e)
@@ -77,7 +81,7 @@ public:
         try
         {
             // TODO: Remove asset type in Asset
-            Asset asset {json, Asset::Type::DECODER};
+            Asset asset {json, Asset::Type::DECODER, m_registry};
             asset.getExpression();
         }
         catch (const std::exception& e)
