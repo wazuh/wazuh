@@ -1,28 +1,30 @@
 #include "api/catalog/catalog.hpp"
 
 #include <fmt/format.h>
+#include <logging/logging.hpp>
 
 #include "yml2Json.hpp"
 
 namespace api::catalog
 {
+
 void Config::validate() const
 {
     if (!store)
     {
-        throw std::runtime_error("Engine catalog: Store is not set.");
+        throw std::runtime_error("Store is not set");
     }
     if (!validator)
     {
-        throw std::runtime_error("Engine catalog: Assets, environments and schemas validator is not set.");
+        throw std::runtime_error("Assets, environments and schemas Validator is not set");
     }
     if (assetSchema.empty())
     {
-        throw std::runtime_error("Engine catalog: Assets schema is not set.");
+        throw std::runtime_error("Assets Schema is not set");
     }
     if (environmentSchema.empty())
     {
-        throw std::runtime_error("Engine catalog: Environments schema is not set.");
+        throw std::runtime_error("Environments Schema is not set");
     }
 }
 
@@ -32,81 +34,107 @@ Catalog::Catalog(const Config& config)
     m_store = config.store;
     m_validator = config.validator;
 
+    WAZUH_LOG_DEBUG("Engine catalog: \"{}\" method: Asset schema name: \"{}\". "
+                    "Environment schema name: \"{}\".",
+                    __func__,
+                    config.assetSchema,
+                    config.environmentSchema);
+
     // Json handling
     m_outFormat[Resource::Format::JSON] = [](const json::Json& json)
-    {
-        return json.str();
-    };
-    m_inFormat[Resource::Format::JSON] = [](const std::string& str)
-    {
-        std::variant<json::Json, base::Error> result;
-        try
         {
-            result = json::Json {str.c_str()};
-        }
-        catch (const std::exception& e)
-        {
-            result = base::Error {e.what()};
-        }
+            return json.str();
+        };
 
-        return result;
-    };
+    // TODO: what is str?
+    m_inFormat[Resource::Format::JSON] = [](const std::string& str)
+        {
+            std::variant<json::Json, base::Error> result;
+            try
+            {
+                result = json::Json {str.c_str()};
+            }
+            catch (const std::exception& e)
+            {
+                WAZUH_LOG_DEBUG(
+                    "Engine catalog: \"{}\" method: Config: \"{}\".", __func__, str);
+                result = base::Error {e.what()};
+            }
+
+            return result;
+        };
 
     // Yaml handling
     m_outFormat[Resource::Format::YAML] = [](const json::Json& json)
-    {
-        std::variant<std::string, base::Error> result;
-        try
         {
-            // TODO: Expose internals on json::Json ??
-            rapidjson::Document doc;
-            doc.Parse(json.str().c_str());
-            auto yaml = yml2json::internal::json2yaml(doc);
-            YAML::Emitter out;
-            out << yaml;
-            result = out.c_str();
-        }
-        catch (const std::exception& e)
-        {
-            result = base::Error {e.what()};
-        }
+            std::variant<std::string, base::Error> result;
+            try
+            {
+                // TODO: Expose internals on json::Json ??
+                rapidjson::Document doc;
+                doc.Parse(json.str().c_str());
+                auto yaml = yml2json::internal::json2yaml(doc);
+                YAML::Emitter out;
+                out << yaml;
+                result = out.c_str();
+            }
+            catch (const std::exception& e)
+            {
+                WAZUH_LOG_DEBUG("Engine catalog: \"{}\" method: Config: \"{}\".",
+                                __func__,
+                                json.str());
+                result = base::Error {e.what()};
+            }
 
-        return result;
-    };
+            return result;
+        };
+
+    // TODO: what is str?
     m_inFormat[Resource::Format::YAML] = [](const std::string& str)
-    {
-        std::variant<json::Json, base::Error> result;
-        try
         {
-            result = json::Json {yml2json::loadYMLfromString(str)};
-        }
-        catch (const std::exception& e)
-        {
-            result = base::Error {e.what()};
-        }
+            std::variant<json::Json, base::Error> result;
+            try
+            {
+                result = json::Json {yml2json::loadYMLfromString(str)};
+            }
+            catch (const std::exception& e)
+            {
+                WAZUH_LOG_DEBUG("Engine catalog: \"{}\" method: Config: \"{}\".",
+                                __func__,
+                                str);
+                result = base::Error {e.what()};
+            }
 
-        return result;
-    };
+            return result;
+        };
 
     // Get schemas
     base::Name assetSchemaName;
     base::Name environmentSchemaName;
+
     try
     {
         assetSchemaName = base::Name {config.assetSchema};
+    }
+    catch (const std::exception& e)
+    {
+        std::throw_with_nested(std::runtime_error(
+            fmt::format("Error while parsing the asset schema: {}", e.what())));
+    }
+    try
+    {
         environmentSchemaName = base::Name {config.environmentSchema};
     }
     catch (const std::exception& e)
     {
-        std::throw_with_nested(std::runtime_error(fmt::format(
-            "Engine catalog: Error while parsing schema configuration parameters: {}",
-            e.what())));
+        std::throw_with_nested(std::runtime_error(
+            fmt::format("Error while parsing the environment schema: {}", e.what())));
     }
     auto assetSchemaJson = m_store->get(assetSchemaName);
     if (std::holds_alternative<base::Error>(assetSchemaJson))
     {
         throw std::runtime_error(
-            fmt::format("Engine catalog: Error while getting assets schema: {}.",
+            fmt::format("Error while getting the asset schema: {}",
                         std::get<base::Error>(assetSchemaJson).message));
     }
 
@@ -115,11 +143,11 @@ Catalog::Catalog(const Config& config)
     m_schemas[Resource::Type::OUTPUT] = std::get<json::Json>(assetSchemaJson);
     m_schemas[Resource::Type::FILTER] = std::get<json::Json>(assetSchemaJson);
 
-    auto environmentSchemaJson = m_store->get(environmentSchemaName);
+    const auto environmentSchemaJson = m_store->get(environmentSchemaName);
     if (std::holds_alternative<base::Error>(environmentSchemaJson))
     {
         throw std::runtime_error(
-            fmt::format("Engine catalog: Error while getting environments schema: {}.",
+            fmt::format("Error while getting the environment schema: {}",
                         std::get<base::Error>(environmentSchemaJson).message));
     }
     m_schemas[Resource::Type::ENVIRONMENT] = std::get<json::Json>(environmentSchemaJson);
@@ -128,36 +156,45 @@ Catalog::Catalog(const Config& config)
 std::optional<base::Error> Catalog::postResource(const Resource& collection,
                                                  const std::string& content)
 {
+    // TODO: are the same the collection.formatToStr() and the content?
+    WAZUH_LOG_DEBUG(
+        "Engine catalog: \"{}\" method: Collection name: \"{}\". Content: \"{}\".",
+        __func__,
+        collection.m_name.fullName(),
+        content);
 
     // Specified resource must be a collection
     if (Resource::Type::COLLECTION != collection.m_type)
     {
-        return base::Error {fmt::format(
-            "Engine catalog: Expected resource type is \"{}\", but got \"{}\".",
-            Resource::typeToStr(collection.m_type),
-            Resource::typeToStr(Resource::Type::COLLECTION))};
+        return base::Error {
+            fmt::format("Expected resource type is \"{}\", but got \"{}\"",
+                        Resource::typeToStr(collection.m_type),
+                        Resource::typeToStr(Resource::Type::COLLECTION))};
     }
 
     // content must be a valid resource for the specified collection
     // Build the resource Json, input content format must be the expected by the
     // collection and the name type of the content must be the same as the
     // collection
-    auto formatResult = m_inFormat[collection.m_format](content);
+    const auto formatResult = m_inFormat[collection.m_format](content);
     if (std::holds_alternative<base::Error>(formatResult))
     {
-        return base::Error {
-            fmt::format("Engine catalog: Could not format content to \"{}\": {}.",
-                        Resource::formatToStr(collection.m_format),
-                        std::get<base::Error>(formatResult).message)};
+        return base::Error {fmt::format("Could not format content to \"{}\": {}",
+                                        Resource::formatToStr(collection.m_format),
+                                        std::get<base::Error>(formatResult).message)};
     }
 
-    auto contentJson = std::get<json::Json>(formatResult);
-    auto contentNameStr = contentJson.getString("/name");
+    const auto contentJson = std::get<json::Json>(formatResult);
+    const auto contentNameStr = contentJson.getString("/name");
     if (!contentNameStr)
     {
-        return base::Error {
-            fmt::format("Engine catalog: Content name could not be found from: \"{}\".",
-                        contentJson.str())};
+        // TODO: is there a better way to say this?
+        return base::Error {fmt::format("Field \"name\" could not be found in content")};
+    }
+    else if (contentNameStr.value().empty())
+    {
+        // TODO: is there a better way to say this?
+        return base::Error {fmt::format("Field \"name\" cannot be empty in content")};
     }
 
     // Build the resource type of the content from the name
@@ -171,17 +208,16 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection,
     // Invalid content name
     catch (const std::exception& e)
     {
-        return base::Error {fmt::format("Engine catalog: Invalid content name \"{}\": {}",
-                                        contentNameStr.value(),
-                                        e.what())};
+        return base::Error {fmt::format(
+            "Invalid content name \"{}\": {}", contentNameStr.value(), e.what())};
     }
 
     // Assert content type is not a collection
     if (Resource::Type::COLLECTION == contentResource.m_type)
     {
-        return base::Error {fmt::format(
-            "Engine catalog: The content \"{}\" cannot be of the type \"collection\".",
-            contentNameStr.value())};
+        return base::Error {
+            fmt::format("The content \"{}\" cannot be of the type \"collection\"",
+                        contentNameStr.value())};
     }
 
     // Assert content type is the same as the collection
@@ -189,34 +225,34 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection,
     {
         if (collection.m_name.parts()[i] != contentName.parts()[i])
         {
-            return base::Error {fmt::format(
-                "Engine catalog: Invalid content name \"{}\" for collection \"{}\".",
-                contentName.fullName(),
-                collection.m_name.fullName())};
+            return base::Error {
+                fmt::format("Invalid content name \"{}\" for collection \"{}\"",
+                            contentName.fullName(),
+                            collection.m_name.fullName())};
         }
     }
 
     // Validate the content if needed
     if (contentResource.m_validation)
     {
-        auto validationError = validate(contentResource, contentJson);
+        const auto validationError = validate(contentResource, contentJson);
 
         if (validationError)
         {
             return base::Error {
-                fmt::format("Engine catalog: Validation failed for \"{}\": {}.",
+                fmt::format("An error occurred while trying to validate \"{}\": {}",
                             contentNameStr.value(),
                             validationError.value().message)};
         }
     }
 
     // All pre-conditions are met, post the content in the store
-    auto storeError = m_store->add(contentResource.m_name, contentJson);
+    const auto storeError = m_store->add(contentResource.m_name, contentJson);
     if (storeError)
     {
         return base::Error {
-            fmt::format("Engine catalog: Content \"{}\" could not be added to store: {}.",
-                        contentNameStr.value(),
+            fmt::format("Content Resource \"{}\" could not be added to store: {}",
+                        contentResource.m_name.fullName(),
                         storeError.value().message)};
     }
 
@@ -226,6 +262,11 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection,
 std::optional<base::Error> Catalog::putResource(const Resource& item,
                                                 const std::string& content)
 {
+    WAZUH_LOG_DEBUG("Engine catalog: \"{}\" method: Item name: \"{}\". Content: \"{}\".",
+                    __func__,
+                    item.m_name.fullName(),
+                    content);
+
     // Specified resource must be a Environment, Schema or Asset
     if (Resource::Type::ENVIRONMENT != item.m_type
         && Resource::Type::SCHEMA != item.m_type
@@ -234,30 +275,27 @@ std::optional<base::Error> Catalog::putResource(const Resource& item,
         && Resource::Type::FILTER != item.m_type
         && Resource::Type::OUTPUT != item.m_type)
     {
-        return base::Error {
-            fmt::format("Engine catalog: Invalid resource type \"{}\" for PUT operation.",
-                        Resource::typeToStr(item.m_type))};
+        return base::Error {fmt::format("Invalid resource type \"{}\" for PUT operation",
+                                        Resource::typeToStr(item.m_type))};
     }
 
     // content must correspond to the specified resource
     // Build the resource Json, input content format must be the expected by the
     // resource
-    auto formatResult = m_inFormat[item.m_format](content);
+    const auto formatResult = m_inFormat[item.m_format](content);
     if (std::holds_alternative<base::Error>(formatResult))
     {
-        return base::Error {
-            fmt::format("Engine catalog: Content could not be formatted to \"{}\": {}.",
-                        Resource::formatToStr(item.m_format),
-                        std::get<base::Error>(formatResult).message)};
+        return base::Error {fmt::format("Content could not be formatted to \"{}\": {}",
+                                        Resource::formatToStr(item.m_format),
+                                        std::get<base::Error>(formatResult).message)};
     }
 
-    auto contentJson = std::get<json::Json>(formatResult);
-    auto contentNameStr = contentJson.getString("/name");
+    const auto contentJson = std::get<json::Json>(formatResult);
+    const auto contentNameStr = contentJson.getString("/name");
     if (!contentNameStr)
     {
         return base::Error {
-            fmt::format("Engine catalog: Content name could is missing in \"{}\".",
-                        contentJson.str())};
+            fmt::format("Content name could is missing in \"{}\"", contentJson.str())};
     }
 
     base::Name contentName;
@@ -268,43 +306,42 @@ std::optional<base::Error> Catalog::putResource(const Resource& item,
     // Invalid content name
     catch (const std::exception& e)
     {
-        return base::Error {fmt::format("Engine catalog: Invalid content name \"{}\": {}",
-                                        contentNameStr.value(),
-                                        e.what())};
+        return base::Error {fmt::format(
+            "Invalid content name \"{}\": {}", contentNameStr.value(), e.what())};
     }
 
     // Assert content name is the same as the resource name
     if (contentName != item.m_name)
     {
-        return base::Error {fmt::format(
-            "Engine catalog: Invalid content name \"{}\" of \"{}\" for type \"{}\".",
-            contentNameStr.value(),
-            item.m_name.fullName(),
-            Resource::typeToStr(item.m_type))};
+        return base::Error {
+            fmt::format("Invalid content name \"{}\" of \"{}\" for type \"{}\"",
+                        contentNameStr.value(),
+                        item.m_name.fullName(),
+                        Resource::typeToStr(item.m_type))};
     }
 
     // Validate the content if needed
     if (item.m_validation)
     {
-        auto validationError = validate(item, contentJson);
+        const auto validationError = validate(item, contentJson);
 
         if (validationError)
         {
             return base::Error {
-                fmt::format("Engine catalog: Validation failed for \"{}\": {}.",
+                fmt::format("An error occurred while trying to validate \"{}\": {}",
                             contentNameStr.value(),
                             validationError.value().message)};
         }
     }
 
     // All pre-conditions are met, update the content in the store
-    auto storeError = m_store->update(item.m_name, contentJson);
+    const auto storeError = m_store->update(item.m_name, contentJson);
     if (storeError)
     {
-        return base::Error {fmt::format(
-            "Engine catalog: Content \"{}\" could not be updated in store: {}.",
-            contentNameStr.value(),
-            storeError.value().message)};
+        return base::Error {
+            fmt::format("Content \"{}\" could not be updated in store: {}",
+                        contentNameStr.value(),
+                        storeError.value().message)};
     }
 
     return std::nullopt;
@@ -314,31 +351,29 @@ std::variant<std::string, base::Error>
 Catalog::getResource(const Resource& resource) const
 {
     // Get the content from the store
-    auto storeResult = m_store->get(resource.m_name);
+    const auto storeResult = m_store->get(resource.m_name);
     if (std::holds_alternative<base::Error>(storeResult))
     {
-        return base::Error {fmt::format(
-            "Engine catalog: Content \"{}\" could not be obtained from store: {}.",
-            resource.m_name.fullName(),
-            std::get<base::Error>(storeResult).message)};
+        return base::Error {
+            fmt::format("Content \"{}\" could not be obtained from store: {}",
+                        resource.m_name.fullName(),
+                        std::get<base::Error>(storeResult).message)};
     }
 
-    auto contentJson = std::get<json::Json>(storeResult);
+    const auto contentJson = std::get<json::Json>(storeResult);
     // Format the content to the expected output format
-    auto formatterIt = m_outFormat.find(resource.m_format);
+    const auto formatterIt = m_outFormat.find(resource.m_format);
     if (formatterIt == m_outFormat.end())
     {
-        return base::Error {
-            fmt::format("Engine catalog: Formatter was not found for format \"{}\".",
-                        Resource::formatToStr(resource.m_format))};
+        return base::Error {fmt::format("Formatter was not found for format \"{}\"",
+                                        Resource::formatToStr(resource.m_format))};
     }
-    auto formatResult = formatterIt->second(contentJson);
+    const auto formatResult = formatterIt->second(contentJson);
     if (std::holds_alternative<base::Error>(formatResult))
     {
-        return base::Error {
-            fmt::format("Engine catalog: Content could not be formatted to \"{}\": {}.",
-                        Resource::formatToStr(resource.m_format),
-                        std::get<base::Error>(formatResult).message)};
+        return base::Error {fmt::format("Content could not be formatted to \"{}\": {}",
+                                        Resource::formatToStr(resource.m_format),
+                                        std::get<base::Error>(formatResult).message)};
     }
 
     return std::get<std::string>(formatResult);
@@ -346,13 +381,13 @@ Catalog::getResource(const Resource& resource) const
 
 std::optional<base::Error> Catalog::deleteResource(const Resource& resource)
 {
-    auto storeError = m_store->del(resource.m_name);
+    const auto storeError = m_store->del(resource.m_name);
     if (storeError)
     {
-        return base::Error {fmt::format(
-            "Engine catalog: Content \"{}\" could not be deleted from store: {}.",
-            resource.m_name.fullName(),
-            storeError.value().message)};
+        return base::Error {
+            fmt::format("Content \"{}\" could not be deleted from store: {}",
+                        resource.m_name.fullName(),
+                        storeError.value().message)};
     }
 
     return std::nullopt;
@@ -368,9 +403,8 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
         && Resource::Type::OUTPUT != item.m_type
         && Resource::Type::ENVIRONMENT != item.m_type)
     {
-        return base::Error {
-            fmt::format("Engine catalog: Invalid resource type \"{}\" for validation.",
-                        Resource::typeToStr(item.m_type))};
+        return base::Error {fmt::format("Invalid resource type \"{}\" for validation",
+                                        Resource::typeToStr(item.m_type))};
     }
 
     // Validate against the schema first
@@ -407,17 +441,15 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
     }
     else
     {
-        return base::Error {
-            fmt::format("Engine catalog: Validator not found for type \"{}\".",
-                        Resource::typeToStr(item.m_type))};
+        return base::Error {fmt::format("Validator not found for type \"{}\"",
+                                        Resource::typeToStr(item.m_type))};
     }
 
     if (validationError)
     {
-        return base::Error {
-            fmt::format("Engine catalog: Validation failed for \"{}\": {}.",
-                        item.m_name.fullName(),
-                        validationError.value().message)};
+        return base::Error {fmt::format("Validation failed for \"{}\": {}",
+                                        item.m_name.fullName(),
+                                        validationError.value().message)};
     }
 
     return std::nullopt;
@@ -433,36 +465,33 @@ std::optional<base::Error> Catalog::validateResource(const Resource& item,
         && Resource::Type::OUTPUT != item.m_type
         && Resource::Type::ENVIRONMENT != item.m_type)
     {
-        return base::Error {fmt::format(
-            "Engine catalog: Invalid resource type \"{}\" for VALIDATE operation.",
-            Resource::typeToStr(item.m_type))};
+        return base::Error {
+            fmt::format("Invalid resource type \"{}\" for VALIDATE operation",
+                        Resource::typeToStr(item.m_type))};
     }
 
     // Build the content json
-    auto formatterIt = m_inFormat.find(item.m_format);
+    const auto formatterIt = m_inFormat.find(item.m_format);
     if (formatterIt == m_inFormat.end())
     {
-        return base::Error {
-            fmt::format("Engine catalog: Formatter was not found for format \"{}\".",
-                        Resource::formatToStr(item.m_format))};
+        return base::Error {fmt::format("Formatter was not found for format \"{}\"",
+                                        Resource::formatToStr(item.m_format))};
     }
 
-    auto contentJson = formatterIt->second(content);
+    const auto contentJson = formatterIt->second(content);
     if (std::holds_alternative<base::Error>(contentJson))
     {
-        return base::Error {
-            fmt::format("Engine catalog: Content could not be parsed to json: {}.",
-                        std::get<base::Error>(contentJson).message)};
+        return base::Error {fmt::format("Content could not be parsed to json: {}",
+                                        std::get<base::Error>(contentJson).message)};
     }
 
     // Validate the content
-    auto validationError = validate(item, std::get<json::Json>(contentJson));
+    const auto validationError = validate(item, std::get<json::Json>(contentJson));
 
     if (validationError)
     {
-        return base::Error {
-            fmt::format("Engine catalog: Content cannot be validated: {}.",
-                        validationError.value().message)};
+        return base::Error {fmt::format("Content cannot be validated: {}",
+                                        validationError.value().message)};
     }
 
     return std::nullopt;

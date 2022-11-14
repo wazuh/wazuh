@@ -9,6 +9,7 @@
 #include <uvw/pipe.hpp>
 
 #include <utils/stringUtils.hpp>
+#include <logging/logging.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
 
@@ -24,8 +25,10 @@ void client(uvw::Loop& loop,
     client->on<uvw::ErrorEvent>(
         [](const uvw::ErrorEvent& event, uvw::PipeHandle& handle)
         {
-            std::cerr << "Engine API Client: An ErrorEvent was raised: " << event.what()
-                      << std::endl;
+            WAZUH_LOG_DEBUG(
+                "Engine API Client: An \"uvw::ErrorEvent\" was raised with peer \"{}\".",
+                handle.peer());
+            WAZUH_LOG_ERROR("Engine API Client: {}.", event.what());
             handle.close();
         });
 
@@ -82,7 +85,9 @@ void dummyServer(uvw::Loop& loop, const std::string& socketPath)
 
     server->on<uvw::ErrorEvent>(
         [](const uvw::ErrorEvent& error, uvw::PipeHandle& handle)
-        { std::cerr << "API Server ErrorEvent: " << error.what() << std::endl; });
+        {
+            std::cerr << "API Server ErrorEvent: " << error.what() << std::endl;
+        });
 
     server->on<uvw::ListenEvent>(
         [](const uvw::ListenEvent&, uvw::PipeHandle& handle)

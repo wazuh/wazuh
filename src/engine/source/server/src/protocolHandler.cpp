@@ -66,7 +66,7 @@ std::optional<vector<string>> WazuhStreamProtocol::process(const char* data,
                 }
                 catch (std::exception& e)
                 {
-                    WAZUH_LOG_ERROR("Engine protocol handler: An error ocurred while "
+                    WAZUH_LOG_ERROR("Engine protocol handler: An error occurred while "
                                     "trying to process a message's header: {}",
                                     e.what());
                     return std::nullopt;

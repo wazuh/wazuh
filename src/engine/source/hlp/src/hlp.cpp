@@ -55,11 +55,10 @@ void configureParserMappings(const std::string& config)
 
     if (doc.HasParseError())
     {
-        WAZUH_LOG_ERROR("Engine HLP: \"{}\" method: An error ocurred while parsing "
-                        "configuration at offset {} from configuration: \"{}\".",
+        WAZUH_LOG_ERROR("Engine HLP: \"{}\" method: An error occurred while parsing "
+                        "configuration at offset {} in the configuration.",
                         __func__,
-                        doc.GetErrorOffset(),
-                        config);
+                        doc.GetErrorOffset());
         return;
     }
 
@@ -73,10 +72,10 @@ void configureParserMappings(const std::string& config)
         else
         {
             WAZUH_LOG_DEBUG(" Engine HLP: \"{}\" method: Invalid parser type \"{}\" for "
-                            "field \"{}\" from configuration: \"{}\".",
+                            "field \"{}\" in the configuration.",
+                            __func__,
                             it->value.GetString(),
-                            it->name.GetString(),
-                            config);
+                            it->name.GetString());
         }
     }
 }
@@ -179,8 +178,11 @@ Parser createParserFromExpresion(Expression const& exp)
         }
         else
         {
-            throw std::runtime_error(fmt::format(
-                "Field {} in logparse expression is not a valid ECS field", parser.name));
+            throw std::runtime_error(
+                fmt::format("Engine HLP: \"{}\" method: Field \"{}\" in logparse "
+                            "expression is not a valid ECS field.",
+                            __func__,
+                            parser.name));
         }
     }
 
