@@ -3323,10 +3323,10 @@ checks:
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
-    condition: all
+    condition: any
     rules:
       - "c:sshd -T -> r:^loglevel VERBOSE|^loglevel INFO"
-      - "not f:/etc/ssh/sshd_config -> !r:^\\s*\\t*loglevel\\s*\\t*VERBOSE"
+      - "not f:/etc/ssh/sshd_config -> !r:^\\s*\\t*loglevel\\s*\\t*VERBOSE|^\\s*\\t*loglevel\\s*\\t*INFO"
 
   # 5.2.6 Ensure SSH PAM is enabled (Automated)
   - id: 28637
