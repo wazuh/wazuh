@@ -79,6 +79,7 @@ void run(const std::string& kvdbPath,
     std::shared_ptr<api::catalog::Catalog> catalog;
     std::shared_ptr<engineserver::EngineServer> server;
     std::shared_ptr<router::EnvironmentManager> envManager;
+    std::shared_ptr<KVDBManager> kvdb;
 
     try
     {
@@ -89,20 +90,20 @@ void run(const std::string& kvdbPath,
         g_exitHanlder.add([server]() { server->close(); });
         WAZUH_LOG_INFO("Server configured");
 
-        KVDBManager::init(kvdbPath);
+        kvdb = std::make_shared<KVDBManager>(kvdbPath);
         WAZUH_LOG_INFO("KVDB initialized");
         g_exitHanlder.add(
-            []()
+            [kvdb]()
             {
                 WAZUH_LOG_INFO("KVDB terminated");
-                KVDBManager::get().clear();
+                kvdb->clear();
             });
 
         store = std::make_shared<store::FileDriver>(fileStorage);
         WAZUH_LOG_INFO("Store initialized");
 
         auto registry = std::make_shared<builder::internals::Registry>();
-        builder::internals::registerBuilders(registry);
+        builder::internals::registerBuilders(registry, {kvdb});
         WAZUH_LOG_INFO("Builders registered");
 
         builder = std::make_shared<builder::Builder>(store, registry);
