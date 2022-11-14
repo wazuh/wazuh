@@ -15,24 +15,20 @@ using namespace base;
 
 #define GTEST_COUT std::cout << "[          ] [ INFO ] "
 
-class StageBuilderNormalizeTest : public ::testing::Test
+auto initTest()
 {
-protected:
-    void SetUp() override
-    {
-        Registry::registerBuilder(operationConditionBuilder, "operation.condition");
-        Registry::registerBuilder(operationMapBuilder, "operation.map");
-        Registry::registerBuilder(stageBuilderCheck, "stage.check");
-        Registry::registerBuilder(stageMapBuilder, "stage.map");
-    }
-    void TearDown() override
-    {
-        Registry::clear();
-    }
-};
+    auto registry = std::make_shared<Registry>();
+    registry->registerBuilder(getOperationConditionBuilder(registry),
+                              "operation.condition");
+    registry->registerBuilder(getOperationMapBuilder(registry), "operation.map");
+    registry->registerBuilder(getStageBuilderCheck(registry), "stage.check");
+    registry->registerBuilder(getStageMapBuilder(registry), "stage.map");
+    return registry;
+}
 
-TEST_F(StageBuilderNormalizeTest, Builds)
+TEST(StageBuilderNormalizeTest, Builds)
 {
+    auto registry = initTest();
     auto normalizeJson = Json {R"([
         {"map": [
             {"string": "value"},
@@ -66,27 +62,30 @@ TEST_F(StageBuilderNormalizeTest, Builds)
         ]}
 ])"};
 
-    ASSERT_NO_THROW(stageNormalizeBuilder(normalizeJson));
+    ASSERT_NO_THROW(getStageNormalizeBuilder(registry)(normalizeJson));
 }
 
-TEST_F(StageBuilderNormalizeTest, UnexpectedDefinition)
+TEST(StageBuilderNormalizeTest, UnexpectedDefinition)
 {
+    auto registry = initTest();
     auto normalizeJson = Json {R"({})"};
 
-    ASSERT_THROW(stageNormalizeBuilder(normalizeJson), std::runtime_error);
+    ASSERT_THROW(getStageNormalizeBuilder(registry)(normalizeJson), std::runtime_error);
 }
 
-TEST_F(StageBuilderNormalizeTest, ArrayWrongTypeItem)
+TEST(StageBuilderNormalizeTest, ArrayWrongTypeItem)
 {
+    auto registry = initTest();
     auto normalizeJson = Json {R"([
         ["string", "value"]
 ])"};
 
-    ASSERT_THROW(stageNormalizeBuilder(normalizeJson), std::runtime_error);
+    ASSERT_THROW(getStageNormalizeBuilder(registry)(normalizeJson), std::runtime_error);
 }
 
-TEST_F(StageBuilderNormalizeTest, BuildsCorrectExpression)
+TEST(StageBuilderNormalizeTest, BuildsCorrectExpression)
 {
+    auto registry = initTest();
     auto normalizeJson = Json {R"([
         {"map": [
             {"string": "value"},
@@ -120,7 +119,7 @@ TEST_F(StageBuilderNormalizeTest, BuildsCorrectExpression)
         ]}
 ])"};
 
-    auto expression = stageNormalizeBuilder(normalizeJson);
+    auto expression = getStageNormalizeBuilder(registry)(normalizeJson);
 
     ASSERT_TRUE(expression->isOperation());
     ASSERT_TRUE(expression->isChain());
