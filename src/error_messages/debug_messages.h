@@ -211,7 +211,7 @@
 #define FIM_WHODATA_DEVICE_PATH             "(6304): Find device '%s' in path '%s'"
 #define FIM_WHODATA_DEVICE_REPLACE          "(6305): Replacing '%s' to '%s'"
 #define FIM_WHODATA_PATH_NOPROCCESED        "(6306): The path could not be processed in Whodata mode. Error: %u"
-#define FIM_WHODATA_CONVERT_PATH            "(6307): Convert '%s' to '%s' to process the whodata event."
+#define FIM_CONVERT_PATH                    "(6307): Convert '%s' to '%s' to process the FIM events."
 #define FIM_WHODATA_FOLDER_REMOVED          "(6308): File '%s' was inside the removed directory '%s'. It will be notified."
 #define FIM_WHODATA_IGNORE_FILEEVENT        "(6309): Ignoring remove event for file '%s' because it has already been reported."
 #define FIM_CHECKSUM_MSG                    "(6310): Sending msg to the server: %s"
