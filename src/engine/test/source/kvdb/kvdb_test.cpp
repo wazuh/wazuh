@@ -55,8 +55,15 @@ TEST_F(KVDBTest, CreateDeleteKvdbFile)
     ASSERT_EQ(newKvdb->getName(), "NEW_DB");
     ASSERT_TRUE(newKvdb->isReady());
 
-    kvdbManager->deleteDB("NEW_DB");
-    auto deletedKvdb = kvdbManager->getDB("NEW_DB");
+    auto ret2 = kvdbManager.addDb("NEW_DB 2");
+    ASSERT_TRUE(ret2);
+    auto newKvdb2 = kvdbManager.getDB("NEW_DB 2");
+    ASSERT_EQ(newKvdb2->getName(), "NEW_DB 2");
+    ASSERT_TRUE(newKvdb2->isReady());
+    kvdbManager.deleteDB("NEW_DB 2");
+
+    kvdbManager.deleteDB("NEW_DB");
+    auto deletedKvdb = kvdbManager.getDB("NEW_DB");
     ASSERT_EQ(deletedKvdb, nullptr);
 }
 
