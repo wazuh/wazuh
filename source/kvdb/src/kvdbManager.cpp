@@ -32,7 +32,7 @@ KVDBManager::KVDBManager(const std::filesystem::path& DbFolder)
             // Read it from the config file?
             if (cdbfile.is_regular_file())
             {
-                if (createDBfromCDB(cdbfile.path(), true))
+                if (createKVDBfromFile(cdbfile.path(), true))
                 {
                     // TODO Remove files once synced
                     // std::filesystem::remove(cdbfile.path())
@@ -42,7 +42,8 @@ KVDBManager::KVDBManager(const std::filesystem::path& DbFolder)
     }
 }
 
-KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
+KVDBHandle
+KVDBManager::addDb(const std::string& name, bool createIfMissing, bool lockForDelete)
 {
     std::unique_lock lk(mMtx);
     if (m_availableKVDBs.find(name) != m_availableKVDBs.end())
@@ -59,12 +60,17 @@ KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
                     __func__,
                     name);
     auto kvdb = std::make_shared<KVDB>(name, mDbFolder);
-    kvdb->init(createIfMissing);
-    m_availableKVDBs[name] = kvdb;
-    return kvdb;
+    if (kvdb->init(createIfMissing))
+    {
+        m_availableKVDBs[name] = std::make_pair(kvdb, lockForDelete);
+        return kvdb;
+    }
+
+    return nullptr;
 }
 
-bool KVDBManager::createDBfromCDB(const std::filesystem::path& path, bool createIfMissing)
+bool KVDBManager::createKVDBfromFile(const std::filesystem::path& path,
+                                  bool createIfMissing, const std::string dbName)
 {
     std::ifstream CDBfile(path);
     if (!CDBfile.is_open())
@@ -76,7 +82,8 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path& path, bool create
         return false;
     }
 
-    auto db = addDb(path.stem(), createIfMissing);
+    const std::string name = dbName.empty() ? path.stem().string() : dbName;
+    auto db = addDb(name, createIfMissing);
     if (!db)
     {
         WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Failed to create database "
@@ -117,18 +124,28 @@ bool KVDBManager::deleteDB(const std::string& name)
                         name);
         return false;
     }
-    it->second->cleanupOnClose();
-    m_availableKVDBs.erase(it);
-    return true;
+
+    // only delete when it isn't mark as blocked
+    if (!it->second.second)
+    {
+        it->second.first->cleanupOnClose();
+        m_availableKVDBs.erase(it);
+        return true;
+    }
+    else
+    {
+        WAZUH_LOG_ERROR("Database [{}] is in use so it can't be deleted", name);
+        return false;
+    }
 }
 
-KVDBHandle KVDBManager::getDB(const std::string& name)
+KVDBHandle KVDBManager::getDB(const std::string& name, bool lockForDelete)
 {
     std::shared_lock lk(mMtx);
     auto it = m_availableKVDBs.find(name);
     if (it != m_availableKVDBs.end())
     {
-        auto& db = it->second;
+        auto& db = it->second.first;
         if (!db->isReady())
         {
             // In general it should never happen so we should consider just
@@ -143,7 +160,10 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
             }
         }
 
-        return it->second;
+        // lock to protect outside deletion
+        it->second.second = lockForDelete;
+        // return handle
+        return it->second.first;
     }
 
     return nullptr;

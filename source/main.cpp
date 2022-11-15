@@ -77,7 +77,7 @@ int debug_level;
 std::string asset_trace;
 int log_level;
 std::string kvdb_name;
-std::string kvdb_input_file;
+std::string kvdb_input_file_path;
 std::string kvdb_input_type;
 std::string catalogName;
 bool catalogJsonFormat;
@@ -257,14 +257,47 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
     // KVDB list subcommand
     auto list_subcommand = kvdb->add_subcommand(args::SUBCOMMAND_KVDB_LIST,
                                                 "list: List all KeyValueDB availables.");
+    list_subcommand
+        ->add_option("-n, --name",
+                     args::kvdb_name,
+                     "KVDB name to match the start of the name of the available ones")
+        ->default_val("");
 
-    // KVDB list subcommand
+    // KVDB create subcommand
     auto create_subcommand =
-        kvdb->add_subcommand(args::SUBCOMMAND_KVDB_CREATE,
-                             "create db-name: Creates a KeyValueDB with named db-name.");
-    // KVDB name
+    kvdb->add_subcommand(args::SUBCOMMAND_KVDB_CREATE,
+                            "create db-name: Creates a KeyValueDB named db-name.");
+    // create kvdb name
     create_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be added.")
         ->required();
+
+    // create kvdb from file with path
+    create_subcommand
+        ->add_option("-p, --path",
+                     args::kvdb_input_file_path,
+                     "Path to the directory containing the input file. It must have a key "
+                     "value pair (separated by \":\") or just single values per line.")
+        ->check(CLI::ExistingFile);
+
+    // KVDB dump subcommand
+    auto dump_subcommand = kvdb->add_subcommand(args::SUBCOMMAND_KVDB_DUMP,"NA.");
+
+    // KVDB delete subcommand
+    auto delete_subcommand =
+    kvdb->add_subcommand(args::SUBCOMMAND_KVDB_DELETE,
+                            "delete db-name: Deletes a KeyValueDB named db-name.");
+    // KVDB name
+    delete_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be deleted.")
+        ->required();
+
+    // KVDB get subcommand
+    auto get_subcommand = kvdb->add_subcommand(args::SUBCOMMAND_KVDB_GET,"NA.");
+
+    // KVDB insert subcommand
+    auto insert_subcommand = kvdb->add_subcommand(args::SUBCOMMAND_KVDB_INSERT,"NA.");
+
+    // KVDB remove subcommand
+    auto remove_subcommand = kvdb->add_subcommand(args::SUBCOMMAND_KVDB_REMOVE,"NA.");
 }
 
 void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
@@ -562,7 +595,8 @@ int main(int argc, char* argv[])
             cmd::kvdb(args::kvdb_path,
                       args::kvdb_name,
                       args::apiEndpoint,
-                      action);
+                      action,
+                      args::kvdb_input_file_path);
         }
         else if (app->get_subcommand(args::SUBCOMMAND_CATALOG)->parsed())
         {
