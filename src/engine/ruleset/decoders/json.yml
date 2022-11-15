@@ -1,6 +1,18 @@
 ---
 name: decoder/json/0
 
+metadata:
+  module: json
+  title: JSON Decoder event
+  description: Decodes JSON events
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2022/11/08
+  references:
+    - https://www.json.org
+
 sources:
   - decoder/queue-syslog/0
   - decoder/queue-localfile/0

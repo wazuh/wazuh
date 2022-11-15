@@ -2,11 +2,17 @@
 name: decoder/syslog/0
 
 metadata:
+  module: syslog
+  title: Syslog Decoder event
   description: Syslog header
-  references: [ https://datatracker.ietf.org/doc/html/rfc3164, https://datatracker.ietf.org/doc/html/rfc5424 ]
-  product.name: Syslog
-  formats: [ rfc3164, rfc5424 ]
-  json_event_name: syslog
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2022/11/08
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc3164
+    - https://datatracker.ietf.org/doc/html/rfc5424
 
 sources:
   - decoder/queue-syslog/0
