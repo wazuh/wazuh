@@ -16,17 +16,21 @@ class KVDBManager
 {
     WAZUH_DISABLE_COPY_ASSIGN(KVDBManager);
 
-    std::filesystem::path mDbFolder;
-    std::unordered_map<std::string, KVDBHandle> m_availableKVDBs;
+    static std::filesystem::path mDbFolder;
+    std::unordered_map<std::string, std::pair<KVDBHandle, bool>> m_availableKVDBs;
     std::shared_mutex mMtx;
 
 public:
     KVDBManager(const std::filesystem::path& DbFolder);
     ~KVDBManager() = default;
-    KVDBHandle addDb(const std::string& Name, bool createIfMissing = true);
-    bool createDBfromCDB(const std::filesystem::path& path, bool createIfMissing = true);
+    KVDBHandle addDb(const std::string& Name,
+                     bool createIfMissing = true,
+                     bool lockForDelete = true);
+    bool createKVDBfromFile(const std::filesystem::path& path,
+                            bool createIfMissing = true,
+                            const std::string dbName = "");
     bool deleteDB(const std::string& name);
-    KVDBHandle getDB(const std::string& name);
+    KVDBHandle getDB(const std::string& name, bool lockForDelete = true);
     std::vector<std::string> getAvailableKVDBs();
     void clear()
     {
