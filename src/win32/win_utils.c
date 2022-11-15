@@ -17,6 +17,7 @@
 #include "sysInfo.h"
 #include "sym_load.h"
 #include "../os_net/os_net.h"
+#include "dll_load_notify.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
@@ -65,6 +66,7 @@ int local_start()
     WSADATA wsaData;
     DWORD  threadID;
     DWORD  threadID2;
+
     win_debug_level = getDefine_Int("windows", "debug", 0, 2);
 
     /* Get debug level */
@@ -73,6 +75,8 @@ int local_start()
         nowDebug();
         debug_level--;
     }
+
+    enable_dll_verification();
 
     if (sysinfo_module = so_get_module_handle("sysinfo"), sysinfo_module)
     {
