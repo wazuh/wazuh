@@ -1,5 +1,14 @@
 name: output/file-output/0
 
+metadata:
+  title: file output event
+  description: Output events to a file
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2022/11/08
+
 outputs:
   - file:
       path: /var/ossec/logs/alerts/alerts-ECS.json
