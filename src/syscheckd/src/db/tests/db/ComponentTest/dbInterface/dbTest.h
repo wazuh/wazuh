@@ -88,7 +88,9 @@ class DBTestFixture : public testing::Test {
                         mockLoggingFunction,
                         MAX_FILE_LIMIT,
                         100000,
-                        true);
+                        true,
+                        1,
+                        0);
 
             evt_data = {};
             evt_data.report_event = true;

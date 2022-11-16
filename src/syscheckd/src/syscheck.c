@@ -86,7 +86,9 @@ void fim_initialize() {
                                          loggingFunction,
                                          syscheck.file_entry_limit,
                                          0,
-                                         false);
+                                         false,
+                                         syscheck.sync_thread_pool,
+                                         syscheck.sync_queue_size);
 #else
     FIMDBErrorCode ret_val = fim_db_init(syscheck.database_store,
                                          syscheck.sync_interval,
@@ -96,7 +98,9 @@ void fim_initialize() {
                                          loggingFunction,
                                          syscheck.file_entry_limit,
                                          syscheck.db_entry_registry_limit,
-                                         syscheck.enable_registry_synchronization);
+                                         syscheck.enable_registry_synchronization,
+                                         syscheck.sync_thread_pool,
+                                         syscheck.sync_queue_size);
 #endif
 
     if (ret_val != FIMDB_OK) {
