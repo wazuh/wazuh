@@ -116,7 +116,7 @@ static void test_get_agent_ip_update_ipv6_gateway_ipv6_success(void ** state) {
     error_code_sysinfo_network = 0;
     test_case_selector = 6;
 
-    char * agent_ip = = get_agent_ip();
+    char * agent_ip = get_agent_ip();
 
     assert_string_equal(agent_ip, address);
     os_free(agent_ip);
