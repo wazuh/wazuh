@@ -1,5 +1,7 @@
 #include "api/wazuhRequest.hpp"
 
+#include <logging/logging.hpp>
+
 namespace api
 {
 /*
@@ -9,34 +11,37 @@ std::optional<std::string> WazuhRequest::validate() const
 {
     if (!m_jrequest.isObject())
     {
-        return "The request must be a JSON type object";
+        return "The request must be formatted as a JSON object";
     }
     if (!m_jrequest.exists("/version") || !m_jrequest.isInt("/version"))
     {
-        return "The request must have a version field with an integer value";
+        return "The request must have a \"version\" field containing an integer value";
     }
     // Check if the version is supported
     if (m_jrequest.getInt("/version").value() != VERSION_SUPPORTED)
     {
-        return "The request version is not supported";
+        return fmt::format(
+            "The request version ({}) is not supported, the supported version is {}",
+            m_jrequest.getInt("/version").value(),
+            VERSION_SUPPORTED);
     }
-    if (!m_jrequest.exists("/command") || !m_jrequest.isString("/command"))
+    if (!m_jrequest.isString("/command"))
     {
-        return "The request must have a command field with a string value";
+        return "The request must have a command field containing a string value";
     }
-    if (!m_jrequest.exists("/parameters") || !m_jrequest.isObject("/parameters"))
+    if (!m_jrequest.isObject("/parameters"))
     {
         return "The request must have a parameters field with a JSON object value";
     }
-    if (!m_jrequest.exists("/origin") || !m_jrequest.isObject("/origin"))
+    if (!m_jrequest.isObject("/origin"))
     {
         return "The request must have an origin field with a JSON object value";
     }
-    if (!m_jrequest.exists("/origin/name") || !m_jrequest.isString("/origin/name"))
+    if (!m_jrequest.isString("/origin/name"))
     {
         return "The request must have an origin/name field with a string value";
     }
-    if (!m_jrequest.exists("/origin/module") || !m_jrequest.isString("/origin/module"))
+    if (!m_jrequest.isString("/origin/module"))
     {
         return "The request must have an origin/module field with a string value";
     }
@@ -51,12 +56,28 @@ WazuhRequest WazuhRequest::create(std::string_view command,
 
     if (command.empty())
     {
-        throw std::runtime_error("Engine API request: A command cannot be empty.");
+        WAZUH_LOG_DEBUG(
+            "Engine API request: \"{}\" method: command: \"{}\", origin name: "
+            "\"{}\", parameters: \"{}\".",
+            __func__,
+            command,
+            originName,
+            parameters.str());
+
+        throw std::runtime_error("The command cannot be empty");
     }
     if (!parameters.isObject())
     {
+        WAZUH_LOG_DEBUG(
+            "Engine API request: \"{}\" method: command: \"{}\", origin name: "
+            "\"{}\", parameters: \"{}\".",
+            __func__,
+            command,
+            originName,
+            parameters.str());
+
         throw std::runtime_error(
-            "Engine API request: The command parameters must be object JSON type.");
+            "The command parameters must be inside of a JSON object");
     }
 
     json::Json jrequest;

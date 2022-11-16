@@ -262,10 +262,10 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection,
 std::optional<base::Error> Catalog::putResource(const Resource& item,
                                                 const std::string& content)
 {
-    WAZUH_LOG_DEBUG("Engine catalog: \"{}\" method: Item name: \"{}\". Content: \"{}\".",
+    // TODO: should we print the content here?
+    WAZUH_LOG_DEBUG("Engine catalog: \"{}\" method: Item name: \"{}\".",
                     __func__,
-                    item.m_name.fullName(),
-                    content);
+                    item.m_name.fullName());
 
     // Specified resource must be a Environment, Schema or Asset
     if (Resource::Type::ENVIRONMENT != item.m_type
@@ -295,7 +295,7 @@ std::optional<base::Error> Catalog::putResource(const Resource& item,
     if (!contentNameStr)
     {
         return base::Error {
-            fmt::format("Content name could is missing in \"{}\"", contentJson.str())};
+            fmt::format("Content name is missing in \"{}\"", contentJson.str())};
     }
 
     base::Name contentName;
