@@ -353,8 +353,12 @@ void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
                                 "load item-type path: Tries to create and add all the "
                                 "items found in the path to the collection.");
     load_subcommand
-        ->add_option(
-            name, args::catalogName, nameDesc + "collection to add items: item-type")
+        ->add_option(name,
+                     args::catalogName,
+                     nameDesc
+                         + "type of the items collection: item-type. The supported item "
+                           "types are: \"decoder\", \"rule\", \"filter\", \"output\", "
+                           "\"schema\" and \"environment\".")
         ->required();
     load_subcommand
         ->add_option("path",
