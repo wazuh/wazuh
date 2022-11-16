@@ -19,6 +19,9 @@
       "description": "Wazuh internal field.",
       "ecs_type": null
     },
+    "@timestamp": {
+      "$ref": "#/definitions/@timestamp"
+    },
     "agent.build.original": {
       "$ref": "#/definitions/agent.build.original"
     },
@@ -1213,6 +1216,9 @@
     "http.version": {
       "$ref": "#/definitions/http.version"
     },
+    "labels": {
+      "$ref": "#/definitions/labels"
+    },
     "log.file.path": {
       "$ref": "#/definitions/log.file.path"
     },
@@ -1263,6 +1269,9 @@
     },
     "log.syslog.version": {
       "$ref": "#/definitions/log.syslog.version"
+    },
+    "message": {
+      "$ref": "#/definitions/message"
     },
     "network.application": {
       "$ref": "#/definitions/network.application"
@@ -2739,6 +2748,9 @@
     },
     "span.id": {
       "$ref": "#/definitions/span.id"
+    },
+    "tags": {
+      "$ref": "#/definitions/tags"
     },
     "threat.enrichments.indicator.as.number": {
       "$ref": "#/definitions/threat.enrichments.indicator.as.number"
