@@ -30,7 +30,7 @@ DWORD verify_pe_signature(const wchar_t *path)
         return ERROR_INVALID_DATA;
     }
 
-    DWORD last_error;
+    DWORD last_error = ERROR_SUCCESS;
     WINTRUST_DATA WinTrustData;
     WINTRUST_FILE_INFO WinTrustFileInfo;
     GUID policy_GUID = WINTRUST_ACTION_GENERIC_VERIFY_V2;
@@ -60,11 +60,9 @@ DWORD verify_pe_signature(const wchar_t *path)
         return ERROR_SUCCESS;
     case TRUST_E_NOSIGNATURE:
         mdebug2("No signature found for '%S'.", full_path);
-        last_error = GetLastError();
         return ERROR_INVALID_DATA;
     case TRUST_E_SUBJECT_FORM_UNKNOWN:
         merror("The file '%S' is not of a recognized format.", full_path);
-        last_error = GetLastError();
         return ERROR_INVALID_DATA;
     case TRUST_E_PROVIDER_UNKNOWN:
         merror("No provider found for the specified action.");
@@ -134,9 +132,9 @@ DWORD verify_hash_catalog(wchar_t *file_path)
     GUID policy_GUID = DRIVER_ACTION_VERIFY;
     BYTE *hash = NULL;
     DWORD hash_size = 0;
-    DWORD result;
+    DWORD result = get_file_hash(file_path, &hash, &hash_size);
 
-    if (result = get_file_hash(file_path, &hash, &hash_size), ERROR_SUCCESS == result) {
+    if (ERROR_SUCCESS == result) {
         if (CryptCATAdminAcquireContext(&catalog_administrator, &policy_GUID, 0)) {
             // Search for the catalog file.
             // If the file is not signed, the function returns NULL.
@@ -145,7 +143,7 @@ DWORD verify_hash_catalog(wchar_t *file_path)
             if (catalog_context = CryptCATAdminEnumCatalogFromHash(catalog_administrator, hash, hash_size, 0, NULL), catalog_context) {
                 CryptCATAdminReleaseCatalogContext(catalog_administrator, catalog_context, 0);
             } else {
-                result = GetLastError();
+                result = ERROR_INVALID_DATA;
             }
             CryptCATAdminReleaseContext(catalog_administrator, 0);
         } else {

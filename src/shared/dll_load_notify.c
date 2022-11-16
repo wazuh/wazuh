@@ -26,7 +26,7 @@ static void loaded_modules_verification()
 #ifdef IMAGE_TRUST_CHECKS
     HMODULE handle_module[OS_SIZE_1024];
     HANDLE handle_process = GetCurrentProcess();
-    DWORD handle_bytes_needed;
+    DWORD handle_bytes_needed = 0;
 
     if (EnumProcessModules(handle_process,
                            handle_module,
