@@ -203,7 +203,9 @@ def main():
                         current = current[splitted[i]]['items']['properties']
                     else:
                         make_error(F"Error: {search_key} is not an object or array")
-
+        # root leaf fields
+        else:
+            custom_ecs_field['properties'][key] = {'$ref': '#/definitions/' + key}
 
     # Add all groups to properties
     custom_ecs_field['properties'] = {**custom_ecs_field['properties'], **nested_map}
