@@ -6,8 +6,21 @@
   Audit decoders (logformat must be "audit")
 -->
 
+<!--
+    By default, /etc/audit/auditd.conf has the setting:
+      name_format = none
+    
+    Then auditd log lines start with:
+      type=xxx
+
+    When /etc/audit/auditd.conf name_format setting is something different:
+      name_format = hostname
+
+    Then auditd log lines start with:
+      node=hostname.domain.tld type=xxx
+-->
 <decoder name="auditd">
-  <prematch>^type=</prematch>
+  <prematch>^type=|^node=\S+ type=</prematch>
 </decoder>
 
 <!--
