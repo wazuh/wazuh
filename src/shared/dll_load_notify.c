@@ -38,6 +38,8 @@ static void loaded_modules_verification()
                 mdebug1("The file '%S' is signed and its signature is valid.", module_name);
             }
         }
+    } else {
+        merror_exit("Unable to enumerate the process modules. Error: %lu", GetLastError());
     }
 #endif
 }
@@ -79,10 +81,14 @@ void enable_dll_verification()
     if (handle_ntdll) {
         LdrRegisterDllNotification = (_LdrRegisterDllNotification)GetProcAddress(handle_ntdll, "LdrRegisterDllNotification");
 
-        if(LdrRegisterDllNotification)
+        if (LdrRegisterDllNotification)
         {
             LdrRegisterDllNotification(0, &dll_notification, NULL, &cookie_dll_notification);
+        } else {
+            merror("Unable to get the address of LdrRegisterDllNotification. Error: %lu", GetLastError());
         }
+    } else {
+        merror("Unable to get the handle of ntdll.dll. Error: %lu", GetLastError());
     }
 #endif
 }
