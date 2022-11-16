@@ -153,7 +153,25 @@ All notable changes to this project will be documented in this file.
 - Prevented the Ruleset test suite from restarting the manager. ([#10773](https://github.com/wazuh/wazuh/pull/10773))
 
 
-## [v4.3.9] - 2022-10-13 
+## [v4.3.10]
+
+### Manager
+
+#### Fixed
+
+- Updated the Arch Linux feed URL in Vulnerability Detector. ([#15219](https://github.com/wazuh/wazuh/pull/15219))
+- Fixed a bug in Vulnerability Detector related to internal database access. ([#15197](https://github.com/wazuh/wazuh/pull/15197))
+- Fixed a crash hazard in Analysisd when parsing an invalid `<if_sid>` value in the ruleset. ([#15303](https://github.com/wazuh/wazuh/pull/15303))
+
+### Agent
+
+#### Fixed
+
+- The agent upgrade configuration has been restricted to local settings. ([#15259](https://github.com/wazuh/wazuh/pull/15259))
+- Fixed unwanted Windows agent configuration modification on upgrade. ([#15262](https://github.com/wazuh/wazuh/pull/15262))
+
+
+## [v4.3.9] - 2022-10-13
 
 ### Agent
 
