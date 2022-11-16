@@ -1,7 +1,7 @@
 /*
- * Cryptography
- * Copyright (C) 2015-2019, Wazuh Inc.
- * November 3, 2022.
+ * Cryptography windows helper.
+ * Copyright (C) 2015, Wazuh Inc.
+ * November 16, 2022.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef CRYPTOGRAPHY_H
-#define CRYPTOGRAPHY_H
+#ifndef _CRYPTOGRAPHY_H
+#define _CRYPTOGRAPHY_H
 
 #ifdef WIN32
 #include <windows.h>
@@ -25,7 +25,7 @@
 DWORD verify_pe_signature(const wchar_t *path);
 
 /**
- * @brief Calculate the SHA256 hash of a file.
+ * @brief Verify the signature of a file using the Windows Catalog.
  *
  * @param path Path to the file.
  * @return int ERROR_SUCCESS on success otherwise error code.
@@ -33,7 +33,7 @@ DWORD verify_pe_signature(const wchar_t *path);
 DWORD verify_hash_catalog(wchar_t *path);
 
 /**
- * @brief Verify the signature of a file using the Windows Catalog.
+ * @brief Calculate the SHA256 hash of a file.
  *
  * @param path Path to the file.
  * @param hash Buffer to store the hash.
@@ -42,6 +42,6 @@ DWORD verify_hash_catalog(wchar_t *path);
  */
 DWORD get_file_hash(const wchar_t *path, BYTE **hash, DWORD *hash_size);
 
-#endif
-#endif
+#endif // WIN32
+#endif // _CRYPTOGRAPHY_H
 
