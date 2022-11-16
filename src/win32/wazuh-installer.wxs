@@ -163,15 +163,18 @@
             <Custom Action="SetAgentGroup" Before="SetCustomActionDataValue">GROUP &lt;&gt; "" AND WAZUH_AGENT_GROUP = ""</Custom>
 
             <!-- Delete OSSEC service if it exist -->
-            <Custom Action="CheckSvcRunning" After="AppSearch"></Custom>
+            <Custom Action="CheckSvcRunning" Before="AppSearch"></Custom>
             <Custom Action="StopOssecService" After="InstallInitialize">OSSECINSTALLED</Custom>
             <Custom Action="DeleteOssecService" After="StopOssecService">OSSECINSTALLED</Custom>
 
             <!-- Install functions -->
             <Custom Action="SetCustomActionDataValue" After="InstallInitialize">(NOT WIX_UPGRADE_DETECTED) AND (NOT PATCH) AND (NOT Installed)</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">(NOT WIX_UPGRADE_DETECTED) AND (NOT PATCH) AND (NOT Installed)</Custom>
+
+            <!-- Start services if necessary -->
+            <Custom Action="StartWazuhSvc" After="InstallServices">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>
+            
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
-            <Custom Action="StartWazuhSvc" After="InstallFiles">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>
 			<Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
  		    <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
         </InstallExecuteSequence>
