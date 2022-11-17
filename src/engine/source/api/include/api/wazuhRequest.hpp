@@ -13,13 +13,13 @@ namespace api
  */
 class WazuhRequest
 {
-    static constexpr auto VERSION_SUPPORTED {1};
-
     int m_version;
     json::Json m_jrequest;
     std::optional<std::string> m_error;
 
 public:
+    static constexpr auto SUPPORTED_VERSION {1};
+
     WazuhRequest() = default;
     // TODO Delete explicit when json constructor does not throw exceptions
     /**

@@ -16,7 +16,7 @@ TEST(Registry, empty)
     // Execute 2 times the callback fn
     auto response = cmdTest(json::Json {R"({"testArgKey": "testArgValue"})"});
     ASSERT_EQ(response.toString(),
-              R"({"data":null,"error":-1,"message":"Command 'test' not found"})");
+              R"({"data":null,"error":-1,"message":"Command \"test\" not found"})");
 
     auto response2 = cmdTest(json::Json {R"({"testArgKey": "testArgValue"})"});
     ASSERT_EQ(response.toString(), response2.toString());
@@ -24,7 +24,7 @@ TEST(Registry, empty)
     auto cmdTestEmpty = registry.getCallback("");
     auto response3 = cmdTestEmpty(json::Json {R"({"testArgKey": "testArgValue"})"});
     ASSERT_EQ(response3.toString(),
-              R"({"data":null,"error":-1,"message":"Command '' not found"})");
+              R"({"data":null,"error":-1,"message":"Command \"\" not found"})");
 }
 
 TEST(Registry, addComand)
@@ -39,13 +39,12 @@ TEST(Registry, addComand)
     auto response = cmdTest(json::Json {R"({"testArgKey": "testArgValue"})"});
     auto cmdNotFound = response.toString();
     ASSERT_EQ(response.toString(),
-              R"({"data":null,"error":-1,"message":"Command 'test' not found"})");
+              R"({"data":null,"error":-1,"message":"Command \"test\" not found"})");
 
     // Add command
-    registry.registerCommand(command,
-                             [](const json::Json& json) -> api::WazuhResponse {
-                                 return api::WazuhResponse {json, 0, "OK"};
-                             });
+    registry.registerCommand(command, [](const json::Json& json) -> api::WazuhResponse {
+        return api::WazuhResponse {json, 0, "OK"};
+    });
 
     // Get callback in registry
     cmdTest = registry.getCallback(command);
@@ -69,7 +68,7 @@ TEST(Registry, addComandEmpty)
     auto response = cmdTest(json::Json {R"({"testArgKey": "testArgValue"})"});
     auto cmdNotFound = response.toString();
     ASSERT_EQ(response.toString(),
-              R"({"data":null,"error":-1,"message":"Command '' not found"})");
+              R"({"data":null,"error":-1,"message":"Command \"\" not found"})");
 
     // Attempt to add command
     bool res = registry.registerCommand(command,
@@ -98,7 +97,7 @@ TEST(Registry, addNullCommand)
     auto response = cmdTest(json::Json {R"({"testArgKey": "testArgValue"})"});
     auto cmdNotFound = response.toString();
     ASSERT_EQ(response.toString(),
-              R"({"data":null,"error":-1,"message":"Command 'test' not found"})");
+              R"({"data":null,"error":-1,"message":"Command \"test\" not found"})");
 
     // Add command
     bool res = registry.registerCommand(command, nullptr);
@@ -122,14 +121,13 @@ TEST(Registry, AddduplicateCommand)
     auto cmdTest = registry.getCallback(command);
     auto response = cmdTest(json::Json {R"({"testArgKey": "testArgValue"})"});
     ASSERT_EQ(response.toString(),
-              R"({"data":null,"error":-1,"message":"Command 'test' not found"})");
+              R"({"data":null,"error":-1,"message":"Command \"test\" not found"})");
 
     // Add command for the first time
-    bool res =
-        registry.registerCommand(command,
-                                 [](const json::Json& json) -> api::WazuhResponse {
-                                     return api::WazuhResponse {json, 1, "OK cmd1"};
-                                 });
+    bool res = registry.registerCommand(
+        command, [](const json::Json& json) -> api::WazuhResponse {
+            return api::WazuhResponse {json, 1, "OK cmd1"};
+        });
     ASSERT_TRUE(res); // OK
     // Get callback in registry
     cmdTest = registry.getCallback(command);
@@ -163,14 +161,13 @@ TEST(Registry, AddMultipleCommands)
     auto cmdTest = registry.getCallback(command);
     auto response = cmdTest(json::Json {R"({"testArgKey": "testArgValue"})"});
     ASSERT_EQ(response.toString(),
-              R"({"data":null,"error":-1,"message":"Command 'test' not found"})");
+              R"({"data":null,"error":-1,"message":"Command \"test\" not found"})");
 
     // Add command for the first time
-    bool res =
-        registry.registerCommand(command,
-                                 [](const json::Json& json) -> api::WazuhResponse {
-                                     return api::WazuhResponse {json, 1, "OK cmd1"};
-                                 });
+    bool res = registry.registerCommand(
+        command, [](const json::Json& json) -> api::WazuhResponse {
+            return api::WazuhResponse {json, 1, "OK cmd1"};
+        });
     ASSERT_TRUE(res); // OK
 
     // Add command for the first time

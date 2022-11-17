@@ -31,7 +31,7 @@ CommandFn Registry::getCallback(const std::string& command)
     return [command](const json::Json&)
     {
         return WazuhResponse {
-            json::Json {}, -1, fmt::format("Command '{}' not found", command)};
+            json::Json {}, -1, fmt::format("Command \"{}\" not found", command)};
     };
 };
 
