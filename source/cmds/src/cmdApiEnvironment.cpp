@@ -65,7 +65,7 @@ void setEnv(const std::string& socketPath, const std::string& target)
     }
 
     const auto msg = response.getString("/message").value_or("OK");
-    WAZUH_LOG_INFO("Engine API Environment: Request's response: {}.", msg);
+    WAZUH_LOG_INFO("Engine API Environment: Request response: {}.", msg);
     std::cout << msg << std::endl;
 }
 
@@ -184,7 +184,7 @@ void deleteEnv(const std::string& socketPath, const std::string& target)
     }
 
     const auto msg = response.getString("/message").value_or("OK");
-    WAZUH_LOG_INFO("Engine API Environment: Request's response: {}.", msg);
+    WAZUH_LOG_INFO("Engine API Environment: Request response: {}.", msg);
     std::cout << msg << std::endl;
 }
 
