@@ -112,31 +112,42 @@ bool KVDBManager::createKVDBfromFile(const std::filesystem::path& path,
     return true;
 }
 
-bool KVDBManager::deleteDB(const std::string& name)
+bool KVDBManager::deleteDB(const std::string& name, bool onlyFromMem)
 {
-    std::unique_lock lk(mMtx);
-    auto it = m_availableKVDBs.find(name);
-    if (it == m_availableKVDBs.end())
+    if (onlyFromMem)
     {
-        WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Database \"{}\" is not in "
-                        "the available databases list, so it cannot be deleted.",
-                        __func__,
-                        name);
-        return false;
-    }
+        std::unique_lock lk(mMtx);
+        auto it = m_availableKVDBs.find(name);
+        if (it == m_availableKVDBs.end())
+        {
+            WAZUH_LOG_ERROR("Database [{}] isn't handled by KVDB manager", name);
+            return false;
+        }
 
-    // only delete when it isn't mark as blocked
-    if (!it->second.second)
-    {
-        it->second.first->cleanupOnClose();
-        m_availableKVDBs.erase(it);
-        return true;
+        // only delete when it isn't mark as blocked
+        if (!it->second.second)
+        {
+            it->second.first->cleanupOnClose();
+            m_availableKVDBs.erase(it);
+            return true;
+        }
+        else
+        {
+            WAZUH_LOG_ERROR("Database [{}] is in use so it can't be deleted", name);
+            return false;
+        }
     }
     else
     {
-        WAZUH_LOG_ERROR("Database [{}] is in use so it can't be deleted", name);
+        auto dbHandle = std::make_shared<KVDB>(name, mDbFolder);
+        if (dbHandle->init(false, false))
+        {
+            dbHandle->cleanupOnClose();
+            return true;
+        }
         return false;
     }
+
 }
 
 KVDBHandle KVDBManager::getDB(const std::string& name, bool lockForDelete)
@@ -169,17 +180,70 @@ KVDBHandle KVDBManager::getDB(const std::string& name, bool lockForDelete)
     return nullptr;
 }
 
-std::vector<std::string> KVDBManager::getAvailableKVDBs()
+std::vector<std::string> KVDBManager::getAvailableKVDBs(bool loaded)
 {
+    // this should list all the dbs not just the loaded ones
     std::vector<std::string> list;
-
-    if (m_availableKVDBs.size() > 0)
+    if (loaded)
     {
-        for (const auto& var : m_availableKVDBs)
+        if (m_availableKVDBs.size() > 0)
         {
-            list.emplace_back(var.first);
+            for (const auto& var : m_availableKVDBs)
+            {
+                list.emplace_back(var.first);
+            }
+        }
+    }
+    else
+    {
+        for (const auto & file : std::filesystem::directory_iterator(mDbFolder))
+        {
+            auto name = file.path().stem().string();
+            if(name != "legacy")
+            {
+                auto dbHandle = std::make_shared<KVDB>(name, mDbFolder);
+                if (dbHandle->init(false, false))
+                {
+                    list.emplace_back(name);
+                }
+            }
         }
     }
 
     return list;
+}
+
+bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName, const std::filesystem::path& path)
+{
+    auto dbHandle = std::make_shared<KVDB>(dbName, mDbFolder);
+    if (!dbHandle->init(true, true))
+    {
+        WAZUH_LOG_ERROR("Failed to create db [{}].",dbName);
+        return false;
+    }
+
+    if(!path.empty())
+    {
+        std::ifstream filePath(path);
+        if (!filePath.is_open())
+        {
+            WAZUH_LOG_ERROR("Couln't open file [{}]", path.c_str());
+            return false;
+        }
+
+        for (std::string line; getline(filePath, line);)
+        {
+            line.erase(std::remove_if(line.begin(), line.end(), isspace),
+                    line.end());
+            auto kv = utils::string::split(line, ':');
+            if (kv.empty() || kv.size() > 2)
+            {
+                WAZUH_LOG_ERROR("Error while reading filePath [{}]", path.c_str());
+                return false;
+            }
+
+            dbHandle->write(kv[0], kv.size() == 2 ? kv[1] : "");
+        }
+    }
+    return true;
 }

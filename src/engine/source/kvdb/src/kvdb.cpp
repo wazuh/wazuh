@@ -50,9 +50,14 @@ struct KVDB::Impl
             m_name);
     }
 
-    bool init(bool createIfMissing)
+    bool init(bool createIfMissing, bool errorIfExists)
     {
-        if (State::Open == m_state)
+        if (errorIfExists && m_state != State::Invalid)
+        {
+            // Created previously
+            return false;
+        }
+        else if (!errorIfExists && m_state == State::Open)
         {
             // Already initialized
             return true;
@@ -79,6 +84,7 @@ struct KVDB::Impl
         dbOptions.OptimizeLevelStyleCompaction();
         dbOptions.OptimizeForSmallDb();
         dbOptions.create_if_missing = createIfMissing;
+        dbOptions.error_if_exists = errorIfExists;
 
         rocksdb::OptimisticTransactionDB* txdb;
         std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
@@ -550,6 +556,20 @@ struct KVDB::Impl
         return true;
     }
 
+    // TODO: make it completely in json
+    size_t dumpContent(std::string &dump)
+    {
+        rocksdb::Iterator* iter = m_db->NewIterator(kOptions.read);
+        iter->SeekToFirst();
+        size_t key_cnt = 0;
+        for ( ;iter->Valid();  iter->Next(), key_cnt++)
+        {
+            dump += iter->key().ToString() +":" + iter->value().ToString()+"\n";
+        }
+
+        return key_cnt;
+    }
+
     std::string m_name;
     std::string m_path;
     bool m_shouldCleanupFiles;
@@ -573,9 +593,9 @@ KVDB::KVDB()
 {
 }
 
-bool KVDB::init(bool errorIfExists)
+bool KVDB::init(bool createIfMissing, bool errorIfExists)
 {
-    return mImpl->init(errorIfExists);
+    return mImpl->init(createIfMissing,errorIfExists);
 }
 
 KVDB::~KVDB()
@@ -666,4 +686,9 @@ bool KVDB::isReady() const
 std::string_view KVDB::getName() const
 {
     return mImpl->getName();
+}
+
+size_t KVDB::dumpContent(std::string &dump)
+{
+    return mImpl->dumpContent(dump);
 }
