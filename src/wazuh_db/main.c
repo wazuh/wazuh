@@ -428,14 +428,15 @@ void * run_gc(__attribute__((unused)) void * args) {
     int fragmentation_interval = wconfig.check_fragmentation_interval;
     while (running) {
         wdb_commit_old();
-        wdb_close_old();
 
-        if (fragmentation_interval == 0) {
+        if (fragmentation_interval <= 0) {
             wdb_check_fragmentation();
             fragmentation_interval = wconfig.check_fragmentation_interval;
         } else {
             fragmentation_interval--;
         }
+
+        wdb_close_old();
 
         sleep(1);
     }
