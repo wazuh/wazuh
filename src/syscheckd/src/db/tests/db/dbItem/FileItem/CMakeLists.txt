@@ -4,8 +4,11 @@ project(fileitem_unit_test)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
-file(GLOB fileitem_UNIT_TEST_SRC
-    "*.cpp")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    file(GLOB fileitem_UNIT_TEST_SRC "dbFileItemTestWindows.cpp")
+else()
+    file(GLOB fileitem_UNIT_TEST_SRC "dbFileItemTest.cpp")
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
