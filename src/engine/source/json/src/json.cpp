@@ -153,7 +153,7 @@ bool Json::equals(std::string_view ptrPath, const Json& value) const
         return (got && *got == value.m_document);
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, ptrPath));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
 }
 
 bool Json::equals(std::string_view basePtrPath, std::string_view referencePtrPath) const
@@ -164,12 +164,12 @@ bool Json::equals(std::string_view basePtrPath, std::string_view referencePtrPat
     if (!fieldPtr.IsValid())
     {
         throw std::runtime_error(
-            fmt::format(INVALID_POINTER_TYPE_MSG, __func__, basePtrPath));
+            fmt::format(INVALID_POINTER_TYPE_MSG, basePtrPath));
     }
     if (!referencePtr.IsValid())
     {
         throw std::runtime_error(
-            fmt::format(INVALID_POINTER_TYPE_MSG, __func__, referencePtrPath));
+            fmt::format(INVALID_POINTER_TYPE_MSG, referencePtrPath));
     }
 
     const auto fieldValue {fieldPtr.Get(m_document)};
@@ -201,12 +201,12 @@ void Json::set(std::string_view basePtrPath, std::string_view referencePtrPath)
     if (!fieldPtr.IsValid())
     {
         throw std::runtime_error(
-            fmt::format(INVALID_POINTER_TYPE_MSG, __func__, basePtrPath));
+            fmt::format(INVALID_POINTER_TYPE_MSG, basePtrPath));
     }
     if (!referencePtr.IsValid())
     {
         throw std::runtime_error(
-            fmt::format(INVALID_POINTER_TYPE_MSG, __func__, referencePtrPath));
+            fmt::format(INVALID_POINTER_TYPE_MSG, referencePtrPath));
     }
 
     const auto* reference = referencePtr.Get(m_document);
@@ -235,7 +235,7 @@ std::optional<std::string> Json::getString(std::string_view path) const
         return retval;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 std::optional<int> Json::getInt(std::string_view path) const
@@ -253,7 +253,7 @@ std::optional<int> Json::getInt(std::string_view path) const
         return retval;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 std::optional<double> Json::getDouble(std::string_view path) const
@@ -271,7 +271,7 @@ std::optional<double> Json::getDouble(std::string_view path) const
         return retval;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 std::optional<double> Json::getNumberAsDouble(std::string_view path) const
@@ -296,7 +296,7 @@ std::optional<double> Json::getNumberAsDouble(std::string_view path) const
         return retval;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 std::optional<bool> Json::getBool(std::string_view path) const
@@ -314,7 +314,7 @@ std::optional<bool> Json::getBool(std::string_view path) const
         return retval;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 std::optional<std::vector<Json>> Json::getArray(std::string_view path) const
@@ -337,7 +337,7 @@ std::optional<std::vector<Json>> Json::getArray(std::string_view path) const
         return retval;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 std::optional<std::vector<std::tuple<std::string, Json>>>
@@ -361,7 +361,7 @@ Json::getObject(std::string_view path) const
         return retval;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 std::string Json::prettyStr() const
@@ -407,7 +407,7 @@ std::optional<std::string> Json::str(std::string_view path) const
         return retval;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 std::ostream& operator<<(std::ostream& os, const Json& json)
@@ -447,10 +447,10 @@ size_t Json::size(std::string_view path) const
                 fmt::format("Size of field \"{}\" is not measurable.", path));
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, path));
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 bool Json::isNull(std::string_view path) const
@@ -465,10 +465,10 @@ bool Json::isNull(std::string_view path) const
             return value->IsNull();
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
+        return false;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 bool Json::isBool(std::string_view path) const
@@ -483,10 +483,10 @@ bool Json::isBool(std::string_view path) const
             return value->IsBool();
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
+        return false;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 bool Json::isNumber(std::string_view path) const
@@ -501,10 +501,10 @@ bool Json::isNumber(std::string_view path) const
             return value->IsNumber();
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
+        return false;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 bool Json::isInt(std::string_view path) const
@@ -519,10 +519,10 @@ bool Json::isInt(std::string_view path) const
             return value->IsInt();
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
+        return false;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 bool Json::isDouble(std::string_view path) const
@@ -537,10 +537,10 @@ bool Json::isDouble(std::string_view path) const
             return value->IsDouble();
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
+        return false;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 bool Json::isString(std::string_view path) const
@@ -555,10 +555,10 @@ bool Json::isString(std::string_view path) const
             return value->IsString();
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
+        return false;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 bool Json::isArray(std::string_view path) const
@@ -573,10 +573,10 @@ bool Json::isArray(std::string_view path) const
             return value->IsArray();
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
+        return false;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 bool Json::isObject(std::string_view path) const
@@ -591,10 +591,10 @@ bool Json::isObject(std::string_view path) const
             return value->IsObject();
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
+        return false;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 std::string Json::typeName(std::string_view path) const
@@ -619,10 +619,10 @@ std::string Json::typeName(std::string_view path) const
             }
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, path));
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 Json::Type Json::type(std::string_view path) const
@@ -637,10 +637,10 @@ Json::Type Json::type(std::string_view path) const
             return rapidTypeToJsonType(value->GetType());
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, path));
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 void Json::setNull(std::string_view path)
@@ -653,7 +653,7 @@ void Json::setNull(std::string_view path)
         return;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 void Json::setBool(bool value, std::string_view path)
@@ -666,7 +666,7 @@ void Json::setBool(bool value, std::string_view path)
         return;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 void Json::setInt(int value, std::string_view path)
@@ -679,7 +679,7 @@ void Json::setInt(int value, std::string_view path)
         return;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 void Json::setDouble(double value, std::string_view path)
@@ -692,7 +692,7 @@ void Json::setDouble(double value, std::string_view path)
         return;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 void Json::setString(std::string_view value, std::string_view path)
@@ -705,7 +705,7 @@ void Json::setString(std::string_view value, std::string_view path)
         return;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 void Json::setArray(std::string_view path)
@@ -718,7 +718,7 @@ void Json::setArray(std::string_view path)
         return;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 void Json::setObject(std::string_view path)
@@ -731,7 +731,7 @@ void Json::setObject(std::string_view path)
         return;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 void Json::appendString(std::string_view value, std::string_view path)
@@ -773,7 +773,7 @@ void Json::appendString(std::string_view value, std::string_view path)
         return;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 void Json::appendJson(const Json& value, std::string_view path)
@@ -824,7 +824,7 @@ bool Json::erase(std::string_view path)
             return pp.Erase(m_document);
         }
 
-        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
     }
 }
 
@@ -900,10 +900,10 @@ void Json::merge(rapidjson::Value& source, std::string_view path)
                             __func__));
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, path));
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 void Json::merge(Json& other, std::string_view path)
@@ -925,10 +925,10 @@ void Json::merge(std::string_view source, std::string_view path)
             return;
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, __func__, path));
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, path));
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 std::optional<Json> Json::getJson(std::string_view path) const
@@ -946,7 +946,7 @@ std::optional<Json> Json::getJson(std::string_view path) const
         return retval;
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, __func__, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 std::optional<base::Error> Json::validate(const Json& schema) const
