@@ -69,10 +69,12 @@ void CALLBACK dll_notification(ULONG reason,
     switch(reason)
     {
     case LDR_DLL_NOTIFICATION_REASON_LOADED:
+#ifdef IMAGE_TRUST_CHECKS
         if (verify_pe_signature(notification_data->loaded.full_dll_name->Buffer) != ERROR_SUCCESS
             && verify_hash_catalog(notification_data->loaded.full_dll_name->Buffer) != ERROR_SUCCESS) {
             merror_exit("The file '%S' is not signed or its signature is invalid.", notification_data->loaded.full_dll_name->Buffer);
         }
+#endif
         break;
     case LDR_DLL_NOTIFICATION_REASON_UNLOADED:
         mdebug1("Unloaded: %S", notification_data->unloaded.full_dll_name->Buffer);
