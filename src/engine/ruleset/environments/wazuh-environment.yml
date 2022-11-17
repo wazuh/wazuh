@@ -57,6 +57,7 @@ decoders:
   - decoder/syscollector-program-del/0
   - decoder/syscollector-program-save/0
   - decoder/apache-error/0
+  - decoder/apache-access/0
   # Service decoders
   - decoder/syslog/0
 

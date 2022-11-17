@@ -1,0 +1,27 @@
+name: decoder/apache-access/0
+
+sources:
+  - decoder/queue-syslog/0
+  - decoder/queue-localfile/0
+
+metadata:
+  module: apache access
+  title: Apache HTTP Server access logs decoder
+  description: Decoder for Apache HTTP Server logs
+  compatibility: Apache HTTP Server v2.4
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2022-11-15
+  references:
+    - https://httpd.apache.org/docs/2.4/custom-error.html
+
+check:
+  - event.original: +r_match/\S+\s-\s\S+\s\[
+
+parse:
+  logpar:
+    - event.original: <source.address> - <user.name> [<@timestamp/HTTPDATE>] "<http.request.method> <~url.orig> <http.version>" <http.response.status_code> <http.response.body.bytes>?<~basile> "<http.request.referrer>" "<user_agent.original>"
+
+normalize:
+  - map:
+      - ~basile: +ef_delete
