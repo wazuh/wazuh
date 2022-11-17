@@ -44,6 +44,9 @@ void *__real_OSHash_Get(const OSHash *self, const char *key);
 void *__real_OSHash_Get_ex(const OSHash *self, const char *key);
 void *__wrap_OSHash_Get_ex(const OSHash *self, const char *key);
 
+void *__real_OSHash_Numeric_Get_ex(const OSHash *self, int key);
+void *__wrap_OSHash_Numeric_Get_ex(const OSHash *self, int key);
+
 void *__wrap_OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current);
 
 int __real_OSHash_SetFreeDataPointer(OSHash *self, void (free_data_function)(void *));

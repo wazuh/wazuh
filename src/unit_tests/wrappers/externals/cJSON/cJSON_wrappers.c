@@ -100,7 +100,7 @@ cJSON_bool __wrap_cJSON_IsNumber(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(cJSON_bool);
 }
 
-cJSON_bool __wrap_cJSON_IsString(const cJSON * const item) {
+cJSON_bool __wrap_cJSON_IsString(__attribute__ ((__unused__)) const cJSON * const item) {
     return mock_type(cJSON_bool);
 }
 

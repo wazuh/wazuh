@@ -252,6 +252,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
+    WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
@@ -2118,11 +2119,13 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
  * @param [in] wdb The Global struct database.
  * @param [in] last_agent_id ID where to start querying.
  * @param [in] connection_status Connection status of the agents requested.
+ * @param [in] node_name Cluster node name
+ * @param [in] limit Limits the number of rows returned by the query.
  * @param [out] status wdbc_result to represent if all agents has being obtained or any error occurred.
  * @retval JSON with agents IDs on success.
  * @retval NULL on error.
  */
-cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status);
+cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, const char* node_name, int limit, wdbc_result* status);
 
 /**
  * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.
@@ -2430,14 +2433,6 @@ void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char * pk);
 sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query);
 
 /**
- * @brief Method to parse the "wazuhdb getconfig" commands.
- *
- * @param config_source Where the config will be read from: "internal" or "wdb" section
- * @return cJSON* Returns a cJSON object with the configuration requested or NULL on error.
- */
-cJSON* wdb_parse_get_config(char* config_source);
-
-/**
  * @brief Method to read the internal wazuh-db configuration.
  *
  * @return cJSON* Returns a cJSON object with the configuration requested.
@@ -2450,5 +2445,13 @@ cJSON* wdb_get_internal_config();
  * @return cJSON* Returns a cJSON object with the configuration requested.
  */
 cJSON* wdb_get_config();
+
+/**
+ * @brief Check and execute the input request
+ *
+ * @param request message received from api
+ * @param output the response to send
+ */
+void wdbcom_dispatch(char* request, char* output);
 
 #endif

@@ -13,7 +13,7 @@ import wazuh.manager as manager
 import wazuh.stats as stats
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, deprecate_endpoint
 from api.validator import check_component_configuration_pair
 from wazuh.core import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -131,6 +131,33 @@ async def get_configuration(request, pretty: bool = False, wait_for_complete: bo
     return response
 
 
+async def get_daemon_stats(request, pretty: bool = False, wait_for_complete: bool = False, daemons_list: list = None):
+    """Get Wazuh statistical information from the specified manager's daemons.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    daemons_list : list
+        List of the daemons to get statistical information from.
+    """
+    daemons_list = daemons_list or []
+    f_kwargs = {'daemons_list': daemons_list}
+
+    dapi = DistributedAPI(f=stats.get_daemons_stats,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies'])
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
 async def get_stats(request, pretty: bool = False, wait_for_complete: bool = False, date: str = None) -> web.Response:
     """Get manager's or local_node's stats.
 
@@ -239,25 +266,28 @@ async def get_stats_weekly(request, pretty: bool = False, wait_for_complete: boo
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+@deprecate_endpoint()
 async def get_stats_analysisd(request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
-    """Get manager's or local_node's analysisd stats.
+    """Get manager's or local_node's analysisd statistics.
+
+    Notes
+    -----
+    To be deprecated in v5.0.
 
     Parameters
     ----------
-    request : connexion.request
-    pretty : bool, optional
+    pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool, optional
-        Disable response timeout or not.
+        Whether to disable response timeout or not. Default `False`
 
     Returns
     -------
     web.Response
-        API response.
     """
     f_kwargs = {'filename': common.ANALYSISD_STATS}
 
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
+    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
@@ -270,25 +300,28 @@ async def get_stats_analysisd(request, pretty: bool = False, wait_for_complete: 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+@deprecate_endpoint()
 async def get_stats_remoted(request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
-    """Get manager's or local_node's remoted stats.
+    """Get manager's or local_node's remoted statistics.
+
+    Notes
+    -----
+    To be deprecated in v5.0.
 
     Parameters
     ----------
-    request : connexion.request
-    pretty : bool, optional
+    pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool, optional
-        Disable response timeout or not.
+        Whether to disable response timeout or not. Default `False`
 
     Returns
     -------
     web.Response
-        API response.
     """
     f_kwargs = {'filename': common.REMOTED_STATS}
 
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
+    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,

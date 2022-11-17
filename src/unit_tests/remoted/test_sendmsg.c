@@ -15,15 +15,16 @@
 #include <stdlib.h>
 
 #include "remoted/remoted.h"
+#include "remoted/state.h"
 #include "headers/shared.h"
 
 #include "../wrappers/common.h"
-#include "../wrappers/linux/netbuffer_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/keys_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/msgs_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/time_op_wrappers.h"
+#include "../wrappers/wazuh/remoted/netbuffer_wrappers.h"
 
 extern remoted_state_t remoted_state;
 
@@ -98,7 +99,6 @@ void test_send_msg_invalid_agent(void ** state) {
     const char *const msg = "abcdefghijk";
     const ssize_t msg_length = strlen(msg);
 
-    remoted_state.queued_msgs = 0;
 
     expect_function_call(__wrap_rwlock_lock_read);
 
@@ -114,7 +114,6 @@ void test_send_msg_invalid_agent(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, -1);
-    assert_int_equal(remoted_state.queued_msgs, 0);
 }
 
 void test_send_msg_disconnected_agent(void ** state) {
@@ -129,8 +128,6 @@ void test_send_msg_disconnected_agent(void ** state) {
     // Setup disconnected agent
     const time_t now = 1000;
     logr.global.agents_disconnection_time = 300;
-
-    remoted_state.queued_msgs = 0;
 
     expect_function_call(__wrap_rwlock_lock_read);
 
@@ -150,7 +147,6 @@ void test_send_msg_disconnected_agent(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, -1);
-    assert_int_equal(remoted_state.queued_msgs, 0);
 }
 
 void test_send_msg_encryption_error(void ** state) {
@@ -162,7 +158,6 @@ void test_send_msg_encryption_error(void ** state) {
     const int key = 0;
 
     logr.global.agents_disconnection_time = 0;
-    remoted_state.queued_msgs = 0;
 
     expect_function_call(__wrap_rwlock_lock_read);
 
@@ -196,7 +191,6 @@ void test_send_msg_encryption_error(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, -1);
-    assert_int_equal(remoted_state.queued_msgs, 0);
 }
 
 void test_send_msg_tcp_ok(void ** state) {
@@ -211,7 +205,6 @@ void test_send_msg_tcp_ok(void ** state) {
     ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
-    remoted_state.queued_msgs = 0;
 
     expect_function_call(__wrap_rwlock_lock_read);
 
@@ -235,10 +228,8 @@ void test_send_msg_tcp_ok(void ** state) {
     expect_value(__wrap_nb_queue, socket, 15);
     expect_string(__wrap_nb_queue, crypt_msg, crypto_msg);
     expect_value(__wrap_nb_queue, msg_size, crypto_size);
+    expect_string(__wrap_nb_queue, agent_id, agent_id);
     will_return(__wrap_nb_queue, 0);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -247,7 +238,6 @@ void test_send_msg_tcp_ok(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, 0);
-    assert_int_equal(remoted_state.queued_msgs, 1);
 }
 
 void test_send_msg_tcp_err(void ** state) {
@@ -262,7 +252,6 @@ void test_send_msg_tcp_err(void ** state) {
     ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
-    remoted_state.queued_msgs = 0;
 
     expect_function_call(__wrap_rwlock_lock_read);
 
@@ -286,6 +275,7 @@ void test_send_msg_tcp_err(void ** state) {
     expect_value(__wrap_nb_queue, socket, 15);
     expect_string(__wrap_nb_queue, crypt_msg, crypto_msg);
     expect_value(__wrap_nb_queue, msg_size, crypto_size);
+    expect_string(__wrap_nb_queue, agent_id, agent_id);
     will_return(__wrap_nb_queue, -1);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -295,7 +285,6 @@ void test_send_msg_tcp_err(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, -1);
-    assert_int_equal(remoted_state.queued_msgs, 0);
 }
 
 void test_send_msg_tcp_err_closed_socket(void ** state) {
@@ -310,7 +299,6 @@ void test_send_msg_tcp_err_closed_socket(void ** state) {
     const ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
-    remoted_state.queued_msgs = 0;
 
     // Setup closed socket
     keys.keyentries[0]->sock=-1;
@@ -342,7 +330,6 @@ void test_send_msg_tcp_err_closed_socket(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, -1);
-    assert_int_equal(remoted_state.queued_msgs, 0);
 }
 
 void test_send_msg_udp_ok(void ** state) {
@@ -357,7 +344,6 @@ void test_send_msg_udp_ok(void ** state) {
     const ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
-    remoted_state.queued_msgs = 0;
 
     expect_function_call(__wrap_rwlock_lock_read);
 
@@ -381,7 +367,6 @@ void test_send_msg_udp_ok(void ** state) {
     will_return(__wrap_sendto, crypto_size);
 
     expect_value(__wrap_rem_add_send, bytes, crypto_size);
-    expect_function_call(__wrap_rem_add_send);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_rwlock_unlock);
@@ -389,7 +374,6 @@ void test_send_msg_udp_ok(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, 0);
-    assert_int_equal(remoted_state.queued_msgs, 0);
 }
 
 void test_send_msg_udp_error(void ** state) {
@@ -404,7 +388,6 @@ void test_send_msg_udp_error(void ** state) {
     const ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
-    remoted_state.queued_msgs = 0;
 
     expect_function_call(__wrap_rwlock_lock_read);
 
@@ -437,7 +420,6 @@ void test_send_msg_udp_error(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, -1);
-    assert_int_equal(remoted_state.queued_msgs, 0);
 }
 
 void test_send_msg_udp_error_connection_reset(void ** state) {
@@ -452,7 +434,6 @@ void test_send_msg_udp_error_connection_reset(void ** state) {
     const ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
-    remoted_state.queued_msgs = 0;
 
     expect_function_call(__wrap_rwlock_lock_read);
 
@@ -485,7 +466,6 @@ void test_send_msg_udp_error_connection_reset(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, -1);
-    assert_int_equal(remoted_state.queued_msgs, 0);
 }
 
 void test_send_msg_udp_error_agent_not_responding(void ** state) {
@@ -500,7 +480,6 @@ void test_send_msg_udp_error_agent_not_responding(void ** state) {
     const ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
-    remoted_state.queued_msgs = 0;
 
     expect_function_call(__wrap_rwlock_lock_read);
 
@@ -533,7 +512,6 @@ void test_send_msg_udp_error_agent_not_responding(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, -1);
-    assert_int_equal(remoted_state.queued_msgs, 0);
 }
 
 void test_send_msg_udp_error_generic(void ** state) {
@@ -548,7 +526,6 @@ void test_send_msg_udp_error_generic(void ** state) {
     const ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
-    remoted_state.queued_msgs = 0;
 
     expect_function_call(__wrap_rwlock_lock_read);
 
@@ -581,7 +558,6 @@ void test_send_msg_udp_error_generic(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, -1);
-    assert_int_equal(remoted_state.queued_msgs, 0);
 }
 
 int main(void) {

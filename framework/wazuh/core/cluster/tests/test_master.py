@@ -516,10 +516,12 @@ def test_master_handler_process_request(logger_mock):
     # Test the eleventh condition
     master_handler.server = Server()
     with patch("asyncio.create_task") as create_task_mock:
-        assert master_handler.process_request(command=b'dapi_err',
+        with patch("wazuh.core.cluster.master.MasterHandler.log_exceptions", return_value=b"ok") as log_exc_mock:
+            assert master_handler.process_request(command=b'dapi_err',
                                               data=b"dapi_client error_msg") == (b'ok',
                                                                                  b'DAPI error forwarded to worker')
-        create_task_mock.assert_called_once_with(DapiMock().send_request(b"dapi_err", b"error_msg"))
+            create_task_mock.assert_called_once()
+            log_exc_mock.assert_called_with(None)
 
     # Test the twelfth condition
     with patch("wazuh.core.cluster.master.MasterHandler.get_nodes", return_value=(["cmd", "res"])) as get_nodes_mock:
@@ -885,9 +887,13 @@ def test_master_handler_setup_sync_integrity(setup_receive_file_mock):
     # Test the fifth condition
     assert master_handler.setup_sync_integrity(b'random', b"data") == b"ok"
 
-    setup_receive_file_mock.assert_has_calls(
-        [call(master.ReceiveIntegrityTask, b"data"), call(master.ReceiveExtraValidTask, b"data"),
-         call(master.ReceiveAgentInfoTask, b"data"), call(master.ReceiveAgentGroupsTask, b"data"), call(None, b"data")])
+    setup_receive_file_mock.assert_has_calls([
+        call(receive_task_class=master.ReceiveIntegrityTask, data=b'data', logger_tag='Integrity check'),
+        call(receive_task_class=master.ReceiveExtraValidTask, data=b'data', logger_tag='Integrity sync'),
+        call(receive_task_class=master.ReceiveAgentInfoTask, data=b'data', logger_tag='Agent-info sync'),
+        call(receive_task_class=master.ReceiveAgentGroupsTask, data=b'data', logger_tag='Agent-groups sync'),
+        call(receive_task_class=None, data=b'data', logger_tag='')
+    ])
 
 
 @patch("wazuh.core.cluster.common.WazuhCommon.setup_send_info", return_value=b"ok")
@@ -902,18 +908,19 @@ def test_master_handler_setup_send_info(setup_receive_file_mock):
     # Test the second condition
     assert master_handler.setup_send_info(b'NONE') == b"ok"
 
-    setup_receive_file_mock.assert_has_calls([call(master.SendEntireAgentGroupsTask), call(None)])
-
+    setup_receive_file_mock.assert_has_calls([
+        call(send_task_class=master.SendEntireAgentGroupsTask, logger_tag='Agent-groups send full'),
+        call(send_task_class=None, logger_tag='')
+    ])
 
 @patch("wazuh.core.cluster.common.WazuhCommon.error_receiving_file", return_value=b"ok")
 def test_master_handler_process_sync_error_from_worker(error_receiving_file_mock):
     """Check if an error is properly managed when it takes place."""
-
     master_handler = get_master_handler()
     assert master_handler.process_sync_error_from_worker(b"error") == b"ok"
     assert master_handler.sync_integrity_free[0] is True
     assert isinstance(master_handler.sync_integrity_free[1], datetime)
-    error_receiving_file_mock.assert_called_once_with(b"error".decode())
+    error_receiving_file_mock.assert_called_once_with(task_id_and_error_details='error', logger_tag='Integrity sync')
 
 
 @patch("wazuh.core.cluster.common.WazuhCommon.end_receiving_file", return_value=b"ok")
@@ -921,7 +928,8 @@ def test_master_handler_end_receiving_integrity_checksums(end_receiving_file_moc
     """Check if the function is started after receiving a file."""
 
     assert get_master_handler().end_receiving_integrity_checksums("task_and_file_names") == b"ok"
-    end_receiving_file_mock.assert_called_once_with("task_and_file_names")
+    end_receiving_file_mock.assert_called_once_with(task_and_file_names='task_and_file_names',
+                                                    logger_tag='Integrity check')
 
 
 @pytest.mark.asyncio

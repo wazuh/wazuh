@@ -15,7 +15,7 @@ import wazuh.manager as manager
 import wazuh.stats as stats
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, deprecate_endpoint
 from api.validator import check_component_configuration_pair
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -393,6 +393,39 @@ async def get_configuration_node(request, node_id: str, pretty: bool = False, wa
     return response
 
 
+async def get_daemon_stats_node(request, node_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                                daemons_list: list = None):
+    """Get Wazuh statistical information from the specified daemons of a specified cluster node.
+
+    Parameters
+    ----------
+    node_id : str
+        Cluster node name.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    daemons_list : list
+        List of the daemons to get statistical information from.
+    """
+    daemons_list = daemons_list or []
+    f_kwargs = {'node_id': node_id,
+                'daemons_list': daemons_list}
+
+    nodes = raise_if_exc(await get_system_nodes())
+    dapi = DistributedAPI(f=stats.get_daemons_stats,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          nodes=nodes)
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
 async def get_stats_node(request, node_id: str, pretty: bool = False, wait_for_complete: bool = False,
                          date: str = None) -> web.Response:
     """Get a specified node's stats.
@@ -516,30 +549,33 @@ async def get_stats_weekly_node(request, node_id: str, pretty: bool = False,
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+@deprecate_endpoint()
 async def get_stats_analysisd_node(request, node_id: str, pretty: bool = False,
                                    wait_for_complete: bool = False) -> web.Response:
-    """Get a specified node's analysisd stats.
+    """Get a specified node's analysisd statistics.
+
+    Notes
+    -----
+    To be deprecated in v5.0.
 
     Parameters
     ----------
-    request : connexion.request
     node_id : str
         Cluster node name.
     pretty : bool
         Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
+    wait_for_complete : bool, optional
+        Whether to disable response timeout or not. Default `False`
 
     Returns
     -------
     web.Response
-        API response.
     """
     f_kwargs = {'node_id': node_id,
                 'filename': common.ANALYSISD_STATS}
 
     nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
+    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -553,30 +589,33 @@ async def get_stats_analysisd_node(request, node_id: str, pretty: bool = False,
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+@deprecate_endpoint()
 async def get_stats_remoted_node(request, node_id: str, pretty: bool = False,
                                  wait_for_complete: bool = False) -> web.Response:
-    """Get a specified node's remoted stats.
+    """Get a specified node's remoted statistics.
+
+    Notes
+    -----
+    To be deprecated in v5.0.
 
     Parameters
     ----------
-    request : connexion.request
     node_id : str
         Cluster node name.
     pretty : bool
         Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
+    wait_for_complete : bool, optional
+        Whether to disable response timeout or not. Default `False`
 
     Returns
     -------
     web.Response
-        API response.
     """
     f_kwargs = {'node_id': node_id,
                 'filename': common.REMOTED_STATS}
 
     nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
+    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,

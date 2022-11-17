@@ -682,7 +682,7 @@
 #define TOLERANCE_TIME  "Tolerance time set to Zero, defined flooding condition when buffer is full."
 
 /* OSSEC alert messages */
-#define OS_AD_STARTED   "ossec: Ossec started."
+#define OS_MG_STARTED   "ossec: Manager started."
 #define OS_AG_STARTED   "ossec: Agent started: '%s->%s'."
 #define OS_AG_STOPPED   "ossec: Agent stopped: '%s->%s'."
 #define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."

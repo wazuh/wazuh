@@ -12,16 +12,17 @@ import tempfile
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
+from types import MappingProxyType
 from typing import Union
 
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
 
 from wazuh.core import common
+from wazuh.core import wazuh_socket
 from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
-from wazuh.core.wazuh_socket import WazuhSocket
 
 logger = logging.getLogger('wazuh')
 
@@ -33,7 +34,7 @@ logger = logging.getLogger('wazuh')
 #   entry.
 #   * Last -> there can be multiple sections in the configuration but only the last one will be returned.
 #   The rest are ignored.
-conf_sections = {
+CONF_SECTIONS = MappingProxyType({
     'active-response': {'type': 'duplicate', 'list_options': []},
     'command': {'type': 'duplicate', 'list_options': []},
     'agentless': {'type': 'duplicate', 'list_options': []},
@@ -108,7 +109,9 @@ conf_sections = {
         'type': 'merge',
         'list_options': ['policies']
     }
-}
+})
+
+GETCONFIG_COMMAND = "getconfig"
 
 
 def _insert(json_dst: dict, section_name: str, option: str, value: str):
@@ -135,7 +138,7 @@ def _insert(json_dst: dict, section_name: str, option: str, value: str):
         else:
             json_dst[option] = value  # Update values
     else:
-        if section_name in conf_sections and option in conf_sections[section_name]['list_options']:
+        if option in CONF_SECTIONS.get(section_name, {}).get('list_options', []):
             json_dst[option] = [value]  # Create as list
         else:
             json_dst[option] = value  # Update values
@@ -154,21 +157,21 @@ def _insert_section(json_dst: dict, section_name: str, section_data: dict):
         Section be added.
     """
 
-    if section_name in conf_sections and conf_sections[section_name]['type'] == 'duplicate':
+    if CONF_SECTIONS.get(section_name, {}).get('type') == 'duplicate':
         if section_name in json_dst:
             json_dst[section_name].append(section_data)  # Append new values
         else:
             json_dst[section_name] = [section_data]  # Create as list
-    elif section_name in conf_sections and conf_sections[section_name]['type'] == 'merge':
+    elif CONF_SECTIONS.get(section_name, {}).get('type') == 'merge':
         if section_name in json_dst:
             for option in section_data:
-                if option in json_dst[section_name] and option in conf_sections[section_name]['list_options']:
+                if option in json_dst[section_name] and option in CONF_SECTIONS[section_name].get('list_options', []):
                     json_dst[section_name][option].extend(section_data[option])  # Append new values
                 else:
                     json_dst[section_name][option] = section_data[option]  # Update values
         else:
             json_dst[section_name] = section_data  # Create
-    elif section_name in conf_sections and conf_sections[section_name]['type'] == 'last':
+    elif CONF_SECTIONS.get(section_name, {}).get('type') == 'last':
         if section_name in json_dst:
             # if the option already exists it is overwritten. But a warning is shown.
             logger.warning(f'There are multiple {section_name} sections in configuration. Using only last section.')
@@ -621,7 +624,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
         try:
             data = {section: data[section]}
         except KeyError as e:
-            if section not in conf_sections.keys():
+            if section not in CONF_SECTIONS.keys():
                 raise WazuhError(1102, extra_message=e.args[0])
             else:
                 raise WazuhError(1106, extra_message=e.args[0])
@@ -1054,7 +1057,7 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
         raise WazuhError(1111)
 
 
-def get_active_configuration(agent_id: str, component: str, configuration: str) -> str:
+def get_active_configuration(agent_id: str, component: str, configuration: str) -> dict:
     """Get an agent's component active configuration.
 
     Parameters
@@ -1085,64 +1088,132 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
 
     Returns
     -------
-    str
+    dict
         The active configuration the agent is currently using.
     """
+    sockets_json_protocol = {'remote', 'analysis', 'wdb'}
+    component_socket_mapping = {'agent': 'agent', 'agentless': 'agentless', 'analysis': 'analysis', 'auth': 'auth',
+                                'com': 'com', 'csyslog': 'csyslog', 'integrator': 'integrator',
+                                'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor',
+                                'request': 'remote', 'syscheck': 'syscheck', 'wazuh-db': 'wdb', 'wmodules': 'wmodules'}
+    component_socket_dir_mapping = {'agent': 'sockets', 'agentless': 'sockets', 'analysis': 'sockets',
+                                    'auth': 'sockets', 'com': 'sockets', 'csyslog': 'sockets', 'integrator': 'sockets',
+                                    'logcollector': 'sockets', 'mail': 'sockets', 'monitor': 'sockets',
+                                    'request': 'sockets', 'syscheck': 'sockets', 'wazuh-db': 'db',
+                                    'wmodules': 'sockets'}
+
     if not component or not configuration:
         raise WazuhError(1307)
 
-    components = {"agent", "agentless", "analysis", "auth", "com", "csyslog", "integrator", "logcollector", "mail",
-                  "monitor", "request", "syscheck", "wmodules"}
-
-    # checks if the component is correct
+    # Check if the component is correct
+    components = component_socket_mapping.keys()
     if component not in components:
         raise WazuhError(1101, f'Valid components: {", ".join(components)}')
 
-    sockets_path = os_path.join(common.WAZUH_PATH, "queue", "sockets")
+    def get_active_configuration_manager():
+        """Get manager active configuration."""
+        # Communicate with the socket that corresponds to the component requested
+        dest_socket = os_path.join(common.WAZUH_PATH, "queue", component_socket_dir_mapping[component],
+                                   component_socket_mapping[component])
 
-    if agent_id == '000':
-        dest_socket = os_path.join(sockets_path, component)
-        command = f"getconfig {configuration}"
         # Verify component configuration
         if not os.path.exists(dest_socket):
-            raise WazuhError(1121, extra_message=f"please verify that the component '{component}' \
-                is properly configured")
-    else:
-        dest_socket = os_path.join(sockets_path, "request")
-        command = f"{str(agent_id).zfill(3)} {component} getconfig {configuration}"
+            raise WazuhError(1121,
+                             extra_message=f"Please verify that the component '{component}' is properly configured")
 
-    # Socket connection
-    try:
-        s = WazuhSocket(dest_socket)
-    except Exception:
-        raise WazuhInternalError(1121)
+        # Simple socket message
+        if component_socket_mapping[component] not in sockets_json_protocol:
+            msg = f"{GETCONFIG_COMMAND} {configuration}"
 
-    # Send message
-    s.send(command.encode())
+            # Socket connection
+            try:
+                s = wazuh_socket.WazuhSocket(dest_socket)
+            except Exception:
+                raise WazuhInternalError(1121)
 
-    # Receive response
-    try:
-        # Receive data length
-        rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
-    except ValueError:
-        raise WazuhInternalError(1118, extra_message="Data could not be received")
+            # Send message
+            s.send(msg.encode())
 
-    s.close()
+            # Receive response
+            try:
+                # Receive data length
+                rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
+            except ValueError:
+                raise WazuhInternalError(1118, extra_message="Data could not be received")
+            finally:
+                s.close()
 
-    if rec_msg_ok.startswith('ok'):
-        msg = json.loads(rec_msg)
+            return rec_msg_ok, rec_msg
+
+        # JSON socket message
+        else:  # component_socket_mapping[component] in sockets_json_protocol
+            msg = wazuh_socket.create_wazuh_socket_message(origin={'module': common.origin_module.get()},
+                                                           command=GETCONFIG_COMMAND,
+                                                           parameters={'section': configuration})
+
+            # Socket connection
+            try:
+                s = wazuh_socket.WazuhSocketJSON(dest_socket)
+            except Exception:
+                raise WazuhInternalError(1121)
+
+            # Send message
+            s.send(msg)
+
+            # Receive response
+            try:
+                response = s.receive(raw=True)
+            except ValueError:
+                raise WazuhInternalError(1118, extra_message="Data could not be received")
+            finally:
+                s.close()
+
+            return response['error'], response['data']
+
+    def get_active_configuration_agent():
+        """Get agent active configuration"""
+        # Always communicate with remote socket
+        dest_socket = common.REMOTED_SOCKET
+
+        # Simple socket message
+        msg = f"{str(agent_id).zfill(3)} {component} {GETCONFIG_COMMAND} {configuration}"
+
+        # Socket connection
+        try:
+            s = wazuh_socket.WazuhSocket(dest_socket)
+        except Exception:
+            raise WazuhInternalError(1121)
+
+        # Send message
+        s.send(msg.encode())
+
+        # Receive response
+        try:
+            # Receive data length
+            rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
+        except ValueError:
+            raise WazuhInternalError(1118, extra_message="Data could not be received")
+        finally:
+            s.close()
+
+        return rec_msg_ok, rec_msg
+
+    rec_error, rec_data = get_active_configuration_agent() if agent_id != '000' else get_active_configuration_manager()
+
+    if rec_error == 'ok' or rec_error == 0:
+        data = json.loads(rec_data) if isinstance(rec_data, str) else rec_data
 
         # Include password if auth->use_password enabled and authd.pass file exists
-        if msg.get('auth', {}).get('use_password') == 'yes':
+        if data.get('auth', {}).get('use_password') == 'yes':
             try:
                 with open(os_path.join(common.WAZUH_PATH, "etc", "authd.pass"), 'r') as f:
-                    msg['authd.pass'] = f.read().rstrip()
+                    data['authd.pass'] = f.read().rstrip()
             except IOError:
                 pass
 
-        return msg
+        return data
     else:
-        raise WazuhError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg else 1116,
+        raise WazuhError(1117 if "No such file or directory" in rec_data or "Cannot send request" in rec_data else 1116,
                          extra_message=f'{component}:{configuration}')
 
 

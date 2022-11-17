@@ -124,6 +124,7 @@ class LocalClient(client.AbstractClientManager):
     """
     Initialize variables, connect to the server, send a request, wait for a response and disconnect.
     """
+    ASYNC_COMMANDS = [b'dapi', b'dapi_fwd', b'send_file', b'sendasync']
 
     def __init__(self):
         """Class constructor"""
@@ -171,14 +172,20 @@ class LocalClient(client.AbstractClientManager):
         request_result : dict
             API response.
         """
-        result = (await self.protocol.send_request(command, data)).decode()
+        try:
+            result = (await self.protocol.send_request(command, data)).decode()
+        except exception.WazuhException as e:
+            if e.code == 3020 and command in self.ASYNC_COMMANDS:
+                result = str(e)
+            else:
+                # If a synchronous response was expected but an exception is received instead, raise it.
+                raise
+
         if result == 'There are no connected worker nodes':
             request_result = {}
         else:
-            # Wait for expected data if it is not returned by send_request(),
-            # which occurs when the following commands are used.
-            if command == b'dapi' or command == b'dapi_fwd' or command == b'send_file' or command == b'sendasync' \
-                    or result == 'Sent request to master node':
+            # Wait for expected data if it is not returned by send_request().
+            if command in self.ASYNC_COMMANDS or result == 'Sent request to master node':
                 try:
                     timeout = None if wait_for_complete \
                         else self.cluster_items['intervals']['communication']['timeout_dapi_request']
@@ -212,9 +219,13 @@ class LocalClient(client.AbstractClientManager):
             Request response.
         """
         await self.start()
-        result = await self.send_api_request(command, data, wait_for_complete)
-        self.transport.close()
-        await self.protocol.on_con_lost
+
+        try:
+            result = await self.send_api_request(command, data, wait_for_complete)
+        finally:
+            self.transport.close()
+            await self.protocol.on_con_lost
+
         return result
 
     async def send_file(self, path: str, node_name: str = None) -> str:

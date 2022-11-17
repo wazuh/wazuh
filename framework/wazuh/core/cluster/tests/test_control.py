@@ -38,7 +38,7 @@ async def test_get_nodes():
             with pytest.raises(KeyError):
                 await control.get_nodes(lc=local_client)
 
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=['timeout', 'error']):
+    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=[WazuhClusterError(3020), 'error']):
         with pytest.raises(WazuhClusterError):
             await control.get_nodes(lc=local_client)
 
@@ -64,7 +64,7 @@ async def test_get_node():
             with pytest.raises(KeyError):
                 await control.get_node(lc=local_client)
 
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=['timeout', 'error']):
+    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=[WazuhClusterError(3020), 'error']):
         with pytest.raises(WazuhClusterError):
             await control.get_node(lc=local_client)
 
@@ -87,7 +87,7 @@ async def test_get_health():
             with pytest.raises(KeyError):
                 await control.get_health(lc=local_client)
 
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=['timeout', 'error']):
+    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=[WazuhClusterError(3020), 'error']):
         with pytest.raises(WazuhClusterError):
             await control.get_health(lc=local_client)
 
@@ -110,7 +110,7 @@ async def test_get_agents():
             with pytest.raises(KeyError):
                 await control.get_agents(lc=local_client)
 
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=['timeout', 'error']):
+    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=[WazuhClusterError(3020), 'error']):
         with pytest.raises(WazuhClusterError):
             await control.get_agents(lc=local_client)
 
@@ -132,7 +132,7 @@ async def test_get_system_nodes():
             result = await control.get_system_nodes()
             assert result == WazuhError(3013)
 
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=['timeout', 'error']):
+    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=[WazuhClusterError(3020), 'error']):
         with pytest.raises(WazuhClusterError):
             await control.get_system_nodes()
 
@@ -153,7 +153,7 @@ async def test_get_node_ruleset_integrity():
             with pytest.raises(KeyError):
                 await control.get_node_ruleset_integrity(lc=local_client)
 
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=['timeout', 'error']):
+    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=[WazuhClusterError(3020), 'error']):
         with pytest.raises(WazuhClusterError):
             await control.get_node_ruleset_integrity(lc=local_client)
 
