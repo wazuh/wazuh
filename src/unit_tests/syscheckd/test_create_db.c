@@ -1131,7 +1131,11 @@ static void test_fim_get_checksum(void **state) {
     fim_entry entry = {.file_entry.path = "/media/test", .file_entry.data=&DEFAULT_FILE_DATA};
 
     fim_get_checksum(entry.file_entry.data);
+#ifdef TEST_WINAGENT
     assert_string_equal(entry.file_entry.data->checksum, "6ec831114b5d930f19a90d7c34996e0fce4e7b84");
+#else
+    assert_string_equal(entry.file_entry.data->checksum, "98e039efc1b8490965e7e1247a9dc31cf7379051");
+#endif
 }
 
 
@@ -4098,7 +4102,11 @@ void test_fim_calculate_dbsync_difference_no_changed_data(void **state){
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_md5")->valuestring, "0123456789abcdef0123456789abcdef");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_sha1")->valuestring, "0123456789abcdef0123456789abcdef01234567");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_sha256")->valuestring, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+#ifdef TEST_WINAGENT
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "checksum")->valuestring, "6ec831114b5d930f19a90d7c34996e0fce4e7b84");
+#else
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "checksum")->valuestring, "98e039efc1b8490965e7e1247a9dc31cf7379051");
+#endif
     cJSON_Delete(old_attributes);
     cJSON_Delete(changed_attributes);
 }

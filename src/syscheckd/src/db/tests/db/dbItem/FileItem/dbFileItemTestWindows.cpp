@@ -33,61 +33,12 @@ void FileItemTest::SetUp()
     data->mode = FIM_SCHEDULED;
     data->mtime = 1578075431;
     data->options = 131583;
-    cJSON * permission = cJSON_CreateObject();
-    cJSON * permission1 = cJSON_CreateObject();
-    cJSON * allowed = cJSON_CreateArray();
-    cJSON_AddItemToArray(allowed, cJSON_CreateString("delete"));
-    cJSON_AddItemToArray(allowed, cJSON_CreateString("read_control"));
-    cJSON_AddItemToArray(allowed, cJSON_CreateString("write_dac"));
-    cJSON_AddItemToArray(allowed, cJSON_CreateString("write_owner"));
-    cJSON_AddItemToArray(allowed, cJSON_CreateString("synchronize"));
-    cJSON_AddItemToArray(allowed, cJSON_CreateString("read_data"));
-    cJSON_AddItemToObject(permission, "allowed", allowed);
-    cJSON_AddItemToObject(permission, "name", cJSON_CreateString("Administradores"));
-    cJSON * allowed1 = cJSON_CreateArray();
-    cJSON_AddItemToArray(allowed1, cJSON_CreateString("delete"));
-    cJSON_AddItemToArray(allowed1, cJSON_CreateString("read_control"));
-    cJSON_AddItemToArray(allowed1, cJSON_CreateString("write_dac"));
-    cJSON_AddItemToArray(allowed1, cJSON_CreateString("write_owner"));
-    cJSON_AddItemToArray(allowed1, cJSON_CreateString("synchronize"));
-    cJSON_AddItemToArray(allowed1, cJSON_CreateString("read_data"));
-    cJSON_AddItemToObject(permission1, "allowed", allowed1);
-    cJSON_AddItemToObject(permission1, "name", cJSON_CreateString("System"));
     data->scanned = 1;
+    data->perm = "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]},\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}";
     data->size = 4925;
     data->uid = const_cast<char*>("0");
     data->user_name = const_cast<char*>("fakeUser");
     fimEntryTest->file_entry.data = data;
-    const auto permissions = R"(
-        {
-            "S-1-5-32-544":
-            {
-                "name": "Administradores",
-                "allowed":
-                    [
-                        "delete",
-                        "read_control",
-                        "write_dac",
-                        "write_owner",
-                        "synchronize",
-                        "read_data"
-                    ]
-            },
-            "S-1-5-32-545":
-            {
-                "name": "System",
-                "allowed":
-                [
-                    "delete",
-                    "read_control",
-                    "write_dac",
-                    "write_owner",
-                    "synchronize",
-                    "read_data"
-                ]
-            }
-        }
-    )"_json;
     json = {
             {"attributes", "10"},
             {"checksum", "a2fbef8f81af27155dcee5e3927ff6243593b91a"},
@@ -103,7 +54,7 @@ void FileItemTest::SetUp()
             {"mtime", 1578075431},
             {"options", 131583},
             {"path", "/etc/wgetrc"},
-            {"perm", permissions},
+            {"perm", "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]},\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"},
             {"scanned", 1},
             {"size", 4925},
             {"uid", 0},

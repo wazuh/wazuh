@@ -304,6 +304,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
                       headerKey="rtr")
     runCppCheck(moduleName=moduleName)
     runAStyleCheck(moduleName=moduleName)
+    build_tools.cleanAll()
     build_tools.makeDeps(targetName=target,
                          srcOnly=False)
     build_tools.makeTarget(targetName=target,
