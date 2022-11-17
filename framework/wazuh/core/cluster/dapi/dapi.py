@@ -81,6 +81,8 @@ class DistributedAPI:
             User who started the request
         api_timeout : int
             Timeout set in source API for the request
+        remove_denied_nodes : bool
+            Whether to remove denied (RBAC) nodes from response's failed items or not.
         """
         self.logger = logger
         self.f = f
