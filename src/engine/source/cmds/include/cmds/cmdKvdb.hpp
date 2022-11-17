@@ -1,6 +1,8 @@
 #ifndef _CMD_KVDB_HPP
 #define _CMD_KVDB_HPP
 
+//TODO: delete after kvdbApi is fully working
+
 #include <string>
 
 namespace cmd
