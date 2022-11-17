@@ -18,32 +18,34 @@ std::optional<std::string> WazuhRequest::validate() const
         return "The request must have a \"version\" field containing an integer value";
     }
     // Check if the version is supported
-    if (m_jrequest.getInt("/version").value() != VERSION_SUPPORTED)
+    if (m_jrequest.getInt("/version").value() != SUPPORTED_VERSION)
     {
         return fmt::format(
             "The request version ({}) is not supported, the supported version is {}",
             m_jrequest.getInt("/version").value(),
-            VERSION_SUPPORTED);
+            SUPPORTED_VERSION);
     }
     if (!m_jrequest.isString("/command"))
     {
-        return "The request must have a command field containing a string value";
+        return "The request must have a \"command\" field containing a string value";
     }
     if (!m_jrequest.isObject("/parameters"))
     {
-        return "The request must have a parameters field with a JSON object value";
+        return "The request must have a \"parameters\" field containing a JSON object "
+               "value";
     }
     if (!m_jrequest.isObject("/origin"))
     {
-        return "The request must have an origin field with a JSON object value";
+        return "The request must have an \"origin\" field containing a JSON object value";
     }
     if (!m_jrequest.isString("/origin/name"))
     {
-        return "The request must have an origin/name field with a string value";
+        return "The request must have an \"origin/name\" field containing a string value";
     }
     if (!m_jrequest.isString("/origin/module"))
     {
-        return "The request must have an origin/module field with a string value";
+        return "The request must have an \"origin/module\" field containing a string "
+               "value";
     }
 
     return std::nullopt;
@@ -81,7 +83,7 @@ WazuhRequest WazuhRequest::create(std::string_view command,
     }
 
     json::Json jrequest;
-    jrequest.setInt(VERSION_SUPPORTED, "/version");
+    jrequest.setInt(SUPPORTED_VERSION, "/version");
     jrequest.setString(command, "/command");
     jrequest.set("/parameters", parameters);
     jrequest.setString("wazuh-engine", "/origin/module");
