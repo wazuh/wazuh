@@ -41,7 +41,7 @@ normalize:
   - map:
       - event.kind: event
       - event.category: +a_append/web
-      - file.path: "+r_ext/$event.original/File does not exist: ([^,]+)(,.*)?$"
+      - file.path: "+r_ext/$message/File does not exist: ([^,]+)(,.*)?$"
       - http.request.referrer: "+r_ext/$message/File does not exist: [^,]+, referer: (.*)$"
 
   - check:

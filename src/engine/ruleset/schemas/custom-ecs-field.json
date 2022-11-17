@@ -4297,6 +4297,9 @@
     "user.target.group.name": {
       "$ref": "#/definitions/user.target.group.name"
     },
+    "message": {
+      "$ref": "#/definitions/message"
+    },
     "user.target.hash": {
       "$ref": "#/definitions/user.target.hash"
     },
