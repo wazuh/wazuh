@@ -181,21 +181,23 @@ void singleRequest(const std::string& socketPath,
     std::string responseStr {};
     try
     {
-        WAZUH_LOG_DEBUG(
-            "Engine API Catalog: \"{}\" method: Request: \"{}\".", __func__, requestStr);
-
         responseStr = apiclnt::connection(socketPath, requestStr);
-
-        WAZUH_LOG_DEBUG("Engine API Catalog: \"{}\" method: Request response: \"{}\".",
-                        __func__,
-                        responseStr);
     }
     catch(const std::exception& e)
     {
         WAZUH_LOG_ERROR(
             "Engine API Catalog: An error occurred while sending a request: {}.",
             e.what());
+
+        return;
     }
+
+    if (responseStr.empty())
+    {
+        WAZUH_LOG_ERROR("Engine API Catalog: Request response is empty.");
+        return;
+    }
+
     try
     {
         // Assert response is valid
@@ -224,7 +226,7 @@ void singleRequest(const std::string& socketPath,
         // Print friendly response
         if (errorCode.value() != 200)
         {
-            WAZUH_LOG_ERROR("Engine API Catalog: Request Error ({}): {}.",
+            WAZUH_LOG_ERROR("Engine API Catalog: Request error ({}): {}.",
                             errorCode.value(),
                             message.value());
         }
@@ -234,14 +236,20 @@ void singleRequest(const std::string& socketPath,
             const auto content = data.value().getString("/content");
             if (content)
             {
-                WAZUH_LOG_INFO("Engine API Catalog: Request response: \"{}\".",
-                               content.value());
-                std::cout << "Request response: " << content.value() << std::endl;
+                const std::string msg {
+                    fmt::format("Request \"{} {}\" response: \"{}\"",
+                                actionStr,
+                                name.fullName(),
+                                content.value())};
+                WAZUH_LOG_INFO("Engine API Catalog: {}.", msg);
+                std::cout << msg << std::endl;
             }
             else
             {
-                WAZUH_LOG_INFO("Engine API Catalog: Response: Request succeeded.");
-                std::cout << "Request succeeded" << std::endl;
+                const std::string msg {fmt::format(
+                    "Request \"{} {}\" succeeded", actionStr, name.fullName())};
+                WAZUH_LOG_INFO("Engine API Catalog: {}.", msg);
+                std::cout << msg << std::endl;
             }
         }
     }

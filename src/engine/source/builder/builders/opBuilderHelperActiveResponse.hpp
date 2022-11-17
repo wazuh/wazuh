@@ -29,7 +29,7 @@ constexpr const char* MODULE_NAME {"wazuh-engine"};
 
 constexpr const char* ORIGIN_NAME {"node01"};
 
-constexpr const char* VERSION_SUPPORTED{"1"};
+constexpr const char* SUPPORTED_VERSION{"1"};
 }
 
 /**

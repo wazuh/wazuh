@@ -203,6 +203,7 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection,
     try
     {
         contentName = base::Name(contentNameStr.value());
+
         contentResource = Resource(contentName, Resource::Format::JSON);
     }
     // Invalid content name
@@ -216,7 +217,8 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection,
     if (Resource::Type::COLLECTION == contentResource.m_type)
     {
         return base::Error {
-            fmt::format("The content \"{}\" cannot be of the type \"collection\"",
+            fmt::format("The asset \"{}\" cannot be added to the store: The name format "
+                        "is not valid as it it is identified as a \"collection\"",
                         contentNameStr.value())};
     }
 

@@ -152,7 +152,7 @@ string getExpectedResult(string commandName,
 
     expectedResult =
         string("(local_source) [] N") + firstLocationParam + secondLocationParam + " "
-        + locationValue + " {\"version\":" + ar::VERSION_SUPPORTED + ",\"command\":\""
+        + locationValue + " {\"version\":" + ar::SUPPORTED_VERSION + ",\"command\":\""
         + commandName + (timeout.empty() ? "0" : timeout)
         + "\",\"parameters\":{\"extra_args\":[" + extraArgs + "],\"alert\":"
         + originalEvent->str() + "},\"origin\":{\"module\":\"wazuh-engine\",\"name\":\""
