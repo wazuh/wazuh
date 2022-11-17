@@ -76,6 +76,7 @@ std::string protocol_location;
 int debug_level;
 std::string asset_trace;
 int log_level;
+std::string kvdb_loaded;
 std::string kvdb_name;
 std::string kvdb_input_file_path;
 std::string kvdb_input_type;
@@ -254,9 +255,17 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
     kvdb->add_option("-a, --api_socket", args::apiEndpoint, "engine api address")
         ->default_val(ENGINE_API_SOCK);
 
+    // KVDB path
+    kvdb->add_option("-k, --kvdb_path", args::kvdb_path, "Path to KVDB folder.")
+        ->default_val(ENGINE_KVDB_PATH)
+        ->check(CLI::ExistingDirectory);
+
     // KVDB list subcommand
     auto list_subcommand = kvdb->add_subcommand(args::SUBCOMMAND_KVDB_LIST,
                                                 "list: List all KeyValueDB availables.");
+    list_subcommand->add_flag(
+        "-l, --loaded", args::kvdb_loaded, "Only list loaded KVDBs");
+
     list_subcommand
         ->add_option("-n, --name",
                      args::kvdb_name,
@@ -266,7 +275,7 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
     // KVDB create subcommand
     auto create_subcommand =
     kvdb->add_subcommand(args::SUBCOMMAND_KVDB_CREATE,
-                            "create db-name: Creates a KeyValueDB named db-name.");
+                            "create -n [db-name]: Creates a KeyValueDB named db-name.");
     // create kvdb name
     create_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be added.")
         ->required();
@@ -280,12 +289,19 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
         ->check(CLI::ExistingFile);
 
     // KVDB dump subcommand
-    auto dump_subcommand = kvdb->add_subcommand(args::SUBCOMMAND_KVDB_DUMP,"NA.");
+    auto dump_subcommand = kvdb->add_subcommand(
+        args::SUBCOMMAND_KVDB_DUMP, "dump -n [db-name]: Dumps the full content of a DB named db-name to a JSON");
+    // dump kvdb name
+    dump_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be dumped.")
+        ->required();
 
     // KVDB delete subcommand
     auto delete_subcommand =
     kvdb->add_subcommand(args::SUBCOMMAND_KVDB_DELETE,
-                            "delete db-name: Deletes a KeyValueDB named db-name.");
+                            "delete -n db-name: Deletes a KeyValueDB named db-name.");
+    delete_subcommand->add_flag(
+        "-l, --loaded", args::kvdb_loaded, "Only list loaded KVDBs");
+
     // KVDB name
     delete_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be deleted.")
         ->required();
@@ -592,11 +608,13 @@ int main(int argc, char* argv[])
                 // TODO: ASK -> shouldn't we throw error wrong command ?
             }
 
+            bool onlyLoaded = args::kvdb_loaded.empty() ? false : true;
             cmd::kvdb(args::kvdb_path,
                       args::kvdb_name,
                       args::apiEndpoint,
                       action,
-                      args::kvdb_input_file_path);
+                      args::kvdb_input_file_path,
+                      onlyLoaded);
         }
         else if (app->get_subcommand(args::SUBCOMMAND_CATALOG)->parsed())
         {

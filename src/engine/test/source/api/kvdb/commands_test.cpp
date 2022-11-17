@@ -14,7 +14,7 @@ protected:
     static constexpr auto DB_NAME_2 = "TEST_DB_2";
     static constexpr auto DB_NAME_3 = "TEST_DB_3";
     static constexpr auto DB_NAME_WITH_SPACES = "TEST_DB SEPARATE NAME";
-    static constexpr auto DB_DIR = "/tmp/";
+    static constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
     static constexpr auto FILE_PATH = "/tmp/file.csv";
 
     bool init = []()
@@ -42,17 +42,17 @@ protected:
 
     virtual void TearDown()
     {
-        if (!kvdbManager.getDB(DB_NAME))
+        if (kvdbManager.getDB(DB_NAME,false))
         {
             kvdbManager.deleteDB(DB_NAME);
         }
 
-        if (!kvdbManager.getDB(DB_NAME_2))
+        if (kvdbManager.getDB(DB_NAME_2,false))
         {
             kvdbManager.deleteDB(DB_NAME_2);
         }
 
-        if (!kvdbManager.getDB(DB_NAME_WITH_SPACES))
+        if (kvdbManager.getDB(DB_NAME_WITH_SPACES,false))
         {
             kvdbManager.deleteDB(DB_NAME_WITH_SPACES);
         }
@@ -71,6 +71,7 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdSimpleAddition)
     json::Json params {
         fmt::format("{{\"name\": \"{}\"}}", kvdbAPICreateCommand::DB_NAME_2).c_str()};
     auto response = cmd(params);
+    // ASSERT_EQ(response.message().value(),"");
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
 
@@ -167,6 +168,7 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdWithFilling)
                            .c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.message().value(), "OK");
     ASSERT_EQ(response.error(), 200);
 
     // check response
@@ -261,7 +263,7 @@ protected:
     static constexpr auto DB_NAME = "TEST_DB";
     static constexpr auto DB_NAME_WITH_SPACES = "TEST_DB NAME";
     static constexpr auto DB_NAME_NOT_AVAILABLE = "TEST_DB_NOT_AVAILABLE";
-    static constexpr auto DB_DIR = "/tmp/";
+    static constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
 
     bool init = []()
     {
@@ -296,12 +298,12 @@ protected:
 
     virtual void TearDown()
     {
-        if (!kvdbManager.getDB(DB_NAME))
+        if (kvdbManager.getDB(DB_NAME))
         {
             kvdbManager.deleteDB(DB_NAME);
         }
 
-        if (!kvdbManager.getDB(DB_NAME_WITH_SPACES))
+        if (kvdbManager.getDB(DB_NAME_WITH_SPACES))
         {
             kvdbManager.deleteDB(DB_NAME_WITH_SPACES);
         }
@@ -373,7 +375,7 @@ class kvdbAPIInsertCommand : public ::testing::Test
 
 protected:
     static constexpr auto DB_NAME = "TEST_DB";
-    static constexpr auto DB_DIR = "/tmp/";
+    static constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
 
     bool init = []()
     {
@@ -415,7 +417,7 @@ protected:
     static constexpr auto DB_NAME = "TEST_DB";
     static constexpr auto DB_NAME_2 = "TEST_DB_2";
     static constexpr auto DB_NAME_DIFFERENT_START = "NOT_TEST_DB";
-    static constexpr auto DB_DIR = "/tmp/";
+    static constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
 
     bool init = []()
     {

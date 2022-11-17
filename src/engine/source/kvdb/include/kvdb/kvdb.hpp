@@ -29,12 +29,14 @@ public:
      */
     ~KVDB();
 
+    //TODO:
     /**
+     * 
      * @brief Open and initialize the db
      *
      * @param createIfMissing create the db if it does not exist.
      */
-    bool init(bool createIfMissing = true);
+    bool init(bool createIfMissing = true, bool errorIfExists = false);
 
     /**
      * @brief Get the db name
@@ -169,6 +171,15 @@ public:
      */
     bool deleteKey(const std::string& key,
                    const std::string& columnName = DEFAULT_CF_NAME);
+
+    //TODO:
+    /**
+     * @brief 
+     * 
+     * @param dump 
+     * @return size_t 
+     */
+    size_t dumpContent(std::string& dump);
 
     /**
      * @brief DB closing cleaning all elements used to acces it
