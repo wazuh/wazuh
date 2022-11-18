@@ -1158,8 +1158,10 @@ void wdb_check_fragmentation() {
                 // 'current_fragmentation > wconfig.fragmentation_threshold' AND 'last_vacuum_time == 0'
                 // OR
                 // 'current_fragmentation > wconfig.fragmentation_threshold' AND 'last_vacuum_time > 0' AND 'current_fragmentation > last_vacuum_value + wconfig.fragmentation_delta'
-                if (current_free_pages_percentage >= wconfig.free_pages_percentage && (current_fragmentation > wconfig.max_fragmentation ||
-                    (current_fragmentation > wconfig.fragmentation_threshold && (last_vacuum_time == 0  || (last_vacuum_time > 0 && current_fragmentation > last_vacuum_value + wconfig.fragmentation_delta))))) {
+                if (current_free_pages_percentage >= wconfig.free_pages_percentage &&
+                    (current_fragmentation > wconfig.max_fragmentation ||
+                    (current_fragmentation > wconfig.fragmentation_threshold && (last_vacuum_time == 0  ||
+                    (last_vacuum_time > 0 && current_fragmentation > last_vacuum_value + wconfig.fragmentation_delta))))) {
                     struct timespec ts_start, ts_end;
 
                     if (wdb_commit2(node) < 0) {
