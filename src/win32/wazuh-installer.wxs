@@ -3,6 +3,8 @@
     <Product Id="*" Name="Wazuh Agent" Language="1033" Version="4.3.10" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
         <Package Description="Wazuh helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring" Comments="wazuh-agent" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="simple.cab" EmbedCab="yes" CompressionLevel="high" />
+        <!-- Disable Restart Manager -->
+        <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable"/>
         <!-- Default configuration values -->
         <Property Id="WAZUH_MANAGER" Secure="yes"/>
         <Property Id="WAZUH_MANAGER_PORT" Secure="yes"/>
