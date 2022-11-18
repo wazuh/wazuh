@@ -1,6 +1,7 @@
 #include "cmds/cmdTest.hpp"
 
 #include <atomic>
+#include <filesystem>
 #include <memory>
 
 #include <re2/re2.h>
@@ -30,6 +31,60 @@ void sigint_handler(const int signum)
     gs_doRun = false;
 }
 
+void removeDir(std::string path)
+{
+    if (std::filesystem::exists(path))
+    {
+        WAZUH_LOG_DEBUG("Removing directory: {}", path);
+        std::filesystem::remove_all(path);
+    }
+}
+
+void copyDir(const std::filesystem::path& src, const std::filesystem::path& dst)
+{
+    if (!std::filesystem::create_directories(dst))
+    {
+        throw std::runtime_error("Failed to create directory: " + dst.string());
+    }
+    WAZUH_LOG_DEBUG("Creating directory: {}", dst.string());
+
+    for (auto& p : std::filesystem::directory_iterator(src))
+    {
+        if (p.is_directory())
+        {
+            copyDir(p.path(), dst / p.path().filename());
+        }
+        else
+        {
+            WAZUH_LOG_DEBUG("Copying file: {} to {}", p.path().string(), dst.string());
+            std::filesystem::copy_file(p.path(), dst / p.path().filename());
+        }
+    }
+}
+
+std::string copyKVDB(const std::filesystem::path& kvdbPath)
+{
+    const auto baseDst = std::filesystem::temp_directory_path() / "wazuh-engine";
+    // Create the base directory if it doesn't exist
+    if (!std::filesystem::exists(baseDst))
+    {
+        if (!std::filesystem::create_directories(baseDst))
+        {
+            throw std::runtime_error("Failed to create directory: " + baseDst.string());
+        }
+        WAZUH_LOG_DEBUG("Creating directory: {}", baseDst.string());
+    }
+
+    // Random directory name for the instance
+    char instanceDir[] = "kvdb-instance-XXXXXX";
+    const auto dst = baseDst / mkdtemp(instanceDir);
+
+    // Copy the kvdb
+    copyDir(kvdbPath, dst);
+
+    return dst.string() + "/";
+}
+
 } // namespace
 
 namespace cmd
@@ -57,7 +112,11 @@ void test(const std::string& kvdbPath,
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
 
-    auto kvdb = std::make_shared<KVDBManager>(kvdbPath);
+    // Copy the kvdb to a temporary directory
+    const auto kvdbTmp = copyKVDB(kvdbPath);
+    g_exitHanlder.add([kvdbTmp]() { removeDir(kvdbTmp); });
+    // Init the kvdb
+    auto kvdb = std::make_shared<KVDBManager>(kvdbTmp);
     g_exitHanlder.add([kvdb]() { kvdb->clear(); });
 
     auto fileStore = std::make_shared<store::FileDriver>(fileStorage);
