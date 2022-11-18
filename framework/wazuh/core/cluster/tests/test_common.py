@@ -56,7 +56,6 @@ fernet_key = "00000000000000000000000000000000"
 wazuh_common = cluster_common.WazuhCommon()
 in_buffer = cluster_common.InBuffer()
 
-
 asyncio.set_event_loop_policy(EventLoopPolicy())
 loop = new_event_loop()
 
@@ -1050,6 +1049,7 @@ def test_handler_process_request():
         handler.process_request(b"something random", b"data")
         process_unknown_cmd_mock.assert_called_once_with(b"something random")
 
+
 def test_handler_process_request_ko():
     """Test the correct exception raise at method 'process_request'."""
 
@@ -1263,6 +1263,7 @@ async def test_handler_wait_for_file_ko(send_request_mock, wait_for_mock):
     with pytest.raises(exception.WazuhClusterError, match=r".* 3040 .*"):
         await handler.wait_for_file(asyncio.Event(), "task_id")
     send_request_mock.assert_called_with(command=b'cancel_task', data=ANY)
+
 
 # Test 'WazuhCommon' class methods
 
