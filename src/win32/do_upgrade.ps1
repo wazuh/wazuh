@@ -43,7 +43,9 @@ function stop_wazuh_agent
         $process_name
     )
 
+    write-output "$(Get-Date -format u) - Trying to stop Wazuh service." >> .\upgrade\upgrade.log
     Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
+    Start-Sleep 2
     $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
     $counter = 5
 
@@ -52,11 +54,15 @@ function stop_wazuh_agent
         write-output "$(Get-Date -format u) - Trying to stop Wazuh service again. Remaining attempts: $counter." >> .\upgrade\upgrade.log
         $counter--
         Get-Service -Name "Wazuh" | Stop-Service
-        taskkill /pid $process_id /f /T
         Start-Sleep 2
         $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
     }
 
+    if ($process_id -ne $null) {
+        write-output "$(Get-Date -format u) - Killing process." >> .\upgrade\upgrade.log
+        taskkill /pid $process_id /f /T
+        Start-Sleep 10
+    }
 }
 
 function backup_home
@@ -217,7 +223,7 @@ function install
     kill -processname win32ui -ErrorAction SilentlyContinue -Force
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
     write-output "$(Get-Date -format u) - Starting upgrade processs." >> .\upgrade\upgrade.log
-    cmd /c start (Get-Item ".\wazuh-agent*.msi").Name -quiet -norestart -log installer.log
+    cmd /c start /wait (Get-Item ".\wazuh-agent*.msi").Name -quiet -norestart -log installer.log
 }
 
 
@@ -310,3 +316,5 @@ Else
 
 Remove-Item $Env:WAZUH_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
 Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
+Remove-Item -Path ".\wazuh-agent*.msi" -ErrorAction SilentlyContinue
+Remove-Item -Path ".\do_upgrade.ps1" -ErrorAction SilentlyContinue

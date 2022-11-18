@@ -38,7 +38,8 @@ STATIC limits_t limits;
 STATIC pthread_mutex_t limit_eps_mutex = PTHREAD_MUTEX_INITIALIZER;
 STATIC sem_t credits_eps_semaphore;
 
-void load_limits(unsigned int eps, unsigned int timeframe) {
+void load_limits(unsigned int eps, unsigned int timeframe, bool maximum_found) {
+
     if (eps > 0 && timeframe > 0) {
         limits.eps = eps;
         limits.timeframe = timeframe;
@@ -52,7 +53,11 @@ void load_limits(unsigned int eps, unsigned int timeframe) {
         minfo("EPS limit enabled, EPS: '%d', timeframe: '%d'", eps, timeframe);
     } else {
         limits.enabled = false;
-        minfo("EPS limit disabled");
+        if (!maximum_found && timeframe > 0) {
+            mwarn("EPS limit disabled. The maximum value is missing in the configuration block.");
+        } else {
+            minfo("EPS limit disabled");
+        }
     }
 }
 

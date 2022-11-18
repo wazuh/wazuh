@@ -61,7 +61,7 @@ int GlobalConf(const char *cfgfile)
     Config.hostname_white_list = NULL;
 
     Config.eps.maximum = EPS_LIMITS_MIN_EPS;
-    Config.eps.timeframe = EPS_LIMITS_DEFAULT_TIMEFRAME;
+    Config.eps.timeframe = 0;
 
     /* Default actions -- only log above level 1 */
     Config.mailbylevel = 7;
