@@ -101,8 +101,9 @@
         <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
 
         <!-- Close the Wazuh agent GUI -->
+        <CustomAction Id="CloseGUI" BinaryKey="InstallerScripts" VBScriptCall="KillGUITask" Return="check" Execute="immediate" Impersonate="no"/>
 
-        <CustomAction Id="CloseGUI" Directory="APPLICATIONFOLDER" ExeCommand="TASKKILL /F /IM win32ui.exe" Execute="deferred" Impersonate="no" Return="ignore" />
+
         <UI>
             <UIRef Id="WixUI_Advanced" />
             <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="4"><![CDATA[WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"]]></Publish>
