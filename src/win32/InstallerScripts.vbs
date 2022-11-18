@@ -391,5 +391,5 @@ Public Function CheckSvcRunning()
 End Function
 
 Public Function KillGUITask()
-    taskkill /f /im win32ui.exe 
+    taskkill.exe /f /im win32ui.exe 
 End Function
