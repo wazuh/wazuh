@@ -5,5 +5,7 @@
     "registry_limit": 20,
     "registry_sync": true,
     "sync_response_timeout": 10,
-    "sync_max_interval": 100
+    "sync_max_interval": 100,
+    "thread_pool": 1,
+    "queue_size": 100
 }
