@@ -14,5 +14,23 @@ metadata:
   title: Hola lorenzo
   description: Decoder for Apache HTTP Server
 
+definitions:
+  isnot_appProto_failed: +s_ne/~json.app_proto/failed AND +s_ne/~json.app_proto/template AND +s_ne/~json.app_proto/template-rust
+  isnot_appProto_template: +s_ne/~json.app_proto/template
+  isnot_appProto_template_rust: +s_ne/~json.app_proto/template-rust
+
 check:
   - ~json.event_type: +ef_exists
+
+normalize:
+  - check: $isnot_appProto_failed
+    map:
+      - network.protocol: $~json.app_proto
+
+  - check:
+      - ~json.app_proto: +s_eq/ftp-data
+    map:
+      - network.protocol: ftp
+
+  - map:
+      - ~json.event_type: +s_lo/$~json.event_type
