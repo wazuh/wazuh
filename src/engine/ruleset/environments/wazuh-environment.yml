@@ -56,6 +56,7 @@ decoders:
   - decoder/syscollector-program/0
   - decoder/syscollector-program-del/0
   - decoder/syscollector-program-save/0
+  - decoder/suricata/0
 
   # Service decoders
   - decoder/syslog/0

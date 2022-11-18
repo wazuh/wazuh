@@ -1,0 +1,18 @@
+name: decoder/suricata/0
+
+sources:
+  - decoder/json/0
+
+metadata:
+  module: suricata
+  compatibility: v7
+  author:
+    name: Wazuh Inc, info@wazuh.com
+    date: ayer
+  references:
+    - ellas
+  title: Hola lorenzo
+  description: Decoder for Apache HTTP Server
+
+check:
+  - ~json.event_type: +ef_exists
