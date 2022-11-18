@@ -1,6 +1,7 @@
 #include "cmds/cmdTest.hpp"
 
 #include <atomic>
+#include <csignal>
 #include <filesystem>
 #include <memory>
 
@@ -24,11 +25,12 @@
 namespace
 {
 std::atomic<bool> gs_doRun = true;
-cmd::StackExecutor g_exitHanlder {};
 
 void sigint_handler(const int signum)
 {
     gs_doRun = false;
+    std::cin.clear(); // Clear the error state
+    std::cin.ignore(); // Ignore the next input
 }
 
 void removeDir(std::string path)
@@ -99,6 +101,18 @@ void test(const std::string& kvdbPath,
           char protocolQueue,
           const std::string& protocolLocation)
 {
+
+    // Set Crt+C handler
+    cmd::StackExecutor g_exitHanlder {};
+    {
+        // Set the signal handler for SIGINT
+        struct sigaction sigIntHandler;
+        sigIntHandler.sa_handler = sigint_handler;
+        sigemptyset(&sigIntHandler.sa_mask);
+        sigIntHandler.sa_flags = 0;
+        sigaction(SIGINT, &sigIntHandler, nullptr);
+    }
+
     // Init logging
     logging::LoggingConfig logConfig;
     switch (logLevel)
