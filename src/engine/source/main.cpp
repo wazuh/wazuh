@@ -59,6 +59,7 @@ std::string file_storage;
 unsigned int queue_size;
 unsigned int threads;
 std::string kvdb_path;
+std::string kvdb_test_path;
 std::string environment;
 std::string graph_out_dir;
 char protocol_queue;
@@ -82,6 +83,7 @@ constexpr auto ENGINE_EVENT_SOCK = "/var/ossec/queue/sockets/queue";
 constexpr auto ENGINE_API_SOCK = "/var/ossec/queue/sockets/engine-api";
 constexpr auto ENGINE_STORE_PATH = "/var/ossec/engine/store";
 constexpr auto ENGINE_KVDB_PATH = "/var/ossec/etc/kvdb/";
+constexpr auto ENGINE_KVDB_TEST_PATH = "/var/ossec/etc/kvdb_test/";
 constexpr auto ENGINE_ENVIRONMENT = "environment/wazuh/0";
 
 void configureSubcommandRun(std::shared_ptr<CLI::App> app)
@@ -138,8 +140,8 @@ void configureSubcommandLogtest(std::shared_ptr<CLI::App> app)
     CLI::App* logtest =
         app->add_subcommand(args::SUBCOMMAND_LOGTEST, "Utility to test the ruleset");
     // KVDB path
-    logtest->add_option("-k, --kvdb_path", args::kvdb_path, "Path to KVDB folder.")
-        ->default_val(ENGINE_KVDB_PATH)
+    logtest->add_option("-k, --kvdb_path", args::kvdb_test_path, "Path to KVDB folder.")
+        ->default_val(ENGINE_KVDB_TEST_PATH)
         ->check(CLI::ExistingDirectory);
 
     // File storage
@@ -459,7 +461,7 @@ int main(int argc, char* argv[])
                 assetTrace = utils::string::split(args::asset_trace, ',');
             }
 
-            cmd::test(args::kvdb_path,
+            cmd::test(args::kvdb_test_path,
                       args::file_storage,
                       args::environment,
                       args::log_level,
