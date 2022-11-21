@@ -8,294 +8,39 @@ namespace api::catalog::cmds
 api::CommandFn postResourceCmd(std::shared_ptr<Catalog> catalog)
 {
     return [catalog](const json::Json& params) -> api::WazuhResponse
-        {
-            // TODO: join all the parameters verification in a single method
-            // Check json params
-            auto formatOpt = params.getString("/format");
-            if (!formatOpt)
-            {
-                if (params.exists("/format"))
-                {
-                    return api::WazuhResponse {
-                        json::Json {"{}"}, 400, "Parameter \"format\" is not a string"};
-                }
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Missing \"format\" parameter"};
-            }
-            auto format = catalog::Resource::strToFormat(formatOpt.value().c_str());
-            if (format == catalog::Resource::Format::ERROR_FORMAT)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Format not supported"};
-            }
-
-            auto contentOpt = params.getString("/content");
-            if (!contentOpt)
-            {
-                if (params.exists("/content"))
-                {
-                    return api::WazuhResponse {
-                        json::Json {"{}"}, 400, "Parameter \"content\" is not a string"};
-                }
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Missing \"content\" string parameter"};
-            }
-
-            auto nameOpt = params.getString("/name");
-            if (!nameOpt)
-            {
-                if (params.exists("/name"))
-                {
-                    return api::WazuhResponse {
-                        json::Json {"{}"}, 400, "Parameter \"name\" is not a string"};
-                }
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Missing \"name\" parameter"};
-            }
-            base::Name name;
-            try
-            {
-                name = base::Name {nameOpt.value()};
-            }
-            catch (const std::exception& e)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"},
-                    400,
-                    fmt::format("Invalid \"name\" parameter: {}", e.what())};
-            }
-
-            // Build target resource
-            catalog::Resource targetResource;
-            try
-            {
-                targetResource = catalog::Resource {name, format};
-            }
-            catch (const std::exception& e)
-            {
-                return api::WazuhResponse {json::Json {"{}"}, 400, e.what()};
-            }
-
-            auto error = catalog->postResource(targetResource, contentOpt.value());
-            if (error)
-            {
-                return api::WazuhResponse {json::Json {"{}"}, 400, error.value().message};
-            }
-
-            return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
-        };
-}
-
-api::CommandFn getResourceCmd(std::shared_ptr<Catalog> catalog)
-{
-    return [catalog](const json::Json& params) -> api::WazuhResponse
-        {
-            // Check json params
-            auto nameOpt = params.getString("/name");
-            if (!nameOpt)
-            {
-                if (params.exists("/name"))
-                {
-                    return api::WazuhResponse {
-                        json::Json {"{}"}, 400, "Parameter \"name\" is not a string"};
-                }
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Missing \"name\" parameter"};
-            }
-            base::Name name;
-            try
-            {
-                name = base::Name {nameOpt.value()};
-            }
-            catch (const std::exception& e)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"},
-                    400,
-                    fmt::format("Invalid \"name\" parameter: {}", e.what())};
-            }
-
-            auto formatOpt = params.getString("/format");
-            if (!formatOpt)
-            {
-                if (params.exists("/format"))
-                {
-                    return api::WazuhResponse {
-                        json::Json {"{}"}, 400, "Parameter \"format\" is not a string"};
-                }
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Missing \"format\" parameter"};
-            }
-            auto format = catalog::Resource::strToFormat(formatOpt.value().c_str());
-            if (format == catalog::Resource::Format::ERROR_FORMAT)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Format not supported"};
-            }
-
-            // Build target resource
-            catalog::Resource targetResource;
-            try
-            {
-                targetResource = catalog::Resource {name, format};
-            }
-            catch (const std::exception& e)
-            {
-                return api::WazuhResponse {json::Json {"{}"}, 400, e.what()};
-            }
-
-            auto result = catalog->getResource(targetResource);
-            if (std::holds_alternative<base::Error>(result))
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, std::get<base::Error>(result).message};
-            }
-
-            json::Json data;
-            data.setObject();
-            data.setString(std::get<std::string>(result), "/content");
-
-            return api::WazuhResponse {std::move(data), 200, "OK"};
-        };
-}
-
-api::CommandFn putResourceCmd(std::shared_ptr<Catalog> catalog)
-{
-    return [catalog](const json::Json& params) -> api::WazuhResponse
-        {
-            // Check json params
-            auto nameOpt = params.getString("/name");
-            if (!nameOpt)
-            {
-                if (params.exists("/name"))
-                {
-                    return api::WazuhResponse {
-                        json::Json {"{}"}, 400, "Parameter \"name\" is not a string"};
-                }
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Missing \"name\" string parameter"};
-            }
-            base::Name name;
-            try
-            {
-                name = base::Name {nameOpt.value()};
-            }
-            catch (const std::exception& e)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"},
-                    400,
-                    fmt::format("Invalid \"name\" parameter: {}", e.what())};
-            }
-
-            auto formatOpt = params.getString("/format");
-            if (!formatOpt)
-            {
-                if (params.exists("/format"))
-                {
-                    return api::WazuhResponse {
-                        json::Json {"{}"}, 400, "Parameter \"format\" is not a string"};
-                }
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Missing \"format\" parameter"};
-            }
-            auto format = catalog::Resource::strToFormat(formatOpt.value().c_str());
-            if (format == catalog::Resource::Format::ERROR_FORMAT)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Format not supported"};
-            }
-
-            auto contentOpt = params.getString("/content");
-            if (!contentOpt)
-            {
-                if (params.exists("/content"))
-                {
-                    return api::WazuhResponse {
-                        json::Json {"{}"}, 400, "Parameter \"content\" is not a string"};
-                }
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Missing \"content\" parameter"};
-            }
-
-            // Build target resource
-            catalog::Resource targetResource;
-            try
-            {
-                targetResource = catalog::Resource {name, format};
-            }
-            catch (const std::exception& e)
-            {
-                return api::WazuhResponse {json::Json {"{}"}, 400, e.what()};
-            }
-
-            auto error = catalog->putResource(targetResource, contentOpt.value());
-            if (error)
-            {
-                return api::WazuhResponse {json::Json {"{}"}, 400, error.value().message};
-            }
-
-            return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
-        };
-}
-
-api::CommandFn deleteResourceCmd(std::shared_ptr<Catalog> catalog)
-{
-    return [catalog](const json::Json& params) -> api::WazuhResponse
-        {
-            // Check json params
-            auto nameOpt = params.getString("/name");
-            if (!nameOpt)
-            {
-                if (params.exists("/name"))
-                {
-                    return api::WazuhResponse {
-                        json::Json {"{}"}, 400, "Parameter \"name\" is not a string"};
-                }
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Missing \"name\" parameter"};
-            }
-            base::Name name;
-            try
-            {
-                name = base::Name {nameOpt.value()};
-            }
-            catch (const std::exception& e)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"},
-                    400,
-                    fmt::format("Invalid \"name\" parameter: {}", e.what())};
-            }
-
-            // Build target resource
-            catalog::Resource targetResource;
-            try
-            {
-                // TODO: format is not used in deleteResource
-                targetResource =
-                    catalog::Resource {name, catalog::Resource::Format::JSON};
-            }
-            catch (const std::exception& e)
-            {
-                return api::WazuhResponse {json::Json {"{}"}, 400, e.what()};
-            }
-
-            auto error = catalog->deleteResource(targetResource);
-            if (error)
-            {
-                return api::WazuhResponse {json::Json {"{}"}, 400, error.value().message};
-            }
-
-            return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
-        };
-}
-
-api::CommandFn validateResourceCmd(std::shared_ptr<Catalog> catalog)
-{
-    return [catalog](const json::Json& params) -> api::WazuhResponse {
+    {
+        // TODO: join all the parameters verification in a single method
         // Check json params
-        auto nameOpt = params.getString("/name");
+        const auto formatOpt = params.getString("/format");
+        if (!formatOpt)
+        {
+            if (params.exists("/format"))
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Parameter \"format\" is not a string"};
+            }
+            return api::WazuhResponse {
+                json::Json {"{}"}, 400, "Missing \"format\" parameter"};
+        }
+        auto format = catalog::Resource::strToFormat(formatOpt.value().c_str());
+        if (format == catalog::Resource::Format::ERROR_FORMAT)
+        {
+            return api::WazuhResponse {json::Json {"{}"}, 400, "Format not supported"};
+        }
+
+        const auto contentOpt = params.getString("/content");
+        if (!contentOpt)
+        {
+            if (params.exists("/content"))
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Parameter \"content\" is not a string"};
+            }
+            return api::WazuhResponse {
+                json::Json {"{}"}, 400, "Missing \"content\" string parameter"};
+        }
+
+        const auto nameOpt = params.getString("/name");
         if (!nameOpt)
         {
             if (params.exists("/name"))
@@ -319,7 +64,57 @@ api::CommandFn validateResourceCmd(std::shared_ptr<Catalog> catalog)
                 fmt::format("Invalid \"name\" parameter: {}", e.what())};
         }
 
-        auto formatOpt = params.getString("/format");
+        // Build target resource
+        catalog::Resource targetResource;
+        try
+        {
+            targetResource = catalog::Resource {name, format};
+        }
+        catch (const std::exception& e)
+        {
+            return api::WazuhResponse {json::Json {"{}"}, 400, e.what()};
+        }
+
+        auto error = catalog->postResource(targetResource, contentOpt.value());
+        if (error)
+        {
+            return api::WazuhResponse {json::Json {"{}"}, 400, error.value().message};
+        }
+
+        return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
+    };
+}
+
+api::CommandFn getResourceCmd(std::shared_ptr<Catalog> catalog)
+{
+    return [catalog](const json::Json& params) -> api::WazuhResponse
+    {
+        // Check json params
+        const auto nameOpt = params.getString("/name");
+        if (!nameOpt)
+        {
+            if (params.exists("/name"))
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Parameter \"name\" is not a string"};
+            }
+            return api::WazuhResponse {
+                json::Json {"{}"}, 400, "Missing \"name\" parameter"};
+        }
+        base::Name name;
+        try
+        {
+            name = base::Name {nameOpt.value()};
+        }
+        catch (const std::exception& e)
+        {
+            return api::WazuhResponse {
+                json::Json {"{}"},
+                400,
+                fmt::format("Invalid \"name\" parameter: {}", e.what())};
+        }
+
+        const auto formatOpt = params.getString("/format");
         if (!formatOpt)
         {
             if (params.exists("/format"))
@@ -336,7 +131,209 @@ api::CommandFn validateResourceCmd(std::shared_ptr<Catalog> catalog)
             return api::WazuhResponse {json::Json {"{}"}, 400, "Format not supported"};
         }
 
-        auto contentOpt = params.getString("/content");
+        // Build target resource
+        catalog::Resource targetResource;
+        try
+        {
+            targetResource = catalog::Resource {name, format};
+        }
+        catch (const std::exception& e)
+        {
+            return api::WazuhResponse {json::Json {"{}"}, 400, e.what()};
+        }
+
+        auto result = catalog->getResource(targetResource);
+        if (std::holds_alternative<base::Error>(result))
+        {
+            return api::WazuhResponse {
+                json::Json {"{}"}, 400, std::get<base::Error>(result).message};
+        }
+
+        json::Json data;
+        data.setObject();
+        data.setString(std::get<std::string>(result), "/content");
+
+        return api::WazuhResponse {std::move(data), 200, "OK"};
+    };
+}
+
+api::CommandFn putResourceCmd(std::shared_ptr<Catalog> catalog)
+{
+    return [catalog](const json::Json& params) -> api::WazuhResponse
+    {
+        // Check json params
+        const auto nameOpt = params.getString("/name");
+        if (!nameOpt)
+        {
+            if (params.exists("/name"))
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Parameter \"name\" is not a string"};
+            }
+            return api::WazuhResponse {
+                json::Json {"{}"}, 400, "Missing \"name\" string parameter"};
+        }
+        base::Name name;
+        try
+        {
+            name = base::Name {nameOpt.value()};
+        }
+        catch (const std::exception& e)
+        {
+            return api::WazuhResponse {
+                json::Json {"{}"},
+                400,
+                fmt::format("Invalid \"name\" parameter: {}", e.what())};
+        }
+
+        const auto formatOpt = params.getString("/format");
+        if (!formatOpt)
+        {
+            if (params.exists("/format"))
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Parameter \"format\" is not a string"};
+            }
+            return api::WazuhResponse {
+                json::Json {"{}"}, 400, "Missing \"format\" parameter"};
+        }
+        auto format = catalog::Resource::strToFormat(formatOpt.value().c_str());
+        if (format == catalog::Resource::Format::ERROR_FORMAT)
+        {
+            return api::WazuhResponse {json::Json {"{}"}, 400, "Format not supported"};
+        }
+
+        const auto contentOpt = params.getString("/content");
+        if (!contentOpt)
+        {
+            if (params.exists("/content"))
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Parameter \"content\" is not a string"};
+            }
+            return api::WazuhResponse {
+                json::Json {"{}"}, 400, "Missing \"content\" parameter"};
+        }
+
+        // Build target resource
+        catalog::Resource targetResource;
+        try
+        {
+            targetResource = catalog::Resource {name, format};
+        }
+        catch (const std::exception& e)
+        {
+            return api::WazuhResponse {json::Json {"{}"}, 400, e.what()};
+        }
+
+        auto error = catalog->putResource(targetResource, contentOpt.value());
+        if (error)
+        {
+            return api::WazuhResponse {json::Json {"{}"}, 400, error.value().message};
+        }
+
+        return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
+    };
+}
+
+api::CommandFn deleteResourceCmd(std::shared_ptr<Catalog> catalog)
+{
+    return [catalog](const json::Json& params) -> api::WazuhResponse
+    {
+        // Check json params
+        const auto nameOpt = params.getString("/name");
+        if (!nameOpt)
+        {
+            if (params.exists("/name"))
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Parameter \"name\" is not a string"};
+            }
+            return api::WazuhResponse {
+                json::Json {"{}"}, 400, "Missing \"name\" parameter"};
+        }
+        base::Name name;
+        try
+        {
+            name = base::Name {nameOpt.value()};
+        }
+        catch (const std::exception& e)
+        {
+            return api::WazuhResponse {
+                json::Json {"{}"},
+                400,
+                fmt::format("Invalid \"name\" parameter: {}", e.what())};
+        }
+
+        // Build target resource
+        catalog::Resource targetResource;
+        try
+        {
+            // TODO: format is not used in deleteResource
+            targetResource = catalog::Resource {name, catalog::Resource::Format::JSON};
+        }
+        catch (const std::exception& e)
+        {
+            return api::WazuhResponse {json::Json {"{}"}, 400, e.what()};
+        }
+
+        auto error = catalog->deleteResource(targetResource);
+        if (error)
+        {
+            return api::WazuhResponse {json::Json {"{}"}, 400, error.value().message};
+        }
+
+        return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
+    };
+}
+
+api::CommandFn validateResourceCmd(std::shared_ptr<Catalog> catalog)
+{
+    return [catalog](const json::Json& params) -> api::WazuhResponse
+    {
+        // Check json params
+        const auto nameOpt = params.getString("/name");
+        if (!nameOpt)
+        {
+            if (params.exists("/name"))
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Parameter \"name\" is not a string"};
+            }
+            return api::WazuhResponse {
+                json::Json {"{}"}, 400, "Missing \"name\" parameter"};
+        }
+        base::Name name;
+        try
+        {
+            name = base::Name {nameOpt.value()};
+        }
+        catch (const std::exception& e)
+        {
+            return api::WazuhResponse {
+                json::Json {"{}"},
+                400,
+                fmt::format("Invalid \"name\" parameter: {}", e.what())};
+        }
+
+        const auto formatOpt = params.getString("/format");
+        if (!formatOpt)
+        {
+            if (params.exists("/format"))
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Parameter \"format\" is not a string"};
+            }
+            return api::WazuhResponse {
+                json::Json {"{}"}, 400, "Missing \"format\" parameter"};
+        }
+        auto format = catalog::Resource::strToFormat(formatOpt.value().c_str());
+        if (format == catalog::Resource::Format::ERROR_FORMAT)
+        {
+            return api::WazuhResponse {json::Json {"{}"}, 400, "Format not supported"};
+        }
+
+        const auto contentOpt = params.getString("/content");
         if (!contentOpt)
         {
             if (params.exists("/content"))

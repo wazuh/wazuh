@@ -7,9 +7,8 @@ Builder Registry::getBuilder(const std::string& name)
 {
     if (m_builders.find(name) == m_builders.end())
     {
-        throw std::runtime_error(fmt::format(
-            "Builder name \"{}\" could not be found in the registry",
-            name));
+        throw std::runtime_error(
+            fmt::format("Builder name \"{}\" could not be found in the registry", name));
     }
     return m_builders.at(name);
 }

@@ -195,12 +195,13 @@ public:
 
             if (Type::ERROR_TYPE == m_type)
             {
-                throw std::runtime_error(fmt::format("Invalid type \"{}\"", name.parts()[0]));
+                throw std::runtime_error(
+                    fmt::format("Invalid type \"{}\"", name.parts()[0]));
             }
             else if (Type::COLLECTION == m_type)
             {
-                throw std::runtime_error(fmt::format("Invalid collection type \"{}\"",
-                    name.parts()[0]));
+                throw std::runtime_error(
+                    fmt::format("Invalid collection type \"{}\"", name.parts()[0]));
             }
 
             // Assets and Environments needs validation

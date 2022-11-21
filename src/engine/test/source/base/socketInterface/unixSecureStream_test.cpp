@@ -231,8 +231,8 @@ TEST(unixSecureStreamSocket, SendMessage)
     ASSERT_GT(serverSocketFD, 0);
 
     ASSERT_NO_THROW(uStream.sendMsg(TEST_SEND_MESSAGE.data()));
-    ASSERT_NO_THROW(
-        ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_STREAM).data(), TEST_SEND_MESSAGE.data()));
+    ASSERT_NO_THROW(ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_STREAM).data(),
+                                 TEST_SEND_MESSAGE.data()));
 
     close(acceptSocketFd);
     close(serverSocketFD);
@@ -252,8 +252,8 @@ TEST(unixSecureStreamSocket, SendMessageDisconnected)
     auto serverSocketFD {testAcceptConnection(acceptSocketFd)};
     ASSERT_GT(serverSocketFD, 0);
 
-    ASSERT_NO_THROW(
-        ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_STREAM).data(), TEST_SEND_MESSAGE.data()));
+    ASSERT_NO_THROW(ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_STREAM).data(),
+                                 TEST_SEND_MESSAGE.data()));
 
     close(acceptSocketFd);
     close(serverSocketFD);

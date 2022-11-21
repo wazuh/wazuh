@@ -4,8 +4,8 @@
 
 #include <api/wazuhRequest.hpp>
 #include <api/wazuhResponse.hpp>
-#include <utils/stringUtils.hpp>
 #include <logging/logging.hpp>
+#include <utils/stringUtils.hpp>
 
 #include "apiclnt/connection.hpp"
 
@@ -110,7 +110,7 @@ void getEnv(const std::string& socketPath, const std::string& target)
         return;
     }
 
-    auto envs = response.getArray("/data");
+    const auto envs = response.getArray("/data");
     if (!envs)
     {
         WAZUH_LOG_ERROR(
@@ -119,7 +119,7 @@ void getEnv(const std::string& socketPath, const std::string& target)
     }
     else if (envs.value().empty())
     {
-        WAZUH_LOG_ERROR("Engine API Environment: There are no active environments.");
+        WAZUH_LOG_INFO("Engine API Environment: There are no active environments.");
         return;
     }
     for (const auto& env : *envs)
@@ -131,9 +131,14 @@ void getEnv(const std::string& socketPath, const std::string& target)
             WAZUH_LOG_INFO("Engine API Environment: {}.", msg);
             std::cout << msg << std::endl;
         }
+        else
+        {
+            WAZUH_LOG_ERROR("Engine API Environment: Malformed response, environment "
+                            "name is expected to be a string but it is \"{}\".",
+                            env.typeName());
+        }
     }
 }
-
 
 void deleteEnv(const std::string& socketPath, const std::string& target)
 {
@@ -150,7 +155,7 @@ void deleteEnv(const std::string& socketPath, const std::string& target)
     data.setString("delete", "/action");
     data.setString(target, "/name"); // Skip the first '/'
 
-    auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, "api", data);
+    const auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, "api", data);
 
     WAZUH_LOG_DEBUG(
         "Engine API Environment: \"{}\" method: Request: \"{}\".", __func__, req.toStr());

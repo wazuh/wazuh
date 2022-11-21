@@ -68,7 +68,8 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
     {
         throw std::runtime_error(
             fmt::format("Engine active response builder: \"{}\" function: <command-name> "
-                        "cannot be empty.", name));
+                        "cannot be empty.",
+                        name));
     }
 
     // Get location -> mandatory value, it can be either a value or a reference
@@ -336,7 +337,8 @@ base::Expression opBuilderHelperSendAR(const std::any& definition)
         fmt::format("[{}] -> Failure: Query reference \"{}\" not found",
                     name,
                     parameters[0].m_value)};
-    const std::string failureTrace2 {fmt::format("[{}] -> Failure: The query is empty", name)};
+    const std::string failureTrace2 {
+        fmt::format("[{}] -> Failure: The query is empty", name)};
     const std::string failureTrace3 {
         fmt::format("[{}] -> Failure: AR message could not be send", name)};
     const std::string failureTrace4 {
@@ -396,4 +398,4 @@ base::Expression opBuilderHelperSendAR(const std::any& definition)
         });
 }
 
-} // namespace builder::internals::builders::ar
+} // namespace builder::internals::builders

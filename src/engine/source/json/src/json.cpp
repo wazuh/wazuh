@@ -13,7 +13,7 @@ namespace
 {
 constexpr auto INVALID_POINTER_TYPE_MSG = "Invalid pointer path \"{}\"";
 constexpr auto PATH_NOT_FOUND_MSG = "Path \"{}\" not found";
-}
+} // namespace
 
 namespace json
 {
@@ -84,13 +84,13 @@ bool Json::operator==(const Json& other) const
 std::string Json::formatJsonPath(std::string_view dotPath)
 {
     // TODO: Handle array indices and pointer path operators.
-    std::string pointerPath {dotPath};
+    std::string ptrPath {dotPath};
 
     // Some helpers may indiate that the field is root element
     // In this case the path will be defined as "."
-    if ("." == pointerPath)
+    if ("." == ptrPath)
     {
-        pointerPath = "";
+        ptrPath = "";
     }
     else
     {
@@ -114,11 +114,11 @@ std::string Json::formatJsonPath(std::string_view dotPath)
         // Add / at the beginning
         if (ptrPath.front() != '/')
         {
-            pointerPath.insert(0, "/");
+            ptrPath.insert(0, "/");
         }
     }
 
-    return pointerPath;
+    return ptrPath;
 }
 
 Json::Json(Json&& other) noexcept
@@ -140,8 +140,7 @@ bool Json::exists(std::string_view ptrPath) const
         return fieldPtr.Get(m_document) != nullptr;
     }
 
-    throw std::runtime_error(fmt::format(
-        "..", __func__, ptrPath));
+    throw std::runtime_error(fmt::format("..", __func__, ptrPath));
 }
 
 bool Json::equals(std::string_view ptrPath, const Json& value) const
@@ -163,13 +162,11 @@ bool Json::equals(std::string_view basePtrPath, std::string_view referencePtrPat
 
     if (!fieldPtr.IsValid())
     {
-        throw std::runtime_error(
-            fmt::format(INVALID_POINTER_TYPE_MSG, basePtrPath));
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, basePtrPath));
     }
     if (!referencePtr.IsValid())
     {
-        throw std::runtime_error(
-            fmt::format(INVALID_POINTER_TYPE_MSG, referencePtrPath));
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, referencePtrPath));
     }
 
     const auto fieldValue {fieldPtr.Get(m_document)};
@@ -189,7 +186,7 @@ void Json::set(std::string_view ptrPath, const Json& value)
     else
     {
         WAZUH_LOG_DEBUG("\"{}\" method: Invalid Pointer Path \"{}\".", __func__, ptrPath);
-        throw std::runtime_error(fmt::format("Invalid Pointer Path \"{}\".", ptrPath));
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
     }
 }
 
@@ -200,13 +197,11 @@ void Json::set(std::string_view basePtrPath, std::string_view referencePtrPath)
 
     if (!fieldPtr.IsValid())
     {
-        throw std::runtime_error(
-            fmt::format(INVALID_POINTER_TYPE_MSG, basePtrPath));
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, basePtrPath));
     }
     if (!referencePtr.IsValid())
     {
-        throw std::runtime_error(
-            fmt::format(INVALID_POINTER_TYPE_MSG, referencePtrPath));
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, referencePtrPath));
     }
 
     const auto* reference = referencePtr.Get(m_document);
@@ -745,11 +740,8 @@ void Json::appendString(std::string_view value, std::string_view path)
         const size_t s2 = static_cast<size_t>(s1);
         if (s2 != value.size())
         {
-            throw std::runtime_error(fmt::format(
-                "Engine JSON: \"{}\" method: String is too long ({}): \"{}\".",
-                __func__,
-                value.size(),
-                value));
+            throw std::runtime_error(
+                fmt::format("String is too long ({}): \"{}\".", value.size(), value));
         }
         rapidjson::Value v(value.data(), s2, m_document.GetAllocator());
 
@@ -802,9 +794,7 @@ void Json::appendJson(const Json& value, std::string_view path)
     }
     else
     {
-        throw std::runtime_error(fmt::format("[Json::appendJson(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
     }
 }
 
@@ -886,18 +876,13 @@ void Json::merge(rapidjson::Value& source, std::string_view path)
                 else
                 {
                     throw std::runtime_error(
-                        fmt::format("Engine JSON: \"{}\" method: JSON elements must be "
-                                    "either objects or arrays to be merged.",
-                                    __func__));
+                        "JSON elements must be either objects or arrays to be merged");
                 }
 
                 return;
             }
 
-            throw std::runtime_error(
-                fmt::format("Engine JSON: \"{}\" method: JSON objects of "
-                            "different types cannot be merged.",
-                            __func__));
+            throw std::runtime_error("JSON objects of different types cannot be merged");
         }
 
         throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, path));
@@ -960,11 +945,9 @@ std::optional<base::Error> Json::validate(const Json& schema) const
         validator.GetInvalidSchemaPointer().StringifyUriFragment(sb);
         rapidjson::StringBuffer sb2;
         validator.GetInvalidDocumentPointer().StringifyUriFragment(sb2);
-        return base::Error {
-            fmt::format("Engine JSON: \"{}\" method: Invalid JSON schema: [{}], [{}]",
-                        __func__,
-                        std::string {sb.GetString()},
-                        std::string {sb2.GetString()})};
+        return base::Error {fmt::format("Invalid JSON schema: [{}], [{}]",
+                                        std::string {sb.GetString()},
+                                        std::string {sb2.GetString()})};
     }
 
     return std::nullopt;
@@ -981,19 +964,19 @@ std::optional<base::Error> Json::checkDuplicateKeys() const
     // contains duplicated members.
 
     auto validateDuplicatedKeys = [](const rapidjson::Value& value,
-                                     auto& recurRef) -> void {
+                                     auto& recurRef) -> void
+    {
         if (value.IsObject())
         {
             for (auto it = value.MemberBegin(); it != value.MemberEnd(); ++it)
             {
                 if (value[it->name.GetString()] != value[it->name.GetString()])
                 {
-                    throw std::runtime_error(
-                        fmt::format("Engine JSON: \"{}\" method: Unable to build json "
-                                    "document because there is a duplicated key \"{}\", "
-                                    "or a duplicated key inside object \"{}\".",
-                                    it->name.GetString(),
-                                    it->name.GetString()));
+                    throw std::runtime_error(fmt::format(
+                        "Unable to build json document because there is a duplicated key "
+                        "\"{}\", or a duplicated key inside object \"{}\".",
+                        it->name.GetString(),
+                        it->name.GetString()));
                 }
 
                 recurRef(it->value, recurRef);
@@ -1007,8 +990,7 @@ std::optional<base::Error> Json::checkDuplicateKeys() const
     }
     catch (const std::exception& e)
     {
-        return base::Error {
-            fmt::format("Engine JSON: \"{}\" method: {}", __func__, e.what())};
+        return base::Error {fmt::format("{}", e.what())};
     }
 
     return std::nullopt;

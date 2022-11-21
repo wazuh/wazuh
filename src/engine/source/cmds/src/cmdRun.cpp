@@ -164,10 +164,9 @@ void run(const std::string& kvdbPath,
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR(
-            "Engine \"run\" command: An error occurred while initializing the "
-            "engine modules: {}.",
-            utils::getExceptionStack(e));
+        WAZUH_LOG_ERROR("Engine \"run\" command: An error occurred while initializing "
+                        "the engine modules: {}.",
+                        utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
     }

@@ -29,8 +29,8 @@ constexpr const char* MODULE_NAME {"wazuh-engine"};
 
 constexpr const char* ORIGIN_NAME {"node01"};
 
-constexpr const char* SUPPORTED_VERSION{"1"};
-}
+constexpr const char* SUPPORTED_VERSION {"1"};
+} // namespace ar
 
 /**
  * @brief Helper Function that allows to send a message through the AR queue
@@ -45,8 +45,10 @@ base::Expression opBuilderHelperSendAR(const std::any& definition);
  * Active Response socket with ar_send
  * ar_message: +ar_create/<command-name>/<location>/<timeout>/<extra-args>
  *  - <command-name> (mandatory) It can be set directly or through a reference.
- *  - <location>     (mandatory) Accepted values are: "LOCAL", "ALL" or a specific agent id. Such values can be passed directly or through a reference.
- *  - <timeout>      (optional) Timeout value in seconds. It can be passed directly or through a reference.
+ *  - <location>     (mandatory) Accepted values are: "LOCAL", "ALL" or a specific agent
+ * id. Such values can be passed directly or through a reference.
+ *  - <timeout>      (optional) Timeout value in seconds. It can be passed directly or
+ * through a reference.
  *  - <extra-args>   (optional) Reference to an array of *strings*.
  *
  * @param definition
@@ -54,6 +56,6 @@ base::Expression opBuilderHelperSendAR(const std::any& definition);
  */
 base::Expression opBuilderHelperCreateAR(const std::any& definition);
 
-} // namespace builder::internals::builders::ar
+} // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_ACTIVE_RESPONSE_H

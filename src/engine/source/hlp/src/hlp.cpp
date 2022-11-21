@@ -250,13 +250,12 @@ static ExecuteResult executeParserList(std::string_view const& event,
         {
             // ASSERT here we are missing an implementation
             // TODO: review this
-            return ExecuteResult {
-                false,
-                trace
-                    + fmt::format(
-                        "Parser[\"{}\"] failure: Missing implementation for parser \"{}\"",
-                        parser.name,
-                        parser.name)};
+            return ExecuteResult {false,
+                                  trace
+                                      + fmt::format("Parser[\"{}\"] failure: Missing "
+                                                    "implementation for parser \"{}\"",
+                                                    parser.name,
+                                                    parser.name)};
         }
 
         if (!isOk)

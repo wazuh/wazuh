@@ -230,20 +230,14 @@ public:
      *
      * @return true if expression is type Operation::Term, false otherwise.
      */
-    bool isTerm() const override
-    {
-        return true;
-    }
+    bool isTerm() const override { return true; }
 
     /**
      * @brief Get the function used to compute the term
      *
      * @return the function that will be used to compute the term
      */
-    T getFn() const
-    {
-        return m_fn;
-    }
+    T getFn() const { return m_fn; }
 };
 
 // ----- Operations -----

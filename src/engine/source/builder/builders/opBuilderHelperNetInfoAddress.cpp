@@ -56,7 +56,7 @@ bool sysNetAddresTableFill(base::Event event,
     }
 
     const auto netmaskI = event->getArray(ipObjectPath + getPath(Name::NETMASK).data())
-                        .value_or(std::vector<json::Json>());
+                              .value_or(std::vector<json::Json>());
 
     const auto broadcastI =
         event->getArray(ipObjectPath + getPath(Name::BROADCAST).data())
@@ -137,8 +137,7 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
     helper::base::checkParameterType(
         name, parameters[3], helper::base::Parameter::Type::REFERENCE);
 
-    const auto traceName =
-        helper::base::formatHelperName(name, targetField, parameters);
+    const auto traceName = helper::base::formatHelperName(name, targetField, parameters);
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", traceName);
