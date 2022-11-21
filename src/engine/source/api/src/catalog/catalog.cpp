@@ -118,8 +118,8 @@ Catalog::Catalog(const Config& config)
     }
     catch (const std::exception& e)
     {
-        std::throw_with_nested(std::runtime_error(
-            fmt::format("Error while parsing the asset schema: {}", e.what())));
+        throw std::runtime_error(
+            fmt::format("Error while parsing the asset schema: {}", e.what()));
     }
     try
     {
@@ -127,8 +127,8 @@ Catalog::Catalog(const Config& config)
     }
     catch (const std::exception& e)
     {
-        std::throw_with_nested(std::runtime_error(
-            fmt::format("Error while parsing the environment schema: {}", e.what())));
+        throw std::runtime_error(
+            fmt::format("Error while parsing the environment schema: {}", e.what()));
     }
     auto assetSchemaJson = m_store->get(assetSchemaName);
     if (std::holds_alternative<base::Error>(assetSchemaJson))

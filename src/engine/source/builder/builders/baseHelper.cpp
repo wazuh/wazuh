@@ -34,8 +34,7 @@ extractDefinition(const std::any& definition)
     }
     catch (const std::bad_any_cast& e)
     {
-        std::throw_with_nested(std::runtime_error(
-            fmt::format("Engine helpers: Can not process definition: {}", e.what())));
+        throw std::runtime_error(fmt::format("Cannot process definition: {}", e.what()));
     }
 
     return extracted;
@@ -60,12 +59,17 @@ std::vector<Parameter> processParameters(const std::string name,
                            }
                            catch (const std::exception& e)
                            {
-                               std::throw_with_nested(std::runtime_error(fmt::format(
-                                   "Engine helpers: \"{}\" function: Can not format "
-                                   "parameter \"{}\" to Json pointer path: {}",
-                                   name,
-                                   parameter,
-                                   e.what())));
+                               throw std::runtime_error(
+                                   fmt::format("Cannot format parameter \"{}\" from to "
+                                               "Json pointer path: {}",
+                                               parameter,
+                                               e.what()));
+
+                               throw(std::runtime_error(
+                                   fmt::format("Cannot format parameter \"{}\" to Json "
+                                               "pointer path: {}",
+                                               parameter,
+                                               e.what())));
                            }
                            return {Parameter::Type::REFERENCE, pointerPath};
                        }
@@ -84,11 +88,8 @@ void checkParametersSize(const std::string name,
 {
     if (parameters.size() != size)
     {
-        throw std::runtime_error(fmt::format(
-            "Engine helpers: \"{}\" function: Expected {} parameters but got {}.",
-            name,
-            size,
-            parameters.size()));
+        throw std::runtime_error(
+            fmt::format("Expected {} parameters but got {}", size, parameters.size()));
     }
 }
 
@@ -98,11 +99,8 @@ void checkParametersMinSize(const std::string name,
 {
     if (parameters.size() < minSize)
     {
-        throw std::runtime_error(fmt::format("Engine helpers: \"{}\" function: Expected "
-                                             "at least {} parameters but got {}.",
-                                             name,
-                                             minSize,
-                                             parameters.size()));
+        throw std::runtime_error(fmt::format(
+            "Expected at least {} parameters but got {}", minSize, parameters.size()));
     }
 }
 
@@ -112,13 +110,11 @@ void checkParameterType(const std::string name,
 {
     if (parameter.m_type != type)
     {
-        throw std::runtime_error(
-            fmt::format("Engine helpers: \"{}\" function: Parameter \"{}\" is of type "
-                        "\"{}\" but it is expected to be of type \"{}\".",
-                        name,
-                        parameter.m_value,
-                        static_cast<int>(parameter.m_type),
-                        static_cast<int>(type)));
+        throw std::runtime_error(fmt::format(
+            "Parameter \"{}\" is of type \"{}\" but it is expected to be of type \"{}\".",
+            parameter.m_value,
+            static_cast<int>(parameter.m_type),
+            static_cast<int>(type)));
     }
 }
 
