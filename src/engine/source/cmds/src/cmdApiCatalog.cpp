@@ -26,7 +26,7 @@ constexpr auto CONTENT_SHOULD_BE_EMPTY =
 
 constexpr auto CONTENT_CANNOT_BE_EMPTY =
     "Engine API Catalog: Content cannot be empty for action \"{}\".";
-}
+} // namespace
 
 namespace cmd
 {
@@ -173,7 +173,8 @@ void singleRequest(const std::string& socketPath,
     if (!request.isValid())
     {
         // TODO: check this message
-        WAZUH_LOG_ERROR("Engine API Catalog: Malformed request: \"{}\".", request.toStr());
+        WAZUH_LOG_ERROR("Engine API Catalog: Malformed request: \"{}\".",
+                        request.toStr());
         return;
     }
 
@@ -183,7 +184,7 @@ void singleRequest(const std::string& socketPath,
     {
         responseStr = apiclnt::connection(socketPath, requestStr);
     }
-    catch(const std::exception& e)
+    catch (const std::exception& e)
     {
         WAZUH_LOG_ERROR(
             "Engine API Catalog: An error occurred while sending a request: {}.",
@@ -236,11 +237,10 @@ void singleRequest(const std::string& socketPath,
             const auto content = data.value().getString("/content");
             if (content)
             {
-                const std::string msg {
-                    fmt::format("Request \"{} {}\" response: \"{}\"",
-                                actionStr,
-                                name.fullName(),
-                                content.value())};
+                const std::string msg {fmt::format("Request \"{} {}\" response: \"{}\"",
+                                                   actionStr,
+                                                   name.fullName(),
+                                                   content.value())};
                 WAZUH_LOG_INFO("Engine API Catalog: {}.", msg);
                 std::cout << msg << std::endl;
             }
@@ -270,6 +270,7 @@ void loadRuleset(const std::string& socketPath,
     // Build and check collection path
     std::error_code ec;
     std::filesystem::path collectionPath;
+
     try
     {
         collectionPath = std::filesystem::path(collectionPathStr);
@@ -302,55 +303,74 @@ void loadRuleset(const std::string& socketPath,
 
     auto loadEntry =
         [&](decltype(*std::filesystem::directory_iterator(collectionPath, ec)) dirEntry)
+    {
+        // If error ignore entry and continue
+        if (ec)
+        {
+            WAZUH_LOG_ERROR(fmt::format("Engine API Catalog: An error ocurred while "
+                                        "reading the file \"{}\": {}",
+                                        dirEntry.path().c_str(),
+                                        ec.message()));
+            ec.clear();
+            return;
+        }
+
+        if (dirEntry.is_regular_file(ec))
         {
             // If error ignore entry and continue
             if (ec)
             {
-                WAZUH_LOG_ERROR(fmt::format("Engine API Catalog: An error ocurred while "
-                                            "reading the file \"{}\": {}",
+                WAZUH_LOG_ERROR(fmt::format("Engine API Catalog: An error ocurred "
+                                            "while reading the file \"{}\": {}",
                                             dirEntry.path().c_str(),
                                             ec.message()));
                 ec.clear();
                 return;
             }
 
-            if (dirEntry.is_regular_file(ec))
+            // Read file content
+            std::string content;
+
+            try
             {
-                // If error ignore entry and continue
-                if (ec)
-                {
-                    WAZUH_LOG_ERROR(fmt::format("Engine API Catalog: An error ocurred "
-                                                "while reading the file \"{}\": {}",
-                                                dirEntry.path().c_str(),
-                                                ec.message()));
-                    ec.clear();
-                    return;
-                }
+                std::ifstream file(dirEntry.path());
+                content = std::string(std::istreambuf_iterator<char>(file),
+                                      std::istreambuf_iterator<char>());
+            }
+            catch (const std::exception& e)
+            {
+                WAZUH_LOG_ERROR(fmt::format("Engine API Catalog: An error ocurred "
+                                            "while reading the file \"{}\": {}",
+                                            dirEntry.path().c_str(),
+                                            e.what()));
+                return;
+            }
 
-                // Read file content
-                std::string content;
+            // Send request
+            singleRequest(socketPath,
+                          actionToString(Action::CREATE),
+                          collectionNameStr,
+                          format,
+                          content);
+        }
+    };
 
-                try
-                {
-                    std::ifstream file(dirEntry.path());
-                    content = std::string(std::istreambuf_iterator<char>(file),
-                                        std::istreambuf_iterator<char>());
-                }
-                catch (const std::exception& e)
-                {
-                    WAZUH_LOG_ERROR(fmt::format("Engine API Catalog: An error ocurred "
-                                                "while reading the file \"{}\": {}",
-                                                dirEntry.path().c_str(),
-                                                e.what()));
-                    return;
-                }
-
-                // Send request
-                singleRequest(socketPath,
-                            actionToString(Action::CREATE),
-                            collectionNameStr,
-                            format,
-                            content);
+    if (recursive)
+    {
+        // Iterate directory recursively and send requests to create items
+        for (const auto& dirEntry :
+             std::filesystem::recursive_directory_iterator(collectionPath, ec))
+        {
+            loadEntry(dirEntry);
+        }
+    }
+    else
+    {
+        // Iterate directory and send requests to create items
+        for (const auto& dirEntry :
+             std::filesystem::directory_iterator(collectionPath, ec))
+        {
+            loadEntry(dirEntry);
         }
     }
 }

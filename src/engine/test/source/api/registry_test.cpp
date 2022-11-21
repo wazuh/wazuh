@@ -42,9 +42,10 @@ TEST(Registry, addComand)
               R"({"data":null,"error":-1,"message":"Command \"test\" not found"})");
 
     // Add command
-    registry.registerCommand(command, [](const json::Json& json) -> api::WazuhResponse {
-        return api::WazuhResponse {json, 0, "OK"};
-    });
+    registry.registerCommand(command,
+                             [](const json::Json& json) -> api::WazuhResponse {
+                                 return api::WazuhResponse {json, 0, "OK"};
+                             });
 
     // Get callback in registry
     cmdTest = registry.getCallback(command);
@@ -124,10 +125,11 @@ TEST(Registry, AddduplicateCommand)
               R"({"data":null,"error":-1,"message":"Command \"test\" not found"})");
 
     // Add command for the first time
-    bool res = registry.registerCommand(
-        command, [](const json::Json& json) -> api::WazuhResponse {
-            return api::WazuhResponse {json, 1, "OK cmd1"};
-        });
+    bool res =
+        registry.registerCommand(command,
+                                 [](const json::Json& json) -> api::WazuhResponse {
+                                     return api::WazuhResponse {json, 1, "OK cmd1"};
+                                 });
     ASSERT_TRUE(res); // OK
     // Get callback in registry
     cmdTest = registry.getCallback(command);
@@ -164,10 +166,11 @@ TEST(Registry, AddMultipleCommands)
               R"({"data":null,"error":-1,"message":"Command \"test\" not found"})");
 
     // Add command for the first time
-    bool res = registry.registerCommand(
-        command, [](const json::Json& json) -> api::WazuhResponse {
-            return api::WazuhResponse {json, 1, "OK cmd1"};
-        });
+    bool res =
+        registry.registerCommand(command,
+                                 [](const json::Json& json) -> api::WazuhResponse {
+                                     return api::WazuhResponse {json, 1, "OK cmd1"};
+                                 });
     ASSERT_TRUE(res); // OK
 
     // Add command for the first time

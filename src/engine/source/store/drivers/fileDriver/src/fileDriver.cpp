@@ -52,9 +52,8 @@ std::optional<base::Error> FileDriver::del(const base::Name& name)
     std::optional<base::Error> error = std::nullopt;
     auto path = nameToPath(name);
 
-    WAZUH_LOG_DEBUG("Engine file driver: \"{}\" method: File \"{}\".",
-                    __func__,
-                    name.fullName());
+    WAZUH_LOG_DEBUG(
+        "Engine file driver: \"{}\" method: File \"{}\".", __func__, name.fullName());
 
     if (!std::filesystem::exists(path))
     {
@@ -150,9 +149,8 @@ std::variant<json::Json, base::Error> FileDriver::get(const base::Name& name) co
     std::variant<json::Json, base::Error> result;
     auto path = nameToPath(name);
 
-    WAZUH_LOG_DEBUG("Engine file driver: \"{}\" method: File \"{}\".",
-                    __func__,
-                    name.fullName());
+    WAZUH_LOG_DEBUG(
+        "Engine file driver: \"{}\" method: File \"{}\".", __func__, name.fullName());
 
     if (std::filesystem::exists(path))
     {

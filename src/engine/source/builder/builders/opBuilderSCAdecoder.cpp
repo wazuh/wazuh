@@ -184,26 +184,27 @@ inline bool isValidEvent(const DecodeCxt& ctx,
 {
     // Check types and mandatory fields if is necessary. Return false on fail.
     const auto isValidCondition =
-        [&ctx](field::Type type, const std::string& path, bool mandatory) {
-            if (ctx.event->exists(path))
+        [&ctx](field::Type type, const std::string& path, bool mandatory)
+    {
+        if (ctx.event->exists(path))
+        {
+            switch (type)
             {
-                switch (type)
-                {
-                    case field::Type::STRING: return ctx.event->isString(path);
-                    case field::Type::NUMBER: return ctx.event->isNumber(path);
-                    case field::Type::INT: return ctx.event->isInt(path);
-                    case field::Type::BOOL: return ctx.event->isBool(path);
-                    case field::Type::ARRAY: return ctx.event->isArray(path);
-                    case field::Type::OBJECT: return ctx.event->isObject(path);
-                    default: return false;
-                }
+                case field::Type::STRING: return ctx.event->isString(path);
+                case field::Type::NUMBER: return ctx.event->isNumber(path);
+                case field::Type::INT: return ctx.event->isInt(path);
+                case field::Type::BOOL: return ctx.event->isBool(path);
+                case field::Type::ARRAY: return ctx.event->isArray(path);
+                case field::Type::OBJECT: return ctx.event->isObject(path);
+                default: return false;
             }
-            else if (mandatory)
-            {
-                return false;
-            }
-            return true;
-        };
+        }
+        else if (mandatory)
+        {
+            return false;
+        }
+        return true;
+    };
 
     for (const auto& [field, type, mandatory] : conditions)
     {
@@ -1022,7 +1023,8 @@ std::optional<std::string> handlePoliciesInfo(const DecodeCxt& ctx)
                 /* This policy is not being scanned anymore, delete it */
                 if (std::find_if(policiesEvent.begin(),
                                  policiesEvent.end(),
-                                 [&](const auto& policy) {
+                                 [&](const auto& policy)
+                                 {
                                      auto pStr = policy.getString();
                                      return pStr && pStr.value() == pId;
                                  })

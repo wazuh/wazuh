@@ -41,7 +41,8 @@ enum class EndpointType
 class EngineServer
 {
 private:
-    std::unordered_map<EndpointType, std::shared_ptr<endpoints::BaseEndpoint>> m_endpoints;
+    std::unordered_map<EndpointType, std::shared_ptr<endpoints::BaseEndpoint>>
+        m_endpoints;
 
 public:
     /**

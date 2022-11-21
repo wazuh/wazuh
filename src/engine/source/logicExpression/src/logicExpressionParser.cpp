@@ -48,25 +48,13 @@ struct syntaxChecker
     // - 1: expect binary operator
     bool m_state;
 
-    bool expectedOperand() const
-    {
-        return m_state == false;
-    }
+    bool expectedOperand() const { return m_state == false; }
 
-    void expectOperand()
-    {
-        m_state = false;
-    }
+    void expectOperand() { m_state = false; }
 
-    bool expectedOperator() const
-    {
-        return m_state == true;
-    }
+    bool expectedOperator() const { return m_state == true; }
 
-    void expectOperator()
-    {
-        m_state = true;
-    }
+    void expectOperator() { m_state = true; }
 
     syntaxChecker()
         : m_state {false}
@@ -172,8 +160,8 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
         }
         else if (TokenType::PARENTHESIS_CLOSE == token.m_type)
         {
-            while (!operatorStack.empty() &&
-                   operatorStack.top().m_type != TokenType::PARENTHESIS_OPEN)
+            while (!operatorStack.empty()
+                   && operatorStack.top().m_type != TokenType::PARENTHESIS_OPEN)
             {
                 postfix.push(std::move(operatorStack.top()));
                 operatorStack.pop();
@@ -186,9 +174,9 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
         }
         else
         {
-            while (!operatorStack.empty() &&
-                   operatorStack.top().m_type != TokenType::PARENTHESIS_OPEN &&
-                   operatorStack.top() >= token)
+            while (!operatorStack.empty()
+                   && operatorStack.top().m_type != TokenType::PARENTHESIS_OPEN
+                   && operatorStack.top() >= token)
             {
                 postfix.push(std::move(operatorStack.top()));
                 operatorStack.pop();

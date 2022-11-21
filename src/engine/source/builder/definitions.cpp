@@ -74,8 +74,8 @@ void substituteDefinitions(Json& asset)
             {
                 if (key != key2)
                 {
-                    auto formatKey = syntax::REFERENCE_ANCHOR + key;
-                    auto formatValue = value.getString().value();
+                    const auto formatKey = syntax::REFERENCE_ANCHOR + key;
+                    const auto formatValue = value.getString().value();
                     auto formatStr = value2.getString().value();
                     substituteDefinition(formatKey, formatValue, formatStr);
                     value2.setString(formatStr);
@@ -95,8 +95,8 @@ void substituteDefinitions(Json& asset)
                     DEFINITIONS_KEY,
                     key));
             }
-            auto formatKey = syntax::REFERENCE_ANCHOR + key;
-            auto formatValue = value.getString().value();
+            const auto formatKey = syntax::REFERENCE_ANCHOR + key;
+            const auto formatValue = value.getString().value();
             substituteDefinition(formatKey, formatValue, assetStr);
         }
 

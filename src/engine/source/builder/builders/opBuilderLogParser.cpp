@@ -100,18 +100,18 @@ base::Expression opBuilderLogParser(const std::any& definition)
     catch (const std::exception& e)
     {
         throw std::runtime_error(
-            std::string("Definition could not be converted to json: ")
-            + e.what());
+            std::string("Definition could not be converted to json: ") + e.what());
     }
     if (!jsonDefinition.isArray())
     {
         throw std::runtime_error(
-            fmt::format("Invalid json definition type: expected \"array\" but got \"{}\"",
+            fmt::format("Invalid json definition type: Expected \"array\" but got \"{}\"",
                         jsonDefinition.typeName()));
     }
     if (jsonDefinition.size() < 1)
     {
-        throw std::runtime_error("Invalid json definition, expected at least one element");
+        throw std::runtime_error(
+            "Invalid json definition, expected at least one element");
     }
 
     auto logparArr = jsonDefinition.getArray().value();
@@ -122,13 +122,13 @@ base::Expression opBuilderLogParser(const std::any& definition)
         if (!item.isObject())
         {
             throw std::runtime_error(fmt::format(
-                "Invalid json item type: expected an \"object\" but got \"{}\"",
+                "Invalid json item type: Expected an \"object\" but got \"{}\"",
                 item.typeName()));
         }
         if (item.size() != 1)
         {
             throw std::runtime_error(fmt::format(
-                "Invalid json item size, expected exactly one element but got {}",
+                "Invalid json item size: Expected exactly one element but got {}",
                 item.size()));
         }
 
@@ -165,7 +165,8 @@ base::Expression opBuilderLogParser(const std::any& definition)
         try
         {
             parseExpression = base::Term<base::EngineOp>::create(
-                "parse.logpar", [=, parserOp = std::move(parseOp)](base::Event event)
+                "parse.logpar",
+                [=, parserOp = std::move(parseOp)](base::Event event)
                 {
                     if (!event->exists(field))
                     {

@@ -11,7 +11,6 @@
 #include <fmt/format.h>
 #include <logging/logging.hpp>
 
-
 #include "utils/stringUtils.hpp"
 
 namespace base
@@ -167,9 +166,7 @@ public:
             name.m_parts.end(),
             std::string(),
             [](const std::string& a, const std::string& b) -> std::string
-            {
-                return a + (a.length() > 0 ? SEPARATOR_S : "") + b;
-            });
+            { return a + (a.length() > 0 ? SEPARATOR_S : "") + b; });
         return os;
     }
 

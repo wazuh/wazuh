@@ -337,10 +337,10 @@ base::Expression opBuilderComparison(const std::any& definition, Operator op, Ty
             return base::Term<base::EngineOp>::create(name, opFn);
         }
         default:
-            throw std::runtime_error(fmt::format(
-                "{} function: Unsupported comparison type ({}).",
-                name,
-                static_cast<int>(t)));
+            throw std::runtime_error(
+                fmt::format("{} function: Unsupported comparison type ({}).",
+                            name,
+                            static_cast<int>(t)));
     }
 }
 
@@ -589,12 +589,11 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     }
     catch (std::exception& e)
     {
-        throw std::runtime_error(
-            fmt::format("\"{}\" function: IPv4 address \"{}\" "
-                        "could not be converted to int: {}",
-                        name,
-                        network,
-                        e.what()));
+        throw std::runtime_error(fmt::format("\"{}\" function: IPv4 address \"{}\" "
+                                             "could not be converted to int: {}",
+                                             name,
+                                             network,
+                                             e.what()));
     }
 
     uint32_t mask {};
@@ -604,12 +603,11 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     }
     catch (std::exception& e)
     {
-        throw std::runtime_error(
-            fmt::format("\"{}\" function: IPv4 Mask \"{}\" "
-                        "could not be converted to int: {}",
-                        name,
-                        parameters[1].m_value,
-                        e.what()));
+        throw std::runtime_error(fmt::format("\"{}\" function: IPv4 Mask \"{}\" "
+                                             "could not be converted to int: {}",
+                                             name,
+                                             parameters[1].m_value,
+                                             e.what()));
     }
 
     uint32_t net_lower {network & mask};
@@ -753,7 +751,8 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event> {
+            base::Event event) -> base::result::Result<base::Event>
+        {
             if (!event->exists(targetField))
             {
                 return base::result::makeFailure(event, failureTrace1);
@@ -773,8 +772,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
                 {
                     case helper::base::Parameter::Type::REFERENCE:
                     {
-                        const auto resolvedParameter {
-                            event->getJson(parameter.m_value)};
+                        const auto resolvedParameter {event->getJson(parameter.m_value)};
                         if (resolvedParameter.has_value())
                         {
                             cmpValue = resolvedParameter.value();

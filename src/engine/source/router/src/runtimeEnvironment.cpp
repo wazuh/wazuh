@@ -6,7 +6,7 @@
 #include <utils/getExceptionStack.hpp>
 
 // TODO: Refactor how we handle queue flooding and environments down
-std::atomic_bool g_envDown{true};
+std::atomic_bool g_envDown {true};
 
 namespace router
 {
@@ -62,7 +62,8 @@ std::optional<base::Error> RuntimeEnvironment::run(std::shared_ptr<concurrentQue
     for (std::size_t i = 0; i < m_numThreads; ++i)
     {
         m_threads.emplace_back(
-            [this, i, queue]() {
+            [this, i, queue]()
+            {
                 auto controller = rxbk::buildRxPipeline(m_environments[i]);
 
                 // Thread loop
