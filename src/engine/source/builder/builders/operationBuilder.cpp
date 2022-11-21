@@ -85,7 +85,9 @@ Expression mapReferenceBuilder(std::string&& field, std::string&& reference)
 
     const auto failureTrace {fmt::format(
         "[{}] -> Failure: Parameter \"{}\" reference not found", name, reference)};
-    return Term<EngineOp>::create(name, [=](Event event)
+    return Term<EngineOp>::create(
+        name,
+        [=](Event event)
         {
             if (event->exists(reference))
             {

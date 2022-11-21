@@ -40,7 +40,8 @@ TEST(WazuhRequest_validate, invalidVersion)
         fmt::format(
             "The request version ({}) is not supported, the supported version is {}",
             oldVersion,
-            api::WazuhRequest::SUPPORTED_VERSION).c_str());
+            api::WazuhRequest::SUPPORTED_VERSION)
+            .c_str());
     ASSERT_FALSE(wrequest.isValid());
 }
 
@@ -203,8 +204,7 @@ TEST(WazuhRequest_validate, rootWrongType)
     auto wrequest = api::WazuhRequest {jrequest_invalid};
     EXPECT_TRUE(wrequest.error());
     ASSERT_FALSE(wrequest.isValid());
-    ASSERT_STREQ(wrequest.error()->c_str(),
-                 "The request must be formatted as a JSON object");
+    ASSERT_STREQ(wrequest.error()->c_str(), "The request must be a JSON object");
 }
 
 TEST(WazuhRequest_validate, rootWrongTypeArray)
@@ -214,8 +214,7 @@ TEST(WazuhRequest_validate, rootWrongTypeArray)
     auto wrequest = api::WazuhRequest {jrequest_invalid};
     EXPECT_TRUE(wrequest.error());
     ASSERT_FALSE(wrequest.isValid());
-    ASSERT_STREQ(wrequest.error()->c_str(),
-                 "The request must be formatted as a JSON object");
+    ASSERT_STREQ(wrequest.error()->c_str(), "The request must be a JSON object");
 }
 
 TEST(WazuhRequest_getCommand, valid)

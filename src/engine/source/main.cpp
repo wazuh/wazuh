@@ -92,7 +92,7 @@ void configureSubcommandRun(std::shared_ptr<CLI::App> app)
         app->add_subcommand(args::SUBCOMMAND_RUN, "Start a Wazuh engine instance.");
 
     // Endpoints
-    run->add_option("-e, --events_endpoint",
+    run->add_option("-e, --event_endpoint",
                     args::eventEndpoint,
                     "Sets the events server socket address.")
         ->default_val(ENGINE_EVENT_SOCK);
@@ -366,9 +366,8 @@ void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
                      "Sets the path to the directory containing the item files.")
         ->required()
         ->check(CLI::ExistingDirectory);
-    load_subcommand
-        ->add_flag(
-            "-r, --recursive", args::catalogRecursive, "Recursive loading of the directory.");
+    load_subcommand->add_flag(
+        "-r, --recursive", args::catalogRecursive, "Recursive loading of the directory.");
 }
 
 void configureSubCommandEnvironment(std::shared_ptr<CLI::App> app)
@@ -415,8 +414,7 @@ std::shared_ptr<CLI::App> configureCliApp()
         "and Wazuh integrations. This integrated console application allows to manage "
         "all the engine components.\n");
 
-    app->add_flag(
-        "-v, --version", args::engineVersion, "Print the engine version.");
+    app->add_flag("-v, --version", args::engineVersion, "Print the engine version.");
 
     // Add subcommands
     configureSubcommandRun(app);

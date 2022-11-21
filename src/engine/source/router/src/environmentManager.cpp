@@ -109,32 +109,32 @@ std::vector<std::string> EnvironmentManager::getAllEnvironments()
 api::CommandFn EnvironmentManager::apiCallback()
 {
     return [this](const json::Json params)
-        {
-            api::WazuhResponse response {};
-            const auto action = params.getString("/action");
+    {
+        api::WazuhResponse response {};
+        const auto action = params.getString("/action");
 
-            if (!action)
-            {
-                response.message("Missing \"action\" parameter");
-            }
-            else if (action.value() == "set")
-            {
-                response = apiSetEnvironment(params);
-            }
-            else if (action.value() == "get")
-            {
-                response = apiGetEnvironment(params);
-            }
-            else if (action.value() == "delete")
-            {
-                response = apiDelEnvironment(params);
-            }
-            else
-            {
-                response.message(fmt::format("Invalid action \"{}\"", action.value()));
-            }
-            return response;
-        };
+        if (!action)
+        {
+            response.message("Missing \"action\" parameter");
+        }
+        else if (action.value() == "set")
+        {
+            response = apiSetEnvironment(params);
+        }
+        else if (action.value() == "get")
+        {
+            response = apiGetEnvironment(params);
+        }
+        else if (action.value() == "delete")
+        {
+            response = apiDelEnvironment(params);
+        }
+        else
+        {
+            response.message(fmt::format("Invalid action \"{}\"", action.value()));
+        }
+        return response;
+    };
 }
 
 api::WazuhResponse EnvironmentManager::apiSetEnvironment(const json::Json& params)
