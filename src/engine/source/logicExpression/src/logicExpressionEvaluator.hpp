@@ -52,10 +52,7 @@ public:
      *
      * @return std::shared_ptr<ThisType>
      */
-    std::shared_ptr<ThisType> getPtr()
-    {
-        return ThisType::shared_from_this();
-    }
+    std::shared_ptr<ThisType> getPtr() { return ThisType::shared_from_this(); }
 
     /**
      * @brief Get the Ptr const object

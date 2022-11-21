@@ -30,7 +30,8 @@ constexpr int kMaxStackTraceDepth = 7;
 // wich needs the symbols to be in the dyn table
 static std::string getBacktrace()
 {
-    auto tracer = [](_Unwind_Context* ctx, void* s) {
+    auto tracer = [](_Unwind_Context* ctx, void* s)
+    {
         auto* state = static_cast<BtState*>(s);
         if (state->count == state->addrs.size())
         {

@@ -49,7 +49,8 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::any& definiti
         fmt::format("[{}] -> Failure: Target field \"{}\" not found", name, targetField)};
     const auto failureTrace2 {
         fmt::format("[{}] -> Failure: Target field \"{}\" is empty", name, targetField)};
-    const auto failureTrace3 {fmt::format("[{}] -> Failure: ", name) + "Result code is \"{}.\""};
+    const auto failureTrace3 {fmt::format("[{}] -> Failure: ", name)
+                              + "Result code is \"{}.\""};
 
     // instantiate WDB
     auto wdb = std::make_shared<wazuhdb::WazuhDB>(wazuhdb::WDB_SOCK_PATH);

@@ -11,7 +11,7 @@ std::optional<std::string> WazuhRequest::validate() const
 {
     if (!m_jrequest.isObject())
     {
-        return "The request must be formatted as a JSON object";
+        return "The request must be a JSON object";
     }
     if (!m_jrequest.exists("/version") || !m_jrequest.isInt("/version"))
     {
@@ -79,7 +79,7 @@ WazuhRequest WazuhRequest::create(std::string_view command,
             parameters.str());
 
         throw std::runtime_error(
-            "The command parameters must be inside of a JSON object");
+            "The command parameters must be a JSON object");
     }
 
     json::Json jrequest;

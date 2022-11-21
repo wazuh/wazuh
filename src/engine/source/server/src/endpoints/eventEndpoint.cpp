@@ -139,7 +139,6 @@ EventEndpoint::EventEndpoint(
         [this, dumpFileHandler](const DatagramSocketEvent& event,
                                 DatagramSocketHandle& handle)
         {
-
             auto client = handle.loop().resource<DatagramSocketHandle>();
 
             client->on<ErrorEvent>(

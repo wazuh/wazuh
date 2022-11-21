@@ -36,11 +36,10 @@ void Environment::buildGraph(
     Asset::Type type,
     std::shared_ptr<internals::Registry> registry)
 {
-    auto graphPos =
-        std::find_if(m_graphs.begin(), m_graphs.end(), [&graphName](const auto& graph)
-            {
-                return std::get<0>(graph) == graphName;
-            });
+    auto graphPos = std::find_if(m_graphs.begin(),
+                                 m_graphs.end(),
+                                 [&graphName](const auto& graph)
+                                 { return std::get<0>(graph) == graphName; });
     auto& graph = std::get<1>(*graphPos);
     for (auto& [name, json] : assetsDefinitons)
     {
@@ -73,11 +72,10 @@ void Environment::buildGraph(
 
 void Environment::addFilters(const std::string& graphName)
 {
-    auto graphPos =
-        std::find_if(m_graphs.begin(), m_graphs.end(), [&graphName](const auto& graph)
-            {
-                return std::get<0>(graph) == graphName;
-            });
+    auto graphPos = std::find_if(m_graphs.begin(),
+                                 m_graphs.end(),
+                                 [&graphName](const auto& graph)
+                                 { return std::get<0>(graph) == graphName; });
     auto& graph = std::get<1>(*graphPos);
     for (auto& [name, asset] : m_assets)
     {
@@ -124,7 +122,8 @@ std::string Environment::getGraphivzStr()
        << std::endl;
     ss << "environment [label=\"" << m_name << "\", shape=Mdiamond];" << std::endl;
 
-    auto removeHyphen = [](const std::string& text) {
+    auto removeHyphen = [](const std::string& text)
+    {
         auto ret = text;
         auto pos = ret.find("-");
         while (pos != std::string::npos)
