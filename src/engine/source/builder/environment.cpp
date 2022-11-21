@@ -52,8 +52,8 @@ void Environment::buildGraph(
         }
         catch (const std::exception& e)
         {
-            std::throw_with_nested(std::runtime_error(fmt::format(
-                "Engine environment: Building asset \"{}\" failed: {}", name, e.what())));
+            throw std::runtime_error(
+                fmt::format("Building asset \"{}\" failed: {}", name, e.what()));
         }
         m_assets.insert(std::make_pair(name, asset));
         graph.addNode(name, asset);
@@ -194,8 +194,8 @@ base::Expression Environment::getExpression() const
                 break;
             default:
                 throw std::runtime_error(
-                    fmt::format("Engine environment: Building environment \"{}\" failed "
-                                "as the type of the asset \"{}\" is not supported.",
+                    fmt::format("Building environment \"{}\" failed as the type of the "
+                                "asset \"{}\" is not supported",
                                 graphName,
                                 graph.node(graph.rootId())->m_name));
         }
@@ -251,10 +251,8 @@ base::Expression Environment::getExpression() const
                             break;
 
                         default:
-                            throw std::runtime_error(
-                                fmt::format("Engine environment: Asset type not "
-                                            "supported from asset \"{}\".",
-                                            current));
+                            throw std::runtime_error(fmt::format(
+                                "Asset type not supported from asset \"{}\"", current));
                     }
 
                     assetNode = base::Implication::create(
