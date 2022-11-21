@@ -213,16 +213,16 @@ opBuilderHelperIntTransformation(const std::string& targetField,
             }
             catch (const std::exception& e)
             {
-                std::throw_with_nested(std::runtime_error(
+                throw std::runtime_error(
                     fmt::format("Engine map builder: \"{}\" function: Could not convert "
                                 "parameter \"{}\" to int",
                                 name,
-                                rightParameter.m_value)));
+                                rightParameter.m_value));
             }
             if (IntOperator::DIV == op && 0 == std::get<int>(rValue))
             {
-                throw std::runtime_error(fmt::format(
-                    "Engine map builder: \"{}\" function: Division by zero", name));
+                throw std::runtime_error(
+                    fmt::format("\"{}\" function: Division by zero", name));
             }
 
             break;
@@ -232,10 +232,10 @@ opBuilderHelperIntTransformation(const std::string& targetField,
             break;
 
         default:
-            throw std::runtime_error(fmt::format(
-                "Engine map builder: \"{}\" function: Invalid parameter type of \"{}\"",
-                name,
-                rightParameter.m_value));
+            throw std::runtime_error(
+                fmt::format("\"{}\" function: Invalid parameter type of \"{}\"",
+                            name,
+                            rightParameter.m_value));
     }
 
     // Depending on the operator we return the correct function
@@ -265,8 +265,8 @@ opBuilderHelperIntTransformation(const std::string& targetField,
             {
                 if (0 == r)
                 {
-                    throw std::runtime_error(fmt::format(
-                        "Engine map builder: \"{}\" function: Division by zero", name));
+                    throw std::runtime_error(
+                        fmt::format("\"{}\" function: Division by zero", name));
                 }
 
                 return l / r;
@@ -431,7 +431,7 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     if ('\0' == trimType)
     {
         throw std::runtime_error(
-            fmt::format("Engine map builder: \"{}\" function: Invalid trim type \"{}\".",
+            fmt::format("\"{}\" function: Invalid trim type \"{}\"",
                         name,
                         parameters[0].m_value));
     }
@@ -441,7 +441,7 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     if (trimChar.size() != 1)
     {
         throw std::runtime_error(
-            fmt::format("Engine map builder: \"{}\" function: Invalid trim char \"{}\".",
+            fmt::format("\"{}\" function: Invalid trim char \"{}\"",
                         name,
                         trimChar));
     }
@@ -809,9 +809,8 @@ base::Expression opBuilderHelperStringReplace(const std::any& definition)
     const auto paramOldSubstr = parameters.at(0);
     if (paramOldSubstr.m_value.empty())
     {
-        throw std::runtime_error(fmt::format("Engine map builder: \"{}\" function: First "
-                                             "parameter (substring) cannot be empty.",
-                                             name));
+        throw std::runtime_error(fmt::format(
+            "\"{}\" function: First parameter (substring) cannot be empty", name));
     }
     const auto paramNewSubstr = parameters.at(1);
 
@@ -958,11 +957,11 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
     auto regex_ptr = std::make_shared<RE2>(parameters[1].m_value);
     if (!regex_ptr->ok())
     {
-        throw std::runtime_error(fmt::format(
-            "Engine map builder: \"{}\" function: Error compiling regex \"{}\": {}",
-            name,
-            parameters[1].m_value,
-            regex_ptr->error()));
+        throw std::runtime_error(
+            fmt::format("\"{}\" function: Error compiling regex \"{}\": {}",
+                        name,
+                        parameters[1].m_value,
+                        regex_ptr->error()));
     }
 
     // Tracing
@@ -1079,8 +1078,7 @@ base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
     if (parameters[1].m_value.size() != 1)
     {
         throw std::runtime_error(
-            fmt::format("Engine map builder: \"{}\" function: "
-                        "Separator \"{}\" should be one character long.",
+            fmt::format("\"{}\" function: Separator \"{}\" should be one character long",
                         name,
                         parameters[1].m_value.size()));
     }

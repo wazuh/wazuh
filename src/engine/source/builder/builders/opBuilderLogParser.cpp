@@ -100,21 +100,18 @@ base::Expression opBuilderLogParser(const std::any& definition)
     catch (const std::exception& e)
     {
         throw std::runtime_error(
-            std::string(
-                "Engine log parser builder: Definition could not be converted to json: ")
+            std::string("Definition could not be converted to json: ")
             + e.what());
     }
     if (!jsonDefinition.isArray())
     {
         throw std::runtime_error(
-            fmt::format("Engine log parser builder: Invalid json definition type: "
-                        "expected \"array\" but got \"{}\".",
+            fmt::format("Invalid json definition type: expected \"array\" but got \"{}\"",
                         jsonDefinition.typeName()));
     }
     if (jsonDefinition.size() < 1)
     {
-        throw std::runtime_error("Engine log parser builder: Invalid json definition, "
-                                 "expected at least one element.");
+        throw std::runtime_error("Invalid json definition, expected at least one element");
     }
 
     auto logparArr = jsonDefinition.getArray().value();
@@ -124,17 +121,15 @@ base::Expression opBuilderLogParser(const std::any& definition)
     {
         if (!item.isObject())
         {
-            throw std::runtime_error(
-                fmt::format("Engine log parser builder: Invalid json item type: expected "
-                            "an object but got {}.",
-                            item.typeName()));
+            throw std::runtime_error(fmt::format(
+                "Invalid json item type: expected an \"object\" but got \"{}\"",
+                item.typeName()));
         }
         if (item.size() != 1)
         {
-            throw std::runtime_error(
-                fmt::format("Engine log parser builder: Invalid json item size, expected "
-                            "exactly one element but got {}",
-                            item.size()));
+            throw std::runtime_error(fmt::format(
+                "Invalid json item size, expected exactly one element but got {}",
+                item.size()));
         }
 
         auto itemObj = item.getObject().value();
@@ -148,10 +143,8 @@ base::Expression opBuilderLogParser(const std::any& definition)
         }
         catch (std::runtime_error& e)
         {
-            std::throw_with_nested(std::runtime_error(
-                std::string(
-                    "Engine log parser builder: An error occurred while parsing a log: ")
-                + e.what()));
+            throw std::runtime_error(
+                fmt::format("An error occurred while parsing a log: {}", e.what()));
         }
 
         // Traces

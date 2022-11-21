@@ -382,8 +382,8 @@ void registerAllCmds(std::shared_ptr<Catalog> catalog,
     }
     catch (const std::exception& e)
     {
-        std::throw_with_nested(std::runtime_error(fmt::format(
-            "An error occurred while registering the commands: {}", e.what())));
+        throw std::runtime_error(fmt::format(
+            "An error occurred while registering the commands: {}", e.what()));
     }
 }
 } // namespace api::catalog::cmds
