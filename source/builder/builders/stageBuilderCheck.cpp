@@ -14,7 +14,8 @@ namespace
 {
 using namespace builder::internals;
 
-base::Expression stageBuilderCheckList(const std::any& definition, std::shared_ptr<Registry> registry)
+base::Expression stageBuilderCheckList(const std::any& definition,
+                                       std::shared_ptr<Registry> registry)
 {
     // TODO: add check conditional expression case
 
@@ -25,48 +26,49 @@ base::Expression stageBuilderCheckList(const std::any& definition, std::shared_p
     }
     catch (std::exception& e)
     {
-        throw std::runtime_error(
-            fmt::format("Definition could not be converted to json: {}", e.what()));
+        throw std::runtime_error(fmt::format(
+            "Check stage: Definition could not be converted to json: {}", e.what()));
     }
 
     if (!jsonDefinition.isArray())
     {
-        throw std::runtime_error(fmt::format(
-            "Invalid json definition type: expected \"array\" but got \"{}\"",
-            jsonDefinition.typeName()));
+        throw std::runtime_error(fmt::format("Check stage: Invalid json definition type: "
+                                             "expected \"array\" but got \"{}\"",
+                                             jsonDefinition.typeName()));
     }
 
     auto conditions = jsonDefinition.getArray().value();
     std::vector<base::Expression> conditionExpressions;
-    std::transform(
-        conditions.begin(),
-        conditions.end(),
-        std::back_inserter(conditionExpressions),
-        [registry](auto condition)
-        {
-            if (!condition.isObject())
-            {
-                throw std::runtime_error(fmt::format(
-                    "Invalid array item type, expected \"object\" but got \"{}\"",
-                    condition.typeName()));
-            }
-            if (condition.size() != 1)
-            {
-                throw std::runtime_error(
-                    fmt::format("Invalid object item size, expected exactly one "
-                                "key/value pair but got \"{}\"",
-                                condition.size()));
-            }
-            return registry->getBuilder("operation.condition")(
-                condition.getObject().value()[0]);
-        });
+    std::transform(conditions.begin(),
+                   conditions.end(),
+                   std::back_inserter(conditionExpressions),
+                   [registry](auto condition)
+                   {
+                       if (!condition.isObject())
+                       {
+                           throw std::runtime_error(fmt::format(
+                               "Check stage: Invalid array item type, expected "
+                               "\"object\" but got \"{}\"",
+                               condition.typeName()));
+                       }
+                       if (condition.size() != 1)
+                       {
+                           throw std::runtime_error(fmt::format(
+                               "Check stage: Invalid object item size, expected exactly "
+                               "one key/value pair but got \"{}\"",
+                               condition.size()));
+                       }
+                       return registry->getBuilder("operation.condition")(
+                           condition.getObject().value()[0]);
+                   });
 
     auto expression = base::And::create("stage.check", conditionExpressions);
 
     return expression;
 }
 
-base::Expression stageBuilderCheckExpression(const std::any& definition, std::shared_ptr<Registry> registry)
+base::Expression stageBuilderCheckExpression(const std::any& definition,
+                                             std::shared_ptr<Registry> registry)
 {
     // Obtain expressionString
     auto expressionString = std::any_cast<json::Json>(definition).getString().value();
@@ -152,8 +154,8 @@ Builder getStageBuilderCheck(std::shared_ptr<Registry> registry)
         }
         catch (const std::exception& e)
         {
-            throw std::runtime_error(
-                fmt::format("Definition could not be converted to json: {}", e.what()));
+            throw std::runtime_error(fmt::format(
+                "Check stage: Definition could not be converted to json: {}", e.what()));
         }
 
         if (jsonDefinition.isArray())
@@ -167,8 +169,8 @@ Builder getStageBuilderCheck(std::shared_ptr<Registry> registry)
         else
         {
             throw std::runtime_error(
-                fmt::format("Invalid json definition type, \"string\" or \"array\" were "
-                            "expected but got \"{}\"",
+                fmt::format("Check stage: Invalid json definition type, \"string\" or "
+                            "\"array\" were expected but got \"{}\"",
                             jsonDefinition.typeName()));
         }
     };

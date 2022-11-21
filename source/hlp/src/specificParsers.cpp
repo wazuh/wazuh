@@ -351,7 +351,8 @@ bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
         auto ignoreStr = parser.options[0];
         size_t ignoreLen = ignoreStr.size();
 
-        auto checkIgnore = [&](const char** tmpIt) {
+        auto checkIgnore = [&](const char** tmpIt)
+        {
             auto start = **tmpIt;
             for (auto i = 0; '\0' != **tmpIt && i < ignoreLen; ++i, ++*tmpIt)
             {
@@ -530,56 +531,56 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
     */
     const auto getQuoted =
         [&scapeChar](const char* c_str) -> std::pair<const char*, std::string_view>
+    {
+        const char quoteChar = c_str[0];
+        const char* ptr = c_str + 1;
+        std::pair<const char*, std::string_view> result = {nullptr, ""};
+
+        while (ptr = strchrnul(ptr, quoteChar), '\0' != *ptr)
         {
-            const char quoteChar = c_str[0];
-            const char* ptr = c_str + 1;
-            std::pair<const char*, std::string_view> result = {nullptr, ""};
+            // Is not posible that ptr-2 < str
+            bool escaped = (*(ptr - 1) == scapeChar);
+            escaped = escaped && (*(ptr - 2) != scapeChar);
 
-            while (ptr = strchrnul(ptr, quoteChar), '\0' != *ptr)
+            if (!escaped)
             {
-                // Is not posible that ptr-2 < str
-                bool escaped = (*(ptr - 1) == scapeChar);
-                escaped = escaped && (*(ptr - 2) != scapeChar);
-
-                if (!escaped)
-                {
-                    result = {ptr, std::string_view(c_str + 1, ptr - c_str - 1)};
-                    break;
-                }
-                ptr++;
+                result = {ptr, std::string_view(c_str + 1, ptr - c_str - 1)};
+                break;
             }
-            return result;
-        };
+            ptr++;
+        }
+        return result;
+    };
 
     /*
       Return the pointer to the first `kvSeparator` not escaped by `scapeChar`.
       If there is no kvSeparator, return NULL
     */
     const auto getSeparator = [&kvSeparator, &scapeChar](const char* c_str)
+    {
+        const char* ptr = c_str;
+        while (ptr = strstr(ptr, kvSeparator.data()), nullptr != ptr)
         {
-            const char* ptr = c_str;
-            while (ptr = strstr(ptr, kvSeparator.data()), nullptr != ptr)
+            bool escaped = false;
+            // worst cases:
+            //    [=\0], [\=\0],[\\=\0],
+            if (ptr + 1 >= c_str)
             {
-                bool escaped = false;
-                // worst cases:
-                //    [=\0], [\=\0],[\\=\0],
-                if (ptr + 1 >= c_str)
+                escaped = (*(ptr - 1) == scapeChar);
+                if (escaped && (ptr + 2 >= c_str))
                 {
-                    escaped = (*(ptr - 1) == scapeChar);
-                    if (escaped && (ptr + 2 >= c_str))
-                    {
-                        escaped = (*(ptr - 2) != scapeChar);
-                    }
+                    escaped = (*(ptr - 2) != scapeChar);
                 }
-                if (!escaped)
-                {
-                    break;
-                }
-                ptr++;
             }
+            if (!escaped)
+            {
+                break;
+            }
+            ptr++;
+        }
 
-            return ptr;
-        };
+        return ptr;
+    };
 
     /*
       Returns a pair with the pointer to the start value (After key value separator)
@@ -589,43 +590,43 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
     const auto getKey =
         [&kvSeparator, &pairSeparator, &scapeChar, &getQuoted, &getSeparator](
             const char* c_str)
+    {
+        std::string_view key {};
+        const char* ptr = c_str;
+        if ('"' == *ptr || '\'' == *ptr)
         {
-            std::string_view key {};
-            const char* ptr = c_str;
-            if ('"' == *ptr || '\'' == *ptr)
+            auto [endQuote, quoted] = getQuoted(ptr);
+            // The key is valid only if valid only is followed by kvSeparator
+            if (nullptr != endQuote
+                && kvSeparator.compare(
+                       1, kvSeparator.size(), endQuote, kvSeparator.size())
+                       == 0)
             {
-                auto [endQuote, quoted] = getQuoted(ptr);
-                // The key is valid only if valid only is followed by kvSeparator
-                if (nullptr != endQuote
-                    && kvSeparator.compare(
-                           1, kvSeparator.size(), endQuote, kvSeparator.size())
-                           == 0)
-                {
-                    key = std::move(quoted);
-                    ptr = endQuote + kvSeparator.size() + 1;
-                }
+                key = std::move(quoted);
+                ptr = endQuote + kvSeparator.size() + 1;
             }
-            else
-            {
-                ptr = getSeparator(ptr);
+        }
+        else
+        {
+            ptr = getSeparator(ptr);
 
-                if (nullptr != ptr)
+            if (nullptr != ptr)
+            {
+                // The key is valid only if no there a pairSeparator in the middle
+                auto tmpKey = std::string_view(c_str, ptr - c_str);
+                if (tmpKey.find(pairSeparator) == std::string_view::npos)
                 {
-                    // The key is valid only if no there a pairSeparator in the middle
-                    auto tmpKey = std::string_view(c_str, ptr - c_str);
-                    if (tmpKey.find(pairSeparator) == std::string_view::npos)
-                    {
-                        key = std::move(tmpKey);
-                        ptr += kvSeparator.size();
-                    }
-                    else
-                    {
-                        ptr = nullptr;
-                    }
+                    key = std::move(tmpKey);
+                    ptr += kvSeparator.size();
+                }
+                else
+                {
+                    ptr = nullptr;
                 }
             }
-            return std::pair<const char*, std::string_view> {ptr, key};
-        };
+        }
+        return std::pair<const char*, std::string_view> {ptr, key};
+    };
 
     /* -----------------------------------------------
                     Start parsing
@@ -872,7 +873,8 @@ bool parseURL(const char** it, Parser const& parser, ParseResult& result)
         (*it)++;
     }
 
-    auto urlCleanup = [](auto* url) {
+    auto urlCleanup = [](auto* url)
+    {
         curl_url_cleanup(url);
     };
 
@@ -1310,17 +1312,17 @@ bool parseQuotedString(const char** it, Parser const& parser, ParseResult& resul
     const char* start = *it;
 
     auto checkEnd = [&](const char** it)
+    {
+        for (const auto& ch : endQuote)
         {
-            for (const auto& ch : endQuote)
+            if (**it != ch)
             {
-                if (**it != ch)
-                {
-                    return false;
-                }
-                (*it)++;
+                return false;
             }
-            return true;
-        };
+            (*it)++;
+        }
+        return true;
+    };
     auto foundEnd = false;
 
     while (**it != '\0' && (escaped || !foundEnd))
@@ -1509,50 +1511,50 @@ bool parseCSV(const char** it, Parser const& parser, ParseResult& result)
      * valid
      */
     const auto getQuoted = [&](const char* str) -> std::pair<const char*, std::string>
-        {
-            str++;
-            const char* end = nullptr;
+    {
+        str++;
+        const char* end = nullptr;
 
-            std::string value {};
-            // Search for the end quote
-            while (end = strchr(str, escapeChar), nullptr != end)
+        std::string value {};
+        // Search for the end quote
+        while (end = strchr(str, escapeChar), nullptr != end)
+        {
+            if (escapeChar == *(end + 1))
             {
-                if (escapeChar == *(end + 1))
-                {
-                    value.append(str, end + 1 - str);
-                    str = end + 2; // Escaped quote, skip it
-                }
-                else
-                {
-                    // End quote found
-                    value.append(str, end - str);
-                    end++;
-                    break;
-                }
+                value.append(str, end + 1 - str);
+                str = end + 2; // Escaped quote, skip it
             }
-            return {end, std::move(value)};
-        };
+            else
+            {
+                // End quote found
+                value.append(str, end - str);
+                end++;
+                break;
+            }
+        }
+        return {end, std::move(value)};
+    };
 
     /*
      * Returns pair <const char * iterator, std::string_view value> with
      * the pointer to the nex character to parse and the value unquoted parsed
      */
     const auto getUnQuoted = [&](const char* str) -> std::pair<const char*, std::string>
+    {
+        // Search for the separator or the end of the CSV.
+        const char* end = strchr(str, separator);
+        if (nullptr == end)
         {
-            // Search for the separator or the end of the CSV.
-            const char* end = strchr(str, separator);
-            if (nullptr == end)
-            {
-                end = strchr(str, endToken);
-            }
-            // If the end is nullptr, the CSV is malformed
-            if (nullptr != end)
-            {
-                std::string value(str, end - str);
-                return {end, std::move(value)};
-            }
-            return {nullptr, std::string {}};
-        };
+            end = strchr(str, endToken);
+        }
+        // If the end is nullptr, the CSV is malformed
+        if (nullptr != end)
+        {
+            std::string value(str, end - str);
+            return {end, std::move(value)};
+        }
+        return {nullptr, std::string {}};
+    };
 
     /*
      * Extract the values

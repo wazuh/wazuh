@@ -45,8 +45,9 @@ public:
      * @return std::string command
      * @return empty if the request is not valid
      */
-    std::optional<std::string> getCommand() const {
-        return  isValid() ? m_jrequest.getString("/command") : std::nullopt;
+    std::optional<std::string> getCommand() const
+    {
+        return isValid() ? m_jrequest.getString("/command") : std::nullopt;
     };
 
     /**
@@ -57,7 +58,7 @@ public:
      */
     std::optional<json::Json> getParameters() const
     {
-        return  isValid() ? m_jrequest.getJson("/parameters") : std::nullopt;
+        return isValid() ? m_jrequest.getJson("/parameters") : std::nullopt;
     }
 
     /**
@@ -102,6 +103,6 @@ private:
     std::optional<std::string> validate() const;
 };
 
-}
+} // namespace api
 
 #endif // _API_WAZUH_REQUEST_HPP

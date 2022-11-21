@@ -42,71 +42,67 @@ Catalog::Catalog(const Config& config)
 
     // Json handling
     m_outFormat[Resource::Format::JSON] = [](const json::Json& json)
-        {
-            return json.str();
-        };
+    {
+        return json.str();
+    };
 
     // TODO: what is str?
     m_inFormat[Resource::Format::JSON] = [](const std::string& str)
+    {
+        std::variant<json::Json, base::Error> result;
+        try
         {
-            std::variant<json::Json, base::Error> result;
-            try
-            {
-                result = json::Json {str.c_str()};
-            }
-            catch (const std::exception& e)
-            {
-                WAZUH_LOG_DEBUG(
-                    "Engine catalog: \"{}\" method: Config: \"{}\".", __func__, str);
-                result = base::Error {e.what()};
-            }
+            result = json::Json {str.c_str()};
+        }
+        catch (const std::exception& e)
+        {
+            WAZUH_LOG_DEBUG(
+                "Engine catalog: \"{}\" method: Config: \"{}\".", __func__, str);
+            result = base::Error {e.what()};
+        }
 
-            return result;
-        };
+        return result;
+    };
 
     // Yaml handling
     m_outFormat[Resource::Format::YAML] = [](const json::Json& json)
+    {
+        std::variant<std::string, base::Error> result;
+        try
         {
-            std::variant<std::string, base::Error> result;
-            try
-            {
-                // TODO: Expose internals on json::Json ??
-                rapidjson::Document doc;
-                doc.Parse(json.str().c_str());
-                auto yaml = yml2json::internal::json2yaml(doc);
-                YAML::Emitter out;
-                out << yaml;
-                result = out.c_str();
-            }
-            catch (const std::exception& e)
-            {
-                WAZUH_LOG_DEBUG("Engine catalog: \"{}\" method: Config: \"{}\".",
-                                __func__,
-                                json.str());
-                result = base::Error {e.what()};
-            }
+            // TODO: Expose internals on json::Json ??
+            rapidjson::Document doc;
+            doc.Parse(json.str().c_str());
+            auto yaml = yml2json::internal::json2yaml(doc);
+            YAML::Emitter out;
+            out << yaml;
+            result = out.c_str();
+        }
+        catch (const std::exception& e)
+        {
+            WAZUH_LOG_DEBUG("Engine catalog: Config: \"{}\".", json.str());
+            result = base::Error {e.what()};
+        }
 
-            return result;
-        };
+        return result;
+    };
 
     // TODO: what is str?
     m_inFormat[Resource::Format::YAML] = [](const std::string& str)
+    {
+        std::variant<json::Json, base::Error> result;
+        try
         {
-            std::variant<json::Json, base::Error> result;
-            try
-            {
-                result = json::Json {yml2json::loadYMLfromString(str)};
-            }
-            catch (const std::exception& e)
-            {
-                WAZUH_LOG_DEBUG("Engine catalog: \"{}\" method: Config: \"{}\".",
-                                __func__,
-                                str);
-                result = base::Error {e.what()};
-            }
+            result = json::Json {yml2json::loadYMLfromString(str)};
+        }
+        catch (const std::exception& e)
+        {
+            WAZUH_LOG_DEBUG("Engine catalog: Config: \"{}\".", str);
+            result = base::Error {e.what()};
+        }
 
-            return result;
-        };
+        return result;
+    };
 
     // Get schemas
     base::Name assetSchemaName;
@@ -179,9 +175,10 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection,
     const auto formatResult = m_inFormat[collection.m_format](content);
     if (std::holds_alternative<base::Error>(formatResult))
     {
-        return base::Error {fmt::format("Could not format content to \"{}\": {}",
-                                        Resource::formatToStr(collection.m_format),
-                                        std::get<base::Error>(formatResult).message)};
+        return base::Error {
+            fmt::format("JSON object could not be created from \"{}\" content: {}",
+                        Resource::formatToStr(collection.m_format),
+                        std::get<base::Error>(formatResult).message)};
     }
 
     const auto contentJson = std::get<json::Json>(formatResult);
@@ -271,10 +268,8 @@ std::optional<base::Error> Catalog::putResource(const Resource& item,
 
     // Specified resource must be a Environment, Schema or Asset
     if (Resource::Type::ENVIRONMENT != item.m_type
-        && Resource::Type::SCHEMA != item.m_type
-        && Resource::Type::DECODER != item.m_type
-        && Resource::Type::RULE != item.m_type
-        && Resource::Type::FILTER != item.m_type
+        && Resource::Type::SCHEMA != item.m_type && Resource::Type::DECODER != item.m_type
+        && Resource::Type::RULE != item.m_type && Resource::Type::FILTER != item.m_type
         && Resource::Type::OUTPUT != item.m_type)
     {
         return base::Error {fmt::format("Invalid resource type \"{}\" for PUT operation",
@@ -399,10 +394,8 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
                                              const json::Json& content) const
 {
     // Assert resource type is Asset or Environment
-    if (Resource::Type::DECODER != item.m_type
-        && Resource::Type::RULE != item.m_type
-        && Resource::Type::FILTER != item.m_type
-        && Resource::Type::OUTPUT != item.m_type
+    if (Resource::Type::DECODER != item.m_type && Resource::Type::RULE != item.m_type
+        && Resource::Type::FILTER != item.m_type && Resource::Type::OUTPUT != item.m_type
         && Resource::Type::ENVIRONMENT != item.m_type)
     {
         return base::Error {fmt::format("Invalid resource type \"{}\" for validation",
@@ -423,17 +416,16 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
     // auto validationError = content.validate(schemaIt->second);
     // if (validationError)
     // {
-    //     return base::Error {fmt::format("[Catalog] Schema validation failed for [{}], {}",
+    //     return base::Error {fmt::format("[Catalog] Schema validation failed for [{}],
+    //     {}",
     //                                     item.m_name.fullName(),
     //                                     validationError.value().message)};
     // }
 
     // Builder validator
     std::optional<base::Error> validationError;
-    if (item.m_type == Resource::Type::DECODER
-        || item.m_type == Resource::Type::RULE
-        || item.m_type == Resource::Type::FILTER
-        || item.m_type == Resource::Type::OUTPUT)
+    if (item.m_type == Resource::Type::DECODER || item.m_type == Resource::Type::RULE
+        || item.m_type == Resource::Type::FILTER || item.m_type == Resource::Type::OUTPUT)
     {
         validationError = m_validator->validateAsset(content);
     }
@@ -458,13 +450,11 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
 }
 
 std::optional<base::Error> Catalog::validateResource(const Resource& item,
-                                             const std::string& content) const
+                                                     const std::string& content) const
 {
     // Assert resource is asset or environment
-    if (Resource::Type::DECODER != item.m_type
-        && Resource::Type::RULE != item.m_type
-        && Resource::Type::FILTER != item.m_type
-        && Resource::Type::OUTPUT != item.m_type
+    if (Resource::Type::DECODER != item.m_type && Resource::Type::RULE != item.m_type
+        && Resource::Type::FILTER != item.m_type && Resource::Type::OUTPUT != item.m_type
         && Resource::Type::ENVIRONMENT != item.m_type)
     {
         return base::Error {

@@ -79,10 +79,7 @@ IntOperator strToOp(const helper::base::Parameter& op)
     {
         return IntOperator::DIV;
     }
-    throw std::runtime_error(
-        fmt::format("Engine map builder: \"{}\" method: Operation \"{}\" not supported",
-                    __func__,
-                    op.m_value));
+    throw std::runtime_error(fmt::format("Operation \"{}\" not supported", op.m_value));
 }
 
 /**
@@ -160,11 +157,11 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
             if (helper::base::Parameter::Type::REFERENCE == rValueType)
             {
                 const auto resolvedRValue {event->getString(rValue)};
+
                 if (!resolvedRValue.has_value())
                 {
                     return base::result::makeFailure(event, failureTrace1);
                 }
-
                 else
                 {
                     // TODO: should we check the result?
@@ -213,11 +210,10 @@ opBuilderHelperIntTransformation(const std::string& targetField,
             }
             catch (const std::exception& e)
             {
-                throw std::runtime_error(
-                    fmt::format("Engine map builder: \"{}\" function: Could not convert "
-                                "parameter \"{}\" to int",
-                                name,
-                                rightParameter.m_value));
+                throw std::runtime_error(fmt::format(
+                    "\"{}\" function: Could not convert parameter \"{}\" to int",
+                    name,
+                    rightParameter.m_value));
             }
             if (IntOperator::DIV == op && 0 == std::get<int>(rValue))
             {
@@ -423,17 +419,14 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     name = helper::base::formatHelperName(name, targetField, parameters);
 
     // Get trim type
-    const char trimType = parameters[0].m_value == "begin"
-                              ? 's'
-                              : parameters[0].m_value == "end"
-                                    ? 'e'
-                                    : parameters[0].m_value == "both" ? 'b' : '\0';
+    const char trimType = parameters[0].m_value == "begin"  ? 's'
+                          : parameters[0].m_value == "end"  ? 'e'
+                          : parameters[0].m_value == "both" ? 'b'
+                                                            : '\0';
     if ('\0' == trimType)
     {
-        throw std::runtime_error(
-            fmt::format("\"{}\" function: Invalid trim type \"{}\"",
-                        name,
-                        parameters[0].m_value));
+        throw std::runtime_error(fmt::format(
+            "\"{}\" function: Invalid trim type \"{}\"", name, parameters[0].m_value));
     }
 
     // get trim char
@@ -441,9 +434,7 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     if (trimChar.size() != 1)
     {
         throw std::runtime_error(
-            fmt::format("\"{}\" function: Invalid trim char \"{}\"",
-                        name,
-                        trimChar));
+            fmt::format("\"{}\" function: Invalid trim char \"{}\"", name, trimChar));
     }
 
     // Tracing messages
@@ -753,9 +744,7 @@ base::Expression opBuilderHelperHexToNumber(const std::any& definition)
 
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, traceName)};
-    // const std::string failureTrace1 {
-    //     fmt::format("[{}] -> Failure: ", traceName)
-    //     + "Parameter \"{}\" type is not a string or it doesn't exist"};
+
     const std::string failureTrace1 {
         fmt::format(TRACE_REFERENCE_NOT_FOUND, traceName, sourceField.m_value)};
     const std::string failureTrace2 {fmt::format(
@@ -1110,7 +1099,8 @@ base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
                     (!event->exists(fieldReference)) ? failureTrace1 : failureTrace2);
             }
 
-            const auto splitted = utils::string::split(resolvedReference.value(), separator);
+            const auto splitted =
+                utils::string::split(resolvedReference.value(), separator);
 
             for (const auto& value : splitted)
             {
@@ -1268,7 +1258,7 @@ base::Expression opBuilderHelperRenameField(const std::any& definition)
                 {
                     event->set(targetField, sourceField.m_value);
                 }
-                catch(const std::exception& e)
+                catch (const std::exception& e)
                 {
                     return base::result::makeFailure(event, failureTrace1 + e.what());
                 }
@@ -1364,7 +1354,8 @@ base::Expression opBuilderHelperIPVersionFromIPStr(const std::any& definition)
 //*************************************************
 
 // field: + sys_epoch
-base::Expression opBuilderHelperEpochTimeFromSystem(const std::any& definition) {
+base::Expression opBuilderHelperEpochTimeFromSystem(const std::any& definition)
+{
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     auto parameters = helper::base::processParameters(name, rawParameters);
 

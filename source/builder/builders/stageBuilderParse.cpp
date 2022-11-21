@@ -37,29 +37,28 @@ Builder getStageBuilderParse(std::shared_ptr<Registry> registry)
         std::vector<base::Expression> parserExpressions;
         auto parseObj = jsonDefinition.getObject().value();
 
-        std::transform(parseObj.begin(),
-                       parseObj.end(),
-                       std::back_inserter(parserExpressions),
-                       [registry](auto& tuple)
-                       {
-                           const auto& parserName = std::get<0>(tuple);
-                           const auto& parserValue = std::get<1>(tuple);
-                           base::Expression parserExpression;
-                           try
-                           {
-                               parserExpression = registry->getBuilder(
-                                   "parser." + parserName)(parserValue);
-                           }
-                           catch (const std::exception& e)
-                           {
-                               throw std::runtime_error(
-                                   fmt::format("Error building parser \"{}\": {}",
-                                               parserName,
-                                               e.what()));
-                           }
+        std::transform(
+            parseObj.begin(),
+            parseObj.end(),
+            std::back_inserter(parserExpressions),
+            [registry](auto& tuple)
+            {
+                const auto& parserName = std::get<0>(tuple);
+                const auto& parserValue = std::get<1>(tuple);
+                base::Expression parserExpression;
+                try
+                {
+                    parserExpression =
+                        registry->getBuilder("parser." + parserName)(parserValue);
+                }
+                catch (const std::exception& e)
+                {
+                    throw std::runtime_error(fmt::format(
+                        "Error building parser \"{}\": {}", parserName, e.what()));
+                }
 
-                           return parserExpression;
-                       });
+                return parserExpression;
+            });
 
         return base::Or::create("parse", parserExpressions);
     };

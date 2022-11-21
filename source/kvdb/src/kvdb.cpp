@@ -60,8 +60,7 @@ struct KVDB::Impl
 
         std::unique_lock lk(m_mtx);
         std::vector<std::string> cfNames;
-        auto s =
-            rocksdb::DB::ListColumnFamilies(kOptions.open, m_path, &cfNames);
+        auto s = rocksdb::DB::ListColumnFamilies(kOptions.open, m_path, &cfNames);
         if (s.ok())
         {
             for (auto name : cfNames)
@@ -121,20 +120,11 @@ struct KVDB::Impl
      * @return true if the database can be used
      * @return false if the database can´t be used
      */
-    bool isReady() const
-    {
-        return (m_state == State::Open);
-    }
+    bool isReady() const { return (m_state == State::Open); }
 
-    bool isValid() const
-    {
-        return (m_state != State::Invalid);
-    }
+    bool isValid() const { return (m_state != State::Invalid); }
 
-    const std::string& getName() const
-    {
-        return m_name;
-    }
+    const std::string& getName() const { return m_name; }
 
     rocksdb::ColumnFamilyHandle* getCFHandle(std::string const& colName)
     {
@@ -152,7 +142,7 @@ struct KVDB::Impl
         auto cfh = m_CFHandlesMap.find(colName);
         if (cfh == m_CFHandlesMap.end())
         {
-            //TODO: CF means config?
+            // TODO: CF means config?
             WAZUH_LOG_ERROR("Engine KVDB: Database \"{}\": Failed to get CF \"{}\".",
                             m_name,
                             colName);
@@ -178,8 +168,7 @@ struct KVDB::Impl
         }
 
         rocksdb::ColumnFamilyHandle* handler;
-        rocksdb::Status s =
-            m_db->CreateColumnFamily(kOptions.CF, columnName, &handler);
+        rocksdb::Status s = m_db->CreateColumnFamily(kOptions.CF, columnName, &handler);
         if (s.ok())
         {
             m_CFDescriptors.push_back({columnName, {}});
@@ -220,10 +209,10 @@ struct KVDB::Impl
         if (s.ok())
         {
             m_CFHandlesMap.erase(columnName);
-            m_CFDescriptors.erase(std::remove_if(
-                m_CFDescriptors.begin(),
-                m_CFDescriptors.end(),
-                [&](auto const& des) { return des.name == columnName; }));
+            m_CFDescriptors.erase(std::remove_if(m_CFDescriptors.begin(),
+                                                 m_CFDescriptors.end(),
+                                                 [&](auto const& des)
+                                                 { return des.name == columnName; }));
 
             return true;
         }
@@ -257,9 +246,8 @@ struct KVDB::Impl
         return false;
     }
 
-    bool write(const std::string& key,
-               const std::string& value,
-               const std::string& columnName)
+    bool
+    write(const std::string& key, const std::string& value, const std::string& columnName)
     {
         if (key.empty() || columnName.empty())
         {
@@ -423,9 +411,8 @@ struct KVDB::Impl
         return value;
     }
 
-    bool readPinned(const std::string& key,
-                    std::string& value,
-                    const std::string& columnName)
+    bool
+    readPinned(const std::string& key, std::string& value, const std::string& columnName)
     {
         if (key.empty() || columnName.empty())
         {
@@ -571,8 +558,7 @@ struct KVDB::Impl
     rocksdb::OptimisticTransactionDB* m_txDb;
     rocksdb::DB* m_db;
     std::vector<rocksdb::ColumnFamilyDescriptor> m_CFDescriptors;
-    std::unordered_map<std::string, rocksdb::ColumnFamilyHandle*>
-        m_CFHandlesMap;
+    std::unordered_map<std::string, rocksdb::ColumnFamilyHandle*> m_CFHandlesMap;
 
     std::shared_mutex m_mtx;
 };

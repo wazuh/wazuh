@@ -51,10 +51,9 @@ base::Expression opBuilderFileOutput(const std::any& definition)
 
     auto outputObj = jsonDefinition.getObject().value();
 
-    auto pathPos = std::find_if(outputObj.begin(), outputObj.end(), [](auto& tuple)
-        {
-            return std::get<0>(tuple) == "path";
-        });
+    auto pathPos = std::find_if(outputObj.begin(),
+                                outputObj.end(),
+                                [](auto& tuple) { return std::get<0>(tuple) == "path"; });
     if (outputObj.end() == pathPos)
     {
         throw std::runtime_error(fmt::format(

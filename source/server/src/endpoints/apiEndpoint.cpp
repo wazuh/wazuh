@@ -58,14 +58,17 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
 
     auto protocolHandler = std::make_shared<WazuhStreamProtocol>();
 
-    timer->on<TimerEvent>([client](const auto&, auto& handler) {
-        WAZUH_LOG_INFO("Engine API endpoint: Connection timeout with client ({}).",
-                       client->peer());
-        client->close();
-        handler.close();
-    });
+    timer->on<TimerEvent>(
+        [client](const auto&, auto& handler)
+        {
+            WAZUH_LOG_INFO("Engine API endpoint: Connection timeout with client ({}).",
+                           client->peer());
+            client->close();
+            handler.close();
+        });
 
-    client->on<ErrorEvent>([](const ErrorEvent& event, PipeHandle& client)
+    client->on<ErrorEvent>(
+        [](const ErrorEvent& event, PipeHandle& client)
         {
             WAZUH_LOG_ERROR("Engine API endpoint: Connection error with client ({}): "
                             "code=[{}]; name=[{}]; message=[{}].",
@@ -110,10 +113,9 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                     catch (const std::exception& e)
                     {
                         wresponse = api::WazuhResponse::unknownError();
-                        WAZUH_LOG_ERROR(
-                            "Engine API endpoint: Error with client ({}): {}",
-                            client.peer(),
-                            e.what());
+                        WAZUH_LOG_ERROR("Engine API endpoint: Error with client ({}): {}",
+                                        client.peer(),
+                                        e.what());
                     }
 
                     auto [buffer, size] = addSecureHeader(wresponse.toString());
@@ -135,7 +137,8 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
             }
         });
 
-    client->on<EndEvent>([timer](const EndEvent&, PipeHandle& client)
+    client->on<EndEvent>(
+        [timer](const EndEvent&, PipeHandle& client)
         {
             WAZUH_LOG_INFO("Engine API endpoint: Closing connection of client ({}).",
                            client.peer());
@@ -143,7 +146,8 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
             client.close();
         });
 
-    client->on<CloseEvent>([](const CloseEvent& event, PipeHandle& client)
+    client->on<CloseEvent>(
+        [](const CloseEvent& event, PipeHandle& client)
         {
             WAZUH_LOG_INFO("Engine API endpoint: Connection closed of client ({}).",
                            client.peer());
@@ -165,7 +169,8 @@ APIEndpoint::APIEndpoint(const std::string& config,
     , m_handle {m_loop->resource<PipeHandle>()}
     , m_registry {registry}
 {
-    m_handle->on<ErrorEvent>([](const ErrorEvent& event, PipeHandle& handle)
+    m_handle->on<ErrorEvent>(
+        [](const ErrorEvent& event, PipeHandle& handle)
         {
             WAZUH_LOG_ERROR("Engine API endpoint: Error on endpoint ({}): code=[{}]; "
                             "name=[{}]; message=[{}].",
@@ -175,7 +180,8 @@ APIEndpoint::APIEndpoint(const std::string& config,
                             event.what());
         });
 
-    m_handle->on<ListenEvent>([this](const ListenEvent& event, PipeHandle& handle)
+    m_handle->on<ListenEvent>(
+        [this](const ListenEvent& event, PipeHandle& handle)
         {
             // TODO check if the parameter is correct
             WAZUH_LOG_INFO("Engine API endpoint: Stablishing a new connection with peer "
@@ -184,11 +190,12 @@ APIEndpoint::APIEndpoint(const std::string& config,
             connectionHandler(handle);
         });
 
-    m_handle->on<CloseEvent>([](const CloseEvent& event, PipeHandle& handle)
+    m_handle->on<CloseEvent>(
+        [](const CloseEvent& event, PipeHandle& handle)
         {
             // TODO check if the parameter is correct
             WAZUH_LOG_INFO("Engine API endpoint: Closing connection with peer ({}).",
-                            handle.peer());
+                           handle.peer());
         });
 
     WAZUH_LOG_INFO("Engine API endpoint: Endpoint configured: [{}]", config);

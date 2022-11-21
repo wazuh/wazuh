@@ -27,8 +27,7 @@ KVDBManager::KVDBManager(const std::filesystem::path& DbFolder)
     legacyPath.append("legacy");
     if (std::filesystem::exists(legacyPath))
     {
-        for (const auto& cdbfile :
-             std::filesystem::directory_iterator(legacyPath))
+        for (const auto& cdbfile : std::filesystem::directory_iterator(legacyPath))
         {
             // Read it from the config file?
             if (cdbfile.is_regular_file())
@@ -65,8 +64,7 @@ KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
     return kvdb;
 }
 
-bool KVDBManager::createDBfromCDB(const std::filesystem::path& path,
-                                  bool createIfMissing)
+bool KVDBManager::createDBfromCDB(const std::filesystem::path& path, bool createIfMissing)
 {
     std::ifstream CDBfile(path);
     if (!CDBfile.is_open())
@@ -90,8 +88,7 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path& path,
 
     for (std::string line; getline(CDBfile, line);)
     {
-        line.erase(std::remove_if(line.begin(), line.end(), isspace),
-                   line.end());
+        line.erase(std::remove_if(line.begin(), line.end(), isspace), line.end());
         auto kv = utils::string::split(line, ':');
         if (kv.empty() || kv.size() > 2)
         {

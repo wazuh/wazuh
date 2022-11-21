@@ -118,10 +118,10 @@ public:
         // Filters are not graphs, its treated as a special case.
         // We just add them to the asset map and then inject them into each
         // graph.
-        auto filtersPos = std::find_if(envObj.begin(), envObj.end(), [](auto& tuple)
-            {
-                return std::get<0>(tuple) == FILTERS;
-            });
+        auto filtersPos =
+            std::find_if(envObj.begin(),
+                         envObj.end(),
+                         [](auto& tuple) { return std::get<0>(tuple) == FILTERS; });
 
         if (envObj.end() != filtersPos)
         {
@@ -132,8 +132,8 @@ public:
                 std::inserter(m_assets, m_assets.begin()),
                 [&](auto& json)
                 {
-                    auto assetType = Asset::Type::FILTER;
-                    auto assetName = json.getString().value();
+                    const auto assetType = Asset::Type::FILTER;
+                    const auto assetName = json.getString().value();
                     auto assetJson = storeRead->get(base::Name {assetName});
                     if (std::holds_alternative<base::Error>(assetJson))
                     {
