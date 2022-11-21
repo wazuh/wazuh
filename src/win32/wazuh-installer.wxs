@@ -101,7 +101,7 @@
         <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
 
         <!-- Close the Wazuh agent GUI -->
-        <CustomAction Id="CloseGUI" BinaryKey="InstallerScripts" VBScriptCall="KillGUITask" Return="check" Execute="immediate" Impersonate="no"/>
+        <CustomAction Id="CloseGUI" BinaryKey="InstallerScripts" VBScriptCall="KillGUITask" Return="check" Execute="deferred" Impersonate="no"/>
 
 
         <UI>

@@ -393,7 +393,7 @@ End Function
 Public Function KillGUITask()
     Set WshShell = CreateObject("WScript.Shell")
 
-    taskkill = "taskkill /f /im win32ui.exe"
-    WshShell.run taskkill, 0, True
+    taskkillcommand = "taskkill.exe /f /im win32ui.exe"
+    WshShell.run taskkillcommand, 0, True
 
 End Function
