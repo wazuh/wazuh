@@ -74,12 +74,11 @@ getIntCmpFunction(const std::string& targetField,
             }
             catch (const std::exception& e)
             {
-                std::throw_with_nested(std::runtime_error(
-                    fmt::format("Engine filter builder: \"{}\" function: Parameter "
-                                "\"{}\" could not be converted to int: {}.",
-                                name,
-                                rightParameter.m_value,
-                                e.what())));
+                throw std::runtime_error(fmt::format("\"{}\" function: Parameter \"{}\" "
+                                                     "could not be converted to int: {}.",
+                                                     name,
+                                                     rightParameter.m_value,
+                                                     e.what()));
             }
 
             break;
@@ -90,8 +89,7 @@ getIntCmpFunction(const std::string& targetField,
 
         default:
             throw std::runtime_error(
-                fmt::format("Engine filter builder: \"{}\" function: Parameter \"{}\" "
-                            "has an invalid type ({}).",
+                fmt::format("\"{}\" function: Parameter \"{}\" has an invalid type ({}).",
                             name,
                             rightParameter.m_value,
                             static_cast<int>(rightParameter.m_type)));
@@ -340,7 +338,7 @@ base::Expression opBuilderComparison(const std::any& definition, Operator op, Ty
         }
         default:
             throw std::runtime_error(fmt::format(
-                "Engine filter builder: {} function: Unsupported comparison type ({}).",
+                "{} function: Unsupported comparison type ({}).",
                 name,
                 static_cast<int>(t)));
     }
@@ -468,7 +466,7 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
     auto regex_ptr {std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet)};
     if (!regex_ptr->ok())
     {
-        throw std::runtime_error(fmt::format("Engine filter builder: \"{}\" function: "
+        throw std::runtime_error(fmt::format("\"{}\" function: "
                                              "Invalid regex: \"{}\".",
                                              name,
                                              parameters[0].m_value));
@@ -524,7 +522,7 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
     auto regex_ptr {std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet)};
     if (!regex_ptr->ok())
     {
-        throw std::runtime_error(fmt::format("Engine filter builder: \"{}\" function: "
+        throw std::runtime_error(fmt::format("\"{}\" function: "
                                              "Invalid regex: \"{}\".",
                                              name,
                                              parameters[0].m_value));
@@ -592,7 +590,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     catch (std::exception& e)
     {
         throw std::runtime_error(
-            fmt::format("Engine filter builder: \"{}\" function: IPv4 address \"{}\" "
+            fmt::format("\"{}\" function: IPv4 address \"{}\" "
                         "could not be converted to int: {}",
                         name,
                         network,
@@ -607,7 +605,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     catch (std::exception& e)
     {
         throw std::runtime_error(
-            fmt::format("Engine filter builder: \"{}\" function: IPv4 Mask \"{}\" "
+            fmt::format("\"{}\" function: IPv4 Mask \"{}\" "
                         "could not be converted to int: {}",
                         name,
                         parameters[1].m_value,

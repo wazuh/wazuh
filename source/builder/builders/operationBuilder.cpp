@@ -121,10 +121,8 @@ Expression operationBuilder(const std::any& definition,
     }
     catch (std::exception& e)
     {
-        std::throw_with_nested(std::runtime_error(
-            std::string(
-                "Engine operation builder: Error trying to obtain the arguments: ")
-            + e.what()));
+        throw std::runtime_error(std::string("Error trying to obtain the arguments: ")
+                                 + e.what());
     }
 
     // Call apropiate builder based on value
@@ -139,9 +137,8 @@ Expression operationBuilder(const std::any& definition,
             case OperationType::MAP:
                 return mapReferenceBuilder(std::move(field), std::move(reference));
             default:
-                throw std::runtime_error(fmt::format(
-                    "Engine operation builder: Unsupported operation type \"{}\".",
-                    static_cast<int>(type)));
+                throw std::runtime_error(fmt::format("Unsupported operation type \"{}\"",
+                                                     static_cast<int>(type)));
         }
     }
     else if (value.isString()
@@ -164,10 +161,10 @@ Expression operationBuilder(const std::any& definition,
         }
         catch (const std::exception& e)
         {
-            std::throw_with_nested(std::runtime_error(fmt::format(
-                "Engine operation builder: Exception building helper function \"{}\": {}",
+            throw std::runtime_error(fmt::format(
+                "An error occurred while building the helper function \"{}\": {}",
                 helperName,
-                e.what())));
+                e.what()));
         }
     }
     else if (value.isArray())
@@ -235,9 +232,8 @@ Expression operationBuilder(const std::any& definition,
             case OperationType::MAP:
                 return mapValueBuilder(std::move(field), std::move(value));
             default:
-                throw std::runtime_error(fmt::format(
-                    "Engine operation builder: Unsupported operation type \"{}\".",
-                    static_cast<int>(type)));
+                throw std::runtime_error(fmt::format("Unsupported operation type \"{}\"",
+                                                     static_cast<int>(type)));
         }
     }
 }

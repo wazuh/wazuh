@@ -1,6 +1,7 @@
 #include "asset.hpp"
 
 #include <fmt/format.h>
+#include <logging/logging.hpp>
 
 #include "definitions.hpp"
 #include "registry.hpp"
@@ -16,8 +17,8 @@ std::string Asset::typeToString(Asset::Type type)
         case Asset::Type::OUTPUT: return "output";
         case Asset::Type::FILTER: return "filter";
         default:
-            throw std::runtime_error(fmt::format(
-                "Engine assets: Asset type \"{}\" unknown.", static_cast<int>(type)));
+            throw std::runtime_error(
+                fmt::format("Asset type (\"{}\") unknown", static_cast<int>(type)));
     }
 }
 
@@ -32,9 +33,12 @@ Asset::Asset(const json::Json& jsonDefinition, Asset::Type type, std::shared_ptr
 {
     if (!jsonDefinition.isObject())
     {
+        WAZUH_LOG_DEBUG("Engine assets: \"{}\" method: JSON definition: \"{}\".",
+                        __func__,
+                        jsonDefinition.str());
         throw std::runtime_error(
-            fmt::format("Engine assets: Asset is expected to be an object but it "
-                        "is of type \"{}\". The asset name cannot be obtained.",
+            fmt::format("Asset is expected to be an object but it is of type \"{}\". The "
+                        "asset name cannot be obtained",
                         jsonDefinition.typeName()));
     }
     // Process definitions
@@ -54,26 +58,34 @@ Asset::Asset(const json::Json& jsonDefinition, Asset::Type type, std::shared_ptr
     }
     else
     {
-        throw std::runtime_error(fmt::format(
-            "Engine assets: Asset name is missing: \"{}\".", jsonDefinition.str()));
+        WAZUH_LOG_DEBUG("Engine assets: \"{}\" method: JSON definition: \"{}\".",
+                        __func__,
+                        jsonDefinition.str());
+        if (objectDefinition.end() != namePos && !std::get<1>(*namePos).isString())
+        {
+            throw std::runtime_error(fmt::format("Asset \"name\" field is not a string"));
+        }
+        throw std::runtime_error(fmt::format("Asset \"name\" field is missing"));
     }
 
     const std::string assetName {tmpJson.getString("/name").value_or("")};
 
     // Get parents
-    auto parentsPos = std::find_if(objectDefinition.begin(),
-                                   objectDefinition.end(),
-                                   [](auto tuple) {
-                                       return std::get<0>(tuple) == "sources"
-                                              || std::get<0>(tuple) == "after";
-                                   });
+    auto parentsPos =
+        std::find_if(objectDefinition.begin(), objectDefinition.end(), [](auto tuple)
+            {
+                return std::get<0>(tuple) == "sources" || std::get<0>(tuple) == "after";
+            });
     if (objectDefinition.end() != parentsPos)
     {
         if (!std::get<1>(*parentsPos).isArray())
         {
+            WAZUH_LOG_DEBUG("Engine assets: \"{}\" method: JSON definition: \"{}\".",
+                            __func__,
+                            jsonDefinition.str());
             throw std::runtime_error(
-                fmt::format("Engine assets: Asset \"{}\" parents definition is expected "
-                            "to be an array but it is of type \"{}\".",
+                fmt::format("Asset \"{}\" parents definition is expected "
+                            "to be an array but it is of type \"{}\"",
                             assetName,
                             std::get<1>(*parentsPos).typeName()));
         }
@@ -113,10 +125,13 @@ Asset::Asset(const json::Json& jsonDefinition, Asset::Type type, std::shared_ptr
         }
         catch (const std::exception& e)
         {
-            std::throw_with_nested(std::runtime_error(
-                fmt::format("Engine assets: Building asset \"{}\" check stage failed: {}",
+            WAZUH_LOG_DEBUG("Engine assets: \"{}\" method: JSON definition: \"{}\".",
+                            __func__,
+                            jsonDefinition.str());
+            throw std::runtime_error(
+                fmt::format("The check stage failed while building the asset \"{}\": {}",
                             assetName,
-                            e.what())));
+                            e.what()));
         }
     }
 
@@ -143,10 +158,8 @@ Asset::Asset(const json::Json& jsonDefinition, Asset::Type type, std::shared_ptr
         }
         catch (const std::exception& e)
         {
-            std::throw_with_nested(std::runtime_error(
-                fmt::format("Engine assets: Building asset \"{}\" parse stage failed: {}",
-                            assetName,
-                            e.what())));
+            throw  std::runtime_error(fmt::format(
+                "Building asset \"{}\" parse stage failed: {}", assetName, e.what()));
         }
     }
 
@@ -177,17 +190,18 @@ base::Expression Asset::getExpression() const
             }
             else
             {
-                auto trueExpression = base::Term<base::EngineOp>::create(
-                    "AcceptAll",
-                    [](auto e) { return base::result::makeSuccess(e, "AcceptAll"); });
+                auto trueExpression =
+                    base::Term<base::EngineOp>::create("AcceptAll", [](auto e)
+                        {
+                            return base::result::makeSuccess(e, "AcceptAll");
+                        });
                 asset = base::Implication::create(m_name, trueExpression, m_stages);
             }
             break;
         case Asset::Type::FILTER: asset = base::And::create(m_name, {m_check}); break;
         default:
             throw std::runtime_error(
-                                fmt::format("Engine assets: Asset type not "
-                                            "supported from asset \"{}\".", m_name));
+                fmt::format("Asset type not supported from asset \"{}\"", m_name));
     }
 
     return asset;
