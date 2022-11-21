@@ -82,8 +82,7 @@ struct syntaxChecker
             if (expectedOperator())
             {
                 throw std::runtime_error(
-                    fmt::format("Engine logic expression parser: Unexpected tocken TERM "
-                                "\"{}\" at position \"{}\".",
+                    fmt::format("Unexpected tocken TERM \"{}\" at position \"{}\"",
                                 token.m_text,
                                 token.m_position));
             }
@@ -98,8 +97,7 @@ struct syntaxChecker
             if (expectedOperator())
             {
                 throw std::runtime_error(
-                    fmt::format("Engine logic expression parser: Unexpected unary "
-                                "operator \"NOT\" at position \"{}\".",
+                    fmt::format("Unexpected unary operator \"NOT\" at position \"{}\"",
                                 token.m_position));
             }
 
@@ -113,8 +111,7 @@ struct syntaxChecker
             if (expectedOperand())
             {
                 throw std::runtime_error(
-                    fmt::format("Engine logic expression parser: Unexpected binary "
-                                "operator \"{}\" at position \"{}\".",
+                    fmt::format("Unexpected binary operator \"{}\" at position \"{}\"",
                                 token.m_text,
                                 token.m_position));
             }
@@ -128,10 +125,8 @@ struct syntaxChecker
         {
             if (expectedOperator())
             {
-                throw std::runtime_error(
-                    fmt::format("Engine logic expression parser: Unexpected parenthesis "
-                                "\"(\" at position \"{}\".",
-                                token.m_position));
+                throw std::runtime_error(fmt::format(
+                    "Unexpected parenthesis \"(\" at position \"{}\"", token.m_position));
             }
 
             // Still wanting operand
@@ -143,10 +138,8 @@ struct syntaxChecker
         {
             if (expectedOperand())
             {
-                throw std::runtime_error(
-                    fmt::format("Engine logic expression parser: Unexpected parenthesis "
-                                "\")\" at position \"{}\".",
-                                token.m_position));
+                throw std::runtime_error(fmt::format(
+                    "Unexpected parenthesis \")\" at position \"{}\"", token.m_position));
             }
 
             // Still wanting operator
@@ -187,8 +180,7 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
             }
             if (operatorStack.empty())
             {
-                throw std::runtime_error(
-                    "Engine logic expression parser: Parenthesis are not balanced.");
+                throw std::runtime_error("Parenthesis are not balanced");
             }
             operatorStack.pop();
         }
@@ -210,8 +202,7 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
     {
         if (operatorStack.top().m_type == TokenType::PARENTHESIS_OPEN)
         {
-            throw std::runtime_error(
-                "Engine logic expression parser: Parenthesis are not balanced.");
+            throw std::runtime_error("Parenthesis are not balanced");
         }
         postfix.push(std::move(operatorStack.top()));
         operatorStack.pop();
@@ -236,9 +227,8 @@ std::shared_ptr<Expression> parse(const std::string& rawExpression)
     }
     catch (...)
     {
-        std::throw_with_nested(std::runtime_error(fmt::format(
-            "Engine logic expression parser: Failed to parse expression \"{}\".",
-            rawExpression)));
+        throw std::runtime_error(
+            fmt::format("Failed to parse expression \"{}\"", rawExpression));
     }
 
     return expression;

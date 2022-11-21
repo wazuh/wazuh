@@ -190,8 +190,8 @@ ExpressionList parseLogExpr(const char* expr)
                 if (!parseCapture(tokenizer, expresions))
                 {
                     throw std::runtime_error(
-                        fmt::format("Engine HLP log parser: Invalid Logpar expression at "
-                                    "\"{}\". Unable to parse capture expression.",
+                        fmt::format("Invalid Logpar expression at \"{}\". Unable to "
+                                    "parse capture expression",
                                     std::string(prev)));
                 }
 
@@ -211,9 +211,8 @@ ExpressionList parseLogExpr(const char* expr)
             }
             default:
             {
-                throw std::runtime_error(fmt::format(
-                    "Engine HLP log parser: Invalid token type from token \"{}\".",
-                    token.text));
+                throw std::runtime_error(
+                    fmt::format("Invalid token type from \"{}\".", token.text));
             }
         }
     }

@@ -71,7 +71,7 @@ void configureParserMappings(const std::string& config)
         }
         else
         {
-            WAZUH_LOG_DEBUG(" Engine HLP: \"{}\" method: Invalid parser type \"{}\" for "
+            WAZUH_LOG_DEBUG("Engine HLP: \"{}\" method: Invalid parser type \"{}\" for "
                             "field \"{}\" in the configuration.",
                             __func__,
                             it->value.GetString(),
@@ -178,11 +178,9 @@ Parser createParserFromExpresion(Expression const& exp)
         }
         else
         {
-            throw std::runtime_error(
-                fmt::format("Engine HLP: \"{}\" method: Field \"{}\" in logparse "
-                            "expression is not a valid ECS field.",
-                            __func__,
-                            parser.name));
+            throw std::runtime_error(fmt::format(
+                "Field \"{}\" in logparse expression is not a valid ECS field",
+                parser.name));
         }
     }
 
@@ -219,9 +217,7 @@ std::vector<Parser> getParserList(ExpressionList const& expressions)
             }
             default:
             {
-                throw std::runtime_error(fmt::format(
-                    "Engine HLP: \"{}\" method: Invalid type of parsed expression.",
-                    __func__));
+                throw std::runtime_error("Invalid type of parsed expression");
             }
         }
     }
@@ -258,7 +254,7 @@ static ExecuteResult executeParserList(std::string_view const& event,
                 false,
                 trace
                     + fmt::format(
-                        "Parser[\"{}\"] failure: Missing implementation for parser [{}]",
+                        "Parser[\"{}\"] failure: Missing implementation for parser \"{}\"",
                         parser.name,
                         parser.name)};
         }
@@ -294,28 +290,21 @@ ParserFn getParserOp(std::string_view const& logpar)
     WAZUH_TRACE_FUNCTION;
     if (logpar.empty())
     {
-        throw std::invalid_argument(
-            "Engine HLP: \"{}\" method: Empty Logpar expression.");
+        throw std::invalid_argument("Empty Logpar expression");
     }
 
     ExpressionList expressions = parseLogExpr(logpar.data());
     if (expressions.empty())
     {
         throw std::runtime_error(
-            fmt::format("Engine HLP: \"{}\" method: Empty expression output obtained "
-                        "from parsing \"{}\".",
-                        __func__,
-                        logpar));
+            fmt::format("Empty expression output obtained from parsing \"{}\"", logpar));
     }
 
     auto parserList = getParserList(expressions);
     if (parserList.empty())
     {
-        throw std::runtime_error(
-            fmt::format("Engine HLP: \"{}\" method: Could not convert expressions to "
-                        "parser List from \"{}\".",
-                        __func__,
-                        logpar));
+        throw std::runtime_error(fmt::format(
+            "Could not convert expressions to parser List from \"{}\"", logpar));
     }
 
     ParserFn parseFn = [parserList = std::move(parserList)](std::string_view const& event,
