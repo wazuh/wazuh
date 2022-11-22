@@ -1,0 +1,31 @@
+name: decoder/windows_security/0
+
+sources: 
+  - decoder/windows_event_channel/0
+
+metadata:
+  description: Decoder for Windows Security events
+
+check:
+  - ~event_channel.Event.System.Provider.@Name: Microsoft-Windows-Security-Auditing
+
+
+normalize:
+ - map:
+    - event.module: security
+    - event: +kvdb_get_merge/win_security_categories/$~event_channel.Event.System.EventID.#text
+    - event.logon: +kvdb_get/win_logon_types/$~event_channel.Event.EventData.LogonType
+    - event.UserAccountControl: $~event_channel.Event.EventData.NewUacValue
+    - event: +kvdb_get_merge/win_security_ticket_encryption_types/$~event_channel.Event.EventData.TicketEncryptionType
+    - event: +kvdb_get_merge/win_security_kerberos_status_types/$~event_channel.Event.EventData.Status
+    - event.service.name: $~event_channel.Event.EventData.ServiceName
+    - event.service: +kvdb_get_merge/win_security_service_types/$~event_channel.Event.EventData.ServiceType
+    - event: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid
+    - check:
+       - ~event_channel.Event.EventData.FailureReason: +ef_exists
+       map:
+        - event.logon.failure.reason: +kvdb_get/win_failure_codes/$~event_channel.Event.EventData.FailureReason
+    #- check:
+    #  - ~event_channel.Event.EventData.AuditPolicyChanges: +ef_exists
+    #  map:
+    #    - _tmp.array_policy_changes: +ef_toarray/$~event_channel.Event.EventData.AuditPolicyChanges

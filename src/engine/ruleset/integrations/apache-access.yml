@@ -1,0 +1,32 @@
+name: decoder/apache-access/0
+
+metadata:
+  module: wweb/apache/error
+  title: Apache Error Decoder
+  description: >
+    	Transforms Apache Error log format.
+    	This log format does not contain time zone info. This decoder will asume the timezone of the engine, and will transform the parsed timestamp to UTC.
+
+sources:
+  - decoder/queue-localfile/0
+
+check:
+  - event.original: +ef_exists 
+
+parse:
+  logpar:
+  # 192.168.10.1 - - [10/Jul/1992:10:07:13 +0200] "GET /someicon.ico HTTP/1.1" 404 209
+    - event.original: <source.ip> - - [<event.created/HTTPDATE>] "<http.request.method> <url.original> HTTP/<http.version>" <http.response.status_code> <http.response.body.bytes>
+
+normalize:
+ - map:
+    - event.kind: event
+    - event.dataset: apache.access
+    - event.category: +a_append/web
+    - event.module: apache
+    - service.type: apache
+    - event.outcome: success
+ - check:
+     - http.response.status_code: +i_gt/399
+   map:
+     - event.outcome: failure

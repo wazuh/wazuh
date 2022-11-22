@@ -1,0 +1,12 @@
+{
+    "2":{"type":"Interactive"},
+    "3":{"type":"Network"},
+    "4":{"type":"Batch"},
+    "5":{"type":"Service"},
+    "7":{"type":"Unlock"},
+    "8":{"type":"NetworkCleartext"},
+    "9":{"type":"NewCredentials"},
+    "10":{"type":"RemoteInteractive"},
+    "11":{"type":"CachedInteractive"}
+
+}
