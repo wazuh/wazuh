@@ -3,15 +3,16 @@
 #include <string>
 
 #include <json/json.hpp>
+#include <fmt/format.h>
 
 #include <utils/stringUtils.hpp>
 
 namespace api::kvdb::cmds
 {
 
-api::CommandFn createKvdbCmd()
+api::CommandFn createKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
-    return [](const json::Json& params) -> api::WazuhResponse {
+    return [kvdbManager = std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse {
 
         // get json params
         auto kvdbName = params.getString("/name");
@@ -38,7 +39,7 @@ api::CommandFn createKvdbCmd()
 
         try
         {
-            bool result = KVDBManager::get().CreateAndFillKVDBfromFile(kvdbName.value(), inputFilePathValue);
+            bool result = kvdbManager->CreateAndFillKVDBfromFile(kvdbName.value(), inputFilePathValue);
             if (!result)
             {
                 return api::WazuhResponse {
@@ -59,9 +60,9 @@ api::CommandFn createKvdbCmd()
     };
 }
 
-api::CommandFn deleteKvdbCmd(void)
+api::CommandFn deleteKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
-    return [](const json::Json& params) -> api::WazuhResponse {
+    return [kvdbManager = std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse {
         // get json params
         auto kvdbName = params.getString("/name");
         if (!kvdbName.has_value())
@@ -77,15 +78,15 @@ api::CommandFn deleteKvdbCmd(void)
         }
 
         auto filterLoadedKVDB = params.getBool("/mustBeLoaded");
-        bool listOnlyLoaded = false;
+        bool deleteOnlyLoaded = false;
         if (filterLoadedKVDB.has_value())
         {
-            listOnlyLoaded = filterLoadedKVDB.value();
+            deleteOnlyLoaded = filterLoadedKVDB.value();
         }
 
         try
         {
-            auto result = KVDBManager::get().deleteDB(kvdbName.value(), listOnlyLoaded);
+            auto result = kvdbManager->deleteDB(kvdbName.value(), deleteOnlyLoaded);
             if (!result)
             {
                 return api::WazuhResponse {
@@ -105,102 +106,85 @@ api::CommandFn deleteKvdbCmd(void)
     };
 }
 
-api::CommandFn dumpKvdbCmd(void)
+api::CommandFn dumpKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
-    return [](const json::Json& params) -> api::WazuhResponse
+    return [kvdbManager = std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse
         {
-            std::string kvdbName {};
-            try
-            {
-                auto optKvdbName = params.getString("/name");
-
-                if (!optKvdbName)
-                {
-                    return api::WazuhResponse {
-                        json::Json {"{}"}, 400, "Field \"name\" is missing."};
-                }
-
-                kvdbName = optKvdbName.value();
-            }
-            catch (const std::exception& e)
+            auto optKvdbName = params.getString("/name");
+            if (!optKvdbName)
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"},
-                    400,
-                    std::string("An error ocurred while obtaining the \"name\" field: ")
-                        + e.what()};
+                    json::Json {"{}"}, 400, "Field \"name\" is missing."};
             }
 
+            const std::string kvdbName = optKvdbName.value();
             if (kvdbName.empty())
             {
                 return api::WazuhResponse {
                     json::Json {"{}"}, 400, "Field \"name\" is empty."};
             }
 
-            KVDBHandle kvdbHandle {};
-            try
+            //TODO fix crashing of bug https://github.com/facebook/rocksdb/issues/10474
+            //auto kvdbHandle = kvdbManager->getUnloadedDB(kvdbName);
+            auto kvdbHandle = kvdbManager->getDB(kvdbName);
+            if (!kvdbHandle)
             {
-                kvdbHandle = KVDBManager::get().getDB(kvdbName, false);
+                kvdbManager->addDb(kvdbName, false);
             }
-            catch(const std::exception& e)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"},
-                    400,
-                    std::string("An error ocurred while obtaining the database handle: ")
-                        + e.what()};
-            }
-
-            if (nullptr == kvdbHandle)
+            kvdbHandle = kvdbManager->getDB(kvdbName);
+            if (!kvdbHandle)
             {
                 return api::WazuhResponse {
                     json::Json {"{}"}, 400, "Database could not be found."};
             }
 
-            size_t retVal;
             std::string dbContent;
-            try
+            const size_t retVal = kvdbHandle->dumpContent(dbContent);
+            if(!retVal)
             {
-                retVal = kvdbHandle->dumpContent(dbContent);
-            }
-            catch(const std::exception& e)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"},
-                    400,
-                    std::string("An error ocurred while writing the key-value: ")
-                        + e.what()};
+                return api::WazuhResponse { json::Json {"{}"}, 400, "KVDB has no content"};
             }
 
-            if (!retVal)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "KVDB has no content."};
-            }
             json::Json data;
-            data.setObject("/data");
+            data.setArray("/data");
 
             std::istringstream iss(dbContent);
             for (std::string line; std::getline(iss, line);)
             {
-                auto splittedLine = utils::string::split(line,':');
-                data.setString("/data/" + splittedLine.at(1),splittedLine.at(0));
+                std::string jsonFill;
+                auto splittedLine = utils::string::split(line, ':');
+                const size_t lineMemebers = splittedLine.size();
+                if (!lineMemebers || lineMemebers > 2)
+                {
+                    return api::WazuhResponse { json::Json {"{}"}, 400, "KVDB was ill formed"};
+                }
+                else if (2 == lineMemebers)
+                {
+                    jsonFill = fmt::format("{{\"key\": \"{}\",\"value\": \"{}\"}}",splittedLine.at(0),splittedLine.at(1));
+                }
+                else if (1 == lineMemebers)
+                {
+                    jsonFill = fmt::format("{{\"key\": \"{}\"}}", splittedLine.at(0));
+                }
+
+                json::Json keyValueObject {jsonFill.c_str()};
+                data.appendJson(keyValueObject);
             }
 
             return api::WazuhResponse {std::move(data), 200, "OK"};
         };
 }
 
-api::CommandFn getKvdbCmd(void)
+api::CommandFn getKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
-    return [](const json::Json& params) -> api::WazuhResponse {
+    return [kvdbManager = std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse {
         return api::WazuhResponse {json::Json {"{}"}, 400, ""};
     };
 }
 
-api::CommandFn insertKvdbCmd(void)
+api::CommandFn insertKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
-    return [](const json::Json& params) -> api::WazuhResponse
+    return [kvdbManager = std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse
         {
             std::string kvdbName {};
             std::string key {};
@@ -284,7 +268,7 @@ api::CommandFn insertKvdbCmd(void)
             KVDBHandle kvdbHandle {};
             try
             {
-                kvdbHandle = KVDBManager::get().getDB(kvdbName, false);
+                kvdbHandle = kvdbManager->getDB(kvdbName);
             }
             catch(const std::exception& e)
             {
@@ -326,9 +310,9 @@ api::CommandFn insertKvdbCmd(void)
         };
 }
 
-api::CommandFn listKvdbCmd()
+api::CommandFn listKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
-    return [](const json::Json& params) -> api::WazuhResponse {
+    return [kvdbManager = std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse {
 
         // get json params
         auto kvdbNameToMatch = params.getString("/name");
@@ -345,7 +329,7 @@ api::CommandFn listKvdbCmd()
             listOnlyLoaded = filterLoadedKVDB.value();
         }
 
-        auto kvdbLists = KVDBManager::get().getAvailableKVDBs(listOnlyLoaded);
+        auto kvdbLists = kvdbManager->getAvailableKVDBs(listOnlyLoaded);
         json::Json data;
         data.setArray("/data");
         if (kvdbLists.size())
@@ -371,24 +355,25 @@ api::CommandFn listKvdbCmd()
     };
 }
 
-api::CommandFn removeKvdbCmd(void)
+api::CommandFn removeKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
-    return [](const json::Json& params) -> api::WazuhResponse {
+    return [kvdbManager = std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse {
         return api::WazuhResponse {json::Json {"{}"}, 400, ""};
     };
 }
 
-void registerAllCmds(std::shared_ptr<api::Registry> registry)
+void registerAllCmds(std::shared_ptr<api::Registry> registry,
+                     std::shared_ptr<KVDBManager> kvdbManager)
 {
     try
     {
-        registry->registerCommand("create_kvdb", createKvdbCmd());
-        registry->registerCommand("delete_kvdb", deleteKvdbCmd());
-        registry->registerCommand("dump_kvdb", dumpKvdbCmd());
-        registry->registerCommand("get_kvdb", getKvdbCmd());
-        registry->registerCommand("insert_kvdb", insertKvdbCmd());
-        registry->registerCommand("list_kvdb", listKvdbCmd());
-        registry->registerCommand("remove_kvdb", removeKvdbCmd());
+        registry->registerCommand("create_kvdb", createKvdbCmd(kvdbManager));
+        registry->registerCommand("delete_kvdb", deleteKvdbCmd(kvdbManager));
+        registry->registerCommand("dump_kvdb", dumpKvdbCmd(kvdbManager));
+        registry->registerCommand("get_kvdb", getKvdbCmd(kvdbManager));
+        registry->registerCommand("insert_kvdb", insertKvdbCmd(kvdbManager));
+        registry->registerCommand("list_kvdb", listKvdbCmd(kvdbManager));
+        registry->registerCommand("remove_kvdb", removeKvdbCmd(kvdbManager));
     }
     catch (const std::exception& e)
     {

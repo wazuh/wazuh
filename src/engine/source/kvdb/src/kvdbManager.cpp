@@ -43,7 +43,7 @@ KVDBManager::KVDBManager(const std::filesystem::path& DbFolder)
 }
 
 KVDBHandle
-KVDBManager::addDb(const std::string& name, bool createIfMissing, bool lockForDelete)
+KVDBManager::addDb(const std::string& name, bool createIfMissing)
 {
     std::unique_lock lk(mMtx);
     if (m_availableKVDBs.find(name) != m_availableKVDBs.end())
@@ -62,7 +62,7 @@ KVDBManager::addDb(const std::string& name, bool createIfMissing, bool lockForDe
     auto kvdb = std::make_shared<KVDB>(name, mDbFolder);
     if (kvdb->init(createIfMissing))
     {
-        m_availableKVDBs[name] = std::make_pair(kvdb, lockForDelete);
+        m_availableKVDBs[name] = kvdb;
         return kvdb;
     }
 
@@ -124,18 +124,9 @@ bool KVDBManager::deleteDB(const std::string& name, bool onlyFromMem)
             return false;
         }
 
-        // only delete when it isn't mark as blocked
-        if (!it->second.second)
-        {
-            it->second.first->cleanupOnClose();
-            m_availableKVDBs.erase(it);
-            return true;
-        }
-        else
-        {
-            WAZUH_LOG_ERROR("Database [{}] is in use so it can't be deleted", name);
-            return false;
-        }
+        it->second->cleanupOnClose();
+        m_availableKVDBs.erase(it);
+        return true;
     }
     else
     {
@@ -150,13 +141,13 @@ bool KVDBManager::deleteDB(const std::string& name, bool onlyFromMem)
 
 }
 
-KVDBHandle KVDBManager::getDB(const std::string& name, bool lockForDelete)
+KVDBHandle KVDBManager::getDB(const std::string& name)
 {
     std::shared_lock lk(mMtx);
     auto it = m_availableKVDBs.find(name);
     if (it != m_availableKVDBs.end())
     {
-        auto& db = it->second.first;
+        auto& db = it->second;
         if (!db->isReady())
         {
             // In general it should never happen so we should consider just
@@ -171,10 +162,8 @@ KVDBHandle KVDBManager::getDB(const std::string& name, bool lockForDelete)
             }
         }
 
-        // lock to protect outside deletion
-        it->second.second = lockForDelete;
         // return handle
-        return it->second.first;
+        return it->second;
     }
 
     return nullptr;
@@ -246,4 +235,19 @@ bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName, const std
         }
     }
     return true;
+}
+
+KVDBHandle KVDBManager::getUnloadedDB(const std::string& name)
+{
+    auto dbHandle = std::make_shared<KVDB>(name, mDbFolder);
+    if (dbHandle->init(false, false))
+    {
+        if (dbHandle->isReady())
+        {
+            // return handle
+            return dbHandle;
+        }
+    }
+
+    return nullptr;
 }
