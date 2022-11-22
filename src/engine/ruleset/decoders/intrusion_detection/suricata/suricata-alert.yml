@@ -15,19 +15,22 @@ metadata:
   description: Decoder for Suricata solution
 
 definitions:
-  totalBytes: +i_calc/sum/sourc.bytes/destination/bytes
-  totalPackets: +i_calc/sum/sourc.packets/destination/packets
-  totalTraffic: +i_calc/sum/totalBytes/totalPackets
+  ttotalBytes: +i_calc/sum/$source.bytes
+  totalBytes: +i_calc/sum/$destination.bytes
+  ttotalPackets: +i_calc/sum/$source.packets
+  totalPackets: +i_calc/sum/$destination.packets
+  ttotalTraffic: +i_calc/sum/$totalBytes
+  totalTraffic: +i_calc/sum/$totalPackets
 
 check:
   - ~json.event_type: +s_eq/alert
 
 normalize:
-  - check: +i_gt/$totalBytes/0
+  - check: +i_gt/totalBytes/0
     map:
       - network.bytes: $totalBytes
 
-  - check: +i_gt/$totalPackets/0
+  - check: +i_gt/totalPackets/0
     map:
       - network.packets: $totalPackets
 

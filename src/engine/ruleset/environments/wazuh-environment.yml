@@ -58,6 +58,8 @@ decoders:
   - decoder/syscollector-program-save/0
   - decoder/suricata/0
   - decoder/suricata-http/0
+  - decoder/suricata-alert/0
+  - decoder/suricata-flow/0
 
   # Service decoders
   - decoder/syslog/0
