@@ -18,10 +18,41 @@ metadata:
 check:
   - event.original: +r_match/\S+\s-\s\S+\s\[
 
+definitions:
+  isSuccess: +t_is_not_null/http.response.status_code AND +i_lt/http.response.status_code/400
+  isFailed: +t_is_not_null/http.response.status_code AND +i_ge/http.response.status_code/400
+
 parse:
   logpar:
-    - event.original: <source.address> - <user.name> [<@timestamp/HTTPDATE>] "<http.request.method> <~url.orig> <http.version>" <http.response.status_code> <http.response.body.bytes>?<~basile> "<http.request.referrer>" "<user_agent.original>"
+    - event.original: <source.address> - <user.name> [<@timestamp/HTTPDATE>] "-" <http.response.status_code> -"
+    - event.original: <destination.domain> <source.address> - <user.name> [<@timestamp/HTTPDATE>] "<http.request.method> <~url.orig> <http.version>?<~dash>" <http.response.status_code> <http.response.body.bytes>?<~dash> "<http.request.referrer>" "<user_agent.original>"
+    - event.original: <source.address> - <user.name> [<@timestamp/HTTPDATE>] "<http.request.method> <~url.orig> <http.version>?<~dash>" <http.response.status_code> <http.response.body.bytes>?<~dash> "<http.request.referrer>" "<user_agent.original>"
+    - event.original: \[<@timestamp/HTTPDATE>\] <source.address> <~apache.access.ssl.protocol> <tls.cipher> "<http.request.method> <~url.orig> <http.version>" <http.response.body.bytes>?<~dash>
 
 normalize:
   - map:
-      - ~basile: +ef_delete
+      - ~dash: +ef_delete
+      - event.kind: event
+      - event.category: +a_append/web
+      - event.created: $@timestamp
+      - ~tls: +s_to_array/$~apache.access.ssl.protocol/v
+      - ~tls-1: $~tls/1
+      - tls.version_protocol: $~tls/0
+
+  - check:
+      - ~tls-1: +r_match/\d+\.\d+
+    map:
+      - tls.version: ~tls-1
+
+  - check:
+      - ~tls-1: +r_not_match/\d+\.\d+
+    map:
+      - tls.version: +s_concat/~tls-1/.0
+
+  - check: $isSuccess
+    map:
+      - event.outcome: success
+  - check: $isFailed
+    map:
+      - event.outcome: failure
+# source address to get source.ip or source.domain
