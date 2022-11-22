@@ -130,13 +130,16 @@ bool KVDBManager::deleteDB(const std::string& name, bool onlyFromMem)
     }
     else
     {
-        auto dbHandle = std::make_shared<KVDB>(name, mDbFolder);
-        if (dbHandle->init(false, false))
+        KVDBHandle dbHandle;
+        if(!getKVDBFromFile(name, dbHandle))
+        {
+            return false;
+        }
+        else
         {
             dbHandle->cleanupOnClose();
             return true;
         }
-        return false;
     }
 
 }
@@ -190,8 +193,8 @@ std::vector<std::string> KVDBManager::getAvailableKVDBs(bool loaded)
             auto name = file.path().stem().string();
             if(name != "legacy")
             {
-                auto dbHandle = std::make_shared<KVDB>(name, mDbFolder);
-                if (dbHandle->init(false, false))
+                KVDBHandle dbHandle;
+                if(getKVDBFromFile(name, dbHandle))
                 {
                     list.emplace_back(name);
                 }
@@ -237,17 +240,51 @@ bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName, const std
     return true;
 }
 
-KVDBHandle KVDBManager::getUnloadedDB(const std::string& name)
+bool KVDBManager::getKVDBFromFile(const std::string& name, KVDBHandle& dbHandle)
 {
-    auto dbHandle = std::make_shared<KVDB>(name, mDbFolder);
+    dbHandle = std::make_shared<KVDB>(name, mDbFolder);
     if (dbHandle->init(false, false))
     {
-        if (dbHandle->isReady())
-        {
-            // return handle
-            return dbHandle;
-        }
+        return true;
     }
 
-    return nullptr;
+    return false;
+}
+
+size_t KVDBManager::dumpContent(const std::string& name, std::string& content)
+{
+    size_t result {0};
+    KVDBHandle dbHandle;
+
+    if (getKVDBFromFile(name, dbHandle))
+    {
+        result = dbHandle->dumpContent(content);
+    }
+
+    return result;
+}
+
+bool KVDBManager::writeKey(const std::string& name,
+                             const std::string& key,
+                             const std::string value)
+{
+    bool result = false;
+    KVDBHandle dbHandle;
+    if (getKVDBFromFile(name, dbHandle))
+    {
+        result = dbHandle->write(key, value);
+    }
+    return result;
+}
+
+std::string KVDBManager::getKeyValue(const std::string& name,
+                             const std::string& key)
+{
+    std::string result {};
+    KVDBHandle dbHandle;
+    if (getKVDBFromFile(name, dbHandle))
+    {
+        result = dbHandle->read(key);
+    }
+    return result;
 }
