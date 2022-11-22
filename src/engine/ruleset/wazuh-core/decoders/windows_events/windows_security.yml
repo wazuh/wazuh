@@ -28,4 +28,4 @@ normalize:
     #- check:
     #  - ~event_channel.Event.EventData.AuditPolicyChanges: +ef_exists
     #  map:
-    #    - _tmp.array_policy_changes: +ef_toarray/$~event_channel.Event.EventData.AuditPolicyChanges
+    #    - _tmp.array_policy_changes: +s_to_array/$~event_channel.Event.EventData.AuditPolicyChanges/,
