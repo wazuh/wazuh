@@ -55,15 +55,15 @@ TEST_F(KVDBTest, CreateDeleteKvdbFile)
     ASSERT_EQ(newKvdb->getName(), "NEW_DB");
     ASSERT_TRUE(newKvdb->isReady());
 
-    auto ret2 = kvdbManager.addDb("NEW_DB 2");
+    auto ret2 = kvdbManager->addDb("NEW_DB 2");
     ASSERT_TRUE(ret2);
-    auto newKvdb2 = kvdbManager.getDB("NEW_DB 2");
+    auto newKvdb2 = kvdbManager->getDB("NEW_DB 2");
     ASSERT_EQ(newKvdb2->getName(), "NEW_DB 2");
     ASSERT_TRUE(newKvdb2->isReady());
-    kvdbManager.deleteDB("NEW_DB 2");
+    kvdbManager->deleteDB("NEW_DB 2");
 
-    kvdbManager.deleteDB("NEW_DB");
-    auto deletedKvdb = kvdbManager.getDB("NEW_DB");
+    kvdbManager->deleteDB("NEW_DB");
+    auto deletedKvdb = kvdbManager->getDB("NEW_DB");
     ASSERT_EQ(deletedKvdb, nullptr);
 }
 
@@ -383,22 +383,22 @@ TEST_F(KVDBTest, KVDBConcurrency)
 
 TEST_F(KVDBTest, ListAvailableKVDBs)
 {
-    auto kvdbLists = kvdbManager.getAvailableKVDBs();
+    auto kvdbLists = kvdbManager->getAvailableKVDBs();
     ASSERT_EQ(kvdbLists.size(),1);
 
-    auto ret = kvdbManager.addDb("NEW_DB");
+    auto ret = kvdbManager->addDb("NEW_DB");
     ASSERT_TRUE(ret);
-    kvdbLists = kvdbManager.getAvailableKVDBs();
+    kvdbLists = kvdbManager->getAvailableKVDBs();
     ASSERT_EQ(kvdbLists.size(),2);
 
-    ret = kvdbManager.addDb("NEW_DB_2");
+    ret = kvdbManager->addDb("NEW_DB_2");
     ASSERT_TRUE(ret);
-    kvdbLists = kvdbManager.getAvailableKVDBs();
+    kvdbLists = kvdbManager->getAvailableKVDBs();
     ASSERT_EQ(kvdbLists.size(),3);
-    
-    kvdbManager.deleteDB("NEW_DB");
-    kvdbLists = kvdbManager.getAvailableKVDBs();
-    
+
+    kvdbManager->deleteDB("NEW_DB");
+    kvdbLists = kvdbManager->getAvailableKVDBs();
+
     ASSERT_EQ(kvdbLists.size(),2);
     ASSERT_EQ(kvdbLists.at(0),"NEW_DB_2");
     ASSERT_EQ(kvdbLists.at(1),kTestDBName);

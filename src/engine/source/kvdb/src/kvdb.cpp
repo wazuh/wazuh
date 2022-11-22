@@ -36,7 +36,7 @@ struct KVDB::Impl
 
     Impl(const std::string& dbName, const std::string& folder)
         : m_name(dbName)
-        , m_path(folder + dbName)
+        , m_path(folder + dbName) //TODO: if path doesn't ends with / will cause strange behavior
         , m_txDb(nullptr)
         , m_db(nullptr)
         , m_state(State::Invalid)
@@ -556,8 +556,7 @@ struct KVDB::Impl
         return true;
     }
 
-    // TODO: make it completely in json
-    size_t dumpContent(std::string &dump)
+    size_t dumpContent(std::string& dump)
     {
         rocksdb::Iterator* iter = m_db->NewIterator(kOptions.read);
         iter->SeekToFirst();
