@@ -24,8 +24,14 @@ normalize:
     - check:
        - ~event_channel.Event.EventData.FailureReason: +ef_exists
        map:
-        - event.logon.failure.reason: +kvdb_get/win_failure_codes/$~event_channel.Event.EventData.FailureReason
+        - event.logon.failure.reason: +kvdb_get/win_failure_codes_description/$~event_channel.Event.EventData.FailureReason
     #- check:
     #  - ~event_channel.Event.EventData.AuditPolicyChanges: +ef_exists
     #  map:
     #    - _tmp.array_policy_changes: +s_to_array/$~event_channel.Event.EventData.AuditPolicyChanges/,
+    #    - event.AuditPolicyChangesDescription: +kvdb_for_each/win_failure_codes_description/$_tmp.array_policy_changes
+    #- check:
+    #  - ~event_channel.Event.EventData.AccessList: +ef_exists
+    #  map:
+    #    - _tmp.array_access_masks: +s_to_array/$~event_channel.Event.EventData.AccessMask/,
+    #    - event.AccessMask: +kvdb_for_each/win_failure_codes_description/$_tmp.array_access_masks
