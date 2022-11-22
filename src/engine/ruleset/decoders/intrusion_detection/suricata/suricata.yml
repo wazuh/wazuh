@@ -16,20 +16,17 @@ metadata:
 
 definitions:
   is_good_appProto: +s_ne/~json.app_proto/failed AND +s_ne/~json.app_proto/template AND +s_ne/~json.app_proto/template-rust
-  is_http_success: +s_eq/~json.event_type/http AND +t_is_num/~json.http.status AND +i_lt/~json.http.status/400
-  is_http_failure: +s_eq/~json.event_type/http AND +t_is_num/~json.http.status AND +i_ge/~json.http.status/400
 
 check:
   - ~json.event_type: +ef_exists
 
 normalize:
-  - check: $is_http_success
-    map:
-      - event.outcome: success
+  - map:
+      - event.kind: event
+      - event.category: +a_append/network
 
-  - check: $is_http_failure
-    map:
-      - event.outcome: failure
+  - map:
+      - ~json.app_proto: +s_lo/$~json.app_proto
 
   - check: $is_good_appProto
     map:
@@ -41,4 +38,33 @@ normalize:
       - network.protocol: ftp
 
   - map:
+      - source.address: $~json.src_ip
+      - source.ip: $~json.src_ip
+      - source.port: $~json.src_port
+      - destination.address: $~json.dest_ip
+      - destination.ip: $destination.address
+      - destination.port: $~json.dest_port
+      - network.transport: $~json.proto
+
+      # flow_id
+      # target_field: dns.question.registered_domain
+      # target_subdomain_field: dns.question.subdomain
+      # target_etld_field: dns.question.top_level_domain
+
       - ~json.event_type: +s_lo/$~json.event_type
+      - ~json.netwrok.transport: +s_lo/$~json.network.transport
+      - ~json.proto: +s_lo/$~json.proto
+
+      - destination.mac: $~json.ether.dest_mac
+      - source.mac: $~json.ether.src_mac
+      - destination.packets: $~json.flow.pkts_toclient
+      - source.packets: $~json.flow.pkts_toserver
+      - destination.bytes: $~json.flow.bytes_toclient
+      - source.bytes: $~json.flow.bytes_toserver
+      - event.start: $~json.flow.start
+      - event.end: $~json.flow.end
+
+  - check:
+      - ~json.flow.state: +s_eq/new
+    map:
+      - event.type: +a_append/end
