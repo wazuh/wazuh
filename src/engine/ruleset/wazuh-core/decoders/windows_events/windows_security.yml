@@ -18,20 +18,39 @@ normalize:
     - event.UserAccountControl: $~event_channel.Event.EventData.NewUacValue
     - event: +kvdb_get_merge/win_security_ticket_encryption_types/$~event_channel.Event.EventData.TicketEncryptionType
     - event: +kvdb_get_merge/win_security_kerberos_status_types/$~event_channel.Event.EventData.Status
+    
+    # Service related fields
     - event.service.name: $~event_channel.Event.EventData.ServiceName
     - event.service: +kvdb_get_merge/win_security_service_types/$~event_channel.Event.EventData.ServiceType
+    
+    # Event sub category
     - event: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid
+    
+    # Failure reason for logon
     - check:
        - ~event_channel.Event.EventData.FailureReason: +ef_exists
        map:
         - event.logon.failure.reason: +kvdb_get/win_failure_codes_description/$~event_channel.Event.EventData.FailureReason
+
+    # Audti Policy Changes
     #- check:
     #  - ~event_channel.Event.EventData.AuditPolicyChanges: +ef_exists
     #  map:
     #    - _tmp.array_policy_changes: +s_to_array/$~event_channel.Event.EventData.AuditPolicyChanges/,
     #    - event.AuditPolicyChangesDescription: +kvdb_for_each/win_failure_codes_description/$_tmp.array_policy_changes
+    
+    # Access List
     #- check:
     #  - ~event_channel.Event.EventData.AccessList: +ef_exists
     #  map:
     #    - _tmp.array_access_masks: +s_to_array/$~event_channel.Event.EventData.AccessMask/,
     #    - event.AccessMask: +kvdb_for_each/win_failure_codes_description/$_tmp.array_access_masks
+    
+    # Access Mask - # impossible to do requires bitwise operations
+    #- check:
+    #  - ~event_channel.Event.EventData.AccessMask: +ef_exists
+    #  map:
+    #   - _tmp.array_policy_changes: +s_to_array/$~event_channel.Event.EventData.AuditPolicyChanges/ #whitespace spearator?
+    #   - _tmp.accesMask |= _tmp.array_policy_changes #bitwise OR add?
+    #   
+
