@@ -20,6 +20,8 @@ class KVDBManager
     std::unordered_map<std::string, KVDBHandle> m_availableKVDBs;
     std::shared_mutex mMtx;
 
+    bool getKVDBFromFile(const std::string& name, KVDBHandle& dbHandle);
+
 public:
     KVDBManager(const std::filesystem::path& DbFolder);
     ~KVDBManager() = default;
@@ -33,7 +35,9 @@ public:
     std::vector<std::string> getAvailableKVDBs(bool onlyLoaded = true);
     bool CreateAndFillKVDBfromFile(const std::string& dbName,
                                    const std::filesystem::path& path = "");
-    KVDBHandle getUnloadedDB(const std::string& name);
+    size_t dumpContent(const std::string& name, std::string& content);
+    bool writeKey(const std::string& name, const std::string& key, const std::string value = "");
+    std::string getKeyValue(const std::string& name, const std::string& key);
     void clear()
     {
         if (m_availableKVDBs.size() > 0)
