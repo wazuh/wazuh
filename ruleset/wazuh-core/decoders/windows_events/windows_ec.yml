@@ -1,0 +1,15 @@
+name: decoder/windows_event_channel/0
+
+sources: 
+  - decoder/queue-windowsevents/0
+
+metadata:
+  description: Parent decoder for Windows events  
+
+check:
+  - ~json.Event: +ef_exists
+    
+
+parse:
+  logpar:
+    - ~json.Event: <~event_channel/xml/windows>

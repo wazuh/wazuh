@@ -1,0 +1,12 @@
+name: decoder/queue-windowsevents/0
+
+
+metadata:
+  description: Partial parent decoder for Windows events
+
+check:
+  - wazuh.queue: 102 # eventchannel‘5’
+
+parse:
+  logpar:
+    - event.original: <~json/json>
