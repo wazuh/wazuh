@@ -855,13 +855,11 @@ get_rbac_actions:
       vulnerability:run:
         description: Allow running a vulnerability detector scan
         resources:
-          - node:id
           - "*:*"
         example:
           actions:
             - vulnerability:run
           resources:
-            - node:id:worker1
             - "*:*:*"
           effect: allow
         related_endpoints:

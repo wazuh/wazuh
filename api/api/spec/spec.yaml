@@ -533,11 +533,10 @@ x-rbac-catalog:
     'vulnerability:run':
       description: "Allow running a vulnerability detector scan"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/node:id'
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: [ 'vulnerability:run' ]
-        resources: [ 'node:id:worker1', '*:*:*' ]
+        resources: [ '*:*:*' ]
         effect: "allow"
 
 components:

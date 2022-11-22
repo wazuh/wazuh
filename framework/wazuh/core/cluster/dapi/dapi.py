@@ -43,7 +43,8 @@ class DistributedAPI:
                  debug: bool = False, request_type: str = 'local_master', current_user: str = '',
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
-                 rbac_permissions: Dict = None, nodes: list = None, api_timeout: int = None):
+                 rbac_permissions: Dict = None, nodes: list = None, api_timeout: int = None,
+                 remove_denied_nodes: bool = False):
         """Class constructor.
 
         Parameters
@@ -80,6 +81,8 @@ class DistributedAPI:
             User who started the request
         api_timeout : int
             Timeout set in source API for the request
+        remove_denied_nodes : bool
+            Whether to remove denied (RBAC) nodes from response's failed items or not.
         """
         self.logger = logger
         self.f = f
@@ -108,6 +111,7 @@ class DistributedAPI:
         self.local_client_arg = local_client_arg
         self.api_request_timeout = max(api_timeout, aconf.api_conf['intervals']['request_timeout']) \
             if api_timeout else aconf.api_conf['intervals']['request_timeout']
+        self.remove_denied_nodes = remove_denied_nodes
 
     def debug_log(self, message):
         """Use debug or debug2 depending on the log type.
@@ -564,7 +568,8 @@ class DistributedAPI:
         if isinstance(response, wresults.AffectedItemsWazuhResult):
             for failed in copy(allowed_nodes.failed_items):
                 # Avoid errors coming from 'unknown' node (they are included in the forward)
-                if allowed_nodes.failed_items[failed] == {'unknown'}:
+                if allowed_nodes.failed_items[failed] == {'unknown'} or \
+                        (failed.code == 4000 and self.remove_denied_nodes):
                     del allowed_nodes.failed_items[failed]
             response.add_failed_items_from(allowed_nodes)
 
