@@ -80,6 +80,8 @@ std::string kvdb_loaded;
 std::string kvdb_name;
 std::string kvdb_input_file_path;
 std::string kvdb_input_type;
+std::string kvdb_key;
+std::string kvdb_key_value;
 std::string catalogName;
 bool catalogJsonFormat;
 bool catalogYmlFormat;
@@ -307,13 +309,36 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
         ->required();
 
     // KVDB get subcommand
-    auto get_subcommand = kvdb->add_subcommand(args::SUBCOMMAND_KVDB_GET,"NA.");
+    auto get_subcommand = kvdb->add_subcommand(
+        args::SUBCOMMAND_KVDB_GET,
+        "gets key or key and value (if possible) of a DB named db-name.");
+    // get kvdb name
+    get_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be queried.")
+        ->required();
+    // get key
+    get_subcommand->add_option("-k, --key", args::kvdb_key, "key name to be obtained.")
+        ->required();
 
     // KVDB insert subcommand
     auto insert_subcommand = kvdb->add_subcommand(args::SUBCOMMAND_KVDB_INSERT,"NA.");
+    // insert kvdb name
+    insert_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be queried.")
+        ->required();
+    // insert key
+    insert_subcommand->add_option("-k, --key", args::kvdb_key, "key name to be inserted.")
+        ->required();
+    // insert value
+    insert_subcommand->add_option("-v, --value", args::kvdb_key_value, "value to be inserted on key.")
+        ->default_val("");
 
     // KVDB remove subcommand
     auto remove_subcommand = kvdb->add_subcommand(args::SUBCOMMAND_KVDB_REMOVE,"NA.");
+    // remove kvdb name
+    remove_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be queried.")
+        ->required();
+    // remove key
+    remove_subcommand->add_option("-k, --key", args::kvdb_key, "key name to be removed.")
+        ->required();
 }
 
 void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
@@ -614,7 +639,9 @@ int main(int argc, char* argv[])
                       args::apiEndpoint,
                       action,
                       args::kvdb_input_file_path,
-                      onlyLoaded);
+                      onlyLoaded,
+                      args::kvdb_key,
+                      args::kvdb_key_value);
         }
         else if (app->get_subcommand(args::SUBCOMMAND_CATALOG)->parsed())
         {

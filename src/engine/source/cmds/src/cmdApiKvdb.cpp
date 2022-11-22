@@ -137,9 +137,94 @@ void dumpKvdb(const std::string& socketPath, const std::string& name)
     std::cout << kvdbContent.value() << std::endl;
 }
 
-void getKvdb(const std::string& socketPath, const std::string& name) {}
+void getKvdb(const std::string& socketPath, const std::string& name, const std::string& key)
+{
+    // create request
+    json::Json data {};
+    data.setObject();
+    data.setString("insert", "/action");
+    data.setString(name, "/name");
+    data.setString(key, "/key");
 
-void insertKvdb(const std::string& socketPath, const std::string& name) {}
+    std::string finalCommand = "get_kvdb";
+
+    auto req = api::WazuhRequest::create(finalCommand, "api", data);
+
+    // send request
+    json::Json response {};
+    try
+    {
+        auto responseStr = apiclnt::connection(socketPath, req.toStr());
+        response = json::Json {responseStr.c_str()};
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Error sending request: " << e.what() << std::endl;
+        return;
+    }
+
+    if (response.getInt("/error").value_or(-1) != 200)
+    {
+        std::cerr << "Error getting key value from KVDBs: "
+                  << response.getString("/message").value_or("-") << std::endl;
+        return;
+    }
+
+    auto resultKey = response.getString("/data/key").value();
+    auto resultVal = response.getString("/data/value").value();
+
+    std::string outputMessage =  fmt::format("Value [{}] on key [{}] from DB [{}]", resultVal, resultKey, name);
+    std::cout << outputMessage << std::endl;
+    return;
+}
+
+void insertKvdb(const std::string& socketPath,
+                const std::string& name,
+                const std::string& key,
+                const std::string& keyValue)
+{
+    // create request
+    json::Json data {};
+    data.setObject();
+    data.setString("insert", "/action");
+    data.setString(name, "/name");
+    data.setString(key, "/key");
+    data.setString(keyValue, "/value");
+    auto val = data.prettyStr();
+
+    std::string finalCommand = "insert_kvdb";
+
+    auto req = api::WazuhRequest::create(finalCommand, "api", data);
+
+    // send request
+    json::Json response {};
+    try
+    {
+        auto responseStr = apiclnt::connection(socketPath, req.toStr());
+        response = json::Json {responseStr.c_str()};
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Error sending request: " << e.what() << std::endl;
+        return;
+    }
+
+    if (response.getInt("/error").value_or(-1) != 200)
+    {
+        std::cerr << "Error inserting key value on KVDBs: "
+                  << response.getString("/message").value_or("-") << std::endl;
+        return;
+    }
+
+    std::string outputMessage {fmt::format("Key [{}] inserted on [{}]", key, name)};
+    if("" != keyValue)
+    {
+        outputMessage =  fmt::format("Key value [{},{}] inserted on [{}]", key, keyValue, name);
+    }
+
+    std::cout << outputMessage << std::endl;
+    return;
+}
 
 void listKvdbs(const std::string& socketPath, const std::string& name, bool loaded)
 {
@@ -192,7 +277,7 @@ void listKvdbs(const std::string& socketPath, const std::string& name, bool load
 
 }
 
-void removeKvdb(const std::string& socketPath, const std::string& name) {}
+void removeKvdb(const std::string& socketPath, const std::string& name, const std::string& key) {}
 }
 
 void kvdb(const std::string& kvdbPath,
@@ -200,7 +285,9 @@ void kvdb(const std::string& kvdbPath,
           const std::string& socketPath,
           const std::string& action,
           const std::string& kvdbInputFilePath,
-          bool loaded)
+          bool loaded,
+          const std::string& kvdbKey,
+          const std::string& kvdbKeyValue)
 {
 
     if (action == "create")
@@ -217,11 +304,11 @@ void kvdb(const std::string& kvdbPath,
     }
     else if (action == "get")
     {
-        getKvdb(socketPath, kvdbName);
+        getKvdb(socketPath, kvdbName, kvdbKey);
     }
     else if (action == "insert")
     {
-        insertKvdb(socketPath, kvdbName);
+        insertKvdb(socketPath, kvdbName, kvdbKey, kvdbKeyValue);
     }
     else if (action == "list")
     {
@@ -229,7 +316,7 @@ void kvdb(const std::string& kvdbPath,
     }
     else if (action == "remove")
     {
-        removeKvdb(socketPath,kvdbName);
+        removeKvdb(socketPath, kvdbName, kvdbKey);
     }
 
     return;

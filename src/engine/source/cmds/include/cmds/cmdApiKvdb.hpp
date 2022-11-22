@@ -11,7 +11,9 @@ void kvdb(const std::string& kvdbPath,
           const std::string& socketPath,
           const std::string& action,
           const std::string& kvdbInputFilePath,
-          bool loaded);
+          bool loaded,
+          const std::string& kvdbKey,
+          const std::string& kvdbKeyValue);
 } // namespace cmd
 
 #endif // _CMD_API_KVDB_HPP
