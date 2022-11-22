@@ -103,7 +103,7 @@ void run(const std::string& kvdbPath,
             });
 
         // Register KVDB commands
-        api::kvdb::cmds::registerAllCmds(server->getRegistry());
+        api::kvdb::cmds::registerAllCmds(server->getRegistry(), kvdb);
 
         store = std::make_shared<store::FileDriver>(fileStorage);
         WAZUH_LOG_INFO("Engine \"run\" command: Store successfully initialized.");
