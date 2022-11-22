@@ -421,7 +421,6 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdSimpleExecution)
 
     //check content
     auto kvdbList = response.data().getArray();
-    auto valor = response.data().prettyStr();
     ASSERT_TRUE(kvdbList.has_value());
     ASSERT_EQ(kvdbList.value().size(),2);
     ASSERT_EQ(kvdbList.value().at(0).getString("/value").value(),"ValA");
@@ -474,7 +473,6 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdKVDBOnlyKeys)
 
     //check content
     auto kvdbList = response.data().getArray();
-    auto valor = response.data().prettyStr();
     ASSERT_TRUE(kvdbList.has_value());
     ASSERT_EQ(kvdbList.value().size(),2);
     ASSERT_EQ(kvdbList.value().at(0).getString("/key").value(),"keyA");
@@ -483,14 +481,15 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdKVDBOnlyKeys)
 
 // TODO: "getKvdbCmd" tests section (To avoid conflicts) ---------------------------------
 
-// TODO: "insertKvdbCmd" tests section (To avoid conflicts) ------------------------------
 
-class kvdbAPIInsertCommand : public ::testing::Test
+class kvdbAPIGetCommand : public ::testing::Test
 {
 
 protected:
     static constexpr auto DB_NAME = "TEST_DB";
     static constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
+    static constexpr auto KEY_A = "keyA";
+    static constexpr auto VAL_A = "valA";
 
     std::shared_ptr<KVDBManager> kvdbManager;
 
@@ -501,16 +500,76 @@ protected:
             std::filesystem::remove_all(DB_DIR);
         }
         kvdbManager = std::make_shared<KVDBManager>(DB_DIR);
-        kvdbManager->addDb(DB_NAME, false);
+        kvdbManager->CreateAndFillKVDBfromFile(DB_NAME);
+        kvdbManager->writeKey(DB_NAME,KEY_A,VAL_A);
     }
 
     virtual void TearDown() {}
 };
 
-TEST_F(kvdbAPIInsertCommand, test)
+TEST_F(kvdbAPIGetCommand, SimpleExecutionKeyOnly)
 {
-    api::CommandFn cmd {};
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(cmd = api::kvdb::cmds::getKvdbCmd(kvdbAPIGetCommand::kvdbManager));
+    json::Json params {
+        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}",DB_NAME, KEY_A).c_str()};
+    auto response = cmd(params);
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 200);
+
+    // check response
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), "OK");
+
+    //compare content
+    auto data = response.data().getString("/value");
+    ASSERT_TRUE(data.has_value());
+    ASSERT_EQ(data.value(),VAL_A);
+
+}
+
+// TODO: "insertKvdbCmd" tests section (To avoid conflicts) ------------------------------
+
+class kvdbAPIInsertCommand : public ::testing::Test
+{
+
+protected:
+    static constexpr auto DB_NAME = "TEST_DB";
+    static constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
+    static constexpr auto KEY_A = "keyA";
+    static constexpr auto VAL_A = "valA";
+
+    std::shared_ptr<KVDBManager> kvdbManager;
+
+    virtual void SetUp()
+    {
+        if (std::filesystem::exists(DB_DIR))
+        {
+            std::filesystem::remove_all(DB_DIR);
+        }
+        kvdbManager = std::make_shared<KVDBManager>(DB_DIR);
+        kvdbManager->CreateAndFillKVDBfromFile(DB_NAME);
+    }
+
+    virtual void TearDown() {}
+};
+
+TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyOnly)
+{
+    api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = api::kvdb::cmds::insertKvdbCmd(kvdbAPIInsertCommand::kvdbManager));
+    json::Json params {
+        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}",DB_NAME, KEY_A).c_str()};
+    auto response = cmd(params);
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 200);
+
+    // check response
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), "OK");
+
+    //get key and compare content
+
 }
 
 // TODO: "listKvdbCmd" tests section (To avoid conflicts) --------------------------------
@@ -571,7 +630,6 @@ TEST_F(kvdbAPIListCommand, listKvdbCmdNoneLoaded)
     ASSERT_EQ(response.error(), 200);
 
     //check response
-    auto val = response.data().prettyStr();
     auto kvdbList = response.data().getArray();
     ASSERT_FALSE(kvdbList.has_value());
 }
