@@ -10,16 +10,16 @@
 namespace api::kvdb::cmds
 {
 
-api::CommandFn createKvdbCmd();
-api::CommandFn deleteKvdbCmd();
-api::CommandFn dumpKvdbCmd();
-api::CommandFn getKvdbCmd();
-api::CommandFn insertKvdbCmd();
-api::CommandFn listKvdbCmd();
-api::CommandFn removeKvdbCmd();
+api::CommandFn createKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
+api::CommandFn deleteKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
+api::CommandFn dumpKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
+api::CommandFn getKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
+api::CommandFn insertKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
+api::CommandFn listKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
+api::CommandFn removeKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
 
-void registerAllCmds(std::shared_ptr<api::Registry> registry);
-
+void registerAllCmds(std::shared_ptr<api::Registry> registry,
+                     std::shared_ptr<KVDBManager> kvdbManager);
 } // namespace api::kvdb::cmds
 
 #endif // _KVDB_COMMANDS_HPP
