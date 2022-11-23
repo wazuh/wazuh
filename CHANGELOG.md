@@ -6,9 +6,13 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+
 - Added new unit tests for cluster python module and increased coverage to 99%. ([#9995](https://github.com/wazuh/wazuh/pull/9995))
 - Added file size limitation on cluster integrity sync. ([#11190](https://github.com/wazuh/wazuh/pull/11190))
 - Added unittests for CLIs script files. ([#13424](https://github.com/wazuh/wazuh/pull/13424))
+- Added support for SUSE in Vulnerability Detector. ([#9962](https://github.com/wazuh/wazuh/pull/9962))
+- Added support for Ubuntu Jammy in Vulnerability Detector. ([#13263](https://github.com/wazuh/wazuh/pull/13263))
+- Added a software limit to limit the number of EPS that a manager can process. ([#13608](https://github.com/wazuh/wazuh/pull/13608))
 
 #### Changed
 
@@ -25,6 +29,10 @@ All notable changes to this project will be documented in this file.
 - Refactored the functions in charge of synchronizing files in the cluster. ([#13065](https://github.com/wazuh/wazuh/pull/))
 - Changed MD5 hash function to BLAKE2 for cluster file comparison. ([#13079](https://github.com/wazuh/wazuh/pull/13079))
 - Renamed wazuh-logtest and wazuh-clusterd scripts to follow the same scheme as the other scripts (spaces symbolized with _ instead of -). ([#12926](https://github.com/wazuh/wazuh/pull/12926))
+- The agent key polling module has been ported to wazuh-authd. ([#10865](https://github.com/wazuh/wazuh/pull/10865))
+- Added the update field in the CPE Helper for Vulnerability Detector. ([#13741](https://github.com/wazuh/wazuh/pull/13741))
+- Prevented agents with the same ID from connecting to the manager simultaneously. ([#11702](https://github.com/wazuh/wazuh/pull/11702))
+- wazuh-analysisd, wazuh-remoted and wazuh-db metrics have been extended. ([#13713](https://github.com/wazuh/wazuh/pull/13713))
 
 #### Fixed
 
@@ -43,6 +51,12 @@ All notable changes to this project will be documented in this file.
 - Fixed cluster logger issue printing 'NoneType: None' in error logs. ([#12831](https://github.com/wazuh/wazuh/pull/12831))
 - Fixed unhandled cluster error when reading a malformed configuration. ([#13419](https://github.com/wazuh/wazuh/pull/13419))
 - Fixed framework unit test failures when they are run by the root user. ([#13368](https://github.com/wazuh/wazuh/pull/13368))
+- Fixed a memory leak in analysisd when parsing a disabled Active Response. ([#13405](https://github.com/wazuh/wazuh/pull/13405))
+- Fixed Syscollector delta message handling. ([#13590](https://github.com/wazuh/wazuh/pull/13590))
+- Prevented wazuh-db from deleting queue/diff when cleaning databases. ([#13892](https://github.com/wazuh/wazuh/pull/13892))
+- Fixed multiple data race conditions in Remoted reported by ThreadSanitizer. ([#14981](https://github.com/wazuh/wazuh/pull/14981))
+- Fixed aarch64 OS collection in Remoted to allow WPK upgrades. ([#15151](https://github.com/wazuh/wazuh/pull/15151))
+- Fixed a race condition in Remoted that was blocking agent connections. ([#15165](https://github.com/wazuh/wazuh/pull/15165))
 
 #### Removed
 
@@ -50,6 +64,8 @@ All notable changes to this project will be documented in this file.
 - Removed all the unused exceptions from the exceptions.py file.  ([#10940](https://github.com/wazuh/wazuh/pull/10940))
 - Removed unused execute method from core/utils.py. ([#10740](https://github.com/wazuh/wazuh/pull/10740))
 - Removed unused set_user_name function in framework. ([#13119](https://github.com/wazuh/wazuh/pull/13119))
+- Unused internal calls to wazuh-db have been deprecated. ([#12370](https://github.com/wazuh/wazuh/pull/12370))
+- Debian Stretch support in Vulnerability Detector has been deprecated. ([#14542](https://github.com/wazuh/wazuh/pull/14542))
 
 ### Agent
 
@@ -68,6 +84,7 @@ All notable changes to this project will be documented in this file.
 - Added support for the use of the Azure integration module in Linux agents. ([#10870](https://github.com/wazuh/wazuh/pull/10870))
 - Added new error messages when using invalid credentials with the Azure integration. ([#11852](https://github.com/wazuh/wazuh/pull/11852))
 - Added reparse option to CloudWatchLogs and Google Cloud Storage integrations.  ([#12515](https://github.com/wazuh/wazuh/pull/12515))
+- Wazuh Agent now can be built and run on Alpine Linux. ([#14726](https://github.com/wazuh/wazuh/pull/14726))
 
 #### Changed
 
@@ -84,6 +101,10 @@ All notable changes to this project will be documented in this file.
 - The last_dates.json file of the Azure module has been deprecated in favour of a new ORM and database. ([12849](https://github.com/wazuh/wazuh/pull/12849/))
 - Improved the error handling in AWS integration's `decompress_file` method. ([#12929](https://github.com/wazuh/wazuh/pull/12929))
 - Use zlib for zip compression in cluster synchronization. ([#11190](https://github.com/wazuh/wazuh/pull/11190))
+- The exception handling on Wazuh Agent for Windows has been changed to DWARF2. ([#11354](https://github.com/wazuh/wazuh/pull/11354))
+- The root CA certificate for WPK upgrade has been updated. ([#14696](https://github.com/wazuh/wazuh/pull/14696))
+- Agents on macOS now report the OS name as "macOS" instead of "Mac OS X". ([#14822](https://github.com/wazuh/wazuh/pull/14822))
+- The Systemd service stopping policy has been updated. ([#14816](https://github.com/wazuh/wazuh/pull/14816))
 
 #### Fixed
 
@@ -102,10 +123,17 @@ All notable changes to this project will be documented in this file.
 - Fixed AWS integration's `test_config_format_created_date` unit test. ([#12650](https://github.com/wazuh/wazuh/pull/12650))
 - Fixed created_date field for LB and Umbrella integrations. ([#12630](https://github.com/wazuh/wazuh/pull/12630))
 - Fixed AWS integration database maintenance error managament. ([#13185](https://github.com/wazuh/wazuh/pull/13185))
+- The default delay at GitHub integration has been increased to 30 seconds. ([#13674](https://github.com/wazuh/wazuh/pull/13674))
+- Logcollector has been fixed to allow locations containing colons (:). ([#14706](https://github.com/wazuh/wazuh/pull/14706))
+- Fixed system architecture reporting in Logcollector on Apple Silicon devices. ([#13835](https://github.com/wazuh/wazuh/pull/13835))
+- The C++ standard library and the GCC runtime library is included with Wazuh. ([#14190](https://github.com/wazuh/wazuh/pull/14190))
+- Fixed missing inventory cleaning message in Syscollector. ([#13877](https://github.com/wazuh/wazuh/pull/13877))
+- Fixed WPK upgrade issue on Windows agents due to process locking. ([#15322](https://github.com/wazuh/wazuh/pull/15322))
 
 ### RESTful API
 
 #### Added
+
 - Added new API integration tests for a Wazuh environment without a cluster configuration. ([#10620](https://github.com/wazuh/wazuh/pull/10620))
 - Added wazuh-modulesd tags to `GET /manager/logs` and `GET /cluster/{node_id}/logs` endpoints. ([#11731](https://github.com/wazuh/wazuh/pull/11731))
 - Added python decorator to soft deprecate API endpoints adding deprecation headers to their responses. ([#12438](https://github.com/wazuh/wazuh/pull/12438))
@@ -118,6 +146,7 @@ All notable changes to this project will be documented in this file.
 - Added hash to API logs to identify users logged in with authorization context. ([#12092](https://github.com/wazuh/wazuh/pull/12092))
 
 #### Changed
+
 - Improved `GET /cluster/healthcheck` endpoint and `cluster_control -i more` CLI call in loaded cluster environments. ([#11341](https://github.com/wazuh/wazuh/pull/11341))
 - Removed `never_connected` agent status limitation when trying to assign agents to groups. ([#12595](https://github.com/wazuh/wazuh/pull/12595))
 - Changed API version and upgrade_version filters to work with different version formats. ([#12551](https://github.com/wazuh/wazuh/pull/12551))
@@ -125,6 +154,7 @@ All notable changes to this project will be documented in this file.
 - Added `POST /security/user/authenticate` endpoint and marked `GET /security/user/authenticate` endpoint as deprecated. ([#10397](https://github.com/wazuh/wazuh/pull/10397))
 
 #### Fixed
+
 - Fixed copy functions used for the backup files and upload endpoints to prevent incorrent metadata. ([#12302](https://github.com/wazuh/wazuh/pull/12302))
 - Fixed a bug regarding ids not being sorted with cluster disabled in Active Response and Agent endpoints. ([#11010](https://github.com/wazuh/wazuh/pull/11010))
 - Fixed a bug where `null` values from wazuh-db where returned in API responses. ([#10736](https://github.com/wazuh/wazuh/pull/10736))
@@ -138,8 +168,15 @@ All notable changes to this project will be documented in this file.
 - Removed cmd field from expected responses of syscollector integration tests. ([#12557](https://github.com/wazuh/wazuh/pull/12557))
 
 #### Removed
+
 - Removed null remediations from failed API responses. ([#12053](https://github.com/wazuh/wazuh/pull/12053))
 - Deprecated `GET /agents/{agent_id}/group/is_sync` endpoint. ([#12365](https://github.com/wazuh/wazuh/issues/12365))
+
+### Ruleset
+
+#### Fixed
+
+- Fixed OpenWRT decoder fixed to parse UFW logs. ([#11613](https://github.com/wazuh/wazuh/pull/11613))
 
 ### Other
 
@@ -151,9 +188,14 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Prevented the Ruleset test suite from restarting the manager. ([#10773](https://github.com/wazuh/wazuh/pull/10773))
+- The pthread's rwlock has been replaced with a FIFO-queueing read-write lock. ([#14839](https://github.com/wazuh/wazuh/pull/14839))
+
+#### Fixed
+
+- Fixed Makefile to detect CPU archivecture on Gentoo Linux. ([#14165](https://github.com/wazuh/wazuh/pull/14165))
 
 
-## [v4.3.10]
+## [v4.3.10] - 2022-11-16
 
 ### Manager
 
