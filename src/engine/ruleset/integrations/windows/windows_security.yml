@@ -14,60 +14,92 @@ normalize:
  - map:
     - event.module: security
     - event.code: ~event_channel.Event.EventData.EventID.#text
+
+    # Set categorization fields
     - event: +kvdb_get_merge/win_security_categories/$~event_channel.Event.System.EventID.#text
+    
+    # Set Logon Type
     - event.logon: +kvdb_get/win_logon_types/$~event_channel.Event.EventData.LogonType
     
+    # Set User Account Control
     # NewUacValue 
     # Correct implementation needs bitwise operations - Opting to use raw value
     - event.UserAccountControl: $~event_channel.Event.EventData.NewUacValue
     
-    # kerberos fields
+    
+    # Set Kerberos Ticket Options
     # TicketOptionsDescription - Needs bitwise operations
+
+    # Set Kerberos Encryption Types
     - event: +kvdb_get_merge/win_security_ticket_encryption_types/$~event_channel.Event.EventData.TicketEncryptionType
+    
+    # Set Kerberos Ticket Status Codes
     - event: +kvdb_get_merge/win_security_kerberos_status_types/$~event_channel.Event.EventData.Status
     
+    # Set Service Type and Name
     # Service related fields
     - event.service.name: $~event_channel.Event.EventData.ServiceName
     - event.service: +kvdb_get_merge/win_security_service_types/$~event_channel.Event.EventData.ServiceType
     
-    # Event sub category
-    - event: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid
+    # Set Audit Information
+    # Event sub category - Need to generate actual message
+    - event.Category: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid.#0
+    - event.SubCategory: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid.#1
     
+    # Decode message table
     # Failure reason for logon
     - check:
        - ~event_channel.Event.EventData.FailureReason: +ef_exists
        map:
-       # event.logon.failure.reason
-        - event.logon.failure: +kvdb_get/win_failure_codes_description/$~event_channel.Event.EventData.FailureReason
-
-    # Audti Policy Changes
+        - event.logon.failure.reason: +kvdb_get/win_failure_codes_description/$~event_channel.Event.EventData.FailureReason
+    # Audit Policy Changes
+    # Needs for each element of an array
     #- check:
     #  - ~event_channel.Event.EventData.AuditPolicyChanges: +ef_exists
     #  map:
-    #    - _tmp.array_policy_changes: +s_to_array/$~event_channel.Event.EventData.AuditPolicyChanges/,
-    #    - event.AuditPolicyChangesDescription: +kvdb_for_each/win_failure_codes_description/$_tmp.array_policy_changes
-    
+    #    - ~tmp.array_policy_changes: +s_to_array/$~event_channel.Event.EventData.AuditPolicyChanges/,
+    #    - event.AuditPolicyChangesDescription: +kvdb_for_each/win_failure_codes_description/$~tmp.array_policy_changes
     # Access List
-    #- check:
-    #  - ~event_channel.Event.EventData.AccessList: +ef_exists
-    #  map:
-    #    - _tmp.array_access_masks: +s_to_array/$~event_channel.Event.EventData.AccessMask/,
-    #    - event.AccessMask: +kvdb_for_each/win_failure_codes_description/$_tmp.array_access_masks
-    
+    - check:
+      - ~event_channel.Event.EventData.AccessList: +ef_exists
+      map:
+        - _tmp.array_access_masks: +s_to_array/$~event_channel.Event.EventData.AccessMask/,
+        - event.AccessMask: +kvdb_for_each/win_failure_codes_description/$_tmp.array_access_masks
+    #
     # Access Mask - # Requires bitwise operations
     #- check:
     #  - ~event_channel.Event.EventData.AccessMask: +ef_exists
     #  map:
     #   - _tmp.array_policy_changes: +s_to_array/$~event_channel.Event.EventData.AuditPolicyChanges/ #whitespace spearator?
     #   - _tmp.accesMask |= _tmp.array_policy_changes #bitwise OR add?
-    #   
+       
 
     # Conditional logon status and substatus
-    # Status and substatus KVDBs  have same values but need to be different because they have different key
+    # 4625 and 4776 Set Status and SubStatus
     - check: 
       - event.code: +i_eq/4625 OR +i_eq/4776
       map:
-        # event.logon.failure.status
-        - event.logon.failure: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.Status
-        # event.logon.failure.substatus
-        - event.logon.failure: +kvdb_get/win_logon_substatus/$~event_channel.Event.EventData.SubStatus
+        - event.logon.failure.status: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.Status
+        - event.logon.failure.sub_status: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.SubStatus
+
+    # Set trust type
+    - event.trustType: +kvdb_get/win_trust_types/$~event_channel.Event.EventData.TdoType
+
+    # Set Trust Direction
+    - event.trustDirection: +kvdb_get/win_trust_direction/$~event_channel.Event.EventData.TdoDirection
+
+    # Set Trust Attributes
+    - event.trustAttribute: +kvdb_get/win_trust_attribute/$~event_channel.Event.EventData.TdoAttributes
+
+    # Add Session Events
+    - check: 
+      - event.code: +i_ne/4778 OR +i_ne/4779
+    map:
+      # AccountName to user.name and related.user
+      - event.user.name: ~event_channel.Event.EventData.AccountName
+      - event.related.user: ~event_channel.Event.EventData.AccountName
+      # AccountDomain to user.domain
+      - event.user.domain: ~event_channel.Event.EventData.AccountDomain
+      # ClientAddress to source.ip and related.ip
+      - event.source.ip: ~event_channel.Event.EventData.ClientAddress
+      - event.related.ip: ~event_channel.Event.EventData.ClientAddress
