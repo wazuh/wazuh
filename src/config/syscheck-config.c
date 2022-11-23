@@ -1649,9 +1649,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         /* Get directories */
         else if (strcmp(node[i]->element, xml_directories) == 0) {
             char dirs[OS_MAXSTR];
-
+#ifdef WIN32
             fim_adjust_path(&(node[i]->content));
-
+#endif
             strncpy(dirs, node[i]->content, sizeof(dirs) - 1);
             if (!read_attr(syscheck,
                            dirs,
