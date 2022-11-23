@@ -8,7 +8,6 @@ metadata:
 
 check:
   - ~json.Event: +ef_exists
-    
 
 parse:
   logpar:
