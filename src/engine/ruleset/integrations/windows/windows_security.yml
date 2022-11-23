@@ -64,7 +64,7 @@ normalize:
 
     # Conditional logon status and substatus
     # Status and substatus KVDBs  have same values but need to be different because they have different key
-    - check: +s_eq/event.code/4625 OR +s_eq/event.code/4776
+    - check: +i_eq/event.code/4625 OR +i_eq/event.code/4776
       map:
         # event.logon.failure.status
         - event.logon.failure: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.Status
