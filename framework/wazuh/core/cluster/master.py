@@ -985,7 +985,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         except Exception as e:
                             result['errors_per_folder'][item_key].append(str(e))
         except TimeoutError:
-            result['generic_errors'].append("Timeout processing extra-valid files.")
+            result['generic_errors'].append("timeout processing extra-valid files.")
         except Exception as e:
             result['generic_errors'].append(f"Error updating worker files (extra valid): '{str(e)}'.")
 

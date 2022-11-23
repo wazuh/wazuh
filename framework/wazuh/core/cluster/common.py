@@ -1731,7 +1731,7 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
                 except Exception as e:
                     result['error_messages']['chunks'].append((i, str(e)))
     except TimeoutError:
-        result['error_messages']['others'].append(f'Timeout while processing {info_type} chunks.')
+        result['error_messages']['others'].append(f'timeout while processing {info_type} chunks.')
     except Exception as e:
         result['error_messages']['others'].append(f'Error while processing {info_type} chunks: {e}')
 
