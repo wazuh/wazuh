@@ -20,20 +20,26 @@ namespace cmd
 namespace
 {
 
-constexpr auto API_KVDB_COMMAND {"kvdb"};
+constexpr auto API_KVDB_COMMAND {"_kvdb"};
+constexpr auto API_KVDB_CREATE_SUBCOMMAND {"create"};
+constexpr auto API_KVDB_DELETE_SUBCOMMAND {"delete"};
+constexpr auto API_KVDB_DUMP_SUBCOMMAND {"dump"};
+constexpr auto API_KVDB_GET_SUBCOMMAND {"get"};
+constexpr auto API_KVDB_INSERT_SUBCOMMAND {"insert"};
+constexpr auto API_KVDB_LIST_SUBCOMMAND {"list"};
+constexpr auto API_KVDB_REMOVE_SUBCOMMAND {"remove"};
 
 void createKvdb(const std::string& socketPath, const std::string& kvdb_name, const std::string& kvdbInputFilePath)
 {
     // create request
     json::Json data {};
     data.setObject();
-    data.setString("create", "/action");
+    data.setString(API_KVDB_CREATE_SUBCOMMAND, "/action");
     data.setString(kvdb_name, "/name");
     data.setString(kvdbInputFilePath, "/path");
 
-    std::string finalCommand = "create_kvdb";
-
-    auto req = api::WazuhRequest::create(finalCommand, "api", data);
+    auto req = api::WazuhRequest::create(
+        std::string(API_KVDB_CREATE_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
 
     // send request
     json::Json response {};
@@ -63,13 +69,12 @@ void deleteKvdb(const std::string& socketPath, const std::string& name, bool loa
     // create request
     json::Json data {};
     data.setObject();
-    data.setString("delete", "/action");
+    data.setString(API_KVDB_DELETE_SUBCOMMAND, "/action");
     data.setString(name, "/name");
     data.setBool(loaded, "/mustBeLoaded");
 
-    std::string finalCommand = "delete_kvdb";
-
-    auto req = api::WazuhRequest::create(finalCommand, "api", data);
+    auto req = api::WazuhRequest::create(
+        std::string(API_KVDB_DELETE_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
 
     // send request
     json::Json response {};
@@ -99,12 +104,11 @@ void dumpKvdb(const std::string& socketPath, const std::string& name)
     // create request
     json::Json data {};
     data.setObject();
-    data.setString("dump", "/action");
+    data.setString(API_KVDB_DUMP_SUBCOMMAND, "/action");
     data.setString(name, "/name");
 
-    std::string finalCommand = "dump_kvdb";
-
-    auto req = api::WazuhRequest::create(finalCommand, "api", data);
+    auto req = api::WazuhRequest::create(
+        std::string(API_KVDB_DUMP_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
 
     // send request
     json::Json response {};
@@ -142,13 +146,11 @@ void getKvdb(const std::string& socketPath, const std::string& name, const std::
     // create request
     json::Json data {};
     data.setObject();
-    data.setString("insert", "/action");
+    data.setString(API_KVDB_GET_SUBCOMMAND, "/action");
     data.setString(name, "/name");
     data.setString(key, "/key");
 
-    std::string finalCommand = "get_kvdb";
-
-    auto req = api::WazuhRequest::create(finalCommand, "api", data);
+    auto req = api::WazuhRequest::create(std::string(API_KVDB_GET_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
 
     // send request
     json::Json response {};
@@ -186,14 +188,12 @@ void insertKvdb(const std::string& socketPath,
     // create request
     json::Json data {};
     data.setObject();
-    data.setString("insert", "/action");
+    data.setString(API_KVDB_INSERT_SUBCOMMAND, "/action");
     data.setString(name, "/name");
     data.setString(key, "/key");
     data.setString(keyValue, "/value");
 
-    std::string finalCommand = "insert_kvdb";
-
-    auto req = api::WazuhRequest::create(finalCommand, "api", data);
+    auto req = api::WazuhRequest::create(std::string(API_KVDB_INSERT_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
 
     // send request
     json::Json response {};
@@ -230,13 +230,12 @@ void listKvdbs(const std::string& socketPath, const std::string& name, bool load
     // create request
     json::Json data {};
     data.setObject();
-    data.setString("list", "/action");
+    data.setString(API_KVDB_LIST_SUBCOMMAND, "/action");
     data.setString(name, "/name");
     data.setBool(loaded, "/mustBeLoaded");
 
-    std::string finalCommand = "list_kvdb";
-
-    auto req = api::WazuhRequest::create(finalCommand, "api", data);
+    auto req = api::WazuhRequest::create(
+        std::string(API_KVDB_LIST_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
 
     // send request
     json::Json response {};
@@ -281,13 +280,12 @@ void removeKvdb(const std::string& socketPath, const std::string& name, const st
     // create request
     json::Json data {};
     data.setObject();
-    data.setString("remove", "/action");
+    data.setString(API_KVDB_REMOVE_SUBCOMMAND, "/action");
     data.setString(name, "/name");
     data.setString(key, "/key");
 
-    std::string finalCommand = "remove_kvdb";
-
-    auto req = api::WazuhRequest::create(finalCommand, "api", data);
+    auto req = api::WazuhRequest::create(
+        std::string(API_KVDB_REMOVE_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
 
     // send request
     json::Json response {};
@@ -325,31 +323,31 @@ void kvdb(const std::string& kvdbPath,
           const std::string& kvdbKeyValue)
 {
 
-    if (action == "create")
+    if (action == API_KVDB_CREATE_SUBCOMMAND)
     {
         createKvdb(socketPath,kvdbName,kvdbInputFilePath);
     }
-    else if (action == "delete")
+    else if (action == API_KVDB_DELETE_SUBCOMMAND)
     {
         deleteKvdb(socketPath, kvdbName, loaded);
     }
-    else if (action == "dump")
+    else if (action == API_KVDB_DUMP_SUBCOMMAND)
     {
         dumpKvdb(socketPath,kvdbName);
     }
-    else if (action == "get")
+    else if (action == API_KVDB_GET_SUBCOMMAND)
     {
         getKvdb(socketPath, kvdbName, kvdbKey);
     }
-    else if (action == "insert")
+    else if (action == API_KVDB_INSERT_SUBCOMMAND)
     {
         insertKvdb(socketPath, kvdbName, kvdbKey, kvdbKeyValue);
     }
-    else if (action == "list")
+    else if (action == API_KVDB_LIST_SUBCOMMAND)
     {
         listKvdbs(socketPath, kvdbName, loaded);
     }
-    else if (action == "remove")
+    else if (action == API_KVDB_REMOVE_SUBCOMMAND)
     {
         removeKvdb(socketPath, kvdbName, kvdbKey);
     }

@@ -267,7 +267,6 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
                                                 "list: List all KeyValueDB availables.");
     list_subcommand->add_flag(
         "-l, --loaded", args::kvdb_loaded, "Only list loaded KVDBs");
-
     list_subcommand
         ->add_option("-n, --name",
                      args::kvdb_name,
@@ -281,7 +280,6 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
     // create kvdb name
     create_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be added.")
         ->required();
-
     // create kvdb from file with path
     create_subcommand
         ->add_option("-p, --path",
@@ -303,8 +301,7 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
                             "delete -n db-name: Deletes a KeyValueDB named db-name.");
     delete_subcommand->add_flag(
         "-l, --loaded", args::kvdb_loaded, "Only list loaded KVDBs");
-
-    // KVDB name
+    // delete KVDB name
     delete_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be deleted.")
         ->required();
 
@@ -631,10 +628,6 @@ int main(int argc, char* argv[])
                     ->parsed())
             {
                 action = args::SUBCOMMAND_KVDB_REMOVE;
-            }
-            else
-            {
-                // TODO: ASK -> shouldn't we throw error wrong command ?
             }
 
             bool onlyLoaded = args::kvdb_loaded.empty() ? false : true;
