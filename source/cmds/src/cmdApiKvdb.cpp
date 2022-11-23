@@ -190,7 +190,6 @@ void insertKvdb(const std::string& socketPath,
     data.setString(name, "/name");
     data.setString(key, "/key");
     data.setString(keyValue, "/value");
-    auto val = data.prettyStr();
 
     std::string finalCommand = "insert_kvdb";
 
@@ -277,7 +276,43 @@ void listKvdbs(const std::string& socketPath, const std::string& name, bool load
 
 }
 
-void removeKvdb(const std::string& socketPath, const std::string& name, const std::string& key) {}
+void removeKvdb(const std::string& socketPath, const std::string& name, const std::string& key)
+{
+    // create request
+    json::Json data {};
+    data.setObject();
+    data.setString("remove", "/action");
+    data.setString(name, "/name");
+    data.setString(key, "/key");
+
+    std::string finalCommand = "remove_kvdb";
+
+    auto req = api::WazuhRequest::create(finalCommand, "api", data);
+
+    // send request
+    json::Json response {};
+    try
+    {
+        auto responseStr = apiclnt::connection(socketPath, req.toStr());
+        response = json::Json {responseStr.c_str()};
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Error sending request: " << e.what() << std::endl;
+        return;
+    }
+
+    if (response.getInt("/error").value_or(-1) != 200)
+    {
+        std::cerr << "Error deleting key on KVDB: "
+                  << response.getString("/message").value_or("-") << std::endl;
+        return;
+    }
+
+    std::cout << fmt::format("Key [{}] deleted on [{}]", key, name) << std::endl;
+    return;
+}
+
 }
 
 void kvdb(const std::string& kvdbPath,

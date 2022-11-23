@@ -2,6 +2,7 @@
 #define _KVDBMANAGER_H
 
 #include <filesystem>
+#include <optional>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
@@ -36,8 +37,11 @@ public:
     bool CreateAndFillKVDBfromFile(const std::string& dbName,
                                    const std::filesystem::path& path = "");
     size_t dumpContent(const std::string& name, std::string& content);
-    bool writeKey(const std::string& name, const std::string& key, const std::string value = "");
-    std::string getKeyValue(const std::string& name, const std::string& key);
+    bool writeKey(const std::string& name,
+                  const std::string& key,
+                  const std::string value = "");
+    std::optional<std::string> getKeyValue(const std::string& name, const std::string& key);
+    bool deleteKey(const std::string& name, const std::string& key);
     void clear()
     {
         if (m_availableKVDBs.size() > 0)
