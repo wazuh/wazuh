@@ -499,7 +499,8 @@ stages:
 test_name: GET /sca/{agent_id}/checks/{policy_id}
 
 stages:
-  - name: Get policy ID
+  - &get_policy_id
+    name: Get policy ID
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/001"
@@ -588,7 +589,8 @@ stages:
           expected_condition_command: data.affected_items[0].condition
           expected_command_command: data.affected_items[0].command
 
-  - name: Get item with the file field (q="rules.type=file")
+  - &get_item_file_field
+    name: Get item with the file field (q="rules.type=file")
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
@@ -983,6 +985,26 @@ stages:
           failed_items: [ ]
           total_failed_items: 0
 
+#  - name: Get SCA checks filtering by remediation
+#    request:
+#      verify: False
+#      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        remediation: "{expected_remediation_file:s}"
+#    response:
+#      status_code: 200
+#      json:
+#        error: 0
+#        data:
+#          affected_items:
+#            - <<: *sca_check_result_001_file
+#          total_affected_items: !anyint
+#          failed_items: [ ]
+#          total_failed_items: 0
+
   # select tests
 
   - name: Get SCA checks filtering by rationale
@@ -1009,79 +1031,12 @@ stages:
 test_name: GET /sca/{agent_id}/checks/{policy_id}?remediation
 
 marks:
-  - xfail # Getting SCA check filtering by remediation fails with some values - https://github.com/wazuh/wazuh/issues/15465.
-          # Remove xfail mark and move the Get SCA checks filtering by remediation test to GET /sca/{agent_id}/checks/{policy_id} when #15465 is solved
+  - xfail # Getting SCA check filtering by remediation fails with some values - https://github.com/wazuh/wazuh/issues/15465
 
 stages:
-  - name: Get policy ID
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      save:
-        json:
-          sca_policy_id: data.affected_items[0].policy_id
+  - *get_policy_id
 
-  - name: Get item with the file field (q="rules.type=file")
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        q: "rules.type=file"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - remediation: !anystr
-              rationale: !anystr
-              title: !anystr
-              policy_id: !anystr
-              description: !anystr
-              id: !anyint
-              result: !anystr
-              compliance: !anything
-              rules: !anything
-              condition: !anystr
-              status: !anystr
-              reason: !anystr
-              file: !anystr
-          failed_items: [ ]
-          total_affected_items: !anyint
-          total_failed_items: 0
-      save:
-        json:
-          expected_remediation_file: data.affected_items[0].remediation
-          expected_check_id_file: data.affected_items[0].id
-
-  - name: Get SCA check using query (file)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        q: "id={expected_check_id_file}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - &sca_check_result_file
-              remediation: "{expected_remediation_file}"
-          failed_items: [ ]
-          total_affected_items: 1
-          total_failed_items: 0
+  - *get_item_file_field
 
   - name: Get SCA checks filtering by remediation
     request:
@@ -1098,7 +1053,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - <<: *sca_check_result_file
+            - <<: *sca_check_result_001_file
           total_affected_items: !anyint
           failed_items: [ ]
           total_failed_items: 0
