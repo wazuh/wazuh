@@ -145,8 +145,12 @@ FIMDBErrorCode fim_db_init(int storage,
                     if (json.at("type") == "state")
                     {
                         std::string perm_string = json["data"]["attributes"]["perm"];
-                        json["data"]["attributes"].erase("perm");
-                        json["data"]["attributes"]["perm"] = nlohmann::json::parse(perm_string);
+                        auto perm_json = nlohmann::json::parse(perm_string, nullptr, false);
+                        if (!perm_json.is_discarded())
+                        {
+                            json["data"]["attributes"].erase("perm");
+                            json["data"]["attributes"]["perm"] = perm_json;
+                        }
                         json["data"]["attributes"]["type"] = "file";
                         json["data"]["attributes"].erase("dev");
                         json["data"]["attributes"].erase("last_event");
@@ -191,8 +195,12 @@ FIMDBErrorCode fim_db_init(int storage,
                         else
                         {
                             std::string perm_string = json["data"]["attributes"]["perm"];
-                            json["data"]["attributes"].erase("perm");
-                            json["data"]["attributes"]["perm"] = nlohmann::json::parse(perm_string);
+                            auto perm_json = nlohmann::json::parse(perm_string, nullptr, false);
+                            if (!perm_json.is_discarded())
+                            {
+                                json["data"]["attributes"].erase("perm");
+                                json["data"]["attributes"]["perm"] = perm_json;
+                            }
                             json["data"]["attributes"]["type"] = "registry_key";
                             json["data"]["attributes"]["gid"] = std::to_string(json.at("data").at("attributes").at("gid")
                                                                                .get<uint32_t>());
