@@ -475,7 +475,7 @@ struct KVDB::Impl
             return false;
         }
 
-        rocksdb::Status s = m_db->SingleDelete(kOptions.write, cf, key);
+        rocksdb::Status s = m_db->Delete(kOptions.write, cf, key);
         if (!s.ok())
         {
             WAZUH_LOG_ERROR("Engine KVDB: Database \"{}\": Couldn't delete key \"{}\" "
