@@ -36,12 +36,21 @@ struct KVDB::Impl
 
     Impl(const std::string& dbName, const std::string& folder)
         : m_name(dbName)
-        , m_path(folder + dbName) //TODO: if path doesn't ends with / will cause strange behavior
         , m_txDb(nullptr)
         , m_db(nullptr)
         , m_state(State::Invalid)
         , m_shouldCleanupFiles(false)
     {
+        // If path doesn't ends with "/" will cause undesired behavior
+        if('/' != folder.back())
+        {
+            m_path = folder + "/" + dbName;
+        }
+        else
+        {
+            m_path = folder + dbName;
+        }
+
         WAZUH_ASSERT_MSG(!m_name.empty(),
                          "Engine KVDB: Trying to create a database with an empty name.");
         WAZUH_ASSERT_MSG(
@@ -466,7 +475,7 @@ struct KVDB::Impl
             return false;
         }
 
-        rocksdb::Status s = m_db->Delete(kOptions.write, cf, key);
+        rocksdb::Status s = m_db->SingleDelete(kOptions.write, cf, key);
         if (!s.ok())
         {
             WAZUH_LOG_ERROR("Engine KVDB: Database \"{}\": Couldn't delete key \"{}\" "
@@ -566,6 +575,7 @@ struct KVDB::Impl
             dump += iter->key().ToString() +":" + iter->value().ToString()+"\n";
         }
 
+        delete iter;
         return key_cnt;
     }
 

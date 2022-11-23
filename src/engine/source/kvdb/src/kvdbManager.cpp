@@ -112,9 +112,9 @@ bool KVDBManager::createKVDBfromFile(const std::filesystem::path& path,
     return true;
 }
 
-bool KVDBManager::deleteDB(const std::string& name, bool onlyFromMem)
+bool KVDBManager::deleteDB(const std::string& name, bool onlyLoaded)
 {
-    if (onlyFromMem)
+    if (onlyLoaded)
     {
         std::unique_lock lk(mMtx);
         auto it = m_availableKVDBs.find(name);
@@ -135,11 +135,8 @@ bool KVDBManager::deleteDB(const std::string& name, bool onlyFromMem)
         {
             return false;
         }
-        else
-        {
-            dbHandle->cleanupOnClose();
-            return true;
-        }
+        dbHandle->cleanupOnClose();
+        return true;
     }
 
 }
@@ -174,7 +171,6 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
 
 std::vector<std::string> KVDBManager::getAvailableKVDBs(bool loaded)
 {
-    // this should list all the dbs not just the loaded ones
     std::vector<std::string> list;
     if (loaded)
     {
@@ -265,8 +261,8 @@ size_t KVDBManager::dumpContent(const std::string& name, std::string& content)
 }
 
 bool KVDBManager::writeKey(const std::string& name,
-                             const std::string& key,
-                             const std::string value)
+                           const std::string& key,
+                           const std::string value)
 {
     bool result = false;
     KVDBHandle dbHandle;
@@ -277,14 +273,38 @@ bool KVDBManager::writeKey(const std::string& name,
     return result;
 }
 
-std::string KVDBManager::getKeyValue(const std::string& name,
-                             const std::string& key)
+std::optional<std::string> KVDBManager::getKeyValue(const std::string& name,
+                                                    const std::string& key)
 {
-    std::string result {};
+    std::optional<std::string> result = std::nullopt;
+    KVDBHandle dbHandle;
+
+    if (getKVDBFromFile(name, dbHandle))
+    {
+        if (dbHandle->hasKey(key))
+        {
+            result = dbHandle->read(key);
+        }
+    }
+    return result;
+}
+
+bool KVDBManager::deleteKey(const std::string& name, const std::string& key)
+{
+    bool result = false;
     KVDBHandle dbHandle;
     if (getKVDBFromFile(name, dbHandle))
     {
-        result = dbHandle->read(key);
+        if (dbHandle->hasKey(key))
+        {
+            result = dbHandle->deleteKey(key);
+            if (result)
+            {
+                // double check and workaround for not synced deletion
+                auto checkedValue = dbHandle->read(key);
+                result = checkedValue.empty();
+            }
+        }
     }
     return result;
 }
