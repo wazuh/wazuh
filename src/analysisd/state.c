@@ -58,7 +58,7 @@ STATIC analysisd_agent_state_t * get_node(const char *agent_id);
  * @brief Clean non active agents from agents state
  * @param sock Wazuh DB socket
  */
-STATIC void w_analysisd_clean_agents_state(int * sock);
+STATIC void w_analysisd_clean_agents_state(int *sock);
 
 /**
  * @brief Increment agent decoded events counter for agents
@@ -547,7 +547,7 @@ STATIC analysisd_agent_state_t * get_node(const char *agent_id) {
     }
 }
 
-STATIC void w_analysisd_clean_agents_state(int * sock) {
+STATIC void w_analysisd_clean_agents_state(int *sock) {
     int *active_agents = NULL;
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
