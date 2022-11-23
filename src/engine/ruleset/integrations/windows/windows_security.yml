@@ -18,7 +18,7 @@ normalize:
     - event.logon: +kvdb_get/win_logon_types/$~event_channel.Event.EventData.LogonType
     
     # NewUacValue 
-    # Correct implementation needs bitwise operations
+    # Correct implementation needs bitwise operations - Opting to use raw value
     - event.UserAccountControl: $~event_channel.Event.EventData.NewUacValue
     
     # kerberos fields
@@ -63,12 +63,10 @@ normalize:
     #   
 
     # Conditional logon status and substatus
+    # Status and substatus KVDBs  have same values but need to be different because they have different key
     - check: +s_eq/event.code/4625 OR +s_eq/event.code/4776
       map:
         # event.logon.failure.status
         - event.logon.failure: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.Status
-        - event.logon.failure.sub_status: ~event_channel.Event.EventData.SubStatus  
-    - check:
-      - event.logon.failure: +ef_not_exists
-      map:
-        - event.logon.failure.sub_status: +kvdb_get/win_logon_substatus/$~event_channel.Event.EventData.SubStatus
+        # event.logon.failure.substatus
+        - event.logon.failure: +kvdb_get/win_logon_substatus/$~event_channel.Event.EventData.SubStatus
