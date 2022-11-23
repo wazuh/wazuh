@@ -198,7 +198,7 @@ api::CommandFn getKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
                     json::Json {"{}"}, 400, "Field \"key\" is empty."};
             }
 
-            std::string retVal {};
+            std::optional<std::string> retVal {};
             try
             {
                 retVal = kvdbManager->getKeyValue(kvdbName,key);
@@ -212,10 +212,15 @@ api::CommandFn getKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
                         + e.what()};
             }
 
+            if (!retVal.has_value())
+            {
+                return api::WazuhResponse {json::Json {"{}"}, 400, "Key Not found."};
+            }
+
             json::Json data {};
             data.setObject("/data");
             data.setString(key,"/key");
-            data.setString(retVal,"/value");
+            data.setString(retVal.value(),"/value");
             return api::WazuhResponse {std::move(data), 200, "OK"};
         };
 }
@@ -331,9 +336,63 @@ api::CommandFn listKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
 
 api::CommandFn removeKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
-    return [kvdbManager = std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse {
-        return api::WazuhResponse {json::Json {"{}"}, 400, ""};
-    };
+    return [kvdbManager = std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse
+        {
+            std::string kvdbName {};
+            std::string key {};
+
+            auto optKvdbName = params.getString("/name");
+
+            if (!optKvdbName.has_value())
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Field \"name\" is missing."};
+            }
+            kvdbName = optKvdbName.value();
+
+            if (kvdbName.empty())
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Field \"name\" is empty."};
+            }
+
+            auto optKey = params.getString("/key");
+
+            if (!optKey.has_value())
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Field \"key\" is missing."};
+            }
+            key = optKey.value();
+
+            if (key.empty())
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Field \"key\" is empty."};
+            }
+
+            bool retVal = false;
+            try
+            {
+                retVal = kvdbManager->deleteKey(kvdbName,key);
+            }
+            catch(const std::exception& e)
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"},
+                    400,
+                    std::string("An error ocurred while deleting the key: ")
+                        + e.what()};
+            }
+
+            if (!retVal)
+            {
+                return api::WazuhResponse {
+                    json::Json {"{}"}, 400, "Key could not be deleted."};
+            }
+
+            return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
+        };
 }
 
 void registerAllCmds(std::shared_ptr<api::Registry> registry,
