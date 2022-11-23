@@ -57,6 +57,7 @@ All notable changes to this project will be documented in this file.
 - Fixed multiple data race conditions in Remoted reported by ThreadSanitizer. ([#14981](https://github.com/wazuh/wazuh/pull/14981))
 - Fixed aarch64 OS collection in Remoted to allow WPK upgrades. ([#15151](https://github.com/wazuh/wazuh/pull/15151))
 - Fixed a race condition in Remoted that was blocking agent connections. ([#15165](https://github.com/wazuh/wazuh/pull/15165))
+- Fixed Virustotal integration to support non UTF-8 characters. ([#13531](https://github.com/wazuh/wazuh/pull/13531))
 
 #### Removed
 
@@ -129,6 +130,7 @@ All notable changes to this project will be documented in this file.
 - The C++ standard library and the GCC runtime library is included with Wazuh. ([#14190](https://github.com/wazuh/wazuh/pull/14190))
 - Fixed missing inventory cleaning message in Syscollector. ([#13877](https://github.com/wazuh/wazuh/pull/13877))
 - Fixed WPK upgrade issue on Windows agents due to process locking. ([#15322](https://github.com/wazuh/wazuh/pull/15322))
+- Fixed FIM injection vulnerabilty when using `prefilter_cmd` option. ([#13044](https://github.com/wazuh/wazuh/pull/13044))
 
 ### RESTful API
 
