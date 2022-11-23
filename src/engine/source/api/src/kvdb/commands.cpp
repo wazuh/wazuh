@@ -37,25 +37,16 @@ api::CommandFn createKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
             inputFilePathValue = inputFilePath.value();
         }
 
-        try
-        {
-            bool result = kvdbManager->CreateAndFillKVDBfromFile(kvdbName.value(),
-                                                                 inputFilePathValue);
-            if (!result)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"},
-                    400,
-                    fmt::format("DB with name [{}] already exists.", kvdbName.value())};
-            }
-        }
-        catch (const std::exception& e)
+        bool result = kvdbManager->CreateAndFillKVDBfromFile(kvdbName.value(),
+                                                                inputFilePathValue);
+        if (!result)
         {
             return api::WazuhResponse {
-                json::Json {"{}"}, 400, "Missing [name] string parameter"};
+                json::Json {"{}"},
+                400,
+                fmt::format("DB with name [{}] already exists.", kvdbName.value())};
         }
 
-        json::Json data;
         return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
     };
 }
@@ -84,21 +75,13 @@ api::CommandFn deleteKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
             deleteOnlyLoaded = filterLoadedKVDB.value();
         }
 
-        try
-        {
-            auto result = kvdbManager->deleteDB(kvdbName.value(), deleteOnlyLoaded);
-            if (!result)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"},
-                    400,
-                    fmt::format("DB with name [{}] doesn't exists or is in use.", kvdbName.value())};
-            }
-        }
-        catch (const std::exception& e)
+        auto result = kvdbManager->deleteDB(kvdbName.value(), deleteOnlyLoaded);
+        if (!result)
         {
             return api::WazuhResponse {
-                json::Json {"{}"}, 400, "Missing [name] string parameter"};
+                json::Json {"{}"},
+                400,
+                fmt::format("DB with name [{}] doesn't exists or is in use.", kvdbName.value())};
         }
 
         return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
@@ -113,14 +96,14 @@ api::CommandFn dumpKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
             if (!optKvdbName)
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"name\" is missing."};
+                    json::Json {"{}"}, 400, "Field [name] is missing."};
             }
 
             const std::string kvdbName = optKvdbName.value();
             if (kvdbName.empty())
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"name\" is empty."};
+                    json::Json {"{}"}, 400, "Field [name] is empty."};
             }
 
             std::string dbContent;
@@ -173,14 +156,14 @@ api::CommandFn getKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
             if (!optKvdbName.has_value())
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"name\" is missing."};
+                    json::Json {"{}"}, 400, "Field [name] is missing."};
             }
             kvdbName = optKvdbName.value();
 
             if (kvdbName.empty())
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"name\" is empty."};
+                    json::Json {"{}"}, 400, "Field [name] is empty."};
             }
 
             auto optKey = params.getString("/key");
@@ -188,29 +171,17 @@ api::CommandFn getKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
             if (!optKey.has_value())
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"key\" is missing."};
+                    json::Json {"{}"}, 400, "Field [key] is missing."};
             }
             key = optKey.value();
 
             if (key.empty())
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"key\" is empty."};
+                    json::Json {"{}"}, 400, "Field [key] is empty."};
             }
 
-            std::optional<std::string> retVal {};
-            try
-            {
-                retVal = kvdbManager->getKeyValue(kvdbName,key);
-            }
-            catch(const std::exception& e)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"},
-                    400,
-                    std::string("An error ocurred while writing the key-value: ")
-                        + e.what()};
-            }
+            auto retVal = kvdbManager->getKeyValue(kvdbName,key);
 
             if (!retVal.has_value())
             {
@@ -238,14 +209,14 @@ api::CommandFn insertKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
             if (!optKvdbName.has_value())
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"name\" is missing."};
+                    json::Json {"{}"}, 400, "Field [name] is missing."};
             }
             kvdbName = optKvdbName.value();
 
             if (kvdbName.empty())
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"name\" is empty."};
+                    json::Json {"{}"}, 400, "Field [name] is empty."};
             }
 
             auto optKey = params.getString("/key");
@@ -253,31 +224,19 @@ api::CommandFn insertKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
             if (!optKey.has_value())
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"key\" is missing."};
+                    json::Json {"{}"}, 400, "Field [key] is missing."};
             }
             key = optKey.value();
 
             if (key.empty())
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"key\" is empty."};
+                    json::Json {"{}"}, 400, "Field [key] is empty."};
             }
 
             value = params.getString("/value").value_or("");
 
-            bool retVal = false;
-            try
-            {
-                retVal = kvdbManager->writeKey(kvdbName,key,value);
-            }
-            catch(const std::exception& e)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"},
-                    400,
-                    std::string("An error ocurred while writing the key-value: ")
-                        + e.what()};
-            }
+            bool retVal = kvdbManager->writeKey(kvdbName,key,value);
 
             if (!retVal)
             {
@@ -346,14 +305,14 @@ api::CommandFn removeKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
             if (!optKvdbName.has_value())
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"name\" is missing."};
+                    json::Json {"{}"}, 400, "Field [name] is missing."};
             }
             kvdbName = optKvdbName.value();
 
             if (kvdbName.empty())
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"name\" is empty."};
+                    json::Json {"{}"}, 400, "Field [name] is empty."};
             }
 
             auto optKey = params.getString("/key");
@@ -361,29 +320,17 @@ api::CommandFn removeKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
             if (!optKey.has_value())
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"key\" is missing."};
+                    json::Json {"{}"}, 400, "Field [key] is missing."};
             }
             key = optKey.value();
 
             if (key.empty())
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Field \"key\" is empty."};
+                    json::Json {"{}"}, 400, "Field [key] is empty."};
             }
 
-            bool retVal = false;
-            try
-            {
-                retVal = kvdbManager->deleteKey(kvdbName,key);
-            }
-            catch(const std::exception& e)
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"},
-                    400,
-                    std::string("An error ocurred while deleting the key: ")
-                        + e.what()};
-            }
+            bool retVal = kvdbManager->deleteKey(kvdbName,key);
 
             if (!retVal)
             {

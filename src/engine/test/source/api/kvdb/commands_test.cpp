@@ -374,7 +374,7 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdEmptyName)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Field \"name\" is empty.");
+    ASSERT_EQ(response.message().value(), "Field [name] is empty.");
 }
 
 TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdNoParameters)
@@ -389,7 +389,7 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdNoParameters)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Field \"name\" is missing.");
+    ASSERT_EQ(response.message().value(), "Field [name] is missing.");
 }
 
 TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdSimpleExecution)
