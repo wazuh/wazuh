@@ -1496,7 +1496,7 @@ def test_send_data_to_wdb_ko(WazuhDBConnection_mock):
 
     result = cluster_common.send_data_to_wdb(data={'chunks': ['[{"data": ""}]'], 'payload': {}, 'set_data_command': ''},
                                              timeout=15, info_type='agent-groups')
-    assert result['error_messages']['others'] == ['Timeout while processing agent-groups chunks.']
+    assert result['error_messages']['others'] == ['timeout while processing agent-groups chunks.']
 
     WazuhDBConnection_mock.return_value.exceptions += 1
     result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},

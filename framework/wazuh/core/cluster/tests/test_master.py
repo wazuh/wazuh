@@ -1480,7 +1480,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                               timeout=timeout)
 
             assert result == {'total_updated': 0, 'errors_per_folder': defaultdict(list),
-                              'generic_errors': ['Timeout processing extra-valid files.']}
+                              'generic_errors': ['timeout processing extra-valid files.']}
 
             # Test the Except present in the second if
             isfile_mock.side_effect = Exception
