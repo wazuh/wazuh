@@ -16,9 +16,13 @@ normalize:
     - event.code: ~event_channel.Event.EventData.EventID.#text
     - event: +kvdb_get_merge/win_security_categories/$~event_channel.Event.System.EventID.#text
     - event.logon: +kvdb_get/win_logon_types/$~event_channel.Event.EventData.LogonType
+    
+    # NewUacValue 
+    # Correct implementation needs bitwise operations
     - event.UserAccountControl: $~event_channel.Event.EventData.NewUacValue
     
     # kerberos fields
+    # TicketOptionsDescription - Needs bitwise operations
     - event: +kvdb_get_merge/win_security_ticket_encryption_types/$~event_channel.Event.EventData.TicketEncryptionType
     - event: +kvdb_get_merge/win_security_kerberos_status_types/$~event_channel.Event.EventData.Status
     
@@ -33,7 +37,8 @@ normalize:
     - check:
        - ~event_channel.Event.EventData.FailureReason: +ef_exists
        map:
-        - event.logon.failure.reason: +kvdb_get/win_failure_codes_description/$~event_channel.Event.EventData.FailureReason
+       # event.logon.failure.reason
+        - event.logon.failure: +kvdb_get/win_failure_codes_description/$~event_channel.Event.EventData.FailureReason
 
     # Audti Policy Changes
     #- check:
@@ -60,9 +65,9 @@ normalize:
     # Conditional logon status and substatus
     - check: +s_eq/event.code/4625 OR +s_eq/event.code/4776
       map:
-        - event.logon.failure.status: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.Status
-        - event.logon.failure.sub_status: ~event_channel.Event.EventData.SubStatus
-    
+        # event.logon.failure.status
+        - event.logon.failure: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.Status
+        - event.logon.failure.sub_status: ~event_channel.Event.EventData.SubStatus  
     - check:
       - event.logon.failure: +ef_not_exists
       map:

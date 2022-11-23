@@ -1,0 +1,7 @@
+{
+    "0x0": {"StatusDescription": "KDC_ERR_NONE"},
+    "0x1": {"StatusDescription":"KDC_ERR_NAME_EXP"},
+    "0x2": {"StatusDescription":"KDC_ERR_SERVICE_EXP"},
+    "0x3": {"StatusDescription":"KDC_ERR_BAD_PVNO"},
+    "0x4": {"StatusDescription":"KDC_ERR_C_OLD_MAST_KVNO"}
+}
