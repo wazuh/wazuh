@@ -5,7 +5,7 @@
 
 #include <gtest/gtest.h>
 
-// TODO: "createKvdbCmd" tests section (To avoid conflicts) ------------------------------
+// "createKvdbCmd" tests section
 class kvdbAPICreateCommand : public ::testing::Test
 {
 
@@ -250,7 +250,7 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdNonExistingFile)
     ASSERT_EQ(response.error(), 400);
 }
 
-// TODO: "deleteKvdbCmd" tests section (To avoid conflicts) ------------------------------
+// "deleteKvdbCmd" tests section
 class kvdbAPIDeleteCommand : public ::testing::Test
 {
 
@@ -331,7 +331,7 @@ TEST_F(kvdbAPIDeleteCommand, deleteKvdbCmdDoesntExistLoaded)
     ASSERT_EQ(kvdbAPIDeleteCommand::getNumberOfKVDBLoaded(), 1);
 }
 
-// TODO: "dumpKvdbCmd" tests section (To avoid conflicts) --------------------------------
+// "dumpKvdbCmd" tests section
 class kvdbAPIDumpCommand : public ::testing::Test
 {
 
@@ -479,8 +479,7 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdKVDBOnlyKeys)
     ASSERT_EQ(kvdbList.value().at(1).getString("/key").value(),"keyB");
 }
 
-// TODO: "getKvdbCmd" tests section (To avoid conflicts) ---------------------------------
-
+// "getKvdbCmd" tests section
 
 class kvdbAPIGetCommand : public ::testing::Test
 {
@@ -528,7 +527,7 @@ TEST_F(kvdbAPIGetCommand, SimpleExecutionKeyOnly)
 
 }
 
-// TODO: "insertKvdbCmd" tests section (To avoid conflicts) ------------------------------
+// "insertKvdbCmd" tests section
 
 class kvdbAPIInsertCommand : public ::testing::Test
 {
@@ -572,7 +571,7 @@ TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyOnly)
 
 }
 
-// TODO: "listKvdbCmd" tests section (To avoid conflicts) --------------------------------
+// "listKvdbCmd" tests section
 
 class kvdbAPIListCommand : public ::testing::Test
 {
@@ -710,4 +709,46 @@ TEST_F(kvdbAPIListCommand, listKvdbCmdWithFilteringLoaded)
     ASSERT_FALSE(kvdbList.has_value());
 }
 
-// TODO: "removeKvdbCmd" tests section (To avoid conflicts) ------------------------------
+// "removeKvdbCmd" tests section
+
+class kvdbAPIRemoveCommand : public ::testing::Test
+{
+
+protected:
+    static constexpr auto DB_NAME = "TEST_DB";
+    static constexpr auto DB_DIR = "/tmp/kvdbTestDir";
+    static constexpr auto KEY_A = "keyA";
+    static constexpr auto VAL_A = "valA";
+
+    std::shared_ptr<KVDBManager> kvdbManager;
+
+    virtual void SetUp()
+    {
+        if (std::filesystem::exists(DB_DIR))
+        {
+            std::filesystem::remove_all(DB_DIR);
+        }
+        kvdbManager = std::make_shared<KVDBManager>(DB_DIR);
+        kvdbManager->CreateAndFillKVDBfromFile(DB_NAME);
+        kvdbManager->writeKey(DB_NAME,KEY_A,VAL_A);
+    }
+
+    virtual void TearDown() {}
+};
+
+TEST_F(kvdbAPIRemoveCommand, SimpleExecution)
+{
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(cmd = api::kvdb::cmds::removeKvdbCmd(kvdbAPIRemoveCommand::kvdbManager));
+    json::Json params {
+        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}",DB_NAME, KEY_A).c_str()};
+    auto response = cmd(params);
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 200);
+
+    // check response
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), "OK");
+
+    ASSERT_EQ(kvdbAPIRemoveCommand::kvdbManager->getKeyValue(DB_NAME,KEY_A).value(),"");
+}
