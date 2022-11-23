@@ -1,0 +1,9 @@
+{
+    "0x1": {"TicketEncryptionTypeDescription": "DES-CBC-CRC"},
+    "0x3": {"TicketEncryptionTypeDescription": "DES-CBC-MD5"},
+    "0x11": {"TicketEncryptionTypeDescription": "AES128-CTS-HMAC-SHA1-96"},
+    "0x12": {"TicketEncryptionTypeDescription": "AES256-CTS-HMAC-SHA1-96"},
+    "0x17": {"TicketEncryptionTypeDescription": "RC4-HMAC"},
+    "0x18": {"TicketEncryptionTypeDescription": "RC4-HMAC-EXP"},
+    "0xffffffff": {"TicketEncryptionTypeDescription": "FAIL"}
+}

@@ -1,0 +1,10 @@
+{
+    "0x1": {"type": "Kernel Driver"},
+    "0x2": {"type": "File System Driver"},
+    "0x8": {"type": "Recognizer Driver"},
+    "0x10": {"type": "Win32 Own Process"},
+    "0x20": {"type": "Win32 Share Process"},
+    "0x110": {"type": "Interactive Own Process"},
+    "0x120": {"type": "Interactive Share Process"}
+
+}
