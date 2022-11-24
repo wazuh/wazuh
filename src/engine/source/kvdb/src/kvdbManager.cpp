@@ -296,12 +296,6 @@ bool KVDBManager::deleteKey(const std::string& name, const std::string& key)
         if (dbHandle->hasKey(key))
         {
             result = dbHandle->deleteKey(key);
-            if (result)
-            {
-                // double check and workaround for not synced deletion
-                auto checkedValue = dbHandle->read(key);
-                result = checkedValue.empty();
-            }
         }
     }
     return result;
