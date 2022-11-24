@@ -57,26 +57,142 @@ DWORD verify_pe_signature(const wchar_t *path)
     switch (status) {
     case ERROR_SUCCESS:
         mdebug1("PE signature verification succeeded for %S", full_path);
-        return ERROR_SUCCESS;
+        break;
     case TRUST_E_NOSIGNATURE:
-        mdebug2("No signature found for '%S'.", full_path);
-        return ERROR_INVALID_DATA;
+        last_error = GetLastError();
+        if (TRUST_E_NOSIGNATURE == last_error ||
+            TRUST_E_SUBJECT_FORM_UNKNOWN == last_error ||
+            TRUST_E_PROVIDER_UNKNOWN == last_error) {
+            // The file was not signed.
+            merror("No signature found for '%S'.", full_path);
+        }
+        else
+        {
+            // The signature was not valid or there was an error opening the file.
+            merror("An unknown error occurred trying to verify the signature of the \"%S\" file.", full_path);
+        }
+        break;
     case TRUST_E_SUBJECT_FORM_UNKNOWN:
-        merror("The file '%S' is not of a recognized format.", full_path);
-        return ERROR_INVALID_DATA;
+        // Trust provider does not support the form specified for the subject.
+        merror("The form of file '%S' is not supported by trust provider.", full_path);
+        break;
+    case TRUST_E_ACTION_UNKNOWN:
+        // Trust provider does not support the specified action
+        merror("Provider doesn't support verify action for file '%S'.", full_path);
+        break;
     case TRUST_E_PROVIDER_UNKNOWN:
-        merror("No provider found for the specified action.");
-        last_error = GetLastError();
-        return ERROR_INVALID_DATA;
+        // Trust provider is not recognized on this system.
+        merror("No trusted provider found for file '%S'.", full_path);
+        break;
+    case TRUST_E_EXPLICIT_DISTRUST:
+        /*
+        The hash that represents the subject or the publisher is not allowed by the admin or user.
+        Signer's certificate is in the Untrusted Publishers store.
+        */
+        merror("The signature is present, but specifically disallowed for file '%S'.", full_path);
+        break;
     case TRUST_E_SUBJECT_NOT_TRUSTED:
-        merror("The signature is not valid for file '%S'.", full_path);
-        last_error = GetLastError();
-        return ERROR_INVALID_DATA;
+        // Subject failed the specified verification action.
+        merror("The signature is present, but not trusted by the user for file '%S'.", full_path);
+        break;
+    case TRUST_E_FAIL:
+        merror("The signature of file '%S' is invalid or not found.", full_path);
+        break;
+    case TRUST_E_BAD_DIGEST:
+        // File might be corrupt.
+        merror("The file '%S' or its signature is corrupt.", full_path);
+        break;
+    case CERT_E_EXPIRED:
+        // Signer's certificate was expired.
+        merror("The signature of file '%S' is expired.", full_path);
+        break;
+    case CERT_E_REVOKED:
+        // Signer's certificate was revoked.
+        merror("The signature of file '%S' was revoked.", full_path);
+        break;
+    case CRYPT_E_REVOKED:
+        merror("The certificate or signature of file '%S' has been revoked.", full_path);
+        break;
+    case CERT_E_UNTRUSTEDROOT:
+        // A certification chain processed correctly, but terminated in a root certificate that is not trusted by the trust provider.
+        merror("The signature of file '%S' terminated in a root certificate that is not trusted.", full_path);
+        break;
+    case CRYPT_E_SECURITY_SETTINGS:
+        /*
+        The hash that represents the subject or the publisher was not explicitly trusted by the admin and the
+        admin policy has disabled user trust. No signature, publisher or time stamp errors.
+        */
+        merror("The hash representing the subject or the publisher wasn't explicitly trusted for file '%S'.", full_path);
+        break;
+    case TRUST_E_SYSTEM_ERROR:
+        // A system-level error occurred while verifying trust.
+        merror("A system-level error occurred while verifying trust for file '%S'.", full_path);
+        break;
+    case TRUST_E_NO_SIGNER_CERT:
+        merror("The certificate for the signer of file '%S' is invalid or not found.", full_path);
+        break;
+    case TRUST_E_COUNTER_SIGNER:
+        merror("One of the counter signatures was not valid for file '%S'.", full_path);
+        break;
+    case TRUST_E_CERT_SIGNATURE:
+        merror("The signature of the certificate can not be verified for file '%S'.", full_path);
+        break;
+    case TRUST_E_TIME_STAMP:
+        merror("The timestamp signature or certificate could not be verified or is malformed for file '%S'.", full_path);
+        break;
+    case TRUST_E_BASIC_CONSTRAINTS:
+        merror("The basic constraints of the certificate for file '%S' are invalid or missing.", full_path);
+        break;
+    case TRUST_E_FINANCIAL_CRITERIA:
+        merror("The certificate for file '%S' does not meet or contain the Authenticode financial extensions.", full_path);
+        break;
+    case CERT_E_CHAINING:
+        merror("The certificate chain to a trusted root authority could not be built for file '%S'.", full_path);
+        break;
+    case CERT_E_UNTRUSTEDTESTROOT:
+        merror("The root certificate for file '%S' is a testing certificate, and policy settings disallow test certificates.", full_path);
+        break;
+    case CERT_E_WRONG_USAGE:
+        merror("The certificate for file '%S' is not valid for the requested usage.", full_path);
+        break;
+    case CERT_E_INVALID_NAME:
+        merror("The certificate name for file '%S' is invalid. Either the name is not included in the permitted list, or it is explicitly excluded.", full_path);
+        break;
+    case CERT_E_INVALID_POLICY:
+        merror("The certificate policy for file '%S' is invalid.", full_path);
+        break;
+    case CERT_E_CRITICAL:
+    case CERT_E_PURPOSE:
+        merror("The certificate for file '%S' is being used for a purpose other than the purpose specified by its CA.", full_path);
+        break;
+    case CERT_E_VALIDITYPERIODNESTING:
+        merror("The validity periods of the certification chain do not nest correctly for file '%S'.", full_path);
+        break;
+    case CRYPT_E_NO_REVOCATION_CHECK:
+        merror("The revocation function was unable to check revocation for the certificate of file '%S'.", full_path);
+        break;
+    case CRYPT_E_REVOCATION_OFFLINE:
+        merror("It was not possible to check revocation because the revocation server was offline for file '%S'.", full_path);
+        break;
+    case CERT_E_REVOCATION_FAILURE:
+        merror("The revocation process could not continue, and the certificate could not be checked for file '%S'.", full_path);
+        break;
+    case CERT_E_CN_NO_MATCH:
+        merror("The certificate's CN name does not match the passed value for file '%S'.", full_path);
+        break;
+    case CERT_E_ROLE:
+        merror("A certificate for file '%S' that can only be used as an end-entity is being used as a CA or vice versa.", full_path);
+        break;
     default:
-        last_error = GetLastError();
-        merror("WinVerifyTrust returned %lX GetLastError returned %lX", status, last_error);
-        return ERROR_INVALID_DATA;
+        merror("WinVerifyTrust returned '%lX'. GetLastError returned '%lX'", status, GetLastError());
+        status = ERROR_INVALID_DATA;
     }
+
+    // Any hWVTStateData must be released by a call with close.
+    WinTrustData.dwStateAction = WTD_STATEACTION_CLOSE;
+    WinVerifyTrust(NULL, &policy_GUID, &WinTrustData);
+
+    return status;
 }
 
 DWORD get_file_hash(const wchar_t *path, BYTE **hash, DWORD *hash_size)
@@ -156,5 +272,3 @@ DWORD verify_hash_catalog(wchar_t *file_path)
 }
 
 #endif /* WIN32 */
-
-
