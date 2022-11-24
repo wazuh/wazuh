@@ -2246,8 +2246,8 @@ TEST_F(DBSyncTest, createTxnAtomicOperation)
     EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql));
 
     CallbackMock wrapper;
-    EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"name":"System","pid":4, "time":100100}])"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"name":"Guake","pid":7,"time":100101}])"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"({"name":"System","pid":4, "time":100100})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"({"name":"Guake","pid":7,"time":100101})"))).Times(1);
 
     ResultCallbackData callbackData
     {
