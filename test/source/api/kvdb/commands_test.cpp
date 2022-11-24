@@ -936,3 +936,139 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecution)
 
     ASSERT_EQ(kvdbAPIRemoveCommand::kvdbManager->getKeyValue(DB_NAME, KEY_A).value(), "");
 }
+
+TEST_F(kvdbAPIRemoveCommand, SimpleExecutionDoubleRemove)
+{
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::removeKvdbCmd(kvdbAPIRemoveCommand::kvdbManager));
+    json::Json params {
+        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}", DB_NAME, KEY_A).c_str()};
+    auto response = cmd(params);
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 200);
+
+    // check response
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), "OK");
+    ASSERT_EQ(kvdbAPIRemoveCommand::kvdbManager->getKeyValue(DB_NAME, KEY_A).value(), "");
+
+    response = cmd(params);
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 400);
+
+    // check response
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), "Key could not be deleted.");
+}
+
+TEST_F(kvdbAPIRemoveCommand, RemoveNonExistingDB)
+{
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::removeKvdbCmd(kvdbAPIRemoveCommand::kvdbManager));
+    json::Json params {
+        fmt::format("{{\"name\": \"ANOTHER_DB_NAME\", \"key\": \"{}\"}}", KEY_A).c_str()};
+    auto response = cmd(params);
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 400);
+
+    // check response
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), "Key could not be deleted.");
+}
+
+TEST_F(kvdbAPIRemoveCommand, RemoveWithEmptyKey)
+{
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::removeKvdbCmd(kvdbAPIRemoveCommand::kvdbManager));
+    json::Json params {
+        fmt::format("{{\"name\": \"{}\", \"key\": \"\"}}", DB_NAME).c_str()};
+    auto response = cmd(params);
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 400);
+
+    // check response
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), "Field [key] is empty.");
+}
+
+TEST_F(kvdbAPIRemoveCommand, RemoveWithNonExistingKey)
+{
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::removeKvdbCmd(kvdbAPIRemoveCommand::kvdbManager));
+    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
+    auto response = cmd(params);
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 400);
+
+    // check response
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), "Field [key] is missing.");
+}
+
+TEST_F(kvdbAPIRemoveCommand, RemoveWithWrongKeyName)
+{
+    // TODO: there's an issue with KeyMayExist causing this test to fail
+    GTEST_SKIP();
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::removeKvdbCmd(kvdbAPIRemoveCommand::kvdbManager));
+    json::Json params {
+        fmt::format("{{\"name\": \"{}\", \"key\": \"ANOTHER_KEY_NAME\"}}", DB_NAME)
+            .c_str()};
+    auto response = cmd(params);
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 400);
+
+    // check response
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), "Key could not be deleted.");
+}
+
+TEST_F(kvdbAPIRemoveCommand, RemoveWithEmptyKVDBName)
+{
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::removeKvdbCmd(kvdbAPIRemoveCommand::kvdbManager));
+    json::Json params {fmt::format("{{\"name\": \"\", \"key\": \"{}\"}}", KEY_A).c_str()};
+    auto response = cmd(params);
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 400);
+
+    // check response
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), "Field [name] is empty.");
+}
+
+TEST_F(kvdbAPIRemoveCommand, RemoveWithNonExistingKVDBName)
+{
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::removeKvdbCmd(kvdbAPIRemoveCommand::kvdbManager));
+    auto response = cmd(json::Json {});
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 400);
+
+    // check response
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), "Field [name] is missing.");
+}
+
+TEST_F(kvdbAPIRemoveCommand, RemoveWithWrongKVDBName)
+{
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::removeKvdbCmd(kvdbAPIRemoveCommand::kvdbManager));
+    json::Json params {
+        fmt::format("{{\"name\": \"WRONG_DB_NAME\", \"key\": \"{}\"}}", KEY_A).c_str()};
+    auto response = cmd(params);
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 400);
+
+    // check response
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), "Key could not be deleted.");
+}
