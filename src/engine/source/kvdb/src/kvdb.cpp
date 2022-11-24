@@ -42,7 +42,7 @@ struct KVDB::Impl
         , m_shouldCleanupFiles(false)
     {
         // If path doesn't ends with "/" will cause undesired behavior
-        if('/' != folder.back())
+        if ('/' != folder.back())
         {
             m_path = folder + "/" + dbName;
         }
@@ -570,9 +570,9 @@ struct KVDB::Impl
         rocksdb::Iterator* iter = m_db->NewIterator(kOptions.read);
         iter->SeekToFirst();
         size_t key_cnt = 0;
-        for ( ;iter->Valid();  iter->Next(), key_cnt++)
+        for (; iter->Valid(); iter->Next(), key_cnt++)
         {
-            dump += iter->key().ToString() +":" + iter->value().ToString()+"\n";
+            dump += iter->key().ToString() + ":" + iter->value().ToString() + "\n";
         }
 
         delete iter;
@@ -604,7 +604,7 @@ KVDB::KVDB()
 
 bool KVDB::init(bool createIfMissing, bool errorIfExists)
 {
-    return mImpl->init(createIfMissing,errorIfExists);
+    return mImpl->init(createIfMissing, errorIfExists);
 }
 
 KVDB::~KVDB()
@@ -697,7 +697,7 @@ std::string_view KVDB::getName() const
     return mImpl->getName();
 }
 
-size_t KVDB::dumpContent(std::string &dump)
+size_t KVDB::dumpContent(std::string& dump)
 {
     return mImpl->dumpContent(dump);
 }
