@@ -103,3 +103,7 @@ normalize:
       # ClientAddress to source.ip and related.ip
       - event.source.ip: ~event_channel.Event.EventData.ClientAddress
       - event.related.ip: ~event_channel.Event.EventData.ClientAddress
+      # ClientName to source.domain
+      - event.source.domain: ~event_channel.Event.EventData.ClientName
+      # LogonID to winlog.logon.id
+      - event.logon.id: ~event_channel.Event.EventData.LogonID
