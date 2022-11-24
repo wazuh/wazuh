@@ -475,7 +475,10 @@ struct KVDB::Impl
             return false;
         }
 
-        rocksdb::Status s = m_db->Delete(kOptions.write, cf, key);
+        // Sync to ensure that the proccess has instant effect
+        auto WriteOptions = kOptions.write;
+        WriteOptions.sync = true;
+        rocksdb::Status s = m_db->Delete(WriteOptions, cf, key);
         if (!s.ok())
         {
             WAZUH_LOG_ERROR("Engine KVDB: Database \"{}\": Couldn't delete key \"{}\" "
