@@ -41,7 +41,8 @@ protected:
 TEST_F(kvdbAPICreateCommand, createKvdbCmdSimpleAddition)
 {
     api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {
         fmt::format("{{\"name\": \"{}\"}}", kvdbAPICreateCommand::DB_NAME_2).c_str()};
     auto response = cmd(params);
@@ -58,7 +59,8 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdSimpleAddition)
 TEST_F(kvdbAPICreateCommand, createKvdbCmdNamesInArray)
 {
     api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": [\"{}\",\"{}\"]}}",
                                    kvdbAPICreateCommand::DB_NAME_2,
                                    kvdbAPICreateCommand::DB_NAME_3)
@@ -71,7 +73,8 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdNamesInArray)
 TEST_F(kvdbAPICreateCommand, createKvdbCmdEmptyName)
 {
     api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"\"}}").c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
@@ -81,7 +84,8 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdEmptyName)
 TEST_F(kvdbAPICreateCommand, createKvdbCmdEmptyParams)
 {
     api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
@@ -91,7 +95,8 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdEmptyParams)
 TEST_F(kvdbAPICreateCommand, createKvdbCmdRepeatedName)
 {
     api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {
         fmt::format("{{\"name\": \"{}\"}}", kvdbAPICreateCommand::DB_NAME).c_str()};
     auto response = cmd(params);
@@ -108,7 +113,8 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdRepeatedName)
 TEST_F(kvdbAPICreateCommand, createKvdbCmdNameWithSpaces)
 {
     api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {
         fmt::format("{{\"name\": \"{}\"}}", kvdbAPICreateCommand::DB_NAME_WITH_SPACES)
             .c_str()};
@@ -136,7 +142,8 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdWithFilling)
     }
 
     api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"path\":\"{}\"}}",
                                    kvdbAPICreateCommand::DB_NAME_2,
                                    kvdbAPICreateCommand::FILE_PATH)
@@ -177,7 +184,8 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdWithWrongFilling)
     }
 
     api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"path\":\"{}\"}}",
                                    kvdbAPICreateCommand::DB_NAME_2,
                                    kvdbAPICreateCommand::FILE_PATH)
@@ -212,7 +220,8 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdSingleValueFile)
     }
 
     api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"path\":\"{}\"}}",
                                    kvdbAPICreateCommand::DB_NAME_2,
                                    kvdbAPICreateCommand::FILE_PATH)
@@ -240,7 +249,8 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdSingleValueFile)
 TEST_F(kvdbAPICreateCommand, createKvdbCmdNonExistingFile)
 {
     api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"path\":\"{}\"}}",
                                    kvdbAPICreateCommand::DB_NAME_2,
                                    kvdbAPICreateCommand::FILE_PATH)
@@ -284,9 +294,11 @@ TEST_F(kvdbAPIDeleteCommand, deleteKvdbCmdSimpleLoaded)
 
     // delete first DB
     api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = api::kvdb::cmds::deleteKvdbCmd(kvdbAPIDeleteCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}", kvdbAPIDeleteCommand::DB_NAME).c_str()};
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::deleteKvdbCmd(kvdbAPIDeleteCommand::kvdbManager));
+    json::Json params {fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}",
+                                   kvdbAPIDeleteCommand::DB_NAME)
+                           .c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
@@ -300,7 +312,8 @@ TEST_F(kvdbAPIDeleteCommand, deleteKvdbCmdSimpleLoaded)
 
     // delete DB named with spaces
     json::Json params_with_spaces {
-        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}", kvdbAPIDeleteCommand::DB_NAME_WITH_SPACES)
+        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}",
+                    kvdbAPIDeleteCommand::DB_NAME_WITH_SPACES)
             .c_str()};
     response = cmd(params_with_spaces);
     ASSERT_TRUE(response.isValid());
@@ -319,10 +332,11 @@ TEST_F(kvdbAPIDeleteCommand, deleteKvdbCmdSimpleLoaded)
 TEST_F(kvdbAPIDeleteCommand, deleteKvdbCmdDoesntExistLoaded)
 {
     api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = api::kvdb::cmds::deleteKvdbCmd(kvdbAPIDeleteCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}", kvdbAPIDeleteCommand::DB_NAME_NOT_AVAILABLE)
-            .c_str()};
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::deleteKvdbCmd(kvdbAPIDeleteCommand::kvdbManager));
+    json::Json params {fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}",
+                                   kvdbAPIDeleteCommand::DB_NAME_NOT_AVAILABLE)
+                           .c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
@@ -366,8 +380,7 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdEmptyName)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = api::kvdb::cmds::dumpKvdbCmd(kvdbAPIDumpCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"\"}}").c_str()};
+    json::Json params {fmt::format("{{\"name\": \"\"}}").c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
@@ -409,8 +422,7 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdSimpleExecution)
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = api::kvdb::cmds::dumpKvdbCmd(kvdbAPIDumpCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\"}}",DB_NAME_2).c_str()};
+    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME_2).c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
@@ -419,22 +431,21 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdSimpleExecution)
     ASSERT_TRUE(response.message().has_value());
     ASSERT_EQ(response.message().value(), "OK");
 
-    //check content
+    // check content
     auto kvdbList = response.data().getArray();
     ASSERT_TRUE(kvdbList.has_value());
-    ASSERT_EQ(kvdbList.value().size(),2);
-    ASSERT_EQ(kvdbList.value().at(0).getString("/value").value(),"ValA");
-    ASSERT_EQ(kvdbList.value().at(1).getString("/value").value(),"ValB");
-    ASSERT_EQ(kvdbList.value().at(0).getString("/key").value(),"keyA");
-    ASSERT_EQ(kvdbList.value().at(1).getString("/key").value(),"keyB");
+    ASSERT_EQ(kvdbList.value().size(), 2);
+    ASSERT_EQ(kvdbList.value().at(0).getString("/value").value(), "ValA");
+    ASSERT_EQ(kvdbList.value().at(1).getString("/value").value(), "ValB");
+    ASSERT_EQ(kvdbList.value().at(0).getString("/key").value(), "keyA");
+    ASSERT_EQ(kvdbList.value().at(1).getString("/key").value(), "keyB");
 }
 
 TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdSimpleEmpty)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = api::kvdb::cmds::dumpKvdbCmd(kvdbAPIDumpCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\"}}",DB_NAME).c_str()};
+    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
@@ -461,8 +472,7 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdKVDBOnlyKeys)
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = api::kvdb::cmds::dumpKvdbCmd(kvdbAPIDumpCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\"}}",DB_NAME_2).c_str()};
+    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME_2).c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
@@ -471,12 +481,12 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdKVDBOnlyKeys)
     ASSERT_TRUE(response.message().has_value());
     ASSERT_EQ(response.message().value(), "OK");
 
-    //check content
+    // check content
     auto kvdbList = response.data().getArray();
     ASSERT_TRUE(kvdbList.has_value());
-    ASSERT_EQ(kvdbList.value().size(),2);
-    ASSERT_EQ(kvdbList.value().at(0).getString("/key").value(),"keyA");
-    ASSERT_EQ(kvdbList.value().at(1).getString("/key").value(),"keyB");
+    ASSERT_EQ(kvdbList.value().size(), 2);
+    ASSERT_EQ(kvdbList.value().at(0).getString("/key").value(), "keyA");
+    ASSERT_EQ(kvdbList.value().at(1).getString("/key").value(), "keyB");
 }
 
 // "getKvdbCmd" tests section
@@ -500,7 +510,7 @@ protected:
         }
         kvdbManager = std::make_shared<KVDBManager>(DB_DIR);
         kvdbManager->CreateAndFillKVDBfromFile(DB_NAME);
-        kvdbManager->writeKey(DB_NAME,KEY_A,VAL_A);
+        kvdbManager->writeKey(DB_NAME, KEY_A, VAL_A);
     }
 
     virtual void TearDown() {}
@@ -511,7 +521,7 @@ TEST_F(kvdbAPIGetCommand, SimpleExecutionKeyOnly)
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = api::kvdb::cmds::getKvdbCmd(kvdbAPIGetCommand::kvdbManager));
     json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}",DB_NAME, KEY_A).c_str()};
+        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}", DB_NAME, KEY_A).c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
@@ -520,11 +530,10 @@ TEST_F(kvdbAPIGetCommand, SimpleExecutionKeyOnly)
     ASSERT_TRUE(response.message().has_value());
     ASSERT_EQ(response.message().value(), "OK");
 
-    //compare content
+    // compare content
     auto data = response.data().getString("/value");
     ASSERT_TRUE(data.has_value());
-    ASSERT_EQ(data.value(),VAL_A);
-
+    ASSERT_EQ(data.value(), VAL_A);
 }
 
 // "insertKvdbCmd" tests section
@@ -601,9 +610,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionNoKey)
     api::CommandFn cmd;
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::insertKvdbCmd(kvdbAPIInsertCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\"}}",DB_NAME)
-            .c_str()};
+    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
@@ -619,8 +626,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionEmptyKey)
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::insertKvdbCmd(kvdbAPIInsertCommand::kvdbManager));
     json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"\"}}",DB_NAME)
-            .c_str()};
+        fmt::format("{{\"name\": \"{}\", \"key\": \"\"}}", DB_NAME).c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
@@ -635,8 +641,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionNoName)
     api::CommandFn cmd;
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::insertKvdbCmd(kvdbAPIInsertCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"\"}}").c_str()};
+    json::Json params {fmt::format("{{\"name\": \"\"}}").c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
@@ -652,7 +657,8 @@ TEST_F(kvdbAPIInsertCommand, ExecutionEmptyValue)
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::insertKvdbCmd(kvdbAPIInsertCommand::kvdbManager));
     json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\", \"value\": \"\"}}",DB_NAME,KEY_A)
+        fmt::format(
+            "{{\"name\": \"{}\", \"key\": \"{}\", \"value\": \"\"}}", DB_NAME, KEY_A)
             .c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
@@ -663,7 +669,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionEmptyValue)
     ASSERT_EQ(response.message().value(), "OK");
 
     // get key and compare content
-    ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getKeyValue(DB_NAME, KEY_A).value(),"");
+    ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getKeyValue(DB_NAME, KEY_A).value(), "");
 }
 
 TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralKeys)
@@ -682,8 +688,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralKeys)
     for (const auto& key : severalKeys)
     {
         json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}",DB_NAME,key)
-            .c_str()};
+            fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}", DB_NAME, key).c_str()};
         auto response = cmd(params);
         ASSERT_TRUE(response.isValid());
         ASSERT_EQ(response.error(), 200);
@@ -693,20 +698,21 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralKeys)
         ASSERT_EQ(response.message().value(), "OK");
 
         // get key and compare content
-        ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getKeyValue(DB_NAME, key).value(),"");
+        ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getKeyValue(DB_NAME, key).value(),
+                  "");
     }
 }
 
 TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralValues)
 {
     std::vector<std::string> severalValues = {"1",
-                                            "A",
-                                            "b",
-                                            "!#$%&'()*+,-./",
-                                            "0123456789",
-                                            ":;<=>?@",
-                                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-                                            "[^_`abcdefghijklmnopqrstuvwxyz{|}~"};
+                                              "A",
+                                              "b",
+                                              "!#$%&'()*+,-./",
+                                              "0123456789",
+                                              ":;<=>?@",
+                                              "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                                              "[^_`abcdefghijklmnopqrstuvwxyz{|}~"};
     api::CommandFn cmd;
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::insertKvdbCmd(kvdbAPIInsertCommand::kvdbManager));
@@ -745,7 +751,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionWrongDBName)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(),"Key-value could not be written.");
+    ASSERT_EQ(response.message().value(), "Key-value could not be written.");
 }
 
 // "listKvdbCmd" tests section
@@ -786,11 +792,11 @@ TEST_F(kvdbAPIListCommand, listKvdbCmdSingleDBLoaded)
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
 
-    //check response
+    // check response
     auto kvdbList = response.data().getArray();
     ASSERT_TRUE(kvdbList.has_value());
-    ASSERT_EQ(kvdbList.value().size(),1);
-    ASSERT_EQ(kvdbList.value().at(0).getString().value(),DB_NAME);
+    ASSERT_EQ(kvdbList.value().size(), 1);
+    ASSERT_EQ(kvdbList.value().at(0).getString().value(), DB_NAME);
 }
 
 TEST_F(kvdbAPIListCommand, listKvdbCmdNoneLoaded)
@@ -805,7 +811,7 @@ TEST_F(kvdbAPIListCommand, listKvdbCmdNoneLoaded)
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
 
-    //check response
+    // check response
     auto kvdbList = response.data().getArray();
     ASSERT_FALSE(kvdbList.has_value());
 }
@@ -823,12 +829,12 @@ TEST_F(kvdbAPIListCommand, listKvdbCmdMultipleLoaded)
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
 
-    //check response
+    // check response
     auto kvdbList = response.data().getArray();
     ASSERT_TRUE(kvdbList.has_value());
-    ASSERT_EQ(kvdbList.value().size(),2);
-    ASSERT_EQ(kvdbList.value().at(0).getString().value(),DB_NAME_2);
-    ASSERT_EQ(kvdbList.value().at(1).getString().value(),DB_NAME);
+    ASSERT_EQ(kvdbList.value().size(), 2);
+    ASSERT_EQ(kvdbList.value().at(0).getString().value(), DB_NAME_2);
+    ASSERT_EQ(kvdbList.value().at(1).getString().value(), DB_NAME);
 }
 
 TEST_F(kvdbAPIListCommand, listKvdbCmdWithFilteringLoaded)
@@ -841,46 +847,46 @@ TEST_F(kvdbAPIListCommand, listKvdbCmdWithFilteringLoaded)
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = api::kvdb::cmds::listKvdbCmd(kvdbAPIListCommand::kvdbManager));
     json::Json params_with_name_not {
-    fmt::format("{{\"mustBeLoaded\": true, \"name\": \"NOT\"}}").c_str()};
+        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"NOT\"}}").c_str()};
     auto response = cmd(params_with_name_not);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
 
-    //check response with different name filtered
+    // check response with different name filtered
     auto kvdbList = response.data().getArray();
     ASSERT_TRUE(kvdbList.has_value());
-    ASSERT_EQ(kvdbList.value().size(),1);
-    ASSERT_EQ(kvdbList.value().at(0).getString().value(),DB_NAME_DIFFERENT_START);
+    ASSERT_EQ(kvdbList.value().size(), 1);
+    ASSERT_EQ(kvdbList.value().at(0).getString().value(), DB_NAME_DIFFERENT_START);
 
     // same procces filtering with previous name start
     json::Json params_with_name_test {
-    fmt::format("{{\"mustBeLoaded\": true, \"name\": \"TEST_\"}}").c_str()};
+        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"TEST_\"}}").c_str()};
     response = cmd(params_with_name_test);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
 
     kvdbList = response.data().getArray();
     ASSERT_TRUE(kvdbList.has_value());
-    ASSERT_EQ(kvdbList.value().size(),1);
-    ASSERT_EQ(kvdbList.value().at(0).getString().value(),DB_NAME);
+    ASSERT_EQ(kvdbList.value().size(), 1);
+    ASSERT_EQ(kvdbList.value().at(0).getString().value(), DB_NAME);
 
     // checks without filtering
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
     json::Json params_with_empty_name {
-    fmt::format("{{\"mustBeLoaded\": true, \"name\": \"\"}}").c_str()};
+        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"\"}}").c_str()};
     response = cmd(params_with_empty_name);
     kvdbList = response.data().getArray();
     ASSERT_TRUE(kvdbList.has_value());
-    ASSERT_EQ(kvdbList.value().size(),2);
-    ASSERT_EQ(kvdbList.value().at(1).getString().value(),DB_NAME);
-    ASSERT_EQ(kvdbList.value().at(0).getString().value(),DB_NAME_DIFFERENT_START);
+    ASSERT_EQ(kvdbList.value().size(), 2);
+    ASSERT_EQ(kvdbList.value().at(1).getString().value(), DB_NAME);
+    ASSERT_EQ(kvdbList.value().at(0).getString().value(), DB_NAME_DIFFERENT_START);
 
     // checks without filtering
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
     json::Json params_with_wrong_name {
-    fmt::format("{{\"mustBeLoaded\": true, \"name\": \"wrong_match\"}}").c_str()};
+        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"wrong_match\"}}").c_str()};
     response = cmd(params_with_wrong_name);
     kvdbList = response.data().getArray();
     ASSERT_FALSE(kvdbList.has_value());
@@ -907,7 +913,7 @@ protected:
         }
         kvdbManager = std::make_shared<KVDBManager>(DB_DIR);
         kvdbManager->CreateAndFillKVDBfromFile(DB_NAME);
-        kvdbManager->writeKey(DB_NAME,KEY_A,VAL_A);
+        kvdbManager->writeKey(DB_NAME, KEY_A, VAL_A);
     }
 
     virtual void TearDown() {}
@@ -916,9 +922,10 @@ protected:
 TEST_F(kvdbAPIRemoveCommand, SimpleExecution)
 {
     api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = api::kvdb::cmds::removeKvdbCmd(kvdbAPIRemoveCommand::kvdbManager));
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::removeKvdbCmd(kvdbAPIRemoveCommand::kvdbManager));
     json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}",DB_NAME, KEY_A).c_str()};
+        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}", DB_NAME, KEY_A).c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
@@ -927,5 +934,5 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecution)
     ASSERT_TRUE(response.message().has_value());
     ASSERT_EQ(response.message().value(), "OK");
 
-    ASSERT_EQ(kvdbAPIRemoveCommand::kvdbManager->getKeyValue(DB_NAME,KEY_A).value(),"");
+    ASSERT_EQ(kvdbAPIRemoveCommand::kvdbManager->getKeyValue(DB_NAME, KEY_A).value(), "");
 }

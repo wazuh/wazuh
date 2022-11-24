@@ -275,34 +275,37 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
 
     // KVDB create subcommand
     auto create_subcommand =
-    kvdb->add_subcommand(args::SUBCOMMAND_KVDB_CREATE,
-                            "create -n [db-name]: Creates a KeyValueDB named db-name.");
+        kvdb->add_subcommand(args::SUBCOMMAND_KVDB_CREATE,
+                             "create -n [db-name]: Creates a KeyValueDB named db-name.");
     // create kvdb name
     create_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be added.")
         ->required();
     // create kvdb from file with path
     create_subcommand
-        ->add_option("-p, --path",
-                     args::kvdb_input_file_path,
-                     "Path to the directory containing the input file. It must have a key "
-                     "value pair (separated by \":\") or just single values per line.")
+        ->add_option(
+            "-p, --path",
+            args::kvdb_input_file_path,
+            "Path to the directory containing the input file. It must have a key "
+            "value pair (separated by \":\") or just single values per line.")
         ->check(CLI::ExistingFile);
 
     // KVDB dump subcommand
     auto dump_subcommand = kvdb->add_subcommand(
-        args::SUBCOMMAND_KVDB_DUMP, "dump -n [db-name]: Dumps the full content of a DB named db-name to a JSON");
+        args::SUBCOMMAND_KVDB_DUMP,
+        "dump -n [db-name]: Dumps the full content of a DB named db-name to a JSON");
     // dump kvdb name
     dump_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be dumped.")
         ->required();
 
     // KVDB delete subcommand
     auto delete_subcommand =
-    kvdb->add_subcommand(args::SUBCOMMAND_KVDB_DELETE,
-                            "delete -n db-name: Deletes a KeyValueDB named db-name.");
+        kvdb->add_subcommand(args::SUBCOMMAND_KVDB_DELETE,
+                             "delete -n db-name: Deletes a KeyValueDB named db-name.");
     delete_subcommand->add_flag(
         "-l, --loaded", args::kvdb_loaded, "Only list loaded KVDBs");
     // delete KVDB name
-    delete_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be deleted.")
+    delete_subcommand
+        ->add_option("-n, --name", args::kvdb_name, "KVDB name to be deleted.")
         ->required();
 
     // KVDB get subcommand
@@ -317,17 +320,20 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
         ->required();
 
     // KVDB insert subcommand
-    auto insert_subcommand = kvdb->add_subcommand(
-        args::SUBCOMMAND_KVDB_INSERT,
-        "insert -n [db-name] -k [key] -v [value]: Inserts key or key value into db-name.");
+    auto insert_subcommand =
+        kvdb->add_subcommand(args::SUBCOMMAND_KVDB_INSERT,
+                             "insert -n [db-name] -k [key] -v [value]: Inserts key or "
+                             "key value into db-name.");
     // insert kvdb name
-    insert_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be queried.")
+    insert_subcommand
+        ->add_option("-n, --name", args::kvdb_name, "KVDB name to be queried.")
         ->required();
     // insert key
     insert_subcommand->add_option("-k, --key", args::kvdb_key, "key name to be inserted.")
         ->required();
     // insert value
-    insert_subcommand->add_option("-v, --value", args::kvdb_key_value, "value to be inserted on key.")
+    insert_subcommand
+        ->add_option("-v, --value", args::kvdb_key_value, "value to be inserted on key.")
         ->default_val("");
 
     // KVDB remove subcommand
@@ -335,7 +341,8 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
         kvdb->add_subcommand(args::SUBCOMMAND_KVDB_REMOVE,
                              "remove -n [db-name] -k [key]: Removes key from db-name.");
     // remove kvdb name
-    remove_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be queried.")
+    remove_subcommand
+        ->add_option("-n, --name", args::kvdb_name, "KVDB name to be queried.")
         ->required();
     // remove key
     remove_subcommand->add_option("-k, --key", args::kvdb_key, "key name to be removed.")
@@ -594,38 +601,35 @@ int main(int argc, char* argv[])
             auto kvdbSubcommand = app->get_subcommand(args::SUBCOMMAND_KVDB);
             std::string action;
 
-            if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_LIST)
-                    ->parsed())
+            if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_LIST)->parsed())
             {
                 action = args::SUBCOMMAND_KVDB_LIST;
             }
             else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_CREATE)
-                    ->parsed())
+                         ->parsed())
             {
                 action = args::SUBCOMMAND_KVDB_CREATE;
             }
-            else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_DUMP)
-                    ->parsed())
+            else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_DUMP)->parsed())
             {
                 action = args::SUBCOMMAND_KVDB_DUMP;
             }
             else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_DELETE)
-                    ->parsed())
+                         ->parsed())
             {
                 action = args::SUBCOMMAND_KVDB_DELETE;
             }
-            else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_GET)
-                    ->parsed())
+            else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_GET)->parsed())
             {
                 action = args::SUBCOMMAND_KVDB_GET;
             }
             else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_INSERT)
-                    ->parsed())
+                         ->parsed())
             {
                 action = args::SUBCOMMAND_KVDB_INSERT;
             }
             else if (kvdbSubcommand->get_subcommand(args::SUBCOMMAND_KVDB_REMOVE)
-                    ->parsed())
+                         ->parsed())
             {
                 action = args::SUBCOMMAND_KVDB_REMOVE;
             }
