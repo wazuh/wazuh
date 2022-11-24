@@ -94,16 +94,63 @@ normalize:
     # Add Session Events
     - check: 
       - event.code: +i_ne/4778 OR +i_ne/4779
-    map:
-      # AccountName to user.name and related.user
-      - event.user.name: ~event_channel.Event.EventData.AccountName
-      - event.related.user: ~event_channel.Event.EventData.AccountName
-      # AccountDomain to user.domain
-      - event.user.domain: ~event_channel.Event.EventData.AccountDomain
-      # ClientAddress to source.ip and related.ip
-      - event.source.ip: ~event_channel.Event.EventData.ClientAddress
-      - event.related.ip: ~event_channel.Event.EventData.ClientAddress
-      # ClientName to source.domain
-      - event.source.domain: ~event_channel.Event.EventData.ClientName
-      # LogonID to winlog.logon.id
-      - event.logon.id: ~event_channel.Event.EventData.LogonID
+      map:
+        # AccountName to user.name and related.user
+        - event.user.name: ~event_channel.Event.EventData.AccountName
+        - event.related.user: ~event_channel.Event.EventData.AccountName
+        # AccountDomain to user.domain
+        - event.user.domain: ~event_channel.Event.EventData.AccountDomain
+        # ClientAddress to source.ip and related.ip
+        - event.source.ip: ~event_channel.Event.EventData.ClientAddress
+        - event.related.ip: ~event_channel.Event.EventData.ClientAddress
+        # ClientName to source.domain
+        - event.source.domain: ~event_channel.Event.EventData.ClientName
+        # LogonID to winlog.logon.id
+        - event.logon.id: ~event_channel.Event.EventData.LogonID
+    
+    # Copy Target User
+    - ~id_array: ["4624","4625","4634","4647","4648","4768","4769","4770","4771","4776","4964"]
+    - check:
+      - ~id_array: +a_contains/$event.code
+      map:
+      - ~is_copy_target_user: true
+    # TargetUserSid to user.id or user.target.id  
+    - check: 
+      - event.user.id: +ef_not_exists
+      - ~id_array: +t_is_true
+      map:
+        - event.user.id: ~event_channel.Event.EventData.TargetUserSid
+        - event.user.id: ~event_channel.Event.EventData.TargetSid
+    - check:
+      - event.user.id: +ef_exists
+      - ~id_array: +t_is_true
+      map:
+        - event.user.target.id: ~event_channel.Event.EventData.TargetUserSid
+        - event.user.target.id: ~event_channel.Event.EventData.TargetSid
+    # TargetUserName to related.user and user.name or user.target.name
+    - check: 
+      - event.user.name: +ef_not_exists
+      - ~id_array: +t_is_true
+      map:
+        - event.user.name: ~event_channel.Event.EventData.TargetUserName
+    - check: 
+      - event.user.name: +ef_exists
+      - ~id_array: +t_is_true
+      map:
+        - event.user.target.name: ~event_channel.Event.EventData.TargetUserName
+    - check: 
+      - ~id_array: +t_is_true 
+      - 
+      map:
+        - event.related.user: +s_concat/$~event_channel.Event.EventData.TargetUserName # may be moved up?
+    # TargetUserDomain to user.domain or user.target.domain
+    - check:
+      - ~id_array: +t_is_true
+      - event.user.domain: +ef_not_exists
+      map:
+        - event.user.domain: ~event_channel.Event.EventData.TargetDomainName
+    - check:
+      - ~id_array: +t_is_true
+      - event.user.domain: +ef_exists
+      map:
+        - event.user.target.domain: ~event_channel.Event.EventData.TargetDomainName
