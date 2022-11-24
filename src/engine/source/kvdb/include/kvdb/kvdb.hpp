@@ -29,9 +29,9 @@ public:
      */
     ~KVDB();
 
-    //TODO:
+    // TODO:
     /**
-     * 
+     *
      * @brief Open and initialize the db
      *
      * @param createIfMissing create the db if it does not exist.
@@ -172,12 +172,12 @@ public:
     bool deleteKey(const std::string& key,
                    const std::string& columnName = DEFAULT_CF_NAME);
 
-    //TODO:
     /**
-     * @brief 
-     * 
-     * @param dump 
-     * @return size_t 
+     * @brief Iterates throug the whole KVDB and fills dump string with a line of each key
+     * value.
+     *
+     * @param dump where the result will be dump to.
+     * @return size_t quantity of keys dumped to the string.
      */
     size_t dumpContent(std::string& dump);
 

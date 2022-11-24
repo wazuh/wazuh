@@ -32,7 +32,7 @@ KVDBManager::KVDBManager(const std::filesystem::path& DbFolder)
             // Read it from the config file?
             if (cdbfile.is_regular_file())
             {
-                if (createKVDBfromFile(cdbfile.path(), true))
+                if (createKVDBfromCDBFile(cdbfile.path(), true))
                 {
                     // TODO Remove files once synced
                     // std::filesystem::remove(cdbfile.path())
@@ -42,8 +42,7 @@ KVDBManager::KVDBManager(const std::filesystem::path& DbFolder)
     }
 }
 
-KVDBHandle
-KVDBManager::addDb(const std::string& name, bool createIfMissing)
+KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
 {
     std::unique_lock lk(mMtx);
     if (m_availableKVDBs.find(name) != m_availableKVDBs.end())
@@ -69,8 +68,8 @@ KVDBManager::addDb(const std::string& name, bool createIfMissing)
     return nullptr;
 }
 
-bool KVDBManager::createKVDBfromFile(const std::filesystem::path& path,
-                                  bool createIfMissing, const std::string dbName)
+bool KVDBManager::createKVDBfromCDBFile(const std::filesystem::path& path,
+                                     bool createIfMissing)
 {
     std::ifstream CDBfile(path);
     if (!CDBfile.is_open())
@@ -82,7 +81,7 @@ bool KVDBManager::createKVDBfromFile(const std::filesystem::path& path,
         return false;
     }
 
-    const std::string name = dbName.empty() ? path.stem().string() : dbName;
+    const std::string name = path.stem().string();
     auto db = addDb(name, createIfMissing);
     if (!db)
     {
@@ -131,14 +130,13 @@ bool KVDBManager::deleteDB(const std::string& name, bool onlyLoaded)
     else
     {
         KVDBHandle dbHandle;
-        if(!getKVDBFromFile(name, dbHandle))
+        if (!getKVDBFromFile(name, dbHandle))
         {
             return false;
         }
         dbHandle->cleanupOnClose();
         return true;
     }
-
 }
 
 KVDBHandle KVDBManager::getDB(const std::string& name)
@@ -184,13 +182,13 @@ std::vector<std::string> KVDBManager::getAvailableKVDBs(bool loaded)
     }
     else
     {
-        for (const auto & file : std::filesystem::directory_iterator(mDbFolder))
+        for (const auto& file : std::filesystem::directory_iterator(mDbFolder))
         {
             auto name = file.path().stem().string();
-            if(name != "legacy")
+            if (name != "legacy")
             {
                 KVDBHandle dbHandle;
-                if(getKVDBFromFile(name, dbHandle))
+                if (getKVDBFromFile(name, dbHandle))
                 {
                     list.emplace_back(name);
                 }
@@ -201,16 +199,17 @@ std::vector<std::string> KVDBManager::getAvailableKVDBs(bool loaded)
     return list;
 }
 
-bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName, const std::filesystem::path& path)
+bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
+                                            const std::filesystem::path& path)
 {
     auto dbHandle = std::make_shared<KVDB>(dbName, mDbFolder);
     if (!dbHandle->init(true, true))
     {
-        WAZUH_LOG_ERROR("Failed to create db [{}].",dbName);
+        WAZUH_LOG_ERROR("Failed to create db [{}].", dbName);
         return false;
     }
 
-    if(!path.empty())
+    if (!path.empty())
     {
         std::ifstream filePath(path);
         if (!filePath.is_open())
@@ -221,8 +220,7 @@ bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName, const std
 
         for (std::string line; getline(filePath, line);)
         {
-            line.erase(std::remove_if(line.begin(), line.end(), isspace),
-                    line.end());
+            line.erase(std::remove_if(line.begin(), line.end(), isspace), line.end());
             auto kv = utils::string::split(line, ':');
             if (kv.empty() || kv.size() > 2)
             {
