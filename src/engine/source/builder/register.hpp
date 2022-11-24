@@ -123,7 +123,7 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
     registry->registerBuilder(builders::opBuilderHelperStringUP, "helper.s_up");
     // Map helpers: Time functions
     registry->registerBuilder(builders::opBuilderHelperEpochTimeFromSystem,
-                              "helper. sys_epoch");
+                              "helper.sys_epoch");
 
     // Special helpers
 

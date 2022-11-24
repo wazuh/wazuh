@@ -361,6 +361,9 @@ void loadRuleset(const std::string& socketPath,
         for (const auto& dirEntry :
              std::filesystem::recursive_directory_iterator(collectionPath, ec))
         {
+            WAZUH_LOG_INFO("Engine API Catalog: Loading {}s from file \"{}\".",
+                           collectionNameStr,
+                           dirEntry.path().c_str());
             loadEntry(dirEntry);
         }
     }
@@ -370,6 +373,9 @@ void loadRuleset(const std::string& socketPath,
         for (const auto& dirEntry :
              std::filesystem::directory_iterator(collectionPath, ec))
         {
+            WAZUH_LOG_INFO("Engine API Catalog: Loading {}s from file \"{}\".",
+                           collectionNameStr,
+                           dirEntry.path().c_str());
             loadEntry(dirEntry);
         }
     }
