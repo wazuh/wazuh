@@ -3,6 +3,7 @@
 
 #include <json/json.hpp>
 #include "result.hpp"
+#include <functional>
 
 namespace base
 {
