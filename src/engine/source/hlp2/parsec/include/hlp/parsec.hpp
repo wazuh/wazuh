@@ -8,6 +8,7 @@
 #include <string_view>
 #include <tuple>
 #include <variant>
+#include <stdexcept>
 
 /**
  * @brief Contains the parser combinators and parser types
