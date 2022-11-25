@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <cmath>
 
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
@@ -230,6 +231,7 @@ public:
      * @throws std::runtime_error If any pointer path is invalid.
      */
     std::optional<std::string> getString(std::string_view path = "") const;
+
     /**
      * @brief get the value of the int field.
      * Overwrites previous value. If reference field is not found, sets base field to
@@ -244,6 +246,32 @@ public:
     std::optional<int> getInt(std::string_view path = "") const;
 
     /**
+     * @brief get the value of the int64 field.
+     * Overwrites previous value. If reference field is not found, sets base field to
+     * null.
+     *
+     * @param basePointerPath The base pointer path to set.
+     *
+     * @return T The value of the field.
+     *
+     * @throws std::runtime_error If any pointer path is invalid.
+     */
+    std::optional<int64_t> getInt64(std::string_view path = "") const;
+
+    /**
+     * @brief get the value of the float field.
+     * Overwrites previous value. If reference field is not found, sets base field to
+     * null.
+     *
+     * @param basePointerPath The base pointer path to set.
+     *
+     * @return T The value of the field.
+     *
+     * @throws std::runtime_error If any pointer path is invalid.
+     */
+    std::optional<float_t> getFloat(std::string_view path = "") const;
+
+    /**
      * @brief get the value of the double field.
      * Overwrites previous value. If reference field is not found, sets base field to
      * null.
@@ -254,7 +282,7 @@ public:
      *
      * @throws std::runtime_error If any pointer path is invalid.
      */
-    std::optional<double> getDouble(std::string_view path = "") const;
+    std::optional<double_t> getDouble(std::string_view path = "") const;
 
     /**
      * @brief get the value of either a double or int field as a double.
@@ -415,6 +443,34 @@ public:
     bool isInt(std::string_view path = "") const;
 
     /**
+     * @brief Check if the Json described by the path is int64.
+     *
+     * Ensure that the path exists before calling this function.
+     *
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return true if Json is int64.
+     * @return false if Json is not int64.
+     *
+     * @throws std::runtime_error If path is invalid or cannot be found.
+     */
+    bool isInt64(std::string_view path = "") const;
+
+    /**
+     * @brief Check if the Json described by the path is float.
+     *
+     * Ensure that the path exists before calling this function.
+     *
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return true if Json is float.
+     * @return false if Json is not float.
+     *
+     * @throws std::runtime_error If path is invalid or cannot be found.
+     */
+    bool isFloat(std::string_view path = "") const;
+
+    /**
      * @brief Check if the Json described by the path is double.
      *
      * Ensure that the path exists before calling this function.
@@ -542,6 +598,17 @@ public:
     void setInt(int value, std::string_view path = "");
 
     /**
+     * @brief Set the Integer object at the path.
+     * Parents objects are created if they do not exist.
+     *
+     * @param value The value to set.
+     * @param path The path to the object, default value is root object ("").
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setInt64(int64_t value, std::string_view path = "");
+
+    /**
      * @brief Set the Double object at the path.
      * Parents objects are created if they do not exist.
      *
@@ -550,7 +617,18 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    void setDouble(double value, std::string_view path = "");
+    void setDouble(double_t value, std::string_view path = "");
+
+    /**
+     * @brief Set the Double object at the path.
+     * Parents objects are created if they do not exist.
+     *
+     * @param value The value to set.
+     * @param path The path to the object, default value is root object ("").
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setFloat(float_t value, std::string_view path = "");
 
     /**
      * @brief Set the String object at the path.

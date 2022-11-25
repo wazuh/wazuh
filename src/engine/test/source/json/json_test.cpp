@@ -916,6 +916,144 @@ TEST(JsonGettersTest, GetInt)
     ASSERT_THROW(jObjInt.getInt("object/key"), std::runtime_error);
 }
 
+TEST(JsonGettersTest, GetInt64)
+{
+    // Success cases
+    Json jObjInt64 {R"({
+        "nested": 123
+    })"};
+    Json jInt64 {"123"};
+    std::optional<int64_t> got;
+    ASSERT_NO_THROW(got = jObjInt64.getInt64("/nested"));
+    ASSERT_TRUE(got.has_value());
+    ASSERT_EQ(123, got.value());
+    ASSERT_NO_THROW(got = jInt64.getInt64());
+    ASSERT_TRUE(got.has_value());
+    ASSERT_EQ(123, got.value());
+
+    // Failure cases
+    std::vector<Json> failureCases = {Json {R"({
+                "nested": "value"
+            })"},
+                                      Json {"\"value\""},
+                                      Json {R"({
+                "nested": 123.456
+            })"},
+                                      Json {"123.456"},
+                                      Json {R"({
+                "nested": true
+            })"},
+                                      Json {"true"},
+                                      Json {R"({
+                "nested": false
+            })"},
+                                      Json {"false"},
+                                      Json {R"({
+                "nested": null
+            })"},
+                                      Json {"null"},
+                                      Json {R"({
+                "nested": {
+                    "key": "value"
+                }
+            })"},
+                                      Json {R"({
+                "key": "value"
+            })"},
+                                      Json {R"({
+                "nested": [
+                    "value"
+                ]
+            })"},
+                                      Json {"[\"value\"]"}};
+
+    for (auto i = 0; i < failureCases.size(); i++)
+    {
+        if (i % 2 == 0)
+        {
+            ASSERT_NO_THROW(got = failureCases[i].getInt64("/nested"));
+            ASSERT_FALSE(got.has_value());
+        }
+        else
+        {
+            ASSERT_NO_THROW(got = failureCases[i].getInt64());
+            ASSERT_FALSE(got.has_value());
+        }
+    }
+
+    // Wrong pointer
+    ASSERT_THROW(jObjInt64.getInt64("object/key"), std::runtime_error);
+}
+
+TEST(JsonGettersTest, GetFloat)
+{
+    // Success cases
+    Json jObjReal {R"({
+        "nested": 123.456
+    })"};
+    Json jReal {"123.456"};
+    std::optional<float_t> got;
+    ASSERT_NO_THROW(got = jObjReal.getFloat("/nested"));
+    ASSERT_TRUE(got.has_value());
+    ASSERT_EQ(float_t(123.456), got.value());
+    ASSERT_NO_THROW(got = jReal.getFloat());
+    ASSERT_TRUE(got.has_value());
+    ASSERT_EQ(float_t(123.456), got.value());
+
+    // Failure cases
+    std::vector<Json> failureCases = {Json {R"({
+                "nested": "value"
+            })"},
+                                      Json {"\"value\""},
+                                      Json {R"({
+                "nested": 123
+            })"},
+                                      Json {"123"},
+                                      Json {R"({
+                "nested": true
+            })"},
+                                      Json {"true"},
+                                      Json {R"({
+                "nested": false
+            })"},
+                                      Json {"false"},
+                                      Json {R"({
+                "nested": null
+            })"},
+                                      Json {"null"},
+                                      Json {R"({
+                "nested": {
+                    "key": "value"
+                }
+            })"},
+                                      Json {R"({
+                "key": "value"
+            })"},
+                                      Json {R"({
+                "nested": [
+                    "value"
+                ]
+            })"},
+                                      Json {"[\"value\"]"}};
+
+    for (auto i = 0; i < failureCases.size(); i++)
+    {
+        if (i % 2 == 0)
+        {
+            ASSERT_NO_THROW(got = failureCases[i].getFloat("/nested"));
+            ASSERT_FALSE(got.has_value());
+        }
+        else
+        {
+            ASSERT_NO_THROW(got = failureCases[i].getFloat());
+            ASSERT_FALSE(got.has_value());
+        }
+    }
+
+    // Wrong pointer
+    ASSERT_THROW(jObjReal.getDouble("object/key"), std::runtime_error);
+}
+
 TEST(JsonGettersTest, GetDouble)
 {
     // Success cases
@@ -923,7 +1061,7 @@ TEST(JsonGettersTest, GetDouble)
         "nested": 123.456
     })"};
     Json jReal {"123.456"};
-    std::optional<double> got;
+    std::optional<double_t> got;
     ASSERT_NO_THROW(got = jObjReal.getDouble("/nested"));
     ASSERT_TRUE(got.has_value());
     ASSERT_EQ(123.456, got.value());
@@ -1329,6 +1467,48 @@ TEST(JsonSettersTest, SetInt)
 
     // Invalid pointer
     ASSERT_THROW(jObjInt.setInt(456, "object/key"), std::runtime_error);
+}
+
+TEST(JsonSettersTest, SetInt64)
+{
+    Json jObjInt64 {R"({
+        "nested": 9223372036854775807
+    })"};
+    Json jInt {"9223372036854775807"};
+    Json jEmpty {};
+    Json jObjEmpty {};
+    ASSERT_NO_THROW(jObjInt64.setInt64(9223372036854775807, "/nested"));
+    ASSERT_EQ(9223372036854775807, jObjInt64.getInt64("/nested").value());
+    ASSERT_NO_THROW(jInt.setInt64(9223372036854775807));
+    ASSERT_EQ(9223372036854775807, jInt.getInt64().value());
+    ASSERT_NO_THROW(jEmpty.setInt64(9223372036854775807));
+    ASSERT_EQ(9223372036854775807, jEmpty.getInt64().value());
+    ASSERT_NO_THROW(jObjEmpty.setInt64(9223372036854775807, "/nested"));
+    ASSERT_EQ(9223372036854775807, jObjEmpty.getInt64("/nested").value());
+
+    // Invalid pointer
+    ASSERT_THROW(jObjInt64.setInt64(9223372036854775808, "object/key"), std::runtime_error);
+}
+
+TEST(JsonSettersTest, SetFloat)
+{
+    Json jObjFloat {R"({
+        "nested": 123.456
+    })"};
+    Json jDouble {"123.456"};
+    Json jEmpty {};
+    Json jObjEmpty {};
+    ASSERT_NO_THROW(jObjFloat.setFloat(789.012, "/nested"));
+    ASSERT_EQ(float_t(789.012), jObjFloat.getFloat("/nested").value());
+    ASSERT_NO_THROW(jObjFloat.setFloat(789.012));
+    ASSERT_EQ(float_t(789.012), jObjFloat.getFloat().value());
+    ASSERT_NO_THROW(jEmpty.setFloat(789.012));
+    ASSERT_EQ(float_t(789.012), jEmpty.getFloat().value());
+    ASSERT_NO_THROW(jObjEmpty.setFloat(789.012, "/nested"));
+    ASSERT_EQ(float_t(789.012), jObjEmpty.getFloat("/nested").value());
+
+    // Invalid pointer
+    ASSERT_THROW(jObjFloat.setFloat(789.012, "object/key"), std::runtime_error);
 }
 
 TEST(JsonSettersTest, SetDouble)
