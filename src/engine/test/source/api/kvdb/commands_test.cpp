@@ -5,18 +5,21 @@
 
 #include <gtest/gtest.h>
 
+using namespace api::kvdb::cmds;
+
+constexpr auto DB_NAME = "TEST_DB";
+constexpr auto DB_NAME_2 = "TEST_DB_2";
+constexpr auto DB_NAME_3 = "TEST_DB_3";
+constexpr auto DB_NAME_WITH_SPACES = "TEST_DB SEPARATE NAME";
+constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
+constexpr auto FILE_PATH = "/tmp/file";
+
 // "createKvdbCmd" tests section
+
 class kvdbAPICreateCommand : public ::testing::Test
 {
 
 protected:
-    static constexpr auto DB_NAME = "TEST_DB";
-    static constexpr auto DB_NAME_2 = "TEST_DB_2";
-    static constexpr auto DB_NAME_3 = "TEST_DB_3";
-    static constexpr auto DB_NAME_WITH_SPACES = "TEST_DB SEPARATE NAME";
-    static constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
-    static constexpr auto FILE_PATH = "/tmp/file";
-
     std::shared_ptr<KVDBManager> kvdbManager;
 
     virtual void SetUp()
@@ -31,43 +34,74 @@ protected:
 
     virtual void TearDown()
     {
-        if (std::filesystem::exists(kvdbAPICreateCommand::FILE_PATH))
+        if (std::filesystem::exists(FILE_PATH))
         {
-            std::filesystem::remove(kvdbAPICreateCommand::FILE_PATH);
+            std::filesystem::remove(FILE_PATH);
         }
     }
 };
+
+TEST_F(kvdbAPICreateCommand, createKvdbCmd)
+{
+    ASSERT_NO_THROW(api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+}
+
+TEST_F(kvdbAPICreateCommand, createKvdbCmdNameMissing)
+{
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+    json::Json params {"{\"not_name\": \"dummyString\"}"};
+    auto response = cmd(params);
+
+    // check response
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 400);
+    ASSERT_EQ(response.message().value(), KVDB_NAME_MISSING);
+}
+
+TEST_F(kvdbAPICreateCommand, createKvdbCmdNameArrayNotString)
+{
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+    json::Json params {"{\"name\": [\"dummyName\"]}"};
+    auto response = cmd(params);
+
+    // check response
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 400);
+    ASSERT_EQ(response.message().value(), KVDB_NAME_NOT_A_STRING);
+}
+
+TEST_F(kvdbAPICreateCommand, createKvdbCmdNameNumberNotString)
+{
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
+    json::Json params {"{\"name\": 69}"};
+    auto response = cmd(params);
+
+    // check response
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 400);
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), KVDB_NAME_NOT_A_STRING);
+}
 
 TEST_F(kvdbAPICreateCommand, createKvdbCmdSimpleAddition)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\"}}", kvdbAPICreateCommand::DB_NAME_2).c_str()};
+    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME_2).c_str()};
     auto response = cmd(params);
-    // ASSERT_EQ(response.message().value(),"");
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.message().value(), "OK");
-    ASSERT_EQ(response.error(), 200);
 
     // check response
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 200);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_EQ(response.message().value(), "OK");
-}
-
-TEST_F(kvdbAPICreateCommand, createKvdbCmdNamesInArray)
-{
-    api::CommandFn cmd;
-    ASSERT_NO_THROW(
-        cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"name\": [\"{}\",\"{}\"]}}",
-                                   kvdbAPICreateCommand::DB_NAME_2,
-                                   kvdbAPICreateCommand::DB_NAME_3)
-                           .c_str()};
-    auto response = cmd(params);
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 400);
 }
 
 TEST_F(kvdbAPICreateCommand, createKvdbCmdEmptyName)
@@ -75,10 +109,14 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdEmptyName)
     api::CommandFn cmd;
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"name\": \"\"}}").c_str()};
+    json::Json params {"{\"name\": \"\"}"};
     auto response = cmd(params);
+
+    // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), KVDB_NAME_EMPTY);
 }
 
 TEST_F(kvdbAPICreateCommand, createKvdbCmdEmptyParams)
@@ -88,26 +126,30 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdEmptyParams)
         cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {};
     auto response = cmd(params);
+
+    // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
+    ASSERT_TRUE(response.message().has_value());
+    ASSERT_EQ(response.message().value(), KVDB_NAME_MISSING);
 }
 
-TEST_F(kvdbAPICreateCommand, createKvdbCmdRepeatedName)
+// TODO: is it okay that this test relay on previous configuration? (database created)
+TEST_F(kvdbAPICreateCommand, createKvdbCmdDuplicatedDatabase)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\"}}", kvdbAPICreateCommand::DB_NAME).c_str()};
+    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
     auto response = cmd(params);
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 400);
 
     // check response
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 400);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_EQ(
         response.message().value(),
-        fmt::format("DB with name [{}] already exists.", kvdbAPICreateCommand::DB_NAME));
+        fmt::format("Database \"{}\" could not be created", DB_NAME));
 }
 
 TEST_F(kvdbAPICreateCommand, createKvdbCmdNameWithSpaces)
@@ -115,14 +157,12 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdNameWithSpaces)
     api::CommandFn cmd;
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\"}}", kvdbAPICreateCommand::DB_NAME_WITH_SPACES)
-            .c_str()};
+    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME_WITH_SPACES).c_str()};
     auto response = cmd(params);
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 200);
 
     // check response
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 200);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_EQ(response.message().value(), "OK");
 }
@@ -130,9 +170,9 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdNameWithSpaces)
 TEST_F(kvdbAPICreateCommand, createKvdbCmdWithFilling)
 {
     // file creation
-    if (!std::filesystem::exists(kvdbAPICreateCommand::FILE_PATH))
+    if (!std::filesystem::exists(FILE_PATH))
     {
-        std::ofstream exampleFile(kvdbAPICreateCommand::FILE_PATH);
+        std::ofstream exampleFile(FILE_PATH);
         if (exampleFile.is_open())
         {
             exampleFile << "keyA:valueA\n";
@@ -145,25 +185,24 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdWithFilling)
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"path\":\"{}\"}}",
-                                   kvdbAPICreateCommand::DB_NAME_2,
-                                   kvdbAPICreateCommand::FILE_PATH)
+                                   DB_NAME_2,
+                                   FILE_PATH)
                            .c_str()};
     auto response = cmd(params);
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.message().value(), "OK");
-    ASSERT_EQ(response.error(), 200);
 
     // check response
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 200);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_EQ(response.message().value(), "OK");
 
     // check value
-    auto handle = kvdbManager->getDB(kvdbAPICreateCommand::DB_NAME_2);
+    auto handle = kvdbManager->getDB(DB_NAME_2);
     if (!handle)
     {
-        kvdbManager->addDb(kvdbAPICreateCommand::DB_NAME_2, false);
+        kvdbManager->addDb(DB_NAME_2, false);
     }
-    handle = kvdbManager->getDB(kvdbAPICreateCommand::DB_NAME_2);
+    handle = kvdbManager->getDB(DB_NAME_2);
     ASSERT_TRUE(handle);
     ASSERT_EQ("valueA", handle->read("keyA"));
     ASSERT_EQ("valueB", handle->read("keyB"));
@@ -172,9 +211,9 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdWithFilling)
 TEST_F(kvdbAPICreateCommand, createKvdbCmdWithWrongFilling)
 {
     // file creation
-    if (!std::filesystem::exists(kvdbAPICreateCommand::FILE_PATH))
+    if (!std::filesystem::exists(FILE_PATH))
     {
-        std::ofstream exampleFile(kvdbAPICreateCommand::FILE_PATH);
+        std::ofstream exampleFile(FILE_PATH);
         if (exampleFile.is_open())
         {
             exampleFile << "keyA-valueA\n";
@@ -187,19 +226,21 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdWithWrongFilling)
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"path\":\"{}\"}}",
-                                   kvdbAPICreateCommand::DB_NAME_2,
-                                   kvdbAPICreateCommand::FILE_PATH)
+                                   DB_NAME_2,
+                                   FILE_PATH)
                            .c_str()};
     auto response = cmd(params);
+
+    // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
     // check value
-    auto handle = kvdbManager->getDB(kvdbAPICreateCommand::DB_NAME_2);
+    auto handle = kvdbManager->getDB(DB_NAME_2);
     if (!handle)
     {
-        kvdbManager->addDb(kvdbAPICreateCommand::DB_NAME_2, false);
+        kvdbManager->addDb(DB_NAME_2, false);
     }
-    handle = kvdbManager->getDB(kvdbAPICreateCommand::DB_NAME_2);
+    handle = kvdbManager->getDB(DB_NAME_2);
     ASSERT_TRUE(handle);
     ASSERT_TRUE(handle->read("keyA").empty());
     ASSERT_TRUE(handle->read("keyB").empty());
@@ -208,9 +249,9 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdWithWrongFilling)
 TEST_F(kvdbAPICreateCommand, createKvdbCmdSingleValueFile)
 {
     // file creation
-    if (!std::filesystem::exists(kvdbAPICreateCommand::FILE_PATH))
+    if (!std::filesystem::exists(FILE_PATH))
     {
-        std::ofstream exampleFile(kvdbAPICreateCommand::FILE_PATH);
+        std::ofstream exampleFile(FILE_PATH);
         if (exampleFile.is_open())
         {
             exampleFile << "keyA\n";
@@ -223,24 +264,24 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdSingleValueFile)
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"path\":\"{}\"}}",
-                                   kvdbAPICreateCommand::DB_NAME_2,
-                                   kvdbAPICreateCommand::FILE_PATH)
+                                   DB_NAME_2,
+                                   FILE_PATH)
                            .c_str()};
     auto response = cmd(params);
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 200);
 
     // check response
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 200);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_EQ(response.message().value(), "OK");
 
     // check value
-    auto handle = kvdbManager->getDB(kvdbAPICreateCommand::DB_NAME_2);
+    auto handle = kvdbManager->getDB(DB_NAME_2);
     if (!handle)
     {
-        kvdbManager->addDb(kvdbAPICreateCommand::DB_NAME_2, false);
+        kvdbManager->addDb(DB_NAME_2, false);
     }
-    handle = kvdbManager->getDB(kvdbAPICreateCommand::DB_NAME_2);
+    handle = kvdbManager->getDB(DB_NAME_2);
     ASSERT_TRUE(handle);
     ASSERT_TRUE(handle->hasKey("keyA"));
     ASSERT_TRUE(handle->hasKey("keyB"));
@@ -252,23 +293,23 @@ TEST_F(kvdbAPICreateCommand, createKvdbCmdNonExistingFile)
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::createKvdbCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"path\":\"{}\"}}",
-                                   kvdbAPICreateCommand::DB_NAME_2,
-                                   kvdbAPICreateCommand::FILE_PATH)
+                                   DB_NAME_2,
+                                   FILE_PATH)
                            .c_str()};
     auto response = cmd(params);
+
+    // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
 }
 
-// "deleteKvdbCmd" tests section
+// "deleteKvdbCmd" tests section ----------------------------------------------------------------------------------------
+
 class kvdbAPIDeleteCommand : public ::testing::Test
 {
 
 protected:
-    static constexpr auto DB_NAME = "TEST_DB";
-    static constexpr auto DB_NAME_WITH_SPACES = "TEST_DB NAME";
     static constexpr auto DB_NAME_NOT_AVAILABLE = "TEST_DB_NOT_AVAILABLE";
-    static constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
 
     std::shared_ptr<KVDBManager> kvdbManager;
 
@@ -296,9 +337,8 @@ TEST_F(kvdbAPIDeleteCommand, deleteKvdbCmdSimpleLoaded)
     api::CommandFn cmd;
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::deleteKvdbCmd(kvdbAPIDeleteCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}",
-                                   kvdbAPIDeleteCommand::DB_NAME)
-                           .c_str()};
+    json::Json params {
+        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}", DB_NAME).c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
@@ -312,8 +352,7 @@ TEST_F(kvdbAPIDeleteCommand, deleteKvdbCmdSimpleLoaded)
 
     // delete DB named with spaces
     json::Json params_with_spaces {
-        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}",
-                    kvdbAPIDeleteCommand::DB_NAME_WITH_SPACES)
+        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}", DB_NAME_WITH_SPACES)
             .c_str()};
     response = cmd(params_with_spaces);
     ASSERT_TRUE(response.isValid());
@@ -334,9 +373,9 @@ TEST_F(kvdbAPIDeleteCommand, deleteKvdbCmdDoesntExistLoaded)
     api::CommandFn cmd;
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::deleteKvdbCmd(kvdbAPIDeleteCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}",
-                                   kvdbAPIDeleteCommand::DB_NAME_NOT_AVAILABLE)
-                           .c_str()};
+    json::Json params {
+        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}", DB_NAME_NOT_AVAILABLE)
+            .c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
@@ -346,15 +385,11 @@ TEST_F(kvdbAPIDeleteCommand, deleteKvdbCmdDoesntExistLoaded)
 }
 
 // "dumpKvdbCmd" tests section
+
 class kvdbAPIDumpCommand : public ::testing::Test
 {
 
 protected:
-    static constexpr auto DB_NAME = "TEST_DB";
-    static constexpr auto DB_NAME_2 = "TEST_DB_2";
-    static constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
-    static constexpr auto FILE_PATH = "/tmp/file";
-
     std::shared_ptr<KVDBManager> kvdbManager;
 
     virtual void SetUp()
@@ -376,6 +411,11 @@ protected:
     virtual void TearDown() {}
 };
 
+TEST_F(kvdbAPIDumpCommand, dumpKvdbCmd)
+{
+    ASSERT_NO_THROW(api::kvdb::cmds::dumpKvdbCmd(kvdbAPIDumpCommand::kvdbManager));
+}
+
 TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdEmptyName)
 {
     api::CommandFn cmd;
@@ -387,7 +427,7 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdEmptyName)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Field [name] is empty.");
+    ASSERT_EQ(response.message().value(), KVDB_NAME_EMPTY);
 }
 
 TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdNoParameters)
@@ -402,15 +442,15 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdNoParameters)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Field [name] is missing.");
+    ASSERT_EQ(response.message().value(), KVDB_NAME_MISSING);
 }
 
 TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdSimpleExecution)
 {
     // create file with content
-    if (!std::filesystem::exists(kvdbAPIDumpCommand::FILE_PATH))
+    if (!std::filesystem::exists(FILE_PATH))
     {
-        std::ofstream exampleFile(kvdbAPIDumpCommand::FILE_PATH);
+        std::ofstream exampleFile(FILE_PATH);
         if (exampleFile.is_open())
         {
             exampleFile << "keyA:ValA\n";
@@ -452,15 +492,15 @@ TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdSimpleEmpty)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "KVDB has no content");
+    ASSERT_EQ(response.message().value(), "KVDB is empty");
 }
 
 TEST_F(kvdbAPIDumpCommand, dumpKvdbCmdKVDBOnlyKeys)
 {
     // create file with content
-    if (!std::filesystem::exists(kvdbAPIDumpCommand::FILE_PATH))
+    if (!std::filesystem::exists(FILE_PATH))
     {
-        std::ofstream exampleFile(kvdbAPIDumpCommand::FILE_PATH);
+        std::ofstream exampleFile(FILE_PATH);
         if (exampleFile.is_open())
         {
             exampleFile << "keyA\n";
@@ -495,8 +535,6 @@ class kvdbAPIGetCommand : public ::testing::Test
 {
 
 protected:
-    static constexpr auto DB_NAME = "TEST_DB";
-    static constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
     static constexpr auto KEY_A = "keyA";
     static constexpr auto VAL_A = "valA";
 
@@ -515,6 +553,11 @@ protected:
 
     virtual void TearDown() {}
 };
+
+TEST_F(kvdbAPIGetCommand, getKvdbCmd)
+{
+    ASSERT_NO_THROW(api::kvdb::cmds::getKvdbCmd(kvdbAPIGetCommand::kvdbManager));
+}
 
 TEST_F(kvdbAPIGetCommand, SimpleExecutionKeyOnly)
 {
@@ -542,8 +585,6 @@ class kvdbAPIInsertCommand : public ::testing::Test
 {
 
 protected:
-    static constexpr auto DB_NAME = "TEST_DB";
-    static constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
     static constexpr auto KEY_A = "keyA";
     static constexpr auto VAL_A = "valA";
 
@@ -561,6 +602,11 @@ protected:
 
     virtual void TearDown() {}
 };
+
+TEST_F(kvdbAPIInsertCommand, kvdbAPIInsertCommand)
+{
+    ASSERT_NO_THROW(api::kvdb::cmds::insertKvdbCmd(kvdbAPIInsertCommand::kvdbManager));
+}
 
 TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyOnly)
 {
@@ -617,7 +663,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionNoKey)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Field [key] is missing.");
+    ASSERT_EQ(response.message().value(), "Parameter \"key\" is missing");
 }
 
 TEST_F(kvdbAPIInsertCommand, ExecutionEmptyKey)
@@ -633,7 +679,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionEmptyKey)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Field [key] is empty.");
+    ASSERT_EQ(response.message().value(), "Parameter \"key\" is empty");
 }
 
 TEST_F(kvdbAPIInsertCommand, ExecutionNoName)
@@ -648,7 +694,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionNoName)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Field [name] is empty.");
+    ASSERT_EQ(response.message().value(), KVDB_NAME_EMPTY);
 }
 
 TEST_F(kvdbAPIInsertCommand, ExecutionEmptyValue)
@@ -751,7 +797,8 @@ TEST_F(kvdbAPIInsertCommand, ExecutionWrongDBName)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Key-value could not be written.");
+    ASSERT_EQ(response.message().value(),
+              "Key-value could not be written to the database");
 }
 
 // "listKvdbCmd" tests section
@@ -760,10 +807,7 @@ class kvdbAPIListCommand : public ::testing::Test
 {
 
 protected:
-    static constexpr auto DB_NAME = "TEST_DB";
-    static constexpr auto DB_NAME_2 = "TEST_DB_2";
     static constexpr auto DB_NAME_DIFFERENT_START = "NOT_TEST_DB";
-    static constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
 
     std::shared_ptr<KVDBManager> kvdbManager;
 
@@ -779,6 +823,11 @@ protected:
 
     virtual void TearDown() {}
 };
+
+TEST_F(kvdbAPIListCommand, listKvdbCmd)
+{
+    ASSERT_NO_THROW(api::kvdb::cmds::listKvdbCmd(kvdbAPIListCommand::kvdbManager));
+}
 
 TEST_F(kvdbAPIListCommand, listKvdbCmdSingleDBLoaded)
 {
@@ -898,8 +947,6 @@ class kvdbAPIRemoveCommand : public ::testing::Test
 {
 
 protected:
-    static constexpr auto DB_NAME = "TEST_DB";
-    static constexpr auto DB_DIR = "/tmp/kvdbTestDir";
     static constexpr auto KEY_A = "keyA";
     static constexpr auto VAL_A = "valA";
 
@@ -918,6 +965,11 @@ protected:
 
     virtual void TearDown() {}
 };
+
+TEST_F(kvdbAPIRemoveCommand, removeKvdbCmd)
+{
+    ASSERT_NO_THROW(api::kvdb::cmds::removeKvdbCmd(kvdbAPIRemoveCommand::kvdbManager));
+}
 
 TEST_F(kvdbAPIRemoveCommand, SimpleExecution)
 {
@@ -959,7 +1011,8 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecutionDoubleRemove)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Key could not be deleted.");
+    ASSERT_EQ(response.message().value(),
+              fmt::format("Key \"{}\" could not be deleted", KEY_A));
 }
 
 TEST_F(kvdbAPIRemoveCommand, RemoveNonExistingDB)
@@ -975,7 +1028,8 @@ TEST_F(kvdbAPIRemoveCommand, RemoveNonExistingDB)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Key could not be deleted.");
+    ASSERT_EQ(response.message().value(),
+              fmt::format("Key \"{}\" could not be deleted", KEY_A));
 }
 
 TEST_F(kvdbAPIRemoveCommand, RemoveWithEmptyKey)
@@ -991,7 +1045,7 @@ TEST_F(kvdbAPIRemoveCommand, RemoveWithEmptyKey)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Field [key] is empty.");
+    ASSERT_EQ(response.message().value(), "Parameter \"key\" is empty");
 }
 
 TEST_F(kvdbAPIRemoveCommand, RemoveWithNonExistingKey)
@@ -1006,26 +1060,27 @@ TEST_F(kvdbAPIRemoveCommand, RemoveWithNonExistingKey)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Field [key] is missing.");
+    ASSERT_EQ(response.message().value(), "Parameter \"key\" is missing");
 }
 
 TEST_F(kvdbAPIRemoveCommand, RemoveWithWrongKeyName)
 {
     // TODO: there's an issue with KeyMayExist causing this test to fail
     GTEST_SKIP();
+    constexpr auto keyName = "ANOTHER_KEY_NAME";
     api::CommandFn cmd;
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::removeKvdbCmd(kvdbAPIRemoveCommand::kvdbManager));
     json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"ANOTHER_KEY_NAME\"}}", DB_NAME)
-            .c_str()};
+        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}", DB_NAME, keyName).c_str()};
     auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Key could not be deleted.");
+    ASSERT_EQ(response.message().value(),
+              fmt::format("Key \"{}\", could not be deleted", keyName));
 }
 
 TEST_F(kvdbAPIRemoveCommand, RemoveWithEmptyKVDBName)
@@ -1040,7 +1095,7 @@ TEST_F(kvdbAPIRemoveCommand, RemoveWithEmptyKVDBName)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Field [name] is empty.");
+    ASSERT_EQ(response.message().value(), KVDB_NAME_EMPTY);
 }
 
 TEST_F(kvdbAPIRemoveCommand, RemoveWithNonExistingKVDBName)
@@ -1054,7 +1109,7 @@ TEST_F(kvdbAPIRemoveCommand, RemoveWithNonExistingKVDBName)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Field [name] is missing.");
+    ASSERT_EQ(response.message().value(), KVDB_NAME_MISSING);
 }
 
 TEST_F(kvdbAPIRemoveCommand, RemoveWithWrongKVDBName)
@@ -1070,5 +1125,6 @@ TEST_F(kvdbAPIRemoveCommand, RemoveWithWrongKVDBName)
 
     // check response
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_EQ(response.message().value(), "Key could not be deleted.");
+    ASSERT_EQ(response.message().value(),
+              fmt::format("Key \"{}\" could not be deleted", KEY_A));
 }
