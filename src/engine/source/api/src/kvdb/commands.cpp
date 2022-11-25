@@ -33,24 +33,6 @@ api::CommandFn createKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
 
         // Get KVDB's path
         const auto kvdbPath = params.getString("/path");
-        if (!kvdbPath)
-        {
-            if (params.exists("/path"))
-            {
-                return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "KVDB \"path\" parameter must be a string"};
-            }
-            // TODO: can the path be missing?
-            // return api::WazuhResponse {
-            //     json::Json {"{}"}, 400, "KVDB \"path\" parameter is missing"};
-        }
-
-        // TODO: can the path be empty?
-        // if (kvdbPath.value().empty())
-        // {
-        //     return api::WazuhResponse {
-        //         json::Json {"{}"}, 400, "KVDB \"path\" parameter cannot be empty"};
-        // }
 
         const bool result {kvdbManager->CreateAndFillKVDBfromFile(kvdbName.value(),
                                                                   kvdbPath.value_or(""))};
@@ -131,40 +113,37 @@ api::CommandFn dumpKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
             return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_EMPTY};
         }
 
-        // TODO: should this be an error if the DB is empty? Why?
         std::string dbContent;
         const size_t retVal {kvdbManager->dumpContent(kvdbNameValue, dbContent)};
-        if (!retVal)
-        {
-            return api::WazuhResponse {json::Json {"{}"}, 400, "KVDB is empty"};
-        }
 
         json::Json data;
         data.setArray("/data");
-
-        std::istringstream iss(dbContent);
-        for (std::string line; std::getline(iss, line);)
+        if (retVal)
         {
-            std::string jsonFill;
-            auto splittedLine = utils::string::split(line, ':');
-            const size_t lineMemebers = splittedLine.size();
-            if (!lineMemebers || 2 < lineMemebers)
+            std::istringstream iss(dbContent);
+            for (std::string line; std::getline(iss, line);)
             {
-                return api::WazuhResponse {json::Json {"{}"}, 400, "KVDB was ill formed"};
-            }
-            else if (2 == lineMemebers)
-            {
-                jsonFill = fmt::format("{{\"key\": \"{}\",\"value\": \"{}\"}}",
-                                       splittedLine.at(0),
-                                       splittedLine.at(1));
-            }
-            else if (1 == lineMemebers)
-            {
-                jsonFill = fmt::format("{{\"key\": \"{}\"}}", splittedLine.at(0));
-            }
+                std::string jsonFill;
+                auto splittedLine = utils::string::split(line, ':');
+                const size_t lineMemebers = splittedLine.size();
+                if (!lineMemebers || 2 < lineMemebers)
+                {
+                    return api::WazuhResponse {json::Json {"{}"}, 400, "KVDB was ill formed"};
+                }
+                else if (2 == lineMemebers)
+                {
+                    jsonFill = fmt::format("{{\"key\": \"{}\",\"value\": \"{}\"}}",
+                                        splittedLine.at(0),
+                                        splittedLine.at(1));
+                }
+                else if (1 == lineMemebers)
+                {
+                    jsonFill = fmt::format("{{\"key\": \"{}\"}}", splittedLine.at(0));
+                }
 
-            const json::Json keyValueObject {jsonFill.c_str()};
-            data.appendJson(keyValueObject);
+                const json::Json keyValueObject {jsonFill.c_str()};
+                data.appendJson(keyValueObject);
+            }
         }
 
         return api::WazuhResponse {std::move(data), 200, "OK"};

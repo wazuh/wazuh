@@ -168,7 +168,6 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
     return nullptr;
 }
 
-// TODO: tests for this method are missing
 std::vector<std::string> KVDBManager::getAvailableKVDBs(bool loaded)
 {
     std::vector<std::string> list;
