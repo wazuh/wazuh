@@ -240,13 +240,27 @@ void start_daemon()
         syscheck.time = 604800;
     }
 
-    // Deleting content local/diff directory
-    char diff_dir[PATH_MAX];
+    // Deleting content of FIM diff directory
+    char diff_file_dir[PATH_MAX];
+    char diff_registry_dir[PATH_MAX];
+    char diff_local_dir[PATH_MAX];
 
-    snprintf(diff_dir, PATH_MAX, "%s/local/", DIFF_DIR);
 
-    if (cldir_ex(diff_dir) == -1 && errno != ENOENT) {
-        merror("Unable to clear directory '%s': %s (%d)", diff_dir, strerror(errno), errno);
+    // The contents of the report_changes diff directory must be deleted whenever the agent is started.
+    // Directory used for files.
+    snprintf(diff_file_dir, PATH_MAX, "%s/file/", DIFF_DIR);
+    if (cldir_ex(diff_file_dir) == -1 && errno != ENOENT) {
+        merror("Unable to clear directory '%s': %s (%d)", diff_file_dir, strerror(errno), errno);
+    }
+    // Directory used for registries.
+    snprintf(diff_registry_dir, PATH_MAX, "%s/registry/", DIFF_DIR);
+    if (cldir_ex(diff_registry_dir) == -1 && errno != ENOENT) {
+        merror("Unable to clear directory '%s': %s (%d)", diff_registry_dir, strerror(errno), errno);
+    }
+    // Old directory used by report_changes, may be leftover from an old installation
+    snprintf(diff_local_dir, PATH_MAX, "%s/local/", DIFF_DIR);
+    if (cldir_ex(diff_local_dir) == -1 && errno != ENOENT) {
+        merror("Unable to clear directory '%s': %s (%d)", diff_local_dir, strerror(errno), errno);
     }
 
     if (syscheck.disabled) {

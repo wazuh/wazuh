@@ -644,18 +644,17 @@ char *fim_file_diff(const char *filename, const directory_t *configuration);
  * @brief Deletes the filename diff folder and modify diff_folder_size if disk_quota enabled
  *
  * @param filename Path of the file that has been deleted
- * @return 0 if success, -1 on error
  */
-int fim_diff_process_delete_file(const char *filename);
+void fim_diff_process_delete_file(const char *filename);
 
+#ifdef WIN32
 /**
  * @brief Deletes the registry diff folder and modify diff_folder_size if disk_quota enabled
  *
  * @param key_name Path of the registry that has been deleted
  * @param arch Arch type of the registry
- * @return 0 if success, -1 on error
  */
-int fim_diff_process_delete_registry(const char *key_name, int arch);
+void fim_diff_process_delete_registry(const char *key_name, int arch);
 
 /**
  * @brief Deletes the value diff folder and modifies diff_folder_size if disk_quota enabled
@@ -663,9 +662,9 @@ int fim_diff_process_delete_registry(const char *key_name, int arch);
  * @param key_name Path of the registry that contains the deleted value
  * @param value_name Path of the value that has been deleted
  * @param arch Arch type of the registry
- * @return 0 if success, -1 on error
  */
-int fim_diff_process_delete_value(const char *key_name, const char *value_name, int arch);
+void fim_diff_process_delete_value(const char *key_name, const char *value_name, int arch);
+#endif
 
 /**
  * @brief Initializes all syscheck data
