@@ -161,15 +161,16 @@ TEST(ParsecResultTest, MakeError)
 /****************************************************************************************/
 // Parser combinator tests
 /****************************************************************************************/
-TEST(ParsecCombinatorTest, OperatorNot)
+// TODO: Add index tests
+TEST(ParsecCombinatorTest, Optional)
 {
     parsec::Result<resT> result;
-    auto negatedP = !getSuccessParser();
-    ASSERT_NO_THROW(result = negatedP("text", 0));
-    ASSERT_FALSE(result.success());
-    negatedP = !getErrorParser();
-    ASSERT_NO_THROW(result = negatedP("text", 0));
-    ASSERT_FALSE(result.failure());
+    auto optP = parsec::opt(getSuccessParser());
+    ASSERT_NO_THROW(result = optP("text", 0));
+    ASSERT_TRUE(result.success());
+    optP = parsec::opt(getErrorParser());
+    ASSERT_NO_THROW(result = optP("text", 0));
+    ASSERT_TRUE(result.success());
 }
 
 TEST(ParsecCombinatorTest, OperatorLeftShift)
