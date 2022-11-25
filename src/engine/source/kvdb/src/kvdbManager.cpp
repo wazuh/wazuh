@@ -68,6 +68,7 @@ KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
     return nullptr;
 }
 
+// TODO: tests for this method are missing
 bool KVDBManager::createKVDBfromCDBFile(const std::filesystem::path& path,
                                      bool createIfMissing)
 {
@@ -167,6 +168,7 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
     return nullptr;
 }
 
+// TODO: tests for this method are missing
 std::vector<std::string> KVDBManager::getAvailableKVDBs(bool loaded)
 {
     std::vector<std::string> list;
@@ -199,6 +201,8 @@ std::vector<std::string> KVDBManager::getAvailableKVDBs(bool loaded)
     return list;
 }
 
+// TODO: tests for this method are missing
+// TODO: the errors may be changed to exceptions which must be handled on a higher level
 bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
                                             const std::filesystem::path& path)
 {
@@ -209,6 +213,7 @@ bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
         return false;
     }
 
+    // TODO: what if the path is empty?
     if (!path.empty())
     {
         std::ifstream filePath(path);
@@ -234,6 +239,7 @@ bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
     return true;
 }
 
+// TODO: tests for this method are missing
 bool KVDBManager::getKVDBFromFile(const std::string& name, KVDBHandle& dbHandle)
 {
     dbHandle = std::make_shared<KVDB>(name, mDbFolder);
@@ -245,6 +251,7 @@ bool KVDBManager::getKVDBFromFile(const std::string& name, KVDBHandle& dbHandle)
     return false;
 }
 
+// TODO: tests for this method are missing
 size_t KVDBManager::dumpContent(const std::string& name, std::string& content)
 {
     size_t result {0};
@@ -258,6 +265,7 @@ size_t KVDBManager::dumpContent(const std::string& name, std::string& content)
     return result;
 }
 
+// TODO: tests for this method are missing
 bool KVDBManager::writeKey(const std::string& name,
                            const std::string& key,
                            const std::string value)
@@ -271,6 +279,7 @@ bool KVDBManager::writeKey(const std::string& name,
     return result;
 }
 
+// TODO: tests for this method are missing
 std::optional<std::string> KVDBManager::getKeyValue(const std::string& name,
                                                     const std::string& key)
 {
@@ -287,6 +296,7 @@ std::optional<std::string> KVDBManager::getKeyValue(const std::string& name,
     return result;
 }
 
+// TODO: tests for this method are missing
 bool KVDBManager::deleteKey(const std::string& name, const std::string& key)
 {
     bool result = false;
