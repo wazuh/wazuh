@@ -4,7 +4,7 @@ CPMAddPackage(
         GIT_TAG v3.0.1
         VERSION 3.0.1
         OPTIONS
-            "AUTO_DOWNLOAD 1"
+        "AUTO_DOWNLOAD 1"
 )
 
 CPMAddPackage(
@@ -21,16 +21,17 @@ CPMAddPackage(
 )
 
 CPMAddPackage(
-    NAME CURL
-    GITHUB_REPOSITORY curl/curl
-    GIT_TAG curl-7_85_0
-    VERSION 7.85.0
-    EXCLUDE_FROM_ALL YES
-    DOWNLOAD_ONLY
+        NAME CURL
+        GITHUB_REPOSITORY curl/curl
+        GIT_TAG curl-7_85_0
+        VERSION 7.85.0
+        EXCLUDE_FROM_ALL YES
+        DOWNLOAD_ONLY
 )
 
 add_library(hlp_parsec INTERFACE)
-target_include_directories(hlp_parsec INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/parsec/include/)
+target_include_directories(hlp_parsec INTERFACE ${CMAKE_CURRENT_LIST_DIR}/parsec/include/)
+add_library(hlp::parsec ALIAS hlp_parsec)
 
 add_library(hlp2 STATIC
         src/basic.cpp
@@ -41,11 +42,11 @@ add_library(hlp2 STATIC
         src/xml.cpp
         src/csv.cpp
         src/kvmap.cpp
+        src/logpar.cpp
         ${date_SOURCE_DIR}/src/tz.cpp
 )
 
 # https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
-
 add_definitions(-DONLY_C_LOCALE)
 
 # https://howardhinnant.github.io/date/tz.html#Installation
@@ -53,14 +54,11 @@ add_definitions(-DONLY_C_LOCALE)
 # You may have to use -lpthread. If you're getting a mysterious crash on first access to the database, it is likely that
 # you aren't linking to the pthread library. The pthread library is used to assure that that library initialization
 # is thread safe in a multithreaded environment.
-
-target_link_libraries(hlp2
-        PUBLIC base
-        PRIVATE pugixml hlp_parsec date::date CURL::libcurl csv "--coverage" json pthread)
+target_link_libraries(hlp2 base pugixml hlp::parsec date::date CURL::libcurl csv "--coverage" json pthread)
 
 target_include_directories(hlp2
         PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/include
         PRIVATE
         ${csv_SOURCE_DIR}/include
-        )
+)
