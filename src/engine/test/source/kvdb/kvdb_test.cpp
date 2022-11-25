@@ -404,4 +404,10 @@ TEST_F(KVDBTest, ListAvailableKVDBs)
     ASSERT_EQ(kvdbLists.at(1),kTestDBName);
 }
 
+TEST_F(KVDBTest, GetKeyValue)
+{}
+
+TEST_F(KVDBTest, DeleteKey)
+{}
+
 } // namespace
