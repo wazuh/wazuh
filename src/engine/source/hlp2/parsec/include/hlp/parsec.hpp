@@ -1,14 +1,16 @@
 #ifndef _PARSEC_HPP_
 #define _PARSEC_HPP_
 
-#include <exception>
 #include <functional>
 #include <list>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
 #include <variant>
 #include <stdexcept>
+
+// TODO: check error messages concatenation
 
 /**
  * @brief Contains the parser combinators and parser types
@@ -52,12 +54,12 @@ public:
     /* Error or value */
     std::variant<T, Error> res;
     /* Index pointing to the next character not consumed by the parser */
-    int index;
+    size_t index;
     /* Text parsed */
     std::string_view text;
 
     Result() = default;
-    Result(std::variant<T, Error> valOrErr, std::string_view txt, int idx)
+    Result(std::variant<T, Error> valOrErr, std::string_view txt, size_t idx)
         : res {valOrErr}
         , index {idx}
         , text {txt}
@@ -145,7 +147,7 @@ public:
  * @return Result<T> success result
  */
 template<typename T>
-auto makeSuccess(T value, std::string_view text, int index)
+auto makeSuccess(T value, std::string_view text, size_t index)
 {
     return Result<T> {value, text, index};
 }
@@ -160,7 +162,7 @@ auto makeSuccess(T value, std::string_view text, int index)
  * @return Result<T> failure result
  */
 template<typename T>
-auto makeError(const std::string& error, std::string_view text, int index)
+auto makeError(const std::string& error, std::string_view text, size_t index)
 {
     return Result<T> {Error {error}, text, index};
 }
@@ -183,24 +185,22 @@ using Parser = std::function<Result<T>(std::string_view, int)>;
  ****************************************************************************************/
 
 /**
- * @brief Create a parser that succeeds if the given parser fails
- *
- * This parser result will contain the error if the given parser succeeds, or empty value
- * if the given parser fails.
+ * @brief Makes parser optional. Always succeeds, returning the value of the parser if it
+ * succeeds, or the default value if it fails.
  *
  * @tparam T type of the value returned by the parser
- * @param p parser to negate
- * @return Parser<T> parser that succeeds if the given parser fails
+ * @param p parser
+ * @return Parser<T> Combined parser
  */
 template<typename T>
-Parser<T> operator!(const Parser<T>& p)
+Parser<T> opt(const Parser<T>& p)
 {
-    return [=](std::string_view text, int index)
+    return [=](std::string_view text, size_t index)
     {
         auto res = p(text, index);
         if (res.success())
         {
-            return makeError<T>("Expected failure", text, index);
+            return res;
         }
         else
         {
@@ -222,7 +222,7 @@ Parser<T> operator!(const Parser<T>& p)
 template<typename L, typename R>
 Parser<L> operator<<(const Parser<L>& l, const Parser<R>& r)
 {
-    Parser<L> fn = [l, r](std::string_view s, int i)
+    Parser<L> fn = [l, r](std::string_view s, size_t i)
     {
         auto resL = l(s, i);
         if (resL.failure())
@@ -255,7 +255,7 @@ Parser<L> operator<<(const Parser<L>& l, const Parser<R>& r)
 template<typename L, typename R>
 Parser<R> operator>>(const Parser<L>& l, const Parser<R>& r)
 {
-    Parser<R> fn = [l, r](std::string_view s, int i)
+    Parser<R> fn = [l, r](std::string_view s, size_t i)
     {
         auto resL = l(s, i);
         if (resL.failure())
@@ -281,8 +281,7 @@ Parser<R> operator>>(const Parser<L>& l, const Parser<R>& r)
 template<typename T>
 Parser<T> operator|(const Parser<T>& l, const Parser<T>& r)
 {
-    // TODO: this should return a tuple?
-    return [l, r](std::string_view s, int i)
+    return [l, r](std::string_view s, size_t i)
     {
         auto resL = l(s, i);
         if (resL.success())
@@ -307,7 +306,7 @@ Parser<T> operator|(const Parser<T>& l, const Parser<T>& r)
 template<typename L, typename R>
 Parser<std::tuple<L, R>> operator&(const Parser<L>& l, const Parser<R>& r)
 {
-    return [l, r](std::string_view s, int i)
+    return [l, r](std::string_view s, size_t i)
     {
         auto resL = l(s, i);
         if (resL.failure())
@@ -335,7 +334,7 @@ Parser<std::tuple<L, R>> operator&(const Parser<L>& l, const Parser<R>& r)
 template<typename T>
 Parser<T> operator^(const Parser<T>& l, const Parser<T>& r)
 {
-    return [l, r](std::string_view s, int i)
+    return [l, r](std::string_view s, size_t i)
     {
         auto resL = l(s, i);
         auto resR = r(s, i);
@@ -373,7 +372,7 @@ Parser<T> operator^(const Parser<T>& l, const Parser<T>& r)
 template<typename Tx, typename T>
 Parser<Tx> fmap(std::function<Tx(T)> f, const Parser<T>& p)
 {
-    return [f, p](std::string_view s, int i)
+    return [f, p](std::string_view s, size_t i)
     {
         auto res = p(s, i);
         if (res.failure())
@@ -401,7 +400,7 @@ using M = std::function<Parser<Tx>(T)>;
 template<typename Tx, typename T>
 Parser<Tx> operator>>=(const Parser<T>& p, M<Tx, T> f)
 {
-    return [p, f](std::string_view s, int i)
+    return [p, f](std::string_view s, size_t i)
     {
         auto res = p(s, i);
         if (res.failure())
@@ -428,7 +427,7 @@ using Values = std::list<T>;
 template<typename T>
 Parser<Values<T>> many(const Parser<T>& p)
 {
-    return [p](std::string_view s, int i)
+    return [p](std::string_view s, size_t i)
     {
         Values<T> values {};
         auto innerI = i;
@@ -460,12 +459,12 @@ template<typename T>
 Parser<Values<T>> many1(const Parser<T>& p)
 {
     auto manyP = many(p);
-    return [manyP](std::string_view s, int i)
+    return [manyP](std::string_view s, size_t i)
     {
         auto res = manyP(s, i);
         if (res.value().empty())
         {
-            return makeError<Values<T>>("Expected at least one", s, res.index);
+            return makeError<Values<T>>("Expected at least one", s, i);
         }
         return res;
     };
