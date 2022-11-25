@@ -179,10 +179,10 @@ class FimDBFixture : public ::testing::Test
 
             EXPECT_CALL((*mockDBSync), setTableMaxRow("file_entry", mockMaxRowsFile));
 
-            #ifdef WIN32
+#ifdef WIN32
             EXPECT_CALL((*mockDBSync), setTableMaxRow("registry_key", mockMaxRowsReg));
             EXPECT_CALL((*mockDBSync), setTableMaxRow("registry_data", mockMaxRowsReg));
-            #endif
+#endif
 
             fimDBMock.init(mockIntervalSync,
                            syncMaxInterval,
