@@ -13,7 +13,7 @@ check:
 normalize:
  - map:
     - event.module: security
-    - event.code: ~event_channel.Event.EventData.EventID.#text
+    - event.code: $~event_channel.Event.System.EventID.#text
 
     # Set categorization fields
     - event: +kvdb_get_merge/win_security_categories/$~event_channel.Event.System.EventID.#text
@@ -45,12 +45,19 @@ normalize:
     # Event sub category - Need to generate actual message
     - event.Category: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid.#0
     - event.SubCategory: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid.#1
-    
+
+    # map helper arrays
+    - ~id_target_user_array: ["4624","4625","4634","4647","4648","4768","4769","4770","4771","4776","4964"]
+    - ~id_memberName_array: ["4727", "4728", "4729", "4730", "4731", "4732", "4733", "4734", "4735",
+                              "4737", "4744", "4745", "4746", "4747", "4748", "4749", "4750", "4751",
+                              "4752", "4753", "4754", "4755", "4756", "4757", "4758", "4759", "4760",
+                              "4761", "4762", "4763", "4764", "4799"]
+
     # Decode message table
     # Failure reason for logon
-    - check:
+ - check:
        - ~event_channel.Event.EventData.FailureReason: +ef_exists
-       map:
+   map:
         - event.logon.failure.reason: +kvdb_get/win_failure_codes_description/$~event_channel.Event.EventData.FailureReason
     # Audit Policy Changes
     # Needs for each element of an array
@@ -60,9 +67,9 @@ normalize:
     #    - ~tmp.array_policy_changes: +s_to_array/$~event_channel.Event.EventData.AuditPolicyChanges/,
     #    - event.AuditPolicyChangesDescription: +kvdb_for_each/win_failure_codes_description/$~tmp.array_policy_changes
     # Access List
-    - check:
+ - check:
       - ~event_channel.Event.EventData.AccessList: +ef_exists
-      map:
+   map:
         - _tmp.array_access_masks: +s_to_array/$~event_channel.Event.EventData.AccessMask/,
         - event.AccessMask: +kvdb_for_each/win_failure_codes_description/$_tmp.array_access_masks
     #
@@ -76,9 +83,9 @@ normalize:
 
     # Conditional logon status and substatus
     # 4625 and 4776 Set Status and SubStatus
-    - check: 
+ - check: 
       - event.code: +i_eq/4625 OR +i_eq/4776
-      map:
+   map:
         - event.logon.failure.status: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.Status
         - event.logon.failure.sub_status: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.SubStatus
 
@@ -92,9 +99,9 @@ normalize:
     - event.trustAttribute: +kvdb_get/win_trust_attribute/$~event_channel.Event.EventData.TdoAttributes
 
     # Add Session Events
-    - check: 
+ - check: 
       - event.code: +i_ne/4778 OR +i_ne/4779
-      map:
+   map:
         # AccountName to user.name and related.user
         - event.user.name: ~event_channel.Event.EventData.AccountName
         - event.related.user: ~event_channel.Event.EventData.AccountName
@@ -109,48 +116,79 @@ normalize:
         - event.logon.id: ~event_channel.Event.EventData.LogonID
     
     # Copy Target User
-    - ~id_array: ["4624","4625","4634","4647","4648","4768","4769","4770","4771","4776","4964"]
-    - check:
-      - ~id_array: +a_contains/$event.code
-      map:
+    
+ - check:
+      - ~id_target_user_array: +a_contains/$event.code
+   map:
       - ~is_copy_target_user: true
     # TargetUserSid to user.id or user.target.id  
-    - check: 
+ - check: 
       - event.user.id: +ef_not_exists
-      - ~id_array: +t_is_true
-      map:
+      - ~is_copy_target_user: +t_is_true
+   map:
         - event.user.id: ~event_channel.Event.EventData.TargetUserSid
         - event.user.id: ~event_channel.Event.EventData.TargetSid
-    - check:
+ - check:
       - event.user.id: +ef_exists
       - ~id_array: +t_is_true
-      map:
+   map:
         - event.user.target.id: ~event_channel.Event.EventData.TargetUserSid
         - event.user.target.id: ~event_channel.Event.EventData.TargetSid
-    # TargetUserName to related.user and user.name or user.target.name
-    - check: 
+ # TargetUserName to related.user and user.name or user.target.name
+ - check: 
       - event.user.name: +ef_not_exists
-      - ~id_array: +t_is_true
-      map:
+      - ~is_copy_target_user: +t_is_true
+   map:
         - event.user.name: ~event_channel.Event.EventData.TargetUserName
-    - check: 
+ - check: 
       - event.user.name: +ef_exists
-      - ~id_array: +t_is_true
-      map:
+      - ~is_copy_target_user: +t_is_true
+   map:
         - event.user.target.name: ~event_channel.Event.EventData.TargetUserName
-    - check: 
-      - ~id_array: +t_is_true 
-      - 
-      map:
+ - check: 
+      - ~is_copy_target_user: +t_is_true  
+   map:
         - event.related.user: +s_concat/$~event_channel.Event.EventData.TargetUserName # may be moved up?
     # TargetUserDomain to user.domain or user.target.domain
-    - check:
-      - ~id_array: +t_is_true
+ - check:
+      - ~is_copy_target_user: +t_is_true
       - event.user.domain: +ef_not_exists
-      map:
+   map:
         - event.user.domain: ~event_channel.Event.EventData.TargetDomainName
-    - check:
-      - ~id_array: +t_is_true
+ - check:
+      - ~is_copy_target_user: +t_is_true
       - event.user.domain: +ef_exists
-      map:
+   map:
         - event.user.target.domain: ~event_channel.Event.EventData.TargetDomainName
+
+    # Copy MemberName to User and User to Group
+ - check:
+        - ~id_memberName_array: +a_contains/$event.code
+   map:
+        - is_copy_MemberName: true
+        - ~split_memberName: +s_to_array/$~event_channel.Event.EventData.MemberName/,
+        - ~split_memberName.0: +s_replace/CN=/ 
+        - event.member.name: $~split_memberName.0
+        - event.group.id: $~event_channel.Event.EventData.TargetUserSid
+        - event.group.id: $~event_channel.Event.EventData.TargetSid 
+        - event.group.name: $~event_channel.Event.EventData.TargetUserName
+        - ~event_channel.Event.EventData.TargetDomainName: +s_replace/DC=/
+        - event.goup.domain: $~event_channel.Event.EventData.TargetDomainName
+        - event.user.target.group.id: event.group.id
+        - event.user.target.group.name: event.group.name
+        - event.user.target.group.domain: event.group.domain
+ - check:   
+        # - ~split_memberName: +a_ge/4
+        - is_copy_MemberName: +t_is_true
+   map:
+        - ~split_memberName.3: +s_replace/DC=/ 
+        - event.user.target.domain: $~split_memberName.3
+
+ # Copy Target User to Computer Object
+ - check:
+    - event.code: +i_eq/4741 OR +i_eq/4742 OR +i_eq/4743
+   map:
+    - event.computerObject.id: $~event_channel.Event.EventData.TargetSid
+    - event.computerObject.name: $~event_channel.Event.EventData.TargetUserName
+    - event.computerObject.domain: $~event_channel.Event.EventData.TargetDomainName
+        
