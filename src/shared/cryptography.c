@@ -60,9 +60,10 @@ DWORD verify_pe_signature(const wchar_t *path)
         break;
     case TRUST_E_NOSIGNATURE:
         last_error = GetLastError();
-        if (TRUST_E_NOSIGNATURE == last_error ||
-            TRUST_E_SUBJECT_FORM_UNKNOWN == last_error ||
-            TRUST_E_PROVIDER_UNKNOWN == last_error) {
+
+        if (0x800B0100 == last_error ||   // TRUST_E_NOSIGNATURE
+            0x800B0003 == last_error ||   // TRUST_E_SUBJECT_FORM_UNKNOWN
+            0x800B0001 == last_error) {   // TRUST_E_PROVIDER_UNKNOWN
             // The file was not signed.
             merror("No signature found for '%S'.", full_path);
         }
@@ -184,7 +185,8 @@ DWORD verify_pe_signature(const wchar_t *path)
         merror("A certificate for file '%S' that can only be used as an end-entity is being used as a CA or vice versa.", full_path);
         break;
     default:
-        merror("WinVerifyTrust returned '%lX'. GetLastError returned '%lX'", status, GetLastError());
+        last_error = GetLastError();
+        merror("%s WinVerifyTrust returned '%lX'. GetLastError returned '%lX'", win_strerror(last_error), status, last_error);
         status = ERROR_INVALID_DATA;
     }
 
@@ -198,6 +200,7 @@ DWORD verify_pe_signature(const wchar_t *path)
 DWORD get_file_hash(const wchar_t *path, BYTE **hash, DWORD *hash_size)
 {
     DWORD result = ERROR_SUCCESS;
+    DWORD last_error = ERROR_SUCCESS;
 
     // Get full path if path is a relative path.
     // This is needed because CryptCATAdminCalcHashFromFileHandle only accepts full paths.
@@ -215,27 +218,33 @@ DWORD get_file_hash(const wchar_t *path, BYTE **hash, DWORD *hash_size)
 
                 if (*hash_size == 0) {
                     result = ERROR_INVALID_DATA;
-                    merror("CryptCATAdminCalcHashFromFileHandle failed with error %lu", GetLastError());
+                    last_error = GetLastError();
+                    merror("CryptCATAdminCalcHashFromFileHandle failed because hash size is zero with error %lu: %s", last_error, win_strerror(last_error));
                 } else {
                     os_calloc(1, *hash_size, *hash);
 
                     if (!CryptCATAdminCalcHashFromFileHandle(handle_file, hash_size, *hash, 0)) {
                         result = GetLastError();
-                        merror("CryptCATAdminCalcHashFromFileHandle failed with error %lu", result);
+                        merror("CryptCATAdminCalcHashFromFileHandle failed trying to calculate hash with error %lu: %s", result, win_strerror(result));
                         os_free(*hash);
                     }
                 }
+            } else {
+                result = GetLastError();
+                merror("CryptCATAdminCalcHashFromFileHandle failed trying to get the hash size with error %lu: %s", result, win_strerror(result));
             }
         } else {
             result = ERROR_FILE_NOT_FOUND;
-            mdebug2("CreateFileW failed with error %lu path %S", GetLastError(), path);
+            last_error = GetLastError();
+            mdebug2("CreateFileW failed with error %lu path %S: %s", last_error, path, win_strerror(last_error));
         }
         // Close file handle.
         CloseHandle(handle_file);
 
     } else {
         result = ERROR_INVALID_DATA;
-        merror("GetFullPathNameW failed with error %lu", GetLastError());
+        last_error = GetLastError();
+        merror("GetFullPathNameW failed with error %lu. %s", last_error, win_strerror(last_error));
     }
 
     return result;
@@ -264,7 +273,7 @@ DWORD verify_hash_catalog(wchar_t *file_path)
             CryptCATAdminReleaseContext(catalog_administrator, 0);
         } else {
             result = GetLastError();
-            merror("CryptCATAdminAcquireContext failed with error %lu", result);
+            merror("CryptCATAdminAcquireContext failed with error %lu: %s", result, win_strerror(result));
         }
         os_free(hash);
     }
