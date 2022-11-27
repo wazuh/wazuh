@@ -38,7 +38,7 @@ static void runTest(TestCase t, std::function<parsec::Parser<json::Json>(Stop, O
         return;
     }
     auto r = parser(std::get<0>(t), 0);
-    GTEST_COUT << fmt::format("Input: '{}'", std::get<0>(t)) << std::endl;
+    // GTEST_COUT << fmt::format("Input: '{}'", std::get<0>(t)) << std::endl;
     SCOPED_TRACE(fmt::format("Input: '{}'", std::get<0>(t)));
     ASSERT_EQ(r.success(), expectedSuccess);
     if (r.success())
