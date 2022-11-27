@@ -6,7 +6,7 @@
 using Stop = std::optional<std::string>;
 using Options = std::vector<std::string>;
 
-// XML modules
+
 using xmlModule = std::function<bool(pugi::xml_node&, json::Json&, std::string&)>;
 static bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
 {
@@ -21,13 +21,7 @@ static bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string 
     return true;
 }
 
-/**
- * @brief Transform an XML document into a JSON document.
- *
- * @param doc Input XML document.
- * @param docJson Output JSON document.
- * @param path Path to the current node.
- */
+
 static void xmlToJson(pugi::xml_node& docXml,
                       json::Json& docJson,
                       xmlModule mod,
@@ -86,12 +80,9 @@ parsec::Parser<json::Json> getXMLParser(Stop str, Options lst)
 
     return [isWin,str](std::string_view text, int index)
     {
-        std::string_view fp;
-
-        unsigned long pos = text.size();
-        if (!str.has_value()) {
-            fp = text;
-        } else
+        size_t pos = text.size();
+        std::string_view fp = text;
+        if (str.has_value() && ! str.value().empty())
         {
             pos = text.find(str.value(), index);
             if (pos == std::string::npos)
@@ -102,10 +93,7 @@ parsec::Parser<json::Json> getXMLParser(Stop str, Options lst)
             fp = text.substr(index, pos);
         }
 
-        // TODO: same as parseJson, we are creating a Json object to obtain the json
-        // string and later creating a Json object again, fix this on HLP refactor.
-
-        pugi::xml_document xmlDoc; // = std::make_shared<pugi::xml_document>();
+        pugi::xml_document xmlDoc;
         json::Json jsonDoc;
 
         auto parseResult = xmlDoc.load_buffer(fp.data(), fp.size());

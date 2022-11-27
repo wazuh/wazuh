@@ -40,26 +40,25 @@ parsec::Parser<json::Json> getFilePathParser(Stop str, Options lst)
     if ( ! str.has_value()) {
         throw std::invalid_argument(fmt::format("File parser needs a stop string"));
     }
-    auto stop = str.value();
 
-    return [stop](std::string_view text, int index)
+    if ( lst.size() >1 )
+        throw std::invalid_argument(fmt::format("File parser accepts only one option"));
+
+    return [str](std::string_view text, int index)
     {
-        std::string_view fp;
-
-        unsigned long pos;
-        if (stop.empty()) {
-            fp = text;
-            pos = text.size();
-        } else
+        size_t pos = text.size();
+        std::string_view fp = text;
+        if (str.has_value() && ! str.value().empty())
         {
-            pos = text.find(stop, index);
+            pos = text.find(str.value(), index);
             if (pos == std::string::npos)
             {
                 return parsec::makeError<json::Json>(
-                    fmt::format("Unable to stop at '{}' in input", stop), text, index);
+                    fmt::format("Unable to stop at '{}' in input", str.value()), text, index);
             }
             fp = text.substr(index, pos);
         }
+
         json::Json doc;
 
         if ( fp.find("\\") != std::string::npos) {
