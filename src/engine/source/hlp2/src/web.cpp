@@ -6,8 +6,7 @@
 #include <json/json.hpp>
 #include <vector>
 #include <optional>
-#include <sstream>
-#include <string.h>
+#include <cstring>
 
 using Stop = std::optional<std::string>;
 using Options = std::vector<std::string>;
@@ -20,10 +19,23 @@ parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
     if ( ! str.has_value()) {
         throw std::invalid_argument(fmt::format("Uri parser needs a stop string"));
     }
-    auto stop = str.value();
 
-    return [stop](std::string_view text, int index)
+
+    return [str](std::string_view text, int index)
     {
+        size_t pos = text.size();
+        std::string_view fp = text;
+        if (str.has_value() && ! str.value().empty())
+        {
+            pos = text.find(str.value(), index);
+            if (pos == std::string::npos)
+            {
+                return parsec::makeError<json::Json>(
+                    fmt::format("Unable to stop at '{}' in input", str.value()), text, index);
+            }
+            fp = text.substr(index, pos);
+        }
+
         json::Json doc;
 
         auto urlCleanup = [](auto* url)
@@ -38,12 +50,8 @@ parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
             return parsec::makeError<json::Json>(fmt::format("unable to initialize the url container"), text, index);
         }
         size_t end;
-        if (stop.empty())
-            end = text.size();
-        else
-            end = text.find_first_of(stop);
 
-        auto urlStr = text.substr(index, end);
+        auto urlStr = fp.substr(index, end);
         auto uc = curl_url_set(url.get(), CURLUPART_URL, urlStr.data(), 0);
         if (uc)
         {
@@ -124,42 +132,34 @@ parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
             curl_free(str);
         }
 
-
-
         return parsec::makeSuccess<json::Json>(doc, text, end);
     };
 }
 
-// TODO: get actual data sa json object
+
 parsec::Parser<json::Json> getUAParser(Stop str, Options lst)
 {
     if ( ! str.has_value()) {
         throw std::invalid_argument(fmt::format("User-agent parser needs a stop string"));
     }
-    auto stop = str.value();
 
-    return [stop](std::string_view text, int index)
+    return [str](std::string_view text, int index)
     {
-        std::string_view ua;
-
-        unsigned long pos;
-        if (stop.empty())
+        size_t pos = text.size();
+        std::string_view fp = text;
+        if (str.has_value() && ! str.value().empty())
         {
-            ua = text;
-            pos = text.size();
-        }
-        else
-        {
-            pos = text.find(stop, index);
+            pos = text.find(str.value(), index);
             if (pos == std::string::npos)
             {
                 return parsec::makeError<json::Json>(
-                    fmt::format("Unable to stop at '{}' in input", stop), text, index);
+                    fmt::format("Unable to stop at '{}' in input", str.value()), text, index);
             }
-            ua = text.substr(index, pos);
+            fp = text.substr(index, pos);
         }
+
         json::Json doc;
-        doc.setString(ua.data(), "/user_agent/original");
+        doc.setString(std::string{fp}, "/user_agent/original");
 
         return parsec::makeSuccess<json::Json>(doc, text, pos);
     };
@@ -172,14 +172,9 @@ parsec::Parser<json::Json> getFQDNParser(Stop str, Options lst)
 
     return [str](std::string_view text, int index)
     {
-        std::string_view in;
-
-        auto pos = text.size();
-        if (!str.has_value())
-        {
-            in = text;
-        }
-        else
+        size_t pos = text.size();
+        std::string_view fp = text;
+        if (str.has_value() && ! str.value().empty())
         {
             pos = text.find(str.value(), index);
             if (pos == std::string::npos)
@@ -187,16 +182,16 @@ parsec::Parser<json::Json> getFQDNParser(Stop str, Options lst)
                 return parsec::makeError<json::Json>(
                     fmt::format("Unable to stop at '{}' in input", str.value()), text, index);
             }
-            in = text.substr(index, pos);
+            fp = text.substr(index, pos);
         }
 
-        if (in.size() > 253)
+        if (fp.size() > 253)
             return parsec::makeError<json::Json>(
-                fmt::format("size '{}' too big for an fqdn", in.size()), text, index);
+                fmt::format("size '{}' too big for an fqdn", fp.size()), text, index);
 
         char last = 0;
-        auto e = std::find_if_not(in.begin(),
-                                  in.end(),
+        auto e = std::find_if_not(fp.begin(),
+                                  fp.end(),
                                   [&last](char c) mutable
                                   {
                                       auto r = (std::isalnum(c) || c == '-')
@@ -205,8 +200,8 @@ parsec::Parser<json::Json> getFQDNParser(Stop str, Options lst)
                                       return r;
                                   });
         json::Json doc;
-        if (e == in.end())  {
-            doc.setString(in.data());
+        if (e == fp.end())  {
+            doc.setString(fp.data());
             return parsec::makeSuccess<json::Json>(doc, text, pos);
         }
         return parsec::makeError<json::Json>(
