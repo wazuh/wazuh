@@ -1,12 +1,16 @@
 #include "fmt/format.h"
+#include "parse_field.hpp"
+#include "number.hpp"
+#include <algorithm>
 #include <hlp/parsec.hpp>
+#include <iostream>
 #include <json/json.hpp>
-#include <vector>
 #include <optional>
-#include <csv.hpp>
+#include <vector>
 
 using Stop = std::optional<std::string>;
 using Options = std::vector<std::string>;
+
 
 namespace hlp
 {
@@ -14,25 +18,29 @@ namespace hlp
 parsec::Parser<json::Json> getCSVParser(Stop str, Options lst)
 {
 
-    if (lst.size() < 1)
+    if (lst.size() < 4)
     {
         throw std::invalid_argument(
-            fmt::format("CSV parser needs the number of fields to parse"));
+            fmt::format("Need at least four options: delim, quote, and two headers"));
     }
 
-    std::vector<std::string> fields { std::make_move_iterator(lst.begin()), std::make_move_iterator(lst.end()) };
+    const char delimiter = lst[0][0];
+    const char quote = lst[1][0];
 
-    csv::CSVFormat format;
-    format.column_names(fields);
+    std::vector<std::string> headers;
+    std::transform(std::next(lst.begin(),2), lst.end(), std::back_inserter(headers),[](auto s){
+                       return fmt::format("/{}", s);
+    });
 
-    return [str, fields, format](std::string_view text, int index)
+    return [str, delimiter, quote, headers](std::string_view text, int index)
     {
-        std::string_view fp;
-        unsigned long pos;
-        if (!str.has_value()) {
-            fp = text;
-        }
-        else
+
+        size_t start{0}, end {0};
+        json::Json doc;
+
+        size_t pos = text.size();
+        std::string_view fp = text;
+        if (str.has_value() && ! str.value().empty())
         {
             pos = text.find(str.value(), index);
             if (pos == std::string::npos)
@@ -42,27 +50,32 @@ parsec::Parser<json::Json> getCSVParser(Stop str, Options lst)
             }
             fp = text.substr(index, pos);
         }
-        auto rows = csv::parse(text, format);
-        if ( rows.n_rows() == 0) {
-             return parsec::makeError<json::Json>("No CSV data found in", text, index);
+
+        auto i=0;
+        while (end <= fp.size() )
+        {
+            auto f = getField(fp.begin(), start, fp.size(), delimiter, quote, '"', true);
+            if (!f.has_value())
+                break;
+
+            if (i >= headers.size())
+                break;
+
+            auto fld = f.value();
+            end = fld.end_;
+
+            auto v = fp.substr(fld.start(), fld.len());
+            updateDoc(doc, headers[i], v, fld.is_escaped, R"(")");
+
+            start = fld.end_+1;
+            i++;
         }
 
-        for(auto f: fields) {
-            if (rows.index_of(f) == csv::CSV_NOT_FOUND) {
-              return parsec::makeError<json::Json>(fmt::format("field '{}' not found in text", f), text, index);
-         }
-        }
+        if ( end < pos && headers.size() != i)
+            return parsec::makeError<json::Json>(fmt::format("Unable to parse from {} to {}",end, pos), text, index);
 
-        // auto pos = rows.empty();
+        return parsec::makeSuccess<json::Json>(doc, text, end);
 
-        std::stringstream out;
-        for (auto& r: rows) {
-            out <<  r.to_json();
-            std::cout <<  r.to_json() << std::endl;
-        }
-        json::Json doc(out.str().c_str());
-
-        return parsec::makeSuccess<json::Json>(doc, text, pos);
     };
 }
 } // hlp namespace
