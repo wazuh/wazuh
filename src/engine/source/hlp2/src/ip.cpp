@@ -24,7 +24,6 @@ parsec::Parser<json::Json> getIPParser(Stop str, Options lst)
         struct in_addr ip;
         struct in6_addr ipv6;
 
-
         size_t pos = text.size();
         std::string_view fp = text;
         if (str.has_value() && ! str.value().empty())
@@ -39,17 +38,17 @@ parsec::Parser<json::Json> getIPParser(Stop str, Options lst)
         }
 
         // copy can be slow
-        auto addr = std::string { fp};
+        std::string addr(fp.data(), fp.size());
         json::Json doc;
 
         if (inet_pton(AF_INET, addr.c_str(), &ip))
         {
-            doc.setString(fp.data());
+            doc.setString(addr);
             return parsec::makeSuccess<json::Json>(doc, text, pos);
         }
         else if (inet_pton(AF_INET6, addr.c_str(), &ipv6))
         {
-            doc.setString(fp.data());
+            doc.setString(addr);
             return parsec::makeSuccess<json::Json>(doc, text, pos);
         }
 
