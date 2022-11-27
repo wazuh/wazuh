@@ -27,20 +27,6 @@ CPMAddPackage(
 )
 
 CPMAddPackage(
-        NAME range-v3
-        GITHUB_REPOSITORY ericniebler/range-v3
-        VERSION 0.12.0
-        GIT_TAG 0.12.0
-        # the range-v3 CMakeLists screws with configuration options
-        DOWNLOAD_ONLY True
-)
-
-if(range-v3_ADDED)
-    add_library(range-v3 INTERFACE IMPORTED)
-    target_include_directories(range-v3 INTERFACE "${range-v3_SOURCE_DIR}/include")
-endif()
-
-CPMAddPackage(
         NAME fast_float
         GITHUB_REPOSITORY fastfloat/fast_float
         VERSION 3.8.0
@@ -62,10 +48,15 @@ add_library(hlp2 STATIC
         ${date_SOURCE_DIR}/src/tz.cpp
         src/stream_view.hpp
         src/parse_field.hpp
-        src/date.cpp src/parse_field.cpp src/bool.cpp src/ip.cpp src/text.cpp src/encodings.cpp src/stop.hpp)
+        src/date.cpp
+        src/parse_field.cpp
+        src/bool.cpp
+        src/ip.cpp
+        src/text.cpp
+        src/encodings.cpp
+        src/stop.hpp)
 
 # https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
-
 add_definitions(-DONLY_C_LOCALE)
 
 # https://howardhinnant.github.io/date/tz.html#Installation
@@ -76,7 +67,14 @@ add_definitions(-DONLY_C_LOCALE)
 
 target_link_libraries(hlp2
         PUBLIC base
-        PRIVATE pugixml hlp_parsec date::date CURL::libcurl fast_float range-v3 json pthread)
+        PRIVATE
+        pugixml
+        hlp_parsec
+        date::date
+        CURL::libcurl
+        fast_float
+        json
+        pthread)
 
 target_include_directories(hlp2
         PUBLIC
