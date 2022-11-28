@@ -79,7 +79,16 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 continue;
             }
         }
-
+        else if(strcmp(integrator_config[s]->name, "shuffle") == 0)
+        {
+            if(!integrator_config[s]->hookurl)
+            {
+                integrator_config[s]->enabled = 0;
+                merror("Unable to enable integration for: '%s'. Missing hook URL.", integrator_config[s]->name);
+                s++;
+                continue;
+            }
+        }
         else if(strcmp(integrator_config[s]->name, "pagerduty") == 0)
         {
             if(!integrator_config[s]->apikey)

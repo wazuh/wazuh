@@ -18,4 +18,6 @@ int __wrap_json_fwrite(const char * path, const cJSON * item);
 
 int* __wrap_json_parse_agents(const cJSON* agents);
 
+int* __wrap_json_parse_agents(const cJSON* agents);
+
 #endif

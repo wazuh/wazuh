@@ -984,7 +984,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
 
     /* Initialize EPS limits */
-    load_limits(Config.eps.maximum, Config.eps.timeframe);
+    load_limits(Config.eps.maximum, Config.eps.timeframe, Config.eps.maximum_found);
 
     /* Create message handler thread */
     w_create_thread(ad_input_main, &m_queue);
