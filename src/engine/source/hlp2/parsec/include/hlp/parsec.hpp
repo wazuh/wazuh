@@ -178,7 +178,7 @@ auto makeError(const std::string& error, std::string_view text, size_t index)
  * @tparam T value returned by the parser
  */
 template<typename T>
-using Parser = std::function<Result<T>(std::string_view, int)>;
+using Parser = std::function<Result<T>(std::string_view, size_t)>;
 
 /****************************************************************************************
  * Parser combinators

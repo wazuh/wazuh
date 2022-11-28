@@ -379,15 +379,20 @@ Logpar::Logpar(const json::Json& ecsFieldTypes)
     {
         if (!value.isString())
         {
-            // TODO: check message
-            throw std::runtime_error("ECS field type must be a string");
+            throw std::runtime_error(
+                fmt::format("When loading logpar schema fields, field '{}' must "
+                            "be a string with the name of the type",
+                            key));
         }
 
         const auto schemaType = strToSchemaType(value.getString().value());
         if (schemaType == SchemaType::ERROR_TYPE)
         {
-            // TODO: check message
-            throw std::runtime_error("ECS field type is invalid");
+            throw std::runtime_error(
+                fmt::format("When loading logpar schema fields, type '{}' in schema "
+                            "field '{}' is not supported",
+                            key,
+                            value.getString().value()));
         }
 
         m_fieldTypes[key] = schemaType;

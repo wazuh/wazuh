@@ -14,7 +14,8 @@
 #include <api/catalog/commands.hpp>
 #include <builder/builder.hpp>
 #include <builder/register.hpp>
-#include <hlp/hlp.hpp>
+#include <hlp/logpar.hpp>
+#include <hlp/registerParsers.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <router/environmentManager.hpp>
@@ -80,6 +81,7 @@ void run(const std::string& kvdbPath,
     std::shared_ptr<engineserver::EngineServer> server;
     std::shared_ptr<router::EnvironmentManager> envManager;
     std::shared_ptr<KVDBManager> kvdb;
+    std::shared_ptr<hlp::logpar::Logpar> logpar;
 
     try
     {
@@ -102,8 +104,40 @@ void run(const std::string& kvdbPath,
         store = std::make_shared<store::FileDriver>(fileStorage);
         WAZUH_LOG_INFO("Engine \"run\" command: Store successfully initialized.");
 
+        base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
+        auto hlpParsers = store->get(hlpConfigFileName);
+        if (std::holds_alternative<base::Error>(hlpParsers))
+        {
+            WAZUH_LOG_ERROR("Could not retreive configuration file [{}] needed by the "
+                            "HLP module, error: {}",
+                            hlpConfigFileName.fullName(),
+                            std::get<base::Error>(hlpParsers).message);
+
+            g_exitHanlder.execute();
+            return;
+        }
+        logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
+        hlp::registerParsers(logpar);
+        WAZUH_LOG_INFO("Engine \"run\" command: Builders successfully registered.");
+
+        base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
+        auto hlpParsers = store->get(hlpConfigFileName);
+        if (std::holds_alternative<base::Error>(hlpParsers))
+        {
+            WAZUH_LOG_ERROR("Could not retreive configuration file [{}] needed by the "
+                            "HLP module, error: {}",
+                            hlpConfigFileName.fullName(),
+                            std::get<base::Error>(hlpParsers).message);
+
+            g_exitHanlder.execute();
+            return;
+        }
+        logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
+        hlp::registerParsers(logpar);
+        WAZUH_LOG_INFO("Engine \"run\" command: HLP initialized.");
+
         auto registry = std::make_shared<builder::internals::Registry>();
-        builder::internals::registerBuilders(registry, {kvdb});
+        builder::internals::registerBuilders(registry, {kvdb, logpar});
         WAZUH_LOG_INFO("Engine \"run\" command: Builders successfully registered.");
 
         builder = std::make_shared<builder::Builder>(store, registry);
@@ -121,23 +155,6 @@ void run(const std::string& kvdbPath,
         catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
         api::catalog::cmds::registerAllCmds(catalog, server->getRegistry());
         WAZUH_LOG_INFO("Engine \"run\" command: Catalog successfully initialized.");
-
-        base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
-        auto hlpParsers = store->get(hlpConfigFileName);
-        if (std::holds_alternative<base::Error>(hlpParsers))
-        {
-            WAZUH_LOG_ERROR("Engine \"run\" command: Configuration file \"{}\" could not "
-                            "be obtained: {}.",
-                            hlpConfigFileName.fullName(),
-                            std::get<base::Error>(hlpParsers).message);
-
-            g_exitHanlder.execute();
-            return;
-        }
-        // TODO because builders don't have access to the catalog we are configuring
-        // the parser mappings on start up for now
-        hlp::configureParserMappings(std::get<json::Json>(hlpParsers).str());
-        WAZUH_LOG_INFO("Engine \"run\" command: HLP successfully initialized.");
 
         envManager = std::make_shared<router::EnvironmentManager>(
             builder, server->getEventQueue(), threads);
