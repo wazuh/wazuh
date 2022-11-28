@@ -37,7 +37,7 @@ static void kvdbRead(benchmark::State& state)
     for (auto _ : state)
     {
         auto val = db->read(user);
-        benchmark::DoNotOptimize(val.data());
+        benchmark::DoNotOptimize(val.value().data());
     }
 }
 

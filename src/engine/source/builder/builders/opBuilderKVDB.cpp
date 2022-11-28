@@ -96,8 +96,8 @@ base::Expression KVDBExtract(const std::any& definition,
             }
 
             // Get value from the DB
-            std::string dbValue = kvdb->read(resolvedKey);
-            if (dbValue.empty())
+            auto dbValue = kvdb->read(resolvedKey);
+            if (!dbValue.has_value())
             {
                 return base::result::makeFailure(event, failureTrace2);
             }
@@ -107,7 +107,7 @@ base::Expression KVDBExtract(const std::any& definition,
                 // TODO: Maybe add non throw version of this method
                 try
                 {
-                    json::Json value {dbValue.c_str()};
+                    json::Json value {dbValue.value().c_str()};
                     if (merge)
                     {
                         // Failure cases on merge
