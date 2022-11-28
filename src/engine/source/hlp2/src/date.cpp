@@ -21,7 +21,7 @@ parsec::Parser<json::Json> getDateParser(Stop str, Options lst)
     if (lst.size() != 2)
     {
         throw std::invalid_argument(
-            fmt::format("date parser requires two parameters: locale and format"));
+            fmt::format("date parser requires parameters format and locale"));
     }
 
     auto format = lst[0];

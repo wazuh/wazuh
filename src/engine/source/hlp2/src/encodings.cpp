@@ -1,14 +1,14 @@
-#include "fmt/format.h"
-#include <hlp/parsec.hpp>
-#include <string>
-#include <json/json.hpp>
 #include <optional>
+#include <string>
+#include <string_view>
 #include <vector>
 
-using Stop = std::optional<std::string>;
-using Options = std::vector<std::string>;
+#include <fmt/format.h>
 
+#include <hlp/parsec.hpp>
+#include <json/json.hpp>
 
+#include "base.hpp"
 
 inline bool is_valid_base64_char(char c)
 {
@@ -35,25 +35,20 @@ inline bool is_valid_base64_char(char c)
     return false;
 }
 
-namespace hlp {
+namespace hlp
+{
 
 parsec::Parser<json::Json> getBinaryParser(Stop str, Options lst)
 {
     return [str](std::string_view text, int index)
     {
-
-        size_t pos = text.size();
-        std::string_view fp = text;
-        if (str.has_value() && ! str.value().empty())
+        auto res = preProcess<json::Json>(text, index, str);
+        if (std::holds_alternative<parsec::Result<json::Json>>(res))
         {
-            pos = text.find(str.value(), index);
-            if (pos == std::string::npos)
-            {
-                return parsec::makeError<json::Json>(
-                    fmt::format("Unable to stop at '{}' in input", str.value()), text, index);
-            }
-            fp = text.substr(index, pos);
+            return std::get<parsec::Result<json::Json>>(res);
         }
+
+        auto fp = std::get<std::string_view>(res);
 
         auto it = std::find_if(std::begin(fp) + index,
                                std::end(fp),
@@ -90,4 +85,4 @@ parsec::Parser<json::Json> getBinaryParser(Stop str, Options lst)
         return parsec::makeSuccess<json::Json>(doc, text, size);
     };
 }
-} // hlp namespace
+} // namespace hlp
