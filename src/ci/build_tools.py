@@ -315,7 +315,7 @@ def makeLib(moduleName):
         makeLib("syscheckd")
     """
     command = "make -C {}".format(utils.moduleDirPathBuild(moduleName))
-    utils.printSubHeader(moduleName=moduleName, 
+    utils.printSubHeader(moduleName=moduleName,
                          headerKey="make")
 
     out = subprocess.run(command,
@@ -354,8 +354,6 @@ def makeTarget(targetName, tests, debug):
     utils.printSubHeader(moduleName=targetName,
                          headerKey="makeAll")
     makeTargetCommand = "make TARGET={}".format(targetName)
-    if targetName == "server":
-        makeTargetCommand += " INSTALLDIR=/path"
     if tests:
         makeTargetCommand += " TEST=1"
     if debug:
