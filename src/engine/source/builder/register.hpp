@@ -1,6 +1,9 @@
 #ifndef _REGISTER_H
 #define _REGISTER_H
 
+#include <hlp/logpar.hpp>
+#include <kvdb/kvdbManager.hpp>
+
 #include "builders/opBuilderFileOutput.hpp"
 #include "builders/opBuilderHelperActiveResponse.hpp"
 #include "builders/opBuilderHelperFilter.hpp"
@@ -23,6 +26,7 @@ namespace builder::internals
 struct dependencies
 {
     std::shared_ptr<KVDBManager> kvdbManager;
+    std::shared_ptr<hlp::logpar::Logpar> logpar;
 };
 
 static void registerBuilders(std::shared_ptr<Registry> registry,
@@ -43,7 +47,8 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
 
     // Parsers
     registry->registerBuilder(builders::getStageBuilderParse(registry), "stage.parse");
-    registry->registerBuilder(builders::opBuilderLogParser, "parser.logpar");
+    registry->registerBuilder(builders::getOpBuilderLogParser(dependencies.logpar),
+                              "parser.logpar");
 
     // Outputs
     registry->registerBuilder(builders::getStageBuilderOutputs(registry),
