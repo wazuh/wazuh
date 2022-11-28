@@ -73,7 +73,7 @@ target_link_libraries(builders
   builder::ivalidator
   store::istore
   base
-  hlp
+  hlp2
   kvdb
   re2
   logicExpression
