@@ -34,17 +34,26 @@ normalize:
     - event: +kvdb_get_merge/win_security_ticket_encryption_types/$~event_channel.Event.EventData.TicketEncryptionType
     
     # Set Kerberos Ticket Status Codes
-    - event: +kvdb_get_merge/win_security_kerberos_status_types/$~event_channel.Event.EventData.Status
+    - event.StatusDescription: +kvdb_get_merge/win_security_kerberos_status_types/$~event_channel.Event.EventData.Status
     
     # Set Service Type and Name
     # Service related fields
     - event.service.name: $~event_channel.Event.EventData.ServiceName
-    - event.service: +kvdb_get_merge/win_security_service_types/$~event_channel.Event.EventData.ServiceType
+    - event.service.type: +kvdb_get_merge/win_security_service_types/$~event_channel.Event.EventData.ServiceType
     
     # Set Audit Information
-    # Event sub category - Need to generate actual message
-    - event.Category: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid.#0
-    - event.SubCategory: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid.#1
+    # Event sub category - Need to clean guid
+    - event.Category: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid
+    - event.SubCategory: +kvdb_get_merge/win_security_subcategory_guids/$~event_channel.Event.EventData.SubcategoryGuid
+
+    # Set trust type
+    - event.trustType: +kvdb_get/win_trust_types/$~event_channel.Event.EventData.TdoType
+
+    # Set Trust Direction
+    - event.trustDirection: +kvdb_get/win_trust_direction/$~event_channel.Event.EventData.TdoDirection
+
+    # Set Trust Attributes
+    - event.trustAttribute: +kvdb_get/win_trust_attribute/$~event_channel.Event.EventData.TdoAttributes
 
     # map helper arrays
     - ~id_target_user_array: ["4624","4625","4634","4647","4648","4768","4769","4770","4771","4776","4964"]
@@ -71,7 +80,7 @@ normalize:
       - ~event_channel.Event.EventData.AccessList: +ef_exists
    map:
         - _tmp.array_access_masks: +s_to_array/$~event_channel.Event.EventData.AccessMask/,
-        - event.AccessMask: +kvdb_for_each/win_failure_codes_description/$_tmp.array_access_masks
+        #- event.AccessMask: +kvdb_for_each/win_failure_codes_description/$_tmp.array_access_masks
     #
     # Access Mask - # Requires bitwise operations
     #- check:
@@ -88,15 +97,6 @@ normalize:
    map:
         - event.logon.failure.status: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.Status
         - event.logon.failure.sub_status: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.SubStatus
-
-    # Set trust type
-    - event.trustType: +kvdb_get/win_trust_types/$~event_channel.Event.EventData.TdoType
-
-    # Set Trust Direction
-    - event.trustDirection: +kvdb_get/win_trust_direction/$~event_channel.Event.EventData.TdoDirection
-
-    # Set Trust Attributes
-    - event.trustAttribute: +kvdb_get/win_trust_attribute/$~event_channel.Event.EventData.TdoAttributes
 
     # Add Session Events
  - check: 
@@ -167,7 +167,7 @@ normalize:
    map:
         - is_copy_MemberName: true
         - ~split_memberName: +s_to_array/$~event_channel.Event.EventData.MemberName/,
-        - ~split_memberName.0: +s_replace/CN=/ 
+        - ~split_memberName.0: +s_replace/CN=// 
         - event.member.name: $~split_memberName.0
         - event.group.id: $~event_channel.Event.EventData.TargetUserSid
         - event.group.id: $~event_channel.Event.EventData.TargetSid 
@@ -181,7 +181,7 @@ normalize:
         # - ~split_memberName: +a_ge/4
         - is_copy_MemberName: +t_is_true
    map:
-        - ~split_memberName.3: +s_replace/DC=/ 
+        - ~split_memberName.3: +s_replace/DC=// 
         - event.user.target.domain: $~split_memberName.3
 
  # Copy Target User to Computer Object
