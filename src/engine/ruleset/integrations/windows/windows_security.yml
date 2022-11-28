@@ -55,12 +55,24 @@ normalize:
     # Set Trust Attributes
     - event.trustAttribute: +kvdb_get/win_trust_attribute/$~event_channel.Event.EventData.TdoAttributes
 
+
+
     # map helper arrays
     - ~id_target_user_array: ["4624","4625","4634","4647","4648","4768","4769","4770","4771","4776","4964"]
     - ~id_memberName_array: ["4727", "4728", "4729", "4730", "4731", "4732", "4733", "4734", "4735",
                               "4737", "4744", "4745", "4746", "4747", "4748", "4749", "4750", "4751",
                               "4752", "4753", "4754", "4755", "4756", "4757", "4758", "4759", "4760",
                               "4761", "4762", "4763", "4764", "4799"]
+    - ~id_copy_subject_user_array: ["4657", "4670", "4672", "4673", "4674", "4688", "4689", "4697",
+              "4698", "4699", "4700", "4701", "4702", "4706", "4707", "4713",
+              "4716", "4717", "4718", "4719", "4720", "4722", "4723", "4724",
+              "4725", "4726", "4727", "4728", "4729", "4730", "4731", "4732",
+              "4733", "4734", "4735", "4737", "4738", "4739", "4740", "4741",
+              "4742", "4743", "4744", "4745", "4746", "4747", "4748", "4749",
+              "4750", "4751", "4752", "4753", "4754", "4755", "4756", "4757",
+              "4758", "4759", "4760", "4761", "4762", "4763", "4764", "4767",
+              "4781", "4798", "4799", "4817", "4904", "4905", "4907", "4912",
+              "4648"]
 
     # Decode message table
     # Failure reason for logon
@@ -146,7 +158,7 @@ normalize:
  - check: 
       - ~is_copy_target_user: +t_is_true  
    map:
-        - event.related.user: +a_append/$~event_channel.Event.EventData.TargetUserName # may be moved up?
+        - event.related.user: +a_append/$~event_channel.Event.EventData.TargetUserName 
     # TargetUserDomain to user.domain or user.target.domain
  - check:
       - ~is_copy_target_user: +t_is_true
@@ -189,3 +201,14 @@ normalize:
     - event.computerObject.name: $~event_channel.Event.EventData.TargetUserName
     - event.computerObject.domain: $~event_channel.Event.EventData.TargetDomainName
         
+ - check: event.code==4634 OR event.code==4647 OR event.code==4964
+   map:
+    - event.logon.id: $~event_channel.Event.EventData.TargetLogonId 
+ 
+ # Copy Subject User from Event Data
+ - check: 
+     - ~id_copy_subject_user_array: +a_contains/$event.code
+  map:
+     - event.user.id: $~event_channel.Event.EventData.SubjectUserSid
+     - event.related.user: +a_append/$~event_channel.Event.EventData.SubjectUserName
+     - event.user.domain: $~event_channel.Event.EventData.SubjectDomainName   
