@@ -12,8 +12,8 @@ json::Json getConfig()
 {
     json::Json config {};
     config.setObject();
-    config.setString(hlp::ecsTypeToStr(hlp::EcsType::LONG), "/long");
-    config.setString(hlp::ecsTypeToStr(hlp::EcsType::TEXT), "/text");
+    config.setString(hlp::schemaTypeToStr(hlp::SchemaType::LONG), "/long");
+    config.setString(hlp::schemaTypeToStr(hlp::SchemaType::TEXT), "/text");
     return config;
 }
 
