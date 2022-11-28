@@ -87,9 +87,13 @@ void CALLBACK dll_notification(ULONG reason,
  */
 void enable_dll_verification()
 {
+#ifdef IMAGE_TRUST_CHECKS
+    if(!IsWindowsVistaOrGreater()) {
+        mdebug1("DLL signature verification is available on Windows Vista or greater because LdrRegisterDllNotification is not present.");
+        return;
+    }
     loaded_modules_verification();
 
-#ifdef IMAGE_TRUST_CHECKS
     HMODULE handle_ntdll = GetModuleHandle("ntdll.dll");
     if (handle_ntdll) {
         LdrRegisterDllNotification = (_LdrRegisterDllNotification)GetProcAddress(handle_ntdll, "LdrRegisterDllNotification");
@@ -107,4 +111,3 @@ void enable_dll_verification()
 }
 
 #endif // WIN32
-
