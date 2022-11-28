@@ -17,13 +17,13 @@ constexpr char KVDB_KEY_NOT_A_STRING[] {"KVDB \"key\" parameter must be a string
 constexpr char KVDB_KEY_MISSING[] {"KVDB \"key\" parameter is missing"};
 constexpr char KVDB_KEY_EMPTY[] {"KVDB \"key\" parameter cannot be empty"};
 
-api::CommandFn createKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
-api::CommandFn deleteKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
-api::CommandFn dumpKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
-api::CommandFn getKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
-api::CommandFn insertKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
-api::CommandFn listKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
-api::CommandFn removeKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager);
+api::CommandFn kvdbCreateCmd(std::shared_ptr<KVDBManager> kvdbManager);
+api::CommandFn kvdbDeleteCmd(std::shared_ptr<KVDBManager> kvdbManager);
+api::CommandFn kvdbDumpCmd(std::shared_ptr<KVDBManager> kvdbManager);
+api::CommandFn kvdbGetKeyCmd(std::shared_ptr<KVDBManager> kvdbManager);
+api::CommandFn kvdbInsertKeyCmd(std::shared_ptr<KVDBManager> kvdbManager);
+api::CommandFn kvdbListCmd(std::shared_ptr<KVDBManager> kvdbManager);
+api::CommandFn kvdbRemoveKeyCmd(std::shared_ptr<KVDBManager> kvdbManager);
 
 void registerAllCmds(std::shared_ptr<KVDBManager> kvdbManager,
                      std::shared_ptr<api::Registry> registry);

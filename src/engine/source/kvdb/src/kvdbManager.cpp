@@ -302,7 +302,7 @@ bool KVDBManager::deleteKey(const std::string& name, const std::string& key)
     KVDBHandle dbHandle;
     if (getKVDBFromFile(name, dbHandle))
     {
-        if (dbHandle->hasKey(key))
+        if (dbHandle->read(key).has_value())
         {
             result = dbHandle->deleteKey(key);
         }
