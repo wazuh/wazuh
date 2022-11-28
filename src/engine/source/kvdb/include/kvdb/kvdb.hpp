@@ -2,6 +2,7 @@
 #define _KVDB_H
 
 #include <memory>
+#include <optional>
 #include <shared_mutex>
 #include <string>
 #include <vector>
@@ -141,10 +142,11 @@ public:
      * @param value that the result of the proccess will modify
      * @param columnName where to search the key
      * @return value read If the proccess finished successfully
-     * @return empty string If the proccess didn't finished successfully
+     * @return nullopt If the proccess didn't finished successfully
      */
-    std::string read(const std::string& key,
+    std::optional<std::string> read(const std::string& key,
                      const std::string& columnName = DEFAULT_CF_NAME);
+
 
     /**
      * @brief

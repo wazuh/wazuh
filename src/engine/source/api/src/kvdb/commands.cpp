@@ -9,7 +9,7 @@
 
 namespace api::kvdb::cmds
 {
-api::CommandFn createKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
+api::CommandFn kvdbCreateCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
     return [kvdbManager =
                 std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse
@@ -48,7 +48,7 @@ api::CommandFn createKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
     };
 }
 
-api::CommandFn deleteKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
+api::CommandFn kvdbDeleteCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
     return [kvdbManager =
                 std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse
@@ -91,7 +91,7 @@ api::CommandFn deleteKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
     };
 }
 
-api::CommandFn dumpKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
+api::CommandFn kvdbDumpCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
     return [kvdbManager =
                 std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse
@@ -153,7 +153,7 @@ api::CommandFn dumpKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
     };
 }
 
-api::CommandFn getKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
+api::CommandFn kvdbGetKeyCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
     return [kvdbManager =
                 std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse
@@ -210,7 +210,7 @@ api::CommandFn getKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
     };
 }
 
-api::CommandFn insertKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
+api::CommandFn kvdbInsertKeyCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
     return [kvdbManager =
                 std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse
@@ -261,7 +261,7 @@ api::CommandFn insertKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
     };
 }
 
-api::CommandFn listKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
+api::CommandFn kvdbListCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
     return [kvdbManager =
                 std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse
@@ -307,7 +307,7 @@ api::CommandFn listKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
     };
 }
 
-api::CommandFn removeKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
+api::CommandFn kvdbRemoveKeyCmd(std::shared_ptr<KVDBManager> kvdbManager)
 {
     return [kvdbManager =
                 std::move(kvdbManager)](const json::Json& params) -> api::WazuhResponse
@@ -367,13 +367,13 @@ void registerAllCmds(std::shared_ptr<KVDBManager> kvdbManager,
 {
     try
     {
-        registry->registerCommand("create_kvdb", createKvdbCmd(kvdbManager));
-        registry->registerCommand("delete_kvdb", deleteKvdbCmd(kvdbManager));
-        registry->registerCommand("dump_kvdb", dumpKvdbCmd(kvdbManager));
-        registry->registerCommand("get_kvdb", getKvdbCmd(kvdbManager));
-        registry->registerCommand("insert_kvdb", insertKvdbCmd(kvdbManager));
-        registry->registerCommand("list_kvdb", listKvdbCmd(kvdbManager));
-        registry->registerCommand("remove_kvdb", removeKvdbCmd(kvdbManager));
+        registry->registerCommand("create_kvdb", kvdbCreateCmd(kvdbManager));
+        registry->registerCommand("delete_kvdb", kvdbDeleteCmd(kvdbManager));
+        registry->registerCommand("dump_kvdb", kvdbDumpCmd(kvdbManager));
+        registry->registerCommand("get_kvdb", kvdbGetKeyCmd(kvdbManager));
+        registry->registerCommand("insert_kvdb", kvdbInsertKeyCmd(kvdbManager));
+        registry->registerCommand("list_kvdb", kvdbListCmd(kvdbManager));
+        registry->registerCommand("remove_kvdb", kvdbRemoveKeyCmd(kvdbManager));
     }
     catch (const std::exception& e)
     {

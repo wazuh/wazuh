@@ -94,7 +94,7 @@ TEST_F(KVDBTest, ReadWrite)
     ret = kvdb->hasKey(KEY);
     ASSERT_TRUE(ret);
 
-    valueRead = kvdb->read(KEY);
+    valueRead = kvdb->read(KEY).value();
     ASSERT_EQ(valueRead, VALUE);
 
     ret = kvdb->readPinned(KEY, valueRead); // Check this...
@@ -107,12 +107,17 @@ TEST_F(KVDBTest, ReadWrite)
     ret = kvdb->hasKey(KEY);
     ASSERT_FALSE(ret);
 
-    valueRead = kvdb->read(KEY);
-    ASSERT_TRUE(valueRead.empty());
+    ASSERT_FALSE(kvdb->read(KEY).has_value());
+
+    // it returns true even if the key doesn't exist
+    ret = kvdb->deleteKey(KEY);
+    ASSERT_TRUE(ret);
+
+    ASSERT_FALSE(kvdb->read(KEY).has_value());
 
     ret = kvdb->readPinned(KEY, valueRead);
     ASSERT_FALSE(ret);
-    ASSERT_TRUE(valueRead.empty());
+    ASSERT_FALSE(kvdb->read(KEY).has_value());
 }
 
 // Key-only write
@@ -125,10 +130,21 @@ TEST_F(KVDBTest, KeyOnlyWrite)
 
     ret = kvdb->hasKey(KEY);
     ASSERT_FALSE(ret);
+
     ret = kvdb->writeKeyOnly(KEY);
     ASSERT_TRUE(ret);
+
     ret = kvdb->hasKey(KEY);
     ASSERT_TRUE(ret);
+
+    auto valueRead = kvdb->read(KEY);
+    ASSERT_TRUE(valueRead.value().empty());
+
+    ret = kvdb->deleteKey(KEY);
+    ASSERT_TRUE(ret);
+
+    ret = kvdb->hasKey(KEY);
+    ASSERT_FALSE(ret);
 }
 
 TEST_F(KVDBTest, ReadWriteColumn)
@@ -147,7 +163,7 @@ TEST_F(KVDBTest, ReadWriteColumn)
     ret = kvdb->write(KEY, VALUE, COLUMN_NAME);
     ASSERT_TRUE(ret);
 
-    valueRead = kvdb->read(KEY, COLUMN_NAME);
+    valueRead = kvdb->read(KEY, COLUMN_NAME).value();
     ASSERT_EQ(valueRead, VALUE);
 }
 
@@ -165,7 +181,7 @@ TEST_F(KVDBTest, Transaction_ok)
     ASSERT_TRUE(ret);
     for (auto pair : vInput)
     {
-        std::string valueRead = kvdb->read(pair.first);
+        std::string valueRead = kvdb->read(pair.first).value();
         ASSERT_EQ(valueRead, pair.second);
     }
 }
@@ -190,7 +206,7 @@ TEST_F(KVDBTest, Transaction_invalid_input)
                                                                       {"key2", "value2"}};
     ret = kvdb->writeToTransaction(vPartialInput);
     ASSERT_TRUE(ret);
-    std::string valueRead = kvdb->read(vPartialInput[1].first);
+    std::string valueRead = kvdb->read(vPartialInput[1].first).value();
     ASSERT_EQ(valueRead, vPartialInput[1].second);
 }
 
@@ -212,24 +228,22 @@ TEST_F(KVDBTest, CleanColumn)
     // default column
     ret = kvdb->write(KEY, VALUE);
     ASSERT_TRUE(ret);
-    valueRead = kvdb->read(KEY);
+    valueRead = kvdb->read(KEY).value();
     ASSERT_EQ(valueRead, VALUE);
     ret = kvdb->cleanColumn();
     ASSERT_TRUE(ret);
-    valueRead = kvdb->read(KEY);
-    ASSERT_TRUE(valueRead.empty());
+    ASSERT_FALSE(kvdb->read(KEY).has_value());
 
     // custom column
     ret = kvdb->createColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
     ret = kvdb->write(KEY, VALUE, COLUMN_NAME);
     ASSERT_TRUE(ret);
-    valueRead = kvdb->read(KEY, COLUMN_NAME);
+    valueRead = kvdb->read(KEY, COLUMN_NAME).value();
     ASSERT_EQ(valueRead, VALUE);
     ret = kvdb->cleanColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
-    valueRead = kvdb->read(KEY, COLUMN_NAME);
-    ASSERT_TRUE(valueRead.empty());
+    ASSERT_FALSE(kvdb->read(KEY, COLUMN_NAME).has_value());
 }
 
 TEST_F(KVDBTest, ValueKeyLength)
@@ -243,19 +257,19 @@ TEST_F(KVDBTest, ValueKeyLength)
     valueWrite = getRandomString(128, true);
     ret = kvdb->write(KEY, valueWrite);
     ASSERT_TRUE(ret);
-    valueRead = kvdb->read(KEY);
+    valueRead = kvdb->read(KEY).value();
     ASSERT_EQ(valueWrite, valueRead);
 
     valueWrite = getRandomString(512, true);
     ret = kvdb->write(KEY, valueWrite);
     ASSERT_TRUE(ret);
-    valueRead = kvdb->read(KEY);
+    valueRead = kvdb->read(KEY).value();
     ASSERT_EQ(valueWrite, valueRead);
 
     valueWrite = getRandomString(1024, true);
     ret = kvdb->write(KEY, valueWrite);
     ASSERT_TRUE(ret);
-    valueRead = kvdb->read(KEY);
+    valueRead = kvdb->read(KEY).value();
     ASSERT_EQ(valueWrite, valueRead);
 }
 

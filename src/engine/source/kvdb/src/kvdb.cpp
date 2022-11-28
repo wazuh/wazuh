@@ -390,18 +390,18 @@ struct KVDB::Impl
         return m_db->KeyMayExist(kOptions.read, cf, key, &value);
     }
 
-    std::string read(const std::string& key, const std::string& columnName)
+    std::optional<std::string> read(const std::string& key, const std::string& columnName)
     {
         if (key.empty() || columnName.empty())
         {
-            return {};
+            return std::nullopt;
         }
 
         std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
         {
-            return {};
+            return std::nullopt;
         }
 
         std::string result, value;
@@ -414,7 +414,7 @@ struct KVDB::Impl
                             columnName,
                             s.ToString());
             result.clear();
-            return {};
+            return std::nullopt;
         }
 
         WAZUH_LOG_DEBUG("Engine KVDB: Database \"{}\": Value [{}:{}] successfully "
@@ -641,7 +641,7 @@ bool KVDB::write(const std::string& key,
     return mImpl->write(key, value, columnName);
 }
 
-std::string KVDB::read(const std::string& key, const std::string& columnName)
+std::optional<std::string> KVDB::read(const std::string& key, const std::string& columnName)
 {
     return mImpl->read(key, columnName);
 }
