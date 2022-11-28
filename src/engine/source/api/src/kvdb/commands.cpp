@@ -128,13 +128,16 @@ api::CommandFn dumpKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
                 const size_t lineMemebers = splittedLine.size();
                 if (!lineMemebers || 2 < lineMemebers)
                 {
-                    return api::WazuhResponse {json::Json {"{}"}, 400, "KVDB was ill formed"};
+                    // TODO: test this with a dummy file as input
+                    return api::WazuhResponse {
+                        json::Json {"{}"}, 400, "KVDB was ill formed"};
                 }
                 else if (2 == lineMemebers)
                 {
+                    // TODO: add tests for this cases
                     jsonFill = fmt::format("{{\"key\": \"{}\",\"value\": \"{}\"}}",
-                                        splittedLine.at(0),
-                                        splittedLine.at(1));
+                                           splittedLine.at(0),
+                                           splittedLine.at(1));
                 }
                 else if (1 == lineMemebers)
                 {
@@ -175,15 +178,17 @@ api::CommandFn getKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
         const auto optKey = params.getString("/key");
         if (!optKey.has_value())
         {
-            return api::WazuhResponse {
-                json::Json {"{}"}, 400, "Parameter \"key\" is missing"};
+            if (params.exists("/key"))
+            {
+                return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_NOT_A_STRING};
+            }
+            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_MISSING};
         }
 
         const std::string key {optKey.value()};
         if (key.empty())
         {
-            return api::WazuhResponse {
-                json::Json {"{}"}, 400, "Parameter \"key\" is empty"};
+            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_EMPTY};
         }
 
         const auto retVal = kvdbManager->getKeyValue(kvdbNameValue, key);
@@ -230,15 +235,17 @@ api::CommandFn insertKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
         const auto optKey = params.getString("/key");
         if (!optKey.has_value())
         {
-            return api::WazuhResponse {
-                json::Json {"{}"}, 400, "Parameter \"key\" is missing"};
+            if (params.exists("/key"))
+            {
+                return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_NOT_A_STRING};
+            }
+            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_MISSING};
         }
 
         const std::string key {optKey.value()};
         if (key.empty())
         {
-            return api::WazuhResponse {
-                json::Json {"{}"}, 400, "Parameter \"key\" is empty"};
+            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_EMPTY};
         }
 
         const bool retVal {kvdbManager->writeKey(
@@ -327,15 +334,17 @@ api::CommandFn removeKvdbCmd(std::shared_ptr<KVDBManager> kvdbManager)
 
         if (!optKey.has_value())
         {
-            return api::WazuhResponse {
-                json::Json {"{}"}, 400, "Parameter \"key\" is missing"};
+            if (params.exists("/key"))
+            {
+                return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_NOT_A_STRING};
+            }
+            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_MISSING};
         }
 
         const std::string key {optKey.value()};
         if (key.empty())
         {
-            return api::WazuhResponse {
-                json::Json {"{}"}, 400, "Parameter \"key\" is empty"};
+            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_EMPTY};
         }
 
         const bool retVal {kvdbManager->deleteKey(kvdbNameValue, key)};
