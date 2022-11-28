@@ -23,5 +23,10 @@ if(${TARGET} STREQUAL "server")
   add_subdirectory(agent_upgrade)
 endif()
 
+if(NOT ${TARGET} STREQUAL "winagent")
+  add_subdirectory(control)
+endif()
+
 add_subdirectory(github)
 add_subdirectory(office365)
+
