@@ -92,15 +92,13 @@ normalize:
 
     # Conditional logon status and substatus
     # 4625 and 4776 Set Status and SubStatus
- - check: 
-      - event.code: +i_eq/4625 OR +i_eq/4776
+ - check: event.code==4625 OR event.code==4776
    map:
         - event.logon.failure.status: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.Status
         - event.logon.failure.sub_status: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.SubStatus
 
     # Add Session Events
- - check: 
-      - event.code: +i_ne/4778 OR +i_ne/4779
+ - check: event.code!=4778 OR event.code!=4779
    map:
         # AccountName to user.name and related.user
         - event.user.name: ~event_channel.Event.EventData.AccountName
@@ -148,7 +146,7 @@ normalize:
  - check: 
       - ~is_copy_target_user: +t_is_true  
    map:
-        - event.related.user: +s_concat/$~event_channel.Event.EventData.TargetUserName # may be moved up?
+        - event.related.user: +a_append/$~event_channel.Event.EventData.TargetUserName # may be moved up?
     # TargetUserDomain to user.domain or user.target.domain
  - check:
       - ~is_copy_target_user: +t_is_true
@@ -172,7 +170,7 @@ normalize:
         - event.group.id: $~event_channel.Event.EventData.TargetUserSid
         - event.group.id: $~event_channel.Event.EventData.TargetSid 
         - event.group.name: $~event_channel.Event.EventData.TargetUserName
-        - ~event_channel.Event.EventData.TargetDomainName: +s_replace/DC=/
+        - ~event_channel.Event.EventData.TargetDomainName: +s_replace/DC=//
         - event.goup.domain: $~event_channel.Event.EventData.TargetDomainName
         - event.user.target.group.id: event.group.id
         - event.user.target.group.name: event.group.name
@@ -185,8 +183,7 @@ normalize:
         - event.user.target.domain: $~split_memberName.3
 
  # Copy Target User to Computer Object
- - check:
-    - event.code: +i_eq/4741 OR +i_eq/4742 OR +i_eq/4743
+ - check: event.code==4741 OR event.code==4742 OR event.code==4743
    map:
     - event.computerObject.id: $~event_channel.Event.EventData.TargetSid
     - event.computerObject.name: $~event_channel.Event.EventData.TargetUserName
