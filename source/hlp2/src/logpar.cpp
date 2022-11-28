@@ -383,27 +383,27 @@ Logpar::Logpar(const json::Json& ecsFieldTypes)
             throw std::runtime_error("ECS field type must be a string");
         }
 
-        const auto ecsType = strToEcsType(value.getString().value());
-        if (ecsType == EcsType::ERROR_TYPE)
+        const auto schemaType = strToSchemaType(value.getString().value());
+        if (schemaType == SchemaType::ERROR_TYPE)
         {
             // TODO: check message
             throw std::runtime_error("ECS field type is invalid");
         }
 
-        m_fieldTypes[key] = ecsType;
+        m_fieldTypes[key] = schemaType;
     }
 
-    m_typeParsers = {{EcsType::IP, ParserType::P_IP},
-                     {EcsType::LONG, ParserType::P_LONG},
-                     {EcsType::OBJECT, ParserType::P_TEXT},
-                     {EcsType::GEO_POINT, ParserType::P_TEXT},
-                     {EcsType::KEYWORD, ParserType::P_TEXT},
-                     {EcsType::NESTED, ParserType::P_TEXT},
-                     {EcsType::SCALED_FLOAT, ParserType::P_SCALED_FLOAT},
-                     {EcsType::TEXT, ParserType::P_TEXT},
-                     {EcsType::BOOLEAN, ParserType::P_BOOL},
-                     {EcsType::DATE, ParserType::P_DATE},
-                     {EcsType::FLOAT, ParserType::P_FLOAT}};
+    m_typeParsers = {{SchemaType::IP, ParserType::P_IP},
+                     {SchemaType::LONG, ParserType::P_LONG},
+                     {SchemaType::OBJECT, ParserType::P_TEXT},
+                     {SchemaType::GEO_POINT, ParserType::P_TEXT},
+                     {SchemaType::KEYWORD, ParserType::P_TEXT},
+                     {SchemaType::NESTED, ParserType::P_TEXT},
+                     {SchemaType::SCALED_FLOAT, ParserType::P_SCALED_FLOAT},
+                     {SchemaType::TEXT, ParserType::P_TEXT},
+                     {SchemaType::BOOLEAN, ParserType::P_BOOL},
+                     {SchemaType::DATE, ParserType::P_DATE},
+                     {SchemaType::FLOAT, ParserType::P_FLOAT}};
 
     m_parserBuilders = {};
 }
@@ -455,14 +455,14 @@ Logpar::buildFieldParser(const parser::Field& field,
                 fmt::format("Field '{}' not found in schema", field.name.value));
         }
 
-        const auto ecsType = m_fieldTypes.at(field.name.value);
-        if (m_typeParsers.count(ecsType) == 0)
+        const auto schemaType = m_fieldTypes.at(field.name.value);
+        if (m_typeParsers.count(schemaType) == 0)
         {
             throw std::runtime_error(fmt::format(
-                "Parser type for ECS type '{}' not found", ecsTypeToStr(ecsType)));
+                "Parser type for ECS type '{}' not found", schemaTypeToStr(schemaType)));
         }
 
-        type = m_typeParsers.at(ecsType);
+        type = m_typeParsers.at(schemaType);
     }
 
     if (m_parserBuilders.count(type) == 0)

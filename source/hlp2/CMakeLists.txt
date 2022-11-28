@@ -1,12 +1,12 @@
 
 CPMAddPackage(
-    NAME CURL
-    GITHUB_REPOSITORY curl/curl
-    GIT_TAG curl-7_83_1
-    VERSION 7.83_1
-    EXCLUDE_FROM_ALL YES
-    GIT_SHALLOW TRUE
-    DOWNLOAD_ONLY
+        NAME CURL
+        GITHUB_REPOSITORY curl/curl
+        GIT_TAG curl-7_83_1
+        VERSION 7.83_1
+        EXCLUDE_FROM_ALL YES
+        GIT_SHALLOW TRUE
+        DOWNLOAD_ONLY
 )
 
 CPMAddPackage(
@@ -17,13 +17,6 @@ CPMAddPackage(
         GIT_SHALLOW TRUE
         OPTIONS
         "AUTO_DOWNLOAD 1"
-)
-
-CPMAddPackage(
-        NAME fmt
-        GITHUB_REPOSITORY fmtlib/fmt
-        GIT_TAG 8.1.1
-        GIT_SHALLOW TRUE
 )
 
 CPMAddPackage(
@@ -54,17 +47,21 @@ add_library(hlp2 STATIC
         src/ip.cpp
         src/text.cpp
         src/encodings.cpp
-        src/stop.hpp)
+        src/logpar.cpp
+        src/base.hpp)
+
+# src/stop.hpp)
 
 # https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
-add_definitions(-DONLY_C_LOCALE)
+add_compile_definitions(ONLY_C_LOCALE=1)
+
+# add_definitions(-DONLY_C_LOCALE)
 
 # https://howardhinnant.github.io/date/tz.html#Installation
 #
 # You may have to use -lpthread. If you're getting a mysterious crash on first access to the database, it is likely that
 # you aren't linking to the pthread library. The pthread library is used to assure that that library initialization
 # is thread safe in a multithreaded environment.
-
 target_link_libraries(hlp2
         PUBLIC base
         PRIVATE
@@ -81,4 +78,4 @@ target_include_directories(hlp2
         ${CMAKE_CURRENT_LIST_DIR}/include
         PRIVATE
         ${csv_SOURCE_DIR}/include
-        )
+)
