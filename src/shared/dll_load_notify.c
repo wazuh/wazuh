@@ -13,6 +13,7 @@
 #include "dll_load_notify.h"
 
 #ifdef WIN32
+#include <versionhelpers.h>
 
 _LdrRegisterDllNotification LdrRegisterDllNotification = NULL;
 _LdrUnregisterDllNotification LdrUnregisterDllNotifcation = NULL;
@@ -41,8 +42,7 @@ static void loaded_modules_verification()
                                      module_name,
                                      sizeof(module_name) / sizeof(wchar_t))) {
                 // Check if the images loaded are signed.
-                if (verify_pe_signature(module_name) != ERROR_SUCCESS &&
-                    verify_hash_catalog(module_name) != ERROR_SUCCESS) {
+                if (verify_hash_and_pe_signature(module_name) != OS_SUCCESS) {
                     merror_exit("The file '%S' is not signed or its signature is invalid.", module_name);
                 }
 
@@ -70,14 +70,14 @@ void CALLBACK dll_notification(ULONG reason,
     {
     case LDR_DLL_NOTIFICATION_REASON_LOADED:
 #ifdef IMAGE_TRUST_CHECKS
-        if (verify_pe_signature(notification_data->loaded.full_dll_name->Buffer) != ERROR_SUCCESS
-            && verify_hash_catalog(notification_data->loaded.full_dll_name->Buffer) != ERROR_SUCCESS) {
+        if (verify_hash_and_pe_signature(notification_data->loaded.full_dll_name->Buffer) != OS_SUCCESS) {
             merror_exit("The file '%S' is not signed or its signature is invalid.", notification_data->loaded.full_dll_name->Buffer);
         }
+        mdebug1("The file '%S' is signed and its signature is valid.", notification_data->loaded.full_dll_name->Buffer);
 #endif
         break;
     case LDR_DLL_NOTIFICATION_REASON_UNLOADED:
-        mdebug1("Unloaded: %S", notification_data->unloaded.full_dll_name->Buffer);
+        mdebug1("Unloaded: '%S'", notification_data->unloaded.full_dll_name->Buffer);
         break;
     }
 }
