@@ -231,5 +231,7 @@ parsec::Parser<json::Json> getCSVParser(Stop str, Options lst);
  */
 parsec::Parser<json::Json> getKVParser(Stop str, Options lst);
 
+parsec::Parser<json::Json> getLiteralParser(Stop str, Options lst);
+
 } // namespace hlp
 #endif // WAZUH_ENGINE_HLP_H

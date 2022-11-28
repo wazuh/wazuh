@@ -5,7 +5,8 @@
 
 #include <re2/re2.h>
 
-#include <hlp/hlp.hpp>
+#include <hlp/logpar.hpp>
+#include <hlp/registerParsers.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <name.hpp>
@@ -74,14 +75,14 @@ void test(const std::string& kvdbPath,
         g_exitHanlder.execute();
         return;
     }
-    // TODO because builders don't have access to the catalog we are configuring
-    // the parser mappings on start up for now
-    hlp::configureParserMappings(std::get<json::Json>(hlpParsers).str());
+    auto logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
+    hlp::registerParsers(logpar);
+    WAZUH_LOG_INFO("HLP initialized");
 
     auto registry = std::make_shared<builder::internals::Registry>();
     try
     {
-        builder::internals::registerBuilders(registry, {kvdb});
+        builder::internals::registerBuilders(registry, {kvdb, logpar});
     }
     catch (const std::exception& e)
     {

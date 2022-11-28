@@ -10,6 +10,7 @@ using namespace builder::internals::builders;
 using namespace json;
 using namespace base;
 
+
 TEST(StageBuilderParseTest, Builds)
 {
     auto registry = std::make_shared<Registry>();

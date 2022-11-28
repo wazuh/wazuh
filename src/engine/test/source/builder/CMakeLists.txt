@@ -80,16 +80,16 @@ add_executable(stageBuilderOutputs_test
 gtest_discover_tests(stageBuilderOutputs_test)
 
 # Stage Parse Builder test
-add_executable(stageBuilderParse_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderParse_test.cpp
-)
-gtest_discover_tests(stageBuilderParse_test)
+# add_executable(stageBuilderParse_test
+#   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderParse_test.cpp
+# )
+# gtest_discover_tests(stageBuilderParse_test)
 
 # Operation Logpar Parser Builder test
-add_executable(opBuilderLogParser_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderLogParser_test.cpp
-)
-gtest_discover_tests(opBuilderLogParser_test)
+# add_executable(opBuilderLogParser_test
+#   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderLogParser_test.cpp
+# )
+# gtest_discover_tests(opBuilderLogParser_test)
 
 # File Output test
 add_executable(fileOutput_test

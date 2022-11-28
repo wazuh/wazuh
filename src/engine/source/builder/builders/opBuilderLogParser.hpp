@@ -2,8 +2,12 @@
 #define _OP_BUILDER_LOG_PARSER_H
 
 #include <any>
+#include <memory>
 
-#include "expression.hpp"
+#include <expression.hpp>
+#include <hlp/logpar.hpp>
+
+#include "registry.hpp"
 
 namespace builder::internals::builders
 {
@@ -15,7 +19,7 @@ namespace builder::internals::builders
  * @param definition Definition of the stage
  * @return base::Expression
  */
-base::Expression opBuilderLogParser(const std::any& definition);
+Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar);
 
 } // namespace builder::internals::builders
 

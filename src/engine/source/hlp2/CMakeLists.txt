@@ -48,7 +48,8 @@ add_library(hlp2 STATIC
         src/text.cpp
         src/encodings.cpp
         src/logpar.cpp
-        src/base.hpp)
+        src/base.hpp
+        src/literal.cpp)
 
 # src/stop.hpp)
 
@@ -63,10 +64,9 @@ add_compile_definitions(ONLY_C_LOCALE=1)
 # you aren't linking to the pthread library. The pthread library is used to assure that that library initialization
 # is thread safe in a multithreaded environment.
 target_link_libraries(hlp2
-        PUBLIC base
+        PUBLIC base hlp_parsec
         PRIVATE
         pugixml
-        hlp_parsec
         date::date
         CURL::libcurl
         fast_float
