@@ -14,6 +14,15 @@ constexpr static const char* DEFAULT_CF_NAME {"default"};
 class KVDB
 {
 public:
+
+    enum class CreationStatus
+    {
+        OK_Created,
+        OK_AlreadyInitialized,
+        ERROR_CreatedEarlier,
+        ERROR_Undefined,
+    };
+
     /**
      * @brief Construct a new KVDB object
      *
@@ -30,14 +39,14 @@ public:
      */
     ~KVDB();
 
-    // TODO:
     /**
      *
      * @brief Open and initialize the db
      *
      * @param createIfMissing create the db if it does not exist.
+     * @param errorIfExists generates an error if it already exist.
      */
-    bool init(bool createIfMissing = true, bool errorIfExists = false);
+    CreationStatus init(bool createIfMissing = true, bool errorIfExists = false);
 
     /**
      * @brief Get the db name

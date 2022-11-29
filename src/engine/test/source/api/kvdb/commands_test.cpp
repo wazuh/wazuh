@@ -148,8 +148,13 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdDuplicatedDatabase)
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("Database \"{}\" could not be created", DB_NAME).c_str());
+    ASSERT_STREQ(
+        response.message().value().c_str(),
+        fmt::format(
+            "Database \"{}\" could not be created: Failed to create KVDB [{}].",
+            DB_NAME,
+            DB_NAME)
+            .c_str());
 }
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameWithSpaces)
@@ -301,8 +306,12 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNonExistingFile)
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("Database \"{}\" could not be created", DB_NAME_2).c_str());
+    ASSERT_STREQ(
+        response.message().value().c_str(),
+        fmt::format("Database \"{}\" could not be created: Couln't open file [{}]",
+                    DB_NAME_2,
+                    FILE_PATH)
+            .c_str());
 }
 
 // "kvdbDeleteCmd" tests section
@@ -588,7 +597,9 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleExecution)
             exampleFile.close();
         }
     }
-    kvdbAPIDumpCommand::kvdbManager->CreateAndFillKVDBfromFile(DB_NAME_2, FILE_PATH);
+    auto resultString =
+        kvdbAPIDumpCommand::kvdbManager->CreateAndFillKVDBfromFile(DB_NAME_2, FILE_PATH);
+    ASSERT_STREQ(resultString.c_str(), "OK");
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = api::kvdb::cmds::kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
@@ -641,7 +652,9 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdKVDBOnlyKeys)
             exampleFile.close();
         }
     }
-    kvdbAPIDumpCommand::kvdbManager->CreateAndFillKVDBfromFile(DB_NAME_2, FILE_PATH);
+    auto resultString =
+        kvdbAPIDumpCommand::kvdbManager->CreateAndFillKVDBfromFile(DB_NAME_2, FILE_PATH);
+    ASSERT_STREQ(resultString.c_str(), "OK");
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = api::kvdb::cmds::kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
@@ -1431,7 +1444,8 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecution)
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
-    ASSERT_FALSE(kvdbAPIRemoveCommand::kvdbManager->getKeyValue(DB_NAME, KEY_A).has_value());
+    ASSERT_FALSE(
+        kvdbAPIRemoveCommand::kvdbManager->getKeyValue(DB_NAME, KEY_A).has_value());
 }
 
 TEST_F(kvdbAPIRemoveCommand, SimpleExecutionDoubleRemove)

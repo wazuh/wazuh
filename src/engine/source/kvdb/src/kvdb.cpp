@@ -59,17 +59,17 @@ struct KVDB::Impl
             m_name);
     }
 
-    bool init(bool createIfMissing, bool errorIfExists)
+    CreationStatus init(bool createIfMissing, bool errorIfExists)
     {
         if (errorIfExists && m_state != State::Invalid)
         {
             // Created previously
-            return false;
+            return CreationStatus::ERROR_CreatedEarlier;
         }
         else if (!errorIfExists && m_state == State::Open)
         {
             // Already initialized
-            return true;
+            return CreationStatus::OK_AlreadyInitialized;
         }
 
         std::unique_lock lk(m_mtx);
@@ -107,7 +107,14 @@ struct KVDB::Impl
                 s.ToString());
 
             m_state = State::Error;
-            if (s.IsInvalidArgument())
+            const std::string errorString {s.getState()};
+            // there's no flag or function that returns this error but the message itself
+            if (errorString.find("exists (error_if_exists is true)") != std::string::npos)
+            {
+                return CreationStatus::ERROR_CreatedEarlier;
+            }
+
+            if (s.IsInvalidArgument() && !createIfMissing)
             {
                 // TODO: Investigate the reason of this:
                 // RocksDB creates a database even if the option create_if_missing is
@@ -115,7 +122,7 @@ struct KVDB::Impl
                 // anyway.
                 rocksdb::DestroyDB(m_path, rocksdb::Options(), m_CFDescriptors);
             }
-            return false;
+            return CreationStatus::ERROR_Undefined;
         }
 
         for (auto handle : cfHandles)
@@ -126,7 +133,7 @@ struct KVDB::Impl
         m_txDb = txdb;
         m_db = txdb->GetBaseDB();
         m_state = State::Open;
-        return true;
+        return CreationStatus::OK_Created;
     }
 
     /**
@@ -605,7 +612,7 @@ KVDB::KVDB()
 {
 }
 
-bool KVDB::init(bool createIfMissing, bool errorIfExists)
+KVDB::CreationStatus KVDB::init(bool createIfMissing, bool errorIfExists)
 {
     return mImpl->init(createIfMissing, errorIfExists);
 }
@@ -641,7 +648,8 @@ bool KVDB::write(const std::string& key,
     return mImpl->write(key, value, columnName);
 }
 
-std::optional<std::string> KVDB::read(const std::string& key, const std::string& columnName)
+std::optional<std::string> KVDB::read(const std::string& key,
+                                      const std::string& columnName)
 {
     return mImpl->read(key, columnName);
 }
