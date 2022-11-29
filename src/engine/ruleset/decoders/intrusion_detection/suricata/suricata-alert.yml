@@ -46,6 +46,7 @@ normalize:
       - threat.technique.id: $~json.alert.metadata.mitre_technique_id
       - threat.technique.name: $~json.alert.metadata.mitre_techinique_name
       - file.name: $~json.alert.metadata.filename
+      - suricata.eve: $~json
 
   - check:
       - threat.tactic.id: +t_is_null
@@ -61,3 +62,11 @@ normalize:
       - ~json.alert.action: +t_is_not_null
     map:
       - event.type: +a_append/~json.alert.action
+
+  - check:
+      - suricata.eve.event_type: "alert"
+    map:
+      - event.type: ["detail"]
+
+  - map:
+      - ~json: +ef_delete

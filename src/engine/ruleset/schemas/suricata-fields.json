@@ -1,0 +1,2782 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "suricata-fields.json",
+  "name": "suricata fields schema",
+  "type": "object",
+  "properties": {
+    "suricata": {
+      "description": "Fields from the Suricata EVE log file.\n",
+      "type": [
+        "object"
+      ],
+      "properties": {
+        "eve": {
+          "description": "Fields exported by the EVE JSON logs\n",
+          "type": [
+            "object"
+          ],
+          "properties": {
+            "alert": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "affected_product": {
+                  "$ref": "#/definitions/suricata.eve.alert.affected_product"
+                },
+                "attack_target": {
+                  "$ref": "#/definitions/suricata.eve.alert.attack_target"
+                },
+                "capec_id": {
+                  "$ref": "#/definitions/suricata.eve.alert.capec_id"
+                },
+                "category": {
+                  "$ref": "#/definitions/suricata.eve.alert.category"
+                },
+                "classtype": {
+                  "$ref": "#/definitions/suricata.eve.alert.classtype"
+                },
+                "created_at": {
+                  "$ref": "#/definitions/suricata.eve.alert.created_at"
+                },
+                "cve": {
+                  "$ref": "#/definitions/suricata.eve.alert.cve"
+                },
+                "cvss_v2_base": {
+                  "$ref": "#/definitions/suricata.eve.alert.cvss_v2_base"
+                },
+                "cvss_v2_temporal": {
+                  "$ref": "#/definitions/suricata.eve.alert.cvss_v2_temporal"
+                },
+                "cvss_v3_base": {
+                  "$ref": "#/definitions/suricata.eve.alert.cvss_v3_base"
+                },
+                "cvss_v3_temporal": {
+                  "$ref": "#/definitions/suricata.eve.alert.cvss_v3_temporal"
+                },
+                "cwe_id": {
+                  "$ref": "#/definitions/suricata.eve.alert.cwe_id"
+                },
+                "deployment": {
+                  "$ref": "#/definitions/suricata.eve.alert.deployment"
+                },
+                "former_category": {
+                  "$ref": "#/definitions/suricata.eve.alert.former_category"
+                },
+                "gid": {
+                  "$ref": "#/definitions/suricata.eve.alert.gid"
+                },
+                "hostile": {
+                  "$ref": "#/definitions/suricata.eve.alert.hostile"
+                },
+                "infected": {
+                  "$ref": "#/definitions/suricata.eve.alert.infected"
+                },
+                "malware": {
+                  "$ref": "#/definitions/suricata.eve.alert.malware"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/suricata.eve.alert.metadata"
+                },
+                "mitre_tool_id": {
+                  "$ref": "#/definitions/suricata.eve.alert.mitre_tool_id"
+                },
+                "performance_impact": {
+                  "$ref": "#/definitions/suricata.eve.alert.performance_impact"
+                },
+                "priority": {
+                  "$ref": "#/definitions/suricata.eve.alert.priority"
+                },
+                "protocols": {
+                  "$ref": "#/definitions/suricata.eve.alert.protocols"
+                },
+                "rev": {
+                  "$ref": "#/definitions/suricata.eve.alert.rev"
+                },
+                "rule_source": {
+                  "$ref": "#/definitions/suricata.eve.alert.rule_source"
+                },
+                "sid": {
+                  "$ref": "#/definitions/suricata.eve.alert.sid"
+                },
+                "signature": {
+                  "$ref": "#/definitions/suricata.eve.alert.signature"
+                },
+                "signature_id": {
+                  "$ref": "#/definitions/suricata.eve.alert.signature_id"
+                },
+                "signature_severity": {
+                  "$ref": "#/definitions/suricata.eve.alert.signature_severity"
+                },
+                "tag": {
+                  "$ref": "#/definitions/suricata.eve.alert.tag"
+                },
+                "updated_at": {
+                  "$ref": "#/definitions/suricata.eve.alert.updated_at"
+                }
+              }
+            },
+            "app_proto_expected": {
+              "$ref": "#/definitions/suricata.eve.app_proto_expected"
+            },
+            "app_proto_orig": {
+              "$ref": "#/definitions/suricata.eve.app_proto_orig"
+            },
+            "app_proto_tc": {
+              "$ref": "#/definitions/suricata.eve.app_proto_tc"
+            },
+            "app_proto_ts": {
+              "$ref": "#/definitions/suricata.eve.app_proto_ts"
+            },
+            "dns": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "id": {
+                  "$ref": "#/definitions/suricata.eve.dns.id"
+                },
+                "rcode": {
+                  "$ref": "#/definitions/suricata.eve.dns.rcode"
+                },
+                "rdata": {
+                  "$ref": "#/definitions/suricata.eve.dns.rdata"
+                },
+                "rrname": {
+                  "$ref": "#/definitions/suricata.eve.dns.rrname"
+                },
+                "rrtype": {
+                  "$ref": "#/definitions/suricata.eve.dns.rrtype"
+                },
+                "ttl": {
+                  "$ref": "#/definitions/suricata.eve.dns.ttl"
+                },
+                "tx_id": {
+                  "$ref": "#/definitions/suricata.eve.dns.tx_id"
+                },
+                "type": {
+                  "$ref": "#/definitions/suricata.eve.dns.type"
+                }
+              }
+            },
+            "email": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "status": {
+                  "$ref": "#/definitions/suricata.eve.email.status"
+                }
+              }
+            },
+            "event_type": {
+              "$ref": "#/definitions/suricata.eve.event_type"
+            },
+            "fileinfo": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "gaps": {
+                  "$ref": "#/definitions/suricata.eve.fileinfo.gaps"
+                },
+                "md5": {
+                  "$ref": "#/definitions/suricata.eve.fileinfo.md5"
+                },
+                "sha1": {
+                  "$ref": "#/definitions/suricata.eve.fileinfo.sha1"
+                },
+                "sha256": {
+                  "$ref": "#/definitions/suricata.eve.fileinfo.sha256"
+                },
+                "state": {
+                  "$ref": "#/definitions/suricata.eve.fileinfo.state"
+                },
+                "stored": {
+                  "$ref": "#/definitions/suricata.eve.fileinfo.stored"
+                },
+                "tx_id": {
+                  "$ref": "#/definitions/suricata.eve.fileinfo.tx_id"
+                }
+              }
+            },
+            "flags": {
+              "type": [
+                "object"
+              ]
+            },
+            "flow": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "age": {
+                  "$ref": "#/definitions/suricata.eve.flow.age"
+                },
+                "alerted": {
+                  "$ref": "#/definitions/suricata.eve.flow.alerted"
+                },
+                "reason": {
+                  "$ref": "#/definitions/suricata.eve.flow.reason"
+                },
+                "state": {
+                  "$ref": "#/definitions/suricata.eve.flow.state"
+                }
+              }
+            },
+            "flow_id": {
+              "$ref": "#/definitions/suricata.eve.flow_id"
+            },
+            "http": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "http_content_type": {
+                  "$ref": "#/definitions/suricata.eve.http.http_content_type"
+                },
+                "protocol": {
+                  "$ref": "#/definitions/suricata.eve.http.protocol"
+                },
+                "redirect": {
+                  "$ref": "#/definitions/suricata.eve.http.redirect"
+                }
+              }
+            },
+            "icmp_code": {
+              "$ref": "#/definitions/suricata.eve.icmp_code"
+            },
+            "icmp_type": {
+              "$ref": "#/definitions/suricata.eve.icmp_type"
+            },
+            "in_iface": {
+              "$ref": "#/definitions/suricata.eve.in_iface"
+            },
+            "pcap_cnt": {
+              "$ref": "#/definitions/suricata.eve.pcap_cnt"
+            },
+            "smtp": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "helo": {
+                  "$ref": "#/definitions/suricata.eve.smtp.helo"
+                },
+                "mail_from": {
+                  "$ref": "#/definitions/suricata.eve.smtp.mail_from"
+                },
+                "rcpt_to": {
+                  "$ref": "#/definitions/suricata.eve.smtp.rcpt_to"
+                }
+              }
+            },
+            "ssh": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "client": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "proto_version": {
+                      "$ref": "#/definitions/suricata.eve.ssh.client.proto_version"
+                    },
+                    "software_version": {
+                      "$ref": "#/definitions/suricata.eve.ssh.client.software_version"
+                    }
+                  }
+                },
+                "server": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "proto_version": {
+                      "$ref": "#/definitions/suricata.eve.ssh.server.proto_version"
+                    },
+                    "software_version": {
+                      "$ref": "#/definitions/suricata.eve.ssh.server.software_version"
+                    }
+                  }
+                }
+              }
+            },
+            "stats": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "app_layer": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "flow": {
+                      "type": [
+                        "object"
+                      ],
+                      "properties": {
+                        "dcerpc_tcp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.dcerpc_tcp"
+                        },
+                        "dcerpc_udp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.dcerpc_udp"
+                        },
+                        "dns_tcp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.dns_tcp"
+                        },
+                        "dns_udp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.dns_udp"
+                        },
+                        "failed_tcp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.failed_tcp"
+                        },
+                        "failed_udp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.failed_udp"
+                        },
+                        "ftp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.ftp"
+                        },
+                        "http": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.http"
+                        },
+                        "imap": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.imap"
+                        },
+                        "msn": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.msn"
+                        },
+                        "smb": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.smb"
+                        },
+                        "smtp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.smtp"
+                        },
+                        "ssh": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.ssh"
+                        },
+                        "tls": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.tls"
+                        }
+                      }
+                    },
+                    "tx": {
+                      "type": [
+                        "object"
+                      ],
+                      "properties": {
+                        "dcerpc_tcp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.dcerpc_tcp"
+                        },
+                        "dcerpc_udp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.dcerpc_udp"
+                        },
+                        "dns_tcp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.dns_tcp"
+                        },
+                        "dns_udp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.dns_udp"
+                        },
+                        "ftp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.ftp"
+                        },
+                        "http": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.http"
+                        },
+                        "smb": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.smb"
+                        },
+                        "smtp": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.smtp"
+                        },
+                        "ssh": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.ssh"
+                        },
+                        "tls": {
+                          "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.tls"
+                        }
+                      }
+                    }
+                  }
+                },
+                "capture": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "kernel_drops": {
+                      "$ref": "#/definitions/suricata.eve.stats.capture.kernel_drops"
+                    },
+                    "kernel_ifdrops": {
+                      "$ref": "#/definitions/suricata.eve.stats.capture.kernel_ifdrops"
+                    },
+                    "kernel_packets": {
+                      "$ref": "#/definitions/suricata.eve.stats.capture.kernel_packets"
+                    }
+                  }
+                },
+                "decoder": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "avg_pkt_size": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.avg_pkt_size"
+                    },
+                    "bytes": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.bytes"
+                    },
+                    "dce": {
+                      "type": [
+                        "object"
+                      ],
+                      "properties": {
+                        "pkt_too_small": {
+                          "$ref": "#/definitions/suricata.eve.stats.decoder.dce.pkt_too_small"
+                        }
+                      }
+                    },
+                    "erspan": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.erspan"
+                    },
+                    "ethernet": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.ethernet"
+                    },
+                    "gre": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.gre"
+                    },
+                    "icmpv4": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.icmpv4"
+                    },
+                    "icmpv6": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.icmpv6"
+                    },
+                    "ieee8021ah": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.ieee8021ah"
+                    },
+                    "invalid": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.invalid"
+                    },
+                    "ipraw": {
+                      "type": [
+                        "object"
+                      ],
+                      "properties": {
+                        "invalid_ip_version": {
+                          "$ref": "#/definitions/suricata.eve.stats.decoder.ipraw.invalid_ip_version"
+                        }
+                      }
+                    },
+                    "ipv4": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.ipv4"
+                    },
+                    "ipv4_in_ipv6": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.ipv4_in_ipv6"
+                    },
+                    "ipv6": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.ipv6"
+                    },
+                    "ipv6_in_ipv6": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.ipv6_in_ipv6"
+                    },
+                    "ltnull": {
+                      "type": [
+                        "object"
+                      ],
+                      "properties": {
+                        "pkt_too_small": {
+                          "$ref": "#/definitions/suricata.eve.stats.decoder.ltnull.pkt_too_small"
+                        },
+                        "unsupported_type": {
+                          "$ref": "#/definitions/suricata.eve.stats.decoder.ltnull.unsupported_type"
+                        }
+                      }
+                    },
+                    "max_pkt_size": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.max_pkt_size"
+                    },
+                    "mpls": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.mpls"
+                    },
+                    "null": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.null"
+                    },
+                    "pkts": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.pkts"
+                    },
+                    "ppp": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.ppp"
+                    },
+                    "pppoe": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.pppoe"
+                    },
+                    "raw": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.raw"
+                    },
+                    "sctp": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.sctp"
+                    },
+                    "sll": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.sll"
+                    },
+                    "tcp": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.tcp"
+                    },
+                    "teredo": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.teredo"
+                    },
+                    "udp": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.udp"
+                    },
+                    "vlan": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.vlan"
+                    },
+                    "vlan_qinq": {
+                      "$ref": "#/definitions/suricata.eve.stats.decoder.vlan_qinq"
+                    }
+                  }
+                },
+                "defrag": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "ipv4": {
+                      "type": [
+                        "object"
+                      ],
+                      "properties": {
+                        "fragments": {
+                          "$ref": "#/definitions/suricata.eve.stats.defrag.ipv4.fragments"
+                        },
+                        "reassembled": {
+                          "$ref": "#/definitions/suricata.eve.stats.defrag.ipv4.reassembled"
+                        },
+                        "timeouts": {
+                          "$ref": "#/definitions/suricata.eve.stats.defrag.ipv4.timeouts"
+                        }
+                      }
+                    },
+                    "ipv6": {
+                      "type": [
+                        "object"
+                      ],
+                      "properties": {
+                        "fragments": {
+                          "$ref": "#/definitions/suricata.eve.stats.defrag.ipv6.fragments"
+                        },
+                        "reassembled": {
+                          "$ref": "#/definitions/suricata.eve.stats.defrag.ipv6.reassembled"
+                        },
+                        "timeouts": {
+                          "$ref": "#/definitions/suricata.eve.stats.defrag.ipv6.timeouts"
+                        }
+                      }
+                    },
+                    "max_frag_hits": {
+                      "$ref": "#/definitions/suricata.eve.stats.defrag.max_frag_hits"
+                    }
+                  }
+                },
+                "detect": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "alert": {
+                      "$ref": "#/definitions/suricata.eve.stats.detect.alert"
+                    }
+                  }
+                },
+                "dns": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "memcap_global": {
+                      "$ref": "#/definitions/suricata.eve.stats.dns.memcap_global"
+                    },
+                    "memcap_state": {
+                      "$ref": "#/definitions/suricata.eve.stats.dns.memcap_state"
+                    },
+                    "memuse": {
+                      "$ref": "#/definitions/suricata.eve.stats.dns.memuse"
+                    }
+                  }
+                },
+                "file_store": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "open_files": {
+                      "$ref": "#/definitions/suricata.eve.stats.file_store.open_files"
+                    }
+                  }
+                },
+                "flow": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "emerg_mode_entered": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow.emerg_mode_entered"
+                    },
+                    "emerg_mode_over": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow.emerg_mode_over"
+                    },
+                    "icmpv4": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow.icmpv4"
+                    },
+                    "icmpv6": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow.icmpv6"
+                    },
+                    "memcap": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow.memcap"
+                    },
+                    "memuse": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow.memuse"
+                    },
+                    "spare": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow.spare"
+                    },
+                    "tcp": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow.tcp"
+                    },
+                    "tcp_reuse": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow.tcp_reuse"
+                    },
+                    "udp": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow.udp"
+                    }
+                  }
+                },
+                "flow_mgr": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "bypassed_pruned": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.bypassed_pruned"
+                    },
+                    "closed_pruned": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.closed_pruned"
+                    },
+                    "est_pruned": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.est_pruned"
+                    },
+                    "flows_checked": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.flows_checked"
+                    },
+                    "flows_notimeout": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.flows_notimeout"
+                    },
+                    "flows_removed": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.flows_removed"
+                    },
+                    "flows_timeout": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.flows_timeout"
+                    },
+                    "flows_timeout_inuse": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.flows_timeout_inuse"
+                    },
+                    "new_pruned": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.new_pruned"
+                    },
+                    "rows_busy": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.rows_busy"
+                    },
+                    "rows_checked": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.rows_checked"
+                    },
+                    "rows_empty": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.rows_empty"
+                    },
+                    "rows_maxlen": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.rows_maxlen"
+                    },
+                    "rows_skipped": {
+                      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.rows_skipped"
+                    }
+                  }
+                },
+                "http": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "memcap": {
+                      "$ref": "#/definitions/suricata.eve.stats.http.memcap"
+                    },
+                    "memuse": {
+                      "$ref": "#/definitions/suricata.eve.stats.http.memuse"
+                    }
+                  }
+                },
+                "tcp": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "insert_data_normal_fail": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.insert_data_normal_fail"
+                    },
+                    "insert_data_overlap_fail": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.insert_data_overlap_fail"
+                    },
+                    "insert_list_fail": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.insert_list_fail"
+                    },
+                    "invalid_checksum": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.invalid_checksum"
+                    },
+                    "memuse": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.memuse"
+                    },
+                    "no_flow": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.no_flow"
+                    },
+                    "overlap": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.overlap"
+                    },
+                    "overlap_diff_data": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.overlap_diff_data"
+                    },
+                    "pseudo": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.pseudo"
+                    },
+                    "pseudo_failed": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.pseudo_failed"
+                    },
+                    "reassembly_gap": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.reassembly_gap"
+                    },
+                    "reassembly_memuse": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.reassembly_memuse"
+                    },
+                    "rst": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.rst"
+                    },
+                    "segment_memcap_drop": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.segment_memcap_drop"
+                    },
+                    "sessions": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.sessions"
+                    },
+                    "ssn_memcap_drop": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.ssn_memcap_drop"
+                    },
+                    "stream_depth_reached": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.stream_depth_reached"
+                    },
+                    "syn": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.syn"
+                    },
+                    "synack": {
+                      "$ref": "#/definitions/suricata.eve.stats.tcp.synack"
+                    }
+                  }
+                },
+                "uptime": {
+                  "$ref": "#/definitions/suricata.eve.stats.uptime"
+                }
+              }
+            },
+            "tcp": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "ack": {
+                  "$ref": "#/definitions/suricata.eve.tcp.ack"
+                },
+                "fin": {
+                  "$ref": "#/definitions/suricata.eve.tcp.fin"
+                },
+                "psh": {
+                  "$ref": "#/definitions/suricata.eve.tcp.psh"
+                },
+                "rst": {
+                  "$ref": "#/definitions/suricata.eve.tcp.rst"
+                },
+                "state": {
+                  "$ref": "#/definitions/suricata.eve.tcp.state"
+                },
+                "syn": {
+                  "$ref": "#/definitions/suricata.eve.tcp.syn"
+                },
+                "tcp_flags": {
+                  "$ref": "#/definitions/suricata.eve.tcp.tcp_flags"
+                },
+                "tcp_flags_tc": {
+                  "$ref": "#/definitions/suricata.eve.tcp.tcp_flags_tc"
+                },
+                "tcp_flags_ts": {
+                  "$ref": "#/definitions/suricata.eve.tcp.tcp_flags_ts"
+                }
+              }
+            },
+            "tls": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "fingerprint": {
+                  "$ref": "#/definitions/suricata.eve.tls.fingerprint"
+                },
+                "issuerdn": {
+                  "$ref": "#/definitions/suricata.eve.tls.issuerdn"
+                },
+                "ja3": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "hash": {
+                      "$ref": "#/definitions/suricata.eve.tls.ja3.hash"
+                    },
+                    "string": {
+                      "$ref": "#/definitions/suricata.eve.tls.ja3.string"
+                    }
+                  }
+                },
+                "ja3s": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "hash": {
+                      "$ref": "#/definitions/suricata.eve.tls.ja3s.hash"
+                    },
+                    "string": {
+                      "$ref": "#/definitions/suricata.eve.tls.ja3s.string"
+                    }
+                  }
+                },
+                "notafter": {
+                  "$ref": "#/definitions/suricata.eve.tls.notafter"
+                },
+                "notbefore": {
+                  "$ref": "#/definitions/suricata.eve.tls.notbefore"
+                },
+                "serial": {
+                  "$ref": "#/definitions/suricata.eve.tls.serial"
+                },
+                "session_resumed": {
+                  "$ref": "#/definitions/suricata.eve.tls.session_resumed"
+                },
+                "sni": {
+                  "$ref": "#/definitions/suricata.eve.tls.sni"
+                },
+                "subject": {
+                  "$ref": "#/definitions/suricata.eve.tls.subject"
+                },
+                "version": {
+                  "$ref": "#/definitions/suricata.eve.tls.version"
+                }
+              }
+            },
+            "tx_id": {
+              "$ref": "#/definitions/suricata.eve.tx_id"
+            }
+          }
+        }
+      }
+    },
+    "suricata.eve.alert.affected_product": {
+      "$ref": "#/definitions/suricata.eve.alert.affected_product"
+    },
+    "suricata.eve.alert.attack_target": {
+      "$ref": "#/definitions/suricata.eve.alert.attack_target"
+    },
+    "suricata.eve.alert.capec_id": {
+      "$ref": "#/definitions/suricata.eve.alert.capec_id"
+    },
+    "suricata.eve.alert.category": {
+      "$ref": "#/definitions/suricata.eve.alert.category"
+    },
+    "suricata.eve.alert.classtype": {
+      "$ref": "#/definitions/suricata.eve.alert.classtype"
+    },
+    "suricata.eve.alert.created_at": {
+      "$ref": "#/definitions/suricata.eve.alert.created_at"
+    },
+    "suricata.eve.alert.cve": {
+      "$ref": "#/definitions/suricata.eve.alert.cve"
+    },
+    "suricata.eve.alert.cvss_v2_base": {
+      "$ref": "#/definitions/suricata.eve.alert.cvss_v2_base"
+    },
+    "suricata.eve.alert.cvss_v2_temporal": {
+      "$ref": "#/definitions/suricata.eve.alert.cvss_v2_temporal"
+    },
+    "suricata.eve.alert.cvss_v3_base": {
+      "$ref": "#/definitions/suricata.eve.alert.cvss_v3_base"
+    },
+    "suricata.eve.alert.cvss_v3_temporal": {
+      "$ref": "#/definitions/suricata.eve.alert.cvss_v3_temporal"
+    },
+    "suricata.eve.alert.cwe_id": {
+      "$ref": "#/definitions/suricata.eve.alert.cwe_id"
+    },
+    "suricata.eve.alert.deployment": {
+      "$ref": "#/definitions/suricata.eve.alert.deployment"
+    },
+    "suricata.eve.alert.former_category": {
+      "$ref": "#/definitions/suricata.eve.alert.former_category"
+    },
+    "suricata.eve.alert.gid": {
+      "$ref": "#/definitions/suricata.eve.alert.gid"
+    },
+    "suricata.eve.alert.hostile": {
+      "$ref": "#/definitions/suricata.eve.alert.hostile"
+    },
+    "suricata.eve.alert.infected": {
+      "$ref": "#/definitions/suricata.eve.alert.infected"
+    },
+    "suricata.eve.alert.malware": {
+      "$ref": "#/definitions/suricata.eve.alert.malware"
+    },
+    "suricata.eve.alert.metadata": {
+      "$ref": "#/definitions/suricata.eve.alert.metadata"
+    },
+    "suricata.eve.alert.mitre_tool_id": {
+      "$ref": "#/definitions/suricata.eve.alert.mitre_tool_id"
+    },
+    "suricata.eve.alert.performance_impact": {
+      "$ref": "#/definitions/suricata.eve.alert.performance_impact"
+    },
+    "suricata.eve.alert.priority": {
+      "$ref": "#/definitions/suricata.eve.alert.priority"
+    },
+    "suricata.eve.alert.protocols": {
+      "$ref": "#/definitions/suricata.eve.alert.protocols"
+    },
+    "suricata.eve.alert.rev": {
+      "$ref": "#/definitions/suricata.eve.alert.rev"
+    },
+    "suricata.eve.alert.rule_source": {
+      "$ref": "#/definitions/suricata.eve.alert.rule_source"
+    },
+    "suricata.eve.alert.sid": {
+      "$ref": "#/definitions/suricata.eve.alert.sid"
+    },
+    "suricata.eve.alert.signature": {
+      "$ref": "#/definitions/suricata.eve.alert.signature"
+    },
+    "suricata.eve.alert.signature_id": {
+      "$ref": "#/definitions/suricata.eve.alert.signature_id"
+    },
+    "suricata.eve.alert.signature_severity": {
+      "$ref": "#/definitions/suricata.eve.alert.signature_severity"
+    },
+    "suricata.eve.alert.tag": {
+      "$ref": "#/definitions/suricata.eve.alert.tag"
+    },
+    "suricata.eve.alert.updated_at": {
+      "$ref": "#/definitions/suricata.eve.alert.updated_at"
+    },
+    "suricata.eve.app_proto_expected": {
+      "$ref": "#/definitions/suricata.eve.app_proto_expected"
+    },
+    "suricata.eve.app_proto_orig": {
+      "$ref": "#/definitions/suricata.eve.app_proto_orig"
+    },
+    "suricata.eve.app_proto_tc": {
+      "$ref": "#/definitions/suricata.eve.app_proto_tc"
+    },
+    "suricata.eve.app_proto_ts": {
+      "$ref": "#/definitions/suricata.eve.app_proto_ts"
+    },
+    "suricata.eve.dns.id": {
+      "$ref": "#/definitions/suricata.eve.dns.id"
+    },
+    "suricata.eve.dns.rcode": {
+      "$ref": "#/definitions/suricata.eve.dns.rcode"
+    },
+    "suricata.eve.dns.rdata": {
+      "$ref": "#/definitions/suricata.eve.dns.rdata"
+    },
+    "suricata.eve.dns.rrname": {
+      "$ref": "#/definitions/suricata.eve.dns.rrname"
+    },
+    "suricata.eve.dns.rrtype": {
+      "$ref": "#/definitions/suricata.eve.dns.rrtype"
+    },
+    "suricata.eve.dns.ttl": {
+      "$ref": "#/definitions/suricata.eve.dns.ttl"
+    },
+    "suricata.eve.dns.tx_id": {
+      "$ref": "#/definitions/suricata.eve.dns.tx_id"
+    },
+    "suricata.eve.dns.type": {
+      "$ref": "#/definitions/suricata.eve.dns.type"
+    },
+    "suricata.eve.email.status": {
+      "$ref": "#/definitions/suricata.eve.email.status"
+    },
+    "suricata.eve.event_type": {
+      "$ref": "#/definitions/suricata.eve.event_type"
+    },
+    "suricata.eve.fileinfo.gaps": {
+      "$ref": "#/definitions/suricata.eve.fileinfo.gaps"
+    },
+    "suricata.eve.fileinfo.md5": {
+      "$ref": "#/definitions/suricata.eve.fileinfo.md5"
+    },
+    "suricata.eve.fileinfo.sha1": {
+      "$ref": "#/definitions/suricata.eve.fileinfo.sha1"
+    },
+    "suricata.eve.fileinfo.sha256": {
+      "$ref": "#/definitions/suricata.eve.fileinfo.sha256"
+    },
+    "suricata.eve.fileinfo.state": {
+      "$ref": "#/definitions/suricata.eve.fileinfo.state"
+    },
+    "suricata.eve.fileinfo.stored": {
+      "$ref": "#/definitions/suricata.eve.fileinfo.stored"
+    },
+    "suricata.eve.fileinfo.tx_id": {
+      "$ref": "#/definitions/suricata.eve.fileinfo.tx_id"
+    },
+    "suricata.eve.flow.age": {
+      "$ref": "#/definitions/suricata.eve.flow.age"
+    },
+    "suricata.eve.flow.alerted": {
+      "$ref": "#/definitions/suricata.eve.flow.alerted"
+    },
+    "suricata.eve.flow.reason": {
+      "$ref": "#/definitions/suricata.eve.flow.reason"
+    },
+    "suricata.eve.flow.state": {
+      "$ref": "#/definitions/suricata.eve.flow.state"
+    },
+    "suricata.eve.flow_id": {
+      "$ref": "#/definitions/suricata.eve.flow_id"
+    },
+    "suricata.eve.http.http_content_type": {
+      "$ref": "#/definitions/suricata.eve.http.http_content_type"
+    },
+    "suricata.eve.http.protocol": {
+      "$ref": "#/definitions/suricata.eve.http.protocol"
+    },
+    "suricata.eve.http.redirect": {
+      "$ref": "#/definitions/suricata.eve.http.redirect"
+    },
+    "suricata.eve.icmp_code": {
+      "$ref": "#/definitions/suricata.eve.icmp_code"
+    },
+    "suricata.eve.icmp_type": {
+      "$ref": "#/definitions/suricata.eve.icmp_type"
+    },
+    "suricata.eve.in_iface": {
+      "$ref": "#/definitions/suricata.eve.in_iface"
+    },
+    "suricata.eve.pcap_cnt": {
+      "$ref": "#/definitions/suricata.eve.pcap_cnt"
+    },
+    "suricata.eve.smtp.helo": {
+      "$ref": "#/definitions/suricata.eve.smtp.helo"
+    },
+    "suricata.eve.smtp.mail_from": {
+      "$ref": "#/definitions/suricata.eve.smtp.mail_from"
+    },
+    "suricata.eve.smtp.rcpt_to": {
+      "$ref": "#/definitions/suricata.eve.smtp.rcpt_to"
+    },
+    "suricata.eve.ssh.client.proto_version": {
+      "$ref": "#/definitions/suricata.eve.ssh.client.proto_version"
+    },
+    "suricata.eve.ssh.client.software_version": {
+      "$ref": "#/definitions/suricata.eve.ssh.client.software_version"
+    },
+    "suricata.eve.ssh.server.proto_version": {
+      "$ref": "#/definitions/suricata.eve.ssh.server.proto_version"
+    },
+    "suricata.eve.ssh.server.software_version": {
+      "$ref": "#/definitions/suricata.eve.ssh.server.software_version"
+    },
+    "suricata.eve.stats.app_layer.flow.dcerpc_tcp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.dcerpc_tcp"
+    },
+    "suricata.eve.stats.app_layer.flow.dcerpc_udp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.dcerpc_udp"
+    },
+    "suricata.eve.stats.app_layer.flow.dns_tcp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.dns_tcp"
+    },
+    "suricata.eve.stats.app_layer.flow.dns_udp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.dns_udp"
+    },
+    "suricata.eve.stats.app_layer.flow.failed_tcp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.failed_tcp"
+    },
+    "suricata.eve.stats.app_layer.flow.failed_udp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.failed_udp"
+    },
+    "suricata.eve.stats.app_layer.flow.ftp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.ftp"
+    },
+    "suricata.eve.stats.app_layer.flow.http": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.http"
+    },
+    "suricata.eve.stats.app_layer.flow.imap": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.imap"
+    },
+    "suricata.eve.stats.app_layer.flow.msn": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.msn"
+    },
+    "suricata.eve.stats.app_layer.flow.smb": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.smb"
+    },
+    "suricata.eve.stats.app_layer.flow.smtp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.smtp"
+    },
+    "suricata.eve.stats.app_layer.flow.ssh": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.ssh"
+    },
+    "suricata.eve.stats.app_layer.flow.tls": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.flow.tls"
+    },
+    "suricata.eve.stats.app_layer.tx.dcerpc_tcp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.dcerpc_tcp"
+    },
+    "suricata.eve.stats.app_layer.tx.dcerpc_udp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.dcerpc_udp"
+    },
+    "suricata.eve.stats.app_layer.tx.dns_tcp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.dns_tcp"
+    },
+    "suricata.eve.stats.app_layer.tx.dns_udp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.dns_udp"
+    },
+    "suricata.eve.stats.app_layer.tx.ftp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.ftp"
+    },
+    "suricata.eve.stats.app_layer.tx.http": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.http"
+    },
+    "suricata.eve.stats.app_layer.tx.smb": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.smb"
+    },
+    "suricata.eve.stats.app_layer.tx.smtp": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.smtp"
+    },
+    "suricata.eve.stats.app_layer.tx.ssh": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.ssh"
+    },
+    "suricata.eve.stats.app_layer.tx.tls": {
+      "$ref": "#/definitions/suricata.eve.stats.app_layer.tx.tls"
+    },
+    "suricata.eve.stats.capture.kernel_drops": {
+      "$ref": "#/definitions/suricata.eve.stats.capture.kernel_drops"
+    },
+    "suricata.eve.stats.capture.kernel_ifdrops": {
+      "$ref": "#/definitions/suricata.eve.stats.capture.kernel_ifdrops"
+    },
+    "suricata.eve.stats.capture.kernel_packets": {
+      "$ref": "#/definitions/suricata.eve.stats.capture.kernel_packets"
+    },
+    "suricata.eve.stats.decoder.avg_pkt_size": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.avg_pkt_size"
+    },
+    "suricata.eve.stats.decoder.bytes": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.bytes"
+    },
+    "suricata.eve.stats.decoder.dce.pkt_too_small": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.dce.pkt_too_small"
+    },
+    "suricata.eve.stats.decoder.erspan": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.erspan"
+    },
+    "suricata.eve.stats.decoder.ethernet": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.ethernet"
+    },
+    "suricata.eve.stats.decoder.gre": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.gre"
+    },
+    "suricata.eve.stats.decoder.icmpv4": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.icmpv4"
+    },
+    "suricata.eve.stats.decoder.icmpv6": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.icmpv6"
+    },
+    "suricata.eve.stats.decoder.ieee8021ah": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.ieee8021ah"
+    },
+    "suricata.eve.stats.decoder.invalid": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.invalid"
+    },
+    "suricata.eve.stats.decoder.ipraw.invalid_ip_version": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.ipraw.invalid_ip_version"
+    },
+    "suricata.eve.stats.decoder.ipv4": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.ipv4"
+    },
+    "suricata.eve.stats.decoder.ipv4_in_ipv6": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.ipv4_in_ipv6"
+    },
+    "suricata.eve.stats.decoder.ipv6": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.ipv6"
+    },
+    "suricata.eve.stats.decoder.ipv6_in_ipv6": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.ipv6_in_ipv6"
+    },
+    "suricata.eve.stats.decoder.ltnull.pkt_too_small": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.ltnull.pkt_too_small"
+    },
+    "suricata.eve.stats.decoder.ltnull.unsupported_type": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.ltnull.unsupported_type"
+    },
+    "suricata.eve.stats.decoder.max_pkt_size": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.max_pkt_size"
+    },
+    "suricata.eve.stats.decoder.mpls": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.mpls"
+    },
+    "suricata.eve.stats.decoder.null": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.null"
+    },
+    "suricata.eve.stats.decoder.pkts": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.pkts"
+    },
+    "suricata.eve.stats.decoder.ppp": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.ppp"
+    },
+    "suricata.eve.stats.decoder.pppoe": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.pppoe"
+    },
+    "suricata.eve.stats.decoder.raw": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.raw"
+    },
+    "suricata.eve.stats.decoder.sctp": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.sctp"
+    },
+    "suricata.eve.stats.decoder.sll": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.sll"
+    },
+    "suricata.eve.stats.decoder.tcp": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.tcp"
+    },
+    "suricata.eve.stats.decoder.teredo": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.teredo"
+    },
+    "suricata.eve.stats.decoder.udp": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.udp"
+    },
+    "suricata.eve.stats.decoder.vlan": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.vlan"
+    },
+    "suricata.eve.stats.decoder.vlan_qinq": {
+      "$ref": "#/definitions/suricata.eve.stats.decoder.vlan_qinq"
+    },
+    "suricata.eve.stats.defrag.ipv4.fragments": {
+      "$ref": "#/definitions/suricata.eve.stats.defrag.ipv4.fragments"
+    },
+    "suricata.eve.stats.defrag.ipv4.reassembled": {
+      "$ref": "#/definitions/suricata.eve.stats.defrag.ipv4.reassembled"
+    },
+    "suricata.eve.stats.defrag.ipv4.timeouts": {
+      "$ref": "#/definitions/suricata.eve.stats.defrag.ipv4.timeouts"
+    },
+    "suricata.eve.stats.defrag.ipv6.fragments": {
+      "$ref": "#/definitions/suricata.eve.stats.defrag.ipv6.fragments"
+    },
+    "suricata.eve.stats.defrag.ipv6.reassembled": {
+      "$ref": "#/definitions/suricata.eve.stats.defrag.ipv6.reassembled"
+    },
+    "suricata.eve.stats.defrag.ipv6.timeouts": {
+      "$ref": "#/definitions/suricata.eve.stats.defrag.ipv6.timeouts"
+    },
+    "suricata.eve.stats.defrag.max_frag_hits": {
+      "$ref": "#/definitions/suricata.eve.stats.defrag.max_frag_hits"
+    },
+    "suricata.eve.stats.detect.alert": {
+      "$ref": "#/definitions/suricata.eve.stats.detect.alert"
+    },
+    "suricata.eve.stats.dns.memcap_global": {
+      "$ref": "#/definitions/suricata.eve.stats.dns.memcap_global"
+    },
+    "suricata.eve.stats.dns.memcap_state": {
+      "$ref": "#/definitions/suricata.eve.stats.dns.memcap_state"
+    },
+    "suricata.eve.stats.dns.memuse": {
+      "$ref": "#/definitions/suricata.eve.stats.dns.memuse"
+    },
+    "suricata.eve.stats.file_store.open_files": {
+      "$ref": "#/definitions/suricata.eve.stats.file_store.open_files"
+    },
+    "suricata.eve.stats.flow.emerg_mode_entered": {
+      "$ref": "#/definitions/suricata.eve.stats.flow.emerg_mode_entered"
+    },
+    "suricata.eve.stats.flow.emerg_mode_over": {
+      "$ref": "#/definitions/suricata.eve.stats.flow.emerg_mode_over"
+    },
+    "suricata.eve.stats.flow.icmpv4": {
+      "$ref": "#/definitions/suricata.eve.stats.flow.icmpv4"
+    },
+    "suricata.eve.stats.flow.icmpv6": {
+      "$ref": "#/definitions/suricata.eve.stats.flow.icmpv6"
+    },
+    "suricata.eve.stats.flow.memcap": {
+      "$ref": "#/definitions/suricata.eve.stats.flow.memcap"
+    },
+    "suricata.eve.stats.flow.memuse": {
+      "$ref": "#/definitions/suricata.eve.stats.flow.memuse"
+    },
+    "suricata.eve.stats.flow.spare": {
+      "$ref": "#/definitions/suricata.eve.stats.flow.spare"
+    },
+    "suricata.eve.stats.flow.tcp": {
+      "$ref": "#/definitions/suricata.eve.stats.flow.tcp"
+    },
+    "suricata.eve.stats.flow.tcp_reuse": {
+      "$ref": "#/definitions/suricata.eve.stats.flow.tcp_reuse"
+    },
+    "suricata.eve.stats.flow.udp": {
+      "$ref": "#/definitions/suricata.eve.stats.flow.udp"
+    },
+    "suricata.eve.stats.flow_mgr.bypassed_pruned": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.bypassed_pruned"
+    },
+    "suricata.eve.stats.flow_mgr.closed_pruned": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.closed_pruned"
+    },
+    "suricata.eve.stats.flow_mgr.est_pruned": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.est_pruned"
+    },
+    "suricata.eve.stats.flow_mgr.flows_checked": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.flows_checked"
+    },
+    "suricata.eve.stats.flow_mgr.flows_notimeout": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.flows_notimeout"
+    },
+    "suricata.eve.stats.flow_mgr.flows_removed": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.flows_removed"
+    },
+    "suricata.eve.stats.flow_mgr.flows_timeout": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.flows_timeout"
+    },
+    "suricata.eve.stats.flow_mgr.flows_timeout_inuse": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.flows_timeout_inuse"
+    },
+    "suricata.eve.stats.flow_mgr.new_pruned": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.new_pruned"
+    },
+    "suricata.eve.stats.flow_mgr.rows_busy": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.rows_busy"
+    },
+    "suricata.eve.stats.flow_mgr.rows_checked": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.rows_checked"
+    },
+    "suricata.eve.stats.flow_mgr.rows_empty": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.rows_empty"
+    },
+    "suricata.eve.stats.flow_mgr.rows_maxlen": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.rows_maxlen"
+    },
+    "suricata.eve.stats.flow_mgr.rows_skipped": {
+      "$ref": "#/definitions/suricata.eve.stats.flow_mgr.rows_skipped"
+    },
+    "suricata.eve.stats.http.memcap": {
+      "$ref": "#/definitions/suricata.eve.stats.http.memcap"
+    },
+    "suricata.eve.stats.http.memuse": {
+      "$ref": "#/definitions/suricata.eve.stats.http.memuse"
+    },
+    "suricata.eve.stats.tcp.insert_data_normal_fail": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.insert_data_normal_fail"
+    },
+    "suricata.eve.stats.tcp.insert_data_overlap_fail": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.insert_data_overlap_fail"
+    },
+    "suricata.eve.stats.tcp.insert_list_fail": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.insert_list_fail"
+    },
+    "suricata.eve.stats.tcp.invalid_checksum": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.invalid_checksum"
+    },
+    "suricata.eve.stats.tcp.memuse": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.memuse"
+    },
+    "suricata.eve.stats.tcp.no_flow": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.no_flow"
+    },
+    "suricata.eve.stats.tcp.overlap": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.overlap"
+    },
+    "suricata.eve.stats.tcp.overlap_diff_data": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.overlap_diff_data"
+    },
+    "suricata.eve.stats.tcp.pseudo": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.pseudo"
+    },
+    "suricata.eve.stats.tcp.pseudo_failed": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.pseudo_failed"
+    },
+    "suricata.eve.stats.tcp.reassembly_gap": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.reassembly_gap"
+    },
+    "suricata.eve.stats.tcp.reassembly_memuse": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.reassembly_memuse"
+    },
+    "suricata.eve.stats.tcp.rst": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.rst"
+    },
+    "suricata.eve.stats.tcp.segment_memcap_drop": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.segment_memcap_drop"
+    },
+    "suricata.eve.stats.tcp.sessions": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.sessions"
+    },
+    "suricata.eve.stats.tcp.ssn_memcap_drop": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.ssn_memcap_drop"
+    },
+    "suricata.eve.stats.tcp.stream_depth_reached": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.stream_depth_reached"
+    },
+    "suricata.eve.stats.tcp.syn": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.syn"
+    },
+    "suricata.eve.stats.tcp.synack": {
+      "$ref": "#/definitions/suricata.eve.stats.tcp.synack"
+    },
+    "suricata.eve.stats.uptime": {
+      "$ref": "#/definitions/suricata.eve.stats.uptime"
+    },
+    "suricata.eve.tcp.ack": {
+      "$ref": "#/definitions/suricata.eve.tcp.ack"
+    },
+    "suricata.eve.tcp.fin": {
+      "$ref": "#/definitions/suricata.eve.tcp.fin"
+    },
+    "suricata.eve.tcp.psh": {
+      "$ref": "#/definitions/suricata.eve.tcp.psh"
+    },
+    "suricata.eve.tcp.rst": {
+      "$ref": "#/definitions/suricata.eve.tcp.rst"
+    },
+    "suricata.eve.tcp.state": {
+      "$ref": "#/definitions/suricata.eve.tcp.state"
+    },
+    "suricata.eve.tcp.syn": {
+      "$ref": "#/definitions/suricata.eve.tcp.syn"
+    },
+    "suricata.eve.tcp.tcp_flags": {
+      "$ref": "#/definitions/suricata.eve.tcp.tcp_flags"
+    },
+    "suricata.eve.tcp.tcp_flags_tc": {
+      "$ref": "#/definitions/suricata.eve.tcp.tcp_flags_tc"
+    },
+    "suricata.eve.tcp.tcp_flags_ts": {
+      "$ref": "#/definitions/suricata.eve.tcp.tcp_flags_ts"
+    },
+    "suricata.eve.tls.fingerprint": {
+      "$ref": "#/definitions/suricata.eve.tls.fingerprint"
+    },
+    "suricata.eve.tls.issuerdn": {
+      "$ref": "#/definitions/suricata.eve.tls.issuerdn"
+    },
+    "suricata.eve.tls.ja3.hash": {
+      "$ref": "#/definitions/suricata.eve.tls.ja3.hash"
+    },
+    "suricata.eve.tls.ja3.string": {
+      "$ref": "#/definitions/suricata.eve.tls.ja3.string"
+    },
+    "suricata.eve.tls.ja3s.hash": {
+      "$ref": "#/definitions/suricata.eve.tls.ja3s.hash"
+    },
+    "suricata.eve.tls.ja3s.string": {
+      "$ref": "#/definitions/suricata.eve.tls.ja3s.string"
+    },
+    "suricata.eve.tls.notafter": {
+      "$ref": "#/definitions/suricata.eve.tls.notafter"
+    },
+    "suricata.eve.tls.notbefore": {
+      "$ref": "#/definitions/suricata.eve.tls.notbefore"
+    },
+    "suricata.eve.tls.serial": {
+      "$ref": "#/definitions/suricata.eve.tls.serial"
+    },
+    "suricata.eve.tls.session_resumed": {
+      "$ref": "#/definitions/suricata.eve.tls.session_resumed"
+    },
+    "suricata.eve.tls.sni": {
+      "$ref": "#/definitions/suricata.eve.tls.sni"
+    },
+    "suricata.eve.tls.subject": {
+      "$ref": "#/definitions/suricata.eve.tls.subject"
+    },
+    "suricata.eve.tls.version": {
+      "$ref": "#/definitions/suricata.eve.tls.version"
+    },
+    "suricata.eve.tx_id": {
+      "$ref": "#/definitions/suricata.eve.tx_id"
+    }
+  },
+  "definitions": {
+    "suricata.eve.alert.affected_product": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.attack_target": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.capec_id": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.category": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.classtype": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.created_at": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.cve": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.cvss_v2_base": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.cvss_v2_temporal": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.cvss_v3_base": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.cvss_v3_temporal": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.cwe_id": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.deployment": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.former_category": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.gid": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.alert.hostile": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.infected": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.malware": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.metadata": {
+      "description": "Metadata about the alert.",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.mitre_tool_id": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.performance_impact": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.priority": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.protocols": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.rev": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.alert.rule_source": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.sid": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.signature": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.signature_id": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.alert.signature_severity": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.tag": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.alert.updated_at": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.app_proto_expected": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.app_proto_orig": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.app_proto_tc": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.app_proto_ts": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.dns.id": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.dns.rcode": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.dns.rdata": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.dns.rrname": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.dns.rrtype": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.dns.ttl": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.dns.tx_id": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.dns.type": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.email.status": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.event_type": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.fileinfo.gaps": {
+      "description": "Suricata field",
+      "type": [
+        "boolean"
+      ]
+    },
+    "suricata.eve.fileinfo.md5": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.fileinfo.sha1": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.fileinfo.sha256": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.fileinfo.state": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.fileinfo.stored": {
+      "description": "Suricata field",
+      "type": [
+        "boolean"
+      ]
+    },
+    "suricata.eve.fileinfo.tx_id": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.flow.age": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.flow.alerted": {
+      "description": "Suricata field",
+      "type": [
+        "boolean"
+      ]
+    },
+    "suricata.eve.flow.reason": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.flow.state": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.flow_id": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.http.http_content_type": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.http.protocol": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.http.redirect": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.icmp_code": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.icmp_type": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.in_iface": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.pcap_cnt": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.smtp.helo": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.smtp.mail_from": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.smtp.rcpt_to": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.ssh.client.proto_version": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.ssh.client.software_version": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.ssh.server.proto_version": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.ssh.server.software_version": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.dcerpc_tcp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.dcerpc_udp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.dns_tcp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.dns_udp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.failed_tcp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.failed_udp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.ftp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.http": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.imap": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.msn": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.smb": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.smtp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.ssh": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.flow.tls": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.tx.dcerpc_tcp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.tx.dcerpc_udp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.tx.dns_tcp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.tx.dns_udp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.tx.ftp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.tx.http": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.tx.smb": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.tx.smtp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.tx.ssh": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.app_layer.tx.tls": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.capture.kernel_drops": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.capture.kernel_ifdrops": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.capture.kernel_packets": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.avg_pkt_size": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.bytes": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.dce.pkt_too_small": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.erspan": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.ethernet": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.gre": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.icmpv4": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.icmpv6": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.ieee8021ah": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.invalid": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.ipraw.invalid_ip_version": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.ipv4": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.ipv4_in_ipv6": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.ipv6": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.ipv6_in_ipv6": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.ltnull.pkt_too_small": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.ltnull.unsupported_type": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.max_pkt_size": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.mpls": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.null": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.pkts": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.ppp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.pppoe": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.raw": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.sctp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.sll": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.tcp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.teredo": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.udp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.vlan": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.decoder.vlan_qinq": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.defrag.ipv4.fragments": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.defrag.ipv4.reassembled": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.defrag.ipv4.timeouts": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.defrag.ipv6.fragments": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.defrag.ipv6.reassembled": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.defrag.ipv6.timeouts": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.defrag.max_frag_hits": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.detect.alert": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.dns.memcap_global": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.dns.memcap_state": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.dns.memuse": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.file_store.open_files": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow.emerg_mode_entered": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow.emerg_mode_over": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow.icmpv4": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow.icmpv6": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow.memcap": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow.memuse": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow.spare": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow.tcp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow.tcp_reuse": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow.udp": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.bypassed_pruned": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.closed_pruned": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.est_pruned": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.flows_checked": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.flows_notimeout": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.flows_removed": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.flows_timeout": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.flows_timeout_inuse": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.new_pruned": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.rows_busy": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.rows_checked": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.rows_empty": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.rows_maxlen": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.flow_mgr.rows_skipped": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.http.memcap": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.http.memuse": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.insert_data_normal_fail": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.insert_data_overlap_fail": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.insert_list_fail": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.invalid_checksum": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.memuse": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.no_flow": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.overlap": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.overlap_diff_data": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.pseudo": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.pseudo_failed": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.reassembly_gap": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.reassembly_memuse": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.rst": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.segment_memcap_drop": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.sessions": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.ssn_memcap_drop": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.stream_depth_reached": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.syn": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.tcp.synack": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.stats.uptime": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    },
+    "suricata.eve.tcp.ack": {
+      "description": "Suricata field",
+      "type": [
+        "boolean"
+      ]
+    },
+    "suricata.eve.tcp.fin": {
+      "description": "Suricata field",
+      "type": [
+        "boolean"
+      ]
+    },
+    "suricata.eve.tcp.psh": {
+      "description": "Suricata field",
+      "type": [
+        "boolean"
+      ]
+    },
+    "suricata.eve.tcp.rst": {
+      "description": "Suricata field",
+      "type": [
+        "boolean"
+      ]
+    },
+    "suricata.eve.tcp.state": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tcp.syn": {
+      "description": "Suricata field",
+      "type": [
+        "boolean"
+      ]
+    },
+    "suricata.eve.tcp.tcp_flags": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tcp.tcp_flags_tc": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tcp.tcp_flags_ts": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tls.fingerprint": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tls.issuerdn": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tls.ja3.hash": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tls.ja3.string": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tls.ja3s.hash": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tls.ja3s.string": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tls.notafter": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tls.notbefore": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tls.serial": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tls.session_resumed": {
+      "description": "Suricata field",
+      "type": [
+        "boolean"
+      ]
+    },
+    "suricata.eve.tls.sni": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tls.subject": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tls.version": {
+      "description": "Suricata field",
+      "type": [
+        "string"
+      ]
+    },
+    "suricata.eve.tx_id": {
+      "description": "Suricata field",
+      "type": [
+        "integer"
+      ]
+    }
+  }
+}
