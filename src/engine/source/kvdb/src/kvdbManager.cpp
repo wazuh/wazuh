@@ -206,13 +206,14 @@ bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
                                             const std::filesystem::path& path)
 {
     auto dbHandle = std::make_shared<KVDB>(dbName, mDbFolder);
+
+    // Initialize it only if it doesn't exist
     if (!dbHandle->init(true, true))
     {
         WAZUH_LOG_ERROR("Failed to create db [{}].", dbName);
         return false;
     }
 
-    // TODO: what if the path is empty?
     if (!path.empty())
     {
         std::ifstream filePath(path);
@@ -241,6 +242,7 @@ bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
 bool KVDBManager::getKVDBFromFile(const std::string& name, KVDBHandle& dbHandle)
 {
     dbHandle = std::make_shared<KVDB>(name, mDbFolder);
+    // Initialize it only if it already exists
     return dbHandle->init(false, false);
 }
 
