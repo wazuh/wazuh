@@ -24,12 +24,13 @@ parsec::Parser<json::Json> getBoolParser(Stop str, Options lst)
 
         auto fp = std::get<std::string_view>(res);
 
-        if (fp.find("true") == 0)
+        // TODO Check True/ TRUE/ true/ False/ FALSE/ false / 0 / 1?
+        if (fp == "true")
         {
             return parsec::makeSuccess<json::Json>(
                 json::Json("true"), text, index + 4);
         }
-        else if (fp.find("false") == 0)
+        else if (fp == "false")
         {
             return parsec::makeSuccess<json::Json>(
                 json::Json("false"), text, index + 5);
