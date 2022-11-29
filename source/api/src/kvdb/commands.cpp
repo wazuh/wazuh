@@ -34,14 +34,14 @@ api::CommandFn kvdbCreateCmd(std::shared_ptr<KVDBManager> kvdbManager)
         // Get KVDB's path
         const auto kvdbPath = params.getString("/path");
 
-        const bool result {kvdbManager->CreateAndFillKVDBfromFile(kvdbName.value(),
+        const std::string result {kvdbManager->CreateAndFillKVDBfromFile(kvdbName.value(),
                                                                   kvdbPath.value_or(""))};
-        if (!result)
+        if (result != "OK")
         {
             return api::WazuhResponse {
                 json::Json {"{}"},
                 400,
-                fmt::format("Database \"{}\" could not be created", kvdbName.value())};
+                fmt::format("Database \"{}\" could not be created: {}", kvdbName.value(), result)};
         }
 
         return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};

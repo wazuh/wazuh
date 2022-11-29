@@ -59,7 +59,7 @@ KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
                     __func__,
                     name);
     auto kvdb = std::make_shared<KVDB>(name, mDbFolder);
-    if (kvdb->init(createIfMissing))
+    if (kvdb->init(createIfMissing) <= KVDB::CreationStatus::OK_AlreadyInitialized)
     {
         m_availableKVDBs[name] = kvdb;
         return kvdb;
@@ -151,7 +151,7 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
         {
             // In general it should never happen so we should consider just
             // removing this
-            if (!db->init(false))
+            if (db->init(false) > KVDB::CreationStatus::OK_AlreadyInitialized)
             {
                 WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Error initializing "
                                 "database \"{}\".",
@@ -200,18 +200,23 @@ std::vector<std::string> KVDBManager::getAvailableKVDBs(bool loaded)
     return list;
 }
 
-// TODO: tests for this method are missing
-// TODO: the errors may be changed to exceptions which must be handled on a higher level
-bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
+std::string KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
                                             const std::filesystem::path& path)
 {
     auto dbHandle = std::make_shared<KVDB>(dbName, mDbFolder);
 
+    std::string errorMessage {"OK"};
     // Initialize it only if it doesn't exist
-    if (!dbHandle->init(true, true))
+    auto initResult = dbHandle->init(true, true);
+    if ( initResult == KVDB::CreationStatus::ERROR_CreatedEarlier)
     {
-        WAZUH_LOG_ERROR("Failed to create db [{}].", dbName);
-        return false;
+        errorMessage = fmt::format("There's already a kvdb named [{}].", dbName);
+        return errorMessage;
+    }
+    else if(initResult != KVDB::CreationStatus::OK_Created)
+    {
+        errorMessage = fmt::format("Failed to create KVDB [{}].", dbName);
+        return errorMessage;
     }
 
     if (!path.empty())
@@ -219,8 +224,8 @@ bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
         std::ifstream filePath(path);
         if (!filePath.is_open())
         {
-            WAZUH_LOG_ERROR("Couln't open file [{}]", path.c_str());
-            return false;
+            errorMessage = fmt::format("Couln't open file [{}]", path.c_str());
+            return errorMessage;
         }
 
         for (std::string line; getline(filePath, line);)
@@ -229,21 +234,21 @@ bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
             auto kv = utils::string::split(line, ':');
             if (kv.empty() || kv.size() > 2)
             {
-                WAZUH_LOG_ERROR("Error while reading filePath [{}]", path.c_str());
-                return false;
+                errorMessage = fmt::format("Error while reading filePath [{}]", path.c_str());
+                return errorMessage;
             }
 
             dbHandle->write(kv[0], kv.size() == 2 ? kv[1] : "");
         }
     }
-    return true;
+    return errorMessage;
 }
 
 bool KVDBManager::getKVDBFromFile(const std::string& name, KVDBHandle& dbHandle)
 {
     dbHandle = std::make_shared<KVDB>(name, mDbFolder);
     // Initialize it only if it already exists
-    return dbHandle->init(false, false);
+    return dbHandle->init(false, false) <= KVDB::CreationStatus::OK_AlreadyInitialized;
 }
 
 size_t KVDBManager::dumpContent(const std::string& name, std::string& content)
