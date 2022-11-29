@@ -43,6 +43,7 @@ add_library(builders OBJECT
   builders/opBuilderKVDB.cpp
   builders/opBuilderLogParser.cpp
   builders/opBuilderSCAdecoder.cpp
+  builders/opBuilderSpeficHLP.cpp
   builders/opBuilderWdb.cpp
   builders/operationBuilder.cpp
   builders/stageBuilderCheck.cpp
