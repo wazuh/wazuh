@@ -352,11 +352,7 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
 
     while (1) {
         message = rem_msgpop();
-        if (message->sock == USING_UDP_NO_CLIENT_SOCKET || message->counter > rem_getCounter(message->sock)) {
-            HandleSecureMessage(message, &wdb_sock);
-        } else {
-            rem_inc_recv_dequeued();
-        }
+        HandleSecureMessage(message, &wdb_sock);
         rem_msgfree(message);
     }
 
@@ -629,49 +625,54 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
 
-        /* We need to save the peerinfo if it is a control msg */
+        /* let through new and shutdown messages */
+        if (message->counter >  rem_getCounter(message->sock) || (strncmp(tmp_msg, HC_SHUTDOWN, strlen(HC_SHUTDOWN)) == 0)) {
+            /* We need to save the peerinfo if it is a control msg */
 
-        w_mutex_lock(&keys.keyentries[agentid]->mutex);
-        keys.keyentries[agentid]->net_protocol = protocol;
-        keys.keyentries[agentid]->rcvd = time(0);
-        memcpy(&keys.keyentries[agentid]->peer_info, &message->addr, logr.peer_size);
+            w_mutex_lock(&keys.keyentries[agentid]->mutex);
+            keys.keyentries[agentid]->net_protocol = protocol;
+            keys.keyentries[agentid]->rcvd = time(0);
+            memcpy(&keys.keyentries[agentid]->peer_info, &message->addr, logr.peer_size);
 
-        keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
+            keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
 
-        if (protocol == REMOTED_NET_PROTOCOL_TCP) {
-            if (message->counter > rem_getCounter(message->sock)) {
-                keys.keyentries[agentid]->sock = message->sock;
+            if (protocol == REMOTED_NET_PROTOCOL_TCP) {
+                if (message->counter > rem_getCounter(message->sock)) {
+                    keys.keyentries[agentid]->sock = message->sock;
+                }
+
+                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+
+                r = OS_AddSocket(&keys, agentid, message->sock);
+
+                switch (r) {
+                case OS_ADDSOCKET_ERROR:
+                    merror("Couldn't add TCP socket to keystore.");
+                    break;
+                case OS_ADDSOCKET_KEY_UPDATED:
+                    mdebug2("TCP socket %d already in keystore. Updating...", message->sock);
+                    break;
+                case OS_ADDSOCKET_KEY_ADDED:
+                    mdebug2("TCP socket %d added to keystore.", message->sock);
+                    break;
+                default:
+                    ;
+                }
+            } else {
+                keys.keyentries[agentid]->sock = USING_UDP_NO_CLIENT_SOCKET;
+                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
             }
 
-            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+            key_unlock();
 
-            r = OS_AddSocket(&keys, agentid, message->sock);
+            // The critical section for readers closes within this function
+            save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
+            rem_inc_recv_ctrl(key->id);
 
-            switch (r) {
-            case OS_ADDSOCKET_ERROR:
-                merror("Couldn't add TCP socket to keystore.");
-                break;
-            case OS_ADDSOCKET_KEY_UPDATED:
-                mdebug2("TCP socket %d already in keystore. Updating...", message->sock);
-                break;
-            case OS_ADDSOCKET_KEY_ADDED:
-                mdebug2("TCP socket %d added to keystore.", message->sock);
-                break;
-            default:
-                ;
-            }
+            OS_FreeKey(key);
         } else {
-            keys.keyentries[agentid]->sock = USING_UDP_NO_CLIENT_SOCKET;
-            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+            rem_inc_recv_dequeued();
         }
-
-        key_unlock();
-
-        // The critical section for readers closes within this function
-        save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
-        rem_inc_recv_ctrl(key->id);
-
-        OS_FreeKey(key);
         return;
     }
 
