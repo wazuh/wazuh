@@ -57,7 +57,7 @@ normalize:
 
     - event.logon.id: $~event_channel.Event.EventData.SubjectLogonId
 
-    - event.PrivilegeList: +s_to_array/$~event_channel.Event.EventData.PrivilegeList// 
+    - event.PrivilegeList: +s_to_array/$~event_channel.Event.EventData.PrivilegeList/ /
 
     - event.user.target.name: $~event_channel.Event.EventData.OldTargetUserName
     - event.user.changes.name: $~event_channel.Event.EventData.NewTargetUserName
@@ -93,7 +93,7 @@ normalize:
               "4757", "4758", "4759", "4760", "4761", "4762", "4763", "4764",
               "4767", "4768", "4769", "4770", "4771", "4798", "4799", "4817",
               "4904", "4905", "4907", "4912"]
-     - ~id_related_user:  ["4688", "4720", "4722", "4723", "4724", "4725", "4726", "4738",
+    - ~id_related_user:  ["4688", "4720", "4722", "4723", "4724", "4725", "4726", "4738",
          "4740", "4767", "4798"]
 
     # Decode message table
@@ -277,7 +277,7 @@ normalize:
 
 # Process Event 4688
  - check: event.code==4688 
-  map:
+   map:
      - event.process.pid: $~event_channel.Event.EventData.NewProcessId
      - event.process.executable: $~event_channel.Event.EventData.NewProcessName
      - event.process.parent.executable: $~event_channel.Event.EventData.ParentProcessName
