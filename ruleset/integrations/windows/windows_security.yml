@@ -57,6 +57,15 @@ normalize:
 
     - event.logon.id: $~event_channel.Event.EventData.SubjectLogonId
 
+    - event.PrivilegeList: +s_to_array/$~event_channel.Event.EventData.PrivilegeList// 
+
+    - event.user.target.name: $~event_channel.Event.EventData.OldTargetUserName
+    - event.user.changes.name: $~event_channel.Event.EventData.NewTargetUserName
+    - event.related.user: +a_append/$~event_channel.Event.EventData.NewTargetUserName
+    - event.related.user: +a_append/$~event_channel.Event.EventData.OldTargetUserName 
+
+    - event.time_created: $~event_channel.Event.System.TimeCreated.@SystemTime
+
     # map helper arrays
     - ~id_target_user_array: ["4624","4625","4634","4647","4648","4768","4769","4770","4771","4776","4964"]
     - ~id_memberName_array: ["4727", "4728", "4729", "4730", "4731", "4732", "4733", "4734", "4735",
@@ -73,8 +82,19 @@ normalize:
               "4758", "4759", "4760", "4761", "4762", "4763", "4764", "4767",
               "4781", "4798", "4799", "4817", "4904", "4905", "4907", "4912",
               "4648"]
-     - id_copy_target_user_array: ["4670", "4720", "4722", "4723", "4724", "4725",
+    - ~id_copy_target_user_array: ["4670", "4720", "4722", "4723", "4724", "4725",
               "4726", "4738", "4740", "4767", "4798", "4817", "4907"]
+    - ~id_rename_common_auth_fields: ["1100", "1102", "1104", "1105", "1108", "4624", "4648", "4625",
+              "4670", "4673", "4674", "4689", "4697", "4719", "4720", "4722",
+              "4723", "4724", "4725", "4726", "4727", "4728", "4729", "4730",
+              "4731", "4732", "4733", "4734", "4735", "4737", "4738", "4740",
+              "4741", "4742", "4743", "4744", "4745", "4746", "4747", "4748",
+              "4749", "4750", "4751", "4752", "4753", "4754", "4755", "4756",
+              "4757", "4758", "4759", "4760", "4761", "4762", "4763", "4764",
+              "4767", "4768", "4769", "4770", "4771", "4798", "4799", "4817",
+              "4904", "4905", "4907", "4912"]
+     - ~id_related_user:  ["4688", "4720", "4722", "4723", "4724", "4725", "4726", "4738",
+         "4740", "4767", "4798"]
 
     # Decode message table
     # Failure reason for logon
@@ -210,7 +230,7 @@ normalize:
  # Copy Subject User from Event Data
  - check: 
      - ~id_copy_subject_user_array: +a_contains/$event.code
-  map:
+   map:
      - event.user.id: $~event_channel.Event.EventData.SubjectUserSid
      - event.related.user: +a_append/$~event_channel.Event.EventData.SubjectUserName
      - event.user.domain: $~event_channel.Event.EventData.SubjectDomainName
@@ -218,7 +238,7 @@ normalize:
  # Copy Target User to Target
  - check: 
     - ~id_copy_target_user_array: +a_contains/$event.code
-  map:
+   map:
      - event.user.target.id: $~event_channel.Event.EventData.TargetSid
      - ~name_part: +s_to_array/$~event_channel.Event.EventData.TargetUserName/@
      - event.user.target.name: $~name_part.0
@@ -226,8 +246,8 @@ normalize:
      - event.user.target.domain: $~event_channel.Event.EventData.TargetDomainName
 
 # Copy Target User to Effective
-- check: event.code==4741 OR event.code==4742
- map:
+ - check: event.code==4741 OR event.code==4742
+   map:
      - event.user.effective.id: $~event_channel.Event.EventData.TargetUserSid
      - ~name_part: +s_to_array/$~event_channel.Event.EventData.TargetUserName/@
      - event.user.effective.name: $~name_part.0
@@ -235,10 +255,53 @@ normalize:
      - event.user.effective.domain: $~event_channel.Event.EventData.TargetDomainName
 
 # Copy Subject User from user_data
-- check: event.code==1102
- map:
+ - check: event.code==1102
+   map:
      - event.user.id: $~event_channel.Event.EventData.SubjectUserSid
      - event.user.name: $~event_channel.Event.EventData.SubjectUserName
      - event.user.related.user: +a_append/$~event_channel.Event.EventData.SubjectUserName
      - event.user.domain: $~event_channel.Event.EventData.SubjectDomainName
+
+# Rename Common Auth Fields
+ - check:
+     - ~id_rename_common_auth_fields: +a_contains/$event.code
+   map:
+     - event.process.pid: $~event_channel.Event.EventData.ProcessId
+     - event.process.executable: $~event_channel.Event.EventData.ProcessName
+     - event.source.ip: $~event_channel.Event.EventData.IpAddress
+     - event.source.port: $~event_channel.Event.EventData.IpPort
+     - event.source.domain: $~event_channel.Event.EventData.WorkstationName
+     - event.related.ip: $~event_channel.Event.EventData.ClientAddress
+     # - ~process_name: +s_to_array/$event.process.executable/\
+     # - event.process.name: $~process_name.-1
+
+# Process Event 4688
+ - check: event.code==4688 
+  map:
+     - event.process.pid: $~event_channel.Event.EventData.NewProcessId
+     - event.process.executable: $~event_channel.Event.EventData.NewProcessName
+     - event.process.parent.executable: $~event_channel.Event.EventData.ParentProcessName
+     # - ~process_name: +s_to_array/$event.process.executable/\
+     # - event.process.name: $~process_name.-1
+     # - ~process_name: +s_to_array/$event.process.parent.executable/\
+     # - event.process.parent.name: $~process_name.-1 
+     - event.process.parent.pid: $~event_channel.Event.EventData.ProcessId
+     # - event.process.args: # rather hard to get maybe use regex?
+     - event.process.commands_line: $~event_channel.Event.EventData.CommandLine
+     - event.related.user: +a_append/$~event_channel.Event.EventData.TargetUserName
+
+ - check: event.code==4624 OR event.code==4648
+   map:
+     - event.related.user: $~event_channel.Event.EventData.SubjectUserName
+
+ - check: 
+      - ~id_related_user: +a_contains/$event.code
+   map:
+      - event.related.user: $~event_channel.Event.EventData.TargetUserName
+
+ - map:
+     - event.related.ip: event.source.ip
+
+ # Object Policy Change and SidListDesc
+ # - check: event.code==4670 OR event.code==4817 OR event.code==4907 OR event.code==4808
 
