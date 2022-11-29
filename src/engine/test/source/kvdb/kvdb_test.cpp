@@ -39,8 +39,12 @@ namespace
 {
 
 std::shared_ptr<KVDBManager> sharedKvdbManager = std::make_shared<KVDBManager>("/tmp/");
+const std::string KEY = "dummy_key";
+const std::string VALUE = "dummy_value";
 
 static const char* kTestDBName {"TEST_DB"};
+static const char* kTestUnloadedDBName {"UNLOADED_TEST_DB"};
+
 
 class KVDBTest : public ::testing::Test
 {
@@ -494,7 +498,6 @@ TEST_F(KVDBTest, dumpContentMultipleKV)
 
 TEST_F(KVDBTest, writeKeySingleKV)
 {
-    GTEST_SKIP();
     const std::string key {"dummy_key"};
     const std::string value {"dummy_value"};
 
@@ -504,11 +507,22 @@ TEST_F(KVDBTest, writeKeySingleKV)
     ASSERT_NO_THROW(retval = kvdbManager->writeKey("NEW_TEST_DB", key, value));
     ASSERT_TRUE(retval);
 
+    // TODO: this replicate wat we're doing on the helper and should be modified.
     KVDBHandle kvdbHandle;
-    ASSERT_NO_THROW(kvdbHandle = kvdbManager->getDB("NEW_TEST_DB"));
+    kvdbHandle = kvdbManager->getDB("NEW_TEST_DB");
+    if(!kvdbHandle)
+    {
+        ASSERT_NO_THROW(kvdbManager->addDb("NEW_TEST_DB", false));
+    }
+    kvdbHandle = kvdbManager->getDB("NEW_TEST_DB");
+    ASSERT_TRUE(kvdbHandle);
     ASSERT_TRUE(kvdbHandle->hasKey(key));
     auto valueRead = kvdbHandle->read(key);
     ASSERT_STREQ(valueRead.value().c_str(), value.c_str());
+
+    // clean to avoid error on rerun
+    ASSERT_NO_THROW(retval = kvdbManager->deleteDB("NEW_TEST_DB"));
+    ASSERT_TRUE(retval);
 }
 
 TEST_F(KVDBTest, ListAvailableKVDBs)
@@ -534,8 +548,85 @@ TEST_F(KVDBTest, ListAvailableKVDBs)
     ASSERT_EQ(kvdbLists.at(1), kTestDBName);
 }
 
-TEST_F(KVDBTest, GetKeyValue) {}
+TEST_F(KVDBTest, GetWriteDeleteKeyValueThroughManager)
+{
+    std::string valueRead;
+    bool retval;
 
-TEST_F(KVDBTest, DeleteKey) {}
+    // adding key value to db loaded causes error
+    retval = kvdbManager->writeKey(kTestDBName, KEY, VALUE);
+    ASSERT_FALSE(retval);
+
+    // create unloaded DB
+    retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName);
+    ASSERT_TRUE(retval);
+
+    retval = kvdbManager->writeKey(kTestUnloadedDBName, KEY, VALUE);
+    ASSERT_TRUE(retval);
+
+    auto val = kvdbManager->getKeyValue(kTestUnloadedDBName,KEY);
+    ASSERT_TRUE(val.has_value());
+    ASSERT_EQ(val.value(),VALUE);
+
+    retval = kvdbManager->deleteKey(kTestUnloadedDBName,KEY);
+    ASSERT_TRUE(retval);
+
+    // double delete
+    retval = kvdbManager->deleteKey(kTestUnloadedDBName,KEY);
+    ASSERT_FALSE(retval);
+
+    val = kvdbManager->getKeyValue(kTestUnloadedDBName,KEY);
+    ASSERT_FALSE(val.has_value());
+
+    retval = kvdbManager->deleteDB(kTestUnloadedDBName,false);
+    ASSERT_TRUE(retval);
+}
+
+TEST_F(KVDBTest, GetWriteDeleteSingleKeyThroughManager)
+{
+    std::string valueRead;
+    bool retval;
+
+    // create unloaded DB
+    retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName);
+    ASSERT_TRUE(retval);
+
+    // single key KVDB
+    retval = kvdbManager->writeKey(kTestUnloadedDBName,KEY);
+    ASSERT_TRUE(retval);
+
+    auto val = kvdbManager->getKeyValue(kTestUnloadedDBName,KEY);
+    ASSERT_TRUE(val.has_value());
+    ASSERT_EQ(val.value(),"");
+
+    retval = kvdbManager->deleteKey(kTestUnloadedDBName,KEY);
+    ASSERT_TRUE(retval);
+
+    // double delete
+    retval = kvdbManager->deleteKey(kTestUnloadedDBName,KEY);
+    ASSERT_FALSE(retval);
+
+    val = kvdbManager->getKeyValue(kTestUnloadedDBName,KEY);
+    ASSERT_FALSE(val.has_value());
+
+    retval = kvdbManager->deleteDB(kTestUnloadedDBName,false);
+    ASSERT_TRUE(retval);
+}
+
+TEST_F(KVDBTest, CreateAndFillKVDBfromFileOkWithFile)
+{
+}
+
+TEST_F(KVDBTest, CreateAndFillKVDBfromFileWrongSeparatorFile)
+{
+}
+
+TEST_F(KVDBTest, CreateAndFillKVDBfromFileSingleLine)
+{
+}
+
+TEST_F(KVDBTest, CreateAndFillKVDBfromFileCreatedEarlier)
+{
+}
 
 } // namespace
