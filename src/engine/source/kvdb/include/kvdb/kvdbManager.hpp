@@ -90,7 +90,7 @@ public:
      * @return true if it could be completed succesfully
      * @return false otherwise.
      */
-    bool CreateAndFillKVDBfromFile(const std::string& dbName,
+    std::string CreateAndFillKVDBfromFile(const std::string& dbName,
                                    const std::filesystem::path& path = "");
 
     /**
