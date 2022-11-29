@@ -70,7 +70,7 @@ KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
 
 // TODO: tests for this method are missing
 bool KVDBManager::createKVDBfromCDBFile(const std::filesystem::path& path,
-                                     bool createIfMissing)
+                                        bool createIfMissing)
 {
     std::ifstream CDBfile(path);
     if (!CDBfile.is_open())
@@ -238,19 +238,12 @@ bool KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
     return true;
 }
 
-// TODO: tests for this method are missing
 bool KVDBManager::getKVDBFromFile(const std::string& name, KVDBHandle& dbHandle)
 {
     dbHandle = std::make_shared<KVDB>(name, mDbFolder);
-    if (dbHandle->init(false, false))
-    {
-        return true;
-    }
-
-    return false;
+    return dbHandle->init(false, false);
 }
 
-// TODO: tests for this method are missing
 size_t KVDBManager::dumpContent(const std::string& name, std::string& content)
 {
     size_t result {0};
@@ -269,7 +262,7 @@ bool KVDBManager::writeKey(const std::string& name,
                            const std::string& key,
                            const std::string value)
 {
-    bool result = false;
+    bool result {false};
     KVDBHandle dbHandle;
     if (getKVDBFromFile(name, dbHandle))
     {
