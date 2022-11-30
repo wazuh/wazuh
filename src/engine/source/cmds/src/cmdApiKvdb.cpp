@@ -73,7 +73,6 @@ void deleteKvdb(const std::string& socketPath, const std::string& name, bool loa
     data.setObject();
     data.setString(API_KVDB_DELETE_SUBCOMMAND, "/action");
     data.setString(name, "/name");
-    data.setBool(loaded, "/mustBeLoaded");
 
     auto req = api::WazuhRequest::create(
         std::string(API_KVDB_DELETE_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
