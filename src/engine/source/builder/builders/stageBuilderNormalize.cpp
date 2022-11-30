@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <any>
+#include <unordered_map>
 
 #include "baseTypes.hpp"
 #include "expression.hpp"
@@ -11,6 +12,12 @@
 
 namespace builder::internals::builders
 {
+
+namespace
+{
+const std::unordered_map<std::string, std::string> allowedBlocks = {
+    {"map", "stage.map"}, {"check", "stage.check"}, {"logpar", "parser.logpar"}};
+}
 
 Builder getStageNormalizeBuilder(std::shared_ptr<Registry> registry)
 {
@@ -59,9 +66,17 @@ Builder getStageNormalizeBuilder(std::shared_ptr<Registry> registry)
                     [registry](auto& tuple)
                     {
                         auto& [key, value] = tuple;
+                        if (allowedBlocks.count(key) == 0)
+                        {
+                            throw std::runtime_error(
+                                fmt::format("[builders::stageNormalizeBuilder(json)] "
+                                            "Invalid block name: [{}]",
+                                            key));
+                        }
+
                         try
                         {
-                            return registry->getBuilder("stage." + key)(value);
+                            return registry->getBuilder(allowedBlocks.at(key))(value);
                         }
                         catch (const std::exception& e)
                         {
