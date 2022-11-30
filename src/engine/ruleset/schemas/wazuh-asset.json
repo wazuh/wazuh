@@ -5,7 +5,7 @@
   "title": "Schema for Wazuh assets",
   "type": "object",
   "description": "Schema for Wazuh assets",
-  "additionalProperties": true,
+  "additionalProperties": false,
   "required": [
     "name",
     "metadata"
@@ -93,7 +93,7 @@
     "metadata": {
       "type": "object",
       "description": "Metadata of this item",
-      "additionalProperties": true,
+      "additionalProperties": false,
       "required": [
         "module",
         "title",
@@ -122,7 +122,7 @@
         "author": {
           "type": "object",
           "description": "Author",
-          "additionalProperties": true,
+          "additionalProperties": false,
           "required": [
             "name",
             "date"
@@ -176,7 +176,7 @@
     "parse": {
       "type": "object",
       "description": "Parse the event using the specified parser engine. Suports `logpar` parser.",
-      "additionalProperties": true,
+      "additionalProperties": false,
       "minProperties": 1,
       "properties": {
         "logpar": {
@@ -236,7 +236,7 @@
       "description": "Never shown",
       "minItems": 1,
       "maxItems": 2,
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "map": {
           "description": "Modify fields on the event, an array composed of tuples with syntax `- field`: `value`, where `field` is the field to modify and `value` is the new value. If `value` is a function helper, it will be executed and the result will be used as new value if executed correctly. If `value` is a reference it will be used as new value only if the reference exists.",

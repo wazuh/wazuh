@@ -1,0 +1,51 @@
+name: decoder/suricata-dns/0
+
+sources:
+  - decoder/suricata/0
+
+metadata:
+  module: suricata
+  compatibility: <= v7
+  author:
+    name: Wazuh Inc, info@wazuh.com
+    date: Nov 18 2022
+  references:
+    - https://suricata.readthedocs.io/en/suricata-6.0.8/output/eve/eve-json-format.html?highlight=eve%20format
+  title: Suricata decoder
+  description: Decoder for Suricata solution
+
+check:
+  - suricata.eve.event_type: +s_eq/dns
+
+normalize:
+  - map:
+      - dns.id: $suricata.eve.dns.id
+      - dns.response_code: $suricata.eve.dns.rcode
+      - dns.type: $suricata.eve.dns.type
+
+  - check:
+      - dns.type: +s_eq/query
+      - suricata.eve.dns.version: +s_eq/2
+    map:
+      - dns.question.name: $suricata.eve.dns.rrname
+      - dns.question.type: $suricata.eve.dns.rrtype
+
+  - check:
+      - dns.question.registered_domain: +t_is_not_null
+    map:
+      - dns.question.top_level_domain: .com
+
+  - check:
+      - suricata.eve.dns.tc: +t_is_true
+    map:
+      - dns.header_flags: +a_append/TC
+
+  - check:
+      - suricata.eve.dns.rd: +t_is_true
+    map:
+      - dns.header_flags: +a_append/RD
+
+  - check:
+      - suricata.eve.dns.ra: +t_is_true
+    map:
+      - dns.header_flags: +a_append/RA

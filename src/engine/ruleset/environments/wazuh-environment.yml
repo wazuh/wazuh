@@ -18,7 +18,7 @@ decoders:
   - decoder/fim/0
   - decoder/fim-event/0
   - decoder/fim-scan/0
-  - decoder/rootcheck/0
+  #  - decoder/rootcheck/0
   - decoder/sca/0
   - decoder/syscollector-base/0
   - decoder/syscollector-dbsync-network-protocol/0
@@ -60,6 +60,7 @@ decoders:
   - decoder/suricata-http/0
   - decoder/suricata-alert/0
   - decoder/suricata-flow/0
+  - decoder/suricata-dns/0
 
   # Service decoders
   - decoder/syslog/0

@@ -22,27 +22,29 @@ check:
 
 normalize:
   - map:
+      - suricata.eve: $~json
+      - ~json: +ef_delete
       - event.module: suricata
       - event.kind: event
       - event.category: +a_append/network
-      - event.created: $~json.timestamp
-      - source.address: $~json.src_ip
-      - source.ip: $~json.src_ip
-      - source.port: $~json.src_port
-      - destination.address: $~json.dest_ip
+      - event.created: $suricata.eve.timestamp
+      - source.address: $suricata.eve.src_ip
+      - source.ip: $suricata.eve.src_ip
+      - source.port: $suricata.eve.src_port
+      - destination.address: $suricata.eve.dest_ip
       - destination.ip: $destination.address # should use a +ip/$destination.address to validate/transform to ip format
-      - destination.port: $~json.dest_port # should use a +i_long/$~json.dest_port to validate/transform to long format
-      - network.transport: $~json.proto
+      - destination.port: $suricata.eve.dest_port # should use a +i_long/$~json.dest_port to validate/transform to long format
+      - network.transport: $suricata.eve.proto
 
   - map:
-      - ~json.app_proto: +s_lo/$~json.app_proto
+      - suricata.eve.app_proto: +s_lo/$~json.app_proto
 
   - check: $is_good_appProto
     map:
-      - network.protocol: $~json.app_proto
+      - network.protocol: $suricata.eve.app_proto
 
   - check:
-      - ~json.app_proto: +s_eq/ftp-data
+      - suricata.eve.app_proto: +s_eq/ftp-data
     map:
       - network.protocol: ftp
 
@@ -51,20 +53,20 @@ normalize:
       # target_subdomain_field: dns.question.subdomain
       # target_etld_field: dns.question.top_level_domain
 
-      - ~json.event_type: +s_lo/$~json.event_type
-      - ~json.netwrok.transport: +s_lo/$~json.network.transport
-      - ~json.proto: +s_lo/$~json.proto
+      - suricata.eve.event_type: +s_lo/$suricata.eve.event_type
+      - suricata.eve.netwrok.transport: +s_lo/$suricata.eve.network.transport
+      - suricata.eve.proto: +s_lo/$suricata.eve.proto
 
-      - destination.bytes: $~json.flow.bytes_toclient
-      - destination.mac: $~json.ether.dest_mac
-      - destination.packets: $~json.flow.pkts_toclient
-      - source.bytes: $~json.flow.bytes_toserver
-      - source.mac: $~json.ether.src_mac
-      - source.packets: $~json.flow.pkts_toserver
-      - event.start: $~json.flow.start
-      - event.end: $~json.flow.end
+      - destination.bytes: $suricata.eve.flow.bytes_toclient
+      - destination.mac: $suricata.eve.ether.dest_mac
+      - destination.packets: $suricata.eve.flow.pkts_toclient
+      - source.bytes: $suricata.eve.flow.bytes_toserver
+      - source.mac: $suricata.eve.ether.src_mac
+      - source.packets: $suricata.eve.flow.pkts_toserver
+      - event.start: $suricata.eve.flow.start
+      - event.end: $suricata.eve.flow.end
 
   - check:
-      - ~json.flow.state: +s_eq/new
+      - suricata.eve.flow.state: +s_eq/new
     map:
       - event.type: +a_append/end

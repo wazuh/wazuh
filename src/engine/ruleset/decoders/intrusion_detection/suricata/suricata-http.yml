@@ -15,11 +15,11 @@ metadata:
   description: Decoder for Suricata solution
 
 definitions:
-  is_http_success: +s_eq/~json.event_type/http AND +t_is_num/~json.http.status AND +i_lt/~json.http.status/400
-  is_http_failure: +s_eq/~json.event_type/http AND +t_is_num/~json.http.status AND +i_ge/~json.http.status/400
+  is_http_success: +s_eq/suricata.eve.event_type/http AND +t_is_num/suricata.eve.http.status AND +i_lt/suricata.eve.http.status/400
+  is_http_failure: +s_eq/suricata.eve.event_type/http AND +t_is_num/suricata.eve.http.status AND +i_ge/suricata.eve.http.status/400
 
 check:
-  - ~json.event_type: +s_eq/http
+  - suricata.eve.event_type: +s_eq/http
 
 normalize:
   - check: $is_http_success
