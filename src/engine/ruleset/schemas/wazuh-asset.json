@@ -186,14 +186,7 @@
           "items": {
             "allOf": [
               {
-                "anyOf": [
-                  {
-                    "$ref": "custom-ecs-field.json#"
-                  },
-                  {
-                    "$ref": "suricata-fields.json"
-                  }
-                ]
+                "$ref": "schemas.json#"
               },
               {
                 "maxProperties": 1
@@ -223,14 +216,7 @@
           "items": {
             "allOf": [
               {
-                "anyOf": [
-                  {
-                    "$ref": "custom-ecs-field.json#"
-                  },
-                  {
-                    "$ref": "suricata-fields.json"
-                  }
-                ]
+                "$ref": "schemas.json#"
               },
               {
                 "maxProperties": 1
@@ -259,14 +245,7 @@
           "items": {
             "allOf": [
               {
-                "anyOf": [
-                  {
-                    "$ref": "custom-ecs-field.json#"
-                  },
-                  {
-                    "$ref": "suricata-fields.json"
-                  }
-                ]
+                "$ref": "schemas.json#"
               },
               {
                 "maxProperties": 1

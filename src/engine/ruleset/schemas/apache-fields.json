@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "apache-fields.json",
+  "name": "apache fields schema",
+  "type": "object",
+  "properties": {
+    "apache": {
+      "description": "Apache fields.",
+      "type": [
+        "object"
+      ],
+      "properties": {
+        "access": {
+          "description": "Contains fields for the Apache HTTP Server access logs.",
+          "type": [
+            "object"
+          ],
+          "properties": {
+            "ssl.protocol": {
+              "$ref": "#/definitions/apache.access.ssl.protocol"
+            },
+            "ssl.cipher": {
+              "$ref": "#/definitions/apache.access.ssl.cipher"
+            }
+          }
+        },
+        "error": {
+          "type": [
+            "object"
+          ],
+          "description": "Fields from the Apache error logs.",
+          "properties": {
+            "module": {
+              "$ref": "#/definitions/apache.error.module"
+            }
+          }
+        }
+      }
+    },
+    "apache.access.ssl.protocol": {
+      "$ref": "#/definitions/apache.access.ssl.protocol"
+    },
+    "apache.access.ssl.cipher": {
+      "$ref": "#/definitions/apache.access.ssl.cipher"
+    },
+    "apache.error.module": {
+      "$ref": "#/definitions/apache.error.module"
+    }
+  },
+  "definitions": {
+    "apache.access.ssl.protocol": {
+      "description": "SSL protocol version.",
+      "type": [
+        "string"
+      ]
+    },
+    "apache.access.ssl.cipher": {
+      "description": "SSL cipher name.",
+      "type": [
+        "string"
+      ]
+    },
+    "apache.error.module": {
+      "description": "The module producing the logged message.",
+      "type": [
+        "string"
+      ]
+    }
+  }
+}
