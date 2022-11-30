@@ -173,29 +173,6 @@
                 "$ref": "#/definitions/_normalizeBlock"
             }
         },
-        "parse": {
-            "type": "object",
-            "description": "Parse the event using the specified parser engine. Suports `logpar` parser.",
-            "additionalProperties": false,
-            "minProperties": 1,
-            "properties": {
-                "logpar": {
-                    "type": "array",
-                    "description": "Try to parse a field of the event. Terminates once a parser expression matches. If no parser expression matches, this asset will not continue processing the event. Parser expressions are defined using the `field`: `logpar_expression`, where `field` is the field name and `logpar_expression` is the Logpar expression to be evaluated.",
-                    "minItems": 1,
-                    "items": {
-                        "allOf": [
-                            {
-                                "$ref": "custom-ecs-field.json#"
-                            },
-                            {
-                                "maxProperties": 1
-                            }
-                        ]
-                    }
-                }
-            }
-        },
         "outputs": {
             "type": "array",
             "description": "Outputs of the asset. All outputs are performed in declaration order and on best effort, this stage is a list composed of specific outputs types.",
@@ -205,6 +182,9 @@
             "type": "object",
             "description": "Variable definitions, used to define variables that can be reused in other parts of the item",
             "minProperties": 1
+        },
+        "parse": {
+            "$ref": "#/definitions/_parse"
         }
     },
     "definitions": {
@@ -231,6 +211,29 @@
                 }
             ]
         },
+        "_parse": {
+            "type": "object",
+            "description": "Parse the event using the specified parser engine. Suports `logpar` parser.",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "properties": {
+                "logpar": {
+                    "type": "array",
+                    "description": "Try to parse a field of the event. Terminates once a parser expression matches. If no parser expression matches, this asset will not continue processing the event. Parser expressions are defined using the `field`: `logpar_expression`, where `field` is the field name and `logpar_expression` is the Logpar expression to be evaluated.",
+                    "minItems": 1,
+                    "items": {
+                        "allOf": [
+                            {
+                                "$ref": "custom-ecs-field.json#"
+                            },
+                            {
+                                "maxProperties": 1
+                            }
+                        ]
+                    }
+                }
+            }
+        },
         "_normalizeBlock": {
             "type": "object",
             "description": "Never shown",
@@ -255,6 +258,9 @@
                 },
                 "check": {
                     "$ref": "#/definitions/_check"
+                },
+                "parse": {
+                    "$ref": "#/definitions/_parse"
                 }
             }
         }
