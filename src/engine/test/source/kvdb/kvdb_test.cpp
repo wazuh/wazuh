@@ -679,7 +679,21 @@ TEST_F(KVDBTest, CreateAndFillKVDBfromFileCreatedEarlier)
 
     retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName);
     auto errorMessage =
-        fmt::format("A database named \"{}\" already exists", kTestUnloadedDBName);
+        fmt::format("A database with the same name already exists");
+    ASSERT_STREQ(retval.c_str(),errorMessage.c_str());
+}
+
+TEST_F(KVDBTest, CreateAndFillKVDBfromFileCreatedAndLoadedEarlier)
+{
+    auto retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName);
+    ASSERT_STREQ(retval.c_str(),"OK");
+
+    auto result = kvdbManager->addDb(kTestUnloadedDBName);
+    ASSERT_TRUE(result);
+
+    retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName);
+    auto errorMessage =
+        fmt::format("Database is in use");
     ASSERT_STREQ(retval.c_str(),errorMessage.c_str());
 }
 

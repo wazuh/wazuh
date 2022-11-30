@@ -149,7 +149,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdDuplicatedDatabase)
     ASSERT_EQ(response.error(), 400);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("Database \"{}\" could not be created", DB_NAME).c_str());
+                 fmt::format("[{}] Database is in use", DB_NAME).c_str());
 }
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameWithSpaces)
@@ -304,7 +304,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNonExistingFile)
     ASSERT_STREQ(
         response.message().value().c_str(),
         fmt::format(
-            "Database \"{}\" could not be created: File \"{}\" could not be opened",
+            "[{}] File \"{}\" could not be opened",
             DB_NAME_2,
             FILE_PATH)
             .c_str());
@@ -341,82 +341,51 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmd)
 }
 
 // TODO: Can we split this test into different tests?
-TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdSimpleLoaded)
+TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdBlockBecauseLoaded)
 {
-    // add DB name with spaces
-    kvdbAPIDeleteCommand::kvdbManager->addDb(DB_NAME_WITH_SPACES);
-
-    // delete first DB
+    // can't delete loaded DB
     api::CommandFn cmd;
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
     json::Json params {
-        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}", DB_NAME).c_str()};
+        fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
+    auto response = cmd(params);
+
+    // check response
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 400);
+
+    // check remaining available DBs
+    ASSERT_EQ(kvdbAPIDeleteCommand::getNumberOfKVDBLoaded(), 1);
+}
+
+TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdSuccess)
+{
+    // create unloaded DB
+    auto resultString =
+        kvdbAPIDeleteCommand::kvdbManager->CreateAndFillKVDBfromFile(DB_NAME_2);
+    ASSERT_STREQ(resultString.c_str(), "OK");
+
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(
+        cmd = api::kvdb::cmds::kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
+    json::Json params {
+        fmt::format("{{\"name\": \"{}\"}}", DB_NAME_2).c_str()};
     auto response = cmd(params);
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 200);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
-
-    // check remaining available DBs
-    ASSERT_EQ(kvdbAPIDeleteCommand::getNumberOfKVDBLoaded(), 1);
-
-    // delete DB named with spaces
-    json::Json params_with_spaces {
-        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}", DB_NAME_WITH_SPACES)
-            .c_str()};
-    response = cmd(params_with_spaces);
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 200);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
-
-    // trying to delete again already deleted DB
-    response = cmd(params);
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 400);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("Database \"{}\" could not be deleted", DB_NAME).c_str());
 }
 
-TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdDoesntExistLoaded)
+TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdDoesntExist)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(
         cmd = api::kvdb::cmds::kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
     json::Json params {
-        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"{}\"}}", DB_NAME_NOT_AVAILABLE)
+        fmt::format("{{\"name\": \"{}\"}}", DB_NAME_NOT_AVAILABLE)
             .c_str()};
-    const auto response = cmd(params);
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 400);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(
-        response.message().value().c_str(),
-        fmt::format("Database \"{}\" could not be deleted", DB_NAME_NOT_AVAILABLE)
-            .c_str());
-
-    // check remaining available DBs
-    ASSERT_EQ(kvdbAPIDeleteCommand::getNumberOfKVDBLoaded(), 1);
-}
-
-TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdDoesntExistNotLoaded)
-{
-    api::CommandFn cmd;
-    ASSERT_NO_THROW(
-        cmd = api::kvdb::cmds::kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"mustBeLoaded\": false, \"name\": \"{}\"}}",
-                                   DB_NAME_NOT_AVAILABLE)
-                           .c_str()};
     const auto response = cmd(params);
 
     // check response

@@ -101,17 +101,23 @@ struct KVDB::Impl
             dbOptions, m_path, m_CFDescriptors, &cfHandles, &txdb);
         if (!s.ok())
         {
-            WAZUH_LOG_ERROR(
+            WAZUH_LOG_WARN(
                 "Engine KVDB: Database \"{}\": File could not be created: \"{}\"",
                 m_name,
                 s.ToString());
 
             m_state = State::Error;
             const std::string errorString {s.getState()};
-            // there's no flag or function that returns this error but the message itself
+            // TODO: there's no flag or function that returns this error but the message itself
             if (errorString.find("exists (error_if_exists is true)") != std::string::npos)
             {
                 return CreationStatus::ErrorDatabaseAlreadyExists;
+            }
+
+            if (s.IsIOError())
+            {
+                // this could be covering other cases too.
+                return CreationStatus::ErrorDatabaseBusy;
             }
 
             if (s.IsInvalidArgument() && !createIfMissing)
