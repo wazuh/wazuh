@@ -266,11 +266,11 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
     auto list_subcommand = kvdb->add_subcommand(args::SUBCOMMAND_KVDB_LIST,
                                                 "list: List all KeyValueDB availables.");
     list_subcommand->add_flag(
-        "-l, --loaded", args::kvdb_loaded, "Only list loaded KVDBs");
+        "-l, --loaded", args::kvdb_loaded, "List only KVDBs on memory, by default list only KVDBs on disc.");
     list_subcommand
         ->add_option("-n, --name",
                      args::kvdb_name,
-                     "KVDB name to match the start of the name of the available ones")
+                     "KVDB name to match the start of the name of the available ones.")
         ->default_val("");
 
     // KVDB create subcommand
@@ -292,7 +292,7 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
     // KVDB dump subcommand
     auto dump_subcommand = kvdb->add_subcommand(
         args::SUBCOMMAND_KVDB_DUMP,
-        "dump -n [db-name]: Dumps the full content of a DB named db-name to a JSON");
+        "dump -n [db-name]: Dumps the full content of a DB named db-name to a JSON.");
     // dump kvdb name
     dump_subcommand->add_option("-n, --name", args::kvdb_name, "KVDB name to be dumped.")
         ->required();
@@ -301,8 +301,6 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
     auto delete_subcommand =
         kvdb->add_subcommand(args::SUBCOMMAND_KVDB_DELETE,
                              "delete -n db-name: Deletes a KeyValueDB named db-name.");
-    delete_subcommand->add_flag(
-        "-l, --loaded", args::kvdb_loaded, "Only list loaded KVDBs");
     // delete KVDB name
     delete_subcommand
         ->add_option("-n, --name", args::kvdb_name, "KVDB name to be deleted.")

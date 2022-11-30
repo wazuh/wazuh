@@ -20,6 +20,7 @@ public:
         OkCreated,
         OkInitialized,
         ErrorDatabaseAlreadyExists,
+        ErrorDatabaseBusy,
         ErrorUnknown
     };
 

@@ -221,11 +221,15 @@ std::string KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
 
     if (initResult == KVDB::CreationStatus::ErrorDatabaseAlreadyExists)
     {
-        return fmt::format("A database named \"{}\" already exists", dbName);
+        return {"A database with the same name already exists"};
+    }
+    else if (initResult == KVDB::CreationStatus::ErrorDatabaseBusy)
+    {
+        return {"Database is in use"};
     }
     else if (initResult != KVDB::CreationStatus::OkCreated)
     {
-        return fmt::format("Database \"{}\" could not be created", dbName);
+        return {"Database could not be created"};
     }
 
     if (!path.empty())
