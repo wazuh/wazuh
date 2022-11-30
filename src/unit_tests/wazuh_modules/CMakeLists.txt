@@ -21,6 +21,7 @@ if(${TARGET} STREQUAL "server")
   add_subdirectory(vulnerability_detector)
   add_subdirectory(task_manager)
   add_subdirectory(agent_upgrade)
+  add_subdirectory(wmodules)
 endif()
 
 if(NOT ${TARGET} STREQUAL "winagent")

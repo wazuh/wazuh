@@ -41,12 +41,13 @@ STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config);
 
 /* Context definition */
 const wm_context WM_TASK_MANAGER_CONTEXT = {
-    TASK_MANAGER_WM_NAME,
-    (wm_routine)wm_task_manager_main,
-    (void (*)(void *))wm_task_manager_destroy,
-    (cJSON * (*)(const void *))wm_task_manager_dump,
-    NULL,
-    NULL
+    .name = TASK_MANAGER_WM_NAME,
+    .start = (wm_routine)wm_task_manager_main,
+    .destroy = (void (*)(void *))wm_task_manager_destroy,
+    .dump = (cJSON * (*)(const void *))wm_task_manager_dump,
+    .sync = NULL,
+    .stop = NULL,
+    .query = NULL,
 };
 
 size_t wm_task_manager_dispatch(const char *msg, char **response) {
