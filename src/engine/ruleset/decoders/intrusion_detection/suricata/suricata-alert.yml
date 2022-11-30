@@ -37,21 +37,20 @@ normalize:
   - map:
       - event.kind: alert
       - event.category: +a_append/network/intrusion_detection
-      - rule.category: $~json.alert.category
-      - rule.id: $~json.alert.signature_id
-      - rule.name: $~json.alert.signature
-      - event.severity: $~json.alert.severity
-      - threat.tactic.id: $~json.alert.metadata.mitre_attack
-      - threat.tactic.name: $~json.alert.metadata.mitre_tactic_name
-      - threat.technique.id: $~json.alert.metadata.mitre_technique_id
-      - threat.technique.name: $~json.alert.metadata.mitre_techinique_name
-      - file.name: $~json.alert.metadata.filename
-      - suricata.eve: $~json
+      - rule.category: $suricata.eve.alert.category
+      - rule.id: $suricata.eve.alert.signature_id
+      - rule.name: $suricata.eve.alert.signature
+      - event.severity: $suricata.eve.alert.severity
+      - threat.tactic.id: $suricata.eve.alert.metadata.mitre_attack
+      - threat.tactic.name: $suricata.eve.alert.metadata.mitre_tactic_name
+      - threat.technique.id: $suricata.eve.alert.metadata.mitre_technique_id
+      - threat.technique.name: $suricata.eve.alert.metadata.mitre_techinique_name
+      - file.name: $suricata.eve.alert.metadata.filename
 
   - check:
       - threat.tactic.id: +t_is_null
     map:
-      - threat.tactic.id: $~json.alert.metadata.mitre_attack_id
+      - threat.tactic.id: $suricata.eve.alert.metadata.mitre_attack_id
 
   - check:
       - ~json.alert.action: +s_eq/bloqued
@@ -61,12 +60,9 @@ normalize:
   - check:
       - ~json.alert.action: +t_is_not_null
     map:
-      - event.type: +a_append/~json.alert.action
+      - event.type: +a_append/$suricata.eve.alert.action
 
   - check:
       - suricata.eve.event_type: "alert"
     map:
       - event.type: ["detail"]
-
-  - map:
-      - ~json: +ef_delete
