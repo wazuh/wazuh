@@ -148,13 +148,8 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdDuplicatedDatabase)
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 400);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(
-        response.message().value().c_str(),
-        fmt::format(
-            "Database \"{}\" could not be created: Failed to create KVDB [{}].",
-            DB_NAME,
-            DB_NAME)
-            .c_str());
+    ASSERT_STREQ(response.message().value().c_str(),
+                 fmt::format("Database \"{}\" could not be created", DB_NAME).c_str());
 }
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameWithSpaces)
@@ -308,9 +303,10 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNonExistingFile)
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(
         response.message().value().c_str(),
-        fmt::format("Database \"{}\" could not be created: Couln't open file [{}]",
-                    DB_NAME_2,
-                    FILE_PATH)
+        fmt::format(
+            "Database \"{}\" could not be created: File \"{}\" could not be opened",
+            DB_NAME_2,
+            FILE_PATH)
             .c_str());
 }
 
