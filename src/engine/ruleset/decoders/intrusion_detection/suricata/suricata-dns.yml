@@ -22,6 +22,8 @@ normalize:
       - dns.id: $suricata.eve.dns.id
       - dns.response_code: $suricata.eve.dns.rcode
       - dns.type: $suricata.eve.dns.type
+      - dns.answers: $suricata.eve.dns.answers
+      - suricata.eve.dns.answers: +ef_delete
 
   - check:
       - dns.type: +s_eq/query
