@@ -391,8 +391,8 @@ Logpar::Logpar(const json::Json& ecsFieldTypes)
             throw std::runtime_error(
                 fmt::format("When loading logpar schema fields, type '{}' in schema "
                             "field '{}' is not supported",
-                            key,
-                            value.getString().value()));
+                            value.getString().value(),
+                            key));
         }
 
         m_fieldTypes[key] = schemaType;
@@ -408,7 +408,9 @@ Logpar::Logpar(const json::Json& ecsFieldTypes)
                      {SchemaType::TEXT, ParserType::P_TEXT},
                      {SchemaType::BOOLEAN, ParserType::P_BOOL},
                      {SchemaType::DATE, ParserType::P_DATE},
-                     {SchemaType::FLOAT, ParserType::P_FLOAT}};
+                     {SchemaType::FLOAT, ParserType::P_FLOAT},
+                     {SchemaType::URL, ParserType::P_URI},
+                     {SchemaType::USER_AGENT, ParserType::P_USER_AGENT}};
 
     m_parserBuilders = {};
 }

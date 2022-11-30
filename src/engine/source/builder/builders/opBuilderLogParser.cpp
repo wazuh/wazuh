@@ -84,6 +84,9 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar)
                 fmt::format("[{}] -> Failure: field [{}] not found", name, field);
             // Parsing failed
             auto errorTrace2 = fmt::format("[{}] -> Failure:\nParser trace: ", name);
+            // Field to be parsed is not a string
+            auto errorTrace3 =
+                fmt::format("[{}] -> Failure: field [{}] is not a string", name, field);
 
             base::Expression parseExpression;
             try
@@ -97,6 +100,12 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar)
                             return base::result::makeFailure(std::move(event),
                                                              errorTrace1);
                         }
+                        if (!event->isString(field))
+                        {
+                            return base::result::makeFailure(std::move(event),
+                                                             errorTrace3);
+                        }
+
                         auto ev = event->getString(field).value();
                         auto parseResult = parser(ev, 0);
                         if (parseResult.failure())
@@ -106,7 +115,10 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar)
                         }
 
                         auto val = parseResult.value();
-                        event->merge(val);
+                        if (!val.isNull() && val.size() > 0)
+                        {
+                            event->merge(val);
+                        }
 
                         return base::result::makeSuccess(std::move(event), successTrace);
                     });

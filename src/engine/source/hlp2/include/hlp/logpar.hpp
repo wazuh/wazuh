@@ -29,6 +29,8 @@ enum class SchemaType
     BOOLEAN,
     DATE,
     FLOAT,
+    URL,
+    USER_AGENT,
     ERROR_TYPE
 };
 
@@ -47,6 +49,8 @@ constexpr auto schemaTypeToStr(SchemaType type)
         case SchemaType::BOOLEAN: return "boolean";
         case SchemaType::DATE: return "date";
         case SchemaType::FLOAT: return "float";
+        case SchemaType::URL: return "url";
+        case SchemaType::USER_AGENT: return "useragent";
         default: return "error_type";
     }
 }
@@ -75,6 +79,10 @@ constexpr auto strToSchemaType(std::string_view str)
         return SchemaType::DATE;
     if (str == schemaTypeToStr(SchemaType::FLOAT))
         return SchemaType::FLOAT;
+    if (str == schemaTypeToStr(SchemaType::URL))
+        return SchemaType::URL;
+    if (str == schemaTypeToStr(SchemaType::USER_AGENT))
+        return SchemaType::USER_AGENT;
     return SchemaType::ERROR_TYPE;
 }
 
@@ -96,6 +104,7 @@ enum class ParserType
     P_IP,
     P_URI,
     P_LITERAL,
+    P_USER_AGENT,
     ERROR_TYPE
 };
 
@@ -115,6 +124,7 @@ constexpr auto parserTypeToStr(ParserType type)
         case ParserType::P_IP: return "ip";
         case ParserType::P_URI: return "uri";
         case ParserType::P_LITERAL: return "literal";
+        case ParserType::P_USER_AGENT: return "user_agent";
         default: return "error_type";
     }
 }
@@ -145,6 +155,8 @@ constexpr auto strToParserType(std::string_view str)
         return ParserType::P_URI;
     if (str == parserTypeToStr(ParserType::P_LITERAL))
         return ParserType::P_LITERAL;
+    if (str == parserTypeToStr(ParserType::P_USER_AGENT))
+        return ParserType::P_USER_AGENT;
     return ParserType::ERROR_TYPE;
 }
 

@@ -267,35 +267,6 @@ TEST(ParsecCombinatorTest, OperatorAnd)
     ASSERT_FALSE(result.success());
 }
 
-TEST(ParsecCombinatorTest, OperatorXor)
-{
-    parsec::Result<resT> result;
-    auto l = getSuccessParser(0);
-    auto r = getSuccessParser(1);
-
-    auto composedP = l ^ r;
-    ASSERT_NO_THROW(result = composedP("text", 0));
-    ASSERT_FALSE(result.success());
-
-    composedP = r ^ l;
-    ASSERT_NO_THROW(result = composedP("text", 0));
-    ASSERT_FALSE(result.success());
-
-    composedP = getErrorParser() ^ r;
-    ASSERT_NO_THROW(result = composedP("text", 0));
-    ASSERT_TRUE(result.success());
-    ASSERT_EQ(1, result.value());
-
-    composedP = l ^ getErrorParser();
-    ASSERT_NO_THROW(result = composedP("text", 0));
-    ASSERT_TRUE(result.success());
-    ASSERT_EQ(0, result.value());
-
-    composedP = getErrorParser() ^ getErrorParser();
-    ASSERT_NO_THROW(result = composedP("text", 0));
-    ASSERT_FALSE(result.success());
-}
-
 TEST(ParsecCombinatorTest, Fmap)
 {
     parsec::Result<resT> result;

@@ -14,11 +14,6 @@ namespace hlp
 {
 parsec::Parser<json::Json> getLiteralParser(Stop str, Options lst)
 {
-    if (str.has_value())
-    {
-        throw(std::runtime_error("Literal parser does not support stop string"));
-    }
-
     if (lst.size() != 1)
     {
         throw(std::runtime_error("Literal parser requires exactly one option"));

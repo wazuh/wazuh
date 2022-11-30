@@ -8,7 +8,6 @@
 #include <string_view>
 #include <tuple>
 #include <variant>
-#include <stdexcept>
 
 // TODO: check error messages concatenation
 
@@ -195,16 +194,16 @@ using Parser = std::function<Result<T>(std::string_view, size_t)>;
 template<typename T>
 Parser<T> opt(const Parser<T>& p)
 {
-    return [=](std::string_view text, size_t index)
+    return [=](std::string_view s, size_t i)
     {
-        auto res = p(text, index);
+        auto res = p(s, i);
         if (res.success())
         {
             return res;
         }
         else
         {
-            return makeSuccess<T>({}, text, index);
+            return makeSuccess<T>({}, s, i);
         }
     };
 }
@@ -289,7 +288,13 @@ Parser<T> operator|(const Parser<T>& l, const Parser<T>& r)
             return resL;
         }
 
-        return r(s, i);
+        auto resR = r(s, i);
+        if (resR.success())
+        {
+            return resR;
+        }
+
+        return makeError<T>(resL.error().msg + " or " + resR.error().msg, s, i);
     };
 }
 
@@ -320,41 +325,6 @@ Parser<std::tuple<L, R>> operator&(const Parser<L>& l, const Parser<R>& r)
         }
         return makeSuccess<std::tuple<L, R>>(
             std::make_tuple(resL.value(), resR.value()), s, resR.index);
-    };
-}
-
-/**
- * @brief Creates a parser that performs XOR operation on the results of the two parsers.
- *
- * @tparam T type of the value returned by the parsers
- * @param l first parser
- * @param r second parser
- * @return Parser<T> Combined parser
- */
-template<typename T>
-Parser<T> operator^(const Parser<T>& l, const Parser<T>& r)
-{
-    return [l, r](std::string_view s, size_t i)
-    {
-        auto resL = l(s, i);
-        auto resR = r(s, i);
-
-        if (resL.success() && resR.success())
-        {
-            return makeError<T>("Expected failure of one parser", s, i);
-        }
-
-        if (resL.success())
-        {
-            return resL;
-        }
-
-        if (resR.success())
-        {
-            return resR;
-        }
-
-        return makeError<T>("Both parsers failed", s, i);
     };
 }
 
@@ -459,14 +429,18 @@ template<typename T>
 Parser<Values<T>> many1(const Parser<T>& p)
 {
     auto manyP = many(p);
-    return [manyP](std::string_view s, size_t i)
+    return [manyP, p](std::string_view s, size_t i)
     {
-        auto res = manyP(s, i);
-        if (res.value().empty())
+        auto firstRes = p(s, i);
+        if (firstRes.failure())
         {
-            return makeError<Values<T>>("Expected at least one", s, i);
+            return makeError<Values<T>>(firstRes.error(), s, firstRes.index);
         }
-        return res;
+
+        Values<T> values {firstRes.value()};
+        auto res = manyP(s, firstRes.index);
+        values.splice(values.end(), res.value());
+        return makeSuccess<Values<T>>(values, s, res.index);
     };
 }
 
