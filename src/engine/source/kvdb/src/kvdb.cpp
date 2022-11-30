@@ -64,12 +64,12 @@ struct KVDB::Impl
         if (errorIfExists && m_state != State::Invalid)
         {
             // Created previously
-            return CreationStatus::ERROR_CreatedEarlier;
+            return CreationStatus::ErrorDatabaseAlreadyExists;
         }
         else if (!errorIfExists && m_state == State::Open)
         {
             // Already initialized
-            return CreationStatus::OK_AlreadyInitialized;
+            return CreationStatus::OkInitialized;
         }
 
         std::unique_lock lk(m_mtx);
@@ -111,7 +111,7 @@ struct KVDB::Impl
             // there's no flag or function that returns this error but the message itself
             if (errorString.find("exists (error_if_exists is true)") != std::string::npos)
             {
-                return CreationStatus::ERROR_CreatedEarlier;
+                return CreationStatus::ErrorDatabaseAlreadyExists;
             }
 
             if (s.IsInvalidArgument() && !createIfMissing)
@@ -122,7 +122,7 @@ struct KVDB::Impl
                 // anyway.
                 rocksdb::DestroyDB(m_path, rocksdb::Options(), m_CFDescriptors);
             }
-            return CreationStatus::ERROR_Undefined;
+            return CreationStatus::ErrorUnknown;
         }
 
         for (auto handle : cfHandles)
@@ -133,7 +133,7 @@ struct KVDB::Impl
         m_txDb = txdb;
         m_db = txdb->GetBaseDB();
         m_state = State::Open;
-        return CreationStatus::OK_Created;
+        return CreationStatus::OkCreated;
     }
 
     /**
