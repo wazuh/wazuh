@@ -39,7 +39,7 @@ public:
      * @brief adds KVDB to the available list
      *
      * @param Name of the KVDB to be added
-     * @param createIfMissing true if it wasn't created earlier
+     * @param createIfMissing if true, creates the database when it does not exist
      * @return KVDBHandle to access KVDB functions
      */
     KVDBHandle addDb(const std::string& Name, bool createIfMissing = true);

@@ -17,10 +17,10 @@ public:
 
     enum class CreationStatus
     {
-        OK_Created,
-        OK_AlreadyInitialized,
-        ERROR_CreatedEarlier,
-        ERROR_Undefined,
+        OkCreated,
+        OkInitialized,
+        ErrorDatabaseAlreadyExists,
+        ErrorUnknown
     };
 
     /**
@@ -43,8 +43,8 @@ public:
      *
      * @brief Open and initialize the db
      *
-     * @param createIfMissing create the db if it does not exist.
-     * @param errorIfExists generates an error if it already exist.
+     * @param createIfMissing if true, creates the database when it does not exist
+     * @param errorIfExists if true, it generates an error when the database does exist
      */
     CreationStatus init(bool createIfMissing = true, bool errorIfExists = false);
 

@@ -155,6 +155,7 @@ TEST_F(EnvironmentTest, OrphanAsset)
 
 TEST_F(EnvironmentTest, OrphanFilter)
 {
+    GTEST_SKIP();
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
