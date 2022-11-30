@@ -19,13 +19,13 @@ normalize:
     - event: +kvdb_get_merge/win_security_categories/$~event_channel.Event.System.EventID.#text
     
     # Set Logon Type
-    - event.logon: +kvdb_get/win_logon_types/$~event_channel.Event.EventData.LogonType
+    - winlog.logon.type: +kvdb_get/win_logon_types/$~event_channel.Event.EventData.LogonType
     
     # Set User Account Control
     # NewUacValue 
     # Correct implementation needs bitwise operations - Opting to use raw value
-    - event.UserAccountControl: $~event_channel.Event.EventData.NewUacValue
-    
+    #- event.UserAccountControl: $~event_channel.Event.EventData.NewUacValue
+    - winlog.event_data.UserAccountControl: +s_to_array/$~event_channel.Event.EventData.UserAccountControl/%
     
     # Set Kerberos Ticket Options
     # TicketOptionsDescription - Needs bitwise operations
@@ -34,7 +34,7 @@ normalize:
     - event: +kvdb_get_merge/win_security_ticket_encryption_types/$~event_channel.Event.EventData.TicketEncryptionType
     
     # Set Kerberos Ticket Status Codes
-    - event.StatusDescription: +kvdb_get_merge/win_security_kerberos_status_types/$~event_channel.Event.EventData.Status
+    - winlog.event_data.StatusDescription: +kvdb_get_merge/win_security_kerberos_status_types/$~event_channel.Event.EventData.Status
     
     # Set Service Type and Name
     # Service related fields
@@ -136,12 +136,12 @@ normalize:
    map:
         # AccountName to user.name and related.user
         - event.user.name: ~event_channel.Event.EventData.AccountName
-        - event.related.user: ~event_channel.Event.EventData.AccountName
+        - event.related.user: +a_append/$~event_channel.Event.EventData.AccountName
         # AccountDomain to user.domain
         - event.user.domain: ~event_channel.Event.EventData.AccountDomain
         # ClientAddress to source.ip and related.ip
         - event.source.ip: ~event_channel.Event.EventData.ClientAddress
-        - event.related.ip: ~event_channel.Event.EventData.ClientAddress
+        - event.related.ip: +a_append/$~event_channel.Event.EventData.ClientAddress
         # ClientName to source.domain
         - event.source.domain: ~event_channel.Event.EventData.ClientName
         # LogonID to winlog.logon.id
