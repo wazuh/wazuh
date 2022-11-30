@@ -15,7 +15,7 @@ metadata:
   description: Decoder for Suricata solution
 
 definitions:
-  is_good_appProto: +s_ne/~json.app_proto/failed AND +s_ne/~json.app_proto/template AND +s_ne/~json.app_proto/template-rust
+  is_good_appProto: +s_ne/suricata.eve.app_proto/failed AND +s_ne/suricata.eve.app_proto/template AND +s_ne/suricata.eve.app_proto/template-rust
 
 check:
   - ~json.event_type: +ef_exists
@@ -32,12 +32,12 @@ normalize:
       - source.ip: $suricata.eve.src_ip
       - source.port: $suricata.eve.src_port
       - destination.address: $suricata.eve.dest_ip
-      - destination.ip: $destination.address # should use a +ip/$destination.address to validate/transform to ip format
-      - destination.port: $suricata.eve.dest_port # should use a +i_long/$~json.dest_port to validate/transform to long format
+      - destination.ip: $destination.address
+      - destination.port: $suricata.eve.dest_port
       - network.transport: $suricata.eve.proto
 
   - map:
-      - suricata.eve.app_proto: +s_lo/$~json.app_proto
+      - suricata.eve.app_proto: +s_lo/$suricata.eve.app_proto
 
   - check: $is_good_appProto
     map:
@@ -47,11 +47,6 @@ normalize:
       - suricata.eve.app_proto: +s_eq/ftp-data
     map:
       - network.protocol: ftp
-
-      # flow_id
-      # target_field: dns.question.registered_domain
-      # target_subdomain_field: dns.question.subdomain
-      # target_etld_field: dns.question.top_level_domain
 
       - suricata.eve.event_type: +s_lo/$suricata.eve.event_type
       - suricata.eve.netwrok.transport: +s_lo/$suricata.eve.network.transport

@@ -23,7 +23,7 @@ definitions:
   totalTraffic: +i_calc/sum/$totalPackets
 
 check:
-  - ~json.event_type: +s_eq/alert
+  - suricata.eve.event_type: +s_eq/alert
 
 normalize:
   - check: +i_gt/totalBytes/0
@@ -36,7 +36,7 @@ normalize:
 
   - map:
       - event.kind: alert
-      - event.category: +a_append/network/intrusion_detection
+      - event.category: +a_append/intrusion_detection
       - rule.category: $suricata.eve.alert.category
       - rule.id: $suricata.eve.alert.signature_id
       - rule.name: $suricata.eve.alert.signature
@@ -53,12 +53,12 @@ normalize:
       - threat.tactic.id: $suricata.eve.alert.metadata.mitre_attack_id
 
   - check:
-      - ~json.alert.action: +s_eq/bloqued
+      - suricata.eve.alert.action: +s_eq/bloqued
     map:
-      - ~json.alert.action: denied
+      - suricata.eve.alert.action: denied
 
   - check:
-      - ~json.alert.action: +t_is_not_null
+      - suricata.eve.alert.action: +t_is_not_null
     map:
       - event.type: +a_append/$suricata.eve.alert.action
 

@@ -8,6 +8,9 @@
     },
     {
       "$ref": "apache-fields.json"
+    },
+    {
+      "$ref": "cisco-fields.json"
     }
   ]
 }
