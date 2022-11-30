@@ -231,6 +231,13 @@ parsec::Parser<json::Json> getCSVParser(Stop str, Options lst);
  */
 parsec::Parser<json::Json> getKVParser(Stop str, Options lst);
 
+/**
+ * @brief Returns a parser which will parse a literal, returning empty Json on succeed.
+ *
+ * @param str Unused
+ * @param lst a list with one element, the literal to parse
+ * @return parsec::Parser<json::Json> the parser
+ */
 parsec::Parser<json::Json> getLiteralParser(Stop str, Options lst);
 
 } // namespace hlp
