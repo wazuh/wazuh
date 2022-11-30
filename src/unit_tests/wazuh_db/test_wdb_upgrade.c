@@ -191,6 +191,7 @@ void test_wdb_upgrade_global_error_backingup_legacy_db(void **state)
 
     // wdb_upgrade_check_manager_keepalive (returns OS_SUCCESS
     // to indicate that is a legacy database)
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     expect_sqlite3_step_call(SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
@@ -218,6 +219,7 @@ void test_wdb_upgrade_global_success_regenerating_legacy_db(void **state)
 
     // wdb_upgrade_check_manager_keepalive (returns OS_SUCCESS
     // to indicate that is a legacy database)
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     expect_sqlite3_step_call(SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
@@ -463,6 +465,7 @@ void test_wdb_upgrade_global_full_upgrade_success_from_unversioned_db(void **sta
 
     // wdb_upgrade_check_manager_keepalive (returns 1
     // to indicate that is a legacy database greater than 3.10)
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     expect_sqlite3_step_call(SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
@@ -700,6 +703,7 @@ void test_wdb_is_older_than_v310_prepare_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_prepare_v2, NULL);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_prepare_v2(): ERROR MESSAGE");
 
@@ -709,6 +713,7 @@ void test_wdb_is_older_than_v310_prepare_error(void **state) {
 void test_wdb_is_older_than_v310_step_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     expect_sqlite3_step_call(SQLITE_ERROR);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
@@ -719,6 +724,7 @@ void test_wdb_is_older_than_v310_step_error(void **state) {
 void test_wdb_is_older_than_v310_step_nodata(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     expect_sqlite3_step_call(SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
@@ -729,6 +735,7 @@ void test_wdb_is_older_than_v310_step_nodata(void **state) {
 void test_wdb_is_older_than_v310_step_ok(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     expect_sqlite3_step_call(SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_int, iCol, 0);

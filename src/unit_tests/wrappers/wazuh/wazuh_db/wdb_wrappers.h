@@ -91,4 +91,12 @@ int __wrap_wdb_commit2(wdb_t * wdb);
 
 void __wrap_wdb_finalize_all_statements(__attribute__((unused))wdb_t * wdb);
 
+int __wrap_wdb_vacuum(__attribute__((unused))sqlite3 * db);
+
+int __wrap_wdb_get_db_state(__attribute__((unused))wdb_t * wdb);
+
+int __wrap_wdb_update_last_vacuum_data(__attribute__((unused))wdb_t* wdb, __attribute__((unused))const char *last_vacuum_time, const char *last_vacuum_value);
+
+int __wrap_wdb_get_db_free_pages_percentage(__attribute__((unused))wdb_t * wdb);
+
 #endif
