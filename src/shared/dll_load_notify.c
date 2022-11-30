@@ -24,7 +24,12 @@ PVOID cookie_dll_notification = NULL;
  */
 static void loaded_modules_verification()
 {
-#ifdef IMAGE_TRUST_CHECKS
+#if IMAGE_TRUST_CHECKS != 0
+    if(!IsWindowsVistaOrGreater()) {
+        mdebug1("Loaded modules signature verification is available on Windows Vista or greater.");
+        return;
+    }
+
     HMODULE handle_module[OS_SIZE_1024];
     HANDLE handle_process = GetCurrentProcess();
     DWORD handle_bytes_needed = 0;
@@ -43,16 +48,25 @@ static void loaded_modules_verification()
                                      sizeof(module_name) / sizeof(wchar_t))) {
                 // Check if the images loaded are signed.
                 if (verify_hash_and_pe_signature(module_name) != OS_SUCCESS) {
+#if IMAGE_TRUST_CHECKS == 2
                     merror_exit("The file '%S' is not signed or its signature is invalid.", module_name);
+#else
+                    mwarn("The file '%S' is not signed or its signature is invalid.", module_name);
+#endif // IMAGE_TRUST_CHECKS == 2
+                } else {
+                    mdebug1("The file '%S' is signed and its signature is valid.", module_name);
                 }
-
-                mdebug1("The file '%S' is signed and its signature is valid.", module_name);
             }
         }
     } else {
+#if IMAGE_TRUST_CHECKS == 2
         merror_exit("Unable to enumerate the process modules. Error: %lu", GetLastError());
+#else
+        mwarn("Unable to enumerate the process modules. Error: %lu", GetLastError());
+#endif // IMAGE_TRUST_CHECKS == 2
+
     }
-#endif
+#endif // IMAGE_TRUST_CHECKS != 0
 }
 
 /**
@@ -69,12 +83,17 @@ void CALLBACK dll_notification(ULONG reason,
     switch(reason)
     {
     case LDR_DLL_NOTIFICATION_REASON_LOADED:
-#ifdef IMAGE_TRUST_CHECKS
+#if IMAGE_TRUST_CHECKS != 0
         if (verify_hash_and_pe_signature(notification_data->loaded.full_dll_name->Buffer) != OS_SUCCESS) {
+#if IMAGE_TRUST_CHECKS == 2
             merror_exit("The file '%S' is not signed or its signature is invalid.", notification_data->loaded.full_dll_name->Buffer);
+#else
+            mwarn("The file '%S' is not signed or its signature is invalid.", notification_data->loaded.full_dll_name->Buffer);
+#endif // IMAGE_TRUST_CHECKS == 2
+        } else {
+            mdebug1("The file '%S' is signed and its signature is valid.", notification_data->loaded.full_dll_name->Buffer);
         }
-        mdebug1("The file '%S' is signed and its signature is valid.", notification_data->loaded.full_dll_name->Buffer);
-#endif
+#endif // IMAGE_TRUST_CHECKS != 0
         break;
     case LDR_DLL_NOTIFICATION_REASON_UNLOADED:
         mdebug1("Unloaded: '%S'", notification_data->unloaded.full_dll_name->Buffer);
@@ -87,12 +106,13 @@ void CALLBACK dll_notification(ULONG reason,
  */
 void enable_dll_verification()
 {
-#ifdef IMAGE_TRUST_CHECKS
+    loaded_modules_verification();
+
+#if IMAGE_TRUST_CHECKS != 0
     if(!IsWindowsVistaOrGreater()) {
         mdebug1("DLL signature verification is available on Windows Vista or greater because LdrRegisterDllNotification is not present.");
         return;
     }
-    loaded_modules_verification();
 
     HMODULE handle_ntdll = GetModuleHandle("ntdll.dll");
     if (handle_ntdll) {
@@ -102,12 +122,20 @@ void enable_dll_verification()
         {
             LdrRegisterDllNotification(0, &dll_notification, NULL, &cookie_dll_notification);
         } else {
-            merror("Unable to get the address of LdrRegisterDllNotification. Error: %lu", GetLastError());
+#if IMAGE_TRUST_CHECKS == 2
+            merror_exit("Unable to get the address of LdrRegisterDllNotification. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
+#else
+            mwarn("Unable to get the address of LdrRegisterDllNotification. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
+#endif // IMAGE_TRUST_CHECKS == 2
         }
     } else {
-        merror("Unable to get the handle of ntdll.dll. Error: %lu", GetLastError());
+#if IMAGE_TRUST_CHECKS == 2
+        merror_exit("Unable to get the handle of ntdll.dll. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
+#else
+        mwarn("Unable to get the handle of ntdll.dll. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
+#endif // IMAGE_TRUST_CHECKS == 2
     }
-#endif
+#endif // IMAGE_TRUST_CHECKS != 0
 }
 
 #endif // WIN32

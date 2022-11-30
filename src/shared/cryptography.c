@@ -294,8 +294,8 @@ w_err_t verify_hash_and_pe_signature(wchar_t *file_path) {
     hash_result = verify_hash_catalog(file_path, hash_error_message, OS_SIZE_1024);
 
     if(pe_result != ERROR_SUCCESS && hash_result != ERROR_SUCCESS) {
-        merror("PE signature verification failed. %s", pe_error_message);
-        merror("Hash verification failed. %s", hash_error_message);
+        minfo("PE signature verification failed. %s", pe_error_message);
+        minfo("Hash verification failed. %s", hash_error_message);
         return OS_INVALID;
     } else {
         mdebug1("%s", pe_error_message);
