@@ -41,7 +41,7 @@ api::CommandFn kvdbCreateCmd(std::shared_ptr<KVDBManager> kvdbManager)
             return api::WazuhResponse {
                 json::Json {"{}"},
                 400,
-                fmt::format("Database \"{}\" could not be created: {}", kvdbName.value(), result)};
+                fmt::format("[{}] {}", kvdbName.value(), result)};
         }
 
         return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
@@ -70,13 +70,7 @@ api::CommandFn kvdbDeleteCmd(std::shared_ptr<KVDBManager> kvdbManager)
             return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_EMPTY};
         }
 
-        const auto filterLoadedKVDB = params.getBool("/mustBeLoaded");
         bool deleteOnlyLoaded {false};
-        if (filterLoadedKVDB.has_value())
-        {
-            deleteOnlyLoaded = filterLoadedKVDB.value();
-        }
-
         const auto result = kvdbManager->deleteDB(kvdbName.value(), deleteOnlyLoaded);
         if (!result)
         {
