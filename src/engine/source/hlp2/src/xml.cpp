@@ -76,9 +76,14 @@ namespace hlp
 parsec::Parser<json::Json> getXMLParser(Stop str, Options lst)
 {
 
-    bool isWin = lst.empty();
+    if (lst.size() > 1)
+    {
+        throw std::runtime_error(fmt::format("XML parser requires 0 or 1 arguments."));
+    }
 
-    return [isWin,str](std::string_view text, int index)
+    bool notWin = lst.empty();
+
+    return [notWin,str](std::string_view text, int index)
     {
         size_t pos = text.size();
         std::string_view fp = text;
@@ -100,10 +105,10 @@ parsec::Parser<json::Json> getXMLParser(Stop str, Options lst)
 
         if (parseResult.status == pugi::status_ok)
         {
-            if (isWin)
-                xmlToJson(xmlDoc, jsonDoc, xmlWinModule);
-            else
+            if (notWin)
                 xmlToJson(xmlDoc, jsonDoc, nullptr);
+            else
+                xmlToJson(xmlDoc, jsonDoc, xmlWinModule);
 
             return parsec::makeSuccess<json::Json>(jsonDoc, text, pos);
         }
