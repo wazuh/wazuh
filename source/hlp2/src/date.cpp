@@ -15,6 +15,83 @@ using Options = std::vector<std::string>;
 namespace hlp
 {
 
+namespace internal
+{
+
+/**
+ * @brief Get the date format in snprintf format of the sample date string.
+ *
+ * i.e. 2020-01-01T00:00:00Z returns %Y-%m-%dT%H:%M:%SZ </br>
+ * If the sample date string is not valid or matches with more than one format,
+ * an base::Error with description is returned.
+ *
+ * @param dateSample
+ * @return std::variant<std::string, base::Error>
+ */
+std::variant<std::string, base::Error> formatDateFromSample(std::string dateSample) {
+
+    // Known formats
+    // https://howardhinnant.github.io/date/date.html#from_stream_formatting
+    std::vector<std::string> knownFormats = {
+        "%m/%d/%y",
+        "%d/%m/%y",
+        "%Y-%m-%dT%H:%M:%S%Z",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S%z"
+    };
+
+    // Check if the dateSample matches with format
+    auto checkFormat = [](const std::string& format,
+                          const std::string& sample) -> bool
+    {
+        std::istringstream ss(sample);
+        std::chrono::nanoseconds s {};
+        //date::sys_time<std::chrono::nanoseconds> s {};
+
+        ss >> date::parse(format, s);
+
+        if (ss.fail()) {
+            return false;
+        }
+        else if (ss.eof()) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    };
+
+
+    // Check if the dateSample matches with more than one format
+    std::vector<std::string> matchingFormats;
+    for (const auto& format : knownFormats)
+    {
+        if (checkFormat(format, dateSample))
+        {
+            matchingFormats.push_back(format);
+        }
+    }
+
+    if (matchingFormats.size() == 0)
+    {
+        return base::Error {
+            fmt::format("Failed to parse '{}', no matching format found", dateSample)};
+    }
+    else if (matchingFormats.size() > 1)
+    {
+        return base::Error {
+            fmt::format("Failed to parse '{}'. Multiple formats match: {}",
+                        dateSample,
+                        fmt::join(matchingFormats, ", "))};
+    }
+
+    // Return the matching format
+    return matchingFormats[0];
+}
+} // namespace date
+
+
 parsec::Parser<json::Json> getDateParser(Stop str, Options lst)
 {
 
@@ -110,4 +187,4 @@ parsec::Parser<json::Json> getDateParser(Stop str, Options lst)
     };
 }
 
-}
+} // namespace hlp
