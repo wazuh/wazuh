@@ -61,36 +61,23 @@ parsec::Parser<json::Json> getTextParser(Stop str, Options lst);
  */
 parsec::Parser<json::Json> getBinaryParser(Stop str, Options lst);
 
-/**
- *
- */
-static const std::unordered_map<std::string, std::string> TimeFormat = {
-    {"ANSIC", "%a %b %d %T %Y"},        // Mon Jan _2 15:04:05 2006
-    {"UnixDate", "%a %b %d %T %Y"},     // Mon Jan _2 15:04:05 MST 2006
-    {"RubyDate", "%a %b %d %T %z %Y"},  // Mon Jan 02 15:04:05 -0700 2006
-    {"RFC822", "%d %b %y %R %Z"},       // 02 Jan 06 15:04 MST
-    {"RFC822Z", "%d %b %y %R %z"},      // 02 Jan 06 15:04 MST
-    {"RFC850", "%A, %d-%b-%y %T %Z"},   // Monday, 02-Jan-06 15:04:05 MST
-    {"RFC1123", "%a, %d %b %Y %T %Z"},  // Mon, 02 Jan 2006 15:04:05 MST
-    {"RFC1123Z", "%a, %d %b %Y %T %z"}, // Mon, 02 Jan 2006 15:04:05 -0700
-    {"RFC3339", "%FT%TZ%Ez"},           // 2006-01-02T15:04:05Z07:00
-    {"RFC3154", "%b %d %R:%6S %Z"},     // Mar  1 18:48:50.483 UTC
-    {"SYSLOG", "%b %d %T"},             // Jun 14 15:16:01
-    {"ISO8601", "%FT%T%Ez"},            // 2018-08-14T14:30:02.203151+02:00
-    {"ISO8601Z", "%FT%TZ"},             // 2018-08-14T14:30:02.203151Z
-    {"HTTPDATE", "%d/%b/%Y:%T %z"},     // 26/Dec/2016:16:22:14 +0000
-    // HTTP-date = rfc1123-date |rfc850-date | asctime-date
-    {"NGINX_ERROR", "%D %T"},                  // 2016/10/25 14:49:34
-    {"APACHE_ERROR", "%a %b %d %H:%M.%9S %Y"}, // Mon Dec 26 16:15:55.103786 2016
-    {"POSTGRES", "%F %H:%M.%6S %Z"},           // 2021-02-14 10:45:33 UTC
-};
 
 /**
  * Returns a parser which will accept a formatted date,
  * failing if the string does not fit the format.
  *
+ * This builder will accept a stop string and the following
+ * options:
+ *  - a format which must contain a '%' char, and optionally
+ *  a locale string. If no locale is used, it will default to
+ *  en_US.UTF-8
+ *  - a date sample which will be tried among common format,
+ *  if a common format is found, it will use it, and optionally
+ *  a locale string. If no locale is used, it will default to
+ *  en_US.UTF-8.
+ *
  * The parsers will return the date in a format like
- * 2006-01-02T16:04:05.000Z. If the input time does have
+ * 2006-01-02T16:04:05.000Z. If the parsed date does have
  * timezone information, the time will be converted to
  * the UTC timezone.
  *
@@ -100,6 +87,8 @@ static const std::unordered_map<std::string, std::string> TimeFormat = {
  * See https://howardhinnant.github.io/date/date.html
  * for detailed information.
  *
+ *
+ *
  * @param str
  * @param lst format, locale
  * @return
@@ -108,7 +97,7 @@ parsec::Parser<json::Json> getDateParser(Stop str, Options lst);
 
 namespace internal
 {
-std::variant<std::string, base::Error> formatDateFromSample(std::string dateSample);
+std::string formatDateFromSample(std::string dateSample, std::string locale);
 }
 
 /**
