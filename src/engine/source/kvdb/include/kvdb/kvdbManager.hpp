@@ -29,7 +29,16 @@ class KVDBManager
      * @return true if it could be found and loaded
      * @return false otherwise
      */
-    bool getKVDBFromFile(const std::string& name, KVDBHandle& dbHandle);
+    bool getKVDBFromPath(const std::string& name, KVDBHandle& dbHandle);
+
+    /**
+     * @brief Checks wether a path contains a KVDB
+     *
+     * @param name of the KVDB to be checked
+     * @return true if there's a KVDB on that path
+     * @return false otherwise
+     */
+    bool isKVDBOnPath(const std::string& name);
 
 public:
     KVDBManager(const std::filesystem::path& dbStoragePath);
@@ -42,19 +51,17 @@ public:
      * @param createIfMissing if true, creates the database when it does not exist
      * @return KVDBHandle to access KVDB functions
      */
-    KVDBHandle addDb(const std::string& Name, bool createIfMissing = true);
+    KVDBHandle loadDb(const std::string& Name, bool createIfMissing = true);
 
     /**
      * @brief Creates a KVDB named as the CDB file from filepath and fills it with
      * it's content.
      *
      * @param path where to look for the file to fill the KVDB
-     * @param createIfMissing if true only creates it when it wasn't created earlier
      * @return true if it could be created
      * @return false otherwise
      */
-    bool createKVDBfromCDBFile(const std::filesystem::path& path,
-                               bool createIfMissing = true);
+    bool createKVDBfromCDBFile(const std::filesystem::path& path);
 
     /**
      * @brief Deletes a KVDB from loaded list or from filesystem.
@@ -80,7 +87,7 @@ public:
      * @param onlyLoaded if it only looks for it in the available list
      * @return std::vector<std::string> of the KVDBs.
      */
-    std::vector<std::string> getAvailableKVDBs(bool onlyLoaded = true);
+    std::vector<std::string> listKVDBs(bool onlyLoaded = true);
 
     /**
      * @brief Create a And Fill KVDB from File object
