@@ -5,8 +5,84 @@
 #include <vector>
 #include "run_test.hpp"
 
+TEST(HLP2, formatDateFromSample_knownFormat) {
+
+    std::vector<std::tuple<std::string, std::string>> cases {
+        {"%m/%d/%y", "01/22/22"},
+        {"%d/%m/%y", "22/01/22"},
+        {"%Y-%m-%dT%H:%M:%S", "2020-01-01T01:00:00"},
+        {"%Y-%m-%dT%H:%M:%S", "2020-01-01T01:00:00.000"},
+        {"%Y-%m-%d %H:%M:%S", "2020-01-01 01:00:00"},
+        {"%Y-%m-%d %H:%M:%S", "2020-01-01 01:00:00.000"},
+        };
+
+    for (const auto& [format, sample] : cases) {
+        auto result = hlp::internal::formatDateFromSample(sample);
+        if (std::holds_alternative<std::string>(result)) {
+            if (std::get<std::string>(result) != format) {
+                FAIL() << "Expected: " << format << std::endl
+                       << "     Got: " << std::get<std::string>(result) << std::endl
+                       << "  Sample: "  << sample << std::endl;
+            }
+        } else {
+            FAIL() << std::get<base::Error>(result).message;
+        }
+
+    }
+}
+
+TEST(HLP2, formatDateFromSample_multipleMatch)
+{
+    std::vector<std::string> cases {"01/01/22", "02/02/22"};
+
+    for (const auto& sample : cases)
+    {
+        auto result = hlp::internal::formatDateFromSample(sample);
+        if (std::holds_alternative<base::Error>(result))
+        {
+
+            if (std::get<base::Error>(result).message.find("Multiple formats match") == std::string::npos)
+            {
+                FAIL() << "Expected: Multiple formats match" << std::endl
+                       << "     Got: " << std::get<base::Error>(result).message << std::endl
+                       << "  Sample: "  << sample << std::endl;
+            }
+        }
+        else
+        {
+            FAIL() << "Expected: Multiple formats match the sample date string"
+                   << std::endl
+                   << "     Got: " << std::get<std::string>(result) << std::endl
+                   << "  Sample: " << sample << std::endl;
+        }
+    }
+}
+
+
+TEST(HLP2, formatDateFromSample_not_match) {
+    std::vector<std::string> cases {"2020-01-01 00:00:00.000 asd",
+                                    "2020-01-01T00:00:00Z asd"};
+
+    for (const auto& sample : cases) {
+        auto result = hlp::internal::formatDateFromSample(sample);
+        if (std::holds_alternative<base::Error>(result)) {
+            if (std::get<base::Error>(result).message.find("Failed to parse") == std::string::npos) {
+                FAIL() << "Expected: Failed to parse" << std::endl
+                       << "     Got: " << std::get<base::Error>(result).message << std::endl
+                       << "  Sample: "  << sample << std::endl;
+            }
+        } else {
+            FAIL() << "Expected: Failed to parse the sample date string"
+                   << std::endl
+                   << "     Got: " << std::get<std::string>(result) << std::endl
+                   << "  Sample: " << sample << std::endl;
+        }
+    }
+}
+
 TEST(HLP2, DateParser)
 {
+    GTEST_SKIP();
     auto fn = [](std::string in) -> json::Json {
         json::Json doc;
         doc.setString(in);

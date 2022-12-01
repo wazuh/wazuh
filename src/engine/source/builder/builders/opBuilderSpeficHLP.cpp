@@ -83,7 +83,7 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
     auto source = parameters[0];
     parameters.erase(parameters.begin());
 
-    Options hlpOptionsList {};
+    hlp::Options hlpOptionsList {};
     hlpOptionsList.reserve(parameters.size());
     // Check if the parameter is a reference
     for (auto& parameter : parameters)
