@@ -16,10 +16,15 @@ namespace hlp
 
 parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
 {
-    if ( ! str.has_value()) {
+    if ( ! str.has_value())
+    {
         throw std::invalid_argument(fmt::format("Uri parser needs a stop string"));
     }
 
+    if (lst.size() > 0)
+    {
+        throw std::runtime_error(fmt::format("URL parser do not accept arguments!"));
+    }
 
     return [str](std::string_view text, int index)
     {
@@ -141,6 +146,11 @@ parsec::Parser<json::Json> getUAParser(Stop str, Options lst)
 {
     if ( ! str.has_value()) {
         throw std::invalid_argument(fmt::format("User-agent parser needs a stop string"));
+    }
+
+    if (lst.size() != 0)
+    {
+        throw std::runtime_error(fmt::format("URL parser do not accept arguments!"));
     }
 
     return [str](std::string_view text, int index)

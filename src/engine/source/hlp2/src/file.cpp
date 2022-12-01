@@ -37,12 +37,15 @@ namespace hlp
 
 parsec::Parser<json::Json> getFilePathParser(Stop str, Options lst)
 {
-    if ( ! str.has_value()) {
+    if ( ! str.has_value())
+    {
         throw std::invalid_argument(fmt::format("File parser needs a stop string"));
     }
 
-    if ( lst.size() >1 )
+    if ( lst.size() > 1 )
+    {
         throw std::invalid_argument(fmt::format("File parser accepts only one option"));
+    }
 
     return [str](std::string_view text, int index)
     {
