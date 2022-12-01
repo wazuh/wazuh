@@ -8,26 +8,16 @@
 TEST(HLP2, formatDateFromSample_knownFormat) {
 
     std::vector<std::tuple<std::string, std::string>> cases {
-        {"%m/%d/%y", "01/22/22"},
-        {"%d/%m/%y", "22/01/22"},
-        {"%Y-%m-%dT%H:%M:%S", "2020-01-01T01:00:00"},
-        {"%Y-%m-%dT%H:%M:%S", "2020-01-01T01:00:00.000"},
-        {"%Y-%m-%d %H:%M:%S", "2020-01-01 01:00:00"},
-        {"%Y-%m-%d %H:%M:%S", "2020-01-01 01:00:00.000"},
+        {"%FT%TZ", "2020-01-01T01:00:00Z"},
+        {"%FT%TZ", "2020-01-01T01:00:00.000Z"},
+        {"%FT%TZ", "2020-01-01T01:00:00Z"},
+        {"%FT%TZ", "2020-01-01T01:00:00.000Z"},
         };
 
     for (const auto& [format, sample] : cases) {
-        auto result = hlp::internal::formatDateFromSample(sample);
-        if (std::holds_alternative<std::string>(result)) {
-            if (std::get<std::string>(result) != format) {
-                FAIL() << "Expected: " << format << std::endl
-                       << "     Got: " << std::get<std::string>(result) << std::endl
-                       << "  Sample: "  << sample << std::endl;
-            }
-        } else {
-            FAIL() << std::get<base::Error>(result).message;
-        }
-
+        std::string result;
+        ASSERT_NO_THROW(result = hlp::internal::formatDateFromSample(sample,"en_US.UTF-8"));
+        ASSERT_EQ(result, format);
     }
 }
 
@@ -37,24 +27,7 @@ TEST(HLP2, formatDateFromSample_multipleMatch)
 
     for (const auto& sample : cases)
     {
-        auto result = hlp::internal::formatDateFromSample(sample);
-        if (std::holds_alternative<base::Error>(result))
-        {
-
-            if (std::get<base::Error>(result).message.find("Multiple formats match") == std::string::npos)
-            {
-                FAIL() << "Expected: Multiple formats match" << std::endl
-                       << "     Got: " << std::get<base::Error>(result).message << std::endl
-                       << "  Sample: "  << sample << std::endl;
-            }
-        }
-        else
-        {
-            FAIL() << "Expected: Multiple formats match the sample date string"
-                   << std::endl
-                   << "     Got: " << std::get<std::string>(result) << std::endl
-                   << "  Sample: " << sample << std::endl;
-        }
+        ASSERT_THROW(auto result = hlp::internal::formatDateFromSample(sample, "en_US.UTF-8"), std::runtime_error);
     }
 }
 
@@ -64,25 +37,12 @@ TEST(HLP2, formatDateFromSample_not_match) {
                                     "2020-01-01T00:00:00Z asd"};
 
     for (const auto& sample : cases) {
-        auto result = hlp::internal::formatDateFromSample(sample);
-        if (std::holds_alternative<base::Error>(result)) {
-            if (std::get<base::Error>(result).message.find("Failed to parse") == std::string::npos) {
-                FAIL() << "Expected: Failed to parse" << std::endl
-                       << "     Got: " << std::get<base::Error>(result).message << std::endl
-                       << "  Sample: "  << sample << std::endl;
-            }
-        } else {
-            FAIL() << "Expected: Failed to parse the sample date string"
-                   << std::endl
-                   << "     Got: " << std::get<std::string>(result) << std::endl
-                   << "  Sample: " << sample << std::endl;
-        }
+        ASSERT_THROW(auto result = hlp::internal::formatDateFromSample(sample, "en_US.UTF-8"), std::runtime_error);
     }
 }
 
 TEST(HLP2, DateParser)
 {
-    GTEST_SKIP();
     auto fn = [](std::string in) -> json::Json {
         json::Json doc;
         doc.setString(in);
@@ -98,14 +58,14 @@ TEST(HLP2, DateParser)
                   {},
                   Options {"%A, %d-%b-%y %T %Z", "en_US.UTF-8"},
                   fn("2006-01-02T08:04:05.000Z"),
-                  0},
+                  30},
         // current year get's added
         TestCase {"Jun 14 15:16:01",
                   true,
                   {},
                   Options {"%b %d %T", "en_US.UTF-8"},
                   fn("2022-06-14T15:16:01.000Z"),
-                  0},
+                  15},
         TestCase {"2019-12-12",
                   true,
                   {},
@@ -178,9 +138,9 @@ TEST(HLP2, DateParser)
         TestCase {"lunes, 02-ene-06 15:04:05 CET",
                   true,
                   {},
-                  Options {"%A, %d-%b-%y %T %Z", "es_ES.UTF-8"},
+                  Options {"%A, %d-%b-%y %T %Z", "es_MX.UTF-8"},
                   fn("2006-01-02T16:04:05.000Z"),
-                  0},
+                  29},
     };
 
     for (auto t : testCases)
