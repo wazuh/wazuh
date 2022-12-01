@@ -108,7 +108,8 @@ struct KVDB::Impl
 
             m_state = State::Error;
             const std::string errorString {s.getState()};
-            // TODO: there's no flag or function that returns this error but the message itself
+            // TODO: there's no flag or function that returns this error but the message
+            // itself
             if (errorString.find("exists (error_if_exists is true)") != std::string::npos)
             {
                 return CreationStatus::ErrorDatabaseAlreadyExists;
