@@ -8,11 +8,12 @@
 #include <string>
 #include <vector>
 
+namespace hlp
+{
+
 using Stop = std::optional<std::string>;
 using Options = std::vector<std::string>;
 
-namespace hlp
-{
 /**
  * Returns a parser which will accept booleans represented by the strings
  * 'true' and 'false'.
@@ -104,6 +105,11 @@ static const std::unordered_map<std::string, std::string> TimeFormat = {
  * @return
  */
 parsec::Parser<json::Json> getDateParser(Stop str, Options lst);
+
+namespace internal
+{
+std::variant<std::string, base::Error> formatDateFromSample(std::string dateSample);
+}
 
 /**
  * Returns a parser which will accept a string
