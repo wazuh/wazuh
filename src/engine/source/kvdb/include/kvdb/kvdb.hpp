@@ -14,7 +14,6 @@ constexpr static const char* DEFAULT_CF_NAME {"default"};
 class KVDB
 {
 public:
-
     enum class CreationStatus
     {
         OkCreated,
@@ -155,8 +154,7 @@ public:
      * @return nullopt If the proccess didn't finished successfully
      */
     std::optional<std::string> read(const std::string& key,
-                     const std::string& columnName = DEFAULT_CF_NAME);
-
+                                    const std::string& columnName = DEFAULT_CF_NAME);
 
     /**
      * @brief

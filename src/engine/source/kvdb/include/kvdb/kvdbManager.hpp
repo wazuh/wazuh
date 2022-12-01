@@ -18,18 +18,18 @@ class KVDBManager
     WAZUH_DISABLE_COPY_ASSIGN(KVDBManager);
 
     std::filesystem::path m_dbStoragePath;
-    std::unordered_map<std::string, KVDBHandle> m_availableKVDBs;
+    std::unordered_map<std::string, KVDBHandle> m_loadedDBs;
     std::shared_mutex m_mtx;
 
     /**
-     * @brief Loads in KVDBHanlde the pointer to access KVDB functions
+     * @brief Loads in KVDBHandle the pointer to access KVDB functions
      *
      * @param name of the KVDB to be loaded
      * @param dbHandle used to access KVDB functions
      * @return true if it could be found and loaded
      * @return false otherwise
      */
-    bool getKVDBFromPath(const std::string& name, KVDBHandle& dbHandle);
+    bool getDBFromPath(const std::string& name, KVDBHandle& dbHandle);
 
     /**
      * @brief Checks wether a path contains a KVDB
@@ -38,7 +38,7 @@ class KVDBManager
      * @return true if there's a KVDB on that path
      * @return false otherwise
      */
-    bool isKVDBOnPath(const std::string& name);
+    bool isDBOnPath(const std::string& name);
 
 public:
     KVDBManager(const std::filesystem::path& dbStoragePath);
@@ -51,7 +51,7 @@ public:
      * @param createIfMissing if true, creates the database when it does not exist
      * @return KVDBHandle to access KVDB functions
      */
-    KVDBHandle loadDb(const std::string& Name, bool createIfMissing = true);
+    KVDBHandle loadDB(const std::string& Name, bool createIfMissing = true);
 
     /**
      * @brief Creates a KVDB named as the CDB file from filepath and fills it with
@@ -61,7 +61,7 @@ public:
      * @return true if it could be created
      * @return false otherwise
      */
-    bool createKVDBfromCDBFile(const std::filesystem::path& path);
+    bool createDBfromCDB(const std::filesystem::path& path);
 
     /**
      * @brief Deletes a KVDB from loaded list or from filesystem.
@@ -87,7 +87,7 @@ public:
      * @param onlyLoaded if it only looks for it in the available list
      * @return std::vector<std::string> of the KVDBs.
      */
-    std::vector<std::string> listKVDBs(bool onlyLoaded = true);
+    std::vector<std::string> listDBs(bool onlyLoaded = true);
 
     /**
      * @brief Create a And Fill KVDB from File object
@@ -97,8 +97,8 @@ public:
      * @return true if it could be completed succesfully
      * @return false otherwise.
      */
-    std::string CreateAndFillKVDBfromFile(const std::string& dbName,
-                                   const std::filesystem::path& path = "");
+    std::string CreateAndFillDBfromFile(const std::string& dbName,
+                                        const std::filesystem::path& path = "");
 
     /**
      * @brief Dumps the full KVDB to a json format string.
@@ -149,9 +149,9 @@ public:
      */
     void clear()
     {
-        if (m_availableKVDBs.size() > 0)
+        if (m_loadedDBs.size() > 0)
         {
-            m_availableKVDBs.clear();
+            m_loadedDBs.clear();
         }
     }
 };
