@@ -12,7 +12,7 @@ static auto kvdbManager = std::make_shared<KVDBManager>("/tmp/");
 
 static void dbSetup(const benchmark::State& s)
 {
-    auto db = kvdbManager->loadDb(kBenchDbName);
+    auto db = kvdbManager->loadDB(kBenchDbName);
 
     for (int i = 0; i < s.range(0); ++i)
     {

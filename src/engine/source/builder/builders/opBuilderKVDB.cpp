@@ -41,7 +41,7 @@ base::Expression KVDBExtract(const std::any& definition,
     auto kvdb = kvdbManager->getDB(dbName);
     if (!kvdb)
     {
-        kvdbManager->loadDb(dbName, false);
+        kvdbManager->loadDB(dbName, false);
     }
     kvdb = kvdbManager->getDB(dbName);
     if (!kvdb)
@@ -172,7 +172,7 @@ base::Expression existanceCheck(const std::any& definition,
     auto kvdb = kvdbManager->getDB(dbName);
     if (!kvdb)
     {
-        kvdbManager->loadDb(dbName, false);
+        kvdbManager->loadDB(dbName, false);
     }
     kvdb = kvdbManager->getDB(dbName);
     if (!kvdb)

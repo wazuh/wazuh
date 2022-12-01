@@ -34,14 +34,12 @@ api::CommandFn kvdbCreateCmd(std::shared_ptr<KVDBManager> kvdbManager)
         // Get KVDB's path
         const auto kvdbPath = params.getString("/path");
 
-        const std::string result {kvdbManager->CreateAndFillKVDBfromFile(kvdbName.value(),
-                                                                  kvdbPath.value_or(""))};
+        const std::string result {kvdbManager->CreateAndFillDBfromFile(
+            kvdbName.value(), kvdbPath.value_or(""))};
         if (result != "OK")
         {
             return api::WazuhResponse {
-                json::Json {"{}"},
-                400,
-                fmt::format("[{}] {}", kvdbName.value(), result)};
+                json::Json {"{}"}, 400, fmt::format("[{}] {}", kvdbName.value(), result)};
         }
 
         return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
@@ -275,7 +273,7 @@ api::CommandFn kvdbListCmd(std::shared_ptr<KVDBManager> kvdbManager)
             listOnlyLoaded = filterLoadedKVDB.value();
         }
 
-        auto kvdbLists = kvdbManager->listKVDBs(listOnlyLoaded);
+        auto kvdbLists = kvdbManager->listDBs(listOnlyLoaded);
         json::Json data;
         data.setArray("/data");
         if (kvdbLists.size())
