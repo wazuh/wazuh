@@ -264,9 +264,9 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
 
     // KVDB list subcommand
     auto list_subcommand = kvdb->add_subcommand(args::SUBCOMMAND_KVDB_LIST,
-                                                "list: List all KeyValueDB availables.");
+                                                "list: List all KVDB availables.");
     list_subcommand->add_flag(
-        "-l, --loaded", args::kvdb_loaded, "List only KVDBs on memory, by default list only KVDBs on disc.");
+        "-l, --loaded", args::kvdb_loaded, "List only KVDBs loaded on memory.");
     list_subcommand
         ->add_option("-n, --name",
                      args::kvdb_name,
