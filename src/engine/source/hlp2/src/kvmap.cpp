@@ -18,8 +18,8 @@ parsec::Parser<json::Json> getKVParser(Stop str, Options lst)
 
     if (lst.size() != 4)
     {
-        throw std::invalid_argument(
-            fmt::format("Need four options to work: sep, delim, quote, esc"));
+        throw std::runtime_error(
+            fmt::format("KV parser needs four options to work: sep, delim, quote, esc"));
     }
 
     const char sep = lst[0][0];
