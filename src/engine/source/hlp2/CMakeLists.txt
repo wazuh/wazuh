@@ -51,12 +51,9 @@ add_library(hlp2 STATIC
         src/base.hpp
         src/literal.cpp)
 
-# src/stop.hpp)
-
 # https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
-add_compile_definitions(ONLY_C_LOCALE=1)
-
-# add_definitions(-DONLY_C_LOCALE)
+# This works with glibc 2.28-211.el8 RHEL 8
+# add_compile_definitions(ONLY_C_LOCALE=1)
 
 # https://howardhinnant.github.io/date/tz.html#Installation
 #
