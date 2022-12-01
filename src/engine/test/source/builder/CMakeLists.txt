@@ -174,6 +174,11 @@ add_executable(opBuilderWdb_test
 )
 gtest_discover_tests(opBuilderWdb_test)
 
+add_executable(opBuilderSpeficHLP_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderSpeficHLP_test.cpp
+)
+gtest_discover_tests(opBuilderSpeficHLP_test)
+
 add_executable(opBuilderHelperActiveResponse_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperActiveResponse_test.cpp
   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
