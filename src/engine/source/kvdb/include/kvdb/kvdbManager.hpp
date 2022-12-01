@@ -17,9 +17,9 @@ class KVDBManager
 {
     WAZUH_DISABLE_COPY_ASSIGN(KVDBManager);
 
-    std::filesystem::path mDbFolder;
+    std::filesystem::path m_dbStoragePath;
     std::unordered_map<std::string, KVDBHandle> m_availableKVDBs;
-    std::shared_mutex mMtx;
+    std::shared_mutex m_mtx;
 
     /**
      * @brief Loads in KVDBHanlde the pointer to access KVDB functions
@@ -32,7 +32,7 @@ class KVDBManager
     bool getKVDBFromFile(const std::string& name, KVDBHandle& dbHandle);
 
 public:
-    KVDBManager(const std::filesystem::path& DbFolder);
+    KVDBManager(const std::filesystem::path& dbStoragePath);
     ~KVDBManager() = default;
 
     /**

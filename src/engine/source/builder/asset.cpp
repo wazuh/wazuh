@@ -73,31 +73,31 @@ Asset::Asset(const json::Json& jsonDefinition,
     const std::string assetName {tmpJson.getString("/name").value_or("")};
 
     // Get parents
-    auto parentsPos = std::find_if(objectDefinition.begin(),
+    auto sourcesPos = std::find_if(objectDefinition.begin(),
                                    objectDefinition.end(),
                                    [](auto tuple) {
                                        return std::get<0>(tuple) == "sources"
                                               || std::get<0>(tuple) == "after";
                                    });
-    if (objectDefinition.end() != parentsPos)
+    if (objectDefinition.end() != sourcesPos)
     {
-        if (!std::get<1>(*parentsPos).isArray())
+        if (!std::get<1>(*sourcesPos).isArray())
         {
             WAZUH_LOG_DEBUG("Engine assets: \"{}\" method: JSON definition: \"{}\".",
                             __func__,
                             jsonDefinition.str());
             throw std::runtime_error(
-                fmt::format("Asset \"{}\" parents definition is expected "
-                            "to be an array but it is of type \"{}\"",
+                fmt::format("Asset \"{}\" sources definition is expected to be an array "
+                            "but it is of type \"{}\"",
                             assetName,
-                            std::get<1>(*parentsPos).typeName()));
+                            std::get<1>(*sourcesPos).typeName()));
         }
-        auto parents = std::get<1>(*parentsPos).getArray().value();
-        for (auto& parent : parents)
+        auto sources = std::get<1>(*sourcesPos).getArray().value();
+        for (auto& source : sources)
         {
-            m_parents.insert(parent.getString().value());
+            m_parents.insert(source.getString().value());
         }
-        objectDefinition.erase(parentsPos);
+        objectDefinition.erase(sourcesPos);
     }
 
     // Get metadata
