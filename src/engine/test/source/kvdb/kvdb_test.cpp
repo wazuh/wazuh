@@ -483,7 +483,7 @@ TEST_F(KVDBTest, writeKeySingleKV)
 
     std::string resultValue;
     ASSERT_NO_THROW(resultValue = kvdbManager->CreateAndFillKVDBfromFile("NEW_TEST_DB"));
-    ASSERT_STREQ(resultValue.c_str(),"OK");
+    ASSERT_STREQ(resultValue.c_str(), "OK");
     bool retval;
     ASSERT_NO_THROW(retval = kvdbManager->writeKey("NEW_TEST_DB", key, value));
     ASSERT_TRUE(retval);
@@ -491,7 +491,7 @@ TEST_F(KVDBTest, writeKeySingleKV)
     // TODO: this replicates what the helper does and should be improved
     KVDBHandle kvdbHandle;
     kvdbHandle = kvdbManager->getDB("NEW_TEST_DB");
-    if(!kvdbHandle)
+    if (!kvdbHandle)
     {
         ASSERT_NO_THROW(kvdbManager->addDb("NEW_TEST_DB", false));
     }
@@ -531,9 +531,7 @@ TEST_F(KVDBTest, ListAvailableKVDBs)
     ASSERT_EQ(kvdbLists.at(1), kTestDBName);
 }
 
-TEST_F(KVDBTest, CreateAndFillKVDBfromFile)
-{
-}
+TEST_F(KVDBTest, CreateAndFillKVDBfromFile) {}
 
 TEST_F(KVDBTest, GetWriteDeleteKeyValueThroughManager)
 {
@@ -546,22 +544,22 @@ TEST_F(KVDBTest, GetWriteDeleteKeyValueThroughManager)
 
     // create unloaded DB
     resultValue = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName);
-    ASSERT_STREQ(resultValue.c_str(),"OK");
+    ASSERT_STREQ(resultValue.c_str(), "OK");
 
     retval = kvdbManager->writeKey(kTestUnloadedDBName, KEY, VALUE);
     ASSERT_TRUE(retval);
 
-    auto val = kvdbManager->getKeyValue(kTestUnloadedDBName,KEY);
+    auto val = kvdbManager->getKeyValue(kTestUnloadedDBName, KEY);
     ASSERT_TRUE(val.has_value());
-    ASSERT_EQ(val.value(),VALUE);
+    ASSERT_EQ(val.value(), VALUE);
 
-    retval = kvdbManager->deleteKey(kTestUnloadedDBName,KEY);
+    retval = kvdbManager->deleteKey(kTestUnloadedDBName, KEY);
     ASSERT_TRUE(retval);
 
-    retval = kvdbManager->deleteKey(kTestUnloadedDBName,KEY);
+    retval = kvdbManager->deleteKey(kTestUnloadedDBName, KEY);
     ASSERT_FALSE(retval);
 
-    retval = kvdbManager->deleteDB(kTestUnloadedDBName,false);
+    retval = kvdbManager->deleteDB(kTestUnloadedDBName, false);
     ASSERT_TRUE(retval);
 }
 
@@ -571,20 +569,20 @@ TEST_F(KVDBTest, GetWriteDeleteSingleKeyThroughManager)
     bool retval;
 
     resultValue = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName);
-    ASSERT_STREQ(resultValue.c_str(),"OK");
+    ASSERT_STREQ(resultValue.c_str(), "OK");
 
     // single key KVDB
-    retval = kvdbManager->writeKey(kTestUnloadedDBName,KEY);
+    retval = kvdbManager->writeKey(kTestUnloadedDBName, KEY);
     ASSERT_TRUE(retval);
 
-    auto val = kvdbManager->getKeyValue(kTestUnloadedDBName,KEY);
+    auto val = kvdbManager->getKeyValue(kTestUnloadedDBName, KEY);
     ASSERT_TRUE(val.has_value());
-    ASSERT_EQ(val.value(),"");
+    ASSERT_EQ(val.value(), "");
 
-    retval = kvdbManager->deleteKey(kTestUnloadedDBName,KEY);
+    ASSERT_NO_THROW(retval = kvdbManager->deleteKey(kTestUnloadedDBName, KEY));
     ASSERT_TRUE(retval);
 
-    val = kvdbManager->getKeyValue(kTestUnloadedDBName,KEY);
+    ASSERT_NO_THROW(val = kvdbManager->getKeyValue(kTestUnloadedDBName, KEY));
     ASSERT_FALSE(val.has_value());
 }
 
@@ -594,21 +592,22 @@ TEST_F(KVDBTest, DoubleDeleteThroughManager)
     bool retval;
 
     // create unloaded DB
-    resultValue = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName);
-    ASSERT_STREQ(resultValue.c_str(),"OK");
+    ASSERT_NO_THROW(resultValue =
+                        kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName));
+    ASSERT_STREQ(resultValue.c_str(), "OK");
 
-    retval = kvdbManager->writeKey(kTestUnloadedDBName, KEY, VALUE);
+    ASSERT_NO_THROW(retval = kvdbManager->writeKey(kTestUnloadedDBName, KEY, VALUE));
     ASSERT_TRUE(retval);
 
-    auto val = kvdbManager->getKeyValue(kTestUnloadedDBName,KEY);
+    auto val = kvdbManager->getKeyValue(kTestUnloadedDBName, KEY);
     ASSERT_TRUE(val.has_value());
-    ASSERT_EQ(val.value(),VALUE);
+    ASSERT_EQ(val.value(), VALUE);
 
-    retval = kvdbManager->deleteKey(kTestUnloadedDBName,KEY);
+    ASSERT_NO_THROW(retval = kvdbManager->deleteKey(kTestUnloadedDBName, KEY));
     ASSERT_TRUE(retval);
 
     // double delete
-    retval = kvdbManager->deleteKey(kTestUnloadedDBName,KEY);
+    ASSERT_NO_THROW(retval = kvdbManager->deleteKey(kTestUnloadedDBName, KEY));
     ASSERT_FALSE(retval);
 }
 
@@ -628,8 +627,10 @@ TEST_F(KVDBTest, CreateAndFillKVDBfromFileOkWithFile)
         }
     }
 
-    auto resultVal = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName,FILE_PATH);
-    ASSERT_STREQ(resultVal.c_str(),"OK");
+    std::string retval;
+    ASSERT_NO_THROW(retval = kvdbManager->CreateAndFillKVDBfromFile(
+                        kTestUnloadedDBName, FILE_PATH));
+    ASSERT_STREQ(retval.c_str(), "OK");
 }
 
 TEST_F(KVDBTest, CreateAndFillKVDBfromFileWrongSeparatorFile)
@@ -648,9 +649,11 @@ TEST_F(KVDBTest, CreateAndFillKVDBfromFileWrongSeparatorFile)
         }
     }
 
-    auto retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName,FILE_PATH);
+    std::string retval;
+    ASSERT_NO_THROW(
+        retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName, FILE_PATH));
     // it will be handled as a single key DB
-    ASSERT_STREQ(retval.c_str(),"OK");
+    ASSERT_STREQ(retval.c_str(), "OK");
 }
 
 TEST_F(KVDBTest, CreateAndFillKVDBfromFileSingleLine)
@@ -666,35 +669,46 @@ TEST_F(KVDBTest, CreateAndFillKVDBfromFileSingleLine)
         }
     }
 
-    auto retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName,FILE_PATH);
+    std::string retval;
+    ASSERT_NO_THROW(
+        retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName, FILE_PATH));
     auto errorMessage =
         fmt::format("An error occurred while trying to read the file \"{}\"", FILE_PATH);
-    ASSERT_STREQ(retval.c_str(),errorMessage.c_str());
+    ASSERT_STREQ(retval.c_str(), errorMessage.c_str());
 }
 
 TEST_F(KVDBTest, CreateAndFillKVDBfromFileCreatedEarlier)
 {
-    auto retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName);
-    ASSERT_STREQ(retval.c_str(),"OK");
+    std::string retval;
+    ASSERT_NO_THROW(retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName));
+    ASSERT_STREQ(retval.c_str(), "OK");
 
-    retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName);
-    auto errorMessage =
-        fmt::format("A database with the same name already exists");
-    ASSERT_STREQ(retval.c_str(),errorMessage.c_str());
+    ASSERT_NO_THROW(retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName));
+    ASSERT_STREQ(retval.c_str(), "A database with the same name already exists");
 }
 
 TEST_F(KVDBTest, CreateAndFillKVDBfromFileCreatedAndLoadedEarlier)
 {
-    auto retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName);
-    ASSERT_STREQ(retval.c_str(),"OK");
+    std::string retval;
+    ASSERT_NO_THROW(retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName));
+    ASSERT_STREQ(retval.c_str(), "OK");
 
-    auto result = kvdbManager->addDb(kTestUnloadedDBName);
-    ASSERT_TRUE(result);
+    KVDBHandle kvdbHandle;
+    ASSERT_NO_THROW(kvdbHandle = kvdbManager->addDb(kTestUnloadedDBName));
+    ASSERT_TRUE(kvdbHandle);
 
-    retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName);
-    auto errorMessage =
-        fmt::format("Database is in use");
-    ASSERT_STREQ(retval.c_str(),errorMessage.c_str());
+    ASSERT_NO_THROW(retval = kvdbManager->CreateAndFillKVDBfromFile(kTestUnloadedDBName));
+    ASSERT_STREQ(retval.c_str(), "Database is in use");
+}
+
+TEST_F(KVDBTest, createKVDBfromCDBFileUnexistantFile)
+{
+    bool retval;
+    ASSERT_NO_THROW(retval = kvdbManager->createKVDBfromCDBFile("/tmp/dummy", false));
+    ASSERT_FALSE(retval);
+
+    ASSERT_NO_THROW(retval = kvdbManager->createKVDBfromCDBFile("/tmp/dummy", true));
+    ASSERT_FALSE(retval);
 }
 
 } // namespace

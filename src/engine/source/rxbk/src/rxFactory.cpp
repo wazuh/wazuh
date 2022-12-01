@@ -72,7 +72,7 @@ std::function<void(const std::string&)> Controller::addTracer(const std::string&
     if (m_tracers.end() != m_tracers.find(name))
     {
         throw std::runtime_error(
-            fmt::format("Engine rx factory: Tracer \"{}\" already exists.", name));
+            fmt::format("Tracer \"{}\" already exists", name));
     }
 
     m_tracers[name] = std::move(tracer);
@@ -84,10 +84,8 @@ rx::composite_subscription Controller::listenOnTrace(const std::string& name,
 {
     if (m_tracers.end() == m_tracers.find(name))
     {
-        throw std::runtime_error(
-            fmt::format("Engine rx factory: Error, trying to listen on trace \"{}\", but "
-                        "no trace with that name exists.",
-                        name));
+        throw std::runtime_error(fmt::format(
+            "Error trying to listen on trace \"{}\" that does not exists", name));
     }
 
     return m_tracers[name].subscribe(s);
@@ -215,8 +213,7 @@ Observable rxFactory(const Observable& input,
         }
         else
         {
-            throw std::runtime_error(
-                fmt::format("Engine rx factory: Unsupported operation type."));
+            throw std::runtime_error("Unsupported operation type");
         }
     }
     else if (expression->isTerm())
@@ -233,7 +230,7 @@ Observable rxFactory(const Observable& input,
     }
     else
     {
-        throw std::runtime_error("Engine rx factory: Unsupported connectable type.");
+        throw std::runtime_error("Unsupported expression type");
     }
 }
 
