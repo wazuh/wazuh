@@ -1,14 +1,15 @@
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include <fmt/format.h>
 
+#include <hlp/base.hpp>
+#include <hlp/hlp.hpp>
 #include <hlp/parsec.hpp>
 #include <json/json.hpp>
-
-#include "base.hpp"
 
 inline bool is_valid_base64_char(char c)
 {
@@ -38,51 +39,56 @@ inline bool is_valid_base64_char(char c)
 namespace hlp
 {
 
-parsec::Parser<json::Json> getBinaryParser(Stop str, Options lst)
+parsec::Parser<json::Json> getBinaryParser(Stop, Options lst)
 {
-    return [str](std::string_view text, int index)
+    if (!lst.empty())
     {
-        auto res = preProcess<json::Json>(text, index, str);
-        if (std::holds_alternative<parsec::Result<json::Json>>(res))
+        throw std::runtime_error("binary parser doesn't accept parameters");
+    }
+
+    return [](std::string_view text, int index)
+    {
+        auto error = internal::eofError<json::Json>(text, index);
+        if (error.has_value())
         {
-            return std::get<parsec::Result<json::Json>>(res);
+            return error.value();
         }
 
-        auto fp = std::get<std::string_view>(res);
+        auto end = std::find_if(std::begin(text) + index,
+                                std::end(text),
+                                [](char c) { return !is_valid_base64_char(c); });
 
-        auto it = std::find_if(std::begin(fp) + index,
-                               std::end(fp),
-                               [](char c) { return !is_valid_base64_char(c); });
-
-        auto size = it - std::begin(fp);
-        if (size == 0)
+        auto endPos = end - std::begin(text);
+        if (endPos == index)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Invalid char '{}' found at '{}'", *it, index), text, index);
+                fmt::format("Invalid base64 char '{}' found at '{}'", *end, endPos),
+                text,
+                endPos);
         }
         // consume up to two '=' padding chars
-        if (*it == '=')
+        if (*end == '=')
         {
-            size++;
-            auto nx = std::next(it);
+            ++endPos;
+            auto nx = std::next(end);
             if (*nx == '=')
-                size++;
+                ++endPos;
         }
 
-        if ((size % 4) != 0)
+        if ((endPos % 4) != 0)
         {
             return parsec::makeError<json::Json>(
                 fmt::format("Wrong string size '{}' for base64 from offset {} to {}",
-                            size,
+                            endPos,
                             index,
-                            size),
+                            endPos),
                 text,
-                index);
+                endPos);
         }
         json::Json doc;
         // copy can be slow
-        doc.setString(std::string {text.substr(index, size)});
-        return parsec::makeSuccess<json::Json>(doc, text, size);
+        doc.setString(std::string {text.substr(index, endPos)});
+        return parsec::makeSuccess<json::Json>(doc, text, endPos);
     };
 }
 } // namespace hlp

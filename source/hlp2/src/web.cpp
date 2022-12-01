@@ -1,22 +1,24 @@
-#include "fmt/format.h"
 #include <algorithm>
-#include <curl/curl.h>
-#include <hlp/parsec.hpp>
-#include <iostream>
-#include <json/json.hpp>
-#include <vector>
-#include <optional>
 #include <cstring>
+#include <iostream>
+#include <optional>
+#include <stdexcept>
+#include <vector>
 
-using Stop = std::optional<std::string>;
-using Options = std::vector<std::string>;
+#include <curl/curl.h>
+#include <fmt/format.h>
+
+#include <hlp/base.hpp>
+#include <hlp/hlp.hpp>
+#include <hlp/parsec.hpp>
+#include <json/json.hpp>
 
 namespace hlp
 {
 
-parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
+parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
 {
-    if ( ! str.has_value())
+    if (endTokens.empty())
     {
         throw std::invalid_argument(fmt::format("Uri parser needs a stop string"));
     }
@@ -26,20 +28,16 @@ parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
         throw std::runtime_error(fmt::format("URL parser do not accept arguments!"));
     }
 
-    return [str](std::string_view text, int index)
+    return [endTokens](std::string_view text, int index)
     {
-        size_t pos = text.size();
-        std::string_view fp = text;
-        if (str.has_value() && ! str.value().empty())
+        auto res = internal::preProcess<json::Json>(text, index, endTokens);
+        if (std::holds_alternative<parsec::Result<json::Json>>(res))
         {
-            pos = text.find(str.value(), index);
-            if (pos == std::string::npos)
-            {
-                return parsec::makeError<json::Json>(
-                    fmt::format("Unable to stop at '{}' in input", str.value()), text, index);
-            }
-            fp = text.substr(index, pos);
+            return std::get<parsec::Result<json::Json>>(res);
         }
+
+        auto fp = std::get<std::string_view>(res);
+        auto pos = fp.size() + index;
 
         json::Json doc;
 
@@ -52,7 +50,8 @@ parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
 
         if (url == nullptr)
         {
-            return parsec::makeError<json::Json>(fmt::format("unable to initialize the url container"), text, index);
+            return parsec::makeError<json::Json>(
+                fmt::format("unable to initialize the url container"), text, index);
         }
         size_t end;
 
@@ -60,7 +59,8 @@ parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
         auto uc = curl_url_set(url.get(), CURLUPART_URL, urlStr.data(), 0);
         if (uc)
         {
-            return parsec::makeError<json::Json>(fmt::format("error parsing url"), text, index);
+            return parsec::makeError<json::Json>(
+                fmt::format("error parsing url"), text, index);
         }
 
         // TODO curl will parse and copy the URL into an allocated
@@ -70,10 +70,9 @@ parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
         uc = curl_url_get(url.get(), CURLUPART_URL, &str, 0);
         if (uc == CURLUE_OK)
         {
-            doc.setString( std::string {str}, "/original");
+            doc.setString(std::string {str}, "/original");
             curl_free(str);
         }
-
 
         uc = curl_url_get(url.get(), CURLUPART_HOST, &str, 0);
         if (uc == CURLUE_OK)
@@ -82,7 +81,6 @@ parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
             curl_free(str);
         }
 
-
         uc = curl_url_get(url.get(), CURLUPART_PATH, &str, 0);
         if (uc == CURLUE_OK)
         {
@@ -90,14 +88,12 @@ parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
             curl_free(str);
         }
 
-
         uc = curl_url_get(url.get(), CURLUPART_SCHEME, &str, 0);
         if (uc == CURLUE_OK)
         {
-            doc.setString(std::string {str},"/scheme");
+            doc.setString(std::string {str}, "/scheme");
             curl_free(str);
         }
-
 
         uc = curl_url_get(url.get(), CURLUPART_USER, &str, 0);
         if (uc == CURLUE_OK)
@@ -106,7 +102,6 @@ parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
             curl_free(str);
         }
 
-
         uc = curl_url_get(url.get(), CURLUPART_PASSWORD, &str, 0);
         if (uc == CURLUE_OK)
         {
@@ -114,26 +109,24 @@ parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
             curl_free(str);
         }
 
-
         uc = curl_url_get(url.get(), CURLUPART_QUERY, &str, 0);
         if (uc == CURLUE_OK)
         {
-            doc.setString(std::string {str},"/query");
+            doc.setString(std::string {str}, "/query");
             curl_free(str);
         }
-
 
         uc = curl_url_get(url.get(), CURLUPART_PORT, &str, 0);
         if (uc == CURLUE_OK)
         {
-            doc.setString(std::string {str},"/port");
+            doc.setString(std::string {str}, "/port");
             curl_free(str);
         }
 
         uc = curl_url_get(url.get(), CURLUPART_FRAGMENT, &str, 0);
         if (uc == CURLUE_OK)
         {
-            doc.setString(std::string {str},"/fragment");
+            doc.setString(std::string {str}, "/fragment");
             curl_free(str);
         }
 
@@ -141,10 +134,10 @@ parsec::Parser<json::Json> getUriParser(Stop str, Options lst)
     };
 }
 
-
-parsec::Parser<json::Json> getUAParser(Stop str, Options lst)
+parsec::Parser<json::Json> getUAParser(Stop endTokens, Options lst)
 {
-    if ( ! str.has_value()) {
+    if (endTokens.empty())
+    {
         throw std::invalid_argument(fmt::format("User-agent parser needs a stop string"));
     }
 
@@ -153,23 +146,19 @@ parsec::Parser<json::Json> getUAParser(Stop str, Options lst)
         throw std::runtime_error(fmt::format("URL parser do not accept arguments!"));
     }
 
-    return [str](std::string_view text, int index)
+    return [endTokens](std::string_view text, int index)
     {
-        size_t pos = text.size();
-        std::string_view fp = text;
-        if (str.has_value() && ! str.value().empty())
+        auto res = internal::preProcess<json::Json>(text, index, endTokens);
+        if (std::holds_alternative<parsec::Result<json::Json>>(res))
         {
-            pos = text.find(str.value(), index);
-            if (pos == std::string::npos)
-            {
-                return parsec::makeError<json::Json>(
-                    fmt::format("Unable to stop at '{}' in input", str.value()), text, index);
-            }
-            fp = text.substr(index, pos);
+            return std::get<parsec::Result<json::Json>>(res);
         }
 
+        auto fp = std::get<std::string_view>(res);
+        auto pos = fp.size() + index;
+
         json::Json doc;
-        doc.setString(std::string{fp}, "/user_agent/original");
+        doc.setString(std::string {fp}, "/user_agent/original");
 
         return parsec::makeSuccess<json::Json>(doc, text, pos);
     };
@@ -177,23 +166,19 @@ parsec::Parser<json::Json> getUAParser(Stop str, Options lst)
 
 // We validate it is a valid FQDN or PQDN we do not
 // extract any component here.
-parsec::Parser<json::Json> getFQDNParser(Stop str, Options lst)
+parsec::Parser<json::Json> getFQDNParser(Stop endTokens, Options lst)
 {
 
-    return [str](std::string_view text, int index)
+    return [endTokens](std::string_view text, int index)
     {
-        size_t pos = text.size();
-        std::string_view fp = text;
-        if (str.has_value() && ! str.value().empty())
+        auto res = internal::preProcess<json::Json>(text, index, endTokens);
+        if (std::holds_alternative<parsec::Result<json::Json>>(res))
         {
-            pos = text.find(str.value(), index);
-            if (pos == std::string::npos)
-            {
-                return parsec::makeError<json::Json>(
-                    fmt::format("Unable to stop at '{}' in input", str.value()), text, index);
-            }
-            fp = text.substr(index, pos);
+            return std::get<parsec::Result<json::Json>>(res);
         }
+
+        auto fp = std::get<std::string_view>(res);
+        auto pos = fp.size() + index;
 
         if (fp.size() > 253)
             return parsec::makeError<json::Json>(
@@ -210,7 +195,8 @@ parsec::Parser<json::Json> getFQDNParser(Stop str, Options lst)
                                       return r;
                                   });
         json::Json doc;
-        if (e == fp.end())  {
+        if (e == fp.end())
+        {
             doc.setString(fp.data());
             return parsec::makeSuccess<json::Json>(doc, text, pos);
         }

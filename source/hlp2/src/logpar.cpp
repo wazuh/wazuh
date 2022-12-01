@@ -1,8 +1,12 @@
 #include "hlp/logpar.hpp"
 
+#include <list>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 
 #include <fmt/format.h>
+#include <hlp/parsec.hpp>
 
 namespace hlp::logpar::parser
 {
@@ -164,6 +168,7 @@ parsec::Parser<FieldName> pFieldName()
 
     std::string extendedChars = syntax::EXPR_FIELD_EXTENDED_CHARS;
     extendedChars += syntax::EXPR_FIELD_SEP;
+    std::string extendedCharsFirst = syntax::EXPR_FIELD_EXTENDED_CHARS_FIRST;
     auto pName = parsec::fmap<std::string, std::tuple<char, parsec::Values<char>>>(
         [](auto t)
         {
@@ -175,7 +180,7 @@ parsec::Parser<FieldName> pFieldName()
             }
             return result;
         },
-        pCharAlphaNum() & parsec::many(pCharAlphaNum(extendedChars)));
+        pCharAlphaNum(extendedCharsFirst) & parsec::many(pCharAlphaNum(extendedChars)));
     parsec::M<FieldName, std::string> m = [=](auto customS)
     {
         if (!customS.empty())
@@ -351,7 +356,7 @@ parsec::Parser<std::list<ParserInfo>> pLogpar()
                    }
                    return merged;
                },
-               parsec::many(p))
+               parsec::many1(p))
            << pEof<std::list<ParserInfo>>();
 }
 
@@ -359,7 +364,8 @@ parsec::Parser<std::list<ParserInfo>> pLogpar()
 
 namespace hlp::logpar
 {
-Logpar::Logpar(const json::Json& ecsFieldTypes)
+Logpar::Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion)
+    : m_maxGroupRecursion(maxGroupRecursion)
 {
     if (!ecsFieldTypes.isObject())
     {
@@ -429,7 +435,7 @@ Logpar::buildLiteralParser(const parser::Literal& literal) const
 
 parsec::Parser<json::Json>
 Logpar::buildFieldParser(const parser::Field& field,
-                         std::optional<std::string> endToken) const
+                         std::list<std::string> endTokens) const
 {
     // Get type of the parser to be built
     ParserType type;
@@ -479,7 +485,7 @@ Logpar::buildFieldParser(const parser::Field& field,
     }
 
     // Get parser from type
-    auto p = m_parserBuilders.at(type)(endToken, args);
+    auto p = m_parserBuilders.at(type)(endTokens, args);
     parsec::Parser<json::Json> ret;
 
     // Build target field
@@ -516,48 +522,130 @@ Logpar::buildFieldParser(const parser::Field& field,
 
 parsec::Parser<json::Json>
 Logpar::buildChoiceParser(const parser::Choice& choice,
-                          std::optional<std::string> endToken) const
+                          std::list<std::string> endTokens) const
 {
-    auto p1 = buildFieldParser(choice.left, endToken);
-    auto p2 = buildFieldParser(choice.right, endToken);
+    auto p1 = buildFieldParser(choice.left, endTokens);
+    auto p2 = buildFieldParser(choice.right, endTokens);
 
     return p1 | p2;
 }
 
-parsec::Parser<json::Json> Logpar::buildGroupOptParser(const parser::Group& group) const
+parsec::Parser<json::Json> Logpar::buildGroupOptParser(const parser::Group& group,
+                                                       size_t recurLvl) const
 {
-    auto p = buildParsers(group.children);
+    auto p = buildParsers(group.children, recurLvl);
     return parsec::opt(p);
 }
 
 parsec::Parser<json::Json>
-Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos) const
+Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
+                     size_t recurLvl) const
 {
+    if (recurLvl > m_maxGroupRecursion)
+    {
+        throw std::runtime_error("Max group recursion level reached");
+    }
+
     std::list<parsec::Parser<json::Json>> parsers;
     for (auto parserInfo = parserInfos.begin(); parserInfo != parserInfos.end();
          ++parserInfo)
     {
-        // Get end token from next parser info if it exists
-        auto next = std::next(parserInfo);
-        std::optional<std::string> endToken = std::nullopt;
-        if (next == parserInfos.end())
+        auto groupEndToken = [](const parser::Group& group,
+                                auto& ref) -> std::list<std::string>
         {
-            endToken = "";
-        }
-        else
-        {
-            if (std::holds_alternative<parser::Literal>(*next))
+            auto it = group.children.cbegin();
+            std::list<std::string> endTokens;
+            if (std::holds_alternative<parser::Literal>(*it))
             {
-                endToken = std::get<parser::Literal>(*next).value;
+                endTokens.push_back(std::get<parser::Literal>(*it).value);
             }
-        }
+            else if (std::holds_alternative<parser::Group>(*it))
+            {
+                // If a group is the first element of a group, then resolve its end token
+                // recursively and ensure there is a literal after any succesion of groups
+                // and each group can resolve its end token
+                std::list<std::string> insideTokens;
+
+                while (it != group.children.cend()
+                       && std::holds_alternative<parser::Group>(*it))
+                {
+                    insideTokens.splice(insideTokens.end(),
+                                        ref(std::get<parser::Group>(*it), ref));
+                    it = std::next(it);
+                }
+                if (std::holds_alternative<parser::Literal>(*it))
+                {
+                    insideTokens.push_back(std::get<parser::Literal>(*it).value);
+                }
+                else
+                {
+                    throw std::runtime_error("Group must be followed by a literal");
+                }
+
+                endTokens.splice(endTokens.end(), insideTokens);
+            }
+            else
+            {
+                throw std::runtime_error("Group must start with a literal or a "
+                                         "succession of groups and a liretal");
+            }
+
+            return endTokens;
+        };
+
+        // Get end token from next parser info if it exists
+        // If no next, end token is end of line ("")
+        // If next is literal, use its value as end token
+        // If next is group, resolve its end token/s and get the end token/s after the
+        // group/s
+        // If next is none of the above, no end token is used (empty list)
+        auto getEndToken = [&](const std::list<parser::ParserInfo>& infos,
+                               decltype(infos.begin()) it,
+                               auto& ref) -> std::list<std::string>
+        {
+            std::list<std::string> endTokens {};
+            auto next = std::next(it);
+            if (next == infos.end())
+            {
+                // EOF endToken nomenclature
+                endTokens.push_back("");
+            }
+            else if (std::holds_alternative<parser::Literal>(*next))
+            {
+                endTokens.push_back(std::get<parser::Literal>(*next).value);
+            }
+            else if (std::holds_alternative<parser::Group>(*next))
+            {
+                std::list<std::string> afterTokens;
+                std::list<std::string> insideTokens;
+
+                // Recursively get end token after the group
+                afterTokens = ref(infos, next, ref);
+
+                // if we have end tokens require inside token on the group
+                if (!afterTokens.empty())
+                {
+                    auto group = std::get<parser::Group>(*next);
+                    // Throws on errors
+                    insideTokens = groupEndToken(group, groupEndToken);
+
+                    endTokens.splice(endTokens.end(), insideTokens);
+                    endTokens.splice(endTokens.end(), afterTokens);
+                }
+            }
+
+            return endTokens;
+        };
 
         // Call specific parser builder based on parser info type
         // Field
         if (std::holds_alternative<parser::Field>(*parserInfo))
         {
+            std::list<std::string> endTokens =
+                getEndToken(parserInfos, parserInfo, getEndToken);
+
             parsers.push_back(
-                buildFieldParser(std::get<parser::Field>(*parserInfo), endToken));
+                buildFieldParser(std::get<parser::Field>(*parserInfo), endTokens));
         }
         // Literal
         else if (std::holds_alternative<parser::Literal>(*parserInfo))
@@ -567,14 +655,31 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos) const
         // Choice
         else if (std::holds_alternative<parser::Choice>(*parserInfo))
         {
+            std::list<std::string> endTokens =
+                getEndToken(parserInfos, parserInfo, getEndToken);
+
             parsers.push_back(
-                buildChoiceParser(std::get<parser::Choice>(*parserInfo), endToken));
+                buildChoiceParser(std::get<parser::Choice>(*parserInfo), endTokens));
         }
         // Group
         else if (std::holds_alternative<parser::Group>(*parserInfo))
         {
+            // Check that there are no more than recurLvl groups in a row
+            auto it = parserInfo;
+            size_t groupCount = 0;
+            while (it != parserInfos.end() && std::holds_alternative<parser::Group>(*it))
+            {
+                groupCount++;
+                it = std::next(it);
+            }
+            if (groupCount > m_maxGroupRecursion)
+            {
+                throw std::runtime_error("Max group recursion level reached");
+            }
+
             // Recursively calls buildParsers
-            parsers.push_back(buildGroupOptParser(std::get<parser::Group>(*parserInfo)));
+            parsers.push_back(
+                buildGroupOptParser(std::get<parser::Group>(*parserInfo), recurLvl + 1));
         }
         else
         {
@@ -612,7 +717,7 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos) const
             p& parser);
     }
 
-    return p << parser::pEof<json::Json>();
+    return p;
 }
 
 void Logpar::registerBuilder(ParserType type, ParserBuilder builder)
@@ -635,8 +740,8 @@ parsec::Parser<json::Json> Logpar::build(std::string_view logpar) const
     }
 
     auto parserInfos = result.value();
-    auto p = buildParsers(parserInfos);
-    return p;
+    auto p = buildParsers(parserInfos, 0);
+    return p << parser::pEof<json::Json>();
 }
 
 } // namespace hlp::logpar

@@ -1,37 +1,35 @@
-#include "fmt/format.h"
-#include <hlp/parsec.hpp>
+#include <optional>
+#include <stdexcept>
+
+#include <fmt/format.h>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
-#include <optional>
-#include <json/json.hpp>
 
-using Stop = std::optional<std::string>;
-using Options = std::vector<std::string>;
+#include <hlp/base.hpp>
+#include <hlp/hlp.hpp>
+#include <hlp/parsec.hpp>
+#include <json/json.hpp>
 
 namespace hlp
 {
 
-parsec::Parser<json::Json> getJSONParser(Stop str, Options lst)
+parsec::Parser<json::Json> getJSONParser(Stop endTokens, Options lst)
 {
     if (lst.size() > 0)
     {
         throw std::runtime_error(fmt::format("JSON parser do not accept arguments!"));
     }
 
-    return [str](std::string_view text, int index)
+    return [endTokens](std::string_view text, int index)
     {
-        size_t pos = text.size();
-        std::string_view fp = text;
-        if (str.has_value() && ! str.value().empty())
+        auto res = internal::preProcess<json::Json>(text, index, endTokens);
+        if (std::holds_alternative<parsec::Result<json::Json>>(res))
         {
-            pos = text.find(str.value(), index);
-            if (pos == std::string::npos)
-            {
-                return parsec::makeError<json::Json>(
-                    fmt::format("Unable to stop at '{}' in input", str.value()), text, index);
-            }
-            fp = text.substr(index, pos);
+            return std::get<parsec::Result<json::Json>>(res);
         }
+
+        auto fp = std::get<std::string_view>(res);
+        auto pos = fp.size() + index;
 
         rapidjson::Reader reader;
         rapidjson::StringStream ss {fp.data()};
@@ -44,8 +42,8 @@ parsec::Parser<json::Json> getJSONParser(Stop str, Options lst)
             return parsec::makeError<json::Json>(msg, text, index);
         }
 
-        return parsec::makeSuccess<json::Json>(json::Json(std::move(doc)), text, ss.Tell());
-
+        return parsec::makeSuccess<json::Json>(
+            json::Json(std::move(doc)), text, ss.Tell());
     };
 }
-}
+} // namespace hlp

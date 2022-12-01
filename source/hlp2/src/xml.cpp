@@ -1,11 +1,12 @@
-#include "fmt/format.h"
-#include <hlp/parsec.hpp>
+#include <stdexcept>
+
+#include <fmt/format.h>
 #include <pugixml.hpp>
+
+#include <hlp/base.hpp>
+#include <hlp/hlp.hpp>
+#include <hlp/parsec.hpp>
 #include <json/json.hpp>
-
-using Stop = std::optional<std::string>;
-using Options = std::vector<std::string>;
-
 
 using xmlModule = std::function<bool(pugi::xml_node&, json::Json&, std::string&)>;
 static bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
@@ -20,7 +21,6 @@ static bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string 
 
     return true;
 }
-
 
 static void xmlToJson(pugi::xml_node& docXml,
                       json::Json& docJson,
@@ -73,7 +73,7 @@ static void xmlToJson(pugi::xml_node& docXml,
 namespace hlp
 {
 
-parsec::Parser<json::Json> getXMLParser(Stop str, Options lst)
+parsec::Parser<json::Json> getXMLParser(Stop endTokens, Options lst)
 {
 
     if (lst.size() > 1)
@@ -83,20 +83,16 @@ parsec::Parser<json::Json> getXMLParser(Stop str, Options lst)
 
     bool notWin = lst.empty();
 
-    return [notWin,str](std::string_view text, int index)
+    return [notWin, endTokens](std::string_view text, int index)
     {
-        size_t pos = text.size();
-        std::string_view fp = text;
-        if (str.has_value() && ! str.value().empty())
+        auto res = internal::preProcess<json::Json>(text, index, endTokens);
+        if (std::holds_alternative<parsec::Result<json::Json>>(res))
         {
-            pos = text.find(str.value(), index);
-            if (pos == std::string::npos)
-            {
-                return parsec::makeError<json::Json>(
-                    fmt::format("Unable to stop at '{}' in input", str.value()), text, index);
-            }
-            fp = text.substr(index, pos);
+            return std::get<parsec::Result<json::Json>>(res);
         }
+
+        auto fp = std::get<std::string_view>(res);
+        auto pos = fp.size() + index;
 
         pugi::xml_document xmlDoc;
         json::Json jsonDoc;
@@ -113,7 +109,8 @@ parsec::Parser<json::Json> getXMLParser(Stop str, Options lst)
             return parsec::makeSuccess<json::Json>(jsonDoc, text, pos);
         }
 
-        return parsec::makeError<json::Json>(fmt::format("{}", parseResult.description()), text, index);
+        return parsec::makeError<json::Json>(
+            fmt::format("{}", parseResult.description()), text, index);
     };
 }
-} // hlp namespace
+} // namespace hlp

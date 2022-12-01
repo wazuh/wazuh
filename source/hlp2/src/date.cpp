@@ -1,18 +1,19 @@
-#include "fmt/format.h"
-#include "stream_view.hpp"
 #include <chrono>
-#include <date/date.h>
-#include <date/tz.h>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
 #include <locale>
 #include <optional>
-#include <vector>
-#include <hlp/hlp.hpp>
 #include <stdexcept>
+#include <vector>
 
-using Stop = std::optional<std::string>;
-using Options = std::vector<std::string>;
+#include <date/date.h>
+#include <date/tz.h>
+
+#include <hlp/base.hpp>
+#include <hlp/hlp.hpp>
+#include <hlp/parsec.hpp>
+#include <json/json.hpp>
+
+#include "fmt/format.h"
+#include "stream_view.hpp"
 
 namespace hlp
 {
@@ -44,7 +45,6 @@ static const std::vector<std::tuple<std::string, std::string>> TimeFormat {
     {"POSTGRES", "%F %H:%M.%6S %Z"},           // 2021-02-14 10:45:33 UTC
 };
 
-
 /**
  * @brief Get the date format in snprintf format of the sample date string.
  *
@@ -55,20 +55,24 @@ static const std::vector<std::tuple<std::string, std::string>> TimeFormat {
  * @param dateSample
  * @return std::variant<std::string, base::Error>
  */
-std::string formatDateFromSample(std::string dateSample, std::string locale) {
+std::string formatDateFromSample(std::string dateSample, std::string locale)
+{
 
     // Check if the dateSample matches with more than one format
     std::vector<std::string> matchingFormats;
-    for (const auto& [name,format] : TimeFormat)
+    for (const auto& [name, format] : TimeFormat)
     {
-        auto p = getDateParser({}, Options{format,"en_US.UTF-8"});
+        auto p = getDateParser({}, Options {format, "en_US.UTF-8"});
         auto res = p(dateSample, 0);
 
         if (res.success())
         {
             if (res.index != dateSample.size())
                 throw std::runtime_error(
-                    fmt::format("Failed to parse '{}', there is a partial match between '0' and '{}'.", dateSample, res.index));
+                    fmt::format("Failed to parse '{}', there is a partial match between "
+                                "'0' and '{}'.",
+                                dateSample,
+                                res.index));
             matchingFormats.push_back(format);
         }
     }
@@ -89,23 +93,23 @@ std::string formatDateFromSample(std::string dateSample, std::string locale) {
     // Return the matching format
     return matchingFormats[0];
 }
-} // namespace date
+} // namespace internal
 
-
-parsec::Parser<json::Json> getDateParser(Stop str, Options lst)
+parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
 {
 
     if (lst.size() == 0 || lst.size() > 2)
     {
         throw std::invalid_argument(
-            fmt::format("date parser requires as parameters either date sample, or a format, or a format and a locale"));
+            fmt::format("date parser requires as parameters either date sample, or a "
+                        "format, or a format and a locale"));
     }
 
     std::string format = lst[0];
     std::string localeStr = "en_US.UTF-8";
 
-    if (lst.size() == 2 )
-            localeStr = lst[1];
+    if (lst.size() == 2)
+        localeStr = lst[1];
 
     std::locale locale;
     try
@@ -120,28 +124,23 @@ parsec::Parser<json::Json> getDateParser(Stop str, Options lst)
     if (format.find("%") == std::string::npos)
         format = internal::formatDateFromSample(format, localeStr);
 
-
-    return [str, format, locale](std::string_view text, size_t index)
+    return [endTokens, format, locale](std::string_view text, size_t index)
     {
         using namespace date;
         using namespace std::chrono;
 
-        size_t pos = text.size();
-        std::string_view fp = text.substr(index);
-        if (str.has_value() && ! str.value().empty())
+        auto res = internal::preProcess<json::Json>(text, index, endTokens);
+        if (std::holds_alternative<parsec::Result<json::Json>>(res))
         {
-            pos = text.find(str.value(), index);
-            if (pos == std::string::npos)
-            {
-                return parsec::makeError<json::Json>(
-                    fmt::format("Unable to stop at '{}' in input", str.value()), text, index);
-            }
-            fp = text.substr(index, pos);
+            return std::get<parsec::Result<json::Json>>(res);
         }
+
+        auto fp = std::get<std::string_view>(res);
+        size_t pos = fp.size() + index;
 
         // TODO: tellg returns incorrect position with view_istream<char>
         // view_istream<char> in(fp);
-        std::stringstream in{fp.data()};
+        std::stringstream in {fp.data()};
         in.imbue(locale);
         std::string abbrev;
         std::chrono::minutes offset {0};
@@ -156,7 +155,7 @@ parsec::Parser<json::Json> getDateParser(Stop str, Options lst)
                 index);
         }
         // pos can be -1 if all the input has been consumed
-        pos = in.tellg() == std::string::npos ? text.size() : (size_t)in.tellg()+index;
+        pos = in.tellg() == std::string::npos ? text.size() : (size_t)in.tellg() + index;
 
         // if no year is parsed, we add our current year
         if (!fds.ymd.year().ok())
