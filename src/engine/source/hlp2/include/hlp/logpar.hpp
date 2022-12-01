@@ -173,7 +173,8 @@ constexpr auto EXPR_GROUP_BEGIN = '(';
 constexpr auto EXPR_GROUP_END = ')';
 constexpr auto EXPR_CUSTOM_FIELD = '~';
 constexpr auto EXPR_FIELD_SEP = '.';
-constexpr auto EXPR_FIELD_EXTENDED_CHARS = "_";
+constexpr auto EXPR_FIELD_EXTENDED_CHARS_FIRST = "@#";
+constexpr auto EXPR_FIELD_EXTENDED_CHARS = "_@#";
 }; // namespace syntax
 
 namespace parser
@@ -298,7 +299,9 @@ class Logpar
 {
 private:
     using ParserBuilder = std::function<parsec::Parser<json::Json>(
-        std::optional<std::string>, std::vector<std::string>)>;
+        std::list<std::string>, std::vector<std::string>)>;
+
+    size_t m_maxGroupRecursion;
 
     std::unordered_map<std::string, SchemaType> m_fieldTypes;
     std::unordered_map<SchemaType, ParserType> m_typeParsers;
@@ -308,15 +311,16 @@ private:
     parsec::Parser<json::Json> buildLiteralParser(const parser::Literal& literal) const;
     parsec::Parser<json::Json>
     buildFieldParser(const parser::Field& field,
-                     std::optional<std::string> endToken = std::nullopt) const;
+                     std::list<std::string> endTokens = {}) const;
     parsec::Parser<json::Json>
     buildChoiceParser(const parser::Choice& choice,
-                      std::optional<std::string> endToken = std::nullopt) const;
-    parsec::Parser<json::Json> buildGroupOptParser(const parser::Group& group) const;
+                      std::list<std::string> endTokens = {}) const;
+    parsec::Parser<json::Json> buildGroupOptParser(const parser::Group& group,
+                                                   size_t recurLvl) const;
     parsec::Parser<json::Json>
 
     // build the parsers while adding the target field to the json
-    buildParsers(const std::list<parser::ParserInfo>& parserInfos) const;
+    buildParsers(const std::list<parser::ParserInfo>& parserInfos, size_t recurLvl) const;
 
 public:
     /**
@@ -325,7 +329,7 @@ public:
      * @param ecsFieldTypes a json object with the schema types of the schema fields
      * @throws std::runtime_error if errors occur while initializing
      */
-    Logpar(const json::Json& ecsFieldTypes);
+    Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion = 1);
 
     /**
      * @brief Register a parser builder for the given parser type

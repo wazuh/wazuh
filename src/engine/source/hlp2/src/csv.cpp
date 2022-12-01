@@ -1,20 +1,22 @@
-#include "fmt/format.h"
-#include "number.hpp"
-#include "parse_field.hpp"
 #include <algorithm>
-#include <hlp/parsec.hpp>
 #include <iostream>
-#include <json/json.hpp>
 #include <optional>
+#include <stdexcept>
 #include <vector>
 
-using Stop = std::optional<std::string>;
-using Options = std::vector<std::string>;
+#include <fmt/format.h>
+
+#include <hlp/base.hpp>
+#include <hlp/parsec.hpp>
+#include <json/json.hpp>
+
+#include "number.hpp"
+#include "parse_field.hpp"
 
 namespace hlp
 {
 
-parsec::Parser<json::Json> getCSVParser(Stop str, Options lst)
+parsec::Parser<json::Json> getCSVParser(Stop endTokens, Options lst)
 {
 
     if (lst.size() < 4)
@@ -32,25 +34,19 @@ parsec::Parser<json::Json> getCSVParser(Stop str, Options lst)
                    std::back_inserter(headers),
                    [](auto s) { return fmt::format("/{}", s); });
 
-    return [str, delimiter, quote, headers](std::string_view text, int index)
+    return [endTokens, delimiter, quote, headers](std::string_view text, int index)
     {
-        size_t start {0}, end {0};
-        json::Json doc;
-
-        size_t pos = text.size();
-        std::string_view fp = text;
-        if (str.has_value() && !str.value().empty())
+        auto res = internal::preProcess<json::Json>(text, index, endTokens);
+        if (std::holds_alternative<parsec::Result<json::Json>>(res))
         {
-            pos = text.find(str.value(), index);
-            if (pos == std::string::npos)
-            {
-                return parsec::makeError<json::Json>(
-                    fmt::format("Unable to stop at '{}' in input", str.value()),
-                    text,
-                    index);
-            }
-            fp = text.substr(index, pos);
+            return std::get<parsec::Result<json::Json>>(res);
         }
+
+        auto fp = std::get<std::string_view>(res);
+
+        size_t start {0}, end {0};
+        auto pos = fp.size() + index;
+        json::Json doc;
 
         auto i = 0;
         while (end <= fp.size())

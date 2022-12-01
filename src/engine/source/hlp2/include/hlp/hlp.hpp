@@ -1,17 +1,18 @@
-#ifndef WAZUH_ENGINE_HLP_H
-#define WAZUH_ENGINE_HLP_H
+#ifndef _HLP_HPP
+#define _HLP_HPP
 
 #include <functional>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include <hlp/parsec.hpp>
+#include <json/json.hpp>
+
 namespace hlp
 {
 
-using Stop = std::optional<std::string>;
+using Stop = std::list<std::string>;
 using Options = std::vector<std::string>;
 
 /**
@@ -22,7 +23,7 @@ using Options = std::vector<std::string>;
  * @param lst
  * @return
  */
-parsec::Parser<json::Json> getBoolParser(Stop str, Options lst);
+parsec::Parser<json::Json> getBoolParser(Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will accept numbers represented by the strings
@@ -31,11 +32,11 @@ parsec::Parser<json::Json> getBoolParser(Stop str, Options lst);
  * @param lst
  * @return
  */
-parsec::Parser<json::Json> getByteParser(Stop str, Options lst);
-parsec::Parser<json::Json> getLongParser(Stop str, Options lst);
-parsec::Parser<json::Json> getFloatParser(Stop str, Options lst);
-parsec::Parser<json::Json> getDoubleParser(Stop str, Options lst);
-parsec::Parser<json::Json> getScaledFloatParser(Stop str, Options lst);
+parsec::Parser<json::Json> getByteParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getLongParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getFloatParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getDoubleParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getScaledFloatParser(Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will accept any text until it finds the
@@ -47,7 +48,7 @@ parsec::Parser<json::Json> getScaledFloatParser(Stop str, Options lst);
  * @param lst
  * @return
  */
-parsec::Parser<json::Json> getTextParser(Stop str, Options lst);
+parsec::Parser<json::Json> getTextParser(Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will accept a base64 encoded string.
@@ -59,7 +60,7 @@ parsec::Parser<json::Json> getTextParser(Stop str, Options lst);
  * @param lst
  * @return
  */
-parsec::Parser<json::Json> getBinaryParser(Stop str, Options lst);
+parsec::Parser<json::Json> getBinaryParser(Stop endTokens, Options lst);
 
 
 /**
@@ -93,7 +94,7 @@ parsec::Parser<json::Json> getBinaryParser(Stop str, Options lst);
  * @param lst format, locale
  * @return
  */
-parsec::Parser<json::Json> getDateParser(Stop str, Options lst);
+parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst);
 
 namespace internal
 {
@@ -116,7 +117,7 @@ std::string formatDateFromSample(std::string dateSample, std::string locale);
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getIPParser(Stop str, Options lst);
+parsec::Parser<json::Json> getIPParser(Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will accept a string
@@ -130,7 +131,7 @@ parsec::Parser<json::Json> getIPParser(Stop str, Options lst);
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getUriParser(Stop str, Options lst);
+parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will consume input
@@ -140,7 +141,7 @@ parsec::Parser<json::Json> getUriParser(Stop str, Options lst);
  * @param lst
  * @return
  */
-parsec::Parser<json::Json> getUAParser(Stop str, Options lst);
+parsec::Parser<json::Json> getUAParser(Stop endTokens, Options lst);
 
 /**
  * Returns a parser which accepts domain names as specified
@@ -154,7 +155,7 @@ parsec::Parser<json::Json> getUAParser(Stop str, Options lst);
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getFQDNParser(Stop str, Options lst);
+parsec::Parser<json::Json> getFQDNParser(Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will accept a filepath as specified
@@ -165,7 +166,7 @@ parsec::Parser<json::Json> getFQDNParser(Stop str, Options lst);
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getFilePathParser(Stop str, Options lst);
+parsec::Parser<json::Json> getFilePathParser(Stop endTokens, Options lst);
 
 /**
  * Returns a parser that consumes the input while
@@ -176,7 +177,7 @@ parsec::Parser<json::Json> getFilePathParser(Stop str, Options lst);
  * @param str
  * @param lst list of field names
  */
-parsec::Parser<json::Json> getJSONParser(Stop str, Options lst);
+parsec::Parser<json::Json> getJSONParser(Stop endTokens, Options lst);
 
 /**
  * Returns a parser that consumes the input while
@@ -188,7 +189,7 @@ parsec::Parser<json::Json> getJSONParser(Stop str, Options lst);
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getXMLParser(Stop str, Options lst);
+parsec::Parser<json::Json> getXMLParser(Stop endTokens, Options lst);
 
 /**
  * Returns a parser that consumes the input until
@@ -207,7 +208,7 @@ parsec::Parser<json::Json> getXMLParser(Stop str, Options lst);
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getCSVParser(Stop str, Options lst);
+parsec::Parser<json::Json> getCSVParser(Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will accept a sequence of:
@@ -224,7 +225,7 @@ parsec::Parser<json::Json> getCSVParser(Stop str, Options lst);
  * @param lst sep and dlm
  * @return
  */
-parsec::Parser<json::Json> getKVParser(Stop str, Options lst);
+parsec::Parser<json::Json> getKVParser(Stop endTokens, Options lst);
 
 /**
  * @brief Returns a parser which will parse a literal, returning empty Json on succeed.
@@ -233,7 +234,7 @@ parsec::Parser<json::Json> getKVParser(Stop str, Options lst);
  * @param lst a list with one element, the literal to parse
  * @return parsec::Parser<json::Json> the parser
  */
-parsec::Parser<json::Json> getLiteralParser(Stop str, Options lst);
+parsec::Parser<json::Json> getLiteralParser(Stop endTokens, Options lst);
 
 } // namespace hlp
-#endif // WAZUH_ENGINE_HLP_H
+#endif // _HLP_HPP

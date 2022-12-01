@@ -5,10 +5,12 @@
 #include <string_view>
 #include <variant>
 
+#include <fmt/format.h>
+#include <hlp/hlp.hpp>
 #include <hlp/parsec.hpp>
 
-using Stop = std::optional<std::string>;
-using Options = std::vector<std::string>;
+namespace hlp::internal
+{
 
 /**
  * @brief Returns error if index is out of range
@@ -45,21 +47,40 @@ std::optional<parsec::Result<T>> eofError(std::string_view txt, size_t idx)
  * @return std::variant<std::string_view, parsec::Result<T>> the substring or error
  */
 template<typename T>
-std::variant<std::string_view, parsec::Result<T>>
-stop(std::string_view txt, size_t idx, std::string_view end)
+std::optional<std::string_view>
+__stop(std::string_view txt, size_t idx, const std::string& end)
 {
     if (end.empty())
     {
         return txt.substr(idx);
     }
 
-    auto pos = txt.find(txt, idx);
+    auto pos = txt.find(end, idx);
     if (pos == std::string::npos)
     {
-        return parsec::makeError<T>(fmt::format("Unable to stop at '{}'", txt), txt, idx);
+        return std::nullopt;
     }
 
     return txt.substr(idx, pos);
+}
+
+template<typename T>
+std::variant<std::string_view, parsec::Result<T>>
+stop(std::string_view txt, size_t idx, const std::list<std::string>& end)
+{
+    for (const auto& e : end)
+    {
+        auto res = __stop<T>(txt, idx, e);
+        if (res.has_value())
+        {
+            return res.value();
+        }
+    }
+
+    return parsec::makeError<T>(
+        fmt::format("Unable to stop at '{}' from '{}'", fmt::join(end, ", "), idx),
+        txt,
+        txt.size());
 }
 
 /**
@@ -85,20 +106,21 @@ preProcess(std::string_view txt, size_t idx, Stop end)
         return eof.value();
     }
 
-    std::string_view fp = txt;
-    if (end.has_value())
+    if (!end.empty())
     {
-        auto res = stop<T>(txt, idx, end.value());
+        auto res = stop<T>(txt, idx, end);
         if (std::holds_alternative<parsec::Result<T>>(res))
         {
             return std::get<parsec::Result<T>>(res);
         }
         else
         {
-            fp = std::get<std::string_view>(res);
+            return std::get<std::string_view>(res);
         }
     }
-    return fp;
+
+    return txt.substr(idx);
 }
+} // namespace hlp::internal
 
 #endif // _HLP_BASE_HPP

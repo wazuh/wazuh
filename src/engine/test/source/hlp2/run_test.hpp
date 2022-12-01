@@ -1,18 +1,21 @@
 #ifndef RUNTEST
 #define RUNTEST
-
-#include <json/json.hpp>
-#include <optional>
-#include <list>
-#include <functional>
-#include <hlp/parsec.hpp>
 #include <gtest/gtest.h>
-#include "fmt/format.h"
+
+#include <functional>
+#include <list>
+#include <optional>
+
+#include <fmt/format.h>
+
+#include <hlp/base.hpp>
+#include <hlp/hlp.hpp>
+#include <hlp/parsec.hpp>
+#include <json/json.hpp>
 
 #define GTEST_COUT std::cerr << "[          ] [ DEBUG ] "
 
-using Stop = std::optional<std::string>;
-using Options = std::vector<std::string>;
+using namespace hlp;
 
 // A TestCase is a tuple of
 //   [0] std::string input to parse,
@@ -24,33 +27,33 @@ using Options = std::vector<std::string>;
 //   [6] ReturnDoc a funcion wihch receives [4] and returns a json::Json document
 using TestCase = std::tuple<std::string, bool, Stop, Options, json::Json, size_t>;
 
-static void runTest(TestCase t, std::function<parsec::Parser<json::Json>(Stop, Options)> pb)
+static void runTest(TestCase t,
+                    std::function<parsec::Parser<json::Json>(Stop, Options)> pb)
 {
     parsec::Parser<json::Json> parser;
     auto expectedSuccess = std::get<1>(t);
-    auto expectedDoc =  std::get<4>(t);
-    try {
+    auto expectedDoc = std::get<4>(t);
+    try
+    {
         parser = pb(std::get<2>(t), std::get<3>(t));
-    } catch (std::invalid_argument & e) {
-        GTEST_COUT << fmt::format("Error building parser: {}",e.what() ) << std::endl;
-        SCOPED_TRACE(fmt::format("Error building parser: {}",e.what() ));
-        ASSERT_FALSE(expectedSuccess);
+    }
+    catch (std::invalid_argument& e)
+    {
+        ASSERT_FALSE(expectedSuccess)
+            << fmt::format("Error building parser: {}", e.what());
         return;
     }
     auto r = parser(std::get<0>(t), 0);
-    // GTEST_COUT << fmt::format("Input: '{}'", std::get<0>(t)) << std::endl;
-    SCOPED_TRACE(fmt::format("Input: '{}'", std::get<0>(t)));
-    ASSERT_EQ(r.success(), expectedSuccess);
+
+    ASSERT_EQ(r.success(), expectedSuccess)
+        << (r.success() ? "" : "ParserError: " + r.error().msg);
     if (r.success())
     {
         ASSERT_EQ(expectedDoc, r.value());
     }
     else
     {
-        SCOPED_TRACE(fmt::format("Parser error: {}",r.error().msg ));
         ASSERT_FALSE(r.error().msg.empty());
-        GTEST_COUT << fmt::format("Parser error: {}",r.error().msg ) << std::endl;
-        return;
     }
     ASSERT_EQ(r.text, std::get<0>(t));
     ASSERT_EQ(r.index, std::get<5>(t));

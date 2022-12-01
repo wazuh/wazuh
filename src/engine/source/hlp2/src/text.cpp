@@ -1,42 +1,49 @@
-#include "fmt/format.h"
-#include <hlp/parsec.hpp>
+#include <stdexcept>
 #include <string>
-#include <json/json.hpp>
-#include <optional>
+#include <string_view>
 #include <vector>
 
-using Stop = std::optional<std::string>;
-using Options = std::vector<std::string>;
+#include <fmt/format.h>
+
+#include <hlp/base.hpp>
+#include <hlp/hlp.hpp>
+#include <hlp/parsec.hpp>
+#include <json/json.hpp>
 
 namespace hlp
 {
-parsec::Parser<json::Json> getTextParser(Stop str, Options lst)
+parsec::Parser<json::Json> getTextParser(Stop endTokens, Options lst)
 {
-    if (!str.has_value())
+    if (endTokens.empty())
     {
-        throw std::invalid_argument(fmt::format("Text parser needs a stop string"));
+        throw std::runtime_error(fmt::format("Text parser needs a stop string"));
     }
 
-    return [str](std::string_view text, int index)
+    if (!lst.empty())
     {
-        size_t pos = text.size();
-        std::string_view fp = text;
-        if (str.has_value() && ! str.value().empty())
+        throw std::runtime_error("text parser doesn't accept parameters");
+    }
+
+    return [endTokens](std::string_view text, int index)
+    {
+        auto res = internal::preProcess<json::Json>(text, index, endTokens);
+        if (std::holds_alternative<parsec::Result<json::Json>>(res))
         {
-            pos = text.find(str.value(), index);
-            if (pos == std::string::npos)
-            {
-                return parsec::makeError<json::Json>(
-                    fmt::format("Unable to stop at '{}' in input", str.value()), text, index);
-            }
-            fp = text.substr(index, pos);
+            return std::get<parsec::Result<json::Json>>(res);
+        }
+
+        auto fp = std::get<std::string_view>(res);
+        auto pos = fp.size() + index;
+        if (pos == index)
+        {
+            return parsec::makeError<json::Json>(
+                fmt::format("Nothing to parse at {}", pos), text, pos);
         }
 
         json::Json doc;
-        auto t = text.substr(index, pos);
         // copy can be slow
-        doc.setString(std::string {t});
+        doc.setString(std::string {fp});
         return parsec::makeSuccess<json::Json>(doc, text, pos);
     };
 }
-}
+} // namespace hlp
