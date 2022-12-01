@@ -31,7 +31,7 @@ protected:
 
     virtual void SetUp()
     {
-        kvdbManager.addDb("TEST_DB");
+        kvdbManager.loadDb("TEST_DB");
     }
 
     virtual void TearDown()

@@ -29,7 +29,7 @@ protected:
             std::filesystem::remove_all(DB_DIR);
         }
         kvdbManager = std::make_shared<KVDBManager>(DB_DIR);
-        kvdbManager->addDb(DB_NAME);
+        kvdbManager->loadDb(DB_NAME);
     }
 
     virtual void TearDown()
@@ -199,7 +199,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithFilling)
     auto handle = kvdbManager->getDB(DB_NAME_2);
     if (!handle)
     {
-        kvdbManager->addDb(DB_NAME_2, false);
+        kvdbManager->loadDb(DB_NAME_2, false);
     }
     handle = kvdbManager->getDB(DB_NAME_2);
     ASSERT_TRUE(handle);
@@ -239,7 +239,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithWrongFilling)
     auto handle = kvdbManager->getDB(DB_NAME_2);
     if (!handle)
     {
-        kvdbManager->addDb(DB_NAME_2, false);
+        kvdbManager->loadDb(DB_NAME_2, false);
     }
     handle = kvdbManager->getDB(DB_NAME_2);
     ASSERT_TRUE(handle);
@@ -279,7 +279,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSingleValueFile)
     auto handle = kvdbManager->getDB(DB_NAME_2);
     if (!handle)
     {
-        kvdbManager->addDb(DB_NAME_2, false);
+        kvdbManager->loadDb(DB_NAME_2, false);
     }
     handle = kvdbManager->getDB(DB_NAME_2);
     ASSERT_TRUE(handle);
@@ -327,10 +327,10 @@ protected:
             std::filesystem::remove_all(DB_DIR);
         }
         kvdbManager = std::make_shared<KVDBManager>(DB_DIR);
-        kvdbManager->addDb(DB_NAME);
+        kvdbManager->loadDb(DB_NAME);
     }
 
-    size_t getNumberOfKVDBLoaded() { return kvdbManager->getAvailableKVDBs().size(); }
+    size_t getNumberOfKVDBLoaded() { return kvdbManager->listKVDBs().size(); }
 
     virtual void TearDown() {}
 };
@@ -482,7 +482,7 @@ protected:
         }
 
         kvdbManager = std::make_shared<KVDBManager>(DB_DIR);
-        kvdbManager->addDb(DB_NAME);
+        kvdbManager->loadDb(DB_NAME);
     }
 
     virtual void TearDown() {}
@@ -1119,7 +1119,7 @@ protected:
             std::filesystem::remove_all(DB_DIR);
         }
         kvdbManager = std::make_shared<KVDBManager>(DB_DIR);
-        kvdbManager->addDb(DB_NAME, false);
+        kvdbManager->loadDb(DB_NAME, false);
     }
 
     virtual void TearDown() {}
@@ -1133,7 +1133,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmd)
 TEST_F(kvdbAPIListCommand, kvdbListCmdSingleDBLoaded)
 {
     // add DB to loaded list
-    kvdbManager->addDb(DB_NAME);
+    kvdbManager->loadDb(DB_NAME);
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = api::kvdb::cmds::kvdbListCmd(kvdbAPIListCommand::kvdbManager));
@@ -1169,8 +1169,8 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdNoneLoaded)
 TEST_F(kvdbAPIListCommand, kvdbListCmdMultipleLoaded)
 {
     // Adds another DB to the list
-    kvdbAPIListCommand::kvdbManager->addDb(DB_NAME);
-    kvdbAPIListCommand::kvdbManager->addDb(DB_NAME_2);
+    kvdbAPIListCommand::kvdbManager->loadDb(DB_NAME);
+    kvdbAPIListCommand::kvdbManager->loadDb(DB_NAME_2);
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = api::kvdb::cmds::kvdbListCmd(kvdbAPIListCommand::kvdbManager));
@@ -1190,9 +1190,9 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdMultipleLoaded)
 TEST_F(kvdbAPIListCommand, kvdbListCmdWithFilteringLoaded)
 {
     // Adds DB to the list
-    kvdbAPIListCommand::kvdbManager->addDb(DB_NAME);
+    kvdbAPIListCommand::kvdbManager->loadDb(DB_NAME);
     // add a db wicha name starts different than the others
-    kvdbAPIListCommand::kvdbManager->addDb(DB_NAME_DIFFERENT_START);
+    kvdbAPIListCommand::kvdbManager->loadDb(DB_NAME_DIFFERENT_START);
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = api::kvdb::cmds::kvdbListCmd(kvdbAPIListCommand::kvdbManager));
