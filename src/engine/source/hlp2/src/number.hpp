@@ -1,19 +1,18 @@
-#ifndef WAZUH_ENGINE_NUMBER_HPP
-#define WAZUH_ENGINE_NUMBER_HPP
+#ifndef _HLP_NUMBER_HPP
+#define _HLP_NUMBER_HPP
 
-#include "fmt/format.h"
 #include <charconv>
 #include <cmath>
 #include <fast_float/fast_float.h>
-#include <hlp/parsec.hpp>
 #include <iostream>
-#include <json/json.hpp>
-#include <optional>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
-using Stop = std::optional<std::string>;
-using Options = std::vector<std::string>;
+#include <fmt/format.h>
+#include <hlp/base.hpp>
+#include <hlp/parsec.hpp>
+#include <json/json.hpp>
 
 namespace utils
 {
@@ -29,38 +28,29 @@ std::from_chars_result from_chars(const char* first, const char* last, double& v
 
 namespace hlp
 {
-void updateDoc(json::Json& doc,
-               std::string_view hdr,
-               std::string_view val,
-               bool is_escaped,
-               std::string_view escape);
 
 template<class T>
-parsec::Parser<json::Json> getNumericParser(Stop str, Options lst)
+parsec::Parser<json::Json> getNumericParser(Stop, Options lst)
 {
-    return [str](std::string_view text, int index)
+    if (!lst.empty())
+    {
+        throw std::runtime_error("numeric parser doesn't accept parameters");
+    }
+
+    return [](std::string_view text, int index)
     {
         T val {};
 
-        size_t pos = text.size();
-        std::string_view fp = text;
-        if (str.has_value() && !str.value().empty())
+        auto error = internal::eofError<json::Json>(text, index);
+        if (error.has_value())
         {
-            pos = text.find(str.value(), index);
-            if (pos == std::string::npos)
-            {
-                return parsec::makeError<json::Json>(
-                    fmt::format("Unable to stop at '{}' in input", str.value()),
-                    text,
-                    index);
-            }
-            fp = text.substr(index, pos);
+            return error.value();
         }
 
-        auto [ptr, ec] {utils::from_chars(fp.data() + index, fp.data() + fp.size(), val)};
+        auto [ptr, ec] {utils::from_chars(text.begin() + index, text.end(), val)};
         if (ec == std::errc())
         {
-            auto pos = ptr - fp.data();
+            auto pos = ptr - text.begin();
             json::Json doc;
             utils::setNumber(doc, val);
             return parsec::makeSuccess<json::Json>(doc, text, pos);
@@ -88,4 +78,4 @@ parsec::Parser<json::Json> getNumericParser(Stop str, Options lst)
 }
 
 } // namespace hlp
-#endif // WAZUH_ENGINE_NUMBER_HPP
+#endif // _HLP_NUMBER_HPP
