@@ -1,13 +1,13 @@
-#include <hlp/parsec.hpp>
 #include <string>
-#include <json/json.hpp>
-#include <optional>
 #include <vector>
-#include "number.hpp"
-#include "fmt/format.h"
 
-using Stop = std::optional<std::string>;
-using Options = std::vector<std::string>;
+#include <fmt/format.h>
+
+#include <hlp/hlp.hpp>
+#include <hlp/parsec.hpp>
+#include <json/json.hpp>
+
+#include "number.hpp"
 
 namespace utils
 {
@@ -44,13 +44,13 @@ std::from_chars_result from_chars(const char* first, const char* last, int64_t& 
 std::from_chars_result from_chars(const char* first, const char* last, float& val)
 {
     fast_float::from_chars_result v = fast_float::from_chars(first, last, val);
-    return std::from_chars_result{v.ptr, v.ec};
+    return std::from_chars_result {v.ptr, v.ec};
 }
 
 std::from_chars_result from_chars(const char* first, const char* last, double& val)
 {
     fast_float::from_chars_result v = fast_float::from_chars(first, last, val);
-    return std::from_chars_result{v.ptr, v.ec};
+    return std::from_chars_result {v.ptr, v.ec};
 }
 
 } // namespace utils
@@ -58,34 +58,29 @@ std::from_chars_result from_chars(const char* first, const char* last, double& v
 namespace hlp
 {
 
-
-parsec::Parser<json::Json> getByteParser(Stop str, Options lst)
+parsec::Parser<json::Json> getByteParser(Stop endTokens, Options lst)
 {
-    return getNumericParser<int8_t>(str, lst);
+    return getNumericParser<int8_t>(endTokens, lst);
 }
 
-parsec::Parser<json::Json> getLongParser(Stop str, Options lst)
+parsec::Parser<json::Json> getLongParser(Stop endTokens, Options lst)
 {
-    return getNumericParser<int64_t>(str, lst);
+    return getNumericParser<int64_t>(endTokens, lst);
 }
 
-parsec::Parser<json::Json> getFloatParser(Stop str, Options lst)
+parsec::Parser<json::Json> getFloatParser(Stop endTokens, Options lst)
 {
-    return getNumericParser<float_t>(str, lst);
+    return getNumericParser<float_t>(endTokens, lst);
 }
 
-parsec::Parser<json::Json> getDoubleParser(Stop str, Options lst)
+parsec::Parser<json::Json> getDoubleParser(Stop endTokens, Options lst)
 {
-    return getNumericParser<double_t>(str, lst);
+    return getNumericParser<double_t>(endTokens, lst);
 }
 
-parsec::Parser<json::Json> getScaledFloatParser(Stop str, Options lst)
+parsec::Parser<json::Json> getScaledFloatParser(Stop endTokens, Options lst)
 {
-    return getNumericParser<double_t>(str, lst);
+    return getNumericParser<double_t>(endTokens, lst);
 }
 
-
-} // HLP namespace
-
-
-
+} // namespace hlp

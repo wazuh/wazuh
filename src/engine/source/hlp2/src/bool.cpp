@@ -1,39 +1,45 @@
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <fmt/format.h>
 
+#include <hlp/base.hpp>
+#include <hlp/hlp.hpp>
 #include <hlp/parsec.hpp>
 #include <json/json.hpp>
-
-#include "base.hpp"
+#include <utils/stringUtils.hpp>
 
 namespace hlp
 {
 
-parsec::Parser<json::Json> getBoolParser(Stop str, Options lst)
+parsec::Parser<json::Json> getBoolParser(Stop, Options lst)
 {
-    return [str](std::string_view text, int index)
+    if (!lst.empty())
     {
-        auto res = preProcess<json::Json>(text, index, str);
-        if (std::holds_alternative<parsec::Result<json::Json>>(res))
+        throw std::runtime_error("bool parser doesn't accept parameters");
+    }
+
+    return [](std::string_view text, int index)
+    {
+        auto res = internal::eofError<json::Json>(text, index);
+        if (res.has_value())
         {
-            return std::get<parsec::Result<json::Json>>(res);
+            return res.value();
         }
-
-        auto fp = std::get<std::string_view>(res);
-
+        json::Json ret;
         // TODO Check True/ TRUE/ true/ False/ FALSE/ false / 0 / 1?
-        if (fp == "true")
+        if (utils::string::startsWith(text, "true"))
         {
-            return parsec::makeSuccess<json::Json>(
-                json::Json("true"), text, index + 4);
+            ret.setBool(true);
+            return parsec::makeSuccess<json::Json>(ret, text, index + 4);
         }
-        else if (fp == "false")
+        else if (utils::string::startsWith(text, "false"))
         {
-            return parsec::makeSuccess<json::Json>(
-                json::Json("false"), text, index + 5);
+            ret.setBool(false);
+            return parsec::makeSuccess<json::Json>(ret, text, index + 5);
         }
         else
         {

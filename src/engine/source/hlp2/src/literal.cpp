@@ -5,14 +5,14 @@
 
 #include <fmt/format.h>
 
+#include <hlp/base.hpp>
+#include <hlp/hlp.hpp>
 #include <hlp/parsec.hpp>
 #include <json/json.hpp>
 
-#include "base.hpp"
-
 namespace hlp
 {
-parsec::Parser<json::Json> getLiteralParser(Stop str, Options lst)
+parsec::Parser<json::Json> getLiteralParser(Stop, Options lst)
 {
     if (lst.size() != 1)
     {
@@ -21,7 +21,7 @@ parsec::Parser<json::Json> getLiteralParser(Stop str, Options lst)
 
     return [literal = lst[0]](std::string_view txt, size_t idx)
     {
-        auto eof = eofError<json::Json>(txt, idx);
+        auto eof = internal::eofError<json::Json>(txt, idx);
         if (eof.has_value())
         {
             return eof.value();

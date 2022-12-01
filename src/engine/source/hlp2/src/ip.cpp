@@ -1,41 +1,39 @@
-#include <hlp/parsec.hpp>
+
+#include <optional>
 #include <string>
 #include <sys/types.h>
-#include <arpa/inet.h>
-#include <json/json.hpp>
-#include <optional>
 #include <vector>
-#include "fmt/format.h"
 
-using Stop = std::optional<std::string>;
-using Options = std::vector<std::string>;
+#include <arpa/inet.h>
+#include <fmt/format.h>
+
+#include <hlp/base.hpp>
+#include <hlp/hlp.hpp>
+#include <hlp/parsec.hpp>
+#include <json/json.hpp>
 
 namespace hlp
 {
-parsec::Parser<json::Json> getIPParser(Stop str, Options lst)
+parsec::Parser<json::Json> getIPParser(Stop endTokens, Options lst)
 {
-    if (!str.has_value())
+    if (endTokens.empty())
     {
         throw std::invalid_argument(fmt::format("IP parser needs a stop string"));
     }
 
-    return [str](std::string_view text, size_t index)
+    return [endTokens](std::string_view text, size_t index)
     {
         struct in_addr ip;
         struct in6_addr ipv6;
 
-        size_t pos = text.size();
-        std::string_view fp = text;
-        if (str.has_value() && ! str.value().empty())
+        auto res = internal::preProcess<json::Json>(text, index, endTokens);
+        if (std::holds_alternative<parsec::Result<json::Json>>(res))
         {
-            pos = text.find(str.value(), index);
-            if (pos == std::string::npos)
-            {
-                return parsec::makeError<json::Json>(
-                    fmt::format("Unable to stop at '{}' in input", str.value()), text, index);
-            }
-            fp = text.substr(index, pos);
+            return std::get<parsec::Result<json::Json>>(res);
         }
+
+        auto fp = std::get<std::string_view>(res);
+        auto pos = fp.size() + index;
 
         // copy can be slow
         std::string addr(fp.data(), fp.size());
@@ -58,4 +56,4 @@ parsec::Parser<json::Json> getIPParser(Stop str, Options lst)
             index);
     };
 }
-}
+} // namespace hlp

@@ -48,7 +48,6 @@ add_library(hlp2 STATIC
         src/text.cpp
         src/encodings.cpp
         src/logpar.cpp
-        src/base.hpp
         src/literal.cpp)
 
 # https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
