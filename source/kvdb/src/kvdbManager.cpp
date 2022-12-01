@@ -14,6 +14,16 @@
 #include <utils/baseMacros.hpp>
 #include <utils/stringUtils.hpp>
 
+namespace
+{
+
+constexpr bool ERROR_IF_EXISTS {true};
+constexpr bool NO_ERROR_IF_EXISTS {false};
+constexpr bool CREATE_IF_MISSING {true};
+constexpr bool DONT_CREATE_IF_MISSING {false};
+
+}
+
 KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath)
 {
     // TODO should we read and load all the dbs inside the folder?
@@ -33,25 +43,25 @@ KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath)
             if (cdbfile.is_regular_file())
             {
                 // TODO: check this method result
-                createKVDBfromCDBFile(cdbfile.path(), true);
+                createKVDBfromCDBFile(cdbfile.path());
             }
         }
     }
 }
 
-KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
+KVDBHandle KVDBManager::loadDb(const std::string& name, bool createIfMissing)
 {
     std::unique_lock lk(m_mtx);
     if (m_availableKVDBs.find(name) != m_availableKVDBs.end())
     {
         WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Database with name \"{}\" "
-                        "already exists.",
+                        "already loaded.",
                         __func__,
                         name);
         return nullptr;
     }
 
-    WAZUH_LOG_DEBUG("Engine KVDB manager: \"{}\" method: Adding database \"{}\" to the "
+    WAZUH_LOG_DEBUG("Engine KVDB manager: \"{}\" method: Loading database \"{}\" to the "
                     "available databases list.",
                     __func__,
                     name);
@@ -67,9 +77,7 @@ KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
     return nullptr;
 }
 
-// TODO: tests for this method are missing
-bool KVDBManager::createKVDBfromCDBFile(const std::filesystem::path& path,
-                                        bool createIfMissing)
+bool KVDBManager::createKVDBfromCDBFile(const std::filesystem::path& path)
 {
     std::ifstream CDBfile(path);
     if (!CDBfile.is_open())
@@ -82,7 +90,7 @@ bool KVDBManager::createKVDBfromCDBFile(const std::filesystem::path& path,
     }
 
     const std::string name {path.stem().string()};
-    KVDBHandle kvdbHandle {addDb(name, createIfMissing)};
+    KVDBHandle kvdbHandle {loadDb(name, true)};
     if (!kvdbHandle)
     {
         WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Failed to create database "
@@ -133,10 +141,10 @@ bool KVDBManager::deleteDB(const std::string& name, bool onlyLoaded)
     else
     {
         KVDBHandle dbHandle;
-        if (!getKVDBFromFile(name, dbHandle))
+        if (!getKVDBFromPath(name, dbHandle))
         {
-            WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Database \"{}\" is not "
-                            "present on the KVDB manager databases list.",
+            WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Database \"{}\" "
+                            "couldn't be fetched from the filesystem.",
                             __func__,
                             name);
             return false;
@@ -159,7 +167,9 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
         {
             // In general it should never happen so we should consider just
             // removing this
-            if (db->init(false) > KVDB::CreationStatus::OkInitialized)
+            auto initResult = db->init(DONT_CREATE_IF_MISSING);
+            if (initResult != KVDB::CreationStatus::OkCreated
+                || initResult != KVDB::CreationStatus::OkInitialized)
             {
                 WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Error initializing "
                                 "database \"{}\".",
@@ -176,7 +186,7 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
     return nullptr;
 }
 
-std::vector<std::string> KVDBManager::getAvailableKVDBs(bool loaded)
+std::vector<std::string> KVDBManager::listKVDBs(bool loaded)
 {
     std::vector<std::string> list;
 
@@ -192,15 +202,17 @@ std::vector<std::string> KVDBManager::getAvailableKVDBs(bool loaded)
     }
     else
     {
-        for (const auto& file : std::filesystem::directory_iterator(m_dbStoragePath))
+        for (const auto& path : std::filesystem::directory_iterator(m_dbStoragePath))
         {
-            std::string name {file.path().stem().string()};
-            if (name != "legacy")
+            if (path.is_directory())
             {
-                KVDBHandle dbHandle;
-                if (getKVDBFromFile(name, dbHandle))
+                std::string name {path.path().stem().string()};
+                if (name != "legacy")
                 {
-                    list.emplace_back(name);
+                    if (isKVDBOnPath(name))
+                    {
+                        list.emplace_back(name);
+                    }
                 }
             }
         }
@@ -215,7 +227,7 @@ std::string KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
     auto dbHandle = std::make_shared<KVDB>(dbName, m_dbStoragePath);
 
     // Initialize it only if it doesn't exist
-    auto initResult = dbHandle->init(true, true);
+    auto initResult = dbHandle->init(CREATE_IF_MISSING, ERROR_IF_EXISTS);
 
     if (initResult == KVDB::CreationStatus::ErrorDatabaseAlreadyExists)
     {
@@ -256,11 +268,11 @@ std::string KVDBManager::CreateAndFillKVDBfromFile(const std::string& dbName,
     return "OK";
 }
 
-bool KVDBManager::getKVDBFromFile(const std::string& name, KVDBHandle& dbHandle)
+bool KVDBManager::getKVDBFromPath(const std::string& name, KVDBHandle& dbHandle)
 {
     dbHandle = std::make_shared<KVDB>(name, m_dbStoragePath);
     // Initialize it only if it already exists
-    auto result = dbHandle->init(false, false);
+    auto result = dbHandle->init(DONT_CREATE_IF_MISSING, NO_ERROR_IF_EXISTS);
     return (KVDB::CreationStatus::OkInitialized == result
             || KVDB::CreationStatus::OkCreated == result);
 }
@@ -270,7 +282,7 @@ size_t KVDBManager::dumpContent(const std::string& name, std::string& content)
     size_t result {0};
     KVDBHandle dbHandle;
 
-    if (getKVDBFromFile(name, dbHandle))
+    if (getKVDBFromPath(name, dbHandle))
     {
         result = dbHandle->dumpContent(content);
     }
@@ -285,7 +297,7 @@ bool KVDBManager::writeKey(const std::string& name,
     bool result {false};
     KVDBHandle dbHandle;
 
-    if (getKVDBFromFile(name, dbHandle))
+    if (getKVDBFromPath(name, dbHandle))
     {
         result = dbHandle->write(key, value);
     }
@@ -299,7 +311,7 @@ std::optional<std::string> KVDBManager::getKeyValue(const std::string& name,
     std::optional<std::string> result {std::nullopt};
     KVDBHandle dbHandle;
 
-    if (getKVDBFromFile(name, dbHandle))
+    if (getKVDBFromPath(name, dbHandle))
     {
         if (dbHandle->hasKey(key))
         {
@@ -315,7 +327,7 @@ bool KVDBManager::deleteKey(const std::string& name, const std::string& key)
     bool result {false};
     KVDBHandle dbHandle;
 
-    if (getKVDBFromFile(name, dbHandle))
+    if (getKVDBFromPath(name, dbHandle))
     {
         if (dbHandle->read(key).has_value())
         {
@@ -324,4 +336,11 @@ bool KVDBManager::deleteKey(const std::string& name, const std::string& key)
     }
 
     return result;
+}
+
+bool KVDBManager::isKVDBOnPath(const std::string& name)
+{
+    auto dbHandle = std::make_shared<KVDB>(name, m_dbStoragePath);
+    auto result = dbHandle->init(DONT_CREATE_IF_MISSING, NO_ERROR_IF_EXISTS);
+    return (result != KVDB::CreationStatus::ErrorUnknown);
 }

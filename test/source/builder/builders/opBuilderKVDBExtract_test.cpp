@@ -36,7 +36,7 @@ protected:
     {
         if (!kvdbManager->getDB(DB_NAME))
         {
-            kvdbManager->addDb(DB_NAME);
+            kvdbManager->loadDb(DB_NAME);
         }
     }
 

@@ -275,7 +275,7 @@ api::CommandFn kvdbListCmd(std::shared_ptr<KVDBManager> kvdbManager)
             listOnlyLoaded = filterLoadedKVDB.value();
         }
 
-        auto kvdbLists = kvdbManager->getAvailableKVDBs(listOnlyLoaded);
+        auto kvdbLists = kvdbManager->listKVDBs(listOnlyLoaded);
         json::Json data;
         data.setArray("/data");
         if (kvdbLists.size())
