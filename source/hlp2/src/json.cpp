@@ -13,6 +13,11 @@ namespace hlp
 
 parsec::Parser<json::Json> getJSONParser(Stop str, Options lst)
 {
+    if (lst.size() > 0)
+    {
+        throw std::runtime_error(fmt::format("JSON parser do not accept arguments!"));
+    }
+
     return [str](std::string_view text, int index)
     {
         size_t pos = text.size();
