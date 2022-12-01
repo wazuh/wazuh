@@ -27,16 +27,49 @@ TEST(LogparTest, BuildsEmptyConfig)
 
 TEST(LogparTest, BuildLogparExpression)
 {
+    std::list<std::string> cases {
+        "(?literal<text>:)<~custom/long><~>",
+        "literal",
+        "<~>",
+        "<~>?<~>",
+        "(?literal)",
+        "(?literal) (?literal) (?literal)",
+        "[date] <~host> <text>(?|<~opt/text>|):<~>",
+    };
+
     auto logpar = logpar_test::getLogpar();
-    auto text = "(?literal<text>:)<~custom/long><~>";
-    ASSERT_NO_THROW(logpar.build(text));
+    for (auto& text : cases)
+    {
+        try
+        {
+            logpar.build(text);
+        }
+        catch(const std::exception& e)
+        {
+            FAIL() << fmt::format("Failed to build expression: '{}'", text) << std::endl
+                   << e.what();
+        }
+    }
 }
 
 TEST(LogparTest, BuildLogparMalformedExpression)
 {
+    std::list<std::string> cases {
+        "literal<text>:<~custom/long><~",
+        "",
+        "?()",
+        "lit<~>(?<~>:)|",
+        "lit(?lit)(?lit)", // Must build if limit >= 2
+        "lit(?(?lit)lit)", // Must build if limit >= 2
+        "<~opt>?lit",
+        "lit(?lit",
+    };
     auto logpar = logpar_test::getLogpar();
-    auto text = "literal<text>:<~custom/long><~";
-    ASSERT_THROW(logpar.build(text), std::runtime_error);
+    for (auto& text : cases)
+    {
+        ASSERT_THROW(logpar.build(text), std::runtime_error)
+            << "Expected to fail with: '" << text << "'";
+    }
 }
 
 TEST(LogparTest, BuildLogparMissingEndToken)
@@ -85,51 +118,120 @@ TEST(LogparTest, BuildLogparAndParse)
          logpar_test::J(R"({"text":"eral","~a":1,"~opt":"optional"})")},
         {10, true, "<long>?<~/literal/->", "15", logpar_test::J(R"({"long":15})")},
         {11, true, "<long>?<~/literal/->", "-", {}},
-        {12,
+        // This cases must work if no limitation on recursion grouping
+        // {12,
+        //  true,
+        //  "[date] <~host> <text>:(?<~opt/text> (?<long>?<~/literal/->))",
+        //  "[date] host text:",
+        //  logpar_test::J(R"({"~host":"host","text":"text"})")},
+        // {13,
+        //  true,
+        //  "[date] <~host> <text>:(?<?~opt/text> (?<long>?<~/literal/->))",
+        //  "[date] host text: ",
+        //  logpar_test::J(R"({"~host":"host","text":"text"})")},
+        // {14,
+        //  true,
+        //  "[date] <~host> <text>:(?<?~opt/text> (?<long>?<~/literal/->))",
+        //  "[date] host text:opt ",
+        //  logpar_test::J(R"({"~host":"host","text":"text", "~opt":"opt"})")},
+        // {15,
+        //  false,
+        //  "[date] <~host> <text>:(?<?~opt/text> (?<long>?<~/literal/->))",
+        //  "[date] host text:opt",
+        //  {}},
+        // {16,
+        //  true,
+        //  "[date] <~host> <text>:(?<?~opt/text> (?<long>?<~/literal/->))",
+        //  "[date] host text:opt 1",
+        //  logpar_test::J(R"({"~host":"host","text":"text","~opt":"opt","long":1})")},
+        // {17,
+        //  true,
+        //  "[date] <~host> <text>:(?<?~opt/text> (?<long>?<~/literal/->))",
+        //  "[date] host text:opt -",
+        //  logpar_test::J(R"({"~host":"host","text":"text","~opt":"opt"})")},
+        {18,
          true,
-         "[date] <~host> <text>:(?<~opt/text> (?<long>?<~/literal/->))",
-         "[date] host text:",
+         "[date] <~host> <text>(?|<~opt/text>|):<~>",
+         "[date] host text:left over",
          logpar_test::J(R"({"~host":"host","text":"text"})")},
-        {13,
-         true,
-         "[date] <~host> <text>:(?<?~opt/text> (?<long>?<~/literal/->))",
-         "[date] host text: ",
-         logpar_test::J(R"({"~host":"host","text":"text"})")},
-        {14,
-         true,
-         "[date] <~host> <text>:(?<?~opt/text> (?<long>?<~/literal/->))",
-         "[date] host text:opt ",
-         logpar_test::J(R"({"~host":"host","text":"text", "~opt":"opt"})")},
-        {15,
+        {19,
          false,
-         "[date] <~host> <text>:(?<?~opt/text> (?<long>?<~/literal/->))",
-         "[date] host text:opt",
+         "[date] <~host> <text>(?|<~opt/text>|):<~>",
+         "[date] host text|left over",
          {}},
-        {16,
+        {20,
          true,
-         "[date] <~host> <text>:(?<?~opt/text> (?<long>?<~/literal/->))",
-         "[date] host text:opt 1",
-         logpar_test::J(R"({"~host":"host","text":"text","~opt":"opt","long":1})")},
-        {17,
-         true,
-         "[date] <~host> <text>:(?<?~opt/text> (?<long>?<~/literal/->))",
-         "[date] host text:opt -",
+         "[date] <~host> <text>(?|<~opt/text>|):<~>",
+         "[date] host text|opt|:left over",
          logpar_test::J(R"({"~host":"host","text":"text","~opt":"opt"})")},
+        {21,
+         false,
+         "[date] <~host> <text>(?|<~opt/text>|):<~>",
+         "[date] host text|opt|:",
+         {}},
+        {22,
+         false,
+         "[date] <~host> <text>(?|<~opt/text>|):<~>",
+         "[date] host text|opt|left over",
+         {}},
+        // This cases must work if no limitation on recursion grouping
+        // {23,
+        // true,
+        // "<text>(?|<~opt1>|)(?[<~opt2>]):<~>",
+        // "text:left over",
+        // logpar_test::J(R"({"text":"text"})")},
+        // {24,
+        // true,
+        // "<text>(?|<~opt1>|)(?[<~opt2>]):<~>",
+        // "text|opt|:left over",
+        // logpar_test::J(R"({"text":"text","~opt1":"opt"})")},
+        // {25,
+        // true,
+        // "<text>(?|<~opt1>|)(?[<~opt2>]):<~>",
+        // "text[opt]:left over",
+        // logpar_test::J(R"({"text":"text","~opt2":"opt"})")},
+        // {26,
+        // true,
+        // "<text>(?|<~opt1>|)(?[<~opt2>]):<~>",
+        // "text|opt|[opt]:left over",
+        // logpar_test::J(R"({"text":"text","~opt1":"opt","~opt2":"opt"})")},
+        // {27,
+        // true,
+        // "<text>(?(?|<~opt1>|)[<~opt2>]):<~>",
+        // "text:left over",
+        // logpar_test::J(R"({"text":"text"})")},
+        // {28,
+        // false,
+        // "<text>(?(?|<~opt1>|)[<~opt2>]):<~>",
+        // "text|opt|:left over",
+        // {}},
+        // {29,
+        // true,
+        // "<text>(?(?|<~opt1>|)[<~opt2>]):<~>",
+        // "text[opt]:left over",
+        // logpar_test::J(R"({"text":"text","~opt2":"opt"})")},
+        // {30,
+        // true,
+        // "<text>(?(?|<~opt1>|)[<~opt2>]):<~>",
+        // "text|opt|[opt]:left over",
+        // logpar_test::J(R"({"text":"text","~opt1":"opt","~opt2":"opt"})")},
     };
 
     // TEST
     for (auto& [n, success, expr, input, expected] : useCases)
     {
-        auto parser = logpar.build(expr);
+        parsec::Parser<json::Json> parser;
+        ASSERT_NO_THROW(parser = logpar.build(expr)) << "Test case " << n;
         auto parseResult = parser(input, 0);
         if (success)
         {
-            ASSERT_TRUE(parseResult);
-            ASSERT_EQ(parseResult.value(), expected);
+            ASSERT_TRUE(parseResult)
+                << "Test case " << n << " Parse error: " << parseResult.error().msg;
+            ASSERT_EQ(parseResult.value(), expected) << "Test case " << n;
         }
         else
         {
-            ASSERT_FALSE(parseResult);
+            ASSERT_FALSE(parseResult) << "Test case " << n;
         }
     }
 }
@@ -256,13 +358,13 @@ TEST(LogparParserTest, Field)
                        logpar::syntax::EXPR_END);
     useCases.push_back({false, text, nameCustom, true, args, false, 2});
 
-    // Case 11 <n@me>
-    name = "n@me";
+    // Case 11 <n'me>
+    name = "n'me";
     text = fmt::format(
         "{}{}{}{}", logpar::syntax::EXPR_BEGIN, name, argsStr, logpar::syntax::EXPR_END);
     useCases.push_back({false, text, name, false, args, false, 2});
 
-    // Case 12 <~n@me>
+    // Case 12 <~n'me>
     nameCustom = name;
     nameCustom.insert(0, 1, logpar::syntax::EXPR_CUSTOM_FIELD);
     text = fmt::format("{}{}{}{}",
@@ -312,6 +414,30 @@ TEST(LogparParserTest, Field)
     name = "~name";
     args = {"", "1", "", "2", "", ""};
     text = "<?~name//1//2//>";
+    useCases.push_back({true, text, name, true, args, true, text.size()});
+
+    // Case 18 <@name>
+    name = "@name";
+    args = {};
+    text = "<@name>";
+    useCases.push_back({true, text, name, false, args, false, text.size()});
+
+    // Case 19 <~@name>
+    name = "~@name";
+    args = {};
+    text = "<~@name>";
+    useCases.push_back({true, text, name, true, args, false, text.size()});
+
+    // Case 20 <?@name>
+    name = "@name";
+    args = {};
+    text = "<?@name>";
+    useCases.push_back({true, text, name, false, args, true, text.size()});
+
+    // Case 21 <?~@name>
+    name = "~@name";
+    args = {};
+    text = "<?~@name>";
     useCases.push_back({true, text, name, true, args, true, text.size()});
 
     // Test
@@ -905,7 +1031,20 @@ TEST(LogparParserTest, Logpar)
     text += fmt::format("{}leftover", logpar::syntax::EXPR_OPT);
     useCases.push_back({false, text, parserInfos, size});
 
-    // Case 7 [date] <~host> <text>:(?<?~opt/text> (?<long>?<~/literal/->))
+    // Case 7 [date] <~host> <text>(?<~opt/text>|):<~>
+    text = "[date] <~host> <text>(?<~opt/text>|):<~>";
+    parserInfos = {
+        logpar::parser::Literal {"[date] "},
+        logpar::parser::Field {logpar::parser::FieldName {"~host", true}, {}, false},
+        logpar::parser::Literal {" "},
+        logpar::parser::Field {logpar::parser::FieldName {"text", false}, {}, false},
+        logpar::parser::Group {
+            {logpar::parser::Field {
+                 logpar::parser::FieldName {"~opt", true}, {"text"}, false},
+             logpar::parser::Literal {"|"}}},
+        logpar::parser::Literal {":"},
+        logpar::parser::Field {logpar::parser::FieldName {"~", true}, {}, false}};
+    useCases.push_back({true, text, parserInfos, text.size()});
 
     // Test
     int caseN = 1;

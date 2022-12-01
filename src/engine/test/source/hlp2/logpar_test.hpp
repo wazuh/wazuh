@@ -3,6 +3,8 @@
 
 #include <gtest/gtest.h>
 
+#include <fmt/format.h>
+
 #include <hlp/logpar.hpp>
 #include <json/json.hpp>
 
@@ -17,21 +19,11 @@ json::Json getConfig()
     return config;
 }
 
-parsec::Parser<json::Json> dummyTextParser(std::optional<std::string> endToken,
-                                           std::vector<std::string> args)
+parsec::Parser<json::Json> __dummyTextParser(std::string endToken,
+                                             std::vector<std::string> args)
 {
-    if (!endToken)
-    {
-        throw std::runtime_error("No end token provided");
-    }
-
-    if (!args.empty())
-    {
-        throw std::runtime_error("No arguments expected");
-    }
-
     return parsec::Parser<json::Json> {
-        [end = endToken.value()](std::string_view txt, size_t i)
+        [end = endToken](std::string_view txt, size_t i)
         {
             if (i < txt.size())
             {
@@ -67,7 +59,30 @@ parsec::Parser<json::Json> dummyTextParser(std::optional<std::string> endToken,
         }};
 }
 
-parsec::Parser<json::Json> dummyLongParser(std::optional<std::string>,
+parsec::Parser<json::Json> dummyTextParser(std::list<std::string> endTokens,
+                                           std::vector<std::string> args)
+{
+    if (endTokens.empty())
+    {
+        throw std::runtime_error("No end token provided");
+    }
+
+    if (!args.empty())
+    {
+        throw std::runtime_error("No arguments expected");
+    }
+
+    parsec::Parser<json::Json> p = __dummyTextParser(endTokens.front(), args);
+    endTokens.pop_front();
+    for (auto& end : endTokens)
+    {
+        p = p | __dummyTextParser(end, args);
+    }
+
+    return p;
+}
+
+parsec::Parser<json::Json> dummyLongParser(std::list<std::string>,
                                            std::vector<std::string> args)
 {
     if (!args.empty())
@@ -100,7 +115,7 @@ parsec::Parser<json::Json> dummyLongParser(std::optional<std::string>,
     };
 }
 
-parsec::Parser<json::Json> dummyLiteralParser(std::optional<std::string>,
+parsec::Parser<json::Json> dummyLiteralParser(std::list<std::string>,
                                               std::vector<std::string> args)
 {
     if (args.size() != 1)
@@ -118,7 +133,8 @@ parsec::Parser<json::Json> dummyLiteralParser(std::optional<std::string>,
             }
             else
             {
-                return parsec::makeError<json::Json>("Expected literal", txt, i);
+                return parsec::makeError<json::Json>(
+                    fmt::format("Expected '{}' at '{}'", lit, i), txt, i);
             }
         }
         else
