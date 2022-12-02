@@ -1065,7 +1065,7 @@ checks:
     condition: all
     rules:
       - "c:rpm -q avahi-autoipd -> r:package avahi-autoipd is not installed"
-      - "c:rpm -q avahi -> r:pacakge avahi is not installed"
+      - "c:rpm -q avahi -> r:package avahi is not installed"
 
   # 2.2.4 Ensure CUPS is not installed (Automated)
   - id: 4558
