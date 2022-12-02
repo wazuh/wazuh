@@ -25,6 +25,8 @@ static const struct Option
 
 struct KVDB::Impl
 {
+    const char* KVDB_separator {"~/~"};
+
     enum class State
     {
         Open,
@@ -582,18 +584,39 @@ struct KVDB::Impl
         return true;
     }
 
-    size_t dumpContent(std::string& dump)
+    std::string_view dumpContent(json::Json& dump)
     {
+        std::string errorMessage{}, jsonFill{};
+
         rocksdb::Iterator* iter = m_db->NewIterator(kOptions.read);
         iter->SeekToFirst();
-        size_t key_cnt = 0;
-        for (; iter->Valid(); iter->Next(), key_cnt++)
+        for (; iter->Valid(); iter->Next())
         {
-            dump += iter->key().ToString() + ":" + iter->value().ToString() + "\n";
+            const auto value = iter->value().ToString();
+            if (value.empty())
+            {
+                jsonFill = fmt::format("{{\"key\": \"{}\"}}", iter->key().ToString());
+            }
+            else
+            {
+                jsonFill = fmt::format("{{\"key\": \"{}\",\"value\": {}}}",
+                                        iter->key().ToString(),value);
+            }
+
+            try
+            {
+                json::Json keyValueObject {jsonFill.c_str()};
+                dump.appendJson(keyValueObject);
+            }
+            catch (const std::exception& e)
+            {
+                errorMessage =
+                    fmt::format("Couldn't create and append object to array: {}", e.what());
+            }
         }
 
         delete iter;
-        return key_cnt;
+        return errorMessage;
     }
 
     std::string m_name;
@@ -715,7 +738,7 @@ std::string_view KVDB::getName() const
     return mImpl->getName();
 }
 
-size_t KVDB::dumpContent(std::string& dump)
+std::string_view KVDB::dumpContent(json::Json& dump)
 {
     return mImpl->dumpContent(dump);
 }

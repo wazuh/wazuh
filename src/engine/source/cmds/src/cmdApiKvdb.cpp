@@ -131,15 +131,18 @@ void dumpKvdb(const std::string& socketPath, const std::string& name)
         return;
     }
 
-    auto kvdbContent = response.str("/data");
-    if (!kvdbContent.has_value())
+    auto kvdbContent = response.getString("/data");
+    if (kvdbContent.has_value())
+    {
+        std::cout << "KVDB content:" << std::endl;
+        std::cout << kvdbContent.value() << std::endl;
+    }
+    else
     {
         std::cout << "KVDB is empty" << std::endl;
-        return;
     }
 
-    std::cout << "KVDB content:" << std::endl;
-    std::cout << kvdbContent.value() << std::endl;
+    return;
 }
 
 void getKvdb(const std::string& socketPath,
