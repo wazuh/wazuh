@@ -13,8 +13,7 @@ check:
 normalize:
  - map:
     - event.module: security
-    - event.code: $~event_channel.Event.System.EventID.#text
-
+    
     # Set categorization fields
     - event: +kvdb_get_merge/win_security_categories/$~event_channel.Event.System.EventID.#text
     
