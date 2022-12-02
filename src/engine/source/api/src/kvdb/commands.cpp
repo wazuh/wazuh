@@ -105,42 +105,16 @@ api::CommandFn kvdbDumpCmd(std::shared_ptr<KVDBManager> kvdbManager)
             return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_EMPTY};
         }
 
-        std::string dbContent;
-        const size_t retVal {kvdbManager->dumpContent(kvdbNameValue, dbContent)};
-
         json::Json data;
         data.setArray("/data");
-        if (retVal)
-        {
-            std::istringstream iss(dbContent);
-            for (std::string line; std::getline(iss, line);)
-            {
-                std::string jsonFill;
-                auto splittedLine = utils::string::split(line, ':');
-                const size_t lineMemebers = splittedLine.size();
-                if (!lineMemebers || 2 < lineMemebers)
-                {
-                    // TODO: test this with a dummy file as input
-                    return api::WazuhResponse {
-                        json::Json {"{}"}, 400, "KVDB was ill formed"};
-                }
-                else if (2 == lineMemebers)
-                {
-                    // TODO: add tests for this cases
-                    jsonFill = fmt::format("{{\"key\": \"{}\",\"value\": \"{}\"}}",
-                                           splittedLine.at(0),
-                                           splittedLine.at(1));
-                }
-                else if (1 == lineMemebers)
-                {
-                    jsonFill = fmt::format("{{\"key\": \"{}\"}}", splittedLine.at(0));
-                }
+        auto retVal {kvdbManager->dumpContent(kvdbNameValue, data)};
 
-                const json::Json keyValueObject {jsonFill.c_str()};
-                data.appendJson(keyValueObject);
-            }
+        if (!retVal.has_value())
+        {
+            return api::WazuhResponse {json::Json {"{}"}, 200, retVal.value()};
         }
 
+        auto val = data.str();
         return api::WazuhResponse {std::move(data), 200, "OK"};
     };
 }
