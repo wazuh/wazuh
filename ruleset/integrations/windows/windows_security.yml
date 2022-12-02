@@ -201,6 +201,7 @@ normalize:
         - ~split_memberName: +s_to_array/$~event_channel.Event.EventData.MemberName/,
         - ~split_memberName.0: +s_replace/CN=// 
         - event.member.name: $~split_memberName.0
+        - event.related.user: +a_append/$~split_memberName.0
         - event.group.id: $~event_channel.Event.EventData.TargetUserSid
         - event.group.id: $~event_channel.Event.EventData.TargetSid 
         - event.group.name: $~event_channel.Event.EventData.TargetUserName
@@ -232,6 +233,7 @@ normalize:
      - ~id_copy_subject_user_array: +a_contains/$event.code
    map:
      - event.user.id: $~event_channel.Event.EventData.SubjectUserSid
+     - event.user.name: $~event_channel.Event.EventData.SubjectUserName
      - event.related.user: +a_append/$~event_channel.Event.EventData.SubjectUserName
      - event.user.domain: $~event_channel.Event.EventData.SubjectDomainName
 
