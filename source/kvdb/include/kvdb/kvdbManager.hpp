@@ -8,8 +8,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <json/json.hpp>
 #include <kvdb/kvdb.hpp>
-#include <utils/baseMacros.hpp>
 
 using KVDBHandle = std::shared_ptr<KVDB>;
 
@@ -100,14 +100,17 @@ public:
     std::string CreateAndFillDBfromFile(const std::string& dbName,
                                         const std::filesystem::path& path = "");
 
+
+    //TODO: fill
     /**
-     * @brief Dumps the full KVDB to a json format string.
-     *
-     * @param name of the KVDB to be dumped.
-     * @param content string where to store the db.
-     * @return size_t quantity of keys dumped to the content result.
+     * @brief 
+     * 
+     * @param name 
+     * @param data 
+     * @return std::optional<std::string_view> 
      */
-    size_t dumpContent(const std::string& name, std::string& content);
+    std::optional<std::string_view> dumpContent(const std::string& name, json::Json& data);
+
 
     /**
      * @brief Writes a key or a key value to the KVDB named name.
