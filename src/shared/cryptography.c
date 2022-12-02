@@ -29,7 +29,7 @@ DWORD verify_pe_signature(const wchar_t *path, char* error_message, int error_me
 
     if (!GetFullPathNameW(path, MAX_PATH, full_path, NULL)) {
         last_error = GetLastError();
-        os_snprintf(error_message, error_message_size, "GetFullPathNameW failed with error %lu: %s", last_error, win_strerror(last_error));
+        os_snprintf(error_message, error_message_size, "GetFullPathNameW failed with error %lu for '%S': %s", last_error, path, win_strerror(last_error));
         return ERROR_INVALID_DATA;
     }
 
@@ -188,7 +188,7 @@ DWORD verify_pe_signature(const wchar_t *path, char* error_message, int error_me
         break;
     default:
         last_error = GetLastError();
-        os_snprintf(error_message, error_message_size, "%s WinVerifyTrust returned '%lX'. GetLastError returned '%lX'",  win_strerror(last_error), status, last_error);
+        os_snprintf(error_message, error_message_size, "WinVerifyTrust returned '%lX' for '%S'. GetLastError returned '%lX'. %s", status, full_path, last_error, win_strerror(last_error));
         status = ERROR_INVALID_DATA;
     }
 
@@ -221,24 +221,24 @@ DWORD get_file_hash(const wchar_t *path, BYTE **hash, DWORD *hash_size, char* er
                 if (*hash_size == 0) {
                     result = ERROR_INVALID_DATA;
                     last_error = GetLastError();
-                    os_snprintf(error_message, error_message_size, "CryptCATAdminCalcHashFromFileHandle failed because hash size is zero with error %lu for '%S': %s", last_error, path, win_strerror(last_error));
+                    os_snprintf(error_message, error_message_size, "CryptCATAdminCalcHashFromFileHandle failed because hash size is zero with error %lu for '%S': %s", last_error, full_path, win_strerror(last_error));
                 } else {
                     os_calloc(1, *hash_size, *hash);
 
                     if (!CryptCATAdminCalcHashFromFileHandle(handle_file, hash_size, *hash, 0)) {
                         result = GetLastError();
-                        os_snprintf(error_message, error_message_size, "CryptCATAdminCalcHashFromFileHandle failed trying to calculate hash with error %lu for '%S': %s", result, path, win_strerror(result));
+                        os_snprintf(error_message, error_message_size, "CryptCATAdminCalcHashFromFileHandle failed trying to calculate hash with error %lu for '%S': %s", result, full_path, win_strerror(result));
                         os_free(*hash);
                     }
                 }
             } else {
                 result = GetLastError();
-                os_snprintf(error_message, error_message_size, "CryptCATAdminCalcHashFromFileHandle failed trying to get the hash size with error %lu for '%S': %s", result, path, win_strerror(result));
+                os_snprintf(error_message, error_message_size, "CryptCATAdminCalcHashFromFileHandle failed trying to get the hash size with error %lu for '%S': %s", result, full_path, win_strerror(result));
             }
         } else {
             result = ERROR_FILE_NOT_FOUND;
             last_error = GetLastError();
-            os_snprintf(error_message, error_message_size, "CreateFileW failed with error %lu for '%S': %s", last_error, path, win_strerror(last_error));
+            os_snprintf(error_message, error_message_size, "CreateFileW failed with error %lu for '%S': %s", last_error, full_path, win_strerror(last_error));
         }
         // Close file handle.
         CloseHandle(handle_file);
@@ -294,8 +294,8 @@ w_err_t verify_hash_and_pe_signature(wchar_t *file_path) {
     hash_result = verify_hash_catalog(file_path, hash_error_message, OS_SIZE_1024);
 
     if(pe_result != ERROR_SUCCESS && hash_result != ERROR_SUCCESS) {
-        minfo("PE signature verification failed. %s", pe_error_message);
-        minfo("Hash verification failed. %s", hash_error_message);
+        minfo("Trust verification of a module failed by using the signature method. %s", pe_error_message);
+        minfo("Trust verification of a module failed by using the hash method. %s", hash_error_message);
         return OS_INVALID;
     } else {
         mdebug1("%s", pe_error_message);

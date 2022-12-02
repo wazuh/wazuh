@@ -60,9 +60,9 @@ static void loaded_modules_verification()
         }
     } else {
 #if IMAGE_TRUST_CHECKS == 2
-        merror_exit("Unable to enumerate the process modules. Error: %lu", GetLastError());
+        merror_exit("The mechanism of signature validation for loaded modules at startup failed because the modules of the process couldn't be enumerated. Error: %lu", GetLastError());
 #else
-        mwarn("Unable to enumerate the process modules. Error: %lu", GetLastError());
+        mwarn("The mechanism of signature validation for loaded modules at startup failed because the modules of the process couldn't be enumerated. Error: %lu", GetLastError());
 #endif // IMAGE_TRUST_CHECKS == 2
 
     }
@@ -123,16 +123,16 @@ void enable_dll_verification()
             LdrRegisterDllNotification(0, &dll_notification, NULL, &cookie_dll_notification);
         } else {
 #if IMAGE_TRUST_CHECKS == 2
-            merror_exit("Unable to get the address of LdrRegisterDllNotification. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
+            merror_exit("The mechanism of dynamic signature validation for loaded modules wasn't initiated because the address of the native method LdrRegisterDllNotification wasn't found. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
 #else
-            mwarn("Unable to get the address of LdrRegisterDllNotification. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
+            mwarn("The mechanism of dynamic signature validation for loaded modules wasn't initiated because the address of the native method LdrRegisterDllNotification wasn't found. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
 #endif // IMAGE_TRUST_CHECKS == 2
         }
     } else {
 #if IMAGE_TRUST_CHECKS == 2
-        merror_exit("Unable to get the handle of ntdll.dll. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
+        merror_exit("The mechanism of dynamic signature validation for loaded modules wasn't initiated because it wasn't possible to get the handle of 'ntdll.dll'. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
 #else
-        mwarn("Unable to get the handle of ntdll.dll. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
+        mwarn("The mechanism of dynamic signature validation for loaded modules wasn't initiated because it wasn't possible to get the handle of 'ntdll.dll'. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
 #endif // IMAGE_TRUST_CHECKS == 2
     }
 #endif // IMAGE_TRUST_CHECKS != 0
