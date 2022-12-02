@@ -63,7 +63,6 @@ parsec::Parser<json::Json> getBinaryParser(Stop, Options lst)
         {
             return parsec::makeError<json::Json>(
                 fmt::format("Invalid base64 char '{}' found at '{}'", *end, endPos),
-                text,
                 endPos);
         }
         // consume up to two '=' padding chars
@@ -82,13 +81,12 @@ parsec::Parser<json::Json> getBinaryParser(Stop, Options lst)
                             endPos,
                             index,
                             endPos),
-                text,
                 endPos);
         }
         json::Json doc;
         // copy can be slow
         doc.setString(std::string {text.substr(index, endPos)});
-        return parsec::makeSuccess<json::Json>(doc, text, endPos);
+        return parsec::makeSuccess<json::Json>(std::move(doc), endPos);
     };
 }
 } // namespace hlp
