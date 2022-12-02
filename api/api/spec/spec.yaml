@@ -41,7 +41,7 @@ info:
     <SecurityDefinitions />
 
   version: '4.4.0'
-  x-revision: '40400'
+  x-revision: '40401'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
@@ -529,6 +529,14 @@ x-rbac-catalog:
       example:
         actions: [ 'vulnerability:read' ]
         resources: [ 'agent:id:011', 'agent:group:us-west' ]
+        effect: "allow"
+    'vulnerability:run':
+      description: "Allow running a vulnerability detector scan"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'vulnerability:run' ]
+        resources: [ '*:*:*' ]
         effect: "allow"
 
 components:
@@ -18848,6 +18856,47 @@ paths:
                   failed_items: []
                 message: "All specified task's status were returned"
                 error: 0
+
+  /vulnerability:
+    put:
+      tags:
+        - Vulnerability
+      summary: "Run vulnerability detector scan"
+      description: "Run a vulnerability detector scan in all nodes"
+      operationId: api.controllers.vulnerability_controller.run_vulnerability_scan
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/vulnerability:run'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Run vulnerability detector scan"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - master-node
+                    - worker1
+                    - worker2
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: "A vulnerability detector scan was requested in all nodes"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /vulnerability/{agent_id}:
     get:

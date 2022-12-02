@@ -202,4 +202,26 @@ size_t wmcom_dispatch(char * command, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
 int wmcom_sync(char * buffer);
 
+/**
+ * @brief Find a module
+ *
+ * @param name Name of the module.
+ * @return Pointer to a module structure.
+ * @return NULL if the module was not found.
+ */
+wmodule * wm_find_module(const char * name);
+
+/**
+ * @brief Run a query in a module
+ *
+ * Run a command into a module structure, not in the same thread.
+ * Query format: <module name> <command>
+ * Example: "vulnerability-detector run_now"
+ *
+ * @param query Command query
+ * @param output Output payload
+ * @return Size of the output
+ */
+size_t wm_module_query(char * query, char ** output);
+
 #endif // W_MODULES

@@ -366,6 +366,11 @@ typedef struct wdb_config {
     int commit_time_min;
     int commit_time_max;
     int open_db_limit;
+    int fragmentation_threshold;
+    int fragmentation_delta;
+    int free_pages_percentage;
+    int max_fragmentation;
+    int check_fragmentation_interval;
     wdb_backup_settings_node** wdb_backup_settings;
 } wdb_config;
 
@@ -692,8 +697,39 @@ int wdb_create_file(const char *path, const char *source);
 /* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
 int wdb_rootcheck_delete(wdb_t * wdb);
 
-/* Rebuild database. Returns 0 on success or -1 on error. */
+/**
+ * @brief Rebuild database.
+ *
+ * @param[in] db Database to query for the table existence.
+ * @return Returns 0 on success or -1 on error.
+ */
 int wdb_vacuum(sqlite3 *db);
+
+/**
+ * @brief Calculate the fragmentation state of a db.
+ *
+ * @param[in] wdb Database to query for the table existence.
+ * @return Returns 0-100 on success or OS_INVALID on error.
+ */
+int wdb_get_db_state(wdb_t * wdb);
+
+/**
+ * @brief Calculate the percentage of free pages of a db.
+ *
+ * @param[in] wdb Database to query for the table existence.
+ * @return Returns zero or greater than zero on success or OS_INVALID on error.
+ */
+int wdb_get_db_free_pages_percentage(wdb_t * wdb);
+
+/**
+ * @brief Store the fragmentation data of the last vacuum in the metadata table.
+ *
+ * @param[in] wdb Database to query for the table existence.
+ * @param[in] last_vacuum_time Timestamp to store in the metadata table.
+ * @param[in] last_vacuum_value Value to store in the metadata table.
+ * @return Returns OS_SUCCES on success or OS_INVALID on error.
+ */
+int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const char *last_vacuum_value);
 
 /* Insert key-value pair into info table */
 int wdb_insert_info(const char *key, const char *value);
@@ -806,6 +842,11 @@ void wdb_commit_old();
 void wdb_close_old();
 
 int wdb_remove_database(const char * agent_id);
+
+/**
+ * @brief Checks and vacuums (if necessary) the databases in the DB pool.
+ */
+void wdb_check_fragmentation();
 
 /**
  * @brief Function to execute one row of an SQL statement and save the result in a JSON array.
