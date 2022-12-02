@@ -65,7 +65,7 @@ int wdb_wmdb_sock = -1;
 // Module main function. It won't return
 static void* wm_database_main(wm_database *data);
 // Destroy data
-static void* wm_database_destroy(wm_database *data);
+static void wm_database_destroy(wm_database *data);
 // Read config
 cJSON *wm_database_dump(const wm_database *data);
 // Update manager information
@@ -105,12 +105,13 @@ static int wm_sync_file(const char *dirname, const char *path);
 
 // Database module context definition
 const wm_context WM_DATABASE_CONTEXT = {
-    "database",
-    (wm_routine)wm_database_main,
-    (void(*)(void *))wm_database_destroy,
-    (cJSON * (*)(const void *))wm_database_dump,
-    NULL,
-    NULL
+    .name = "database",
+    .start = (wm_routine)wm_database_main,
+    .destroy = (void(*)(void *))wm_database_destroy,
+    .dump = (cJSON * (*)(const void *))wm_database_dump,
+    .sync = NULL,
+    .stop = NULL,
+    .query = NULL,
 };
 
 // Module main function. It won't return
@@ -711,9 +712,8 @@ cJSON *wm_database_dump(const wm_database *data) {
 
 
 // Destroy data
-void* wm_database_destroy(wm_database *data) {
+void wm_database_destroy(wm_database *data) {
     free(data);
-    return NULL;
 }
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)

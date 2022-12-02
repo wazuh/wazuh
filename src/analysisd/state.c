@@ -55,9 +55,10 @@ static void w_get_initial_queues_size();
 STATIC analysisd_agent_state_t * get_node(const char *agent_id);
 
 /**
- * @brief Clean non active agents from agents state.
+ * @brief Clean non active agents from agents state
+ * @param sock Wazuh DB socket
  */
-STATIC void w_analysisd_clean_agents_state();
+STATIC void w_analysisd_clean_agents_state(int *sock);
 
 /**
  * @brief Increment agent decoded events counter for agents
@@ -247,11 +248,16 @@ void * w_analysisd_state_main() {
     w_get_initial_queues_size();
     w_mutex_unlock(&queue_mutex);
 
+    int sock = -1;
+    sock = wdbc_connect();
+
     while (1) {
         w_analysisd_write_state();
         sleep(interval);
-        w_analysisd_clean_agents_state();
+        w_analysisd_clean_agents_state(&sock);
     }
+
+    wdbc_close(&sock);
 
     return NULL;
 }
@@ -541,9 +547,8 @@ STATIC analysisd_agent_state_t * get_node(const char *agent_id) {
     }
 }
 
-STATIC void w_analysisd_clean_agents_state() {
+STATIC void w_analysisd_clean_agents_state(int *sock) {
     int *active_agents = NULL;
-    int sock = -1;
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
 
@@ -553,7 +558,7 @@ STATIC void w_analysisd_clean_agents_state() {
         return;
     }
 
-    if (active_agents = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, 0, -1), active_agents == NULL) {
+    if (active_agents = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, sock, 0, -1), active_agents == NULL) {
         return;
     }
 

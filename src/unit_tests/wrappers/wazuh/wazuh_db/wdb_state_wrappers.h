@@ -32,6 +32,14 @@ void __wrap_w_inc_global_backup();
 
 void __wrap_w_inc_global_backup_time(__attribute__((unused))struct timeval diff);
 
+void __wrap_w_inc_global_vacuum();
+
+void __wrap_w_inc_global_vacuum_time(__attribute__((unused))struct timeval diff);
+
+void __wrap_w_inc_global_get_fragmentation();
+
+void __wrap_w_inc_global_get_fragmentation_time(__attribute__((unused))struct timeval diff);
+
 // Global agent counters
 
 void __wrap_w_inc_global_agent_insert_agent();

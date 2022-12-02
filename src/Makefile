@@ -960,13 +960,14 @@ $(BZIP2_LIB):
 
 sqlite_c = ${EXTERNAL_SQLITE}sqlite3.c
 sqlite_o = ${EXTERNAL_SQLITE}sqlite3.o
+SQLITE_CFLAGS = -DSQLITE_ENABLE_DBSTAT_VTAB=1
 
 $(SQLITE_LIB): $(sqlite_o)
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
 $(sqlite_o): $(sqlite_c)
-	${OSSEC_CC} ${OSSEC_CFLAGS} -w -fPIC -c $^ -o $@ -fPIC
+	${OSSEC_CC} ${OSSEC_CFLAGS} -w -fPIC ${SQLITE_CFLAGS} -c $^ -o $@ -fPIC
 
 #### cJSON #########
 

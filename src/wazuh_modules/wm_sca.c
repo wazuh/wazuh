@@ -114,12 +114,13 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
 cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
 
 const wm_context WM_SCA_CONTEXT = {
-    SCA_WM_NAME,
-    (wm_routine)wm_sca_main,
-    (void(*)(void *))wm_sca_destroy,
-    (cJSON * (*)(const void *))wm_sca_dump,
-    NULL,
-    NULL
+    .name = SCA_WM_NAME,
+    .start = (wm_routine)wm_sca_main,
+    .destroy = (void(*)(void *))wm_sca_destroy,
+    .dump = (cJSON * (*)(const void *))wm_sca_dump,
+    .sync = NULL,
+    .stop = NULL,
+    .query = NULL,
 };
 
 static unsigned int summary_passed = 0;
@@ -1087,7 +1088,7 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
 
                 if (!rule_location) {
                     continue;
-                }                   
+                }
 
                 const int result = wm_sca_check_file_list(rule_location, pattern, &reason);
                 if (result == RETURN_FOUND || result == RETURN_INVALID) {
@@ -1107,7 +1108,7 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                 char *aux = NULL;
 
                 os_strdup(value, rule_location);
-                
+
                 if (!data->remote_commands && remote_policy) {
                     mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
                     if (reason == NULL) {
@@ -1136,7 +1137,7 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
 
                     if (!rule_location) {
                         continue;
-                    }    
+                    }
 
                     mdebug2("Running command: '%s'", rule_location);
                     const int val = wm_sca_read_command(rule_location, pattern, data, &reason);
@@ -1183,7 +1184,7 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
 
                 if (!rule_location) {
                     continue;
-                }    
+                }
 
                 char * const pattern = wm_sca_get_pattern(file);
                 found = wm_sca_check_dir_list(data, rule_location, file, pattern, &reason);
@@ -3182,7 +3183,7 @@ char **wm_sort_variables(const cJSON * const variables) {
         return NULL;
     }
 
-    os_calloc(variables_array_size + 1, sizeof(char *), variables_array); 
+    os_calloc(variables_array_size + 1, sizeof(char *), variables_array);
 
     // Fill array with unsorted variables
     cJSON_ArrayForEach(variable, variables) {
@@ -3190,7 +3191,7 @@ char **wm_sort_variables(const cJSON * const variables) {
         i++;
     }
 
-    // variables_array_size and i should always be the same 
+    // variables_array_size and i should always be the same
     if (variables_array_size != i) {
         free_strarray(variables_array);
         return NULL;

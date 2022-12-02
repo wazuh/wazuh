@@ -542,15 +542,20 @@ class WazuhException(Exception):
         # Logtest
         7000: {'message': 'Error trying to get logtest response'},
         7001: {'message': 'Error trying to read logtest session token',
-               'remediation': 'Make sure you introduce the token within the field "token"'}
+               'remediation': 'Make sure you introduce the token within the field "token"'},
 
-        # > 9000: Authd
+        # Vulnerability detector
+        8000: {'message': 'Unexpected error trying to request vulnerability detector scan'}
     }
 
     # Reserve agent upgrade custom errors
     ERRORS.update({key: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
                                     'The error message will be the output of upgrade module'}
                    for key in range(1811, 1900)})
+    # Reserve agent upgrade custom errors
+    ERRORS.update({key: {'message': 'Vulnerability scan\'s reserved exception IDs (8001-9000). '
+                                    'The error message will be the output of vulnerability scan module'}
+                   for key in range(8001, 9000)})
 
     def __init__(self, code: int, extra_message: str = None, extra_remediation: str = None, cmd_error: bool = False,
                  dapi_errors: dict = None, title: str = None, type: str = None):

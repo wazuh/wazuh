@@ -32,12 +32,13 @@ cJSON *wm_azure_dump(const wm_azure_t *azure);                          // Dump 
 //  Azure module context definition
 
 const wm_context WM_AZURE_CONTEXT = {
-    AZ_WM_NAME,
-    (wm_routine)wm_azure_main,
-    (void(*)(void *))wm_azure_destroy,
-    (cJSON * (*)(const void *))wm_azure_dump,
-    NULL,
-    NULL
+    .name = AZ_WM_NAME,
+    .start = (wm_routine)wm_azure_main,
+    .destroy = (void(*)(void *))wm_azure_destroy,
+    .dump = (cJSON * (*)(const void *))wm_azure_dump,
+    .sync = NULL,
+    .stop = NULL,
+    .query = NULL,
 };
 
 // Module main function. It won't return.

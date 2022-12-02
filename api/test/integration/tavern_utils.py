@@ -126,7 +126,7 @@ def test_select_distinct_nested_sca_checks(response, select_key):
     for item in response.json()['data']['affected_items']:
         # Check that there are no keys in the item that are not specified in 'select_keys'
         set1 = main_keys.symmetric_difference(set(item.keys()))
-        assert set1 == set() or set1 == set1.intersection(main_keys),\
+        assert set1 == set() or set1 == set1.intersection(main_keys), \
             f'Select keys are {main_keys}, but an item contains the keys: {set(item.keys())}'
 
 
@@ -388,6 +388,20 @@ def test_validate_search(response, search_param):
 
 def test_validate_key_not_in_response(response, key):
     assert all(key not in item for item in response.json()["data"]["affected_items"])
+
+
+def test_validate_vd_scans(response, first_node_name, first_node_count, second_node_name, second_node_count,
+                           third_node_name, third_node_count):
+    nodes = []
+    if first_node_count > 0:
+        nodes.append(first_node_name)
+    if second_node_count > 0:
+        nodes.append(second_node_name)
+    if third_node_count > 0:
+        nodes.append(third_node_name)
+
+    # All the names in nodes must be in the response
+    assert all(node in response.json()["data"]["affected_items"] for node in nodes)
 
 
 def check_agentd_started(response, agents_list):
