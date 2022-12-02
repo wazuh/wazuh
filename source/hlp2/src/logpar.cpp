@@ -717,7 +717,7 @@ parsec::Parser<json::Json> Logpar::build(std::string_view logpar) const
     auto result = parser::pLogpar()(logpar, 0);
     if (result.failure())
     {
-        throw std::runtime_error(result.error());
+        throw std::runtime_error(parsec::prettyTrace(result.trace()));
     }
 
     auto parserInfos = result.value();

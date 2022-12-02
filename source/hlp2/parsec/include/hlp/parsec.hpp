@@ -9,6 +9,8 @@
 #include <tuple>
 #include <vector>
 
+#include <fmt/format.h>
+
 /**
  * @brief Contains the parser combinators and parser types
  *
@@ -247,13 +249,30 @@ Result<T> makeError(std::string&& error,
                              std::move(innerTrace)}};
 }
 
+inline std::string prettyTrace(const Trace& trace, size_t indent = 0)
+{
+    std::string tr = std::string(indent, ' ');
+    tr += trace.message().has_value()
+              ? fmt::format("{} at {}\n", trace.message().value(), trace.index())
+              : "\n";
+    if (trace.innerTraces().has_value())
+    {
+        for (const auto& t : trace.innerTraces().value())
+        {
+            tr += prettyTrace(t, indent + 1);
+        }
+    }
+
+    return tr;
+}
+
 /**
  * @brief Parser type
  *
  * A parser is a function that takes a string_view and an index pointing to the next
- * character to parse, and returns a Result<T> where T is the type of the value returned
- * by the parser. Depending if the parser succeeded or failed, the Result<T> will contain
- * either a value or an error.
+ * character to parse, and returns a Result<T> where T is the type of the value
+ * returned by the parser. Depending if the parser succeeded or failed, the Result<T>
+ * will contain either a value or an error.
  *
  * @tparam T value returned by the parser
  */
@@ -265,8 +284,8 @@ using Parser = std::function<Result<T>(std::string_view, size_t)>;
  ****************************************************************************************/
 
 /**
- * @brief Makes parser optional. Always succeeds, returning the value of the parser if it
- * succeeds, or the default value if it fails.
+ * @brief Makes parser optional. Always succeeds, returning the value of the parser if
+ * it succeeds, or the default value if it fails.
  *
  * @tparam T type of the value returned by the parser
  * @param p parser
@@ -291,8 +310,8 @@ Parser<T> opt(const Parser<T>& p)
 }
 
 /**
- * @brief Creates a parser that returns result of the first parser and ignores the result
- * of the second. If any of the parsers fails, the result will be a failure.
+ * @brief Creates a parser that returns result of the first parser and ignores the
+ * result of the second. If any of the parsers fails, the result will be a failure.
  *
  * @tparam L type of the value returned by the first parser
  * @tparam R type of the value returned by the second parser
@@ -328,8 +347,8 @@ Parser<L> operator<<(const Parser<L>& l, const Parser<R>& r)
 }
 
 /**
- * @brief Creates a parser that returns result of the second parser and ignores the result
- * of the first. If any of the parsers fails, the result will be a failure.
+ * @brief Creates a parser that returns result of the second parser and ignores the
+ * result of the first. If any of the parsers fails, the result will be a failure.
  *
  * @tparam L type of the value returned by the first parser
  * @tparam R type of the value returned by the second parser
@@ -365,8 +384,8 @@ Parser<R> operator>>(const Parser<L>& l, const Parser<R>& r)
 }
 
 /**
- * @brief Creates a parser that returns the result of the first parser if it succeeds, or
- * the result of the second parser if the first fails.
+ * @brief Creates a parser that returns the result of the first parser if it succeeds,
+ * or the result of the second parser if the first fails.
  *
  * @tparam T type of the value returned
  * @param l first parser
@@ -399,8 +418,8 @@ Parser<T> operator|(const Parser<T>& l, const Parser<T>& r)
 }
 
 /**
- * @brief Creates a parser that returns a tuple of the results of the two parsers. If any
- * of the parsers fails, the result will be a failure.
+ * @brief Creates a parser that returns a tuple of the results of the two parsers. If
+ * any of the parsers fails, the result will be a failure.
  *
  * @tparam L type of the value returned by the first parser
  * @tparam R type of the value returned by the second parser
@@ -434,9 +453,9 @@ Parser<std::tuple<L, R>> operator&(const Parser<L>& l, const Parser<R>& r)
 }
 
 /**
- * @brief Creates a parser that executes the function f on the result of the given parser
- * and returns the result of the function. If the given parser fails, the result will be a
- * failure.
+ * @brief Creates a parser that executes the function f on the result of the given
+ * parser and returns the result of the function. If the given parser fails, the
+ * result will be a failure.
  *
  * @tparam Tx type of the value returned by the function
  * @tparam T type of the value returned by the parser
@@ -464,8 +483,9 @@ template<typename Tx, typename T>
 using M = std::function<Parser<Tx>(T)>;
 
 /**
- * @brief Creates a parser that creates a new parser from the result of the given parser
- * using the factory function f. If the given parser fails, the result will be a failure.
+ * @brief Creates a parser that creates a new parser from the result of the given
+ * parser using the factory function f. If the given parser fails, the result will be
+ * a failure.
  *
  * @tparam Tx type of the value returned by the parser created by the factory function
  * @tparam T type of the value returned by the given parser
@@ -504,8 +524,8 @@ template<typename T>
 using Values = std::list<T>;
 
 /**
- * @brief Creates a parser that executes the given parser zero or more times and returns a
- * list of the results. This parser will never fail.
+ * @brief Creates a parser that executes the given parser zero or more times and
+ * returns a list of the results. This parser will never fail.
  *
  * @tparam T type of the value returned by the given parser
  * @param p parser to execute
@@ -542,9 +562,9 @@ Parser<Values<T>> many(const Parser<T>& p)
 }
 
 /**
- * @brief Creates a parser that executes the given parser one or more times and returns a
- * list of the results. This parser will fail if the given parser does not succeed at
- * least once.
+ * @brief Creates a parser that executes the given parser one or more times and
+ * returns a list of the results. This parser will fail if the given parser does not
+ * succeed at least once.
  *
  * @tparam T type of the value returned by the given parser
  * @param p parser to execute
