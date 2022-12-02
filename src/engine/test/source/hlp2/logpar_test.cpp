@@ -945,7 +945,6 @@ TEST(LogparParserTest, Group)
         if (success)
         {
             ASSERT_TRUE(res.success());
-            auto resVal = res.value();
             ASSERT_EQ(g, res.value());
         }
         else
@@ -1049,7 +1048,6 @@ TEST(LogparParserTest, Logpar)
         if (success)
         {
             ASSERT_TRUE(res.success());
-            auto resVal = res.value();
             ASSERT_EQ(v, res.value());
         }
         else
