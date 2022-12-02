@@ -37,13 +37,13 @@ parsec::Parser<json::Json> getTextParser(Stop endTokens, Options lst)
         if (pos == index)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Nothing to parse at {}", pos), text, pos);
+                fmt::format("Nothing to parse at {}", pos), pos);
         }
 
         json::Json doc;
         // copy can be slow
         doc.setString(std::string {fp});
-        return parsec::makeSuccess<json::Json>(doc, text, pos);
+        return parsec::makeSuccess<json::Json>(std::move(doc), pos);
     };
 }
 } // namespace hlp

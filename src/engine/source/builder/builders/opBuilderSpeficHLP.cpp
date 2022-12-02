@@ -181,7 +181,7 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
             const auto result = parser(sourceValue.value(), 0);
             if (result.failure())
             {
-                const auto tracerFailure = fmt::format(failureTrace2, result.error().msg);
+                const auto tracerFailure = fmt::format(failureTrace2, result.error());
                 return base::result::makeFailure(event, tracerFailure);
             }
             // Add result to event

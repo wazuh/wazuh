@@ -67,7 +67,7 @@ parsec::Parser<json::Json> getFilePathParser(Stop endTokens, Options lst)
         else
             parseFp("/", &doc, fp);
 
-        return parsec::makeSuccess<json::Json>(doc, text, pos);
+        return parsec::makeSuccess<json::Json>(std::move(doc), pos);
     };
 }
 

@@ -63,7 +63,6 @@ parsec::Parser<json::Json> getKVParser(Stop endTokens, Options lst)
         if (kv.size() <= 1)
             return parsec::makeError<json::Json>(
                 fmt::format("No fields found with delim '{}' and sep '{}')", delim, sep),
-                text,
                 index);
 
         for (auto i = 0; i < kv.size() - 1; i += 2)
@@ -75,7 +74,6 @@ parsec::Parser<json::Json> getKVParser(Stop endTokens, Options lst)
                     fmt::format("Unable to parse key-value between '{}'-'{}' chars))",
                                 kv[i].start(),
                                 kv[i].end()),
-                    text,
                     index);
             end = kv[i + 1].end();
             updateDoc(
@@ -84,9 +82,9 @@ parsec::Parser<json::Json> getKVParser(Stop endTokens, Options lst)
 
         if (end != pos)
             return parsec::makeError<json::Json>(
-                fmt::format("Unable to parse from {} to {}", end, pos), text, index);
+                fmt::format("Unable to parse from {} to {}", end, pos), index);
 
-        return parsec::makeSuccess(doc, text, end);
+        return parsec::makeSuccess(std::move(doc), end);
     };
 }
 

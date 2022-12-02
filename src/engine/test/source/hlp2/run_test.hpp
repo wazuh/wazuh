@@ -46,16 +46,15 @@ static void runTest(TestCase t,
     auto r = parser(std::get<0>(t), 0);
 
     ASSERT_EQ(r.success(), expectedSuccess)
-        << (r.success() ? "" : "ParserError: " + r.error().msg);
+        << (r.success() ? "" : "ParserError: " + r.error());
     if (r.success())
     {
         ASSERT_EQ(expectedDoc, r.value());
     }
     else
     {
-        ASSERT_FALSE(r.error().msg.empty());
+        ASSERT_FALSE(r.error().empty());
     }
-    ASSERT_EQ(r.text, std::get<0>(t));
-    ASSERT_EQ(r.index, std::get<5>(t));
+    ASSERT_EQ(r.index(), std::get<5>(t));
 }
 #endif // WAZUH_ENGINE_HLP_H

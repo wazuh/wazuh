@@ -70,9 +70,9 @@ parsec::Parser<json::Json> getCSVParser(Stop endTokens, Options lst)
 
         if (end < pos && headers.size() != i)
             return parsec::makeError<json::Json>(
-                fmt::format("Unable to parse from {} to {}", end, pos), text, index);
+                fmt::format("Unable to parse from {} to {}", end, pos), index);
 
-        return parsec::makeSuccess<json::Json>(doc, text, end);
+        return parsec::makeSuccess<json::Json>(std::move(doc), end);
     };
 }
 } // namespace hlp
