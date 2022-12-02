@@ -21,7 +21,7 @@ metadata:
 
 normalize:
   - map:
-      - ~time: + sys_epoch
+      - ~time: +sys_epoch
       - ~query: +s_concat/agent /$agent.id/ rootcheck save /$~time/ /$event.original
       - ~result: +wdb_query/$~query
       - wazuh.rootcheck.file: +r_ext/$event.original/(?:f|F)ile '(.*?)'
