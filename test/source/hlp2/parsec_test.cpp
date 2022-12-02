@@ -632,29 +632,28 @@ TEST(ParsecCombinatorTest, Many1)
     ASSERT_EQ(expectedTrace.index(), result.index());
 }
 
-// TODO: update to use the new trace system
-//  TEST(ParsecCombinatorTest, Tag)
-//  {
-//      parsec::Result<std::tuple<resT, resT>> result;
-//      auto p = parsec::tag<resT>(getSuccessParser(0), 999);
-//      ASSERT_NO_THROW(result = p("text", 0));
-//      ASSERT_TRUE(result.success());
-//      ASSERT_EQ(std::tuple(0, 999), result.value());
+TEST(ParsecCombinatorTest, Tag)
+{
+    parsec::Result<std::tuple<resT, resT>> result;
+    auto p = parsec::tag<resT>(getSuccessParser(0), 999);
+    ASSERT_NO_THROW(result = p("text", 0));
+    ASSERT_TRUE(result.success());
+    ASSERT_EQ(std::tuple(0, 999), result.value());
 
-//     p = parsec::tag<resT>(getErrorParser(), 999);
-//     ASSERT_NO_THROW(result = p("text", 0));
-//     ASSERT_FALSE(result.success());
-// }
+    p = parsec::tag<resT>(getErrorParser(), 999);
+    ASSERT_NO_THROW(result = p("text", 0));
+    ASSERT_FALSE(result.success());
+}
 
-// TEST(ParsecCombinatorTest, Replace)
-// {
-//     parsec::Result<resT> result;
-//     auto p = parsec::replace<resT>(getSuccessParser(0), 999);
-//     ASSERT_NO_THROW(result = p("text", 0));
-//     ASSERT_TRUE(result.success());
-//     ASSERT_EQ(999, result.value());
+TEST(ParsecCombinatorTest, Replace)
+{
+    parsec::Result<resT> result;
+    auto p = parsec::replace<resT>(getSuccessParser(0), 999);
+    ASSERT_NO_THROW(result = p("text", 0));
+    ASSERT_TRUE(result.success());
+    ASSERT_EQ(999, result.value());
 
-//     p = parsec::replace<resT>(getErrorParser(), 999);
-//     ASSERT_NO_THROW(result = p("text", 0));
-//     ASSERT_FALSE(result.success());
-// }
+    p = parsec::replace<resT>(getErrorParser(), 999);
+    ASSERT_NO_THROW(result = p("text", 0));
+    ASSERT_FALSE(result.success());
+}

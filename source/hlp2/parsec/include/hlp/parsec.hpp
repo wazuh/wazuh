@@ -394,7 +394,7 @@ Parser<T> operator|(const Parser<T>& l, const Parser<T>& r)
                                   {{resL.trace(), resR.trace()}});
         }
 
-        return makeError<T>("L|R, both failed", 0, {{resL.trace(), resR.trace()}});
+        return makeError<T>("L|R, both failed", i, {{resL.trace(), resR.trace()}});
     };
 }
 
@@ -576,41 +576,39 @@ Parser<Values<T>> many1(const Parser<T>& p)
     };
 }
 
-// TODO: update to use the new trace system
-// /**
-//  * @brief Creates a parser that adds a tag to the result of the given parser. If the
-//  given
-//  * parser fails, the result will be a failure.
-//  *
-//  * @tparam T type of the value returned by the given parser
-//  * @tparam Tag type of the tag
-//  * @param p parser to execute
-//  * @param tag tag to add
-//  * @return Parser<std::tuple<T, Tag>> Combined parser
-//  */
-// template<typename T, typename Tag>
-// Parser<std::tuple<T, Tag>> tag(const Parser<T>& p, Tag tag)
-// {
-//     return fmap<std::tuple<T, Tag>, T>([tag](T val) { return std::make_tuple(val, tag);
-//     },
-//                                        p);
-// }
+/**
+ * @brief Creates a parser that adds a tag to the result of the given parser. If the
+ given
+ * parser fails, the result will be a failure.
+ *
+ * @tparam T type of the value returned by the given parser
+ * @tparam Tag type of the tag
+ * @param p parser to execute
+ * @param tag tag to add
+ * @return Parser<std::tuple<T, Tag>> Combined parser
+ */
+template<typename T, typename Tag>
+Parser<std::tuple<T, Tag>> tag(const Parser<T>& p, Tag tag)
+{
+    return fmap<std::tuple<T, Tag>, T>([tag](T val) { return std::make_tuple(val, tag); },
+                                       p);
+}
 
-// /**
-//  * @brief Creates a parser that replaces the result of the given parser with the given
-//  * tag. If the given parser fails, the result will be a failure.
-//  *
-//  * @tparam T type of the value returned by the given parser
-//  * @tparam Tag type of the tag
-//  * @param p parser to execute
-//  * @param tag tag to replace the result with
-//  * @return Parser<Tag> Combined parser
-//  */
-// template<typename T, typename Tag>
-// Parser<Tag> replace(const Parser<T>& p, Tag tag)
-// {
-//     return fmap<Tag, T>([tag](T) { return tag; }, p);
-// }
+/**
+ * @brief Creates a parser that replaces the result of the given parser with the given
+ * tag. If the given parser fails, the result will be a failure.
+ *
+ * @tparam T type of the value returned by the given parser
+ * @tparam Tag type of the tag
+ * @param p parser to execute
+ * @param tag tag to replace the result with
+ * @return Parser<Tag> Combined parser
+ */
+template<typename T, typename Tag>
+Parser<Tag> replace(const Parser<T>& p, Tag tag)
+{
+    return fmap<Tag, T>([tag](T) { return tag; }, p);
+}
 
 } // namespace parsec
 
