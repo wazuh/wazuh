@@ -65,7 +65,7 @@ add_library(hlp2 STATIC
 # you aren't linking to the pthread library. The pthread library is used to assure that that library initialization
 # is thread safe in a multithreaded environment.
 target_link_libraries(hlp2
-        PUBLIC base hlp_parsec
+        PUBLIC base hlp_parsec hlp::logpar
         PRIVATE
         pugixml
         date::date

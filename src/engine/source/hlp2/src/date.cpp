@@ -67,12 +67,12 @@ std::string formatDateFromSample(std::string dateSample, std::string locale)
 
         if (res.success())
         {
-            if (res.index != dateSample.size())
+            if (res.index()!= dateSample.size())
                 throw std::runtime_error(
                     fmt::format("Failed to parse '{}', there is a partial match between "
                                 "'0' and '{}'.",
                                 dateSample,
-                                res.index));
+                                res.index()));
             matchingFormats.push_back(format);
         }
     }
@@ -150,8 +150,7 @@ parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
         if (in.fail())
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Error parsing '{}' date at {}", text, in.tellg()),
-                text,
+                fmt::format("Error parsing '{}' date at {}", in.tellg()),
                 index);
         }
         // pos can be -1 if all the input has been consumed
@@ -190,9 +189,9 @@ parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
         json::Json doc;
         doc.setString(out.str().data());
         if (pos > text.size())
-            return parsec::makeSuccess<json::Json>(doc, text, pos);
+            return parsec::makeSuccess<json::Json>(std::move(doc),pos);
 
-        return parsec::makeSuccess<json::Json>(doc, text, pos);
+        return parsec::makeSuccess<json::Json>(std::move(doc),pos);
     };
 }
 

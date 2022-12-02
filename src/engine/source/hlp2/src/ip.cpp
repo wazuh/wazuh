@@ -42,17 +42,16 @@ parsec::Parser<json::Json> getIPParser(Stop endTokens, Options lst)
         if (inet_pton(AF_INET, addr.c_str(), &ip))
         {
             doc.setString(addr);
-            return parsec::makeSuccess<json::Json>(doc, text, pos);
+            return parsec::makeSuccess<json::Json>(std::move(doc),pos);
         }
         else if (inet_pton(AF_INET6, addr.c_str(), &ipv6))
         {
             doc.setString(addr);
-            return parsec::makeSuccess<json::Json>(doc, text, pos);
+            return parsec::makeSuccess<json::Json>(std::move(doc),pos);
         }
 
         return parsec::makeError<json::Json>(
             fmt::format("IP parser is unable to parse '{}' as IPv4 or IPv6", addr),
-            text,
             index);
     };
 }

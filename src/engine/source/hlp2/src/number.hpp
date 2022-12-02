@@ -53,26 +53,23 @@ parsec::Parser<json::Json> getNumericParser(Stop, Options lst)
             auto pos = ptr - text.begin();
             json::Json doc;
             utils::setNumber(doc, val);
-            return parsec::makeSuccess<json::Json>(doc, text, pos);
+            return parsec::makeSuccess<json::Json>(std::move(doc), pos);
         }
         else if (ec == std::errc::invalid_argument)
         {
             return parsec::makeError<json::Json>(
                 fmt::format("Input '{}' is not a number at {}", text, index),
-                text,
                 index);
         }
         else if (ec == std::errc::result_out_of_range)
         {
             return parsec::makeError<json::Json>(
                 fmt::format("Value is out of range in {}  at {}", text, index),
-                text,
                 index);
         }
 
         return parsec::makeError<json::Json>(
             fmt::format("Unknown error when parsing '{}' at {}", text, index),
-            text,
             index);
     };
 }

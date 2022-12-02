@@ -106,11 +106,11 @@ parsec::Parser<json::Json> getXMLParser(Stop endTokens, Options lst)
             else
                 xmlToJson(xmlDoc, jsonDoc, xmlWinModule);
 
-            return parsec::makeSuccess<json::Json>(jsonDoc, text, pos);
+            return parsec::makeSuccess<json::Json>(std::move(jsonDoc), pos);
         }
 
         return parsec::makeError<json::Json>(
-            fmt::format("{}", parseResult.description()), text, index);
+            fmt::format("{}", parseResult.description()), index);
     };
 }
 } // namespace hlp

@@ -51,7 +51,7 @@ parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
         if (url == nullptr)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("unable to initialize the url container"), text, index);
+                fmt::format("unable to initialize the url container"), index);
         }
         size_t end;
 
@@ -60,7 +60,7 @@ parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
         if (uc)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("error parsing url"), text, index);
+                fmt::format("error parsing url"), index);
         }
 
         // TODO curl will parse and copy the URL into an allocated
@@ -130,7 +130,7 @@ parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
             curl_free(str);
         }
 
-        return parsec::makeSuccess<json::Json>(doc, text, end);
+        return parsec::makeSuccess<json::Json>(std::move(doc), end);
     };
 }
 
@@ -160,7 +160,7 @@ parsec::Parser<json::Json> getUAParser(Stop endTokens, Options lst)
         json::Json doc;
         doc.setString(std::string {fp}, "/user_agent/original");
 
-        return parsec::makeSuccess<json::Json>(doc, text, pos);
+        return parsec::makeSuccess<json::Json>(std::move(doc), pos);
     };
 }
 
@@ -182,7 +182,7 @@ parsec::Parser<json::Json> getFQDNParser(Stop endTokens, Options lst)
 
         if (fp.size() > 253)
             return parsec::makeError<json::Json>(
-                fmt::format("size '{}' too big for an fqdn", fp.size()), text, index);
+                fmt::format("size '{}' too big for an fqdn", fp.size()), index);
 
         char last = 0;
         auto e = std::find_if_not(fp.begin(),
@@ -198,10 +198,10 @@ parsec::Parser<json::Json> getFQDNParser(Stop endTokens, Options lst)
         if (e == fp.end())
         {
             doc.setString(fp.data());
-            return parsec::makeSuccess<json::Json>(doc, text, pos);
+            return parsec::makeSuccess<json::Json>(std::move(doc), pos);
         }
         return parsec::makeError<json::Json>(
-            fmt::format("invalid char '{}' found while parsing", e[0]), text, index);
+            fmt::format("invalid char '{}' found while parsing", e[0]), index);
     };
 }
 

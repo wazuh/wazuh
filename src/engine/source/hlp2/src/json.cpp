@@ -39,11 +39,11 @@ parsec::Parser<json::Json> getJSONParser(Stop endTokens, Options lst)
         if (doc.HasParseError())
         {
             auto msg = fmt::format("{}", doc.GetParseError());
-            return parsec::makeError<json::Json>(msg, text, index);
+            return parsec::makeError<json::Json>(std::move(msg), index);
         }
 
         return parsec::makeSuccess<json::Json>(
-            json::Json(std::move(doc)), text, ss.Tell());
+            json::Json(std::move(doc)), ss.Tell());
     };
 }
 } // namespace hlp

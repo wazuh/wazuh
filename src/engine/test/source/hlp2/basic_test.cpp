@@ -38,8 +38,8 @@ TEST(HLP2, BaseStopChar)
             ASSERT_TRUE(std::holds_alternative<parsec::Result<json::Json>>(resultFail));
             auto pResult = std::get<parsec::Result<json::Json>>(resultFail);
             ASSERT_TRUE(pResult.failure());
-            ASSERT_EQ(pResult.index, 10);
-            ASSERT_FALSE(pResult.error().msg.empty());
+            ASSERT_EQ(pResult.index(), 10);
+            ASSERT_FALSE(pResult.error().empty());
         }
     }
     // Check that stop is not found
@@ -47,8 +47,8 @@ TEST(HLP2, BaseStopChar)
     ASSERT_TRUE(std::holds_alternative<parsec::Result<json::Json>>(result));
     auto pResult = std::get<parsec::Result<json::Json>>(result);
     ASSERT_TRUE(pResult.failure());
-    ASSERT_EQ(pResult.index, 10);
-    ASSERT_FALSE(pResult.error().msg.empty());
+    ASSERT_EQ(pResult.index(), 10);
+    ASSERT_FALSE(pResult.error().empty());
 }
 
 TEST(HLP2, BaseStopStr)
@@ -68,8 +68,8 @@ TEST(HLP2, BaseStopStr)
             ASSERT_TRUE(std::holds_alternative<parsec::Result<json::Json>>(resultFail));
             auto pResult = std::get<parsec::Result<json::Json>>(resultFail);
             ASSERT_TRUE(pResult.failure());
-            ASSERT_EQ(pResult.index, 20);
-            ASSERT_FALSE(pResult.error().msg.empty());
+            ASSERT_EQ(pResult.index(), 20);
+            ASSERT_FALSE(pResult.error().empty());
         }
     }
     // Check that stop is not found
@@ -77,8 +77,8 @@ TEST(HLP2, BaseStopStr)
     ASSERT_TRUE(std::holds_alternative<parsec::Result<json::Json>>(result));
     auto pResult = std::get<parsec::Result<json::Json>>(result);
     ASSERT_TRUE(pResult.failure());
-    ASSERT_EQ(pResult.index, 20);
-    ASSERT_FALSE(pResult.error().msg.empty());
+    ASSERT_EQ(pResult.index(), 20);
+    ASSERT_FALSE(pResult.error().empty());
 }
 
 TEST(HLP2, BooleanParser)
