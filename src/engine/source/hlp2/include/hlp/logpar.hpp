@@ -192,8 +192,8 @@ parsec::Parser<T> pEof()
     return [](std::string_view text, size_t pos)
     {
         if (pos == text.size())
-            return parsec::makeSuccess<T>({}, text, pos);
-        return parsec::makeError<T>("Expected end of input", text, pos);
+            return parsec::makeSuccess<T>({}, pos);
+        return parsec::makeError<T>("Expected end of input", pos);
     };
 };
 
