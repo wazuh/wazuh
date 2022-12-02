@@ -32,6 +32,7 @@ pthread_mutex_t sys_stop_mutex;
 bool need_shutdown_wait = false;
 pthread_mutex_t sys_reconnect_mutex;
 bool shutdown_process_started = false;
+bool syscollector_initialized = false;
 
 const wm_context WM_SYS_CONTEXT = {
     .name = "syscollector",
@@ -130,6 +131,7 @@ void* wm_sys_main(wm_sys_t *sys) {
     w_cond_init(&sys_stop_condition, NULL);
     w_mutex_init(&sys_stop_mutex, NULL);
     w_mutex_init(&sys_reconnect_mutex, NULL);
+    syscollector_initialized = true;
 
     if (!sys->flags.enabled) {
         mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
@@ -212,21 +214,23 @@ void wm_sys_destroy(wm_sys_t *data) {
 }
 
 void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
-    mtinfo(WM_SYS_LOGTAG, "Stop received for Syscollector.");
-    syscollector_sync_message_ptr = NULL;
-    if (syscollector_stop_ptr){
-        shutdown_process_started = true;
-        syscollector_stop_ptr();
-    }
-    w_mutex_lock(&sys_stop_mutex);
-    if (need_shutdown_wait) {
-        w_cond_wait(&sys_stop_condition, &sys_stop_mutex);
-    }
-    w_mutex_unlock(&sys_stop_mutex);
+    if (syscollector_initialized) {
+        mtinfo(WM_SYS_LOGTAG, "Stop received for Syscollector.");
+        syscollector_sync_message_ptr = NULL;
+        if (syscollector_stop_ptr){
+            shutdown_process_started = true;
+            syscollector_stop_ptr();
+        }
+        w_mutex_lock(&sys_stop_mutex);
+        if (need_shutdown_wait) {
+            w_cond_wait(&sys_stop_condition, &sys_stop_mutex);
+        }
+        w_mutex_unlock(&sys_stop_mutex);
 
-    w_cond_destroy(&sys_stop_condition);
-    w_mutex_destroy(&sys_stop_mutex);
-    w_mutex_destroy(&sys_reconnect_mutex);
+        w_cond_destroy(&sys_stop_condition);
+        w_mutex_destroy(&sys_stop_mutex);
+        w_mutex_destroy(&sys_reconnect_mutex);
+    }
 }
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) {
