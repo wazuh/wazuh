@@ -910,7 +910,7 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                     continue;
                 }
 
-                snprintf(path, PATH_MAX, "%s/%s", dirname?dirname:"", event->name);
+                snprintf(path, PATH_MAX, "%s/%s", dirname, event->name);
 
                 if (event->name[0] == '.' && IsDir(path)) {
                     mtdebug2(WM_DATABASE_LOGTAG, "Discarding hidden file.");
