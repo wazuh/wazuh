@@ -26,7 +26,7 @@ std::optional<parsec::Result<T>> eofError(std::string_view txt, size_t idx)
 {
     if (idx >= txt.size())
     {
-        return parsec::makeError<T>("Unexpected EOF", txt, idx);
+        return parsec::makeError<T>("Unexpected EOF", idx);
     }
     return std::nullopt;
 }
@@ -79,7 +79,6 @@ stop(std::string_view txt, size_t idx, const std::list<std::string>& end)
 
     return parsec::makeError<T>(
         fmt::format("Unable to stop at '{}' from '{}'", fmt::join(end, ", "), idx),
-        txt,
         txt.size());
 }
 

@@ -29,12 +29,12 @@ parsec::Parser<json::Json> getLiteralParser(Stop, Options lst)
 
         if (txt.substr(idx, literal.size()) == literal)
         {
-            return parsec::makeSuccess<json::Json>({}, txt, idx + literal.size());
+            return parsec::makeSuccess<json::Json>({}, idx + literal.size());
         }
         else
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Expected '{}'", literal), txt, idx);
+                fmt::format("Expected '{}'", literal), idx);
         }
     };
 }

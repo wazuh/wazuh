@@ -34,17 +34,17 @@ parsec::Parser<json::Json> getBoolParser(Stop, Options lst)
         if (utils::string::startsWith(text, "true"))
         {
             ret.setBool(true);
-            return parsec::makeSuccess<json::Json>(ret, text, index + 4);
+            return parsec::makeSuccess<json::Json>(std::move(ret), index + 4);
         }
         else if (utils::string::startsWith(text, "false"))
         {
             ret.setBool(false);
-            return parsec::makeSuccess<json::Json>(ret, text, index + 5);
+            return parsec::makeSuccess<json::Json>(std::move(ret), index + 5);
         }
         else
         {
             return parsec::makeError<json::Json>(
-                "Expected 'true' or 'false'", text, index);
+                "Expected 'true' or 'false'", index);
         }
     };
 }
