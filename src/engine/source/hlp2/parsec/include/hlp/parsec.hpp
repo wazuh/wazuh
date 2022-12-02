@@ -3,13 +3,11 @@
 
 #include <functional>
 #include <list>
-#include <stdexcept>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
-#include <variant>
-
-// TODO: check error messages concatenation
+#include <vector>
 
 /**
  * @brief Contains the parser combinators and parser types
@@ -20,15 +18,72 @@ namespace parsec
 /****************************************************************************************
  * Type definitions
  ****************************************************************************************/
-/**
- * @brief Return type of error
- *
- * Encapsulates the error message to avoid variant conflicts
- */
-struct Error
+class Trace
 {
-    std::string msg;
-    operator std::string() const { return msg; }
+public:
+    using messageT = std::optional<std::string>;
+    using nestedTracesT = std::optional<std::vector<Trace>>;
+
+private:
+    bool m_success;
+    size_t m_index;
+    messageT m_message;
+    nestedTracesT m_innerTraces;
+
+public:
+    Trace() = default;
+    ~Trace() = default;
+    Trace(bool success, size_t index, messageT&& message, nestedTracesT&& innerTraces)
+        : m_success(success)
+        , m_index(index)
+        , m_message(std::move(message))
+        , m_innerTraces(std::move(innerTraces))
+    {
+    }
+    Trace(const Trace& other)
+        : m_success(other.m_success)
+        , m_index(other.m_index)
+        , m_message(other.m_message)
+        , m_innerTraces(other.m_innerTraces)
+    {
+    }
+    Trace(Trace&& other) noexcept
+        : m_success(std::move(other.m_success))
+        , m_index(std::move(other.m_index))
+        , m_message(std::move(other.m_message))
+        , m_innerTraces(std::move(other.m_innerTraces))
+    {
+    }
+    Trace& operator=(const Trace& other)
+    {
+        m_success = other.m_success;
+        m_index = other.m_index;
+        m_message = other.m_message;
+        m_innerTraces = other.m_innerTraces;
+        return *this;
+    }
+    Trace& operator=(Trace&& other) noexcept
+    {
+        m_success = std::move(other.m_success);
+        m_index = std::move(other.m_index);
+        m_message = std::move(other.m_message);
+        m_innerTraces = std::move(other.m_innerTraces);
+        return *this;
+    }
+
+    bool operator==(const Trace& other) const
+    {
+        return m_success == other.m_success && m_index == other.m_index
+               && m_message == other.m_message && m_innerTraces == other.m_innerTraces;
+    }
+    bool operator!=(const Trace& other) const { return !(*this == other); }
+
+    bool success() const { return m_success; }
+    size_t index() const { return m_index; }
+    const messageT& message() const { return m_message; }
+    messageT&& message() { return std::move(m_message); }
+    const nestedTracesT& innerTraces() const { return m_innerTraces; }
+    nestedTracesT&& innerTraces() { return std::move(m_innerTraces); }
 };
 
 /**
@@ -40,31 +95,48 @@ template<typename T>
 class Result
 {
 private:
-    bool init = false;
-    void initialized() const
-    {
-        if (!init)
-        {
-            throw std::runtime_error("Result not initialized");
-        }
-    }
+    /* value */
+    std::optional<T> m_value;
+    /* trace */
+    Trace m_trace;
 
 public:
-    /* Error or value */
-    std::variant<T, Error> res;
-    /* Index pointing to the next character not consumed by the parser */
-    size_t index;
-    /* Text parsed */
-    std::string_view text;
-
     Result() = default;
-    Result(std::variant<T, Error> valOrErr, std::string_view txt, size_t idx)
-        : res {valOrErr}
-        , index {idx}
-        , text {txt}
-        , init {true}
+    ~Result() = default;
+    Result(std::optional<T>&& value, Trace&& trace)
+        : m_value {std::move(value)}
+        , m_trace {std::move(trace)}
+
     {
     }
+    Result(const Result<T>& other)
+        : m_value {other.m_value}
+        , m_trace {other.m_trace}
+    {
+    }
+    Result(Result<T>&& other) noexcept
+        : m_value {std::move(other.m_value)}
+        , m_trace {std::move(other.m_trace)}
+    {
+    }
+    Result<T>& operator=(const Result<T>& other)
+    {
+        m_value = other.m_value;
+        m_trace = other.m_trace;
+        return *this;
+    }
+    Result<T>& operator=(Result<T>&& other) noexcept
+    {
+        m_value = std::move(other.m_value);
+        m_trace = std::move(other.m_trace);
+        return *this;
+    }
+
+    bool operator==(const Result<T>& other) const
+    {
+        return m_value == other.m_value && m_trace == other.m_trace;
+    }
+    bool operator!=(const Result<T>& other) const { return !(*this == other); }
 
     /**
      * @brief Check if the result is a success
@@ -73,11 +145,7 @@ public:
      * @return false if res contains an error
      * @throw std::runtime_error if the result is not initialized
      */
-    bool success() const
-    {
-        initialized();
-        return std::holds_alternative<T>(res);
-    }
+    bool success() const { return m_trace.success(); }
 
     /**
      * @brief Check if the result is a failure
@@ -86,69 +154,75 @@ public:
      * @return false if res contains a value
      * @throw std::runtime_error if the result is not initialized
      */
-    bool failure() const
-    {
-        initialized();
-        return std::holds_alternative<Error>(res);
-    }
-
-    /**
-     * @brief Check if the result is a success
-     *
-     * @return true if res contains a value
-     * @return false if res contains an error
-     * @throws std::runtime_error if the result is not initialized
-     */
-    operator bool() const
-    {
-        initialized();
-        return success();
-    }
+    bool failure() const { return !success(); }
 
     /**
      * @brief Get the value
      *
-     * @return T& the value
+     * @return const T& the value
      *
-     * @pre init == true && success() == true
-     * @throw std::bad_variant_access if success() == false
-     * @throw std::runtime_error if init == false
+     * @pre success() == true
+     * @throws std::bad_optional_access if success() == false
      */
-    T value() const
-    {
-        initialized();
-        return std::get<T>(res);
-    }
+    const T& value() const { return *m_value; }
+
+    /**
+     * @brief Get the value
+     *
+     * @return T&& the value
+     *
+     * @pre success() == true
+     * @throws std::bad_optional_access if success() == false
+     */
+    T&& value() { return std::move(*m_value); }
 
     /**
      * @brief Get the error
      *
-     * @return Error& the error
+     * @return const std::string& the error
      *
-     * @pre init == true && failure() == true
-     * @throw std::bad_variant_access if failure() == false
-     * @throw std::runtime_error if the result is not initialized
+     * @pre failure() == true
+     * @throw std::bad_optional_access if failure() == false
      */
-    Error error() const
-    {
-        initialized();
-        return std::get<Error>(res);
-    }
+    const std::string& error() const { return m_trace.message().value(); }
+
+    /**
+     * @brief Get the trace
+     *
+     * @return const Trace& the trace
+     */
+    const Trace& trace() const { return m_trace; }
+
+    /**
+     * @brief Get the trace
+     *
+     * @return Trace&& the trace
+     * @warning this object is left in undefined state
+     */
+    Trace&& trace() { return std::move(m_trace); }
+
+    size_t index() const { return m_trace.index(); }
 };
 
 /**
  * @brief Create a success result
  *
  * @tparam T type of the value returned by the parser
- * @param value value returned by the parser
- * @param text text that was parsed
+ * @param valuePtr value returned by the parser
  * @param index index pointing to the next character not consumed by the parser
+ * @param trace optional with trace (if any)
+ * @param innerTrace traces of combinated parsers (if any)
+ *
  * @return Result<T> success result
  */
 template<typename T>
-auto makeSuccess(T value, std::string_view text, size_t index)
+Result<T> makeSuccess(T&& value,
+                      size_t index,
+                      Trace::messageT&& trace = std::nullopt,
+                      Trace::nestedTracesT&& innerTrace = std::nullopt)
 {
-    return Result<T> {value, text, index};
+    return Result<T> {std::make_optional<T>(std::move(value)),
+                      Trace {true, index, std::move(trace), std::move(innerTrace)}};
 }
 
 /**
@@ -156,14 +230,21 @@ auto makeSuccess(T value, std::string_view text, size_t index)
  *
  * @tparam T type of the value returned by the parser
  * @param error error message
- * @param text text that was parsed
  * @param index index pointing to the next character not consumed by the parser
+ * @param innerTrace traces of combinated parsers (if any)
+ *
  * @return Result<T> failure result
  */
 template<typename T>
-auto makeError(const std::string& error, std::string_view text, size_t index)
+Result<T> makeError(std::string&& error,
+                    size_t index,
+                    Trace::nestedTracesT&& innerTrace = std::nullopt)
 {
-    return Result<T> {Error {error}, text, index};
+    return Result<T> {std::nullopt,
+                      Trace {false,
+                             index,
+                             std::make_optional<std::string>(std::move(error)),
+                             std::move(innerTrace)}};
 }
 
 /**
@@ -199,11 +280,12 @@ Parser<T> opt(const Parser<T>& p)
         auto res = p(s, i);
         if (res.success())
         {
-            return res;
+            return makeSuccess<T>(
+                res.value(), res.index(), "OPT(P), P failed", {{res.trace()}});
         }
         else
         {
-            return makeSuccess<T>({}, s, i);
+            return makeSuccess<T>({}, i, "OPT(P), P succeeded", {{res.trace()}});
         }
     };
 }
@@ -226,16 +308,20 @@ Parser<L> operator<<(const Parser<L>& l, const Parser<R>& r)
         auto resL = l(s, i);
         if (resL.failure())
         {
-            return resL;
+            return makeError<L>("L<<R, L failed", resL.index(), {{resL.trace()}});
         }
 
-        auto resR = r(s, resL.index);
+        auto resR = r(s, resL.index());
         if (resR.failure())
         {
-            return makeError<L>(resR.error(), s, resR.index);
+            return makeError<L>(
+                "L<<R, R failed", resR.index(), {{resL.trace(), resR.trace()}});
         }
 
-        return makeSuccess(resL.value(), s, resR.index);
+        return makeSuccess(resL.value(),
+                           resR.index(),
+                           "L<<R, succeeded",
+                           {{resL.trace(), resR.trace()}});
     };
 
     return fn;
@@ -259,10 +345,20 @@ Parser<R> operator>>(const Parser<L>& l, const Parser<R>& r)
         auto resL = l(s, i);
         if (resL.failure())
         {
-            return makeError<R>(resL.error(), s, resL.index);
+            return makeError<R>("L>>R, L failed", resL.index(), {{resL.trace()}});
         }
 
-        return r(s, resL.index);
+        auto resR = r(s, resL.index());
+        if (resR.failure())
+        {
+            return makeError<R>(
+                "L>>R, R failed", resR.index(), {{resL.trace(), resR.trace()}});
+        }
+
+        return makeSuccess(resR.value(),
+                           resR.index(),
+                           "L>>R, succeeded",
+                           {{resL.trace(), resR.trace()}});
     };
 
     return fn;
@@ -285,16 +381,20 @@ Parser<T> operator|(const Parser<T>& l, const Parser<T>& r)
         auto resL = l(s, i);
         if (resL.success())
         {
-            return resL;
+            return makeSuccess<T>(
+                resL.value(), resL.index(), "L|R, L succeeded", {{resL.trace()}});
         }
 
         auto resR = r(s, i);
         if (resR.success())
         {
-            return resR;
+            return makeSuccess<T>(resR.value(),
+                                  resR.index(),
+                                  "L|R, R succeeded",
+                                  {{resL.trace(), resR.trace()}});
         }
 
-        return makeError<T>(resL.error().msg + " or " + resR.error().msg, s, i);
+        return makeError<T>("L|R, both failed", 0, {{resL.trace(), resR.trace()}});
     };
 }
 
@@ -316,15 +416,20 @@ Parser<std::tuple<L, R>> operator&(const Parser<L>& l, const Parser<R>& r)
         auto resL = l(s, i);
         if (resL.failure())
         {
-            return makeError<std::tuple<L, R>>(resL.error(), s, resL.index);
+            return makeError<std::tuple<L, R>>(
+                "L&R, L failed", resL.index(), {{resL.trace()}});
         }
-        auto resR = r(s, resL.index);
+        auto resR = r(s, resL.index());
         if (resR.failure())
         {
-            return makeError<std::tuple<L, R>>(resR.error(), s, resR.index);
+            return makeError<std::tuple<L, R>>(
+                "L&R, R failed", resR.index(), {{resL.trace(), resR.trace()}});
         }
-        return makeSuccess<std::tuple<L, R>>(
-            std::make_tuple(resL.value(), resR.value()), s, resR.index);
+
+        return makeSuccess<std::tuple<L, R>>(std::make_tuple(resL.value(), resR.value()),
+                                             resR.index(),
+                                             "L&R, succeeded",
+                                             {{resL.trace(), resR.trace()}});
     };
 }
 
@@ -347,9 +452,10 @@ Parser<Tx> fmap(std::function<Tx(T)> f, const Parser<T>& p)
         auto res = p(s, i);
         if (res.failure())
         {
-            return makeError<Tx>(res.error(), s, res.index);
+            return makeError<Tx>("FMAP(P), P failed", res.index(), {{res.trace()}});
         }
-        return makeSuccess<Tx>(f(res.value()), s, res.index);
+        return makeSuccess<Tx>(
+            f(res.value()), res.index(), "FMAP(P), P succeeded", {{res.trace()}});
     };
 }
 
@@ -375,10 +481,21 @@ Parser<Tx> operator>>=(const Parser<T>& p, M<Tx, T> f)
         auto res = p(s, i);
         if (res.failure())
         {
-            return makeError<Tx>(res.error(), s, res.index);
+            return makeError<Tx>("P>>=M, P failed", res.index(), {{res.trace()}});
         }
+
         auto newParser = f(res.value());
-        return newParser(s, res.index);
+        auto res2 = newParser(s, res.index());
+        if (res2.failure())
+        {
+            return makeError<Tx>(
+                "P>>=M, M failed", res2.index(), {{res.trace(), res2.trace()}});
+        }
+
+        return makeSuccess<Tx>(res2.value(),
+                               res2.index(),
+                               "P>>=M, succeeded",
+                               {{res.trace(), res2.trace()}});
     };
 }
 
@@ -400,19 +517,27 @@ Parser<Values<T>> many(const Parser<T>& p)
     return [p](std::string_view s, size_t i)
     {
         Values<T> values {};
+        Trace::nestedTracesT traces = std::vector<Trace> {};
+
         auto innerI = i;
-        while (true)
+        auto stop = true;
+        while (stop)
         {
             auto innerRes = p(s, innerI);
             if (innerRes.failure())
             {
-                break;
+                stop = false;
             }
-            values.push_back(innerRes.value());
-            innerI = innerRes.index;
+            else
+            {
+                values.push_back(innerRes.value());
+            }
+            innerI = innerRes.index();
+            traces.value().push_back(std::move(innerRes.trace()));
         }
 
-        return makeSuccess<Values<T>>(values, s, innerI);
+        return makeSuccess<Values<T>>(
+            std::move(values), innerI, "MANY(P), succeeded", std::move(traces));
     };
 }
 
@@ -434,48 +559,58 @@ Parser<Values<T>> many1(const Parser<T>& p)
         auto firstRes = p(s, i);
         if (firstRes.failure())
         {
-            return makeError<Values<T>>(firstRes.error(), s, firstRes.index);
+            return makeError<Values<T>>(
+                "MANY1(P), P failed", firstRes.index(), {{firstRes.trace()}});
         }
 
         Values<T> values {firstRes.value()};
-        auto res = manyP(s, firstRes.index);
+        auto res = manyP(s, firstRes.index());
         values.splice(values.end(), res.value());
-        return makeSuccess<Values<T>>(values, s, res.index);
+        res.trace().innerTraces().value().insert(
+            res.trace().innerTraces().value().begin(), std::move(firstRes.trace()));
+
+        return makeSuccess<Values<T>>(std::move(values),
+                                      res.index(),
+                                      "MANY1(P), succeeded",
+                                      res.trace().innerTraces());
     };
 }
 
-/**
- * @brief Creates a parser that adds a tag to the result of the given parser. If the given
- * parser fails, the result will be a failure.
- *
- * @tparam T type of the value returned by the given parser
- * @tparam Tag type of the tag
- * @param p parser to execute
- * @param tag tag to add
- * @return Parser<std::tuple<T, Tag>> Combined parser
- */
-template<typename T, typename Tag>
-Parser<std::tuple<T, Tag>> tag(const Parser<T>& p, Tag tag)
-{
-    return fmap<std::tuple<T, Tag>, T>([tag](T val) { return std::make_tuple(val, tag); },
-                                       p);
-}
+// TODO: update to use the new trace system
+// /**
+//  * @brief Creates a parser that adds a tag to the result of the given parser. If the
+//  given
+//  * parser fails, the result will be a failure.
+//  *
+//  * @tparam T type of the value returned by the given parser
+//  * @tparam Tag type of the tag
+//  * @param p parser to execute
+//  * @param tag tag to add
+//  * @return Parser<std::tuple<T, Tag>> Combined parser
+//  */
+// template<typename T, typename Tag>
+// Parser<std::tuple<T, Tag>> tag(const Parser<T>& p, Tag tag)
+// {
+//     return fmap<std::tuple<T, Tag>, T>([tag](T val) { return std::make_tuple(val, tag);
+//     },
+//                                        p);
+// }
 
-/**
- * @brief Creates a parser that replaces the result of the given parser with the given
- * tag. If the given parser fails, the result will be a failure.
- *
- * @tparam T type of the value returned by the given parser
- * @tparam Tag type of the tag
- * @param p parser to execute
- * @param tag tag to replace the result with
- * @return Parser<Tag> Combined parser
- */
-template<typename T, typename Tag>
-Parser<Tag> replace(const Parser<T>& p, Tag tag)
-{
-    return fmap<Tag, T>([tag](T) { return tag; }, p);
-}
+// /**
+//  * @brief Creates a parser that replaces the result of the given parser with the given
+//  * tag. If the given parser fails, the result will be a failure.
+//  *
+//  * @tparam T type of the value returned by the given parser
+//  * @tparam Tag type of the tag
+//  * @param p parser to execute
+//  * @param tag tag to replace the result with
+//  * @return Parser<Tag> Combined parser
+//  */
+// template<typename T, typename Tag>
+// Parser<Tag> replace(const Parser<T>& p, Tag tag)
+// {
+//     return fmap<Tag, T>([tag](T) { return tag; }, p);
+// }
 
 } // namespace parsec
 

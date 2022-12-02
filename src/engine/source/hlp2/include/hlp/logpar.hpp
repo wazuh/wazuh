@@ -1,5 +1,5 @@
-#ifndef _HLP_HPP
-#define _HLP_HPP
+#ifndef _LOGPAR_HPP
+#define _LOGPAR_HPP
 
 #include <list>
 #include <string>
