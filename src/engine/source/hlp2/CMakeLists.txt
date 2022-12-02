@@ -28,6 +28,7 @@ CPMAddPackage(
 
 add_library(hlp_parsec INTERFACE)
 target_include_directories(hlp_parsec INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/parsec/include/)
+target_link_libraries(hlp_parsec INTERFACE base)
 add_library(hlp::parsec ALIAS hlp_parsec)
 
 add_library(hlp_logpar STATIC src/logpar.cpp)
