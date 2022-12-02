@@ -141,12 +141,19 @@ void test_wdb_create_agent_db_error_already_exist(void **state)
     int agent_id = 1;
     char agent_name[] = "agent1";
 
-    // Agent database does exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_SUCCESS);
+    // Opening source database file
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+    // Opening destination database file
+    errno = EEXIST;
+    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, mode, "wx");
+    will_return(__wrap_fopen, 0);
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, OS_SUCCESS);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent database already exist.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent database already exists.");
 
     ret = wdb_create_agent_db(agent_id, agent_name);
 
@@ -159,10 +166,6 @@ void test_wdb_create_agent_db_error_accesing_file(void **state)
     int agent_id = 1;
     char agent_name[] = "agent1";
 
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
     // Opening source database file
     errno = ETXTBSY;
     expect_string(__wrap_fopen, path, "var/db/.template.db");
@@ -183,10 +186,6 @@ void test_wdb_create_agent_db_error_creating_source_profile(void **state)
     int agent_id = 1;
     const char* agent_name = "agent1";
 
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
     // Opening source database file
     errno = ENOENT;
     expect_string(__wrap_fopen, path, "var/db/.template.db");
@@ -208,10 +207,6 @@ void test_wdb_create_agent_db_error_reopening_source_profile(void **state)
     int agent_id = 1;
     const char* agent_name = "agent1";
 
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
     // Opening source database file
     errno = ENOENT;
     expect_string(__wrap_fopen, path, "var/db/.template.db");
@@ -238,21 +233,19 @@ void test_wdb_create_agent_db_error_opening_dest_profile(void **state)
     int agent_id = 1;
     const char* agent_name = "agent1";
 
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, mode, "w");
+    expect_string(__wrap_fopen, mode, "wx");
     will_return(__wrap_fopen, 0);
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, OS_SUCCESS);
-    expect_string(__wrap__merror, formatted_msg, "Couldn't create database 'var/db/agents/001-agent1.db'.");
+
+    will_return(__wrap_strerror, "error");
+    expect_string(__wrap__merror, formatted_msg, "Couldn't create database 'var/db/agents/001-agent1.db': error (0).");
 
     ret = wdb_create_agent_db(agent_id, agent_name);
 
@@ -265,17 +258,13 @@ void test_wdb_create_agent_db_error_writing_profile(void **state)
     int agent_id = 1;
     const char* agent_name = "agent1";
 
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, mode, "w");
+    expect_string(__wrap_fopen, mode, "wx");
     will_return(__wrap_fopen, 1);
     // Writing destination profile
     will_return(__wrap_fread, "teststring");
@@ -298,17 +287,13 @@ void test_wdb_create_agent_db_error_getting_ids(void **state)
     int agent_id = 1;
     const char* agent_name = "agent1";
 
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, mode, "w");
+    expect_string(__wrap_fopen, mode, "wx");
     will_return(__wrap_fopen, 1);
     // Writing destination profile
     will_return(__wrap_fread, "teststring");
@@ -339,17 +324,13 @@ void test_wdb_create_agent_db_error_changing_owner(void **state)
     int agent_id = 1;
     const char* agent_name = "agent1";
 
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, mode, "w");
+    expect_string(__wrap_fopen, mode, "wx");
     will_return(__wrap_fopen, 1);
     // Writing destination profile
     will_return(__wrap_fread, "teststring");
@@ -387,17 +368,13 @@ void test_wdb_create_agent_db_error_changing_mode(void **state)
     int agent_id = 1;
     const char* agent_name = "agent1";
 
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, mode, "w");
+    expect_string(__wrap_fopen, mode, "wx");
     will_return(__wrap_fopen, 1);
     // Writing destination profile
     will_return(__wrap_fread, "teststring");
@@ -438,17 +415,13 @@ void test_wdb_create_agent_db_success(void **state)
     int agent_id = 1;
     const char* agent_name = "agent1";
 
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, mode, "w");
+    expect_string(__wrap_fopen, mode, "wx");
     will_return(__wrap_fopen, 1);
     // Writing destination profile
     will_return(__wrap_fread, "teststring");

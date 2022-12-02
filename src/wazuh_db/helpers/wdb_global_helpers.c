@@ -980,10 +980,6 @@ int wdb_create_agent_db(int id, const char *name) {
     }
 
     snprintf(dst_path, OS_FLSIZE, "%s/agents/%03d-%s.db", WDB_DIR, id, name);
-    if (OS_SUCCESS == stat(dst_path, &st_buffer)) {
-        mdebug2("Agent database already exist.");
-        return OS_SUCCESS;
-    }
 
     snprintf(src_path, OS_FLSIZE, "%s/%s", WDB_DIR, WDB_PROF_NAME);
     if (!(source = fopen(src_path, "r"))) {
@@ -1005,10 +1001,18 @@ int wdb_create_agent_db(int id, const char *name) {
         }
     }
 
-    if (!(dest = fopen(dst_path, "w"))) {
+    if (!(dest = fopen(dst_path, "wx"))) {
         fclose(source);
-        merror("Couldn't create database '%s'.", dst_path);
-        return OS_INVALID;
+
+        switch (errno) {
+        case EEXIST:
+            mdebug2("Agent database already exists.");
+            return OS_SUCCESS;
+        default:
+            merror("Couldn't create database '%s': %s (%d).", dst_path, strerror(errno), errno);
+            return OS_INVALID;
+        }
+
     }
 
     while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
