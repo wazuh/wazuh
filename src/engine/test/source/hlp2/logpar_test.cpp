@@ -44,7 +44,7 @@ TEST(LogparTest, BuildLogparExpression)
         {
             logpar.build(text);
         }
-        catch(const std::exception& e)
+        catch (const std::exception& e)
         {
             FAIL() << fmt::format("Failed to build expression: '{}'", text) << std::endl
                    << e.what();
@@ -225,13 +225,13 @@ TEST(LogparTest, BuildLogparAndParse)
         auto parseResult = parser(input, 0);
         if (success)
         {
-            ASSERT_TRUE(parseResult)
-                << "Test case " << n << " Parse error: " << parseResult.error().msg;
+            ASSERT_TRUE(parseResult.success())
+                << "Test case " << n << " Parse error: " << parseResult.error();
             ASSERT_EQ(parseResult.value(), expected) << "Test case " << n;
         }
         else
         {
-            ASSERT_FALSE(parseResult) << "Test case " << n;
+            ASSERT_FALSE(parseResult.success()) << "Test case " << n;
         }
     }
 }
@@ -457,8 +457,7 @@ TEST(LogparParserTest, Field)
         {
             ASSERT_FALSE(res.success());
         }
-        ASSERT_EQ(i, res.index);
-        ASSERT_EQ(t, res.text);
+        ASSERT_EQ(i, res.index());
         caseN++;
     }
 }
@@ -540,8 +539,7 @@ TEST(LogparParserTest, Literal)
         {
             ASSERT_FALSE(res.success());
         }
-        ASSERT_EQ(i, res.index);
-        ASSERT_EQ(t, res.text);
+        ASSERT_EQ(i, res.index());
         caseN++;
     }
 }
@@ -635,8 +633,7 @@ TEST(LogparParserTest, Choice)
         {
             ASSERT_FALSE(res.success());
         }
-        ASSERT_EQ(i, res.index);
-        ASSERT_EQ(t, res.text);
+        ASSERT_EQ(i, res.index());
         caseN++;
     }
 }
@@ -729,8 +726,7 @@ TEST(LogparParserTest, Expression)
         {
             ASSERT_FALSE(res.success());
         }
-        ASSERT_EQ(i, res.index);
-        ASSERT_EQ(t, res.text);
+        ASSERT_EQ(i, res.index());
         caseN++;
     }
 }
@@ -956,8 +952,7 @@ TEST(LogparParserTest, Group)
         {
             ASSERT_FALSE(res.success());
         }
-        ASSERT_EQ(i, res.index);
-        ASSERT_EQ(t, res.text);
+        ASSERT_EQ(i, res.index());
         caseN++;
     }
 }
@@ -1061,8 +1056,7 @@ TEST(LogparParserTest, Logpar)
         {
             ASSERT_FALSE(res.success());
         }
-        ASSERT_EQ(i, res.index);
-        ASSERT_EQ(t, res.text);
+        ASSERT_EQ(i, res.index());
         caseN++;
     }
 }
