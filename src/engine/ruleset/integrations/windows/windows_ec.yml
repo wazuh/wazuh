@@ -12,3 +12,8 @@ check:
 parse:
   logpar:
     - ~json.Event: <~event_channel/xml/windows>
+
+normalize:
+ - map:
+  - event.code: $~event_channel.Event.System.EventID.#text
+  - event.@timestamp: $~event_channel.Event.System.TimeCreated.@SystemTime
