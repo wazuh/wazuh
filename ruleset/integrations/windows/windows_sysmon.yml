@@ -1,0 +1,19 @@
+name: decoder/windows_sysmon/0
+
+sources: 
+  - decoder/windows_event_channel/0
+
+metadata:
+  description: Decoder for Windows Sysmon events
+
+check:
+  - ~event_channel.Event.System.Provider.@Name: Microsoft-Windows-Sysmon
+
+
+normalize:
+ - map:
+    - event.module: sysmon
+    - event.kind: event
+    
+    # Add category fields
+    - event:  +kvdb_get_merge/win_sysmon_categories/$event.code 
