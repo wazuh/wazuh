@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <json/json.hpp>
 #include <utils/baseMacros.hpp>
 
 constexpr static const char* DEFAULT_CF_NAME {"default"};
@@ -183,13 +184,13 @@ public:
                    const std::string& columnName = DEFAULT_CF_NAME);
 
     /**
-     * @brief Iterates throug the whole KVDB and fills dump string with a line of each key
-     * value.
+     * @brief Iterates throug the whole KVDB and fills dump json with the content
+     * of the DB.
      *
-     * @param dump where the result will be dump to.
-     * @return size_t quantity of keys dumped to the string.
+     * @param dump where the result will be stored.
+     * @return std::string error message if it could finish properly.
      */
-    size_t dumpContent(std::string& dump);
+    std::string_view dumpContent(json::Json& dump);
 
     /**
      * @brief DB closing cleaning all elements used to acces it

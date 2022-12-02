@@ -21,6 +21,7 @@ constexpr bool ERROR_IF_EXISTS {true};
 constexpr bool NO_ERROR_IF_EXISTS {false};
 constexpr bool CREATE_IF_MISSING {true};
 constexpr bool DONT_CREATE_IF_MISSING {false};
+constexpr const char* LEGACY_DIRECTORY {"legacy"};
 
 } // namespace
 
@@ -34,7 +35,7 @@ KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath)
     m_dbStoragePath = dbStoragePath;
 
     auto legacyPath = m_dbStoragePath;
-    legacyPath.append("legacy");
+    legacyPath.append(LEGACY_DIRECTORY);
     if (std::filesystem::exists(legacyPath))
     {
         for (const auto& cdbfile : std::filesystem::directory_iterator(legacyPath))
@@ -140,6 +141,7 @@ bool KVDBManager::deleteDB(const std::string& name, bool onlyLoaded)
     }
     else
     {
+        // check if present in map and use_count
         KVDBHandle dbHandle;
         if (!getDBFromPath(name, dbHandle))
         {
@@ -207,7 +209,7 @@ std::vector<std::string> KVDBManager::listDBs(bool loaded)
             if (path.is_directory())
             {
                 std::string name {path.path().stem().string()};
-                if (name != "legacy")
+                if (name != LEGACY_DIRECTORY)
                 {
                     if (isDBOnPath(name))
                     {
@@ -244,24 +246,64 @@ std::string KVDBManager::CreateAndFillDBfromFile(const std::string& dbName,
 
     if (!path.empty())
     {
-        std::ifstream filePath(path);
-        if (!filePath.is_open())
+        // Open file and read content
+        std::string contents;
+        std::ifstream in(path, std::ios::in | std::ios::binary);
+        if (in)
         {
-            return fmt::format("File \"{}\" could not be opened", path.c_str());
+            in.seekg(0, std::ios::end);
+            contents.resize(in.tellg());
+            in.seekg(0, std::ios::beg);
+            in.read(&contents[0], contents.size());
+            in.close();
+        }
+        else
+        {
+            //TODO: delete DB if any error
+            return fmt::format(
+                "Engine \"kvdb\" command: An error occurred while opening the "
+                "file \"{}\"",
+                path.c_str());
         }
 
-        for (std::string line; getline(filePath, line);)
+        json::Json jKv;
+        try
         {
-            line.erase(std::remove_if(line.begin(), line.end(), isspace), line.end());
-            auto kv = utils::string::split(line, ':');
-            if (kv.empty() || kv.size() > 2)
-            {
-                return fmt::format(
-                    "An error occurred while trying to read the file \"{}\"",
-                    path.c_str());
-            }
+            jKv = json::Json {contents.c_str()};
+        }
+        catch (const std::exception& e)
+        {
+            //TODO: delete DB if any error
+            return fmt::format("Engine \"kvdb\" command: An error occurred while "
+                               "parsing the JSON file \"{}\"",
+                               path.c_str());
+        }
 
-            dbHandle->write(kv[0], kv.size() == 2 ? kv[1] : "");
+        if (!jKv.isObject())
+        {
+            //TODO: delete DB if any error
+            return fmt::format("Engine \"kvdb\" command: An error occurred while "
+                               "parsing the JSON file \"{}\": JSON is not an object.",
+                               path.c_str());
+        }
+
+        auto entries = jKv.getObject();
+        for (const auto& [key, value] : entries.value())
+        {
+
+            try
+            {
+                auto jsValue = value.str();
+                dbHandle->write(key, jsValue);
+            }
+            catch (const std::exception& e)
+            {
+                //TODO: delete DB if any error
+                return fmt::format("Engine \"kvdb\" command: An error occurred while "
+                                   "writing the key \"{}\" to the database \"{}\"",
+                                   key.c_str(),
+                                   dbName.c_str());
+            }
         }
     }
 
@@ -277,14 +319,17 @@ bool KVDBManager::getDBFromPath(const std::string& name, KVDBHandle& dbHandle)
             || KVDB::CreationStatus::OkCreated == result);
 }
 
-size_t KVDBManager::dumpContent(const std::string& name, std::string& content)
+std::optional<std::string_view> KVDBManager::dumpContent(const std::string& name, json::Json& data)
 {
-    size_t result {0};
+    std::optional<std::string_view> result {std::nullopt};
     KVDBHandle dbHandle;
-
     if (getDBFromPath(name, dbHandle))
     {
-        result = dbHandle->dumpContent(content);
+        result = dbHandle->dumpContent(data);
+    }
+    else
+    {
+        result = fmt::format("Couldn't retrieve DB [\"{}\"] from path.",name.c_str());
     }
 
     return result;
