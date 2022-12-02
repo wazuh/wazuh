@@ -18,23 +18,18 @@ parsec::Parser<char> pChar(std::string chars)
         {
             if (chars.find(t[i]) != std::string::npos)
             {
-                return parsec::makeSuccess(t[i], t, i + 1);
+                return parsec::makeSuccess(char {t[i]}, i + 1);
             }
             else
             {
                 return parsec::makeError<char>(
-                    parsec::Error {
-                        fmt::format("Expected one of '{}', found '{}'", chars, t[i])},
-                    t,
-                    i);
+                    fmt::format("Expected one of '{}', found '{}'", chars, t[i]), i);
             }
         }
         else
         {
             return parsec::makeError<char>(
-                parsec::Error {fmt::format("Expected one of '{}', found EOF", chars)},
-                t,
-                i);
+                fmt::format("Expected one of '{}', found EOF", chars), i);
         }
     };
 }
@@ -47,27 +42,21 @@ parsec::Parser<char> pNotChar(std::string chars)
         {
             if (chars.find(t[i]) == std::string::npos)
             {
-                return parsec::makeSuccess(t[i], t, i + 1);
+                return parsec::makeSuccess(char {t[i]}, i + 1);
             }
             else
             {
                 return parsec::makeError<char>(
-                    parsec::Error {
-                        fmt::format("Expected not one of '{}', found '{}'", chars, t[i])},
-                    t,
-                    i);
+                    fmt::format("Expected not one of '{}', found '{}'", chars, t[i]), i);
             }
         }
         else
         {
             return parsec::makeError<char>(
-                parsec::Error {fmt::format("Expected not one of '{}', found EOF", chars)},
-                t,
-                i);
+                fmt::format("Expected not one of '{}', found EOF", chars), i);
         }
     };
-
-} // namespace
+}
 
 parsec::Parser<char> pEscapedChar(std::string chars, char esc)
 {
@@ -114,21 +103,18 @@ parsec::Parser<char> pCharAlphaNum(std::string extended)
                 || (t[i] >= '0' && t[i] <= '9')
                 || extended.find(t[i]) != std::string::npos)
             {
-                return parsec::makeSuccess(t[i], t, i + 1);
+                return parsec::makeSuccess(char {t[i]}, i + 1);
             }
             else
             {
                 return parsec::makeError<char>(
-                    parsec::Error {
-                        fmt::format("Expected alphanumeric, found '{}'", t[i])},
-                    t,
-                    i);
+                    fmt::format("Expected alphanumeric, found '{}'", t[i]), i);
             }
         }
         else
         {
             return parsec::makeError<char>(
-                parsec::Error {fmt::format("Expected alphanumeric, found EOF")}, t, i);
+                fmt::format("Expected alphanumeric, found EOF"), i);
         }
     };
 }
@@ -149,20 +135,17 @@ parsec::Parser<FieldName> pFieldName()
         {
             if (text[i] == syntax::EXPR_CUSTOM_FIELD)
             {
-                return parsec::makeSuccess(std::string {text[i]}, text, i + 1);
+                return parsec::makeSuccess(std::string {text[i]}, i + 1);
             }
             else
             {
-                return parsec::makeSuccess(std::string {}, text, i);
+                return parsec::makeSuccess(std::string {}, i);
             }
         }
         else
         {
             return parsec::makeError<std::string>(
-                parsec::Error {
-                    fmt::format("Optional '{}', found EOF", syntax::EXPR_CUSTOM_FIELD)},
-                text,
-                i);
+                fmt::format("Optional '{}', found EOF", syntax::EXPR_CUSTOM_FIELD), i);
         }
     };
 
@@ -243,7 +226,7 @@ parsec::Parser<Choice> pChoice()
         auto res = p(text, i);
         if (res.failure())
         {
-            return parsec::makeError<Choice>(res.error(), text, i);
+            return parsec::makeError<Choice>(std::string {res.error()}, i);
         }
         else
         {
@@ -251,22 +234,20 @@ parsec::Parser<Choice> pChoice()
             if (f1.optional)
             {
                 return parsec::makeError<Choice>(
-                    parsec::Error {fmt::format(
-                        "Expected field, found optional field '{}'", f1.name.value)},
-                    text,
+                    fmt::format("Expected field, found optional field '{}'",
+                                f1.name.value),
                     i);
             }
 
             if (f2.optional)
             {
                 return parsec::makeError<Choice>(
-                    parsec::Error {fmt::format(
-                        "Expected field, found optional field '{}'", f2.name.value)},
-                    text,
+                    fmt::format("Expected field, found optional field '{}'",
+                                f2.name.value),
                     i);
             }
 
-            return parsec::makeSuccess(Choice {f1, f2}, text, res.index);
+            return parsec::makeSuccess(Choice {f1, f2}, res.index());
         }
     };
 }
@@ -293,9 +274,9 @@ parsec::Result<Group> pG(std::string_view text, size_t i)
     auto lastIdx = i;
     if (resStart.failure())
     {
-        return parsec::makeError<Group>(resStart.error(), text, i);
+        return parsec::makeError<Group>(std::string {resStart.error()}, i);
     }
-    lastIdx = resStart.index;
+    lastIdx = resStart.index();
 
     parsec::Parser<Group> pGfn = pG;
     auto pGmap = parsec::fmap<parsec::Values<ParserInfo>, Group>(
@@ -316,17 +297,17 @@ parsec::Result<Group> pG(std::string_view text, size_t i)
     auto resBody = pBody(text, lastIdx);
     if (resBody.failure())
     {
-        return parsec::makeError<Group>(resBody.error(), text, i);
+        return parsec::makeError<Group>(std::string {resBody.error()}, i);
     }
-    lastIdx = resBody.index;
+    lastIdx = resBody.index();
 
     auto resEnd = pChar({syntax::EXPR_GROUP_END})(text, lastIdx);
     if (resEnd.failure())
     {
-        return parsec::makeError<Group>(resEnd.error(), text, i);
+        return parsec::makeError<Group>(std::string {resEnd.error()}, i);
     }
 
-    return parsec::makeSuccess(Group {resBody.value()}, text, resEnd.index);
+    return parsec::makeSuccess(Group {resBody.value()}, resEnd.index());
 }
 } // namespace
 
@@ -736,7 +717,7 @@ parsec::Parser<json::Json> Logpar::build(std::string_view logpar) const
     auto result = parser::pLogpar()(logpar, 0);
     if (result.failure())
     {
-        throw std::runtime_error(result.error().msg);
+        throw std::runtime_error(result.error());
     }
 
     auto parserInfos = result.value();
