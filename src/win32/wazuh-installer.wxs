@@ -146,7 +146,7 @@
             <Custom Action="SetOSVersion12" Before="SetCustomActionDataValue">BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Custom>
             
             <!-- Close the GUI -->
-            <Custom Action="CloseGUI" After="InstallInitialize"></Custom>
+            <Custom Action="CloseGUI" Before="InstallFinalize"></Custom>
             
             <!-- Set deployment values -->
             <Custom Action="SetWazuhManager" Before="SetCustomActionDataValue">ADDRESS &lt;&gt; "" AND WAZUH_MANAGER = ""</Custom>
