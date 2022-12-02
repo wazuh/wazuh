@@ -111,7 +111,8 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar)
                         if (parseResult.failure())
                         {
                             return base::result::makeFailure(
-                                std::move(event), errorTrace2 + parseResult.error());
+                                std::move(event),
+                                errorTrace2 + parsec::prettyTrace(parseResult.trace()));
                         }
 
                         auto val = parseResult.value();
