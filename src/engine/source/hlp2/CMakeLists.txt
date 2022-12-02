@@ -28,6 +28,12 @@ CPMAddPackage(
 
 add_library(hlp_parsec INTERFACE)
 target_include_directories(hlp_parsec INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/parsec/include/)
+add_library(hlp::parsec ALIAS hlp_parsec)
+
+add_library(hlp_logpar STATIC src/logpar.cpp)
+target_include_directories(hlp_logpar PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_link_libraries(hlp_logpar PUBLIC hlp::parsec json base)
+add_library(hlp::logpar ALIAS hlp_logpar)
 
 add_library(hlp2 STATIC
         src/number.cpp
@@ -47,7 +53,6 @@ add_library(hlp2 STATIC
         src/ip.cpp
         src/text.cpp
         src/encodings.cpp
-        src/logpar.cpp
         src/literal.cpp)
 
 # https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing

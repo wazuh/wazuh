@@ -31,7 +31,7 @@ parsec::Parser<json::Json> __dummyTextParser(std::string endToken,
                 if (end.empty())
                 {
                     result.setString(txt.substr(i));
-                    return parsec::makeSuccess(result, txt, txt.size());
+                    return parsec::makeSuccess(std::move(result), txt.size());
                 }
                 else
                 {
@@ -41,20 +41,20 @@ parsec::Parser<json::Json> __dummyTextParser(std::string endToken,
                         std::string match {txt.substr(i, pos - i)};
                         if (match.empty())
                         {
-                            return parsec::makeError<json::Json>("Empty match", txt, i);
+                            return parsec::makeError<json::Json>("Empty match", i);
                         }
                         result.setString(match);
-                        return parsec::makeSuccess(result, txt, pos);
+                        return parsec::makeSuccess(std::move(result), pos);
                     }
                     else
                     {
-                        return parsec::makeError<json::Json>("Found EOF", txt, i);
+                        return parsec::makeError<json::Json>("Found EOF", i);
                     }
                 }
             }
             else
             {
-                return parsec::makeError<json::Json>("Unexpected end of input", txt, i);
+                return parsec::makeError<json::Json>("Unexpected end of input", i);
             }
         }};
 }
@@ -100,17 +100,17 @@ parsec::Parser<json::Json> dummyLongParser(std::list<std::string>,
                 ;
             if (j == i)
             {
-                return parsec::makeError<json::Json>("Expected digit", txt, j);
+                return parsec::makeError<json::Json>("Expected digit", j);
             }
             else
             {
                 result.setInt(std::stol(std::string(txt.substr(i, j - i))));
-                return parsec::makeSuccess(result, txt, j);
+                return parsec::makeSuccess(std::move(result), j);
             }
         }
         else
         {
-            return parsec::makeError<json::Json>("Unexpected end of input", txt, i);
+            return parsec::makeError<json::Json>("Unexpected end of input", i);
         }
     };
 }
@@ -129,17 +129,17 @@ parsec::Parser<json::Json> dummyLiteralParser(std::list<std::string>,
         {
             if (txt.substr(i, lit.size()) == lit)
             {
-                return parsec::makeSuccess(json::Json {}, txt, i + lit.size());
+                return parsec::makeSuccess(json::Json {}, i + lit.size());
             }
             else
             {
                 return parsec::makeError<json::Json>(
-                    fmt::format("Expected '{}' at '{}'", lit, i), txt, i);
+                    fmt::format("Expected '{}' at '{}'", lit, i), i);
             }
         }
         else
         {
-            return parsec::makeError<json::Json>("Unexpected end of input", txt, i);
+            return parsec::makeError<json::Json>("Unexpected end of input", i);
         }
     };
 }

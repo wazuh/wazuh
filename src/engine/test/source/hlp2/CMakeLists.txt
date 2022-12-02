@@ -1,13 +1,13 @@
 add_executable(parsec_test
     parsec_test.cpp
 )
-target_link_libraries(parsec_test hlp_parsec gtest_main)
+target_link_libraries(parsec_test hlp::parsec gtest_main)
 gtest_discover_tests(parsec_test)
 
 add_executable(logpar_test
     logpar_test.cpp
 )
-target_link_libraries(logpar_test hlp2 hlp_parsec gtest_main)
+target_link_libraries(logpar_test hlp::logpar hlp_parsec gtest_main)
 gtest_discover_tests(logpar_test)
 
 add_executable(hlp2_test
