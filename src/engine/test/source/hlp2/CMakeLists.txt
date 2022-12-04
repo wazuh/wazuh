@@ -15,6 +15,7 @@ add_executable(hlp2_test
         basic_test.cpp
         web_test.cpp
         file_test.cpp
+        ignore_test.cpp
         json_test.cpp
         xml_test.cpp
         csv_test.cpp

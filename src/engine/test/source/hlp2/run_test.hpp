@@ -27,6 +27,36 @@ using namespace hlp;
 //   [6] ReturnDoc a funcion wihch receives [4] and returns a json::Json document
 using TestCase = std::tuple<std::string, bool, Stop, Options, json::Json, size_t>;
 
+namespace {
+
+    // Print a stop as a string
+    std::string printStop(const Stop& stop)
+    {
+        std::string res = fmt::format("{}", fmt::join(stop, ", "));
+        return res;
+    }
+    // Print a list of options as a string
+    std::string printOptions(const Options& options)
+    {
+        std::string res = fmt::format("{}", fmt::join(options, ", "));
+        return res;
+    }
+
+    // Print a TestCase to a std::string
+    std::string to_string(const TestCase& testCase)
+    {
+        auto [input, success, stop, options, doc, index] = testCase;
+        return fmt::format("TestCase: \ninput: {}\n success: {}\n stop: {}\n options: "
+                           "{}\n doc: {}\n index: {}\n",
+                           input,
+                           success,
+                           printStop(stop),
+                           printOptions(options),
+                           doc.str(),
+                           index);
+    }
+}
+
 static void runTest(TestCase t,
                     std::function<parsec::Parser<json::Json>(Stop, Options)> pb)
 {
@@ -55,6 +85,6 @@ static void runTest(TestCase t,
     {
         ASSERT_FALSE(r.error().empty());
     }
-    ASSERT_EQ(r.index(), std::get<5>(t));
+    ASSERT_EQ(r.index(), std::get<5>(t)) << to_string(t);
 }
 #endif // WAZUH_ENGINE_HLP_H
