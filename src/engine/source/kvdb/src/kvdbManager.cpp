@@ -52,8 +52,7 @@ KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath)
 
 KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)
 {
-    std::unique_lock lk(m_mtx);
-    if (m_loadedDBs.find(name) != m_loadedDBs.end())
+    if (isLoaded(name))
     {
         WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Database with name \"{}\" "
                         "already loaded.",
@@ -71,6 +70,7 @@ KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)
     if (KVDB::CreationStatus::OkInitialized == result
         || KVDB::CreationStatus::OkCreated == result)
     {
+        std::unique_lock lk(m_mtx);
         m_loadedDBs[name] = kvdb;
         return kvdb;
     }
@@ -121,50 +121,30 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path& path)
     return true;
 }
 
-bool KVDBManager::deleteDB(const std::string& name, bool onlyLoaded)
+bool KVDBManager::unloadDB(const std::string& name)
 {
-    if (onlyLoaded)
+    if (!isLoaded(name))
     {
-        std::unique_lock lk(m_mtx);
-        auto it = m_loadedDBs.find(name);
-        if (it == m_loadedDBs.end())
-        {
-            WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Database \"{}\" is not "
-                            "present on the KVDB manager databases list.",
-                            __func__,
-                            name);
-            return false;
-        }
-
-        it->second->cleanupOnClose();
-        m_loadedDBs.erase(it);
+        WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Database \"{}\" is not "
+                        "present on the KVDB manager databases list.",
+                        __func__,
+                        name);
+        return false;
     }
-    else
-    {
-        // check if present in map and use_count
-        KVDBHandle dbHandle;
-        if (!getDBFromPath(name, dbHandle))
-        {
-            WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Database \"{}\" "
-                            "couldn't be fetched from the filesystem.",
-                            __func__,
-                            name);
-            return false;
-        }
 
-        dbHandle->cleanupOnClose();
-    }
+    std::unique_lock lk(m_mtx);
+    auto& kvdb = m_loadedDBs[name];
+    kvdb->cleanupOnClose();
+    m_loadedDBs.erase(name);
 
     return true;
 }
 
 KVDBHandle KVDBManager::getDB(const std::string& name)
 {
-    std::shared_lock lk(m_mtx);
-    auto it = m_loadedDBs.find(name);
-    if (it != m_loadedDBs.end())
+    if (isLoaded(name))
     {
-        auto& db = it->second;
+        auto& db = m_loadedDBs[name];
         if (!db->isReady())
         {
             // In general it should never happen so we should consider just
@@ -182,7 +162,7 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
         }
 
         // return handle
-        return it->second;
+        return m_loadedDBs[name];
     }
 
     return nullptr;
@@ -388,4 +368,36 @@ bool KVDBManager::isDBOnPath(const std::string& name)
     auto dbHandle = std::make_shared<KVDB>(name, m_dbStoragePath);
     auto result = dbHandle->init(DONT_CREATE_IF_MISSING, NO_ERROR_IF_EXISTS);
     return (result != KVDB::CreationStatus::ErrorUnknown);
+}
+
+bool KVDBManager::isLoaded(const std::string& name)
+{
+    std::unique_lock lk(m_mtx);
+    auto it = m_loadedDBs.find(name);
+    return (it != m_loadedDBs.end());
+}
+
+std::optional<std::string> KVDBManager::deleteDB(const std::string& name)
+{
+    if (isLoaded(name))
+    {
+        // TODO: double check instances because it could have been updated
+        const auto kvdbHandle = m_loadedDBs[name];
+        auto count = kvdbHandle.use_count();
+        if(count >= 1)
+        {
+            return fmt::format("DB \"{}\" is in use", name);
+        }
+    }
+
+    KVDBHandle dbHandle;
+    if (!getDBFromPath(name, dbHandle))
+    {
+        return fmt::format("Database \"{}\" couldn't be fetched from the filesystem.",
+                           __func__,
+                           name);
+    }
+
+    dbHandle->cleanupOnClose();
+    return std::nullopt;
 }

@@ -40,7 +40,7 @@ protected:
         }
     }
 
-    virtual void TearDown() { kvdbManager->deleteDB(DB_NAME); }
+    virtual void TearDown() { kvdbManager->unloadDB(DB_NAME); }
 };
 
 // Build ok
