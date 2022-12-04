@@ -19,7 +19,7 @@ using Options = std::vector<std::string>;
  * Returns a parser which will accept booleans represented by the strings
  * 'true' and 'false'.
  *
- * @param str
+ * @param endTokens
  * @param lst
  * @return
  */
@@ -28,7 +28,7 @@ parsec::Parser<json::Json> getBoolParser(Stop endTokens, Options lst);
 /**
  * Returns a parser which will accept numbers represented by the strings
  * accepted by std::from_char in the C++ STL.
- * @param str
+ * @param endTokens
  * @param lst
  * @return
  */
@@ -44,7 +44,7 @@ parsec::Parser<json::Json> getScaledFloatParser(Stop endTokens, Options lst);
  * The stop substring must be found complete, or it will not accept
  * the input.
  *
- * @param str
+ * @param endTokens
  * @param lst
  * @return
  */
@@ -56,7 +56,7 @@ parsec::Parser<json::Json> getTextParser(Stop endTokens, Options lst);
  * base64 char, then it will consume the padding '='.
  *
  * The accepted base64 chars are A-Z, a-z, 0-9, +, or /
- * @param str
+ * @param endTokens
  * @param lst
  * @return
  */
@@ -90,7 +90,7 @@ parsec::Parser<json::Json> getBinaryParser(Stop endTokens, Options lst);
  *
  *
  *
- * @param str
+ * @param endTokens
  * @param lst format, locale
  * @return
  */
@@ -113,7 +113,7 @@ std::string formatDateFromSample(std::string dateSample, std::string locale);
  * inet_pton implementation might differ depending
  * on the system on which the engine is built.
  *
- * @param str
+ * @param endTokens
  * @param lst list of field names
  * @return
  */
@@ -127,7 +127,7 @@ parsec::Parser<json::Json> getIPParser(Stop endTokens, Options lst);
  * encoded in a JSON string.
  *
  * https://www.elastic.co/guide/en/ecs/current/ecs-url.html
- * @param str
+ * @param endTokens
  * @param lst list of field names
  * @return
  */
@@ -137,7 +137,7 @@ parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst);
  * Returns a parser which will consume input
  * until the str substring.
  *
- * @param str
+ * @param endTokens
  * @param lst
  * @return
  */
@@ -151,7 +151,7 @@ parsec::Parser<json::Json> getUAParser(Stop endTokens, Options lst);
  *
  *  Which is a max len of 255 and ('-', 0-9, and a-z)
  *  chars plus the dot for separation.
- * @param str
+ * @param endTokens
  * @param lst list of field names
  * @return
  */
@@ -162,7 +162,7 @@ parsec::Parser<json::Json> getFQDNParser(Stop endTokens, Options lst);
  * in
  *   https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats
  *
- * @param str
+ * @param endTokens
  * @param lst list of field names
  * @return
  */
@@ -174,7 +174,7 @@ parsec::Parser<json::Json> getFilePathParser(Stop endTokens, Options lst);
  *
  * The parsing is done using rapidJSON doc parser.
  *
- * @param str
+ * @param endTokens
  * @param lst list of field names
  */
 parsec::Parser<json::Json> getJSONParser(Stop endTokens, Options lst);
@@ -185,7 +185,7 @@ parsec::Parser<json::Json> getJSONParser(Stop endTokens, Options lst);
  *
  * The parsing is done using pugixml doc parser.
  *
- * @param str
+ * @param endTokens
  * @param lst list of field names
  * @return
  */
@@ -204,7 +204,7 @@ parsec::Parser<json::Json> getXMLParser(Stop endTokens, Options lst);
  * The parsing is done using vincentlaucsb/csv-parser
  * library.
  *
- * @param str
+ * @param endTokens
  * @param lst list of field names
  * @return
  */
@@ -221,7 +221,7 @@ parsec::Parser<json::Json> getCSVParser(Stop endTokens, Options lst);
  * A value can be a quoted string which can contain
  * sep or dlm.
  *
- * @param str
+ * @param endTokens
  * @param lst sep and dlm
  * @return
  */
@@ -230,11 +230,23 @@ parsec::Parser<json::Json> getKVParser(Stop endTokens, Options lst);
 /**
  * @brief Returns a parser which will parse a literal, returning empty Json on succeed.
  *
- * @param str Unused
+ * @param endTokens Unused
  * @param lst a list with one element, the literal to parse
  * @return parsec::Parser<json::Json> the parser
  */
 parsec::Parser<json::Json> getLiteralParser(Stop endTokens, Options lst);
 
+/**
+ * @brief Returns a parser that will ignore a string, which may be repeated 0 or more
+ * times at the beginning of the other string, returning an empty Json.
+ *
+ * The parser never fails, and the string can be partially repeated, as long as it is the
+ * last time it appears. For example, the parser will return parse to ' test!' in the case
+ * where the string to ignore is 'wazuh' and the string to parse is "wazuhwazuhwa test!"
+ * @param endTokens Unused
+ * @param lst a list with one element, the string to ignore
+ * @return parsec::Parser<json::Json> the parser
+ */
+parsec::Parser<json::Json> getIgnoreParser(Stop endTokens, Options lst);
 } // namespace hlp
 #endif // _HLP_HPP

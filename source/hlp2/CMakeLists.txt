@@ -51,6 +51,7 @@ add_library(hlp2 STATIC
         src/date.cpp
         src/parse_field.cpp
         src/bool.cpp
+        src/ignore.cpp
         src/ip.cpp
         src/text.cpp
         src/encodings.cpp
