@@ -36,7 +36,7 @@ protected:
 
     virtual void TearDown()
     {
-        kvdbManager.deleteDB("TEST_DB");
+        kvdbManager.unloadDB("TEST_DB");
     }
 };
 
