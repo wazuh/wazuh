@@ -64,8 +64,8 @@ protected:
 
     virtual void TearDown()
     {
-        kvdbManager->deleteDB(kTestDBName);
-        kvdbManager->deleteDB(kTestUnloadedDBName, false);
+        kvdbManager->unloadDB(kTestDBName);
+        kvdbManager->deleteDB(kTestUnloadedDBName);
 
         if (std::filesystem::exists(FILE_PATH))
         {
@@ -86,7 +86,7 @@ TEST_F(KVDBTest, CreateGetDeleteKvdbFile)
     ASSERT_STREQ(kvdbGetHandle->getName().data(), "TEST_DB_1");
     ASSERT_TRUE(kvdbGetHandle->isReady());
 
-    ASSERT_TRUE(kvdbManager->deleteDB("TEST_DB_1"));
+    ASSERT_TRUE(kvdbManager->unloadDB("TEST_DB_1"));
     KVDBHandle kvdbDeleteHandle;
     ASSERT_NO_THROW(kvdbDeleteHandle = kvdbManager->getDB("TEST_DB_1"));
     ASSERT_EQ(kvdbDeleteHandle, nullptr);
@@ -356,7 +356,7 @@ TEST_F(KVDBTest, ManagerConcurrency)
                              auto db = m->getDB(dbName);
                              if (db && db->isValid())
                              {
-                                 m->deleteDB(dbName);
+                                 m->unloadDB(dbName);
                              }
                          }
                      }};
@@ -435,7 +435,7 @@ TEST_F(KVDBTest, KVDBConcurrency)
     write.join();
     read.join();
     del.join();
-    kvdbManager->deleteDB(dbName);
+    kvdbManager->unloadDB(dbName);
 }
 
 // TODO: fill test
@@ -478,7 +478,7 @@ TEST_F(KVDBTest, writeKeySingleKV)
     ASSERT_STREQ(valueRead.value().c_str(), value.c_str());
 
     // clean to avoid error on rerun
-    ASSERT_NO_THROW(retval = kvdbManager->deleteDB("NEW_TEST_DB"));
+    ASSERT_NO_THROW(retval = kvdbManager->unloadDB("NEW_TEST_DB"));
     ASSERT_TRUE(retval);
 }
 
@@ -497,14 +497,14 @@ TEST_F(KVDBTest, ListLoadedKVDBs)
     kvdbLists = kvdbManager->listDBs();
     ASSERT_EQ(kvdbLists.size(), 3);
 
-    ASSERT_TRUE(kvdbManager->deleteDB("NEW_DB_2"));
+    ASSERT_TRUE(kvdbManager->unloadDB("NEW_DB_2"));
     kvdbLists = kvdbManager->listDBs();
 
     ASSERT_EQ(kvdbLists.size(), 2);
     ASSERT_EQ(kvdbLists.at(0), "NEW_DB");
     ASSERT_EQ(kvdbLists.at(1), kTestDBName);
 
-    ASSERT_TRUE(kvdbManager->deleteDB("NEW_DB"));
+    ASSERT_TRUE(kvdbManager->unloadDB("NEW_DB"));
 }
 
 TEST_F(KVDBTest, ListAllKVDBs)
@@ -545,8 +545,8 @@ TEST_F(KVDBTest, GetWriteDeleteKeyValueThroughManager)
     retval = kvdbManager->deleteKey(kTestUnloadedDBName, KEY);
     ASSERT_FALSE(retval);
 
-    retval = kvdbManager->deleteDB(kTestUnloadedDBName, false);
-    ASSERT_TRUE(retval);
+    auto retOpt = kvdbManager->deleteDB(kTestUnloadedDBName);
+    ASSERT_TRUE(retOpt == std::nullopt);
 }
 
 TEST_F(KVDBTest, GetWriteDeleteSingleKeyThroughManager)
@@ -696,7 +696,7 @@ TEST_F(KVDBTest, createKVDBfromCDBFileOkSingleKey)
     ASSERT_TRUE(retval);
 
     // as this method is done throug loadDB it should be removed from list
-    ASSERT_NO_THROW(retval = kvdbManager->deleteDB(dbName, true));
+    ASSERT_NO_THROW(retval = kvdbManager->unloadDB(dbName));
     ASSERT_TRUE(retval);
 
     std::filesystem::remove(filePath);

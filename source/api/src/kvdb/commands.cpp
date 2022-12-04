@@ -68,15 +68,16 @@ api::CommandFn kvdbDeleteCmd(std::shared_ptr<KVDBManager> kvdbManager)
             return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_EMPTY};
         }
 
-        bool deleteOnlyLoaded {false};
-        const auto result = kvdbManager->deleteDB(kvdbName.value(), deleteOnlyLoaded);
-        if (!result)
+        const auto result = kvdbManager->deleteDB(kvdbName.value());
+        if (result.has_value())
         {
             // TODO: test for this case is missing
             return api::WazuhResponse {
                 json::Json {"{}"},
                 400,
-                fmt::format("Database \"{}\" could not be deleted", kvdbName.value())};
+                fmt::format("Database \"{}\" could not be deleted: {}",
+                            kvdbName.value(),
+                            result.value())};
         }
 
         return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
