@@ -1,0 +1,31 @@
+name: decoder/cisco/0
+
+sources:
+  - decoder/syslog/0
+
+metadata:
+  module: cisco
+  compatibility: <= v7
+  author:
+    name: Wazuh Inc, info@wazuh.com
+    date: "2022"
+  references:
+    - https://cisco.com
+  title: Cisco Family main decoder.
+  description: Decoder for common fields of Cisco Family products.
+
+definitions:
+  cisco: <~cisco.prefix>-<~cisco.sufix>-<cisco.severity>-%<cisco.message_id> <~local.message>
+  cisco2: <~cisco.prefix>-<cisco.severity>-%<cisco.message_id> <~local.message>
+
+check:
+  - message: $cisco OR cisco2
+
+parse:
+  logpar:
+    - message: $cisco1
+    - message: $cisco2
+
+normalize:
+  - map:
+      - event.module: cisco
