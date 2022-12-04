@@ -1159,7 +1159,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdSingleDBLoaded)
 TEST_F(kvdbAPIListCommand, kvdbListCmdNoneLoaded)
 {
     // Deletes the only DB from the list
-    kvdbAPIListCommand::kvdbManager->deleteDB(DB_NAME);
+    kvdbAPIListCommand::kvdbManager->unloadDB(DB_NAME);
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = api::kvdb::cmds::kvdbListCmd(kvdbAPIListCommand::kvdbManager));

@@ -22,7 +22,7 @@ static void dbSetup(const benchmark::State& s)
 
 static void dbTeardown(const benchmark::State& s)
 {
-    kvdbManager->deleteDB(kBenchDbName);
+    kvdbManager->unloadDB(kBenchDbName);
 }
 
 static void kvdbRead(benchmark::State& state)

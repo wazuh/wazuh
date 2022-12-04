@@ -64,14 +64,13 @@ public:
     bool createDBfromCDB(const std::filesystem::path& path);
 
     /**
-     * @brief Deletes a KVDB from loaded list or from filesystem.
+     * @brief Unloads a KVDB from loaded list.
      *
      * @param name of the KVDB to be deleted
-     * @param onlyFromMem true when th KVDB is loaded false if not
-     * @return true if it could be deleted
+     * @return true if it could be unloaded
      * @return false otherwise
      */
-    bool deleteDB(const std::string& name, bool onlyFromMem = true);
+    bool unloadDB(const std::string& name);
 
     /**
      * @brief Obtains a KVDB from loaded list.
@@ -145,6 +144,24 @@ public:
      * @return false otherwise
      */
     bool deleteKey(const std::string& name, const std::string& key);
+
+    /**
+     * @brief Checks if a DB is loaded on memory
+     *
+     * @param name DB name to be checked
+     * @return true if its loaded on memory
+     * @return false otherwise
+     */
+    bool isLoaded(const std::string& name);
+
+    /**
+     * @brief Deletes DB and it's content from filesystem
+     *
+     * @param name of the DB to be deleted
+     * @return nullopt if it could be deleted without problem
+     * @return string error message otherwise
+     */
+    std::optional<std::string> deleteDB(const std::string& name);
 
     /**
      * @brief Clear the entire map of available KVDBs
