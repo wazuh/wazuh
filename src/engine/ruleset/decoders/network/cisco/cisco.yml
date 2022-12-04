@@ -15,8 +15,8 @@ metadata:
   description: Decoder for common fields of Cisco Family products.
 
 definitions:
-  cisco: <~cisco.prefix>-<~cisco.sufix>-<cisco.severity>-%<cisco.message_id> <~local.message>
-  cisco2: <~cisco.prefix>-<cisco.severity>-%<cisco.message_id> <~local.message>
+  cisco: <~cisco.prefix>-<~cisco.sufix>-<event.severity>-%<cisco.message_id> <~local.message>
+  cisco2: <~cisco.prefix>-<event.severity>-%<cisco.message_id> <~local.message>
 
 check:
   - message: $cisco OR cisco2
@@ -29,3 +29,43 @@ parse:
 normalize:
   - map:
       - event.module: cisco
+      - event.code: $cisco.message_id
+
+  # set default severity if there is none yet
+  - check:
+      - event.severity: +t_is_null
+    map:
+      - event.severity: 7
+  # set log.level
+  - check:
+      - event.severity: +i_eq/0
+    map:
+      - log.level: unkown
+  - check:
+      - event.severity: +i_eq/1
+    map:
+      - log.level: alert
+  - check:
+      - event.severity: +i_eq/2
+    map:
+      - log.level: critical
+  - check:
+      - event.severity: +i_eq/3
+    map:
+      - log.level: error
+  - check:
+      - event.severity: +i_eq/4
+    map:
+      - log.level: warning
+  - check:
+      - event.severity: +i_eq/5
+    map:
+      - log.level: notification
+  - check:
+      - event.severity: +i_eq/6
+    map:
+      - log.level: informational
+  - check:
+      - event.severity: +i_eq/7
+    map:
+      - log.level: debug
