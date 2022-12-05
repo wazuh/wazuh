@@ -248,5 +248,15 @@ parsec::Parser<json::Json> getLiteralParser(Stop endTokens, Options lst);
  * @return parsec::Parser<json::Json> the parser
  */
 parsec::Parser<json::Json> getIgnoreParser(Stop endTokens, Options lst);
+
+/**
+ * @brief Get the Quoted Parser, which will parse a quoted string, returning the string
+ *
+ * @param endTokens unused
+ * @param lst Option[0] is the quote character, Option[1] is the escape character. If not
+ * provided, the default is " and \
+ * @return parsec::Parser<json::Json>
+ */
+parsec::Parser<json::Json> getQuotedParser(Stop endTokens, Options lst);
 } // namespace hlp
 #endif // _HLP_HPP

@@ -105,6 +105,7 @@ enum class ParserType
     P_URI,
     P_LITERAL,
     P_IGNORE,
+    P_QUOTED,
     P_USER_AGENT,
     ERROR_TYPE
 };
@@ -126,6 +127,7 @@ constexpr auto parserTypeToStr(ParserType type)
         case ParserType::P_URI: return "uri";
         case ParserType::P_LITERAL: return "literal";
         case ParserType::P_IGNORE: return "ignore";
+        case ParserType::P_QUOTED: return "quoted";
         case ParserType::P_USER_AGENT: return "user_agent";
         default: return "error_type";
     }
@@ -159,6 +161,8 @@ constexpr auto strToParserType(std::string_view str)
         return ParserType::P_LITERAL;
     if (str == parserTypeToStr(ParserType::P_IGNORE))
         return ParserType::P_IGNORE;
+    if (str == parserTypeToStr(ParserType::P_QUOTED))
+        return ParserType::P_QUOTED;
     if (str == parserTypeToStr(ParserType::P_USER_AGENT))
         return ParserType::P_USER_AGENT;
     return ParserType::ERROR_TYPE;
