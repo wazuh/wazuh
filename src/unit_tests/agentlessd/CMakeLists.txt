@@ -25,7 +25,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND agentlessd_names "test_agentlessd")
 list(APPEND agentlessd_flags "${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS} \
                             -Wl,--wrap,StartMQ -Wl,--wrap,CreateThread -Wl,--wrap,fprintf \
-                            -Wl,--wrap,SendMSG")
+                            -Wl,--wrap,SendMSG -Wl,--wrap,getpid -Wl,--wrap,sleep -Wl,--wrap,FOREVER")
 
 list(LENGTH agentlessd_names count)
 math(EXPR count "${count} - 1")

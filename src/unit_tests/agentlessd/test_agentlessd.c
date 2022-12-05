@@ -19,16 +19,22 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
-#include "../wrappers/posix/unistd_wrappers.h"
-#include "../wrappers/libc/stdio_wrappers.h"
+
+#define BUFFER_SIZE OS_MAXSTR - (OS_LOG_HEADER * 2)
+#define STR_MORE_CHANGES "More changes..."
+#define HOST "host"
+#define SCRIPT "script"
+#define AGTTYPE "agttype"
+#define MSG "msg"
+#define STR_HELPER(s) #s
+#define STR(s) STR_HELPER(s)
+#define ADT 1667392718
 
 // internal use (static) not in agentlessd/agentlessd.h
 int save_agentless_entry(const char *host, const char *script, const char *agttype);
 int send_intcheck_msg(const char *script, const char *host, const char *msg);
 int send_log_msg(const char *script, const char *host, const char *msg);
 int gen_diff_alert(const char *host, const char *script, time_t alert_diff_time);
-#define BUFFER_SIZE OS_MAXSTR - (OS_LOG_HEADER * 2)
-#define STR_MORE_CHANGES "More changes..."
 
 static int test_setup(void **state) {
     (void) state;
@@ -41,14 +47,6 @@ static int test_teardown(void **state) {
     test_mode = 0;
     return OS_SUCCESS;
 }
-
-#define HOST "host"
-#define SCRIPT "script"
-#define AGTTYPE "agttype"
-#define MSG "msg"
-#define STR_HELPER(s) #s
-#define STR(s) STR_HELPER(s)
-#define ADT 1667392718
 
 void test_gen_diff_alert(void **state) {
     (void) state;
@@ -160,11 +158,10 @@ void test_save_agentless_entry_ok(void **state) {
     assert_int_equal(rc, 0);
 }
 
-
 void test_Agentlessd_ok(void **state) {
     (void) state;
 
-    os_malloc(2 * sizeof(agentlessd_entries *), lessdc.entries);
+    os_calloc(2, sizeof(agentlessd_entries *), lessdc.entries);
     os_calloc(1, sizeof(agentlessd_entries), lessdc.entries[0]);
     lessdc.entries[1] = NULL;
 
@@ -184,6 +181,12 @@ void test_Agentlessd_ok(void **state) {
 
     expect_StartMQ_call(DEFAULTQUEUE, WRITE, 0);
 
+    will_return(__wrap_FOREVER, 1);
+    expect_value(__wrap_sleep, seconds, 2);
+    expect_value(__wrap_sleep, seconds, 1);
+    expect_value(__wrap_sleep, seconds, 60);
+    will_return(__wrap_FOREVER, 0);
+
     Agentlessd();
 
     os_free(lessdc.entries[0]);
@@ -192,14 +195,14 @@ void test_Agentlessd_ok(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_gen_diff_alert, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_send_log_msg_ok, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_send_log_msg_wrong_sm, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_send_log_msg_fatal_exit, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_send_intcheck_msg_ok, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_save_agentless_entry_ok, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_Agentlessd_ok, test_setup, test_teardown)
+        cmocka_unit_test_setup_teardown(test_gen_diff_alert, NULL, NULL),
+        cmocka_unit_test_setup_teardown(test_send_log_msg_ok, NULL, NULL),
+        cmocka_unit_test_setup_teardown(test_send_log_msg_wrong_sm, NULL, NULL),
+        cmocka_unit_test_setup_teardown(test_send_log_msg_fatal_exit, NULL, NULL),
+        cmocka_unit_test_setup_teardown(test_send_intcheck_msg_ok, NULL, NULL),
+        cmocka_unit_test_setup_teardown(test_save_agentless_entry_ok, NULL, NULL),
+        cmocka_unit_test_setup_teardown(test_Agentlessd_ok, NULL, NULL)
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, test_setup, test_teardown);
 }

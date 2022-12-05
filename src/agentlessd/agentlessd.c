@@ -9,7 +9,10 @@
  */
 
 #ifdef WAZUH_UNIT_TESTING
-#define static
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
 #endif
 
 #include "shared.h"
@@ -18,10 +21,10 @@
 #define BUFFER_SIZE OS_MAXSTR - (OS_LOG_HEADER * 2)
 
 /* Prototypes */
-static int  save_agentless_entry(const char *host, const char *script, const char *agttype);
-static int  send_intcheck_msg(const char *script, const char *host, const char *msg);
-static int  send_log_msg(const char *script, const char *host, const char *msg);
-static int  gen_diff_alert(const char *host, const char *script, time_t alert_diff_time);
+STATIC int  save_agentless_entry(const char *host, const char *script, const char *agttype);
+STATIC int  send_intcheck_msg(const char *script, const char *host, const char *msg);
+STATIC int  send_log_msg(const char *script, const char *host, const char *msg);
+STATIC int  gen_diff_alert(const char *host, const char *script, time_t alert_diff_time);
 static int  check_diff_file(const char *host, const char *script);
 static FILE *open_diff_file(const char *host, const char *script);
 static int  run_periodic_cmd(agentlessd_entries *entry, int test_it);
@@ -33,7 +36,7 @@ static const char *STR_MORE_CHANGES = "More changes...";
 
 
 /* Save agentless entry for the control tools to gather */
-static int save_agentless_entry(const char *host, const char *script, const char *agttype)
+STATIC int save_agentless_entry(const char *host, const char *script, const char *agttype)
 {
     FILE *fp;
     char sys_location[1024 + 1];
@@ -54,7 +57,7 @@ static int save_agentless_entry(const char *host, const char *script, const char
 }
 
 /* Send integrity checking message */
-static int send_intcheck_msg(const char *script, const char *host, const char *msg)
+STATIC int send_intcheck_msg(const char *script, const char *host, const char *msg)
 {
     char sys_location[1024 + 1];
 
@@ -76,7 +79,7 @@ static int send_intcheck_msg(const char *script, const char *host, const char *m
 }
 
 /* Send generic log message */
-static int send_log_msg(const char *script, const char *host, const char *msg)
+STATIC int send_log_msg(const char *script, const char *host, const char *msg)
 {
     char sys_location[1024 + 1];
 
@@ -96,7 +99,7 @@ static int send_log_msg(const char *script, const char *host, const char *msg)
 }
 
 /* Generate diffs alert */
-static int gen_diff_alert(const char *host, const char *script, time_t alert_diff_time)
+STATIC int gen_diff_alert(const char *host, const char *script, time_t alert_diff_time)
 {
     size_t n;
     FILE *fp;
@@ -442,7 +445,6 @@ void Agentlessd()
 {
     time_t tm;
     struct tm tm_result = { .tm_sec = 0 };
-
     int today = 0;
     int test_it = 1;
 
@@ -464,7 +466,7 @@ void Agentlessd()
     w_create_thread(lessdcom_main, NULL);
 
     /* Main monitor loop */
-    while (1) {
+    while (FOREVER()) {
         unsigned int i = 0;
         tm = time(NULL);
         localtime_r(&tm, &tm_result);
@@ -501,13 +503,9 @@ void Agentlessd()
 
             sleep(i);
         }
-#ifdef WAZUH_UNIT_TESTING
-        break;
-#else
         /* We only check every minute */
         test_it = 0;
         sleep(60);
-#endif
     }
 }
 
