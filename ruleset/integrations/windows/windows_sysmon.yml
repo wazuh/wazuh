@@ -15,5 +15,18 @@ normalize:
     - event.module: sysmon
     - event.kind: event
     
-    # Add category fields
+    
+    # Add categorization fields
     - event:  +kvdb_get_merge/win_sysmon_categories/$event.code 
+
+    - rule.name: $~event_channel.Event.event_data.RuleName
+    - event.Hashes: $~event_channel.Event.event_data.Hash
+    
+
+ - check: event.code==255 
+   map:
+    - error.code: $event.code
+
+ - check: event.code==25
+  map:
+    - event.message: $~event_channel.Event.event_data.Type
