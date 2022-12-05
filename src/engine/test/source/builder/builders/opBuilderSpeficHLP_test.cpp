@@ -1372,3 +1372,112 @@ TEST(Parse_key_value, Ref_not_found)
     ASSERT_FALSE(result1.payload().get()->exists("/field_dst"));
     ASSERT_FALSE(result1.payload().get()->exists("/field_ref"));
 }
+
+// parse quoted
+TEST(Parse_quoted, Builds_wout)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_quoted"},
+                                 std::vector<std::string> {"test string map"});
+
+    ASSERT_NO_THROW(bld::opBuilderSpecificHLPQuotedParse(tuple));
+}
+
+
+TEST(Parse_quoted, Builds_w_2params)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_quoted"},
+                                 std::vector<std::string> {"test string map", "\"", "\\"});
+
+    ASSERT_NO_THROW(bld::opBuilderSpecificHLPQuotedParse(tuple));
+}
+
+
+TEST(Parse_quoted, Builds_bad_parameters)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_quoted"},
+                                 std::vector<std::string> {"test", "TEST", "test"});
+
+    ASSERT_THROW(bld::opBuilderSpecificHLPQuotedParse(tuple), std::runtime_error);
+}
+
+TEST(Parse_quoted, Builds_bad_parameters2)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_quoted"},
+                                 std::vector<std::string> {});
+
+    ASSERT_THROW(bld::opBuilderSpecificHLPQuotedParse(tuple), std::runtime_error);
+}
+
+TEST(Parse_quoted, Match_value)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_quoted"},
+                                 std::vector<std::string> {R"(#test quoted string#)", "#"});
+
+    auto op {
+        bld::opBuilderSpecificHLPQuotedParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto event1 {std::make_shared<json::Json>(R"({"field": "test"})")};
+
+    result::Result<Event> result1 {op(event1)};
+    ASSERT_TRUE(result1);
+    ASSERT_TRUE(result1.payload().get()->exists("/field"));
+    ASSERT_TRUE(result1.payload().get()->isString("/field"));
+    auto expected = R"("test quoted string")";
+    ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
+}
+
+TEST(Parse_quoted, Match_ref)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_quoted"},
+                                 std::vector<std::string> {"$field_ref", "#"});
+
+    auto op {
+        bld::opBuilderSpecificHLPQuotedParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto event1 {std::make_shared<json::Json>(
+        R"({"field": "test", "field_ref": "#test quoted string#"})")};
+
+    result::Result<Event> result1 {op(event1)};
+    ASSERT_TRUE(result1);
+    ASSERT_TRUE(result1.payload().get()->exists("/field"));
+    ASSERT_TRUE(result1.payload().get()->isString("/field"));
+    auto expected = R"("test quoted string")";
+    ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
+}
+
+TEST(Parse_quoted, Match_fail)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_quoted"},
+                                 std::vector<std::string> {"$field_ref", "#"});
+
+    auto op {
+        bld::opBuilderSpecificHLPQuotedParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto event1 {std::make_shared<json::Json>(R"({"field": "test", "field_ref": "1234567890"})")};
+
+    result::Result<Event> result1 {op(event1)};
+    ASSERT_FALSE(result1);
+    ASSERT_TRUE(result1.payload().get()->exists("/field"));
+    ASSERT_TRUE(result1.payload().get()->isString("/field"));
+    ASSERT_STREQ(result1.payload().get()->getString("/field").value().c_str(), "test");
+}
+
+TEST(Parse_quoted, Ref_not_found)
+{
+    auto tuple = std::make_tuple(std::string {"/field_dst"},
+                                 std::string {"parse_quoted"},
+                                 std::vector<std::string> {"$field_ref", "#"});
+
+    auto op {
+        bld::opBuilderSpecificHLPQuotedParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto event1 {std::make_shared<json::Json>(R"({"field": "test"})")};
+
+    result::Result<Event> result1 {op(event1)};
+    ASSERT_FALSE(result1);
+    ASSERT_FALSE(result1.payload().get()->exists("/field_dst"));
+    ASSERT_FALSE(result1.payload().get()->exists("/field_ref"));
+}

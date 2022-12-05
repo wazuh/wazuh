@@ -54,6 +54,7 @@ add_library(hlp2 STATIC
         src/ignore.cpp
         src/ip.cpp
         src/text.cpp
+        src/quoted.cpp
         src/encodings.cpp
         src/literal.cpp)
 
