@@ -9,6 +9,9 @@
 
 namespace api::kvdb::cmds
 {
+constexpr int API_SUCCESS_CODE {0};
+constexpr int API_ERROR_CODE {-1};
+
 constexpr char KVDB_NAME_NOT_A_STRING[] {"KVDB \"name\" parameter must be a string"};
 constexpr char KVDB_NAME_MISSING[] {"KVDB \"name\" parameter is missing"};
 constexpr char KVDB_NAME_EMPTY[] {"KVDB \"name\" parameter cannot be empty"};

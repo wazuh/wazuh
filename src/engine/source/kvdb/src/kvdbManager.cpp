@@ -213,15 +213,15 @@ std::string KVDBManager::CreateAndFillDBfromFile(const std::string& dbName,
 
     if (initResult == KVDB::CreationStatus::ErrorDatabaseAlreadyExists)
     {
-        return {"A database with the same name already exists"};
+        return fmt::format("Database \"{}\" already exists", dbName);
     }
     else if (initResult == KVDB::CreationStatus::ErrorDatabaseBusy)
     {
-        return {"Database is in use"};
+        return fmt::format("Database \"{}\" is already in use", dbName);
     }
     else if (initResult != KVDB::CreationStatus::OkCreated)
     {
-        return {"Database could not be created"};
+        return fmt::format("Database \"{}\" could not be created", dbName);
     }
 
     if (!path.empty())
@@ -239,11 +239,9 @@ std::string KVDBManager::CreateAndFillDBfromFile(const std::string& dbName,
         }
         else
         {
-            //TODO: delete DB if any error
-            return fmt::format(
-                "Engine \"kvdb\" command: An error occurred while opening the "
-                "file \"{}\"",
-                path.c_str());
+            // TODO: delete DB if there is any error
+            return fmt::format("An error occurred while opening the file \"{}\"",
+                               path.c_str());
         }
 
         json::Json jKv;
@@ -253,17 +251,16 @@ std::string KVDBManager::CreateAndFillDBfromFile(const std::string& dbName,
         }
         catch (const std::exception& e)
         {
-            //TODO: delete DB if any error
-            return fmt::format("Engine \"kvdb\" command: An error occurred while "
-                               "parsing the JSON file \"{}\"",
+            // TODO: delete DB if there is any error
+            return fmt::format("An error occurred while parsing the JSON file \"{}\"",
                                path.c_str());
         }
 
         if (!jKv.isObject())
         {
-            //TODO: delete DB if any error
-            return fmt::format("Engine \"kvdb\" command: An error occurred while "
-                               "parsing the JSON file \"{}\": JSON is not an object.",
+            // TODO: delete DB if there is any error
+            return fmt::format("An error occurred while parsing the JSON file \"{}\": "
+                               "JSON is not an object",
                                path.c_str());
         }
 
@@ -278,9 +275,9 @@ std::string KVDBManager::CreateAndFillDBfromFile(const std::string& dbName,
             }
             catch (const std::exception& e)
             {
-                //TODO: delete DB if any error
-                return fmt::format("Engine \"kvdb\" command: An error occurred while "
-                                   "writing the key \"{}\" to the database \"{}\"",
+                // TODO: delete DB if there is any error
+                return fmt::format("An error occurred while writing the key \"{}\" to "
+                                   "the database \"{}\"",
                                    key.c_str(),
                                    dbName.c_str());
             }
@@ -299,7 +296,8 @@ bool KVDBManager::getDBFromPath(const std::string& name, KVDBHandle& dbHandle)
             || KVDB::CreationStatus::OkCreated == result);
 }
 
-std::optional<std::string_view> KVDBManager::dumpContent(const std::string& name, json::Json& data)
+std::optional<std::string_view> KVDBManager::dumpContent(const std::string& name,
+                                                         json::Json& data)
 {
     std::optional<std::string_view> result {std::nullopt};
     KVDBHandle dbHandle;
@@ -309,7 +307,7 @@ std::optional<std::string_view> KVDBManager::dumpContent(const std::string& name
     }
     else
     {
-        result = fmt::format("Couldn't retrieve DB [\"{}\"] from path.",name.c_str());
+        result = fmt::format("Database \"{}\" could not be obtained", name.c_str());
     }
 
     return result;
@@ -384,18 +382,16 @@ std::optional<std::string> KVDBManager::deleteDB(const std::string& name)
         // TODO: double check instances because it could have been updated
         const auto kvdbHandle = m_loadedDBs[name];
         auto count = kvdbHandle.use_count();
-        if(count >= 1)
+        if (count >= 1)
         {
-            return fmt::format("DB \"{}\" is in use", name);
+            return fmt::format("Database \"{}\" is already in use", name);
         }
     }
 
     KVDBHandle dbHandle;
     if (!getDBFromPath(name, dbHandle))
     {
-        return fmt::format("Database \"{}\" couldn't be fetched from the filesystem.",
-                           __func__,
-                           name);
+        return fmt::format("Database \"{}\" could not be obtained", name);
     }
 
     dbHandle->cleanupOnClose();

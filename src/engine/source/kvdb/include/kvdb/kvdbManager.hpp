@@ -99,17 +99,16 @@ public:
     std::string CreateAndFillDBfromFile(const std::string& dbName,
                                         const std::filesystem::path& path = "");
 
-
-    //TODO: fill
+    // TODO: fill
     /**
-     * @brief 
-     * 
-     * @param name 
-     * @param data 
-     * @return std::optional<std::string_view> 
+     * @brief
+     *
+     * @param name
+     * @param data
+     * @return std::optional<std::string_view>
      */
-    std::optional<std::string_view> dumpContent(const std::string& name, json::Json& data);
-
+    std::optional<std::string_view> dumpContent(const std::string& name,
+                                                json::Json& data);
 
     /**
      * @brief Writes a key or a key value to the KVDB named name.
