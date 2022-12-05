@@ -6,13 +6,13 @@
 
 #include <date/date.h>
 #include <date/tz.h>
+#include <fmt/format.h>
 
 #include <hlp/base.hpp>
 #include <hlp/hlp.hpp>
 #include <hlp/parsec.hpp>
 #include <json/json.hpp>
 
-#include "fmt/format.h"
 #include "stream_view.hpp"
 
 namespace hlp
@@ -20,6 +20,10 @@ namespace hlp
 
 namespace internal
 {
+namespace {
+    // TODO: Deletes if after parsers have been a configurable
+    constexpr auto AUTO_FORMAT_DISABLED = "disableAutoFormat";
+}
 
 /**
  * Supported formats, this will be injected by the config module in due time
@@ -62,7 +66,7 @@ std::string formatDateFromSample(std::string dateSample, std::string locale)
     std::vector<std::string> matchingFormats;
     for (const auto& [name, format] : TimeFormat)
     {
-        auto p = getDateParser({}, Options {format, "en_US.UTF-8"});
+        auto p = getDateParser({}, Options {format, "en_US.UTF-8", AUTO_FORMAT_DISABLED});
         auto res = p(dateSample, 0);
 
         if (res.success())
@@ -98,18 +102,19 @@ std::string formatDateFromSample(std::string dateSample, std::string locale)
 parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
 {
 
-    if (lst.size() == 0 || lst.size() > 2)
+    if (lst.size() == 0
+        || (lst.size() > 2 && lst[2].compare(internal::AUTO_FORMAT_DISABLED) != 0))
     {
-        throw std::invalid_argument(
-            fmt::format("date parser requires as parameters either date sample, or a "
-                        "format, or a format and a locale"));
+        throw std::runtime_error(
+            "date parser requires as first parameter a date sample or "
+            "a date format. Additionally it can specify the locale as the "
+            "second parameter (Default: \"en_US.UTF-8\").");
     }
 
     std::string format = lst[0];
-    std::string localeStr = "en_US.UTF-8";
-
-    if (lst.size() == 2)
-        localeStr = lst[1];
+    auto localeStr = lst.size() > 1 ? lst[1] : "en_US.UTF-8";
+    auto disableAutoFormat =
+        lst.size() > 2 && (lst[2].compare(internal::AUTO_FORMAT_DISABLED) == 0);
 
     std::locale locale;
     try
@@ -118,43 +123,50 @@ parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
     }
     catch (std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Can't build date parser: {}", e.what()));
+        throw std::runtime_error(fmt::format("Can't build date parser, invalid locale: {}", e.what()));
     }
 
-    if (format.find("%") == std::string::npos)
+    // If not disabled automat then check if the format is a sample date
+    if (!disableAutoFormat && (format.find("%") == std::string::npos)) {
         format = internal::formatDateFromSample(format, localeStr);
+    }
+
 
     return [endTokens, format, locale](std::string_view text, size_t index)
     {
-        using namespace date;
-        using namespace std::chrono;
-
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
         if (std::holds_alternative<parsec::Result<json::Json>>(res))
         {
             return std::get<parsec::Result<json::Json>>(res);
         }
 
-        auto fp = std::get<std::string_view>(res);
-        size_t pos = fp.size() + index;
+        // ----------------------------------
+        //        Parse the date
+        // ----------------------------------
+        auto textRaw = std::get<std::string_view>(res);
+        auto streamText = std::stringstream {textRaw.data()};
+        streamText.imbue(locale);
 
-        // TODO: tellg returns incorrect position with view_istream<char>
-        // view_istream<char> in(fp);
-        std::stringstream in {fp.data()};
-        in.imbue(locale);
         std::string abbrev;
         std::chrono::minutes offset {0};
-
         date::fields<std::chrono::nanoseconds> fds {};
-        in >> date::parse(format, fds, abbrev, offset);
-        if (in.fail())
+        streamText >> date::parse(format, fds, abbrev, offset);
+
+        if (streamText.fail())
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Error parsing '{}' date at {}", in.tellg()),
+                fmt::format("Error parsing '{}' date at {}", text, index),
                 index);
         }
-        // pos can be -1 if all the input has been consumed
-        pos = in.tellg() == std::string::npos ? text.size() : (size_t)in.tellg() + index;
+
+        // Caculate the offset in the input string
+        std::size_t endDatePos = (streamText.tellg() == std::string::npos)
+                         ? text.size()
+                         : static_cast<std::size_t>(streamText.tellg()) + index;
+
+        // ----------------------------------
+        //     Generate thw new date
+        // ----------------------------------
 
         // if no year is parsed, we add our current year
         if (!fds.ymd.year().ok())
@@ -164,7 +176,7 @@ parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
             fds.ymd = ny / fds.ymd.month() / fds.ymd.day();
         }
 
-        auto tp = sys_days(fds.ymd) + fds.tod.to_duration();
+        auto tp = date::sys_days(fds.ymd) + fds.tod.to_duration();
 
         // Format to strict_date_optional_time
         std::ostringstream out;
@@ -175,23 +187,24 @@ parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
         //
         // If there is no timezone, we substract the offset to UTC
         // as default offset is 0
-        auto tms = date::floor<std::chrono::milliseconds>(tp);
-        if (!abbrev.empty())
         {
-            // TODO: evaluate this function as it can be expensive
-            // we might consider restrict the abbrev supported
-            auto tz = date::make_zoned(abbrev, tms);
-            date::to_stream(out, "%Y-%m-%dT%H:%M:%SZ", tz);
+            auto tms = date::floor<std::chrono::milliseconds>(tp);
+            if (!abbrev.empty())
+            {
+                // TODO: evaluate this function as it can be expensive
+                // we might consider restrict the abbrev supported
+                auto tz = date::make_zoned(abbrev, tms);
+                date::to_stream(out, "%Y-%m-%dT%H:%M:%SZ", tz);
+            }
+            else
+            {
+                date::to_stream(out, "%Y-%m-%dT%H:%M:%SZ", tms - offset);
+            }
         }
-        else
-            date::to_stream(out, "%Y-%m-%dT%H:%M:%SZ", tms - offset);
 
         json::Json doc;
         doc.setString(out.str().data());
-        if (pos > text.size())
-            return parsec::makeSuccess<json::Json>(std::move(doc),pos);
-
-        return parsec::makeSuccess<json::Json>(std::move(doc),pos);
+        return parsec::makeSuccess<json::Json>(std::move(doc),endDatePos);
     };
 }
 
