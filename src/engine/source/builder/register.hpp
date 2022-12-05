@@ -194,6 +194,8 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
                               "helper.parse_csv");
     registry->registerBuilder(builders::opBuilderSpecificHLPKeyValueParse,
                               "helper.parse_key_value");
+    registry->registerBuilder(builders::opBuilderSpecificHLPQuotedParse,
+                              "helper.parse_quoted");
 }
 } // namespace builder::internals
 

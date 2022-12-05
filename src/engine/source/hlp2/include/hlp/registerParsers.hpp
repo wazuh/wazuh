@@ -21,6 +21,7 @@ inline void registerParsers(std::shared_ptr<logpar::Logpar> logpar)
     logpar->registerBuilder(ParserType::P_URI, hlp::getUriParser);
     logpar->registerBuilder(ParserType::P_LITERAL, hlp::getLiteralParser);
     logpar->registerBuilder(ParserType::P_IGNORE, hlp::getIgnoreParser);
+    logpar->registerBuilder(ParserType::P_QUOTED, hlp::getQuotedParser);
     logpar->registerBuilder(ParserType::P_USER_AGENT, hlp::getUAParser);
 }
 
