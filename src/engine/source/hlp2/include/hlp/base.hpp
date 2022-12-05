@@ -48,7 +48,7 @@ std::optional<parsec::Result<T>> eofError(std::string_view txt, size_t idx)
  */
 template<typename T>
 std::optional<std::string_view>
-__stop(std::string_view txt, size_t idx, const std::string& end)
+stopAux(std::string_view txt, size_t idx, const std::string& end)
 {
     if (end.empty())
     {
@@ -70,7 +70,7 @@ stop(std::string_view txt, size_t idx, const std::list<std::string>& end)
 {
     for (const auto& e : end)
     {
-        auto res = __stop<T>(txt, idx, e);
+        auto res = stopAux<T>(txt, idx, e);
         if (res.has_value())
         {
             return res.value();
