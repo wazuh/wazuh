@@ -51,9 +51,9 @@ TEST(HLP2, DateParser)
 
     std::vector<TestCase> testCases {
         // locale
-        //  https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
+        // https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
         // The fix for this was merged in 2021 in GCC in version 12
-        TestCase {"Monday, 02-Jan-06 15:04:05 MST",
+        TestCase {"Monday, 02-Jan-06 15:04:05 MST ###123",
                   true,
                   {},
                   Options {"%A, %d-%b-%y %T %Z", "en_US.UTF-8"},
@@ -135,12 +135,19 @@ TEST(HLP2, DateParser)
                   Options {"%FT%T%Ez", "en_US.UTF-8"},
                   fn("2018-08-14T16:30:02.203Z"),
                   32},
-        TestCase {"lunes, 02-ene-06 15:04:05 CET",
+        TestCase {"2018-08-14T14:30:02.203151-02:00 QWERTY",
                   true,
                   {},
-                  Options {"%A, %d-%b-%y %T %Z", "es_MX.UTF-8"},
-                  fn("2006-01-02T16:04:05.000Z"),
-                  29},
+                  Options {"%FT%T%Ez", "en_US.UTF-8"},
+                  fn("2018-08-14T16:30:02.203Z"),
+                  32},
+       // Invalid locale (?)
+       // TestCase {"lunes, 02-ene-06 15:04:05 CET",
+       //           true,
+       //           {},
+       //           Options {"%A, %d-%b-%y %T %Z", "es_MX.UTF-8"},
+       //           fn("2006-01-02T16:04:05.000Z"),
+       //           29},
     };
 
     for (auto t : testCases)
