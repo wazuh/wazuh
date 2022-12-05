@@ -21,14 +21,16 @@ api::CommandFn kvdbCreateCmd(std::shared_ptr<KVDBManager> kvdbManager)
             if (params.exists("/name"))
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, KVDB_NAME_NOT_A_STRING};
+                    json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_NOT_A_STRING};
             }
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_MISSING};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_MISSING};
         }
 
         if (kvdbName.value().empty())
         {
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_EMPTY};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_EMPTY};
         }
 
         // Get KVDB's path
@@ -38,11 +40,10 @@ api::CommandFn kvdbCreateCmd(std::shared_ptr<KVDBManager> kvdbManager)
             kvdbName.value(), kvdbPath.value_or(""))};
         if (result != "OK")
         {
-            return api::WazuhResponse {
-                json::Json {"{}"}, 400, fmt::format("[{}] {}", kvdbName.value(), result)};
+            return api::WazuhResponse {json::Json {"{}"}, API_ERROR_CODE, result};
         }
 
-        return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
+        return api::WazuhResponse {json::Json {"{}"}, API_SUCCESS_CODE, "OK"};
     };
 }
 
@@ -58,29 +59,25 @@ api::CommandFn kvdbDeleteCmd(std::shared_ptr<KVDBManager> kvdbManager)
             if (params.exists("/name"))
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, KVDB_NAME_NOT_A_STRING};
+                    json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_NOT_A_STRING};
             }
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_MISSING};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_MISSING};
         }
 
         if (kvdbName.value().empty())
         {
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_EMPTY};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_EMPTY};
         }
 
         const auto result = kvdbManager->deleteDB(kvdbName.value());
         if (result.has_value())
         {
-            // TODO: test for this case is missing
-            return api::WazuhResponse {
-                json::Json {"{}"},
-                400,
-                fmt::format("Database \"{}\" could not be deleted: {}",
-                            kvdbName.value(),
-                            result.value())};
+            return api::WazuhResponse {json::Json {"{}"}, API_ERROR_CODE, result.value()};
         }
 
-        return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
+        return api::WazuhResponse {json::Json {"{}"}, API_SUCCESS_CODE, "OK"};
     };
 }
 
@@ -95,28 +92,31 @@ api::CommandFn kvdbDumpCmd(std::shared_ptr<KVDBManager> kvdbManager)
             if (params.exists("/name"))
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, KVDB_NAME_NOT_A_STRING};
+                    json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_NOT_A_STRING};
             }
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_MISSING};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_MISSING};
         }
 
         const std::string kvdbNameValue {kvdbName.value()};
         if (kvdbNameValue.empty())
         {
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_EMPTY};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_EMPTY};
         }
 
         json::Json data;
         data.setArray("/data");
-        auto retVal {kvdbManager->dumpContent(kvdbNameValue, data)};
 
+        auto retVal = kvdbManager->dumpContent(kvdbNameValue, data);
         if (!retVal.has_value())
         {
-            return api::WazuhResponse {json::Json {"{}"}, 200, retVal.value()};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_SUCCESS_CODE, retVal.value()};
         }
 
-        auto val = data.str();
-        return api::WazuhResponse {std::move(data), 200, "OK"};
+        std::string val {data.str()};
+        return api::WazuhResponse {std::move(data), API_SUCCESS_CODE, "OK"};
     };
 }
 
@@ -131,15 +131,17 @@ api::CommandFn kvdbGetKeyCmd(std::shared_ptr<KVDBManager> kvdbManager)
             if (params.exists("/name"))
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, KVDB_NAME_NOT_A_STRING};
+                    json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_NOT_A_STRING};
             }
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_MISSING};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_MISSING};
         }
 
         const std::string kvdbNameValue {kvdbName.value()};
         if (kvdbNameValue.empty())
         {
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_EMPTY};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_EMPTY};
         }
 
         const auto optKey = params.getString("/key");
@@ -147,15 +149,17 @@ api::CommandFn kvdbGetKeyCmd(std::shared_ptr<KVDBManager> kvdbManager)
         {
             if (params.exists("/key"))
             {
-                return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_NOT_A_STRING};
+                return api::WazuhResponse {
+                    json::Json {"{}"}, API_ERROR_CODE, KVDB_KEY_NOT_A_STRING};
             }
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_MISSING};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_KEY_MISSING};
         }
 
         const std::string key {optKey.value()};
         if (key.empty())
         {
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_EMPTY};
+            return api::WazuhResponse {json::Json {"{}"}, API_ERROR_CODE, KVDB_KEY_EMPTY};
         }
 
         const auto retVal = kvdbManager->getKeyValue(kvdbNameValue, key);
@@ -163,7 +167,7 @@ api::CommandFn kvdbGetKeyCmd(std::shared_ptr<KVDBManager> kvdbManager)
         {
             return api::WazuhResponse {
                 json::Json {"{}"},
-                400,
+                API_ERROR_CODE,
                 fmt::format("Key \"{}\" could not be found on database \"{}\"",
                             key,
                             kvdbNameValue)};
@@ -173,7 +177,7 @@ api::CommandFn kvdbGetKeyCmd(std::shared_ptr<KVDBManager> kvdbManager)
         data.setObject("/data");
         data.setString(key, "/key");
         data.setString(retVal.value(), "/value");
-        return api::WazuhResponse {std::move(data), 200, "OK"};
+        return api::WazuhResponse {std::move(data), API_SUCCESS_CODE, "OK"};
     };
 }
 
@@ -188,15 +192,17 @@ api::CommandFn kvdbInsertKeyCmd(std::shared_ptr<KVDBManager> kvdbManager)
             if (params.exists("/name"))
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, KVDB_NAME_NOT_A_STRING};
+                    json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_NOT_A_STRING};
             }
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_MISSING};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_MISSING};
         }
 
         const std::string kvdbNameValue {kvdbName.value()};
         if (kvdbNameValue.empty())
         {
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_EMPTY};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_EMPTY};
         }
 
         const auto optKey = params.getString("/key");
@@ -204,15 +210,17 @@ api::CommandFn kvdbInsertKeyCmd(std::shared_ptr<KVDBManager> kvdbManager)
         {
             if (params.exists("/key"))
             {
-                return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_NOT_A_STRING};
+                return api::WazuhResponse {
+                    json::Json {"{}"}, API_ERROR_CODE, KVDB_KEY_NOT_A_STRING};
             }
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_MISSING};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_KEY_MISSING};
         }
 
         const std::string key {optKey.value()};
         if (key.empty())
         {
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_EMPTY};
+            return api::WazuhResponse {json::Json {"{}"}, API_ERROR_CODE, KVDB_KEY_EMPTY};
         }
 
         const bool retVal {kvdbManager->writeKey(
@@ -220,11 +228,12 @@ api::CommandFn kvdbInsertKeyCmd(std::shared_ptr<KVDBManager> kvdbManager)
 
         if (!retVal)
         {
-            return api::WazuhResponse {
-                json::Json {"{}"}, 400, "Key-value could not be written to the database"};
+            return api::WazuhResponse {json::Json {"{}"},
+                                       API_ERROR_CODE,
+                                       "Key-value could not be written to the database"};
         }
 
-        return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
+        return api::WazuhResponse {json::Json {"{}"}, API_SUCCESS_CODE, "OK"};
     };
 }
 
@@ -270,7 +279,7 @@ api::CommandFn kvdbListCmd(std::shared_ptr<KVDBManager> kvdbManager)
             }
         }
 
-        return api::WazuhResponse {std::move(data), 200, "OK"};
+        return api::WazuhResponse {std::move(data), API_SUCCESS_CODE, "OK"};
     };
 }
 
@@ -286,15 +295,17 @@ api::CommandFn kvdbRemoveKeyCmd(std::shared_ptr<KVDBManager> kvdbManager)
             if (params.exists("/name"))
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, KVDB_NAME_NOT_A_STRING};
+                    json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_NOT_A_STRING};
             }
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_MISSING};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_MISSING};
         }
 
         const std::string kvdbNameValue {kvdbName.value()};
         if (kvdbNameValue.empty())
         {
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_NAME_EMPTY};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_NAME_EMPTY};
         }
 
         const auto optKey = params.getString("/key");
@@ -303,15 +314,17 @@ api::CommandFn kvdbRemoveKeyCmd(std::shared_ptr<KVDBManager> kvdbManager)
         {
             if (params.exists("/key"))
             {
-                return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_NOT_A_STRING};
+                return api::WazuhResponse {
+                    json::Json {"{}"}, API_ERROR_CODE, KVDB_KEY_NOT_A_STRING};
             }
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_MISSING};
+            return api::WazuhResponse {
+                json::Json {"{}"}, API_ERROR_CODE, KVDB_KEY_MISSING};
         }
 
         const std::string key {optKey.value()};
         if (key.empty())
         {
-            return api::WazuhResponse {json::Json {"{}"}, 400, KVDB_KEY_EMPTY};
+            return api::WazuhResponse {json::Json {"{}"}, API_ERROR_CODE, KVDB_KEY_EMPTY};
         }
 
         const bool retVal {kvdbManager->deleteKey(kvdbNameValue, key)};
@@ -320,15 +333,14 @@ api::CommandFn kvdbRemoveKeyCmd(std::shared_ptr<KVDBManager> kvdbManager)
         {
             return api::WazuhResponse {
                 json::Json {"{}"},
-                400,
+                API_ERROR_CODE,
                 fmt::format("Key \"{}\" could not be deleted", key)};
         }
 
-        return api::WazuhResponse {json::Json {"{}"}, 200, "OK"};
+        return api::WazuhResponse {json::Json {"{}"}, API_SUCCESS_CODE, "OK"};
     };
 }
 
-// TODO: missing tests for this method
 void registerAllCmds(std::shared_ptr<KVDBManager> kvdbManager,
                      std::shared_ptr<api::Registry> registry)
 {

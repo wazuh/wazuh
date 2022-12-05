@@ -446,8 +446,8 @@ TEST_F(KVDBTest, dumpContent)
     // create a DB with this path
     // dump it with method and compare
 
-    //json can have multiple formats, look in
-    // /wazuh/src/engine/test/kvdb_input_files
+    // json can have multiple formats, look in
+    //  /wazuh/src/engine/test/kvdb_input_files
 }
 
 TEST_F(KVDBTest, writeKeySingleKV)
@@ -605,8 +605,8 @@ TEST_F(KVDBTest, CreateAndFillKVDBfromFileOkWithFile)
     // create a DB with this path
     // dump it with method and compare
 
-    //json can have multiple formats, look in
-    // /wazuh/src/engine/test/kvdb_input_files
+    // json can have multiple formats, look in
+    //  /wazuh/src/engine/test/kvdb_input_files
 }
 
 TEST_F(KVDBTest, CreateAndFillKVDBfromFileCreatedEarlier)
@@ -616,7 +616,9 @@ TEST_F(KVDBTest, CreateAndFillKVDBfromFileCreatedEarlier)
     ASSERT_STREQ(retval.c_str(), "OK");
 
     ASSERT_NO_THROW(retval = kvdbManager->CreateAndFillDBfromFile(kTestUnloadedDBName));
-    ASSERT_STREQ(retval.c_str(), "A database with the same name already exists");
+    ASSERT_STREQ(
+        retval.c_str(),
+        fmt::format("Database \"{}\" already exists", kTestUnloadedDBName).c_str());
 }
 
 TEST_F(KVDBTest, CreateAndFillKVDBfromFileCreatedAndLoadedEarlier)
@@ -630,7 +632,9 @@ TEST_F(KVDBTest, CreateAndFillKVDBfromFileCreatedAndLoadedEarlier)
     ASSERT_TRUE(kvdbHandle);
 
     ASSERT_NO_THROW(retval = kvdbManager->CreateAndFillDBfromFile(kTestUnloadedDBName));
-    ASSERT_STREQ(retval.c_str(), "Database is in use");
+    ASSERT_STREQ(
+        retval.c_str(),
+        fmt::format("Database \"{}\" is already in use", kTestUnloadedDBName).c_str());
 }
 
 TEST_F(KVDBTest, createKVDBfromCDBFileUnexistantFile)
