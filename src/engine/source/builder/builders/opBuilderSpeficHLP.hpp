@@ -159,6 +159,14 @@ base::Expression opBuilderSpecificHLPCSVParse(const std::any& definition);
  */
 base::Expression opBuilderSpecificHLPKeyValueParse(const std::any& definition);
 
+/**
+ * @brief Helper function of quoted parser from HLP
+ *
+ * @param definition Definition of the operation
+ * @return base::Expression Expression of the operation
+ */
+base::Expression opBuilderSpecificHLPQuotedParse(const std::any& definition);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_SPECIFIC_HLP_H
