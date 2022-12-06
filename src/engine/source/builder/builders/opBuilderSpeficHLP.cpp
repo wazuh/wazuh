@@ -43,6 +43,7 @@ enum class HLPParserType
     FILE_PATH,
     JSON,
     XML, // TODO: Exception in HLP
+    DSV,
     CSV,
     KEY_VALUE,
 };
@@ -147,6 +148,9 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
             break;
         case HLPParserType::XML:
             parser = hlp::getXMLParser({""}, hlpOptionsList);
+            break;
+        case HLPParserType::DSV:
+            parser = hlp::getDSVParser({""}, hlpOptionsList);
             break;
         case HLPParserType::CSV:
             parser = hlp::getCSVParser({""}, hlpOptionsList);
@@ -290,6 +294,12 @@ base::Expression opBuilderSpecificHLPXMLParse(const std::any& definition)
 base::Expression opBuilderSpecificHLPCSVParse(const std::any& definition)
 {
     return opBuilderSpecificHLPTypeParse(definition, HLPParserType::CSV);
+}
+
+// +parse_dvs/[$ref|value]/parser options
+base::Expression opBuilderSpecificHLPDSVParse(const std::any& definition)
+{
+    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::DSV);
 }
 
 // +parse_keyvalue/[$ref|value]

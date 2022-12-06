@@ -192,6 +192,8 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
                               "helper.parse_xml");
     registry->registerBuilder(builders::opBuilderSpecificHLPCSVParse,
                               "helper.parse_csv");
+    registry->registerBuilder(builders::opBuilderSpecificHLPDSVParse,
+                              "helper.parse_dsv");
     registry->registerBuilder(builders::opBuilderSpecificHLPKeyValueParse,
                               "helper.parse_key_value");
     registry->registerBuilder(builders::opBuilderSpecificHLPQuotedParse,
