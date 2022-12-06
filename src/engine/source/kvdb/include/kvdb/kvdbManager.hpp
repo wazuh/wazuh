@@ -11,7 +11,13 @@
 #include <json/json.hpp>
 #include <kvdb/kvdb.hpp>
 
+namespace kvdb_manager
+{
+
 using KVDBHandle = std::shared_ptr<KVDB>;
+
+constexpr int API_SUCCESS_CODE {0};
+constexpr int API_ERROR_CODE {-1};
 
 class KVDBManager
 {
@@ -174,5 +180,7 @@ public:
         }
     }
 };
+
+} // namespace kvdb_manager
 
 #endif // _KVDBMANAGER_H
