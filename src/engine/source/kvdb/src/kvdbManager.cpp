@@ -75,7 +75,7 @@ KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)
     {
         std::unique_lock lk(m_mtx);
         m_loadedDBs[name] = kvdb;
-        return kvdb;
+        return m_loadedDBs[name];
     }
 
     return nullptr;
@@ -136,8 +136,6 @@ bool KVDBManager::unloadDB(const std::string& name)
     }
 
     std::unique_lock lk(m_mtx);
-    auto& kvdb = m_loadedDBs[name];
-    kvdb->cleanupOnClose();
     m_loadedDBs.erase(name);
 
     return true;
@@ -242,7 +240,7 @@ std::string KVDBManager::CreateAndFillDBfromFile(const std::string& dbName,
         }
         else
         {
-            // TODO: delete DB if there is any error
+            deleteDB(dbName);
             return fmt::format("An error occurred while opening the file \"{}\"",
                                path.c_str());
         }
@@ -254,14 +252,14 @@ std::string KVDBManager::CreateAndFillDBfromFile(const std::string& dbName,
         }
         catch (const std::exception& e)
         {
-            // TODO: delete DB if there is any error
+            deleteDB(dbName);
             return fmt::format("An error occurred while parsing the JSON file \"{}\"",
                                path.c_str());
         }
 
         if (!jKv.isObject())
         {
-            // TODO: delete DB if there is any error
+            deleteDB(dbName);
             return fmt::format("An error occurred while parsing the JSON file \"{}\": "
                                "JSON is not an object",
                                path.c_str());
@@ -278,7 +276,7 @@ std::string KVDBManager::CreateAndFillDBfromFile(const std::string& dbName,
             }
             catch (const std::exception& e)
             {
-                // TODO: delete DB if there is any error
+                deleteDB(dbName);
                 return fmt::format("An error occurred while writing the key \"{}\" to "
                                    "the database \"{}\"",
                                    key.c_str(),
@@ -373,7 +371,6 @@ bool KVDBManager::isDBOnPath(const std::string& name)
 
 bool KVDBManager::isLoaded(const std::string& name)
 {
-    std::unique_lock lk(m_mtx);
     auto it = m_loadedDBs.find(name);
     return (it != m_loadedDBs.end());
 }
@@ -383,12 +380,18 @@ std::optional<std::string> KVDBManager::deleteDB(const std::string& name)
     if (isLoaded(name))
     {
         // TODO: double check instances because it could have been updated
+        auto preInstanceCount = m_loadedDBs[name].use_count();
         const auto kvdbHandle = m_loadedDBs[name];
-        auto count = kvdbHandle.use_count();
-        if (count >= 1)
+        if (preInstanceCount > 1)
         {
             return fmt::format("Database \"{}\" is already in use", name);
         }
+        else if (preInstanceCount == 1)
+        {
+            // When the only reference to the handle is in the map itself so clean it
+            unloadDB(name);
+        }
+
     }
 
     KVDBHandle dbHandle;
