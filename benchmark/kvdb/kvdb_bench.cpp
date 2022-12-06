@@ -8,7 +8,7 @@
 #include <logging/logging.hpp>
 
 static constexpr char kBenchDbName[] = "bench";
-static auto kvdbManager = std::make_shared<KVDBManager>("/tmp/");
+static auto kvdbManager = std::make_shared<kvdb_manager::KVDBManager>("/tmp/");
 
 static void dbSetup(const benchmark::State& s)
 {
@@ -114,7 +114,4 @@ static void kvdbWriteTx(benchmark::State& state)
     }
 }
 
-BENCHMARK(kvdbWriteTx)
-    ->Setup(dbSetup)
-    ->Teardown(dbTeardown)
-    ->Range(8, 16 << 10);
+BENCHMARK(kvdbWriteTx)->Setup(dbSetup)->Teardown(dbTeardown)->Range(8, 16 << 10);
