@@ -67,7 +67,7 @@ static void runTest(TestCase t,
     {
         parser = pb(std::get<2>(t), std::get<3>(t));
     }
-    catch (std::invalid_argument& e)
+    catch (std::runtime_error& e)
     {
         ASSERT_FALSE(expectedSuccess)
             << fmt::format("Error building parser: {}", e.what());
@@ -76,10 +76,10 @@ static void runTest(TestCase t,
     auto r = parser(std::get<0>(t), 0);
 
     ASSERT_EQ(r.success(), expectedSuccess)
-        << (r.success() ? "" : "ParserError: " + r.error());
+        << (r.success() ? "" : "ParserError: " + r.error()) << to_string(t);
     if (r.success())
     {
-        ASSERT_EQ(expectedDoc, r.value());
+        ASSERT_EQ(expectedDoc, r.value()) << to_string(t);
     }
     else
     {
