@@ -29,8 +29,8 @@ protected:
     static constexpr auto DB_NAME = "TEST_DB";
     static constexpr auto DB_DIR = "/tmp/";
 
-    std::shared_ptr<KVDBManager> kvdbManager =
-        std::make_shared<KVDBManager>(opBuilderKVDBExtractTest::DB_DIR);
+    std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager =
+        std::make_shared<kvdb_manager::KVDBManager>(opBuilderKVDBExtractTest::DB_DIR);
 
     virtual void SetUp()
     {

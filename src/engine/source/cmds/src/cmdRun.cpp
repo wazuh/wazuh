@@ -81,8 +81,8 @@ void run(const std::string& kvdbPath,
     std::shared_ptr<api::catalog::Catalog> catalog;
     std::shared_ptr<engineserver::EngineServer> server;
     std::shared_ptr<router::EnvironmentManager> envManager;
-    std::shared_ptr<KVDBManager> kvdb;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
+    std::shared_ptr<kvdb_manager::KVDBManager> kvdb;
 
     try
     {
@@ -93,7 +93,7 @@ void run(const std::string& kvdbPath,
         g_exitHanlder.add([server]() { server->close(); });
         WAZUH_LOG_INFO("Engine \"run\" command: Server successfully configured.");
 
-        kvdb = std::make_shared<KVDBManager>(kvdbPath);
+        kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath);
         WAZUH_LOG_INFO("Engine \"run\" command: KVDB successfully initialized.");
         g_exitHanlder.add(
             [kvdb]()

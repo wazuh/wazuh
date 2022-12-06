@@ -19,7 +19,8 @@ using namespace base;
 namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
 namespace
 {
@@ -27,17 +28,11 @@ class opBuilderKVDBNotMatchTest : public ::testing::Test
 {
 
 protected:
-    KVDBManager& kvdbManager = KVDBManager::get();
+    kvdb_manager::KVDBManager& kvdbManager = kvdb_manager::KVDBManager::get();
 
-    virtual void SetUp()
-    {
-        kvdbManager.loadDB("TEST_DB");
-    }
+    virtual void SetUp() { kvdbManager.loadDB("TEST_DB"); }
 
-    virtual void TearDown()
-    {
-        kvdbManager.unloadDB("TEST_DB");
-    }
+    virtual void TearDown() { kvdbManager.unloadDB("TEST_DB"); }
 };
 
 // Build ok
@@ -57,8 +52,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_number_of_arguments)
         "check":
             {"field2match": "+kvdb_not_match"}
     })"};
-    ASSERT_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr),
-                 std::runtime_error);
+    ASSERT_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr), std::runtime_error);
 }
 
 // Build invalid DB
@@ -68,8 +62,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_invalid_db)
         "check":
             {"field2match": "+kvdb_not_match/INVALID_DB"}
     })"};
-    ASSERT_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr),
-                 std::runtime_error);
+    ASSERT_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr), std::runtime_error);
 }
 
 // Test ok: static values
