@@ -152,6 +152,14 @@ base::Expression opBuilderSpecificHLPXMLParse(const std::any& definition);
 base::Expression opBuilderSpecificHLPCSVParse(const std::any& definition);
 
 /**
+ * @brief Helper function of dsv parser from HLP
+ *
+ * @param definition Definition of the operation
+ * @return base::Expression Expression of the operation
+ */
+base::Expression opBuilderSpecificHLPDSVParse(const std::any& definition);
+
+/**
  * @brief Helper function of key value parser from HLP
  *
  * @param definition Definition of the operation

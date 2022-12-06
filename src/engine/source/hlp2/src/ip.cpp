@@ -18,7 +18,7 @@ parsec::Parser<json::Json> getIPParser(Stop endTokens, Options lst)
 {
     if (endTokens.empty())
     {
-        throw std::invalid_argument(fmt::format("IP parser needs a stop string"));
+        throw std::runtime_error(fmt::format("IP parser needs a stop string"));
     }
 
     return [endTokens](std::string_view text, size_t index)

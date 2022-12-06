@@ -339,6 +339,23 @@ TEST(parseCSV, end_separator_quoted)
                  std::any_cast<JsonString>(result["~custom"]).jsonString.c_str());
 }
 
+TEST(parseCSV, end_separator_quoted_2)
+{
+    const char* logpar = "<~custom/csv/field_1/field_2>;asd";
+    const char* event = R"(f1,"f2;asd";asd)";
+    const char* expectedJSON = R"({"field_1":"f1","field_2":"f2;asd"})";
+
+    ParserFn parseOp = getParserOp(logpar);
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_TRUE(ret);
+    ASSERT_STREQ(expectedJSON,
+                 std::any_cast<JsonString>(result["~custom"]).jsonString.c_str());
+}
+
 TEST(parseCSV, comma_after_end_token)
 {
     const char* logpar = "<~custom/csv/field_1/field_2>,sd";

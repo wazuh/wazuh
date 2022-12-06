@@ -569,7 +569,7 @@ TEST(Parse_date, Match_value)
     ASSERT_STREQ(expectedDate.c_str(), "2019-01-01T00:00:00.000Z");
 }
 
-TEST(Heler_HLP_parse_date, Match_fail)
+TEST(Parse_date, Match_fail)
 {
     auto tuple = std::make_tuple(
         std::string {"/field"},
@@ -1264,7 +1264,111 @@ TEST(Parse_xml, Ref_not_found)
 }
 
 // parse csv
-// TODO Add test parser CSV
+TEST(Parse_csv, Builds)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_csv"},
+                                 std::vector<std::string> {"source", "field1", "field2"});
+
+    ASSERT_NO_THROW(bld::opBuilderSpecificHLPCSVParse(tuple));
+}
+
+TEST(Parse_csv, Builds_with_opt_params)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_csv"},
+                                 std::vector<std::string> {"source", "field1", "field2", "field3"});
+
+    ASSERT_NO_THROW(bld::opBuilderSpecificHLPCSVParse(tuple));
+}
+
+TEST(Parse_csv, Builds_bad_parameters)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_csv"},
+                                 std::vector<std::string> {"source"});
+
+    ASSERT_THROW(bld::opBuilderSpecificHLPCSVParse(tuple), std::runtime_error);
+}
+
+TEST(Parse_csv, Builds_bad_parameters2)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_csv"},
+                                 std::vector<std::string> {});
+
+    ASSERT_THROW(bld::opBuilderSpecificHLPCSVParse(tuple), std::runtime_error);
+}
+
+TEST(Parse_csv, Match_value)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_csv"},
+                                 std::vector<std::string> {"test,123,456", "field1", "field2"});
+
+    auto op {bld::opBuilderSpecificHLPCSVParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto event1 {std::make_shared<json::Json>(R"({"field": false})")};
+
+    result::Result<Event> result1 {op(event1)};
+    ASSERT_TRUE(result1);
+    ASSERT_TRUE(result1.payload().get()->exists("/field"));
+    ASSERT_TRUE(result1.payload().get()->isObject("/field"));
+    auto expected = R"({"field1":"test","field2":123})";
+    ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
+}
+
+TEST(Parse_csv, Match_ref) {
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_csv"},
+                                 std::vector<std::string> {"$field_ref", "field1", "field2"});
+
+    auto op {bld::opBuilderSpecificHLPCSVParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    auto event1 {std::make_shared<json::Json>(
+        R"({"field": false, "field_ref": "test,123,456"})")};
+
+    result::Result<Event> result1 {op(event1)};
+    ASSERT_TRUE(result1);
+    ASSERT_TRUE(result1.payload().get()->exists("/field"));
+    ASSERT_TRUE(result1.payload().get()->isObject("/field"));
+    auto expected = R"({"field1":"test","field2":123})";
+    ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
+}
+
+TEST(Parse_csv, Match_fail) {
+    auto tuple = std::make_tuple(std::string {"/fail_field"},
+                                 std::string {"parse_csv"},
+                                 std::vector<std::string> {"test 123 456", "field1", "field2"});
+
+    auto op {bld::opBuilderSpecificHLPCSVParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    auto event1 {std::make_shared<json::Json>(R"({"field": false})")};
+
+    result::Result<Event> result1 {op(event1)};
+    ASSERT_FALSE(result1);
+    ASSERT_FALSE(result1.payload().get()->exists("/fail_field"));
+
+
+}
+
+TEST(Parse_csv, Ref_not_found)
+{
+    auto tuple = std::make_tuple(std::string {"/field_dst"},
+                                 std::string {"parse_csv"},
+                                 std::vector<std::string> {"$field_ref", "field1", "field2"});
+
+    auto op {bld::opBuilderSpecificHLPCSVParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    auto event1 {std::make_shared<json::Json>(R"({"field": false})")};
+
+    result::Result<Event> result1 {op(event1)};
+    ASSERT_FALSE(result1);
+    ASSERT_FALSE(result1.payload().get()->exists("/field_dst"));
+    ASSERT_FALSE(result1.payload().get()->exists("/field_ref"));
+}
+
+
+
 
 // parse key value
 TEST(Parse_key_value, Builds)
