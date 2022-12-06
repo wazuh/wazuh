@@ -646,10 +646,8 @@ TEST_F(KVDBTest, createKVDBfromCDBFileUnexistantFile)
 
 TEST_F(KVDBTest, createKVDBfromCDBFileDirectoryCollition)
 {
-    // file on same directory of kvdbManager initilization will generate error
-    // TODO: replicate with jsons
-    GTEST_SKIP();
-    std::string filePath = "/tmp/DB_FROM_FILE";
+    // file on same directory use for kvdbManager initilization will cause error
+    std::string filePath = KVDB_PATH + "/DB_FROM_FILE";
     if (!std::filesystem::exists(filePath))
     {
         std::ofstream exampleFile(filePath);

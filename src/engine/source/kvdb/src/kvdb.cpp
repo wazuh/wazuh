@@ -25,8 +25,6 @@ static const struct Option
 
 struct KVDB::Impl
 {
-    const char* KVDB_separator {"~/~"};
-
     enum class State
     {
         Open,

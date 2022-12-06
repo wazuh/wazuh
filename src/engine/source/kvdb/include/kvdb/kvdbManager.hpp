@@ -105,13 +105,12 @@ public:
     std::string CreateAndFillDBfromFile(const std::string& dbName,
                                         const std::filesystem::path& path = "");
 
-    // TODO: fill
     /**
-     * @brief
+     * @brief Dump the whole DB content to a json
      *
-     * @param name
-     * @param data
-     * @return std::optional<std::string_view>
+     * @param name Of the DB to be dumped
+     * @param data Json object where the DB will be dumped
+     * @return std::optional<std::string_view> error message or std::nullopt if no error
      */
     std::optional<std::string_view> dumpContent(const std::string& name,
                                                 json::Json& data);
