@@ -20,7 +20,8 @@ TEST(HLP2, CSVParser)
 
     std::vector<TestCase> testCases {
         // A single field CSV is just a field, use other parsers for it
-        TestCase {R"(hi)", false, {""}, Options {"field_1"}, fn(R"({"field_1":"hi"})"), 3},
+        TestCase {
+            R"(hi)", false, {""}, Options {"field_1"}, fn(R"({"field_1":"hi"})"), 3},
         TestCase {R"(hi,hi2)",
                   true,
                   {""},
@@ -30,6 +31,12 @@ TEST(HLP2, CSVParser)
         TestCase {R"(hi,hi2 bye)",
                   true,
                   {" "},
+                  Options {"field_1", "field_2"},
+                  fn(R"({"field_1":"hi","field_2":"hi2"})"),
+                  6},
+        TestCase {R"(hi,hi2,bye)",
+                  true,
+                  {","},
                   Options {"field_1", "field_2"},
                   fn(R"({"field_1":"hi","field_2":"hi2"})"),
                   6},
