@@ -42,12 +42,12 @@ base::Expression KVDBExtract(const std::any& definition,
     if (!kvdb)
     {
         kvdbManager->loadDB(dbName, false);
-    }
-    kvdb = kvdbManager->getDB(dbName);
-    if (!kvdb)
-    {
-        throw std::runtime_error(fmt::format(
-            "Engine KVDB builder: Database \"{}\" is not available.", dbName));
+        kvdb = kvdbManager->getDB(dbName);
+        if (!kvdb)
+        {
+            throw std::runtime_error(fmt::format(
+                "Engine KVDB builder: Database \"{}\" is not available.", dbName));
+        }
     }
 
     // Trace messages
@@ -174,12 +174,12 @@ base::Expression existanceCheck(const std::any& definition,
     if (!kvdb)
     {
         kvdbManager->loadDB(dbName, false);
-    }
-    kvdb = kvdbManager->getDB(dbName);
-    if (!kvdb)
-    {
-        throw std::runtime_error(fmt::format(
-            "Engine KVDB builder: Database \"{}\" is not available.", dbName));
+        kvdb = kvdbManager->getDB(dbName);
+        if (!kvdb)
+        {
+            throw std::runtime_error(fmt::format(
+                "Engine KVDB builder: Database \"{}\" is not available.", dbName));
+        }
     }
 
     std::string successTrace = fmt::format("[{}] -> Success", name);

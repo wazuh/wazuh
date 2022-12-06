@@ -66,6 +66,7 @@ protected:
 
     virtual void SetUp()
     {
+        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
@@ -337,6 +338,7 @@ protected:
 
     virtual void SetUp()
     {
+        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
@@ -355,9 +357,28 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmd)
     ASSERT_NO_THROW(kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
 }
 
+// This can occur when a DB that was used on a decoder is no longer used
+TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdLoadedOnlyOnMap)
+{
+    // DB_NAME is only loaded on map, it will be unloaded and deleted
+    api::CommandFn cmd;
+    ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
+    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
+    auto response = cmd(params);
+
+    // check response
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+
+    // check remaining available DBs
+    ASSERT_EQ(kvdbAPIDeleteCommand::getNumberOfKVDBLoaded(), 0);
+}
+
 TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdBlockBecauseLoaded)
 {
-    // can't delete loaded DB
+    // DB_NAME is on the loaded map but it needs to be instanced in any helper:
+    auto kvdbHandleExample = kvdbAPIDeleteCommand::kvdbManager->getDB(DB_NAME);
+
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
@@ -475,6 +496,7 @@ protected:
 
     virtual void SetUp()
     {
+        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
@@ -819,6 +841,7 @@ protected:
 
     virtual void SetUp()
     {
+        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
@@ -983,6 +1006,7 @@ protected:
 
     virtual void SetUp()
     {
+        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
@@ -1266,6 +1290,7 @@ protected:
 
     virtual void SetUp()
     {
+        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
@@ -1407,6 +1432,7 @@ protected:
 
     virtual void SetUp()
     {
+        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
