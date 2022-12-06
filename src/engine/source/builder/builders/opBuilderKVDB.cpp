@@ -19,7 +19,7 @@ using namespace helper::base;
 
 base::Expression KVDBExtract(const std::any& definition,
                              bool merge,
-                             std::shared_ptr<KVDBManager> kvdbManager)
+                             std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
     // Extract parameters from any
     auto [targetField, name, raw_parameters] =
@@ -138,7 +138,7 @@ base::Expression KVDBExtract(const std::any& definition,
 }
 
 // <field>: +kvdb_extract/<DB>/<ref_key>
-Builder getOpBuilderKVDBExtract(std::shared_ptr<KVDBManager> kvdbManager)
+Builder getOpBuilderKVDBExtract(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
     return [kvdbManager](const std::any& definition)
     {
@@ -147,7 +147,8 @@ Builder getOpBuilderKVDBExtract(std::shared_ptr<KVDBManager> kvdbManager)
 }
 
 // <field>: +kvdb_extract_merge/<DB>/<ref_key>
-Builder getOpBuilderKVDBExtractMerge(std::shared_ptr<KVDBManager> kvdbManager)
+Builder
+getOpBuilderKVDBExtractMerge(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
     return [kvdbManager](const std::any& definition)
     {
@@ -157,7 +158,7 @@ Builder getOpBuilderKVDBExtractMerge(std::shared_ptr<KVDBManager> kvdbManager)
 
 base::Expression existanceCheck(const std::any& definition,
                                 bool checkExist,
-                                std::shared_ptr<KVDBManager> kvdbManager)
+                                std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
     auto [targetField, name, arguments] = extractDefinition(definition);
     auto parameters = processParameters(name, arguments);
@@ -228,7 +229,7 @@ base::Expression existanceCheck(const std::any& definition,
 }
 
 // <field>: +kvdb_match/<DB>
-Builder getOpBuilderKVDBMatch(std::shared_ptr<KVDBManager> kvdbManager)
+Builder getOpBuilderKVDBMatch(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
     return [kvdbManager](const std::any& definition)
     {
@@ -237,7 +238,7 @@ Builder getOpBuilderKVDBMatch(std::shared_ptr<KVDBManager> kvdbManager)
 }
 
 // <field>: +kvdb_not_match/<DB>
-Builder getOpBuilderKVDBNotMatch(std::shared_ptr<KVDBManager> kvdbManager)
+Builder getOpBuilderKVDBNotMatch(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
     return [kvdbManager](const std::any& definition)
     {

@@ -24,7 +24,7 @@ namespace builder::internals::builders
  */
 base::Expression KVDBExtract(const std::any& definition,
                              bool merge,
-                             std::shared_ptr<KVDBManager> kvdbManager);
+                             std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 /**
  * @brief Builds KVDB extract function helper
@@ -32,7 +32,7 @@ base::Expression KVDBExtract(const std::any& definition,
  * @param kvdbManager KVDB manager
  * @return Builder
  */
-Builder getOpBuilderKVDBExtract(std::shared_ptr<KVDBManager> kvdbManager);
+Builder getOpBuilderKVDBExtract(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 /**
  * @brief Builds KVDB extract and merge function helper
@@ -40,7 +40,8 @@ Builder getOpBuilderKVDBExtract(std::shared_ptr<KVDBManager> kvdbManager);
  * @param kvdbManager KVDB manager
  * @return Builder
  */
-Builder getOpBuilderKVDBExtractMerge(std::shared_ptr<KVDBManager> kvdbManager);
+Builder
+getOpBuilderKVDBExtractMerge(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 /**
  * @brief get the KVDB match function helper builder
@@ -48,7 +49,7 @@ Builder getOpBuilderKVDBExtractMerge(std::shared_ptr<KVDBManager> kvdbManager);
  * @param kvdbManager KVDB manager
  * @return Builder
  */
-Builder getOpBuilderKVDBMatch(std::shared_ptr<KVDBManager> kvdbManager);
+Builder getOpBuilderKVDBMatch(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 /**
  * @brief Get the KVDB not-match function helper builder
@@ -56,7 +57,7 @@ Builder getOpBuilderKVDBMatch(std::shared_ptr<KVDBManager> kvdbManager);
  * @param kvdbManager KVDB manager
  * @return Builder
  */
-Builder getOpBuilderKVDBNotMatch(std::shared_ptr<KVDBManager> kvdbManager);
+Builder getOpBuilderKVDBNotMatch(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 } // namespace builder::internals::builders
 

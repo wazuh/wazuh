@@ -58,7 +58,7 @@ void test(const std::string& kvdbPath,
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
 
-    auto kvdb = std::make_shared<KVDBManager>(kvdbPath);
+    auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath);
     g_exitHanlder.add([kvdb]() { kvdb->clear(); });
 
     auto fileStore = std::make_shared<store::FileDriver>(fileStorage);
