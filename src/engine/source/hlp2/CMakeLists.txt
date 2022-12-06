@@ -43,7 +43,7 @@ add_library(hlp2 STATIC
         src/file.cpp
         src/json.cpp
         src/xml.cpp
-        src/csv.cpp
+        src/dsv_csv.cpp
         src/kvmap.cpp
         ${date_SOURCE_DIR}/src/tz.cpp
         src/stream_view.hpp

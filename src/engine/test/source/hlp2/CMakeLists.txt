@@ -19,7 +19,7 @@ add_executable(hlp2_test
         quoted_test.cpp
         json_test.cpp
         xml_test.cpp
-        csv_test.cpp
+        dsv_csv_test.cpp
         kbmap_test.cpp
         date_test.cpp
 )

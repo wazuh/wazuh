@@ -193,7 +193,7 @@ parsec::Parser<json::Json> getXMLParser(Stop endTokens, Options lst);
 
 /**
  * Returns a parser that consumes the input until
- * the stop substring, and parses it as a CSV.
+ * the stop substring, and parses it as a DSV.
  *
  * It requires a list of fields in order of appearance
  * in the string to parse.
@@ -203,6 +203,25 @@ parsec::Parser<json::Json> getXMLParser(Stop endTokens, Options lst);
  *
  * The parsing is done using vincentlaucsb/csv-parser
  * library.
+ *
+ * @param endTokens
+ * @param lst list of field names
+ * @return
+ */
+parsec::Parser<json::Json> getDSVParser(Stop endTokens, Options lst);
+
+/**
+ * Returns a parser that consumes the input until
+ * the stop substring, and parses it as a CSV
+ *
+ * It requires a list of fields in order of appearance
+ * in the string to parse.
+ *
+ * It will return failure if there is no stop substring
+ * defined, or if it cannot parse a field of the list.
+ *
+ * Its a wrapper around getDSVParser with the delimiter set to ','
+ * and the quote char set to '"'
  *
  * @param endTokens
  * @param lst list of field names
