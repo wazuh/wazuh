@@ -25,6 +25,9 @@ constexpr const char* LEGACY_DIRECTORY {"legacy"};
 
 } // namespace
 
+namespace kvdb_manager
+{
+
 KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath)
 {
     // TODO should we read and load all the dbs inside the folder?
@@ -397,3 +400,5 @@ std::optional<std::string> KVDBManager::deleteDB(const std::string& name)
     dbHandle->cleanupOnClose();
     return std::nullopt;
 }
+
+} // namespace kvdb_manager

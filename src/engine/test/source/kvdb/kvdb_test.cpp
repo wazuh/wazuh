@@ -49,7 +49,7 @@ class KVDBTest : public ::testing::Test
 {
 
 protected:
-    std::shared_ptr<KVDBManager> kvdbManager;
+    std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
 
     virtual void SetUp()
     {
@@ -58,7 +58,7 @@ protected:
         {
             std::filesystem::remove_all(KVDB_PATH);
         }
-        kvdbManager = {std::make_shared<KVDBManager>(KVDB_PATH)};
+        kvdbManager = {std::make_shared<kvdb_manager::KVDBManager>(KVDB_PATH)};
         kvdbManager->loadDB(kTestDBName);
     };
 
@@ -76,18 +76,18 @@ protected:
 
 TEST_F(KVDBTest, CreateGetDeleteKvdbFile)
 {
-    KVDBHandle kvdbAddHandle;
+    kvdb_manager::KVDBHandle kvdbAddHandle;
     ASSERT_NO_THROW(kvdbAddHandle = kvdbManager->loadDB("TEST_DB_1"));
     ASSERT_TRUE(kvdbAddHandle);
 
-    KVDBHandle kvdbGetHandle;
+    kvdb_manager::KVDBHandle kvdbGetHandle;
     ASSERT_NO_THROW(kvdbGetHandle = kvdbManager->getDB("TEST_DB_1"));
     ASSERT_TRUE(kvdbGetHandle);
     ASSERT_STREQ(kvdbGetHandle->getName().data(), "TEST_DB_1");
     ASSERT_TRUE(kvdbGetHandle->isReady());
 
     ASSERT_TRUE(kvdbManager->unloadDB("TEST_DB_1"));
-    KVDBHandle kvdbDeleteHandle;
+    kvdb_manager::KVDBHandle kvdbDeleteHandle;
     ASSERT_NO_THROW(kvdbDeleteHandle = kvdbManager->getDB("TEST_DB_1"));
     ASSERT_EQ(kvdbDeleteHandle, nullptr);
 }
@@ -114,7 +114,7 @@ TEST_F(KVDBTest, CreateDeleteColumns)
 
 TEST_F(KVDBTest, write)
 {
-    KVDBHandle kvdbHandle;
+    kvdb_manager::KVDBHandle kvdbHandle;
     ASSERT_NO_THROW(kvdbHandle = kvdbManager->getDB(kTestDBName));
     ASSERT_TRUE(kvdbHandle);
 
@@ -463,7 +463,7 @@ TEST_F(KVDBTest, writeKeySingleKV)
     ASSERT_TRUE(retval);
 
     // TODO: this replicates what the helper does and should be improved
-    KVDBHandle kvdbHandle;
+    kvdb_manager::KVDBHandle kvdbHandle;
     kvdbHandle = kvdbManager->getDB("NEW_TEST_DB");
     if (!kvdbHandle)
     {
@@ -627,7 +627,7 @@ TEST_F(KVDBTest, CreateAndFillKVDBfromFileCreatedAndLoadedEarlier)
     ASSERT_NO_THROW(retval = kvdbManager->CreateAndFillDBfromFile(kTestUnloadedDBName));
     ASSERT_STREQ(retval.c_str(), "OK");
 
-    KVDBHandle kvdbHandle;
+    kvdb_manager::KVDBHandle kvdbHandle;
     ASSERT_NO_THROW(kvdbHandle = kvdbManager->loadDB(kTestUnloadedDBName));
     ASSERT_TRUE(kvdbHandle);
 

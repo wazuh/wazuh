@@ -20,7 +20,7 @@ namespace cmd
 namespace
 {
 
-constexpr auto API_KVDB_COMMAND {"_kvdb"};
+constexpr auto API_KVDB_CMD_SUFIX {"_kvdb"};
 constexpr auto API_KVDB_CREATE_SUBCOMMAND {"create"};
 constexpr auto API_KVDB_DELETE_SUBCOMMAND {"delete"};
 constexpr auto API_KVDB_DUMP_SUBCOMMAND {"dump"};
@@ -29,19 +29,19 @@ constexpr auto API_KVDB_INSERT_SUBCOMMAND {"insert"};
 constexpr auto API_KVDB_LIST_SUBCOMMAND {"list"};
 constexpr auto API_KVDB_REMOVE_SUBCOMMAND {"remove"};
 
-void createKvdb(const std::string& socketPath,
-                const std::string& kvdb_name,
-                const std::string& kvdbInputFilePath)
+static void kvdbCreate(const std::string& socketPath,
+                       const std::string& kvdbName,
+                       const std::string& kvdbInputFilePath)
 {
     // create request
     json::Json data {};
     data.setObject();
     data.setString(API_KVDB_CREATE_SUBCOMMAND, "/action");
-    data.setString(kvdb_name, "/name");
+    data.setString(kvdbName, "/name");
     data.setString(kvdbInputFilePath, "/path");
 
     auto req = api::WazuhRequest::create(
-        std::string(API_KVDB_CREATE_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
+        std::string(API_KVDB_CREATE_SUBCOMMAND) + API_KVDB_CMD_SUFIX, "api", data);
 
     // send request
     json::Json response {};
@@ -52,157 +52,200 @@ void createKvdb(const std::string& socketPath,
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Error sending request: " << e.what() << std::endl;
+        WAZUH_LOG_ERROR(
+            "Engine \"kvdb\" command: \"{}\" method: {}.", __func__, e.what());
         return;
     }
 
-    if (response.getInt("/error").value_or(-1) != 200)
+    if (response.getInt("/error").value_or(kvdb_manager::API_ERROR_CODE)
+        != kvdb_manager::API_SUCCESS_CODE)
     {
-        std::cerr << "Error creating KVDB: "
-                  << response.getString("/message").value_or("-") << std::endl;
+        WAZUH_LOG_ERROR("Engine \"kvdb\" command: \"{}\" method: {}.",
+                        __func__,
+                        response.getString("/message").value_or("Unknown error"));
         return;
     }
 
-    std::cout << " KVDB name:" << kvdb_name << " created." << std::endl;
+    const std::string msg {fmt::format("KVDB \"{}\" successfully created", kvdbName)};
+    std::cout << msg << std::endl;
 }
 
-void deleteKvdb(const std::string& socketPath, const std::string& name, bool loaded)
+static void
+kvdbDelete(const std::string& socketPath, const std::string& kvdbName, bool loaded)
 {
     // create request
     json::Json data {};
     data.setObject();
     data.setString(API_KVDB_DELETE_SUBCOMMAND, "/action");
-    data.setString(name, "/name");
+    data.setString(kvdbName, "/name");
 
-    auto req = api::WazuhRequest::create(
-        std::string(API_KVDB_DELETE_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
+    const auto req = api::WazuhRequest::create(
+        std::string(API_KVDB_DELETE_SUBCOMMAND) + API_KVDB_CMD_SUFIX, "api", data);
 
     // send request
     json::Json response {};
     try
     {
-        auto responseStr = apiclnt::connection(socketPath, req.toStr());
+        const std::string responseStr {apiclnt::connection(socketPath, req.toStr())};
         response = json::Json {responseStr.c_str()};
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Error sending request: " << e.what() << std::endl;
+        WAZUH_LOG_ERROR("Engine \"kvdb\" command: \"{}\" method: {}.",
+                        __func__,
+                        response.getString("/message").value_or("Unknown error"));
         return;
     }
 
-    if (response.getInt("/error").value_or(-1) != 200)
+    if (response.getInt("/error").value_or(kvdb_manager::API_ERROR_CODE)
+        != kvdb_manager::API_SUCCESS_CODE)
     {
-        std::cerr << "Error deleting KVDB: "
-                  << response.getString("/message").value_or("-") << std::endl;
+        WAZUH_LOG_ERROR("Engine \"kvdb\" command: \"{}\" method: {}.",
+                        __func__,
+                        response.getString("/message").value_or("Unknown error"));
         return;
     }
 
-    std::cout << " KVDB name:" << name << " deleted." << std::endl;
+    const std::string msg {fmt::format("KVDB \"{}\" successfully deleted", kvdbName)};
+    std::cout << msg << std::endl;
 }
 
-void dumpKvdb(const std::string& socketPath, const std::string& name)
+static void kvdbDump(const std::string& socketPath, const std::string& kvdbName)
 {
     // create request
     json::Json data {};
     data.setObject();
     data.setString(API_KVDB_DUMP_SUBCOMMAND, "/action");
-    data.setString(name, "/name");
+    data.setString(kvdbName, "/name");
 
-    auto req = api::WazuhRequest::create(
-        std::string(API_KVDB_DUMP_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
+    const auto req = api::WazuhRequest::create(
+        std::string(API_KVDB_DUMP_SUBCOMMAND) + API_KVDB_CMD_SUFIX, "api", data);
 
     // send request
     json::Json response {};
     try
     {
-        auto responseStr = apiclnt::connection(socketPath, req.toStr());
+        const auto responseStr = apiclnt::connection(socketPath, req.toStr());
         response = json::Json {responseStr.c_str()};
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Error sending request: " << e.what() << std::endl;
+        WAZUH_LOG_ERROR(
+            "Engine \"kvdb\" command: \"{}\" method: {}.", __func__, e.what());
         return;
     }
 
-    if (response.getInt("/error").value_or(-1) != 200)
+    if (response.getInt("/error").value_or(kvdb_manager::API_ERROR_CODE)
+        != kvdb_manager::API_SUCCESS_CODE)
     {
-        std::cerr << "Error getting dump of KVDBs: "
-                  << response.getString("/message").value_or("-") << std::endl;
+        WAZUH_LOG_ERROR("Engine \"kvdb\" command: \"{}\" method: {}.",
+                        __func__,
+                        response.getString("/message").value_or("Unknown error"));
         return;
     }
 
-    auto kvdbContent = response.getString("/data");
+    auto kvdbContent = response.str("/data");
     if (kvdbContent.has_value())
     {
-        std::cout << "KVDB content:" << std::endl;
-        std::cout << kvdbContent.value() << std::endl;
+        const std::string msg {
+            fmt::format("KVDB \"{}\" content:\n{}", kvdbName, kvdbContent.value())};
+        std::cout << msg << std::endl;
     }
     else
     {
-        std::cout << "KVDB is empty" << std::endl;
+        const std::string msg {fmt::format("KVDB \"{}\" is empty", kvdbName)};
+        std::cout << msg << std::endl;
     }
 
     return;
 }
 
-void getKvdb(const std::string& socketPath,
-             const std::string& name,
-             const std::string& key)
+static void kvdbGetValue(const std::string& socketPath,
+                         const std::string& kvdbName,
+                         const std::string& key)
 {
     // create request
     json::Json data {};
     data.setObject();
     data.setString(API_KVDB_GET_SUBCOMMAND, "/action");
-    data.setString(name, "/name");
+    data.setString(kvdbName, "/name");
     data.setString(key, "/key");
 
-    auto req = api::WazuhRequest::create(
-        std::string(API_KVDB_GET_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
+    const auto req = api::WazuhRequest::create(
+        std::string(API_KVDB_GET_SUBCOMMAND) + API_KVDB_CMD_SUFIX, "api", data);
 
     // send request
     json::Json response {};
     try
     {
-        auto responseStr = apiclnt::connection(socketPath, req.toStr());
+        const auto responseStr = apiclnt::connection(socketPath, req.toStr());
         response = json::Json {responseStr.c_str()};
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Error sending request: " << e.what() << std::endl;
+        WAZUH_LOG_ERROR(
+            "Engine \"kvdb\" command: \"{}\" method: {}.", __func__, e.what());
         return;
     }
 
-    if (response.getInt("/error").value_or(-1) != 200)
+    if (response.getInt("/error").value_or(kvdb_manager::API_ERROR_CODE)
+        != kvdb_manager::API_SUCCESS_CODE)
     {
-        std::cerr << "Error getting key value from KVDBs: "
-                  << response.getString("/message").value_or("-") << std::endl;
+        WAZUH_LOG_ERROR("Engine \"kvdb\" command: \"{}\" method: {}.",
+                        __func__,
+                        response.getString("/message").value_or("Unknown error"));
         return;
     }
 
-    auto resultKey = response.getString("/data/key").value();
-    auto resultVal = response.getString("/data/value").value();
+    const auto resultKey = response.getString("/data/key");
+    if (!resultKey)
+    {
+        WAZUH_LOG_ERROR("Engine \"kvdb\" command: \"{}\" method: Key could not be found "
+                        "in the response.",
+                        __func__);
+        return;
+    }
+    const auto resultVal = response.getString("/data/value");
+    if (!resultVal)
+    {
+        WAZUH_LOG_ERROR(
+            "Engine \"kvdb\" command: \"{}\" method: Value could not be found "
+            "in the response.",
+            __func__);
+        return;
+    }
 
-    std::string outputMessage =
-        fmt::format("Value [{}] on key [{}] from DB [{}]", resultVal, resultKey, name);
-    std::cout << outputMessage << std::endl;
+    const std::string msg {fmt::format("KVDB \"{}\": Key \"{}\": Value: {}",
+                                       kvdbName,
+                                       resultKey.value(),
+                                       resultVal.value())};
+    std::cout << msg << std::endl;
+
     return;
 }
 
-void insertKvdb(const std::string& socketPath,
-                const std::string& name,
-                const std::string& key,
-                const std::string& keyValue)
+static void kvdbInsertKeyValue(const std::string& socketPath,
+                               const std::string& kvdbName,
+                               const std::string& key,
+                               const std::string& keyValue)
 {
     // create request
     json::Json data {};
     data.setObject();
     data.setString(API_KVDB_INSERT_SUBCOMMAND, "/action");
-    data.setString(name, "/name");
+    data.setString(kvdbName, "/name");
     data.setString(key, "/key");
     data.setString(keyValue, "/value");
 
     auto req = api::WazuhRequest::create(
-        std::string(API_KVDB_INSERT_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
+        std::string(API_KVDB_INSERT_SUBCOMMAND) + API_KVDB_CMD_SUFIX, "api", data);
+
+    WAZUH_LOG_DEBUG("Engine \"kvdb\" command: \"{}\" method: KVDB \"{}\": Key=\"{}\" "
+                    "Value={}.",
+                    __func__,
+                    kvdbName,
+                    key,
+                    keyValue);
 
     // send request
     json::Json response {};
@@ -213,114 +256,133 @@ void insertKvdb(const std::string& socketPath,
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Error sending request: " << e.what() << std::endl;
+        WAZUH_LOG_ERROR(
+            "Engine \"kvdb\" command: \"{}\" method: {}.", __func__, e.what());
         return;
     }
 
-    if (response.getInt("/error").value_or(-1) != 200)
+    if (response.getInt("/error").value_or(kvdb_manager::API_ERROR_CODE)
+        != kvdb_manager::API_SUCCESS_CODE)
     {
-        std::cerr << "Error inserting key value on KVDBs: "
-                  << response.getString("/message").value_or("-") << std::endl;
+        WAZUH_LOG_ERROR("Engine \"kvdb\" command: \"{}\" method: {}.",
+                        __func__,
+                        response.getString("/message").value_or("Unknown error"));
         return;
     }
 
-    std::string outputMessage {fmt::format("Key [{}] inserted on [{}]", key, name)};
-    if ("" != keyValue)
-    {
-        outputMessage =
-            fmt::format("Key value [{},{}] inserted on [{}]", key, keyValue, name);
-    }
+    const std::string msg {
+        fmt::format("KVDB \"{}\": Key-Value successfully inserted", kvdbName)};
+    std::cout << msg << std::endl;
 
-    std::cout << outputMessage << std::endl;
     return;
 }
 
-void listKvdbs(const std::string& socketPath, const std::string& name, bool loaded)
+static void
+kvdbList(const std::string& socketPath, const std::string& kvdbName, bool loaded)
 {
     // create request
     json::Json data {};
     data.setObject();
     data.setString(API_KVDB_LIST_SUBCOMMAND, "/action");
-    data.setString(name, "/name");
+    data.setString(kvdbName, "/name");
     data.setBool(loaded, "/mustBeLoaded");
 
-    auto req = api::WazuhRequest::create(
-        std::string(API_KVDB_LIST_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
+    const auto req = api::WazuhRequest::create(
+        std::string(API_KVDB_LIST_SUBCOMMAND) + API_KVDB_CMD_SUFIX, "api", data);
 
     // send request
     json::Json response {};
     try
     {
-        auto responseStr = apiclnt::connection(socketPath, req.toStr());
+        const auto responseStr = apiclnt::connection(socketPath, req.toStr());
         response = json::Json {responseStr.c_str()};
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Error sending request: " << e.what() << std::endl;
+        WAZUH_LOG_ERROR(
+            "Engine \"kvdb\" command: \"{}\" method: {}.", __func__, e.what());
         return;
     }
 
-    if (response.getInt("/error").value_or(-1) != 200)
+    if (response.getInt("/error").value_or(kvdb_manager::API_ERROR_CODE)
+        != kvdb_manager::API_SUCCESS_CODE)
     {
-        std::cerr << "Error getting list of KVDBs: "
-                  << response.getString("/message").value_or("-") << std::endl;
+        WAZUH_LOG_ERROR("Engine \"kvdb\" command: \"{}\" method: {}.",
+                        __func__,
+                        response.getString("/message").value_or("Unknown error"));
         return;
     }
 
-    auto kvdbList = response.getArray("/data");
+    const auto kvdbList = response.getArray("/data");
     if (!kvdbList.has_value())
     {
-        std::cout << "No KVDB found" << std::endl;
+        const std::string msg {"No KVDB is available"};
+        std::cout << msg << std::endl;
         return;
     }
 
-    size_t qttyKVDB = kvdbList.value().size();
-    std::cout << qttyKVDB << " KVDB" << (qttyKVDB > 1 ? "s" : "") << " available"
-              << std::endl;
+    const size_t qttyKVDB = kvdbList.value().size();
+
+    const std::string msg {fmt::format("Databases available: {}", qttyKVDB)};
+    std::cout << msg << std::endl;
+
     size_t i = 0;
     for (const auto& kvdb : *kvdbList)
     {
-        std::cout << ++i << "/" << qttyKVDB
-                  << " name: " << kvdb.getString().value_or("** Unexpected Error **")
-                  << std::endl;
+        if (!kvdb.getString().has_value())
+        {
+            WAZUH_LOG_ERROR("Engine \"kvdb\" command: \"{}\" method: Database name could "
+                            "not be obtained.",
+                            __func__);
+            continue;
+        }
+
+        const std::string msg {
+            fmt::format("{}/{} - {}", ++i, qttyKVDB, kvdb.getString().value())};
+        std::cout << msg << std::endl;
     }
 }
 
-void removeKvdb(const std::string& socketPath,
-                const std::string& name,
-                const std::string& key)
+static void kvdbRemoveKV(const std::string& socketPath,
+                         const std::string& kvdbName,
+                         const std::string& key)
 {
     // create request
     json::Json data {};
     data.setObject();
     data.setString(API_KVDB_REMOVE_SUBCOMMAND, "/action");
-    data.setString(name, "/name");
+    data.setString(kvdbName, "/name");
     data.setString(key, "/key");
 
-    auto req = api::WazuhRequest::create(
-        std::string(API_KVDB_REMOVE_SUBCOMMAND) + API_KVDB_COMMAND, "api", data);
+    const auto req = api::WazuhRequest::create(
+        std::string(API_KVDB_REMOVE_SUBCOMMAND) + API_KVDB_CMD_SUFIX, "api", data);
 
     // send request
     json::Json response {};
     try
     {
-        auto responseStr = apiclnt::connection(socketPath, req.toStr());
+        const auto responseStr = apiclnt::connection(socketPath, req.toStr());
         response = json::Json {responseStr.c_str()};
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Error sending request: " << e.what() << std::endl;
+        WAZUH_LOG_ERROR(
+            "Engine \"kvdb\" command: \"{}\" method: {}.", __func__, e.what());
         return;
     }
 
-    if (response.getInt("/error").value_or(-1) != 200)
+    if (response.getInt("/error").value_or(kvdb_manager::API_ERROR_CODE)
+        != kvdb_manager::API_SUCCESS_CODE)
     {
-        std::cerr << "Error deleting key on KVDB: "
-                  << response.getString("/message").value_or("-") << std::endl;
+        WAZUH_LOG_ERROR("Engine \"kvdb\" command: \"{}\" method: {}.",
+                        __func__,
+                        response.getString("/message").value_or("Unknown error"));
         return;
     }
 
-    std::cout << fmt::format("Key [{}] deleted on [{}]", key, name) << std::endl;
+    const std::string msg {fmt::format("KVDB \"{}\": Key \"{}\" deleted", kvdbName, key)};
+    std::cout << msg << std::endl;
+
     return;
 }
 
@@ -338,31 +400,31 @@ void kvdb(const std::string& kvdbPath,
 
     if (action == API_KVDB_CREATE_SUBCOMMAND)
     {
-        createKvdb(socketPath, kvdbName, kvdbInputFilePath);
+        kvdbCreate(socketPath, kvdbName, kvdbInputFilePath);
     }
     else if (action == API_KVDB_DELETE_SUBCOMMAND)
     {
-        deleteKvdb(socketPath, kvdbName, loaded);
+        kvdbDelete(socketPath, kvdbName, loaded);
     }
     else if (action == API_KVDB_DUMP_SUBCOMMAND)
     {
-        dumpKvdb(socketPath, kvdbName);
+        kvdbDump(socketPath, kvdbName);
     }
     else if (action == API_KVDB_GET_SUBCOMMAND)
     {
-        getKvdb(socketPath, kvdbName, kvdbKey);
+        kvdbGetValue(socketPath, kvdbName, kvdbKey);
     }
     else if (action == API_KVDB_INSERT_SUBCOMMAND)
     {
-        insertKvdb(socketPath, kvdbName, kvdbKey, kvdbKeyValue);
+        kvdbInsertKeyValue(socketPath, kvdbName, kvdbKey, kvdbKeyValue);
     }
     else if (action == API_KVDB_LIST_SUBCOMMAND)
     {
-        listKvdbs(socketPath, kvdbName, loaded);
+        kvdbList(socketPath, kvdbName, loaded);
     }
     else if (action == API_KVDB_REMOVE_SUBCOMMAND)
     {
-        removeKvdb(socketPath, kvdbName, kvdbKey);
+        kvdbRemoveKV(socketPath, kvdbName, kvdbKey);
     }
 
     return;

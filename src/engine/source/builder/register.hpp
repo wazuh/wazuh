@@ -26,9 +26,9 @@ namespace builder::internals
 {
 struct dependencies
 {
-    std::shared_ptr<KVDBManager> kvdbManager;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     size_t logparDebugLvl;
+    std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
 };
 
 static void registerBuilders(std::shared_ptr<Registry> registry,

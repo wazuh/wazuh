@@ -19,8 +19,8 @@ using namespace base;
 namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
-
+static FakeTrFn tr = [](std::string msg) {
+};
 
 namespace
 {
@@ -28,17 +28,11 @@ class opBuilderKVDBMatchTest : public ::testing::Test
 {
 
 protected:
-    KVDBManager& kvdbManager = KVDBManager::get();
+    kvdb_manager::KVDBManager& kvdbManager = kvdb_manager::KVDBManager::get();
 
-    virtual void SetUp()
-    {
-        kvdbManager.loadDB("TEST_DB");
-    }
+    virtual void SetUp() { kvdbManager.loadDB("TEST_DB"); }
 
-    virtual void TearDown()
-    {
-        kvdbManager.unloadDB("TEST_DB");
-    }
+    virtual void TearDown() { kvdbManager.unloadDB("TEST_DB"); }
 };
 
 // Build ok
