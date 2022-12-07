@@ -40,8 +40,8 @@ info:
 
     <SecurityDefinitions />
 
-  version: '4.3.10'
-  x-revision: '40323'
+  version: '4.3.11'
+  x-revision: '40324'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
