@@ -55,7 +55,7 @@ inline auto dsvParserFunction(Stop endTokens,
 
         json::Json doc {};
         auto i = 0;
-        while (end <= rawText.size() || i >= headers.size())
+        while (end <= rawText.size() && i < headers.size())
         {
             auto field = getField(rawText.begin(),
                                   start,
@@ -80,13 +80,13 @@ inline auto dsvParserFunction(Stop endTokens,
             i++;
         }
 
-        if (end < pos && headers.size() != i)
+        if (headers.size() != i)
         {
             return parsec::makeError<json::Json>(
                 fmt::format("Unable to parse from {} to {}", end, pos), end);
         }
 
-        return parsec::makeSuccess<json::Json>(std::move(doc), end);
+        return parsec::makeSuccess<json::Json>(std::move(doc), end + index);
     };
 }
 } // namespace

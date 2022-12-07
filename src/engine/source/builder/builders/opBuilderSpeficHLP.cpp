@@ -72,7 +72,7 @@ inline std::optional<std::string> resolvedValue(const base::Event& event,
 }
 
 base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
-                                                HLPParserType type)
+                                               HLPParserType type)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     auto parameters = helper::base::processParameters(rawParameters);
@@ -128,12 +128,8 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
         case HLPParserType::DATE:
             parser = hlp::getDateParser({""}, hlpOptionsList);
             break;
-        case HLPParserType::IP:
-            parser = hlp::getIPParser({""}, hlpOptionsList);
-            break;
-        case HLPParserType::URI:
-            parser = hlp::getUriParser({""}, hlpOptionsList);
-            break;
+        case HLPParserType::IP: parser = hlp::getIPParser({""}, hlpOptionsList); break;
+        case HLPParserType::URI: parser = hlp::getUriParser({""}, hlpOptionsList); break;
         case HLPParserType::USER_AGENT:
             parser = hlp::getUAParser({""}, hlpOptionsList);
             break;
@@ -146,28 +142,25 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
         case HLPParserType::JSON:
             parser = hlp::getJSONParser({""}, hlpOptionsList);
             break;
-        case HLPParserType::XML:
-            parser = hlp::getXMLParser({""}, hlpOptionsList);
-            break;
-        case HLPParserType::DSV:
-            parser = hlp::getDSVParser({""}, hlpOptionsList);
-            break;
-        case HLPParserType::CSV:
-            parser = hlp::getCSVParser({""}, hlpOptionsList);
-            break;
+        case HLPParserType::XML: parser = hlp::getXMLParser({""}, hlpOptionsList); break;
+        case HLPParserType::DSV: parser = hlp::getDSVParser({""}, hlpOptionsList); break;
+        case HLPParserType::CSV: parser = hlp::getCSVParser({""}, hlpOptionsList); break;
         case HLPParserType::KEY_VALUE:
             parser = hlp::getKVParser({""}, hlpOptionsList);
             break;
-        default:
-            throw std::logic_error("Invalid HLP parser type");
+        default: throw std::logic_error("Invalid HLP parser type");
     }
 
     const auto traceName =
         helper::base::formatHelperFilterName(name, targetField, parameters);
     const auto successTrace = fmt::format("[{}] -> Success", traceName);
-    const auto failureTrace1 = fmt::format(
-        "[{}] -> Failure: parameter is not a string or it doesn't exist", traceName);
+    const auto failureTrace1 = fmt::format("[{}] -> Failure: parameter is not a string"
+                                           " or it doesn't exist",
+                                           traceName);
     const auto failureTrace2 = fmt::format("[{}] -> Failure: {}", traceName, "{}");
+    const auto failureTrace3 = fmt::format("[{}] -> Failure: There is still text "
+                                           "to analyze after parsing",
+                                           traceName);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -175,8 +168,8 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
         [=,
          targetField = std::move(targetField),
          parser = std::move(parser),
-         source = std::move(source)](
-            base::Event event) -> base::result::Result<base::Event>
+         source =
+             std::move(source)](base::Event event) -> base::result::Result<base::Event>
         {
             // Check if source is a reference
             const auto sourceValue = resolvedValue(event, source);
@@ -192,6 +185,13 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
                 const auto tracerFailure = fmt::format(failureTrace2, result.error());
                 return base::result::makeFailure(event, tracerFailure);
             }
+
+            // Check if has a remaining string
+            if (result.index() != sourceValue.value().size())
+            {
+                return base::result::makeFailure(event, failureTrace3);
+            }
+
             // Add result to event
             event->set(targetField, result.value());
             return base::result::makeSuccess(event, successTrace);
