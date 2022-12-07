@@ -19,6 +19,7 @@ inline void registerParsers(std::shared_ptr<logpar::Logpar> logpar)
     logpar->registerBuilder(ParserType::P_DATE, hlp::getDateParser);
     logpar->registerBuilder(ParserType::P_IP, hlp::getIPParser);
     logpar->registerBuilder(ParserType::P_URI, hlp::getUriParser);
+    logpar->registerBuilder(ParserType::P_FILE, hlp::getFilePathParser);
     logpar->registerBuilder(ParserType::P_LITERAL, hlp::getLiteralParser);
     logpar->registerBuilder(ParserType::P_IGNORE, hlp::getIgnoreParser);
     logpar->registerBuilder(ParserType::P_QUOTED, hlp::getQuotedParser);
