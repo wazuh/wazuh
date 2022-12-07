@@ -11,14 +11,16 @@
 #include <hlp/parsec.hpp>
 #include <json/json.hpp>
 
-inline bool is_valid_base64_char(char c)
+namespace
+{
+inline bool is_valid_base64_char(const char c)
 {
     if ((c >= 'A') && (c <= 'Z'))
     {
         return true;
     }
 
-    if ((c >= 'a') && ('z'))
+    if ((c >= 'a') && (c <= 'z'))
     {
         return true;
     }
@@ -35,6 +37,7 @@ inline bool is_valid_base64_char(char c)
 
     return false;
 }
+} // namespace
 
 namespace hlp
 {
@@ -66,19 +69,20 @@ parsec::Parser<json::Json> getBinaryParser(Stop, Options lst)
                 endPos);
         }
         // consume up to two '=' padding chars
-        if (*end == '=')
+        if ('=' == *end)
         {
             ++endPos;
             auto nx = std::next(end);
-            if (*nx == '=')
+            if ('=' == *nx) {
                 ++endPos;
+            }
         }
 
-        if ((endPos % 4) != 0)
+        if (0 != (endPos - index) % 4)
         {
             return parsec::makeError<json::Json>(
                 fmt::format("Wrong string size '{}' for base64 from offset {} to {}",
-                            endPos,
+                            endPos - index,
                             index,
                             endPos),
                 endPos);
