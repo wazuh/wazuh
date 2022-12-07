@@ -16,8 +16,8 @@ TEST(HLP2, URIParser)
     };
 
     std::vector<TestCase> testCases {
-        TestCase {R"(C:\Windows\System32\virus.exe)", false, {""}, Options {}, {}, 5},
-        TestCase {"/home", false, {""}, Options {}, fn(R"({"path": "/home"})"), 5},
+        TestCase {R"(C:\Windows\System32\virus.exe)", false, {""}, Options {}, {}, 0},
+        TestCase {"/home", false, {""}, Options {}, fn(R"({"path": "/home"})"), 0},
         TestCase {
             "https://demo.wazuh.com:8080/user.php?name=pepe&pass=123#login",
             true,
@@ -25,6 +25,41 @@ TEST(HLP2, URIParser)
             Options {},
             fn(R"({"original":"https://demo.wazuh.com:8080/user.php?name=pepe&pass=123#login","domain":"demo.wazuh.com","path":"/user.php","scheme":"https","query":"name=pepe&pass=123","port":"8080","fragment":"login"})"),
             61},
+        TestCase {
+            "https://john.doe@www.example.com:123/forum/questions/?tag=networking&order=newest#top",
+            true,
+            {""},
+            Options {},
+            fn(R"({"original":"https://john.doe@www.example.com:123/forum/questions/?tag=networking&order=newest#top","domain":"www.example.com","path":"/forum/questions/","scheme":"https","username":"john.doe","query":"tag=networking&order=newest","port":"123","fragment":"top"})"),
+            85},
+        TestCase {
+            "https://john.doe@[2001:db8::7]:123/forum/questions/?tag=networking&order=newest#top",
+            true,
+            {""},
+            Options {},
+            fn(R"({"original":"https://john.doe@[2001:db8::7]:123/forum/questions/?tag=networking&order=newest#top","domain":"[2001:db8::7]","path":"/forum/questions/","scheme":"https","username":"john.doe","query":"tag=networking&order=newest","port":"123","fragment":"top"})"),
+            83},
+        TestCase {
+            "telnet://192.0.2.16:80/",
+            true,
+            {""},
+            Options {},
+            fn(R"({"original":"telnet://192.0.2.16:80/","domain":"192.0.2.16","path":"/","scheme":"telnet","port":"80"})"),
+            23},
+        TestCase {
+            "mailto:John.Doe@example.com",
+            true,
+            {""},
+            Options {},
+            fn(R"({"original":"mailto:John.Doe@example.com","scheme":"mailto","path":"John.Doe@example.com"})"),
+            27},
+        TestCase {
+            "ldap://[2001:db8::7]/c=GB?objectClass?one",
+            true,
+            {""},
+            Options {},
+            fn(R"({"original":"ldap://[2001:db8::7]/c=GB?objectClass?one","domain":"[2001:db8::7]","path":"/c=GB","scheme":"ldap","query":"objectClass?one"})"),
+            41},
     };
 
     for (auto t : testCases)
