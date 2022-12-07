@@ -20,10 +20,11 @@ namespace hlp
 
 namespace internal
 {
-namespace {
-    // TODO: Deletes if after parsers have been a configurable
-    constexpr auto AUTO_FORMAT_DISABLED = "disableAutoFormat";
-}
+namespace
+{
+// TODO: Deletes if after parsers have been a configurable
+constexpr auto AUTO_FORMAT_DISABLED = "disableAutoFormat";
+} // namespace
 
 /**
  * Supported formats, this will be injected by the config module in due time
@@ -71,7 +72,7 @@ std::string formatDateFromSample(std::string dateSample, std::string locale)
 
         if (res.success())
         {
-            if (res.index()!= dateSample.size())
+            if (res.index() != dateSample.size())
                 throw std::runtime_error(
                     fmt::format("Failed to parse '{}', there is a partial match between "
                                 "'0' and '{}'.",
@@ -123,14 +124,15 @@ parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
     }
     catch (std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Can't build date parser, invalid locale: {}", e.what()));
+        throw std::runtime_error(
+            fmt::format("Can't build date parser, invalid locale: {}", e.what()));
     }
 
     // If not disabled automat then check if the format is a sample date
-    if (!disableAutoFormat && (format.find("%") == std::string::npos)) {
+    if (!disableAutoFormat && (format.find("%") == std::string::npos))
+    {
         format = internal::formatDateFromSample(format, localeStr);
     }
-
 
     return [endTokens, format, locale](std::string_view text, size_t index)
     {
@@ -155,14 +157,14 @@ parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
         if (streamText.fail())
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Error parsing '{}' date at {}", text, index),
-                index);
+                fmt::format("Error parsing '{}' date at {}", text, index), index);
         }
 
         // Caculate the offset in the input string
-        std::size_t endDatePos = (streamText.tellg() == std::string::npos)
-                         ? text.size()
-                         : static_cast<std::size_t>(streamText.tellg()) + index;
+        std::size_t endDatePos =
+            (streamText.tellg() == std::string::npos)
+                ? text.size()
+                : static_cast<std::size_t>(streamText.tellg()) + index;
 
         // ----------------------------------
         //     Generate thw new date
@@ -204,7 +206,7 @@ parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
 
         json::Json doc;
         doc.setString(out.str().data());
-        return parsec::makeSuccess<json::Json>(std::move(doc),endDatePos);
+        return parsec::makeSuccess<json::Json>(std::move(doc), endDatePos);
     };
 }
 
