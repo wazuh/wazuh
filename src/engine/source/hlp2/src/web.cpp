@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <cstring>
 #include <iostream>
+#include <map>
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <curl/curl.h>
@@ -28,7 +30,21 @@ parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
         throw std::runtime_error(fmt::format("URL parser do not accept arguments!"));
     }
 
-    return [endTokens](std::string_view text, int index)
+    std::map<CURLUPart, std::string_view> mapCurlFields = {
+        {CURLUPART_URL, "/original"},
+        {CURLUPART_HOST, "/domain"},
+        {CURLUPART_PATH, "/path"},
+        {CURLUPART_SCHEME, "/scheme"},
+        {CURLUPART_USER, "/username"},
+        {CURLUPART_PASSWORD, "/password"},
+        {CURLUPART_PORT, "/port"},
+        {CURLUPART_QUERY, "/query"},
+        {CURLUPART_FRAGMENT, "/fragment"},
+        // {CURLUPART_OPTIONS, "/options"}
+    };
+
+    return [endTokens, mapCurlFields = std::move(mapCurlFields)](std::string_view text,
+                                                                 int index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
         if (std::holds_alternative<parsec::Result<json::Json>>(res))
@@ -36,27 +52,22 @@ parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
             return std::get<parsec::Result<json::Json>>(res);
         }
 
-        auto fp = std::get<std::string_view>(res);
-        auto pos = fp.size() + index;
-
-        json::Json doc;
+        auto urlStr = std::string{std::get<std::string_view>(res)};
 
         auto urlCleanup = [](auto* url)
         {
             curl_url_cleanup(url);
         };
-
         std::unique_ptr<CURLU, decltype(urlCleanup)> url {curl_url(), urlCleanup};
 
-        if (url == nullptr)
+        if (url.get() == nullptr)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("unable to initialize the url container"), index);
+                fmt::format("Unable to initialize the url container"), index);
         }
-        size_t end;
 
-        auto urlStr = fp.substr(index, end);
-        auto uc = curl_url_set(url.get(), CURLUPART_URL, urlStr.data(), 0);
+
+        auto uc = curl_url_set(url.get(), CURLUPART_URL, urlStr.c_str(), 0);
         if (uc)
         {
             return parsec::makeError<json::Json>(
@@ -66,71 +77,26 @@ parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
         // TODO curl will parse and copy the URL into an allocated
         // char ptr and we will copy it again into the string for the result
         // Check if there's a way to avoid all the copying here
-        char* str = nullptr;
-        uc = curl_url_get(url.get(), CURLUPART_URL, &str, 0);
-        if (uc == CURLUE_OK)
-        {
-            doc.setString(std::string {str}, "/original");
-            curl_free(str);
-        }
 
-        uc = curl_url_get(url.get(), CURLUPART_HOST, &str, 0);
-        if (uc == CURLUE_OK)
+        // Load the fild values into the json document
+        json::Json doc {};
+        auto load = [&doc, &url](CURLUPart field, std::string_view path)
         {
-            doc.setString(std::string {str}, "/domain");
-            curl_free(str);
-        }
+            char* str = nullptr;
+            auto uc = curl_url_get(url.get(), field, &str, 0);
+            if (uc == CURLUE_OK)
+            {
+                doc.setString(std::string {str}, path);
+                curl_free(str);
+            }
+        };
 
-        uc = curl_url_get(url.get(), CURLUPART_PATH, &str, 0);
-        if (uc == CURLUE_OK)
+        for (auto& [field, path] : mapCurlFields)
         {
-            doc.setString(std::string {str}, "/path");
-            curl_free(str);
+            load(field, path);
         }
-
-        uc = curl_url_get(url.get(), CURLUPART_SCHEME, &str, 0);
-        if (uc == CURLUE_OK)
-        {
-            doc.setString(std::string {str}, "/scheme");
-            curl_free(str);
-        }
-
-        uc = curl_url_get(url.get(), CURLUPART_USER, &str, 0);
-        if (uc == CURLUE_OK)
-        {
-            doc.setString(std::string {str}, "/username");
-            curl_free(str);
-        }
-
-        uc = curl_url_get(url.get(), CURLUPART_PASSWORD, &str, 0);
-        if (uc == CURLUE_OK)
-        {
-            doc.setString(std::string {str}, "/password");
-            curl_free(str);
-        }
-
-        uc = curl_url_get(url.get(), CURLUPART_QUERY, &str, 0);
-        if (uc == CURLUE_OK)
-        {
-            doc.setString(std::string {str}, "/query");
-            curl_free(str);
-        }
-
-        uc = curl_url_get(url.get(), CURLUPART_PORT, &str, 0);
-        if (uc == CURLUE_OK)
-        {
-            doc.setString(std::string {str}, "/port");
-            curl_free(str);
-        }
-
-        uc = curl_url_get(url.get(), CURLUPART_FRAGMENT, &str, 0);
-        if (uc == CURLUE_OK)
-        {
-            doc.setString(std::string {str}, "/fragment");
-            curl_free(str);
-        }
-
-        return parsec::makeSuccess<json::Json>(std::move(doc), end);
+        // TODO Check if urlStr.size() == doc["original"].size()
+        return parsec::makeSuccess<json::Json>(std::move(doc), urlStr.size() + index);
     };
 }
 
