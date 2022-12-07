@@ -1304,7 +1304,7 @@ TEST(Parse_csv, Match_value)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"parse_csv"},
-                                 std::vector<std::string> {"test,123,456", "field1", "field2"});
+                                 std::vector<std::string> {"test,123", "field1", "field2"});
 
     auto op {bld::opBuilderSpecificHLPCSVParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"field": false})")};
@@ -1325,7 +1325,7 @@ TEST(Parse_csv, Match_ref) {
     auto op {bld::opBuilderSpecificHLPCSVParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event1 {std::make_shared<json::Json>(
-        R"({"field": false, "field_ref": "test,123,456"})")};
+        R"({"field": false, "field_ref": "test,123"})")};
 
     result::Result<Event> result1 {op(event1)};
     ASSERT_TRUE(result1);
@@ -1345,7 +1345,7 @@ TEST(Parse_csv, Match_fail) {
     auto event1 {std::make_shared<json::Json>(R"({"field": false})")};
 
     result::Result<Event> result1 {op(event1)};
-    ASSERT_FALSE(result1);
+    ASSERT_FALSE(result1) << result1.payload().get()->str();
     ASSERT_FALSE(result1.payload().get()->exists("/fail_field"));
 
 
