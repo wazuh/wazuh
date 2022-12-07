@@ -61,7 +61,7 @@ stopAux(std::string_view txt, size_t idx, const std::string& end)
         return std::nullopt;
     }
 
-    return txt.substr(idx, pos);
+    return txt.substr(idx, pos - idx);
 }
 
 template<typename T>
