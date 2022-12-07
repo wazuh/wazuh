@@ -9,6 +9,9 @@ metadata:
 check:
   - ~event_channel.Event.System.Provider.@Name: Microsoft-Windows-Sysmon
 
+parse:
+  logpar:
+    - ~event_channel.Event.EventData.Hashes: <~temp.hashes/kv_map/=/,>
 
 normalize:
  - map:
@@ -19,8 +22,26 @@ normalize:
     # Add categorization fields
     - event:  +kvdb_get_merge/win_sysmon_categories/$event.code 
 
-    - rule.name: $~event_channel.Event.event_data.RuleName
-    - event.Hashes: $~event_channel.Event.event_data.Hash
+    - rule.name: $~event_channel.Event.EventData.RuleName
+    - event.Hashes: $~event_channel.Event.EventData.Hash
+    
+    
+  ## Process fields
+    - process.entity_id: $~event_channel.Event.EventData.ProcessGuid
+    - process.pid: $~event_channel.Event.EventData.ProcessId
+    - process.executable: $~event_channel.Event.EventData.Image
+    - process.entity_id: $~event_channel.Event.EventData.SourceProcessGuid
+    - process.entity_id: $~event_channel.Event.EventData.SourceProcessGUID 
+    - process.pid: $~event_channel.Event.EventData.SourceProcessId
+    - process.thread.id: $~event_channel.Event.EventData.SourceThreadId
+    - process.executable: $~event_channel.Event.EventData.SourceImage
+    - process.executable: $~event_channel.Event.EventData.Destination
+    - process.command_line: $~event_channel.Event.EventData.CommandLine
+    - process.working_directory: $~event_channel.Event.EventData.CurrentDirectory
+    - process.parent.entity_id: $~event_channel.Event.EventData.ParentProcessGuid
+    - process.parent.pid: $~event_channel.Event.EventData.ParentProcessId
+    - process.parent.executable: $~event_channel.Event.EventData.ParentImage
+    - process.parent.command_line: $~event_channel.Event.EventData.ParentCommandLine
     
 
  - check: event.code==255 
@@ -28,5 +49,10 @@ normalize:
     - error.code: $event.code
 
  - check: event.code==25
-  map:
-    - event.message: $~event_channel.Event.event_data.Type
+   map:
+    - event.message: $~event_channel.Event.EventData.Type
+
+ - check: event.code!=7
+   map:
+   - process.pe.original_file_name: $~event_channel.Event.EventData.OriginalFileName
+
