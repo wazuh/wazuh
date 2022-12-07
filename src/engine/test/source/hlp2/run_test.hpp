@@ -58,14 +58,14 @@ namespace {
 }
 
 static void runTest(TestCase t,
-                    std::function<parsec::Parser<json::Json>(Stop, Options)> pb)
+                    std::function<parsec::Parser<json::Json>(Stop, Options)> parserBuilder)
 {
     parsec::Parser<json::Json> parser;
     auto expectedSuccess = std::get<1>(t);
     auto expectedDoc = std::get<4>(t);
     try
     {
-        parser = pb(std::get<2>(t), std::get<3>(t));
+        parser = parserBuilder(std::get<2>(t), std::get<3>(t));
     }
     catch (std::runtime_error& e)
     {
@@ -76,15 +76,15 @@ static void runTest(TestCase t,
     auto r = parser(std::get<0>(t), 0);
 
     ASSERT_EQ(r.success(), expectedSuccess)
-        << (r.success() ? "" : "ParserError: " + r.error()) << to_string(t);
+        << (r.success() ? "" : "ParserError: " + r.error() + "\n") << to_string(t);
     if (r.success())
     {
         ASSERT_EQ(expectedDoc, r.value()) << to_string(t);
+        ASSERT_EQ(r.index(), std::get<5>(t)) << to_string(t);
     }
     else
     {
         ASSERT_FALSE(r.error().empty());
     }
-    ASSERT_EQ(r.index(), std::get<5>(t)) << to_string(t);
 }
 #endif // WAZUH_ENGINE_HLP_H

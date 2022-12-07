@@ -93,7 +93,6 @@ inline auto dsvParserFunction(Stop endTokens,
 
 parsec::Parser<json::Json> getDSVParser(Stop endTokens, Options lst)
 {
-
     if (lst.size() < 5)
     {
         throw std::runtime_error(fmt::format("Need at least five options: delim, quote, "
@@ -120,7 +119,6 @@ parsec::Parser<json::Json> getDSVParser(Stop endTokens, Options lst)
 
 parsec::Parser<json::Json> getCSVParser(Stop endTokens, Options lst)
 {
-
     if (lst.size() < 2)
     {
         throw std::runtime_error(fmt::format("CSV parser need at least two headers"));
