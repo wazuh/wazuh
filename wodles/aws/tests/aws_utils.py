@@ -3,7 +3,7 @@ import sys
 from unittest.mock import patch
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
-import aws_s3
+import wazuh_integration
 
 
 TEST_ACCESS_KEY = "test_access_key"
@@ -73,12 +73,12 @@ def get_WazuhIntegration_parameters(access_key: str = TEST_ACCESS_KEY, secret_ke
             'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration, 'db_name': db_name}
 
 def get_mocked_WazuhIntegration(**kwargs):
-    with patch('aws_s3.WazuhIntegration.check_metadata_version'), \
-            patch('aws_s3.WazuhIntegration.get_client'), \
-            patch('aws_s3.sqlite3.connect'), \
-            patch('aws_s3.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
-            patch('aws_s3.utils.get_wazuh_version', return_value=WAZUH_VERSION):
-        return aws_s3.WazuhIntegration(**get_WazuhIntegration_parameters(**kwargs))
+    with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
+            patch('wazuh_integration.WazuhIntegration.get_client'), \
+            patch('wazuh_integration.sqlite3.connect'), \
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
+        return wazuh_integration.WazuhIntegration(**get_WazuhIntegration_parameters(**kwargs))
 
 def database_execute_script(connector, sql_file):
     with open(os.path.join(data_path, sql_file)) as f:
