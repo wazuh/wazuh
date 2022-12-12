@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} sysInfoWindows_unit_test)
 project(sysInfoWindows_unit_test)
 
 file(GLOB sysinfo_UNIT_TEST_SRC
@@ -18,4 +19,4 @@ target_link_libraries(sysInfoWindows_unit_test
 )
 
 add_test(NAME sysInfoWindows_unit_test
-         COMMAND sysInfoWindows_unit_test)
+    COMMAND sysInfoWindows_unit_test)

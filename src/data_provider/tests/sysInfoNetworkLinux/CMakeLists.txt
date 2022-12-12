@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} sysInfoNetworkLinux_unit_test)
 project(sysInfoNetworkLinux_unit_test)
 
 file(GLOB sysinfo_UNIT_TEST_SRC
@@ -22,4 +23,4 @@ target_link_libraries(sysInfoNetworkLinux_unit_test
 )
 
 add_test(NAME sysInfoNetworkLinux_unit_test
-         COMMAND sysInfoNetworkLinux_unit_test)
+    COMMAND sysInfoNetworkLinux_unit_test)

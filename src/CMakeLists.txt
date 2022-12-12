@@ -1,37 +1,41 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project(Wazuh)
+project(Wazuh LANGUAGES CXX)
 
+# define the C++ standard and global compilation options
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -pthread")
+
+# define directory variables
 get_filename_component(SHARED_MODULES ${CMAKE_SOURCE_DIR}/shared_modules ABSOLUTE)
-get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/ ABSOLUTE)
+get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/ ABSOLUTE)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Using "Release" as default build type
-if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
-endif(NOT CMAKE_BUILD_TYPE)
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+set(DEFAULT_BUILD_TYPE Release)
 
-if(UNIT_TEST)
-  enable_testing()
-  # Coverage report is available for UT only in Debug mode
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    string(APPEND CMAKE_CXX_FLAGS_DEBUG " --coverage")
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-      string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
-    else()
-      string(APPEND CMAKE_EXE_LINKER_FLAGS " -lgcov ")
-    endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
-endif(UNIT_TEST)
-message(STATUS "Unit test: ${UNIT_TEST}")
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE ${DEFAULT_BUILD_TYPE})
+  message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
+else()
+  message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+endif()
+
+# Target to compile all the tests of the subdirectories
+add_custom_target(unit_test)
+enable_testing()
 
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-#Address sanitizer only in Debug mode
+# Address sanitizer only in Debug mode
 if(FSANITIZE)
   string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=address,leak,undefined")
+
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
   else()
@@ -39,20 +43,11 @@ if(FSANITIZE)
   endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif(FSANITIZE)
 
-#define the C++ standard
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -pthread")
-
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 else()
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
 endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)

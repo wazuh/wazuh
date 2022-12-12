@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} sysInfoPort_unit_test)
 project(sysInfoPort_unit_test)
 
 file(GLOB sysinfo_UNIT_TEST_SRC
@@ -21,4 +22,4 @@ target_link_libraries(sysInfoPort_unit_test
 )
 
 add_test(NAME sysInfoPort_unit_test
-         COMMAND sysInfoPort_unit_test)
+    COMMAND sysInfoPort_unit_test)

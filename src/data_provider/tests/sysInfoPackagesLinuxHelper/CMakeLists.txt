@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} sysInfoPackagesLinuxHelper_unit_test)
 project(sysInfoPackagesLinuxHelper_unit_test)
 
 file(GLOB sysinfo_UNIT_TEST_SRC
@@ -23,4 +24,4 @@ target_link_libraries(sysInfoPackagesLinuxHelper_unit_test
 )
 
 add_test(NAME sysInfoPackagesLinuxHelper_unit_test
-         COMMAND sysInfoPackagesLinuxHelper_unit_test)
+    COMMAND sysInfoPackagesLinuxHelper_unit_test)
