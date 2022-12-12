@@ -724,9 +724,10 @@ TEST(Parse_uri, Match_value)
     result::Result<Event> result1 {op(event1)};
     ASSERT_TRUE(result1);
     ASSERT_TRUE(result1.payload().get()->exists("/field"));
-    ASSERT_TRUE(result1.payload().get()->isString("/field"));
-    ASSERT_TRUE(result1.payload().get()->getString("/field").value()
-                == "http://www.wazuh.com");
+    ASSERT_TRUE(result1.payload().get()->isObject("/field"));
+    auto expected = R"({"original":"http://www.wazuh.com/","scheme":"http","domain":"www.wazuh.com","path":"/"})";
+    ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
+
 }
 
 TEST(Parse_uri, Match_fail)
@@ -759,9 +760,9 @@ TEST(Parse_uri, Match_ref)
     result::Result<Event> result1 {op(event1)};
     ASSERT_TRUE(result1);
     ASSERT_TRUE(result1.payload().get()->exists("/field"));
-    ASSERT_TRUE(result1.payload().get()->isString("/field"));
-    ASSERT_TRUE(result1.payload().get()->getString("/field").value()
-                == "http://www.wazuh.com");
+    ASSERT_TRUE(result1.payload().get()->isObject("/field"));
+    auto expected = R"({"original":"http://www.wazuh.com/","scheme":"http","domain":"www.wazuh.com","path":"/"})";
+    ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
 }
 
 TEST(Parse_uri, Ref_not_found)
