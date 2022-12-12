@@ -1,7 +1,5 @@
 project(sqlite_unit_test)
 
-set(CMAKE_CXX_FLAGS_DEBUG "--coverage")
-
 file(GLOB SQLITE_UNIT_TEST_SRC
     "*.cpp")
 

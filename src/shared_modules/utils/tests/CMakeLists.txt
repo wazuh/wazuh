@@ -1,7 +1,5 @@
 project(utils_unit_test)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra --coverage")
-
 file(GLOB UTIL_CXX_UNITTEST_WINDOWS_SRC
     "windowsHelper_test.cpp"
     "registryHelper_test.cpp"
@@ -62,12 +60,6 @@ else()
         pthread
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  target_link_libraries(utils_unit_test -fprofile-arcs)
-else()
-  target_link_libraries(utils_unit_test gcov)
-endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 add_test(NAME utils_unit_test
          COMMAND utils_unit_test)

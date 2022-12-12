@@ -33,7 +33,7 @@ else()
         cjson
         dl
     )
-endif()
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME sysinfo_unit_test
          COMMAND sysinfo_unit_test)

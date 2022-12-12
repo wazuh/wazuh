@@ -2,30 +2,53 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(Wazuh)
 
-enable_testing()
-
 get_filename_component(SHARED_MODULES ${CMAKE_SOURCE_DIR}/shared_modules ABSOLUTE)
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/ ABSOLUTE)
+
+# Using "Release" as default build type
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif(NOT CMAKE_BUILD_TYPE)
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
+if(UNIT_TEST)
+  enable_testing()
+  # Coverage report is available for UT only in Debug mode
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    string(APPEND CMAKE_CXX_FLAGS_DEBUG " --coverage")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
+    else()
+      string(APPEND CMAKE_EXE_LINKER_FLAGS " -lgcov ")
+    endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+endif(UNIT_TEST)
+message(STATUS "Unit test: ${UNIT_TEST}")
 
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -pthread")
+#Address sanitizer only in Debug mode
+if(FSANITIZE)
+  string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=address,leak,undefined")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
+  else()
+    string(APPEND CMAKE_EXE_LINKER_FLAGS " -lgcov ")
+  endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+endif(FSANITIZE)
 
 #define the C++ standard
-set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -pthread")
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 else()
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
 endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-
-if(FSANITIZE)
-  set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address,leak,undefined")
-endif(FSANITIZE)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -34,7 +57,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
 endif(APPLE)
-
 
 # Include directories (helpers)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
@@ -63,12 +85,13 @@ link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/)
 
-# Compile GTest/GMock if the build type is Debug
-if(CMAKE_BUILD_TYPE MATCHES Debug)
+# Compile GTest/GMock if the tests are on
+if(UNIT_TEST)
   add_subdirectory(${SRC_FOLDER}/external/googletest)
   include_directories(${SRC_FOLDER}/external/googletest/googletest/include)
   include_directories(${SRC_FOLDER}/external/googletest/googlemock/include)
-endif(CMAKE_BUILD_TYPE MATCHES Debug)
+  link_directories(${SRC_FOLDER}/external/googletest/lib/)
+endif(UNIT_TEST)
 
 add_subdirectory(data_provider)
 add_subdirectory(shared_modules)

@@ -4,13 +4,13 @@ include_directories(${PROJECT_SOURCE_DIR}/src/)
 include_directories(${PROJECT_SOURCE_DIR}/include/)
 
 if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
-include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
-include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
-include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
+  include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
+  include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
+  include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
 
-link_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
-link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
-link_directories(${SRC_FOLDER}/external/rpm/builddir/)
+  link_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
+  link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
+  link_directories(${SRC_FOLDER}/external/rpm/builddir/)
 endif(NOT CMAKE_CHECK_CENTOS5)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -71,7 +71,6 @@ else()
       "${PROJECT_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-
 add_library(sysinfo SHARED
     ${SYSINFO_SRC}
     ${PROJECT_SOURCE_DIR}/src/sysInfo.cpp )
@@ -99,7 +98,6 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(sysinfo wazuhext)
 
-
 if(APPLE)
   add_custom_command(TARGET sysinfo
     POST_BUILD COMMAND
@@ -107,18 +105,8 @@ if(APPLE)
     $<TARGET_FILE:sysinfo>)
 endif(APPLE)
 
-add_subdirectory(testtool)
-
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_link_libraries(sysinfo -fprofile-arcs)
-  else()
-    target_link_libraries(sysinfo gcov)
-  endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-
+if(UNIT_TEST)
   add_subdirectory(tests)
-else()
-  if(FSANITIZE)
-      target_link_libraries(sysinfo gcov)
-  endif(FSANITIZE)
-endif()
+endif(UNIT_TEST)
+
+add_subdirectory(testtool)

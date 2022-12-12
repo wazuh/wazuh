@@ -1,7 +1,5 @@
 project(fim_integration_test)
 
-set(CMAKE_CXX_FLAGS_DEBUG "--coverage")
-
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
 
