@@ -103,6 +103,7 @@ enum class ParserType
     P_DATE,
     P_IP,
     P_URI,
+    P_FQDN,
     P_FILE,
     P_LITERAL,
     P_IGNORE,
@@ -128,6 +129,7 @@ constexpr auto parserTypeToStr(ParserType type)
         case ParserType::P_DATE: return "date";
         case ParserType::P_IP: return "ip";
         case ParserType::P_URI: return "uri";
+        case ParserType::P_FQDN: return "fqdn";
         case ParserType::P_FILE: return "filepath";
         case ParserType::P_LITERAL: return "literal";
         case ParserType::P_IGNORE: return "ignore";
@@ -163,6 +165,8 @@ constexpr auto strToParserType(std::string_view str)
         return ParserType::P_IP;
     if (str == parserTypeToStr(ParserType::P_URI))
         return ParserType::P_URI;
+    if (str == parserTypeToStr(ParserType::P_FQDN))
+        return ParserType::P_FQDN;
     if (str == parserTypeToStr(ParserType::P_FILE))
         return ParserType::P_FILE;
     if (str == parserTypeToStr(ParserType::P_LITERAL))

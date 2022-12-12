@@ -20,11 +20,6 @@ namespace hlp
 
 namespace internal
 {
-namespace
-{
-// TODO: Deletes if after parsers have been a configurable
-constexpr auto AUTO_FORMAT_DISABLED = "disableAutoFormat";
-} // namespace
 
 /**
  * Supported formats, this will be injected by the config module in due time
@@ -67,7 +62,7 @@ std::string formatDateFromSample(std::string dateSample, std::string locale)
     std::vector<std::string> matchingFormats;
     for (const auto& [name, format] : TimeFormat)
     {
-        auto p = getDateParser({}, Options {format, "en_US.UTF-8", AUTO_FORMAT_DISABLED});
+        auto p = getDateParser({}, Options {format, "en_US.UTF-8"});
         auto res = p(dateSample, 0);
 
         if (res.success())
@@ -103,8 +98,7 @@ std::string formatDateFromSample(std::string dateSample, std::string locale)
 parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
 {
 
-    if (lst.size() == 0
-        || (lst.size() > 2 && lst[2].compare(internal::AUTO_FORMAT_DISABLED) != 0))
+    if (lst.size() == 0 || (lst.size() > 2) != 0)
     {
         throw std::runtime_error(
             "date parser requires as first parameter a date sample or "
@@ -114,8 +108,6 @@ parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
 
     std::string format = lst[0];
     auto localeStr = lst.size() > 1 ? lst[1] : "en_US.UTF-8";
-    auto disableAutoFormat =
-        lst.size() > 2 && (lst[2].compare(internal::AUTO_FORMAT_DISABLED) == 0);
 
     std::locale locale;
     try
@@ -129,7 +121,7 @@ parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
     }
 
     // If not disabled automat then check if the format is a sample date
-    if (!disableAutoFormat && (format.find("%") == std::string::npos))
+    if (format.find("%") == std::string::npos)
     {
         format = internal::formatDateFromSample(format, localeStr);
     }
