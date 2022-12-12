@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} sysInfoMacPackage_unit_test)
 project(sysInfoMacPackage_unit_test)
 
 file(GLOB sysinfo_UNIT_TEST_SRC
@@ -19,8 +20,8 @@ target_link_libraries(sysInfoMacPackage_unit_test
 )
 
 if(APPLE)
-  target_link_libraries(sysInfoMacPackage_unit_test ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
+    target_link_libraries(sysInfoMacPackage_unit_test ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
 endif(APPLE)
 
 add_test(NAME sysInfoMacPackage_unit_test
-         COMMAND sysInfoMacPackage_unit_test)
+    COMMAND sysInfoMacPackage_unit_test)

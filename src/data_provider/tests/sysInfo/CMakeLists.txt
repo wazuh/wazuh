@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} sysinfo_unit_test)
 project(sysinfo_unit_test)
 
 file(GLOB sysinfo_UNIT_TEST_SRC
@@ -36,4 +37,4 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME sysinfo_unit_test
-         COMMAND sysinfo_unit_test)
+    COMMAND sysinfo_unit_test)

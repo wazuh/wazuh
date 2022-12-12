@@ -1,10 +1,11 @@
+add_dependencies(${PROJECT_NAME} sysInfoSolarisPackage_unit_test)
 project(sysInfoSolarisPackage_unit_test)
 
 file(GLOB sysinfo_UNIT_TEST_SRC
     "*.cpp")
 
 file(GLOB SYSINFO_SRC
-	"${CMAKE_SOURCE_DIR}/data_provider/src/packages/packageSolaris.cpp")
+    "${CMAKE_SOURCE_DIR}/data_provider/src/packages/packageSolaris.cpp")
 
 add_executable(sysInfoSolarisPackage_unit_test
     ${sysinfo_UNIT_TEST_SRC}
@@ -19,4 +20,4 @@ target_link_libraries(sysInfoSolarisPackage_unit_test
 )
 
 add_test(NAME sysInfoSolarisPackage_unit_test
-	COMMAND sysInfoSolarisPackage_unit_test)
+    COMMAND sysInfoSolarisPackage_unit_test)

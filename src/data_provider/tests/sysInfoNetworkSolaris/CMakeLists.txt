@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} sysInfoNetworkSolaris_unit_test)
 project(sysInfoNetworkSolaris_unit_test)
 
 file(GLOB sysinfo_UNIT_TEST_SRC
@@ -22,4 +23,4 @@ target_link_libraries(sysInfoNetworkSolaris_unit_test
 )
 
 add_test(NAME sysInfoNetworkSolaris_unit_test
-         COMMAND sysInfoNetworkSolaris_unit_test)
+    COMMAND sysInfoNetworkSolaris_unit_test)

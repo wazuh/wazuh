@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} sysInfoPackageLinuxParserRPM_unit_test)
 project(sysInfoPackageLinuxParserRPM_unit_test)
 
 file(GLOB sysinfo_UNIT_TEST_SRC
@@ -23,4 +24,4 @@ target_link_libraries(sysInfoPackageLinuxParserRPM_unit_test
 )
 
 add_test(NAME sysInfoPackageLinuxParserRPM_unit_test
-         COMMAND sysInfoPackageLinuxParserRPM_unit_test)
+    COMMAND sysInfoPackageLinuxParserRPM_unit_test)

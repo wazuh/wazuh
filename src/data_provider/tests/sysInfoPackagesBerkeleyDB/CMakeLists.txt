@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} sysInfoPackagesBerkeleyDB_unit_test)
 project(sysInfoPackagesBerkeleyDB_unit_test)
 
 file(GLOB sysinfo_UNIT_TEST_SRC
@@ -19,4 +20,4 @@ target_link_libraries(sysInfoPackagesBerkeleyDB_unit_test
 )
 
 add_test(NAME sysInfoPackagesBerkeleyDB_unit_test
-         COMMAND sysInfoPackagesBerkeleyDB_unit_test)
+    COMMAND sysInfoPackagesBerkeleyDB_unit_test)
