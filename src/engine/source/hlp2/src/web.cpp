@@ -52,7 +52,7 @@ parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
             return std::get<parsec::Result<json::Json>>(res);
         }
 
-        auto urlStr = std::string{std::get<std::string_view>(res)};
+        auto urlStr = std::string {std::get<std::string_view>(res)};
 
         auto urlCleanup = [](auto* url)
         {
@@ -66,12 +66,10 @@ parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
                 fmt::format("Unable to initialize the url container"), index);
         }
 
-
         auto uc = curl_url_set(url.get(), CURLUPART_URL, urlStr.c_str(), 0);
         if (uc)
         {
-            return parsec::makeError<json::Json>(
-                fmt::format("error parsing url"), index);
+            return parsec::makeError<json::Json>(fmt::format("error parsing url"), index);
         }
 
         // TODO curl will parse and copy the URL into an allocated
@@ -104,7 +102,7 @@ parsec::Parser<json::Json> getUAParser(Stop endTokens, Options lst)
 {
     if (endTokens.empty())
     {
-        throw std::invalid_argument(fmt::format("User-agent parser needs a stop string"));
+        throw std::runtime_error(fmt::format("User-agent parser needs a stop string"));
     }
 
     if (lst.size() != 0)
@@ -135,6 +133,11 @@ parsec::Parser<json::Json> getUAParser(Stop endTokens, Options lst)
 parsec::Parser<json::Json> getFQDNParser(Stop endTokens, Options lst)
 {
 
+    if (lst.size() > 0)
+    {
+        throw std::runtime_error("FQDN parser do not accept arguments!");
+    }
+
     return [endTokens](std::string_view text, int index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
@@ -146,9 +149,17 @@ parsec::Parser<json::Json> getFQDNParser(Stop endTokens, Options lst)
         auto fp = std::get<std::string_view>(res);
         auto pos = fp.size() + index;
 
+        /**
+         * RFC 1035 2.3.4
+         * don’t encode the dots, but encode the length bytes, they cancel out,
+         * except for the length byte of the first label and the length byte of the root
+         * label, for an additional cost of two bytes
+         */
         if (fp.size() > 253)
+        {
             return parsec::makeError<json::Json>(
                 fmt::format("size '{}' too big for an fqdn", fp.size()), index);
+        }
 
         char last = 0;
         auto e = std::find_if_not(fp.begin(),
@@ -163,7 +174,7 @@ parsec::Parser<json::Json> getFQDNParser(Stop endTokens, Options lst)
         json::Json doc;
         if (e == fp.end())
         {
-            doc.setString(fp.data());
+            doc.setString(std::string {fp});
             return parsec::makeSuccess<json::Json>(std::move(doc), pos);
         }
         return parsec::makeError<json::Json>(
