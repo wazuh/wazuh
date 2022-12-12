@@ -26,6 +26,7 @@ inline void registerParsers(std::shared_ptr<logpar::Logpar> logpar)
     logpar->registerBuilder(ParserType::P_QUOTED, hlp::getQuotedParser);
     logpar->registerBuilder(ParserType::P_CSV, hlp::getCSVParser);
     logpar->registerBuilder(ParserType::P_DSV, hlp::getDSVParser);
+    logpar->registerBuilder(ParserType::P_JSON, hlp::getJSONParser);
     logpar->registerBuilder(ParserType::P_USER_AGENT, hlp::getUAParser);
 }
 
