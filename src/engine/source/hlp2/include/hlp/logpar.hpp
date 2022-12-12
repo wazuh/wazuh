@@ -110,6 +110,7 @@ enum class ParserType
     P_QUOTED,
     P_CSV,
     P_DSV,
+    P_JSON,
     P_USER_AGENT,
     ERROR_TYPE
 };
@@ -136,6 +137,7 @@ constexpr auto parserTypeToStr(ParserType type)
         case ParserType::P_QUOTED: return "quoted";
         case ParserType::P_CSV: return "csv";
         case ParserType::P_DSV: return "dsv";
+        case ParserType::P_JSON: return "json";
         case ParserType::P_USER_AGENT: return "user_agent";
         default: return "error_type";
     }
@@ -179,6 +181,8 @@ constexpr auto strToParserType(std::string_view str)
         return ParserType::P_CSV;
     if (str == parserTypeToStr(ParserType::P_DSV))
         return ParserType::P_DSV;
+    if (str == parserTypeToStr(ParserType::P_JSON))
+        return ParserType::P_JSON;
     if (str == parserTypeToStr(ParserType::P_USER_AGENT))
         return ParserType::P_USER_AGENT;
     return ParserType::ERROR_TYPE;
