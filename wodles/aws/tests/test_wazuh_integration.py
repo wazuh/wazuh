@@ -12,7 +12,8 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
-import aws_s3
+import wazuh_integration
+
 
 # Error codes
 INVALID_CREDENTIALS_ERROR_CODE = 3
@@ -27,16 +28,16 @@ METADATA_TABLE_NAME = 'metadata'
 DB_TABLENAME = "test_table"
 
 
-@patch('aws_s3.WazuhIntegration.check_metadata_version')
-@patch('aws_s3.sqlite3.connect')
-@patch('aws_s3.WazuhIntegration.get_client')
-@patch('aws_s3.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH)
-@patch('aws_s3.utils.get_wazuh_version')
+@patch('wazuh_integration.WazuhIntegration.check_metadata_version')
+@patch('wazuh_integration.sqlite3.connect')
+@patch('wazuh_integration.WazuhIntegration.get_client')
+@patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH)
+@patch('wazuh_integration.utils.get_wazuh_version')
 def test_WazuhIntegration__init__(mock_version, mock_path, mock_client, mock_connect, mock_metadata):
     """Test if the instances of WazuhIntegration are created properly."""
     mock_connect.return_value = MagicMock()
     args = utils.get_WazuhIntegration_parameters(bucket="test")
-    integration = aws_s3.WazuhIntegration(**args)
+    integration = wazuh_integration.WazuhIntegration(**args)
     mock_path.assert_called_once()
     mock_version.assert_called_once()
     assert integration.wazuh_path == utils.TEST_WAZUH_PATH
@@ -115,20 +116,20 @@ def test_WazuhIntegration_delete_deprecated_tables(custom_database):
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()
 
-    for table in aws_s3.DEPRECATED_TABLES:
+    for table in wazuh_integration.DEPRECATED_TABLES:
         assert instance.db_cursor.execute(instance.sql_find_table, {'name': table}).fetchone()[0]
     assert instance.db_cursor.execute(instance.sql_find_table, {'name': METADATA_TABLE_NAME}).fetchone()[0]
 
     instance.delete_deprecated_tables()
 
     # The deprecated tables were deleted
-    for table in aws_s3.DEPRECATED_TABLES:
+    for table in wazuh_integration.DEPRECATED_TABLES:
         assert not instance.db_cursor.execute(instance.sql_find_table, {'name': table}).fetchone()
     # The metadata table is still present
     assert instance.db_cursor.execute(instance.sql_find_table, {'name': METADATA_TABLE_NAME}).fetchone()[0]
 
 
-@patch('aws_s3.botocore')
+@patch('wazuh_integration.botocore')
 @pytest.mark.parametrize('file_exists', [True, False])
 def test_default_config(mock_botocore, file_exists):
     """Test if `default_config` function returns the Wazuh default Retry configuration if there is no user-defined
@@ -139,12 +140,12 @@ def test_default_config(mock_botocore, file_exists):
     file_exists : bool
         The value to be returned by the mocked config reader call.
     """
-    with patch('aws_s3.path.exists', return_value=file_exists):
-        config = aws_s3.WazuhIntegration.default_config()
+    with patch('wazuh_integration.path.exists', return_value=file_exists):
+        config = wazuh_integration.WazuhIntegration.default_config()
     if not file_exists:
-        mock_botocore.config.Config.assert_called_with(retries=aws_s3.WAZUH_DEFAULT_RETRY_CONFIGURATION)
+        mock_botocore.config.Config.assert_called_with(retries=wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
         assert 'config' in config
-        assert config['config'] == mock_botocore.config.Config(retries=aws_s3.WAZUH_DEFAULT_RETRY_CONFIGURATION)
+        assert config['config'] == mock_botocore.config.Config(retries=wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
     else:
         assert config == dict()
 
@@ -156,8 +157,8 @@ def test_default_config(mock_botocore, file_exists):
     (None, None, utils.TEST_AWS_PROFILE),
     (None, None, utils.TEST_AWS_PROFILE),
 ])
-@pytest.mark.parametrize('region', list(aws_s3.DEFAULT_GOV_REGIONS) + ['us-east-1', None])
-@pytest.mark.parametrize('service_name', list(aws_s3.SERVICES_REQUIRING_REGION) + ['other'])
+@pytest.mark.parametrize('region', list(wazuh_integration.DEFAULT_GOV_REGIONS) + ['us-east-1', None])
+@pytest.mark.parametrize('service_name', list(wazuh_integration.SERVICES_REQUIRING_REGION) + ['other'])
 def test_WazuhIntegration_get_client_authentication(access_key, secret_key, profile, region, service_name):
     """Test `get_client` function uses the different authentication parameters properly.
 
@@ -185,17 +186,17 @@ def test_WazuhIntegration_get_client_authentication(access_key, secret_key, prof
         expected_conn_args['profile_name'] = profile
     expected_conn_args['region_name'] = None
 
-    if region and service_name in aws_s3.SERVICES_REQUIRING_REGION:
+    if region and service_name in wazuh_integration.SERVICES_REQUIRING_REGION:
         expected_conn_args['region_name'] = region
     else:
-        expected_conn_args['region_name'] = region if region in aws_s3.DEFAULT_GOV_REGIONS else None
+        expected_conn_args['region_name'] = region if region in wazuh_integration.DEFAULT_GOV_REGIONS else None
 
-    with patch('aws_s3.WazuhIntegration.check_metadata_version'), \
-            patch('aws_s3.sqlite3.connect'), \
-            patch('aws_s3.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
-            patch('aws_s3.utils.get_wazuh_version', return_value=utils.WAZUH_VERSION), \
-            patch('aws_s3.boto3.Session') as mock_boto:
-        aws_s3.WazuhIntegration(**kwargs)
+    with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
+            patch('wazuh_integration.sqlite3.connect'), \
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=utils.WAZUH_VERSION), \
+            patch('wazuh_integration.boto3.Session') as mock_boto:
+        wazuh_integration.WazuhIntegration(**kwargs)
         mock_boto.assert_called_with(**expected_conn_args)
 
 
@@ -231,12 +232,12 @@ def test_WazuhIntegration_get_client(iam_role_arn, service_name):
     mock_boto_session.client.return_value = mock_sts_client
     mock_sts_client.assume_role.return_value = sts_role_assumption
 
-    with patch('aws_s3.WazuhIntegration.check_metadata_version'), \
-            patch('aws_s3.sqlite3.connect'), \
-            patch('aws_s3.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
-            patch('aws_s3.utils.get_wazuh_version', return_value=utils.WAZUH_VERSION), \
-            patch('aws_s3.boto3.Session', side_effect=[mock_boto_session, mock_sts_session]) as mock_session:
-        instance = aws_s3.WazuhIntegration(**kwargs)
+    with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
+            patch('wazuh_integration.sqlite3.connect'), \
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=utils.WAZUH_VERSION), \
+            patch('wazuh_integration.boto3.Session', side_effect=[mock_boto_session, mock_sts_session]) as mock_session:
+        instance = wazuh_integration.WazuhIntegration(**kwargs)
 
         if iam_role_arn:
             mock_session.assert_has_calls([call(**conn_kwargs), call(**sts_kwargs)])
@@ -256,15 +257,15 @@ def test_WazuhIntegration_get_client(iam_role_arn, service_name):
 def test_WazuhIntegration_get_client_ko():
     """Test `get_client` function handles botocore.exceptions as expected."""
     mock_boto_session = MagicMock()
-    mock_boto_session.client.side_effect=aws_s3.botocore.exceptions.ClientError({'Error': {'Code': 1}}, 'operation')
+    mock_boto_session.client.side_effect=wazuh_integration.botocore.exceptions.ClientError({'Error': {'Code': 1}}, 'operation')
 
-    with patch('aws_s3.WazuhIntegration.check_metadata_version'), \
-            patch('aws_s3.sqlite3.connect'), \
-            patch('aws_s3.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
-            patch('aws_s3.utils.get_wazuh_version', return_value=utils.WAZUH_VERSION), \
-            patch('aws_s3.boto3.Session', return_value=mock_boto_session):
+    with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
+            patch('wazuh_integration.sqlite3.connect'), \
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=utils.WAZUH_VERSION), \
+            patch('wazuh_integration.boto3.Session', return_value=mock_boto_session):
         with pytest.raises(SystemExit) as e:
-            aws_s3.WazuhIntegration(**utils.get_WazuhIntegration_parameters())
+            wazuh_integration.WazuhIntegration(**utils.get_WazuhIntegration_parameters())
         assert e.value.code == INVALID_CREDENTIALS_ERROR_CODE
 
 
@@ -298,7 +299,7 @@ def test_WazuhIntegration_get_sts_client(access_key, secret_key, profile):
         expected_conn_args['profile_name'] = profile
 
     mock_session = MagicMock()
-    with patch('aws_s3.boto3.Session', return_value=mock_session) as mock_boto:
+    with patch('wazuh_integration.boto3.Session', return_value=mock_session) as mock_boto:
         sts_client = instance.get_sts_client(access_key=access_key, secret_key=secret_key, profile=profile)
         mock_boto.assert_called_with(**expected_conn_args)
         mock_session.client.assert_called_with(service_name='sts', **instance.connection_config)
@@ -308,11 +309,11 @@ def test_WazuhIntegration_get_sts_client(access_key, secret_key, profile):
 def test_WazuhIntegration_get_sts_client_ko():
     """Test `get_sts_client` function handles invalid credentials exception as expected."""
     mock_boto_session = MagicMock()
-    mock_boto_session.client.side_effect=aws_s3.botocore.exceptions.ClientError({'Error': {'Code': 1}}, 'operation')
+    mock_boto_session.client.side_effect=wazuh_integration.botocore.exceptions.ClientError({'Error': {'Code': 1}}, 'operation')
 
     instance = utils.get_mocked_WazuhIntegration(access_key=None, secret_key=None, aws_profile=None)
 
-    with patch('aws_s3.boto3.Session', return_value=mock_boto_session):
+    with patch('wazuh_integration.boto3.Session', return_value=mock_boto_session):
         with pytest.raises(SystemExit) as e:
             instance.get_sts_client(access_key=None, secret_key=None, profile=None)
         assert e.value.code == INVALID_CREDENTIALS_ERROR_CODE
@@ -329,12 +330,12 @@ def test_WazuhIntegration_send_msg(dump_json):
     """
     instance = utils.get_mocked_WazuhIntegration()
     msg = dumps(utils.TEST_MESSAGE) if dump_json else utils.TEST_MESSAGE
-    with patch('aws_s3.socket.socket') as mock_socket:
+    with patch('wazuh_integration.socket.socket') as mock_socket:
         m = MagicMock()
         mock_socket.return_value = m
         instance.send_msg(utils.TEST_MESSAGE, dump_json=dump_json)
         mock_socket.assert_called_once()
-        m.send.assert_called_with(f"{aws_s3.MESSAGE_HEADER}{msg}".encode())
+        m.send.assert_called_with(f"{wazuh_integration.MESSAGE_HEADER}{msg}".encode())
         m.close.assert_called_once()
 
 
@@ -357,7 +358,7 @@ def test_WazuhIntegration_send_msg_socket_error(error_code, expected_exit_code):
     error = socket.error()
     error.errno = error_code
 
-    with patch('aws_s3.socket.socket') as mock_socket:
+    with patch('wazuh_integration.socket.socket') as mock_socket:
         mock_socket.side_effect = error
         if expected_exit_code:
             with pytest.raises(SystemExit) as e:
@@ -371,7 +372,7 @@ def test_WazuhIntegration_send_msg_ko():
     """Test `send_msg` function handles the other expected exceptions."""
     instance = utils.get_mocked_WazuhIntegration()
 
-    with patch('aws_s3.socket.socket') as mock_socket:
+    with patch('wazuh_integration.socket.socket') as mock_socket:
         mock_socket.side_effect = TypeError
         with pytest.raises(SystemExit) as e:
             instance.send_msg(utils.TEST_MESSAGE)
@@ -404,7 +405,7 @@ def test_WazuhIntegration_create_table_ko():
     [DB_TABLENAME],
     []
 ])
-@patch('aws_s3.WazuhIntegration.create_table')
+@patch('wazuh_integration.WazuhIntegration.create_table')
 def test_WazuhIntegration_init_db(mock_create_table, table_list):
     """Test `init_db` function checks if the required table exists and creates it if not.
 
