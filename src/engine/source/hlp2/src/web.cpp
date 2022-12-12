@@ -22,7 +22,7 @@ parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
 {
     if (endTokens.empty())
     {
-        throw std::invalid_argument(fmt::format("Uri parser needs a stop string"));
+        throw std::runtime_error(fmt::format("Uri parser needs a stop string"));
     }
 
     if (lst.size() > 0)
