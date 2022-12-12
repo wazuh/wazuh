@@ -1,6 +1,6 @@
 add_subdirectory(dbsync)
 add_subdirectory(rsync)
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(UNIT_TEST)
     add_subdirectory(utils/tests)
-endif()
+endif(UNIT_TEST)

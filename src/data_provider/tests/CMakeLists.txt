@@ -2,8 +2,6 @@ project(unit_tests)
 
 include_directories(${CMAKE_SOURCE_DIR})
 
-set(CMAKE_CXX_FLAGS_DEBUG "--coverage")
-
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_subdirectory(sysInfoPackagesLinuxHelper)
   add_subdirectory(sysInfoPackagesBerkeleyDB)
@@ -23,12 +21,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_subdirectory(sysInfoWin)
   add_subdirectory(sysInfoNetworkWindows)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
-else()
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -lgcov ")
-endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 add_subdirectory(sysInfo)
 add_subdirectory(sysInfoPorts)
