@@ -120,8 +120,9 @@
         <CustomAction Id="StartWazuhSvc" BinaryKey="InstallerScripts" VBScriptCall="StartWazuhSvc" Return="check" Execute="deferred" Impersonate="no"/>
 
         <!-- Close the Wazuh agent GUI -->
+        <CustomAction Id="CloseGUI" BinaryKey="InstallerScripts" VBScriptCall="KillGUITask" Return="check" Execute="deferred" Impersonate="no"/>
 
-        <CustomAction Id="CloseGUI" Directory="APPLICATIONFOLDER" ExeCommand="TASKKILL /F /IM win32ui.exe" Execute="deferred" Impersonate="no" Return="ignore" />
+
         <UI>
             <UIRef Id="WixUI_Advanced" />
             <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="4"><![CDATA[WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"]]></Publish>
@@ -145,7 +146,7 @@
             <Custom Action="SetOSVersion12" Before="SetCustomActionDataValue">BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Custom>
             
             <!-- Close the GUI -->
-            <Custom Action="CloseGUI" After="InstallInitialize"></Custom>
+            <Custom Action="CloseGUI" Before="InstallFinalize"></Custom>
             
             <!-- Set deployment values -->
             <Custom Action="SetWazuhManager" Before="SetCustomActionDataValue">ADDRESS &lt;&gt; "" AND WAZUH_MANAGER = ""</Custom>

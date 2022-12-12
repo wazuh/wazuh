@@ -391,6 +391,14 @@ Public Function CheckSvcRunning()
 	CheckSvcRunning = 0
 End Function
 
+Public Function KillGUITask()
+    Set WshShell = CreateObject("WScript.Shell")
+
+    taskkillcommand = "taskkill.exe /f /im win32ui.exe"
+    WshShell.run taskkillcommand, 0, True
+
+End Function
+
 Public Function StartWazuhSvc()
 	Set WshShell = CreateObject("WScript.Shell")
     StartSvc = "NET START WazuhSvc"
