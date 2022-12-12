@@ -29,10 +29,9 @@ parsec::Parser<json::Json> getJSONParser(Stop endTokens, Options lst)
         }
 
         auto fp = std::get<std::string_view>(res);
-        auto pos = fp.size() + index;
 
         rapidjson::Reader reader;
-        rapidjson::StringStream ss {fp.data()};
+        rapidjson::StringStream ss {fp.data()}; // ignores the size of fp (end token)
         rapidjson::Document doc;
 
         doc.ParseStream<rapidjson::kParseStopWhenDoneFlag>(ss);
@@ -43,7 +42,7 @@ parsec::Parser<json::Json> getJSONParser(Stop endTokens, Options lst)
         }
 
         return parsec::makeSuccess<json::Json>(
-            json::Json(std::move(doc)), ss.Tell());
+            json::Json(std::move(doc)), ss.Tell() + index);
     };
 }
 } // namespace hlp

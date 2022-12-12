@@ -9,7 +9,23 @@
 #include <json/json.hpp>
 
 
-TEST(HLP2, JSONParser) {
+TEST(JSONParser, build_OK)
+{
+    ASSERT_NO_THROW(hlp::getJSONParser({}, {}));
+    ASSERT_NO_THROW(hlp::getJSONParser({"stop1"}, {}));
+    ASSERT_NO_THROW(hlp::getJSONParser({"stop1", "stop2"}, {}));
+}
+
+TEST(JSONParser, build_fail)
+{
+    // Parser with no stop
+    ASSERT_THROW(hlp::getJSONParser({}, {"arg1"}), std::runtime_error);
+    ASSERT_THROW(hlp::getJSONParser({}, {"arg1", "arg2"}), std::runtime_error);
+    // stop but also options
+    ASSERT_THROW(hlp::getJSONParser({"stop1"}, {"opt1"}), std::runtime_error);
+}
+
+TEST(JSONParser, parser) {
     auto fn = [](std::string in) -> json::Json {
         json::Json doc{in.c_str()};
         return doc;
