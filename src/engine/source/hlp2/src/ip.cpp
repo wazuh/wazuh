@@ -21,6 +21,11 @@ parsec::Parser<json::Json> getIPParser(Stop endTokens, Options lst)
         throw std::runtime_error(fmt::format("IP parser needs a stop string"));
     }
 
+    if (lst.size() > 0)
+    {
+        throw std::runtime_error(fmt::format("IP parser do not accept arguments"));
+    }
+
     return [endTokens](std::string_view text, size_t index)
     {
         struct in_addr ip;
