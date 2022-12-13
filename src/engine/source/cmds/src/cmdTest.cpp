@@ -80,9 +80,10 @@ void test(const std::string& kvdbPath,
     WAZUH_LOG_INFO("HLP initialized");
 
     auto registry = std::make_shared<builder::internals::Registry>();
+    size_t logparDebugLvl = debugLevel > 2 ? 1 : 0;
     try
     {
-        builder::internals::registerBuilders(registry, {kvdb, logpar});
+        builder::internals::registerBuilders(registry, {kvdb, logpar, logparDebugLvl});
     }
     catch (const std::exception& e)
     {

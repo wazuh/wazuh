@@ -35,7 +35,8 @@ void parseFp(std::string slash, json::Json* out, std::string_view in)
 namespace hlp
 {
 
-parsec::Parser<json::Json> getFilePathParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json>
+getFilePathParser(std::string name, Stop endTokens, Options lst)
 {
     if (endTokens.empty())
     {
@@ -47,7 +48,7 @@ parsec::Parser<json::Json> getFilePathParser(Stop endTokens, Options lst)
         throw std::invalid_argument(fmt::format("File parser accepts only one option"));
     }
 
-    return [endTokens](std::string_view text, int index)
+    return [endTokens, name](std::string_view text, int index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
         if (std::holds_alternative<parsec::Result<json::Json>>(res))

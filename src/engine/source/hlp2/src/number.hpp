@@ -30,14 +30,14 @@ namespace hlp
 {
 
 template<class T>
-parsec::Parser<json::Json> getNumericParser(Stop, Options lst)
+parsec::Parser<json::Json> getNumericParser(std::string name, Stop, Options lst)
 {
     if (!lst.empty())
     {
         throw std::runtime_error("numeric parser doesn't accept parameters");
     }
 
-    return [](std::string_view text, int index)
+    return [name](std::string_view text, int index)
     {
         T val {};
 
@@ -58,19 +58,16 @@ parsec::Parser<json::Json> getNumericParser(Stop, Options lst)
         else if (ec == std::errc::invalid_argument)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Input '{}' is not a number at {}", text, index),
-                index);
+                fmt::format("{}: Expected a number", name), index);
         }
         else if (ec == std::errc::result_out_of_range)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Value is out of range in {}  at {}", text, index),
-                index);
+                fmt::format("{}: Number is out of range", name), index);
         }
 
         return parsec::makeError<json::Json>(
-            fmt::format("Unknown error when parsing '{}' at {}", text, index),
-            index);
+            fmt::format("{}: Unknown error when parsing number", name), index);
     };
 }
 

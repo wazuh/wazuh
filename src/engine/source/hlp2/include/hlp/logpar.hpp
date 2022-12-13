@@ -112,6 +112,8 @@ enum class ParserType
     P_DSV,
     P_JSON,
     P_USER_AGENT,
+    P_XML,
+    P_KV,
     ERROR_TYPE
 };
 
@@ -139,6 +141,8 @@ constexpr auto parserTypeToStr(ParserType type)
         case ParserType::P_DSV: return "dsv";
         case ParserType::P_JSON: return "json";
         case ParserType::P_USER_AGENT: return "user_agent";
+        case ParserType::P_XML: return "xml";
+        case ParserType::P_KV: return "kv";
         default: return "error_type";
     }
 }
@@ -185,6 +189,10 @@ constexpr auto strToParserType(std::string_view str)
         return ParserType::P_JSON;
     if (str == parserTypeToStr(ParserType::P_USER_AGENT))
         return ParserType::P_USER_AGENT;
+    if (str == parserTypeToStr(ParserType::P_XML))
+        return ParserType::P_XML;
+    if (str == parserTypeToStr(ParserType::P_KV))
+        return ParserType::P_KV;
     return ParserType::ERROR_TYPE;
 }
 
@@ -263,6 +271,18 @@ struct Field
     {
         return name == other.name && args == other.args && optional == other.optional;
     }
+
+    // TODO: we should store this string instead of recreat it again?
+    std::string toStr() const
+    {
+        return fmt::format("{}{}{}{}{}{}",
+                           syntax::EXPR_BEGIN,
+                           optional ? std::string {syntax::EXPR_OPT} : "",
+                           name.value,
+                           args.empty() ? "" : std::string {syntax::EXPR_ARG_SEP},
+                           fmt::join(args, std::string {syntax::EXPR_ARG_SEP}),
+                           syntax::EXPR_END);
+    }
 };
 
 /**
@@ -327,9 +347,11 @@ class Logpar
 {
 private:
     using ParserBuilder = std::function<parsec::Parser<json::Json>(
-        std::list<std::string>, std::vector<std::string>)>;
+        std::string, std::list<std::string>, std::vector<std::string>)>;
 
     size_t m_maxGroupRecursion;
+
+    size_t m_debugLvl;
 
     std::unordered_map<std::string, SchemaType> m_fieldTypes;
     std::unordered_map<SchemaType, ParserType> m_typeParsers;
@@ -357,7 +379,9 @@ public:
      * @param ecsFieldTypes a json object with the schema types of the schema fields
      * @throws std::runtime_error if errors occur while initializing
      */
-    Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion = 1);
+    Logpar(const json::Json& ecsFieldTypes,
+           size_t maxGroupRecursion = 1,
+           size_t debugLvl = 0);
 
     /**
      * @brief Register a parser builder for the given parser type
