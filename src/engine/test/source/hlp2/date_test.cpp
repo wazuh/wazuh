@@ -185,12 +185,13 @@ TEST(DateParser, DateParser)
                   Options {"%d %b %y %R %Z"},
                   fn("2016-12-26T16:15:00.000Z"),
                   strlen("26 Dec 16 23:15 MST")},
-        // TODO: this is throwing an exception
+        // TODO: C++ exception with description "-0000 not found in timezone database"
+        // thrown in the test body.
         // TestCase {"26 Dec 16 23:15 -0000",
         //           false,
         //           {},
         //           Options {"%d %b %y %R %Z"},
-        //           fn(""),
+        //           fn("{}"),
         //           0},
         TestCase {"26 Dec 16 23:15 -0000",
                   true,
@@ -198,12 +199,13 @@ TEST(DateParser, DateParser)
                   Options {"%d %b %y %R %z"},
                   fn("2016-12-26T23:15:00.000Z"),
                   strlen("26 Dec 16 23:15 -0000")},
-        // TODO: this is throwing an exception
+        // TODO: C++ exception with description "-0000 not found in timezone database"
+        // thrown in the test body.
         // TestCase {"26 Dec 16 23:15 -0000",
         //           false,
         //           {},
         //           Options {"%d %b %y %R %Z"},
-        //           fn(""),
+        //           fn("{}"),
         //           0},
         TestCase {"Monday, 26-Dec-16 16:16:55 MST",
                   true,
@@ -211,12 +213,13 @@ TEST(DateParser, DateParser)
                   Options {"%A, %d-%b-%y %T %Z"},
                   fn("2016-12-26T09:16:55.000Z"),
                   strlen("Monday, 26-Dec-16 16:16:55 MST")},
-        // TODO: this is throwing an exception
+        // TODO: C++ exception with description "-0000 not found in timezone database"
+        // thrown in the test body.
         // TestCase {"Monday, 26-Dec-16 16:16:55 -0000",
         //           false,
         //           {},
         //           Options {"%A, %d-%b-%y %T %Z"},
-        //           fn(""),
+        //           fn("{}"),
         //           0},
         TestCase {"Monday, 26-Dec-16 16:16:55 -0000",
                   true,
@@ -236,12 +239,13 @@ TEST(DateParser, DateParser)
                   Options {"%a, %d-%b-%y %T %Z"},
                   fn("2016-12-26T09:16:55.000Z"),
                   strlen("Mon, 26-Dec-16 16:16:55 MST")},
-        // TODO: this is throwing an exception
+        // TODO: C++ exception with description "-0000 not found in timezone database"
+        // thrown in the test body.
         // TestCase {"Mon, 26-Dec-16 16:16:55 -0000",
         //           false,
         //           {},
         //           Options {"%a, %d-%b-%y %T %Z"},
-        //           fn(""),
+        //           fn("{}"),
         //           0},
         TestCase {"Mon, 26-Dec-16 16:16:55 -0000",
                   true,
