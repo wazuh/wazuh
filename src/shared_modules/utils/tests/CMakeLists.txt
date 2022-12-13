@@ -1,5 +1,8 @@
 project(utils_unit_test)
 
+# Adding the utils tests to the general unit_test target
+add_dependencies(${ALL_UNIT_TEST_TARGET} utils_unit_test)
+
 file(GLOB UTIL_CXX_UNITTEST_WINDOWS_SRC
     "windowsHelper_test.cpp"
     "registryHelper_test.cpp"
@@ -28,11 +31,11 @@ file(GLOB UTIL_CXX_UNITTEST_LINUX_SRC
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_executable(utils_unit_test
-      ${UTIL_CXX_UNITTEST_COMMON_SRC}
-      ${UTIL_CXX_UNITTEST_WINDOWS_SRC}
+        ${UTIL_CXX_UNITTEST_COMMON_SRC}
+        ${UTIL_CXX_UNITTEST_WINDOWS_SRC}
     )
     add_definitions(-DWIN32=1
-                    -D_WIN32_WINNT=0x600)
+        -D_WIN32_WINNT=0x600)
     target_link_libraries(utils_unit_test
         gtest
         gmock
@@ -47,8 +50,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     )
 else()
     add_executable(utils_unit_test
-      ${UTIL_CXX_UNITTEST_COMMON_SRC}
-      ${UTIL_CXX_UNITTEST_LINUX_SRC}
+        ${UTIL_CXX_UNITTEST_COMMON_SRC}
+        ${UTIL_CXX_UNITTEST_LINUX_SRC}
     )
     target_link_libraries(utils_unit_test
         gtest
@@ -62,4 +65,4 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME utils_unit_test
-         COMMAND utils_unit_test)
+    COMMAND utils_unit_test)

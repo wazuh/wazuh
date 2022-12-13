@@ -1,7 +1,7 @@
 project(data_provider_unit_test)
 
 # Adding the data_provider tests to the general unit_test target
-add_dependencies(unit_test ${PROJECT_NAME})
+add_dependencies(${ALL_UNIT_TEST_TARGET} ${PROJECT_NAME})
 
 # All the data_provider tests will depend on this custom target
 add_custom_target(${PROJECT_NAME})

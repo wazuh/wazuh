@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} rsync_implementation_unit_test)
 project(rsync_implementation_unit_test)
 
 file(GLOB INTERFACE_UNITTEST_SRC
@@ -10,7 +11,7 @@ file(GLOB DBSYNC_IMP_SRC
 
 add_executable(rsync_implementation_unit_test
     ${INTERFACE_UNITTEST_SRC}
-    ${DBSYNC_IMP_SRC} )
+    ${DBSYNC_IMP_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(rsync_implementation_unit_test
@@ -41,4 +42,4 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME rsync_implementation_unit_test
-         COMMAND rsync_implementation_unit_test)
+    COMMAND rsync_implementation_unit_test)
