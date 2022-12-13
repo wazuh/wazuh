@@ -42,7 +42,33 @@ normalize:
     - process.parent.pid: $~event_channel.Event.EventData.ParentProcessId
     - process.parent.executable: $~event_channel.Event.EventData.ParentImage
     - process.parent.command_line: $~event_channel.Event.EventData.ParentCommandLine
+ 
+    # - process.args-> requires args parsing, perhaps can be done with logparse or regex
+    # - process.args_count
+    # - process.parent.args
+    # - process.parent.args_count
+
+
+    #- process.name -> requires negative index on array
+    #- process.parent.name -> requires negative index on array
     
+  ## File fields
+    - file.path: $~event_channel.Event.EventData.TargetFilename
+    - file.path: $~event_channel.Event.EventData.Device
+    - file.name: $~event_channel.Event.EventData.PipeName
+    - file.path: $~event_channel.Event.EventData.ImageLoaded
+    - file.code_signature.subject_name: $~event_channel.Event.EventData.Signature
+    - file.code_signature.status: $~event_channel.Event.EventData.SignatureStatus
+    - file.code_signature.signed: $~event_channel.Event.EventData.Signed
+    # - file.path: requires negative index on array
+
+  ## Network, Destination, and Source fields
+    - network.transport: $~event_channel.Event.EventData.Protocol
+    - network.protocol: $~event_channel.Event.EventData.DestinationPortName
+    - network.protocol: $~event_channel.Event.EventData.SourcePortName
+    - source.ip: $~event_channel.Event.EventData.SourceIp
+    - source.domain: $~event_channel.Event.EventData.SourceHostname
+    - source.port: $~event_channel.Event.EventData.SourcePort
 
  - check: event.code==255 
    map:
@@ -55,4 +81,23 @@ normalize:
  - check: event.code!=7
    map:
    - process.pe.original_file_name: $~event_channel.Event.EventData.OriginalFileName
+   - process.pe.company: $~event_channel.Event.EventData.Company
+   - process.pe.description: $~event_channel.Event.EventData.Description
+   - process.pe.file_version: $~event_channel.Event.EventData.FileVersion
+   - process.pe.product: $~event_channel.Event.EventData.Product
 
+ - check: event.code==7
+   map:
+    - file.pe.original_file_name: $~event_channel.Event.EventData.OriginalFileName
+    - file.pe.company: $~event_channel.Event.EventData.Company
+    - file.pe.description: $~event_channel.Event.EventData.Description
+    - file.pe.file_version: $~event_channel.Event.EventData.FileVersion
+    - file.pe.product: $~event_channel.Event.EventData.Product
+
+ - check: event.code==22
+   map:
+    - network.protocol: dns
+
+ - check: $~event_channel.Event.EventData.SignatureStatus==Valid
+   map:
+    - file.code_signature.valid: True   
