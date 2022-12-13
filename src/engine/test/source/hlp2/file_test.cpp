@@ -5,7 +5,24 @@
 #include <json/json.hpp>
 #include <string>
 
-TEST(HLP2, FilePathParser)
+TEST(FilePath, build_OK)
+{
+    ASSERT_NO_THROW(hlp::getFilePathParser({}, {"stop1"}, {}));
+    ASSERT_NO_THROW(hlp::getFilePathParser({}, {"stop1", "stop2"}, {}));
+}
+
+TEST(FilePath, build_fail)
+{
+    // Parser with no stop
+    ASSERT_THROW(hlp::getFilePathParser({}, {}, {}), std::runtime_error);
+    ASSERT_THROW(hlp::getFilePathParser({}, {}, {"arg1"}), std::runtime_error);
+    ASSERT_THROW(hlp::getFilePathParser({}, {}, {"arg1", "arg2"}), std::runtime_error);
+    // stop but also options
+    ASSERT_THROW(hlp::getFilePathParser({}, {"stop1"}, {"opt1"}), std::runtime_error);
+}
+
+
+TEST(FilePath, parser)
 {
 
     auto fn = [](std::string in) -> json::Json
@@ -48,6 +65,22 @@ TEST(HLP2, FilePathParser)
             Options {},
             fn(R"({"path": "../home/..user/.rootkit","name": "..file.sh","ext": "sh"})"),
             33},
+        TestCase {
+            R"(relative.test.log)",
+            true,
+            {""},
+            Options {},
+            fn(R"({"path":"relative.test.log","name":"relative.test.log","ext":"log"})"),
+            17},
+        TestCase {R"(.hidden.log)",
+                  true,
+                  {""},
+                  Options {},
+                  fn(R"({"path":".hidden.log","name":".hidden.log","ext":"log"})"),
+                  11},
+        TestCase {"", false, {""}, Options {}, fn(R"({})"), 0},
+        TestCase {
+            R"(/)", true, {""}, Options {}, fn(R"({"path":"/","name":"","ext":""})"), 1},
     };
 
     for (auto t : testCases)
