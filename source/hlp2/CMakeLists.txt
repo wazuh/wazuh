@@ -46,7 +46,6 @@ add_library(hlp2 STATIC
         src/dsv_csv.cpp
         src/kvmap.cpp
         ${date_SOURCE_DIR}/src/tz.cpp
-        src/stream_view.hpp
         src/parse_field.hpp
         src/date.cpp
         src/parse_field.cpp

@@ -12,19 +12,21 @@
 
 namespace hlp
 {
-parsec::Parser<json::Json> getLiteralParser(Stop, Options lst)
+parsec::Parser<json::Json> getLiteralParser(std::string name, Stop, Options lst)
 {
     if (lst.size() != 1)
     {
         throw(std::runtime_error("Literal parser requires exactly one option"));
     }
 
-    return [literal = lst[0]](std::string_view txt, size_t idx)
+    return [literal = lst[0], name](std::string_view txt, size_t idx)
     {
         auto eof = internal::eofError<json::Json>(txt, idx);
         if (eof.has_value())
         {
-            return eof.value();
+            return parsec::makeError<json::Json>(
+                fmt::format("{}: Expected literal '{}' but found 'EOF'", name, literal),
+                idx);
         }
 
         if (txt.substr(idx, literal.size()) == literal)
@@ -34,7 +36,7 @@ parsec::Parser<json::Json> getLiteralParser(Stop, Options lst)
         else
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Expected '{}'", literal), idx);
+                fmt::format("{}: Expected literal '{}'", name, literal), idx);
         }
     };
 }

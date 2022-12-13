@@ -28,6 +28,7 @@ struct dependencies
 {
     std::shared_ptr<KVDBManager> kvdbManager;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
+    size_t logparDebugLvl;
 };
 
 static void registerBuilders(std::shared_ptr<Registry> registry,
@@ -48,8 +49,9 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
 
     // Parsers
     registry->registerBuilder(builders::getStageBuilderParse(registry), "stage.parse");
-    registry->registerBuilder(builders::getOpBuilderLogParser(dependencies.logpar),
-                              "parser.logpar");
+    registry->registerBuilder(
+        builders::getOpBuilderLogParser(dependencies.logpar, dependencies.logparDebugLvl),
+        "parser.logpar");
 
     // Outputs
     registry->registerBuilder(builders::getStageBuilderOutputs(registry),
@@ -178,8 +180,7 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
     registry->registerBuilder(builders::opBuilderSpecificHLPDateParse,
                               "helper.parse_date");
     registry->registerBuilder(builders::opBuilderSpecificHLPIPParse, "helper.parse_ip");
-    registry->registerBuilder(builders::opBuilderSpecificHLPURIParse,
-                              "helper.parse_uri");
+    registry->registerBuilder(builders::opBuilderSpecificHLPURIParse, "helper.parse_uri");
     registry->registerBuilder(builders::opBuilderSpecificHLPUserAgentParse,
                               "helper.parse_user_agent");
     registry->registerBuilder(builders::opBuilderSpecificHLPFQDNParse,
@@ -188,12 +189,9 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
                               "helper.parse_file_path");
     registry->registerBuilder(builders::opBuilderSpecificHLPJSONParse,
                               "helper.parse_json");
-    registry->registerBuilder(builders::opBuilderSpecificHLPXMLParse,
-                              "helper.parse_xml");
-    registry->registerBuilder(builders::opBuilderSpecificHLPCSVParse,
-                              "helper.parse_csv");
-    registry->registerBuilder(builders::opBuilderSpecificHLPDSVParse,
-                              "helper.parse_dsv");
+    registry->registerBuilder(builders::opBuilderSpecificHLPXMLParse, "helper.parse_xml");
+    registry->registerBuilder(builders::opBuilderSpecificHLPCSVParse, "helper.parse_csv");
+    registry->registerBuilder(builders::opBuilderSpecificHLPDSVParse, "helper.parse_dsv");
     registry->registerBuilder(builders::opBuilderSpecificHLPKeyValueParse,
                               "helper.parse_key_value");
     registry->registerBuilder(builders::opBuilderSpecificHLPQuotedParse,

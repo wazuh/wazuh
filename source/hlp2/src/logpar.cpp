@@ -345,8 +345,9 @@ parsec::Parser<std::list<ParserInfo>> pLogpar()
 
 namespace hlp::logpar
 {
-Logpar::Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion)
+Logpar::Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion, size_t debugLvl)
     : m_maxGroupRecursion(maxGroupRecursion)
+    , m_debugLvl(debugLvl)
 {
     if (!ecsFieldTypes.isObject())
     {
@@ -411,7 +412,7 @@ Logpar::buildLiteralParser(const parser::Literal& literal) const
                                              parserTypeToStr(ParserType::P_LITERAL)));
     }
 
-    return m_parserBuilders.at(ParserType::P_LITERAL)({}, {literal.value});
+    return m_parserBuilders.at(ParserType::P_LITERAL)(literal.value, {}, {literal.value});
 }
 
 parsec::Parser<json::Json>
@@ -466,7 +467,7 @@ Logpar::buildFieldParser(const parser::Field& field,
     }
 
     // Get parser from type
-    auto p = m_parserBuilders.at(type)(endTokens, args);
+    auto p = m_parserBuilders.at(type)(field.toStr(), endTokens, args);
     parsec::Parser<json::Json> ret;
 
     // Build target field
@@ -669,9 +670,9 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
     }
 
     // return parsers;
-    auto p = parsers.front();
-    parsers.pop_front();
-    for (const auto& parser : parsers)
+    auto p = parsers.back();
+    parsers.pop_back();
+    for (auto it = parsers.rbegin(); it != parsers.rend(); it++)
     {
         p = parsec::fmap<json::Json, std::tuple<json::Json, json::Json>>(
             [](auto t) -> json::Json
@@ -695,7 +696,7 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
                     return json::Json();
                 }
             },
-            p& parser);
+            *it& p);
     }
 
     return p;
@@ -717,7 +718,7 @@ parsec::Parser<json::Json> Logpar::build(std::string_view logpar) const
     auto result = parser::pLogpar()(logpar, 0);
     if (result.failure())
     {
-        throw std::runtime_error(parsec::prettyTrace(result.trace()));
+        throw std::runtime_error(parsec::formatTrace(logpar, result.trace(), 1));
     }
 
     auto parserInfos = result.value();

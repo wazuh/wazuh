@@ -137,7 +137,7 @@ void run(const std::string& kvdbPath,
         WAZUH_LOG_INFO("Engine \"run\" command: HLP initialized.");
 
         auto registry = std::make_shared<builder::internals::Registry>();
-        builder::internals::registerBuilders(registry, {kvdb, logpar});
+        builder::internals::registerBuilders(registry, {kvdb, logpar, 0});
         WAZUH_LOG_INFO("Engine \"run\" command: Builders successfully registered.");
 
         builder = std::make_shared<builder::Builder>(store, registry);
