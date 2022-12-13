@@ -26,10 +26,10 @@ namespace internal
  */
 static const std::vector<std::tuple<std::string, std::string>> TimeFormat {
     {"ANSIC", "%a %b %d %T %Y"},        // Mon Jan _2 15:04:05 2006
-    {"UnixDate", "%a %b %d %T %Y"},     // Mon Jan _2 15:04:05 MST 2006
+    {"UnixDate", "%a %b %d %T %Z %Y"},  // Mon Jan _2 15:04:05 MST 2006
     {"RubyDate", "%a %b %d %T %z %Y"},  // Mon Jan 02 15:04:05 -0700 2006
     {"RFC822", "%d %b %y %R %Z"},       // 02 Jan 06 15:04 MST
-    {"RFC822Z", "%d %b %y %R %z"},      // 02 Jan 06 15:04 MST
+    {"RFC822Z", "%d %b %y %R %z"},      // 02 Jan 06 15:04 -0000
     {"RFC850", "%A, %d-%b-%y %T %Z"},   // Monday, 02-Jan-06 15:04:05 MST
     {"RFC1123", "%a, %d %b %Y %T %Z"},  // Mon, 02 Jan 2006 15:04:05 MST
     {"RFC1123Z", "%a, %d %b %Y %T %z"}, // Mon, 02 Jan 2006 15:04:05 -0700
@@ -41,8 +41,8 @@ static const std::vector<std::tuple<std::string, std::string>> TimeFormat {
     {"HTTPDATE", "%d/%b/%Y:%T %z"},     // 26/Dec/2016:16:22:14 +0000
     // HTTP-date = rfc1123-date |rfc850-date | asctime-date
     {"NGINX_ERROR", "%D %T"},                  // 2016/10/25 14:49:34
-    {"APACHE_ERROR", "%a %b %d %H:%M.%9S %Y"}, // Mon Dec 26 16:15:55.103786 2016
-    {"POSTGRES", "%F %H:%M.%6S %Z"},           // 2021-02-14 10:45:33 UTC
+    {"APACHE_ERROR", "%a %b %d %H:%M:%9S %Y"}, // Mon Dec 26 16:15:55.103786 2016
+    {"POSTGRES", "%F %H:%M:%6S %Z"},           // 2021-02-14 10:45:33 UTC
 };
 
 /**
@@ -101,9 +101,9 @@ parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
     if (lst.size() == 0 || (lst.size() > 2) != 0)
     {
         throw std::runtime_error(
-            "date parser requires as first parameter a date sample or "
-            "a date format. Additionally it can specify the locale as the "
-            "second parameter (Default: \"en_US.UTF-8\").");
+            "Date parser requires the first parameter to be a date sample or format. "
+            "Additionally, it can be specified the \"locale\" as the second parameter, "
+            "otherwise \"en_US.UTF-8\" will be used by default");
     }
 
     std::string format = lst[0];

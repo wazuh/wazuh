@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-TEST(HLP2, KVParser)
+TEST(KVParser, KVParser)
 {
     auto fn = [](std::string in) -> json::Json
     {
@@ -123,7 +123,59 @@ TEST(HLP2, KVParser)
                   Options {":", ",", "\"", "\\"},
                   fn(R"({"key1": "value\"1", "key2": "value2"})"),
                   29},
+        // Audit example message
+        TestCase {R"("key1":"value1,notkey2:notvalue2","key2":"value2")",
+                  true,
+                  {},
+                  Options {":", ",", "\"", "\\"},
+                  fn(R"({"key1": "value1,notkey2:notvalue2", "key2": "value2"})"),
+                  strlen(R"("key1":"value1,notkey2:notvalue2","key2":"value2")")},
+        TestCase {R"("key1":"\"value1\"","key2":"value2")",
+                  true,
+                  {},
+                  Options {":", ",", "\"", "\\"},
+                  fn(R"({"key1": "\"value1\"", "key2": "value2"})"),
+                  strlen(R"("key1":"\"value1\"","key2":"value2")")},
+        TestCase {
+            R"(pid=6969 subj=system_u:system_r:virtd_t:s0-s0:c0.c1023 msg='virt=kvm vm=\"rhel-work3\" uuid=650c2a3b-2a7d-a7bd-bbc7-aa0069007bbf vm-ctx=system_u:system_r:svirt_t:s0:c424,c957 exe="/usr/sbin/someexe" terminal=? res=success')",
+            true,
+            {},
+            Options {"=", " ", "'", "\\"},
+            fn(R"({"pid":6969,"subj":"system_u:system_r:virtd_t:s0-s0:c0.c1023","msg":"virt=kvm vm=\\\"rhel-work3\\\" uuid=650c2a3b-2a7d-a7bd-bbc7-aa0069007bbf vm-ctx=system_u:system_r:svirt_t:s0:c424,c957 exe=\"/usr/sbin/someexe\" terminal=? res=success"})"),
+            strlen(
+                R"(pid=6969 subj=system_u:system_r:virtd_t:s0-s0:c0.c1023 msg='virt=kvm vm=\"rhel-work3\" uuid=650c2a3b-2a7d-a7bd-bbc7-aa0069007bbf vm-ctx=system_u:system_r:svirt_t:s0:c424,c957 exe="/usr/sbin/someexe" terminal=? res=success')")},
+        TestCase {
+            R"(virt=kvm vm=\"rhel-work3\" uuid=650c2a3b-2a7d-a7bd-bbc7-aa0069007bbf vm-ctx=system_u:system_r:svirt_t:s0:c424,c957 exe="/usr/sbin/someexe" terminal=? res=success)",
+            true,
+            {},
+            Options {"=", " ", "'", "\\"},
+            fn(R"({"virt":"kvm","vm":"\\\"rhel-work3\\\"","uuid":"650c2a3b-2a7d-a7bd-bbc7-aa0069007bbf","vm-ctx":"system_u:system_r:svirt_t:s0:c424,c957","exe":"\"/usr/sbin/someexe\"","terminal":"?","res":"success"})"),
+            strlen(
+                R"(virt=kvm vm=\"rhel-work3\" uuid=650c2a3b-2a7d-a7bd-bbc7-aa0069007bbf vm-ctx=system_u:system_r:svirt_t:s0:c424,c957 exe="/usr/sbin/someexe" terminal=? res=success)")}
     };
+
+    for (auto t : testCases)
+    {
+        runTest(t, hlp::getKVParser);
+    }
+}
+
+TEST(KVParser, getKVParserConfigErrors)
+{
+    auto fn = [](std::string in) -> json::Json {
+        json::Json doc;
+        doc.setString(in);
+        return doc;
+    };
+
+    std::vector<TestCase> testCases {
+        TestCase {"f1=v1 f2=v2", false, {}, Options {}, fn("{}"), 0},
+        TestCase {"f1=v1 f2=v2", false, {}, Options {"="}, fn("{}"), 0},
+        TestCase {"f1=v1 f2=v2", false, {}, Options {"=", " "}, fn("{}"), 0},
+        TestCase {"f1=v1 f2=v2", false, {}, Options {"=", " ", "'"}, fn("{}"), 0},
+        TestCase {"f1=v1 f2=v2", false, {}, Options {"=", " ", "'", "", ""}, fn("{}"), 0},
+        TestCase {
+            "f1=v1 f2=v2", false, {}, Options {"=", " ", "'", "", "", ""}, fn("{}"), 0}};
 
     for (auto t : testCases)
     {
