@@ -8,8 +8,10 @@
 #include <hlp/parsec.hpp>
 #include <json/json.hpp>
 
+namespace
+{
 using xmlModule = std::function<bool(pugi::xml_node&, json::Json&, std::string&)>;
-static bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
+bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
 {
     if ("Data" != std::string {node.name()})
     {
@@ -22,10 +24,15 @@ static bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string 
     return true;
 }
 
-static void xmlToJson(pugi::xml_node& docXml,
-                      json::Json& docJson,
-                      xmlModule mod,
-                      std::string path = "")
+std::unordered_map<std::string_view, xmlModule> xmlModules = {
+    {"default", nullptr},
+    {"windows", xmlWinModule},
+};
+
+void xmlToJson(pugi::xml_node& docXml,
+               json::Json& docJson,
+               xmlModule mod,
+               std::string path = "")
 {
     // TODO: add array support
     // Iterate over the xml generating the corresponding json
@@ -70,25 +77,48 @@ static void xmlToJson(pugi::xml_node& docXml,
         }
     }
 }
+} // namespace
 namespace hlp
 {
 
 parsec::Parser<json::Json> getXMLParser(std::string name, Stop endTokens, Options lst)
 {
+    if (endTokens.empty())
+    {
+        throw std::runtime_error(fmt::format("XML parser requires end token."));
+    }
 
-    if (lst.size() > 1)
+    std::string moduleName;
+
+    if (lst.empty())
+    {
+        moduleName = "default";
+    }
+    else if (lst.size() == 1)
+    {
+        moduleName = lst[0];
+        if (xmlModules.count(moduleName) == 0)
+        {
+            throw std::runtime_error(
+                fmt::format("XML parser module {} not found.", moduleName));
+        }
+    }
+    else
     {
         throw std::runtime_error(fmt::format("XML parser requires 0 or 1 arguments."));
     }
 
-    bool notWin = lst.empty();
+    xmlModule moduleFn = xmlModules[moduleName];
 
-    return [notWin, endTokens, name](std::string_view text, int index)
+    return [moduleFn, endTokens, name](std::string_view text, int index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
         if (std::holds_alternative<parsec::Result<json::Json>>(res))
         {
-            return std::get<parsec::Result<json::Json>>(res);
+            auto& err = std::get<parsec::Result<json::Json>>(res);
+            return parsec::makeError<json::Json>(
+                fmt::format("{}: {}", name, err.trace().message().value()),
+                err.trace().index());
         }
 
         auto fp = std::get<std::string_view>(res);
@@ -101,10 +131,7 @@ parsec::Parser<json::Json> getXMLParser(std::string name, Stop endTokens, Option
 
         if (parseResult.status == pugi::status_ok)
         {
-            if (notWin)
-                xmlToJson(xmlDoc, jsonDoc, nullptr);
-            else
-                xmlToJson(xmlDoc, jsonDoc, xmlWinModule);
+            xmlToJson(xmlDoc, jsonDoc, moduleFn);
 
             return parsec::makeSuccess<json::Json>(std::move(jsonDoc), pos);
         }

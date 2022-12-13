@@ -1172,7 +1172,7 @@ TEST(Parse_xml, Builds_with_opt_params)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"parse_xml"},
-                                 std::vector<std::string> {"TEST", "true"});
+                                 std::vector<std::string> {"windows"});
 
     ASSERT_NO_THROW(bld::opBuilderSpecificHLPXMLParse(tuple));
 }
@@ -1186,12 +1186,12 @@ TEST(Parse_xml, Builds_bad_parameters)
     ASSERT_THROW(bld::opBuilderSpecificHLPXMLParse(tuple), std::runtime_error);
 }
 
-TEST(Parse_xml, Builds_bad_parameters2)
+TEST(Parse_xml, Builds_empty_parameters)
 {
     auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"parse_xml"}, std::vector<std::string> {});
+        std::string {"/field"}, std::string {"parse_xml"}, std::vector<std::string> {"test"});
 
-    ASSERT_THROW(bld::opBuilderSpecificHLPXMLParse(tuple), std::runtime_error);
+    ASSERT_NO_THROW(bld::opBuilderSpecificHLPXMLParse(tuple));
 }
 
 TEST(Parse_xml, Match_value)
