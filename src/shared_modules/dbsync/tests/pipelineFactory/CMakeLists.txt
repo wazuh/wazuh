@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} dbsyncPipelineFactory_unit_test)
 project(dbsyncPipelineFactory_unit_test)
 
 file(GLOB PIPELINE_FACTORY_UNITTEST_SRC
@@ -35,6 +36,5 @@ else()
     )
 endif()
 
-
 add_test(NAME dbsyncPipelineFactory_unit_test
-         COMMAND dbsyncPipelineFactory_unit_test)
+    COMMAND dbsyncPipelineFactory_unit_test)

@@ -25,7 +25,8 @@ else()
 endif()
 
 # Target to compile all the tests of the subdirectories
-add_custom_target(unit_test)
+set(ALL_UNIT_TEST_TARGET all_unit_test)
+add_custom_target(${ALL_UNIT_TEST_TARGET})
 enable_testing()
 
 if(COVERITY)
@@ -44,9 +45,9 @@ if(FSANITIZE)
 endif(FSANITIZE)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+  add_compile_options("$<$<CONFIG:RELEASE>:-O3>")
 else()
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
+  add_compile_options("$<$<CONFIG:RELEASE>:-O3;-s>")
 endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 if(APPLE)

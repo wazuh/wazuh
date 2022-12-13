@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} fim_integration_test)
 project(fim_integration_test)
 
 include_directories(${CMAKE_SOURCE_DIR}/include/)
@@ -37,5 +38,6 @@ else()
         dl
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
 add_test(NAME fim_integration_test
-         COMMAND fim_integration_test)
+    COMMAND fim_integration_test)

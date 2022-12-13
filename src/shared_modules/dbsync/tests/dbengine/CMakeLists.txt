@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} dbengine_unit_test)
 project(dbengine_unit_test)
 
 file(GLOB DBENGINE_UNITTEST_SRC
@@ -31,4 +32,4 @@ else()
 endif()
 
 add_test(NAME dbengine_unit_test
-         COMMAND dbengine_unit_test)
+    COMMAND dbengine_unit_test)
