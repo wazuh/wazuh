@@ -82,6 +82,8 @@ static int setup_module() {
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
+    expect_string(__wrap_realpath, path, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_realpath, "/var/ossec/etc/shared/your_policy_file.yml");
     expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
     will_return(__wrap_IsFile, 0);
 
@@ -182,6 +184,8 @@ void test_fake_tag(void **state) {
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
+    expect_string(__wrap_realpath, path, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_realpath, "/var/ossec/etc/shared/your_policy_file.yml");
     expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
     will_return(__wrap_IsFile, 0);
 
@@ -203,6 +207,8 @@ void test_read_scheduling_monthday_configuration(void **state) {
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
+    expect_string(__wrap_realpath, path, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_realpath, "/var/ossec/etc/shared/your_policy_file.yml");
     expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
     will_return(__wrap_IsFile, 0);
 
@@ -231,6 +237,8 @@ void test_read_scheduling_weekday_configuration(void **state) {
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
+    expect_string(__wrap_realpath, path, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_realpath, "/var/ossec/etc/shared/your_policy_file.yml");
     expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
     will_return(__wrap_IsFile, 0);
 
@@ -257,6 +265,8 @@ void test_read_scheduling_daytime_configuration(void **state) {
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
+    expect_string(__wrap_realpath, path, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_realpath, "/var/ossec/etc/shared/your_policy_file.yml");
     expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
     will_return(__wrap_IsFile, 0);
 
@@ -283,6 +293,8 @@ void test_read_scheduling_interval_configuration(void **state) {
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
+    expect_string(__wrap_realpath, path, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_realpath, "/var/ossec/etc/shared/your_policy_file.yml");
     expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
     will_return(__wrap_IsFile, 0);
 

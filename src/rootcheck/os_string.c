@@ -45,7 +45,7 @@
 
 #ifdef SOLARIS
 #include <sys/exechdr.h>
-#elif defined Darwin || defined HPUX
+#elif defined Darwin || defined HPUX || defined ALPINE
 
 /* For some reason darwin does not have that */
 struct exec {
@@ -68,7 +68,9 @@ struct exec {
 #define M_OLDSUN2      0
 
 #else
+
 #include <a.out.h>
+
 #endif
 
 #ifndef PAGSIZ

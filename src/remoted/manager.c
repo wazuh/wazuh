@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "remoted.h"
+#include "state.h"
 #include "remoted_op.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "os_net/os_net.h"
@@ -45,7 +46,6 @@ static OSHash *invalid_files;
 
 /* Internal functions prototypes */
 
-static void read_controlmsg(const char *agent_id, char *msg, char *group);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum, char *sharedcfg_dir);
 
 /**
@@ -349,12 +349,10 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         *(payload++) = '\0';
 
         req_save(counter, payload, msg_length - (payload - r_msg));
+
+        rem_inc_recv_ctrl_request(key->id);
         return;
     }
-
-    /* Reply to the agent */
-    snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
-    send_msg(key->id, msg_ack, -1);
 
     /* Filter UTF-8 characters */
     char * clean = w_utf8_filter(r_msg, true);
@@ -375,9 +373,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         if (strcmp(r_msg, HC_STARTUP) == 0) {
             mdebug1("Agent %s sent HC_STARTUP from '%s'", key->name, aux_ip);
             is_startup = 1;
+            rem_inc_recv_ctrl_startup(key->id);
         } else {
             mdebug1("Agent %s sent HC_SHUTDOWN from '%s'", key->name, aux_ip);
             is_shutdown = 1;
+            rem_inc_recv_ctrl_shutdown(key->id);
         }
     } else {
         /* Clean msg and shared files (remove random string) */
@@ -391,6 +391,16 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
             os_free(clean);
             return;
+        }
+
+        rem_inc_recv_ctrl_keepalive(key->id);
+    }
+
+    if (is_shutdown == 0) {
+        /* Reply to the agent except on shutdown message*/
+        snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
+        if (send_msg(key->id, msg_ack, -1) >= 0) {
+            rem_inc_send_ack(key->id);
         }
     }
 
@@ -486,12 +496,12 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                     }
                 }
 
-                w_mutex_unlock(&files_mutex);
-
                 if (aux && aux->f_sum && aux->f_sum[0] && *(aux->f_sum[0]->sum)) {
                     // Copy sum before unlock mutex
                     memcpy(data->merged_sum, aux->f_sum[0]->sum, sizeof(os_md5));
                 }
+
+                w_mutex_unlock(&files_mutex);
             } else {
                 merror("Error getting group for agent '%s'", key->id);
             }
@@ -1525,6 +1535,8 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
     if (send_msg(agent_id, buf, -1) < 0) {
         fclose(fp);
         return OS_INVALID;
+    } else {
+        rem_inc_send_shared(agent_id);
     }
 
     /* The following code is used to get the protocol that the client is using in order to answer accordingly */
@@ -1543,6 +1555,8 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
         if (send_msg(agent_id, buf, -1) < 0) {
             fclose(fp);
             return OS_INVALID;
+        } else {
+            rem_inc_send_shared(agent_id);
         }
         /* If the protocol being used is UDP, it is necessary to add a delay to avoid flooding */
         if (protocol == REMOTED_NET_PROTOCOL_UDP) {
@@ -1561,6 +1575,8 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
     if (send_msg(agent_id, buf, -1) < 0) {
         fclose(fp);
         return OS_INVALID;
+    } else {
+        rem_inc_send_shared(agent_id);
     }
 
     fclose(fp);
@@ -1680,8 +1696,12 @@ void manager_init()
     os_calloc(1, sizeof(group_t *), groups);
     os_calloc(1, sizeof(group_t *), multi_groups);
 
-    /* Clean multigroups directory and run initial groups and multigroups scan */
-    cldir_ex(MULTIGROUPS_DIR);
+    /* Clean multigroups directory */
+    if (!logr.nocmerged) {
+        cldir_ex(MULTIGROUPS_DIR);
+    }
+
+    /* Run initial groups and multigroups scan */
     c_files();
 
     w_yaml_create_groups();

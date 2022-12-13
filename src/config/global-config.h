@@ -13,6 +13,19 @@
 
 #include "shared.h"
 
+#define EPS_LIMITS_DEFAULT_TIMEFRAME 10
+#define EPS_LIMITS_MAX_TIMEFRAME 3600
+#define EPS_LIMITS_MIN_TIMEFRAME 1
+#define EPS_LIMITS_MAX_EPS 100000
+#define EPS_LIMITS_MIN_EPS 0
+
+typedef struct __eps {
+    // EPS limits configuration
+    unsigned int maximum;
+    unsigned int timeframe;
+    bool maximum_found;
+} _eps;
+
 /* Configuration structure */
 typedef struct __Config {
     u_int8_t logall;
@@ -115,6 +128,9 @@ typedef struct __Config {
     int min_rotate_interval;
     ssize_t max_output_size;
     long queue_size;
+
+    // EPS limits configuration
+    _eps eps;
 } _Config;
 
 

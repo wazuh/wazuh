@@ -702,10 +702,11 @@ int OS_AddSocket(keystore * keys, unsigned int i, int sock) {
     char strsock[16] = "";
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
-    keys->keyentries[i]->sock = sock;
 
     w_mutex_lock(&keys->keytree_sock_mutex);
-    int r = rbtree_insert(keys->keytree_sock, strsock, keys->keyentries[i]) ? 2 : rbtree_replace(keys->keytree_sock, strsock, keys->keyentries[i]) ? 1 : 0;
+    int r = rbtree_insert(keys->keytree_sock, strsock, keys->keyentries[i]) ? OS_ADDSOCKET_KEY_ADDED :
+            rbtree_replace(keys->keytree_sock, strsock, keys->keyentries[i]) ? OS_ADDSOCKET_KEY_UPDATED :
+            OS_ADDSOCKET_ERROR;
     w_mutex_unlock(&keys->keytree_sock_mutex);
 
     return r;

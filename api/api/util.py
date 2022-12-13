@@ -332,7 +332,7 @@ def deprecate_endpoint(link: str = ''):
     Parameters
     ----------
     link : str
-        Documentation related with this deprecation.
+        Documentation related to this deprecation.
     """
     def add_deprecation_headers(func):
         @wraps(func)

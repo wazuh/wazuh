@@ -28,6 +28,7 @@ int sys_debug_level;
 GeoIP *geoipdb;
 #endif
 
+
 int GlobalConf(const char *cfgfile)
 {
     int modules = 0;
@@ -58,6 +59,9 @@ int GlobalConf(const char *cfgfile)
     Config.syscheck_ignore = NULL;
     Config.white_list = NULL;
     Config.hostname_white_list = NULL;
+
+    Config.eps.maximum = EPS_LIMITS_MIN_EPS;
+    Config.eps.timeframe = 0;
 
     /* Default actions -- only log above level 1 */
     Config.mailbylevel = 7;
@@ -120,51 +124,55 @@ cJSON *getGlobalConfig(void) {
     cJSON *root = cJSON_CreateObject();
     cJSON *global = cJSON_CreateObject();
 
-    if (Config.mailnotify) cJSON_AddStringToObject(global,"email_notification","yes"); else cJSON_AddStringToObject(global,"email_notification","no");
-    if (Config.logall) cJSON_AddStringToObject(global,"logall","yes"); else cJSON_AddStringToObject(global,"logall","no");
-    if (Config.logall_json) cJSON_AddStringToObject(global,"logall_json","yes"); else cJSON_AddStringToObject(global,"logall_json","no");
-    cJSON_AddNumberToObject(global,"integrity_checking",Config.integrity);
-    cJSON_AddNumberToObject(global,"rootkit_detection",Config.rootcheck);
-    cJSON_AddNumberToObject(global,"host_information",Config.hostinfo);
-    if (Config.prelude) cJSON_AddStringToObject(global,"prelude_output","yes"); else cJSON_AddStringToObject(global,"prelude_output","no");
-    if (Config.prelude_profile) cJSON_AddStringToObject(global,"prelude_profile",Config.prelude_profile);
-    if (Config.prelude) cJSON_AddNumberToObject(global,"prelude_log_level",Config.hostinfo);
-    if (Config.geoipdb_file) cJSON_AddStringToObject(global,"geoipdb",Config.geoipdb_file);
-    if (Config.zeromq_output) cJSON_AddStringToObject(global,"zeromq_output","yes"); else cJSON_AddStringToObject(global,"zeromq_output","no");
-    if (Config.zeromq_output_uri) cJSON_AddStringToObject(global,"zeromq_uri",Config.zeromq_output_uri);
-    if (Config.zeromq_output_server_cert) cJSON_AddStringToObject(global,"zeromq_server_cert",Config.zeromq_output_server_cert);
-    if (Config.zeromq_output_client_cert) cJSON_AddStringToObject(global,"zeromq_client_cert",Config.zeromq_output_client_cert);
-    if (Config.jsonout_output) cJSON_AddStringToObject(global,"jsonout_output","yes"); else cJSON_AddStringToObject(global,"jsonout_output","no");
-    if (Config.alerts_log) cJSON_AddStringToObject(global,"alerts_log","yes"); else cJSON_AddStringToObject(global,"alerts_log","no");
-    cJSON_AddNumberToObject(global,"stats",Config.stats);
-    cJSON_AddNumberToObject(global,"memory_size",Config.memorysize);
+    if (Config.mailnotify) cJSON_AddStringToObject(global, "email_notification", "yes"); else cJSON_AddStringToObject(global, "email_notification", "no");
+    if (Config.logall) cJSON_AddStringToObject(global, "logall", "yes"); else cJSON_AddStringToObject(global, "logall", "no");
+    if (Config.logall_json) cJSON_AddStringToObject(global, "logall_json", "yes"); else cJSON_AddStringToObject(global, "logall_json", "no");
+    cJSON_AddNumberToObject(global, "integrity_checking", Config.integrity);
+    cJSON_AddNumberToObject(global, "rootkit_detection", Config.rootcheck);
+    cJSON_AddNumberToObject(global, "host_information", Config.hostinfo);
+    if (Config.prelude) cJSON_AddStringToObject(global, "prelude_output", "yes"); else cJSON_AddStringToObject(global, "prelude_output", "no");
+    if (Config.prelude_profile) cJSON_AddStringToObject(global, "prelude_profile", Config.prelude_profile);
+    if (Config.prelude) cJSON_AddNumberToObject(global, "prelude_log_level", Config.hostinfo);
+    if (Config.geoipdb_file) cJSON_AddStringToObject(global, "geoipdb", Config.geoipdb_file);
+    if (Config.zeromq_output) cJSON_AddStringToObject(global, "zeromq_output", "yes"); else cJSON_AddStringToObject(global, "zeromq_output", "no");
+    if (Config.zeromq_output_uri) cJSON_AddStringToObject(global, "zeromq_uri", Config.zeromq_output_uri);
+    if (Config.zeromq_output_server_cert) cJSON_AddStringToObject(global, "zeromq_server_cert", Config.zeromq_output_server_cert);
+    if (Config.zeromq_output_client_cert) cJSON_AddStringToObject(global, "zeromq_client_cert", Config.zeromq_output_client_cert);
+    if (Config.jsonout_output) cJSON_AddStringToObject(global, "jsonout_output", "yes"); else cJSON_AddStringToObject(global, "jsonout_output", "no");
+    if (Config.alerts_log) cJSON_AddStringToObject(global, "alerts_log", "yes"); else cJSON_AddStringToObject(global, "alerts_log", "no");
+    cJSON_AddNumberToObject(global, "stats", Config.stats);
+    cJSON_AddNumberToObject(global, "memory_size", Config.memorysize);
     if (Config.white_list) {
         cJSON *ip_list = cJSON_CreateArray();
         for (i=0;Config.white_list[i] && Config.white_list[i]->ip;i++) {
-            cJSON_AddItemToArray(ip_list,cJSON_CreateString(Config.white_list[i]->ip));
+            cJSON_AddItemToArray(ip_list, cJSON_CreateString(Config.white_list[i]->ip));
         }
         OSMatch **wl;
         wl = Config.hostname_white_list;
         while (wl && *wl) {
             char **tmp_pts = (*wl)->patterns;
             while (*tmp_pts) {
-                cJSON_AddItemToArray(ip_list,cJSON_CreateString(*tmp_pts));
+                cJSON_AddItemToArray(ip_list, cJSON_CreateString(*tmp_pts));
                 tmp_pts++;
             }
             wl++;
         }
-        cJSON_AddItemToObject(global,"white_list",ip_list);
+        cJSON_AddItemToObject(global, "white_list", ip_list);
     }
-    if (Config.custom_alert_output) cJSON_AddStringToObject(global,"custom_alert_output",Config.custom_alert_output_format);
-    cJSON_AddNumberToObject(global,"rotate_interval",Config.rotate_interval);
-    cJSON_AddNumberToObject(global,"max_output_size",Config.max_output_size);
+    if (Config.custom_alert_output) cJSON_AddStringToObject(global, "custom_alert_output", Config.custom_alert_output_format);
+    cJSON_AddNumberToObject(global, "rotate_interval", Config.rotate_interval);
+    cJSON_AddNumberToObject(global, "max_output_size", Config.max_output_size);
+    cJSON *eps = cJSON_CreateObject();
+    cJSON_AddNumberToObject(eps, "maximum", Config.eps.maximum);
+    cJSON_AddNumberToObject(eps, "timeframe", Config.eps.timeframe);
+    cJSON_AddItemToObject(global, "eps", eps);
 
 #ifdef LIBGEOIP_ENABLED
-    if (Config.geoip_db_path) cJSON_AddStringToObject(global,"geoip_db_path",Config.geoip_db_path);
-    if (Config.geoip6_db_path) cJSON_AddStringToObject(global,"geoip6_db_path",Config.geoip6_db_path);
+    if (Config.geoip_db_path) cJSON_AddStringToObject(global, "geoip_db_path", Config.geoip_db_path);
+    if (Config.geoip6_db_path) cJSON_AddStringToObject(global, "geoip6_db_path", Config.geoip6_db_path);
 #endif
 
-    cJSON_AddItemToObject(root,"global",global);
+    cJSON_AddItemToObject(root, "global", global);
 
     return root;
 }
@@ -182,20 +190,20 @@ cJSON *getARManagerConfig(void) {
     while (node && node->data) {
         active_response *data = node->data;
         cJSON *ar = cJSON_CreateObject();
-        if (data->command) cJSON_AddStringToObject(ar,"command",data->command);
-        if (data->agent_id) cJSON_AddStringToObject(ar,"agent_id",data->agent_id);
-        if (data->rules_id) cJSON_AddStringToObject(ar,"rules_id",data->rules_id);
-        if (data->rules_group) cJSON_AddStringToObject(ar,"rules_group",data->rules_group);
-        cJSON_AddNumberToObject(ar,"timeout",data->timeout);
-        cJSON_AddNumberToObject(ar,"level",data->level);
-        if (data->location & AS_ONLY) cJSON_AddItemToObject(ar,"location",cJSON_CreateString("AS_ONLY"));
-        else if (data->location & REMOTE_AGENT) cJSON_AddItemToObject(ar,"location",cJSON_CreateString("REMOTE_AGENT"));
-        else if (data->location & SPECIFIC_AGENT) cJSON_AddItemToObject(ar,"location",cJSON_CreateString("SPECIFIC_AGENT"));
-        else if (data->location & ALL_AGENTS) cJSON_AddItemToObject(ar,"location",cJSON_CreateString("ALL_AGENTS"));
-        cJSON_AddItemToArray(ar_list,ar);
+        if (data->command) cJSON_AddStringToObject(ar, "command", data->command);
+        if (data->agent_id) cJSON_AddStringToObject(ar, "agent_id", data->agent_id);
+        if (data->rules_id) cJSON_AddStringToObject(ar, "rules_id", data->rules_id);
+        if (data->rules_group) cJSON_AddStringToObject(ar, "rules_group", data->rules_group);
+        cJSON_AddNumberToObject(ar, "timeout", data->timeout);
+        cJSON_AddNumberToObject(ar, "level", data->level);
+        if (data->location & AS_ONLY) cJSON_AddItemToObject(ar, "location", cJSON_CreateString("AS_ONLY"));
+        else if (data->location & REMOTE_AGENT) cJSON_AddItemToObject(ar, "location", cJSON_CreateString("REMOTE_AGENT"));
+        else if (data->location & SPECIFIC_AGENT) cJSON_AddItemToObject(ar, "location", cJSON_CreateString("SPECIFIC_AGENT"));
+        else if (data->location & ALL_AGENTS) cJSON_AddItemToObject(ar, "location", cJSON_CreateString("ALL_AGENTS"));
+        cJSON_AddItemToArray(ar_list, ar);
         node = node->next;
     }
-    cJSON_AddItemToObject(root,"active-response",ar_list);
+    cJSON_AddItemToObject(root, "active-response", ar_list);
 
     return root;
 }
@@ -213,13 +221,13 @@ cJSON *getARCommandsConfig(void) {
     while (node && node->data) {
         ar_command *data = node->data;
         cJSON *ar = cJSON_CreateObject();
-        if (data->name) cJSON_AddStringToObject(ar,"name",data->name);
-        if (data->executable) cJSON_AddStringToObject(ar,"executable",data->executable);
-        cJSON_AddNumberToObject(ar,"timeout_allowed",data->timeout_allowed);
-        cJSON_AddItemToArray(ar_list,ar);
+        if (data->name) cJSON_AddStringToObject(ar, "name", data->name);
+        if (data->executable) cJSON_AddStringToObject(ar, "executable", data->executable);
+        cJSON_AddNumberToObject(ar, "timeout_allowed", data->timeout_allowed);
+        cJSON_AddItemToArray(ar_list, ar);
         node = node->next;
     }
-    cJSON_AddItemToObject(root,"command",ar_list);
+    cJSON_AddItemToObject(root, "command", ar_list);
 
     return root;
 }
@@ -230,13 +238,13 @@ cJSON *getAlertsConfig(void) {
     cJSON *root = cJSON_CreateObject();
     cJSON *alerts = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(alerts,"email_alert_level",Config.mailbylevel);
-    cJSON_AddNumberToObject(alerts,"log_alert_level",Config.logbylevel);
+    cJSON_AddNumberToObject(alerts, "email_alert_level", Config.mailbylevel);
+    cJSON_AddNumberToObject(alerts, "log_alert_level", Config.logbylevel);
 #ifdef LIBGEOIP_ENABLED
-    if (Config.loggeoip) cJSON_AddStringToObject(alerts,"use_geoip","yes"); else cJSON_AddStringToObject(alerts,"use_geoip","no");
+    if (Config.loggeoip) cJSON_AddStringToObject(alerts, "use_geoip", "yes"); else cJSON_AddStringToObject(alerts, "use_geoip", "no");
 #endif
 
-    cJSON_AddItemToObject(root,"alerts",alerts);
+    cJSON_AddItemToObject(root, "alerts", alerts);
 
     return root;
 }
@@ -248,25 +256,25 @@ cJSON *getAnalysisInternalOptions(void) {
     cJSON *internals = cJSON_CreateObject();
     cJSON *analysisd = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(analysisd,"debug",sys_debug_level);
-    cJSON_AddNumberToObject(analysisd,"default_timeframe",default_timeframe);
-    cJSON_AddNumberToObject(analysisd,"stats_maxdiff",maxdiff);
-    cJSON_AddNumberToObject(analysisd,"stats_mindiff",mindiff);
-    cJSON_AddNumberToObject(analysisd,"stats_percent_diff",percent_diff);
-    cJSON_AddNumberToObject(analysisd,"fts_list_size",fts_list_size);
-    cJSON_AddNumberToObject(analysisd,"fts_min_size_for_str",fts_minsize_for_str);
-    cJSON_AddNumberToObject(analysisd,"log_fw",Config.logfw);
-    cJSON_AddNumberToObject(analysisd,"decoder_order_size",Config.decoder_order_size);
-    cJSON_AddNumberToObject(analysisd,"label_cache_maxage",Config.label_cache_maxage);
-    cJSON_AddNumberToObject(analysisd,"show_hidden_labels",Config.show_hidden_labels);
-    cJSON_AddNumberToObject(analysisd,"rlimit_nofile",nofile);
-    cJSON_AddNumberToObject(analysisd,"min_rotate_interval",Config.min_rotate_interval);
+    cJSON_AddNumberToObject(analysisd, "debug", sys_debug_level);
+    cJSON_AddNumberToObject(analysisd, "default_timeframe", default_timeframe);
+    cJSON_AddNumberToObject(analysisd, "stats_maxdiff", maxdiff);
+    cJSON_AddNumberToObject(analysisd, "stats_mindiff", mindiff);
+    cJSON_AddNumberToObject(analysisd, "stats_percent_diff", percent_diff);
+    cJSON_AddNumberToObject(analysisd, "fts_list_size", fts_list_size);
+    cJSON_AddNumberToObject(analysisd, "fts_min_size_for_str", fts_minsize_for_str);
+    cJSON_AddNumberToObject(analysisd, "log_fw", Config.logfw);
+    cJSON_AddNumberToObject(analysisd, "decoder_order_size", Config.decoder_order_size);
+    cJSON_AddNumberToObject(analysisd, "label_cache_maxage", Config.label_cache_maxage);
+    cJSON_AddNumberToObject(analysisd, "show_hidden_labels", Config.show_hidden_labels);
+    cJSON_AddNumberToObject(analysisd, "rlimit_nofile", nofile);
+    cJSON_AddNumberToObject(analysisd, "min_rotate_interval", Config.min_rotate_interval);
 #ifdef LIBGEOIP_ENABLED
-    cJSON_AddNumberToObject(analysisd,"geoip_jsonout",Config.geoip_jsonout);
+    cJSON_AddNumberToObject(analysisd, "geoip_jsonout", Config.geoip_jsonout);
 #endif
 
-    cJSON_AddItemToObject(internals,"analysisd",analysisd);
-    cJSON_AddItemToObject(root,"internal",internals);
+    cJSON_AddItemToObject(internals, "analysisd", analysisd);
+    cJSON_AddItemToObject(root, "internal", internals);
 
     return root;
 }
@@ -282,7 +290,7 @@ cJSON *getDecodersConfig(void) {
         _getDecodersListJSON(os_analysisd_decoderlist_nopn, list);
     }
 
-    cJSON_AddItemToObject(root,"decoders",list);
+    cJSON_AddItemToObject(root, "decoders", list);
 
     return root;
 }
@@ -297,7 +305,7 @@ cJSON *getRulesConfig(void) {
         _getRulesListJSON(os_analysisd_rulelist, list);
     }
 
-    cJSON_AddItemToObject(root,"rules",list);
+    cJSON_AddItemToObject(root, "rules", list);
 
     return root;
 }

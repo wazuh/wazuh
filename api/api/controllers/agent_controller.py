@@ -734,6 +734,43 @@ async def get_agent_upgrade(request, agents_list: list = None, pretty: bool = Fa
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+async def get_daemon_stats(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                           daemons_list: list = None) -> web.Response:
+    """Get Wazuh statistical information from the specified daemons of a specified agent.
+
+    Parameters
+    ----------
+    request : connexion.request
+    agent_id : str
+        ID of the agent from which the statistics are obtained.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    daemons_list : list
+        List of the daemons to get statistical information from.
+
+    Returns
+    -------
+    web.Response
+        API response.
+    """
+    daemons_list = daemons_list or []
+    f_kwargs = {'agent_list': [agent_id],
+                'daemons_list': daemons_list}
+
+    dapi = DistributedAPI(f=stats.get_daemons_stats_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies'])
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
 async def get_component_stats(request, pretty=False, wait_for_complete=False, agent_id=None, component=None):
     """Get a specified agent's component stats.
 

@@ -96,6 +96,16 @@
 #include <direct.h>
 #endif
 
+#ifdef __cplusplus
+#include <atomic>
+#define _Atomic(T) std::atomic<T>
+#else
+#ifdef hpux
+// TODO: remove this line after upgrading GCC on HP-UX
+#define _Atomic(T) T
+#endif
+#endif
+
 #include <time.h>
 #include <errno.h>
 #include <libgen.h>
@@ -276,7 +286,7 @@ extern const char *__local_name;
 #include "notify_op.h"
 #include "version_op.h"
 #include "utf8_op.h"
-#include "shared.h"
+#include "rwlock_op.h"
 #include "log_builder.h"
 
 #include "os_xml/os_xml.h"

@@ -23,7 +23,7 @@ from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.utils import get_utc_now
-from wazuh.core.wdb import WazuhDBConnection
+from wazuh.core.wdb import AsyncWazuhDBConnection
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -687,14 +687,14 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Agent-groups send full']
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger,
-                                           data_retriever=WazuhDBConnection().run_wdb_command,
+                                           data_retriever=AsyncWazuhDBConnection().run_wdb_command,
                                            get_data_command='global sync-agent-groups-get ',
                                            get_payload={"condition": "all", "set_synced": False,
                                                         "get_global_hash": False, "last_id": 0}, pivot_key='last_id')
         local_agent_groups_information = await sync_object.retrieve_information()
 
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w_c',
-                                           data_retriever=WazuhDBConnection().run_wdb_command,
+                                           data_retriever=AsyncWazuhDBConnection().run_wdb_command,
                                            set_data_command='global set-agent-groups',
                                            set_payload={'mode': 'override', 'sync_status': 'synced'})
 
@@ -711,7 +711,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         A worker node cannot send two consecutive times the same group information.
         """
         logger = self.task_loggers['Agent-groups send']
-        wdb_conn = WazuhDBConnection()
+        wdb_conn = AsyncWazuhDBConnection()
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
                                            data_retriever=wdb_conn.run_wdb_command,
                                            set_data_command='global set-agent-groups',
@@ -757,13 +757,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         try:
             await asyncio.wait_for(received_file.wait(),
                                    timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
-        except Exception:
+        except Exception as e:
+            if isinstance(e, asyncio.TimeoutError):
+                exc = exception.WazuhClusterError(3039)
+            else:
+                exc = exception.WazuhClusterError(3040, extra_message=str(e))
             # Notify the sending node to stop its task.
-            await self.send_request(
-                command=b'cancel_task',
-                data=task_id.encode() + b' ' + json.dumps(timeout_exc := exception.WazuhClusterError(3039),
-                                                          cls=c_common.WazuhJSONEncoder).encode())
-            raise timeout_exc
+            await self.send_request(command=b"cancel_task",
+                                    data=f"{task_id} {json.dumps(exc, cls=c_common.WazuhJSONEncoder)}".encode())
+            raise exc
 
         # Full path where the zip sent by the worker is located.
         received_filename = self.sync_tasks[task_id].filename
@@ -842,12 +844,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     raise exception.WazuhClusterError(3016, extra_message=result.decode())
             except exception.WazuhException as e:
                 # Notify error to worker and delete its received file.
-                self.logger.error(f"Error sending files information: {e}")
+                logger.error(f"Error sending files information: {e}")
                 await self.send_request(
                     command=b'syn_m_c_r', data=task_id + b' ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 # Notify error to worker and delete its received file.
-                self.logger.error(f"Error sending files information: {e}")
+                logger.error(f"Error sending files information: {e}")
                 exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                       cls=c_common.WazuhJSONEncoder).encode()
                 await self.send_request(command=b'syn_m_c_r', data=task_id + b' ' + exc_info)
@@ -859,7 +861,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         self.cluster_items['intervals']['communication']['min_zip_size'],
                         sent_size * (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
                     )
-                    self.logger.debug(f"Decreasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
+                    logger.debug(f"Decreasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
                 except KeyError:
                     # Increase max zip size if two conditions are met:
                     #   1. Current zip limit is lower than default.
@@ -872,8 +874,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             self.current_zip_limit * (
                                     1 / (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
                             ))
-                        self.logger.debug(
-                            f"Increasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
+                        logger.debug(f"Increasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
 
                 # Remove local file.
                 os.unlink(compressed_data)
@@ -928,13 +929,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         try:
             await asyncio.wait_for(received_file.wait(),
                                    timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
-        except Exception:
+        except Exception as e:
+            if isinstance(e, asyncio.TimeoutError):
+                exc = exception.WazuhClusterError(3039)
+            else:
+                exc = exception.WazuhClusterError(3040, extra_message=str(e))
             # Notify the sending node to stop its task.
-            await self.send_request(
-                command=b'cancel_task',
-                data=task_id.encode() + b' ' + json.dumps(timeout_exc := exception.WazuhClusterError(3039),
-                                                          cls=c_common.WazuhJSONEncoder).encode())
-            raise timeout_exc
+            await self.send_request(command=b"cancel_task",
+                                    data=f"{task_id} {json.dumps(exc, cls=c_common.WazuhJSONEncoder)}".encode())
+            raise exc
 
         # Full path where the zip sent by the worker is located.
         received_filename = self.sync_tasks[task_id].filename
@@ -1176,7 +1179,7 @@ class Master(server.AbstractServer):
         It looks like this: ['[{"data":[{"id":1,"group":["default","group1"]}]}]'].
         """
         logger = self.setup_task_logger('Local agent-groups')
-        wdb_conn = WazuhDBConnection()
+        wdb_conn = AsyncWazuhDBConnection()
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
                                            data_retriever=wdb_conn.run_wdb_command,
                                            get_data_command='global sync-agent-groups-get ',

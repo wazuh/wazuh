@@ -90,7 +90,7 @@ EXPORTED int rsync_start_sync(const RSYNC_HANDLE handle,
                     callback_data.callback(payload.c_str(), payload.size(), callback_data.user_data);
                 }
             };
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(start_configuration)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_PrintUnformatted(start_configuration)};
             RSyncImplementation::instance().startRSync(handle, std::make_shared<DBSyncWrapper>(dbsync_handle), nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             retVal = 0;
         }
@@ -131,7 +131,7 @@ EXPORTED int rsync_register_sync_id(const RSYNC_HANDLE handle,
                     callback_data.callback(payload.c_str(), payload.size(), callback_data.user_data);
                 }
             };
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(sync_configuration)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_Print(sync_configuration)};
             RSyncImplementation::instance().registerSyncId(handle, message_header_id, std::make_shared<DBSyncWrapper>(dbsync_handle), nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             retVal = 0;
         }

@@ -18,6 +18,10 @@
 #include "sym_load.h"
 #include "../os_net/os_net.h"
 
+#ifdef WAZUH_UNIT_TESTING
+#include "unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
+#endif
+
 HANDLE hMutex;
 int win_debug_level;
 
@@ -291,7 +295,7 @@ int local_start()
 /* SendMSGAction for Windows */
 int SendMSGAction(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc)
 {
-    const char *pl;
+    char loc_buff[OS_SIZE_8192 + 1] = {0};
     char tmpstr[OS_MAXSTR + 2];
     DWORD dwWaitResult;
     int retval = -1;
@@ -320,16 +324,12 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
         }
     }   /* end - while for mutex... */
 
-    /* locmsg cannot have the C:, as we use it as delimiter */
-    pl = strchr(locmsg, ':');
-    if (pl) {
-        /* Set pl after the ":" if it exists */
-        pl++;
-    } else {
-        pl = locmsg;
+    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '|', ':')) {
+        merror(FORMAT_ERROR);
+        return retval;
     }
 
-    snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, pl, message);
+    snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, loc_buff, message);
 
     /* Send events to the manager across the buffer */
     if (!agt->buffer){
@@ -402,9 +402,23 @@ char *get_agent_ip()
                         }
                         cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
                         if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring, " ")) {
-                            const cJSON *ip = cJSON_GetObjectItem(element, "IPv6");
+
+                            const char * primaryIpType = NULL;
+                            const char * secondaryIpType = NULL;
+
+                            if (strchr(gateway->valuestring, ':') != NULL) {
+                                // Assume gateway is IPv6. IPv6 IP will be prioritary
+                                primaryIpType = "IPv6";
+                                secondaryIpType = "IPv4";
+                            } else {
+                                // Assume gateway is IPv4. IPv4 IP will be prioritary
+                                primaryIpType = "IPv4";
+                                secondaryIpType = "IPv6";
+                            }
+
+                            const cJSON * ip = cJSON_GetObjectItem(element, primaryIpType);
                             if (!ip) {
-                                ip = cJSON_GetObjectItem(element, "IPv4");
+                                ip = cJSON_GetObjectItem(element, secondaryIpType);
                                 if (!ip) {
                                     continue;
                                 }

@@ -809,11 +809,22 @@ InstallCommon()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libsyscollector.so
         fi
     fi
-    if [ ${NUNAME} = 'SunOS' ]
+
+    if [ -f libstdc++.so.6 ]
     then
-        if [ ${VUNAME} = '5.10' ]
-        then
-            ${INSTALL} -m 0750 -o root -g 0 libgcc_s.so.1 ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.so.6 ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libstdc++.so.6
+        fi
+    fi
+
+    if [ -f libgcc_s.so.1 ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.so.1 ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libgcc_s.so.1
         fi
     fi
 
@@ -995,6 +1006,7 @@ InstallLocal()
     ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/pagerduty ${INSTALLDIR}/integrations/pagerduty
     ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/slack ${INSTALLDIR}/integrations/slack.py
     ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/virustotal ${INSTALLDIR}/integrations/virustotal.py
+    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/shuffle.py ${INSTALLDIR}/integrations/shuffle.py
     touch ${INSTALLDIR}/logs/integrations.log
     chmod 640 ${INSTALLDIR}/logs/integrations.log
     chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/logs/integrations.log
@@ -1114,6 +1126,7 @@ InstallServer()
     # Add the wrappers for python script in active-response
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/slack
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/virustotal
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/shuffle
 
 }
 

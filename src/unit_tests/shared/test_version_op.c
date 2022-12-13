@@ -894,13 +894,25 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "Darwin\n");
 
-    // sw_vers -productName
-    expect_string(__wrap_popen, command, "sw_vers -productName");
+    // system_profiler SPSoftwareDataType
+    expect_string(__wrap_popen, command, "system_profiler SPSoftwareDataType");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
-    will_return(__wrap_fgets, "macOS Catalina\n");
+    will_return(__wrap_fgets, "Software:\n");
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "\n");
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "System Software Overview:\n");
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "\n");
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "    System Version: macOS 10.12 (16A323)\n");
 
     expect_value(__wrap_pclose, stream, 1);
     will_return(__wrap_pclose, 1);
@@ -946,7 +958,141 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     *state = ret;
 
     assert_non_null(ret);
-    assert_string_equal(ret->os_name, "macOS Catalina");
+    assert_string_equal(ret->os_name, "macOS");
+    assert_string_equal(ret->os_major, "10");
+    assert_string_equal(ret->os_minor, "2");
+    assert_string_equal(ret->os_version, "10.2");
+    assert_string_equal(ret->os_platform, "darwin");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Fail to open /etc/os-release
+    expect_string(__wrap_fopen, path, "/etc/os-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /usr/lib/os-release
+    expect_string(__wrap_fopen, path, "/usr/lib/os-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/centos-release
+    expect_string(__wrap_fopen, path, "/etc/centos-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/fedora-release
+    expect_string(__wrap_fopen, path, "/etc/fedora-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/redhat-release
+    expect_string(__wrap_fopen, path, "/etc/redhat-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_fopen, path, "/etc/lsb-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/gentoo-release
+    expect_string(__wrap_fopen, path, "/etc/gentoo-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/SuSE-release
+    expect_string(__wrap_fopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/debian_version
+    expect_string(__wrap_fopen, path, "/etc/debian_version");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/slackware-version
+    expect_string(__wrap_fopen, path, "/etc/slackware-version");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // uname
+    expect_string(__wrap_popen, command, "uname");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "Darwin\n");
+
+    // system_profiler SPSoftwareDataType
+    expect_string(__wrap_popen, command, "system_profiler SPSoftwareDataType");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "Software:\n");
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "System Software Overview:\n");
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_pclose, stream, 1);
+    will_return(__wrap_pclose, 1);
+
+    // sw_vers -productVersion
+    expect_string(__wrap_popen, command, "sw_vers -productVersion");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "10.2\n");
+
+    expect_value(__wrap_pclose, stream, 1);
+    will_return(__wrap_pclose, 1);
+
+    // sw_vers -buildVersion
+    expect_string(__wrap_popen, command, "sw_vers -buildVersion");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "10\n");
+
+    expect_value(__wrap_pclose, stream, 1);
+    will_return(__wrap_pclose, 1);
+
+    // uname -r
+    expect_string(__wrap_popen, command, "uname -r");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "macos\n");
+
+    expect_value(__wrap_pclose, stream, 1);
+    will_return(__wrap_pclose, 1);
+
+
+    expect_value(__wrap_pclose, stream, 1);
+    will_return(__wrap_pclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_null(ret->os_name);
     assert_string_equal(ret->os_major, "10");
     assert_string_equal(ret->os_minor, "2");
     assert_string_equal(ret->os_version, "10.2");
@@ -1467,6 +1613,7 @@ int main(void) {
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_debian, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_slackware, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin_no_key, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_sunos, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_hp_ux, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_bsd, delete_os_info),

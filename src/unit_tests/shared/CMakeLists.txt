@@ -144,7 +144,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getg
 
 list(APPEND shared_tests_names "test_mq_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep \
-                                -Wl,--wrap,OS_getsocketsize ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,OS_SendUnix -Wl,--wrap,OS_getsocketsize ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_remoted_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
@@ -186,6 +186,12 @@ else()
                                 -Wl,--wrap,sysinfo_os -Wl,--wrap,sysinfo_processes -Wl,--wrap,sysinfo_free_result \
                                 -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetStringValue")
 endif()
+
+list(APPEND shared_tests_names "test_json_op")
+list(APPEND shared_tests_flags " ")
+
+list(APPEND shared_tests_names "test_rwlock_op")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
 # Compiling tests
 list(LENGTH shared_tests_names count)

@@ -90,27 +90,32 @@ class WazuhException(Exception):
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
         1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh' user",
-        1121: {'message': "Error connecting with socket"},
+        1121: {'message': "Error connecting with socket",
+               'remediation': "Please ensure the selected module is running and properly configured"},
         1122: {'message': 'Experimental features are disabled',
                'remediation': 'Experimental features can be enabled in WAZUH_PATH/api/configuration/api.yaml or '
-                              'using API endpoint https://documentation.wazuh.com/current/user-manual/api/'
+                              f"using API endpoint https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/"
                               'reference.html#operation/api.controllers.manager_controller.put_api_config or '
-                              'https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/'
+                              f"https://documentation.wazuh.com/{DOCU_VERSION}/"
+                              'user-manual/api/reference.html#operation/'
                               'api.controllers.cluster_controller.put_api_config'},
         1123: {
             'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is "
                        f"{MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
         1124: {'message': 'Remote command detected',
-               'remediation': f'To solve this issue please enable the remote commands in the API settings or add an '
+               'remediation': f'To solve this issue, please enable the remote commands in the API settings or add an '
                               f'exception: https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
-                              f'configuration.html#remote-commands-configuration'},
+                              f'configuration.html#remote-commands-localfile-and-wodle-command'},
         1125: {'message': 'Invalid ossec configuration',
                'remediation': 'Please, provide a valid ossec configuration'
                },
         1126: {'message': 'Error updating ossec configuration',
                'remediation': 'Please, ensure `WAZUH_PATH/etc/ossec.conf` has the proper permissions and ownership.'
                },
-        1127: {'message': 'Invalid configuration for the given component'},
+        1127: {'message': 'Forbidden section detected',
+               'remediation': 'To solve this issue, please enable the section in the API settings: '
+                              f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
+        1128: {'message': 'Invalid configuration for the given component'},
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
@@ -375,6 +380,7 @@ class WazuhException(Exception):
         2008: {'message': 'Corrupted RBAC database',
                'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
         2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
+        2010: {'message': 'The requested read operation did not complete fully'},
 
         # Cluster
         3000: 'Cluster',
@@ -442,6 +448,7 @@ class WazuhException(Exception):
         3037: 'Error while processing Agent-info chunks',
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",
+        3040: "Error while waiting to receive a file",
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
@@ -533,15 +540,20 @@ class WazuhException(Exception):
         # Logtest
         7000: {'message': 'Error trying to get logtest response'},
         7001: {'message': 'Error trying to read logtest session token',
-               'remediation': 'Make sure you introduce the token within the field "token"'}
+               'remediation': 'Make sure you introduce the token within the field "token"'},
 
-        # > 9000: Authd
+        # Vulnerability detector
+        8000: {'message': 'Unexpected error trying to request vulnerability detector scan'}
     }
 
     # Reserve agent upgrade custom errors
     ERRORS.update({key: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
                                     'The error message will be the output of upgrade module'}
                    for key in range(1811, 1900)})
+    # Reserve agent upgrade custom errors
+    ERRORS.update({key: {'message': 'Vulnerability scan\'s reserved exception IDs (8001-9000). '
+                                    'The error message will be the output of vulnerability scan module'}
+                   for key in range(8001, 9000)})
 
     def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, title=None,
                  type=None):
