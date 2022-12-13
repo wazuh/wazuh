@@ -11,17 +11,18 @@ target_link_libraries(logpar_test hlp::logpar hlp_parsec gtest_main)
 gtest_discover_tests(logpar_test)
 
 add_executable(hlp2_test
-        run_test.hpp
         basic_test.cpp
-        web_test.cpp
+        date_test.cpp
+        dsv_csv_test.cpp
         file_test.cpp
         ignore_test.cpp
-        quoted_test.cpp
+        ip_test.cpp
         json_test.cpp
+        kvmap_test.cpp
+        quoted_test.cpp
+        run_test.hpp
+        web_test.cpp
         xml_test.cpp
-        dsv_csv_test.cpp
-        kbmap_test.cpp
-        date_test.cpp
 )
 
 target_include_directories(hlp2_test
