@@ -67,6 +67,7 @@ parsec::Parser<json::Json> getBinaryParser(std::string name, Stop, Options lst)
             return parsec::makeError<json::Json>(
                 fmt::format("{}: Invalid base64 char '{}'", name, *end), endPos);
         }
+
         // consume up to two '=' padding chars
         if ('=' == *end)
         {
@@ -81,7 +82,7 @@ parsec::Parser<json::Json> getBinaryParser(std::string name, Stop, Options lst)
         if (0 != (endPos - index) % 4)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("{}: Wrong string size '{}' for base64 from offset {}",
+                fmt::format("{}: Wrong input string size ({}) for base64",
                             name,
                             endPos - index,
                             index),
