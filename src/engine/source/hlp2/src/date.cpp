@@ -38,7 +38,7 @@ static const std::vector<std::tuple<std::string, std::string>> TimeFormat {
     {"ISO8601Z", "%FT%TZ"},             // 2018-08-14T14:30:02.203151Z
     {"HTTPDATE", "%d/%b/%Y:%T %z"},     // 26/Dec/2016:16:22:14 +0000
     // HTTP-date = rfc1123-date |rfc850-date | asctime-date
-    {"NGINX_ERROR", "%D %T"},                  // 2016/10/25 14:49:34
+    {"NGINX_ERROR", "%D %T"},                  // 10/25/2006 14:49:34
     {"APACHE_ERROR", "%a %b %d %H:%M:%9S %Y"}, // Mon Dec 26 16:15:55.103786 2016
     {"POSTGRES", "%F %H:%M:%6S %Z"},           // 2021-02-14 10:45:33 UTC
 };
@@ -185,8 +185,16 @@ parsec::Parser<json::Json> getDateParser(std::string name, Stop endTokens, Optio
             {
                 // TODO: evaluate this function as it can be expensive
                 // we might consider restrict the abbrev supported
-                auto tz = date::make_zoned(abbrev, tms);
-                date::to_stream(out, "%Y-%m-%dT%H:%M:%SZ", tz);
+                try
+                {
+                    auto tz = date::make_zoned(abbrev, tms);
+                    date::to_stream(out, "%Y-%m-%dT%H:%M:%SZ", tz);
+                }
+                catch (std::exception& e)
+                {
+                    return parsec::makeError<json::Json>(
+                        fmt::format("{}: {}", name, e.what()), index);
+                }
             }
             else
             {
