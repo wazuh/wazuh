@@ -25,6 +25,8 @@ parsec::Parser<json::Json> getKVParser(Stop endTokens, Options lst)
             fmt::format("KV parser needs four options to work: sep, delim, quote, esc"));
     }
 
+    // TODO: should we check the size of the parameters? (To be one character long)
+
     const char sep = lst[0][0];
     const char delim = lst[1][0];
     const char quote = lst[2][0];
