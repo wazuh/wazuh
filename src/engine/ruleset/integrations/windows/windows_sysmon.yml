@@ -69,6 +69,11 @@ normalize:
     - source.ip: $~event_channel.Event.EventData.SourceIp
     - source.domain: $~event_channel.Event.EventData.SourceHostname
     - source.port: $~event_channel.Event.EventData.SourcePort
+    - destination.ip: $~event_channel.Event.EventData.DestinationIp
+    - destination.domain: $~event_channel.Event.EventData.DestinationHostname
+    - destination.port: $~event_channel.Event.EventData.DestinationPort
+    - dns.question.name: $~event_channel.Event.EventData.QueryName
+    - 
 
  - check: event.code==255 
    map:
@@ -101,3 +106,19 @@ normalize:
  - check: $~event_channel.Event.EventData.SignatureStatus==Valid
    map:
     - file.code_signature.valid: True   
+
+ - check: $~event_channel.Event.EventData.Initiated==True
+   map:
+    - network.direction: egress  
+
+ - check: $~event_channel.Event.EventData.Initiated==false
+   map:
+    - network.direction: ingress
+
+ - check: $~event_channel.Event.EventData.SourceIsIpv6==true
+   map:
+    - network.type: ipv6
+
+ - check: $~event_channel.Event.EventData.SourceIsIpv6==false
+   map:
+    - network.type: ipv4
