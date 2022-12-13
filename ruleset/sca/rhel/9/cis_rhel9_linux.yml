@@ -8,7 +8,7 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Red Hat Enterprise Linux 8 Benchmark v2.0.0 - 02-23-2022
+# Center for Internet Security Red Hat Enterprise Linux 9 Benchmark v1.0.0 - 11-28-2022
 
 policy:
   id: "cis_rhel9_linux"
