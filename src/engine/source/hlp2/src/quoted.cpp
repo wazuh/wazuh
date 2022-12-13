@@ -14,7 +14,7 @@
 namespace hlp
 {
 
-parsec::Parser<json::Json> getQuotedParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getQuotedParser(std::string name, Stop endTokens, Options lst)
 {
     if (lst.size() > 2)
     {
@@ -47,7 +47,7 @@ parsec::Parser<json::Json> getQuotedParser(Stop endTokens, Options lst)
     }
 
     // The parser
-    return [quoteChar, escapeChar](std::string_view text, int index)
+    return [quoteChar, escapeChar, name](std::string_view text, int index)
     {
         auto res = internal::eofError<json::Json>(text, index);
         if (res.has_value())
@@ -59,7 +59,7 @@ parsec::Parser<json::Json> getQuotedParser(Stop endTokens, Options lst)
         if (text[index] != quoteChar)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Expected quote character '{}'", quoteChar), index);
+                fmt::format("{}: Expected quote character '{}'", name, quoteChar), index);
         }
 
         std::string str {};
@@ -76,7 +76,8 @@ parsec::Parser<json::Json> getQuotedParser(Stop endTokens, Options lst)
                 if (i + 1 >= text.size())
                 {
                     return parsec::makeError<json::Json>(
-                        "Unexpected end of input after escape character",
+                        fmt::format("{}: Unexpected end of input after escape character",
+                                    name),
                         i + 1);
                 }
                 else if (text[i + 1] == quoteChar)
@@ -92,7 +93,8 @@ parsec::Parser<json::Json> getQuotedParser(Stop endTokens, Options lst)
                 else
                 {
                     return parsec::makeError<json::Json>(
-                        fmt::format("Unexpected escape sequence: \\{}", text[i + 1]),
+                        fmt::format(
+                            "{}: Unexpected escape sequence: \\{}", name, text[i + 1]),
                         i + 1);
                 }
             }
@@ -104,8 +106,7 @@ parsec::Parser<json::Json> getQuotedParser(Stop endTokens, Options lst)
         }
 
         return parsec::makeError<json::Json>(
-            fmt::format("Expected quote character '{}'", quoteChar), i);
+            fmt::format("{}: Expected quote character '{}'", name, quoteChar), i);
     };
-
 }
 } // namespace hlp

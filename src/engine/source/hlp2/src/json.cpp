@@ -13,14 +13,14 @@
 namespace hlp
 {
 
-parsec::Parser<json::Json> getJSONParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getJSONParser(std::string name, Stop endTokens, Options lst)
 {
     if (lst.size() > 0)
     {
         throw std::runtime_error(fmt::format("JSON parser do not accept arguments!"));
     }
 
-    return [endTokens](std::string_view text, int index)
+    return [endTokens, name](std::string_view text, int index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
         if (std::holds_alternative<parsec::Result<json::Json>>(res))
@@ -38,11 +38,12 @@ parsec::Parser<json::Json> getJSONParser(Stop endTokens, Options lst)
         if (doc.HasParseError())
         {
             auto msg = fmt::format("{}", doc.GetParseError());
-            return parsec::makeError<json::Json>(std::move(msg), index);
+            return parsec::makeError<json::Json>(
+                fmt::format("{}: {}", name, std::move(msg)), index);
         }
 
-        return parsec::makeSuccess<json::Json>(
-            json::Json(std::move(doc)), ss.Tell() + index);
+        return parsec::makeSuccess<json::Json>(json::Json(std::move(doc)),
+                                               ss.Tell() + index);
     };
 }
 } // namespace hlp

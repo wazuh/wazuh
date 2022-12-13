@@ -12,7 +12,7 @@
 
 namespace hlp
 {
-parsec::Parser<json::Json> getTextParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getTextParser(std::string name, Stop endTokens, Options lst)
 {
     if (endTokens.empty())
     {
@@ -24,7 +24,7 @@ parsec::Parser<json::Json> getTextParser(Stop endTokens, Options lst)
         throw std::runtime_error("text parser doesn't accept parameters");
     }
 
-    return [endTokens](std::string_view text, int index)
+    return [endTokens, name](std::string_view text, int index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
         if (std::holds_alternative<parsec::Result<json::Json>>(res))
@@ -37,7 +37,7 @@ parsec::Parser<json::Json> getTextParser(Stop endTokens, Options lst)
         if (pos == index)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Nothing to parse at {}", pos), pos);
+                fmt::format("{}: Nothing to parse", name), pos);
         }
 
         json::Json doc;

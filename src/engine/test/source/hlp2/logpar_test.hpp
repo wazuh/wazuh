@@ -59,7 +59,8 @@ parsec::Parser<json::Json> __dummyTextParser(std::string endToken,
         }};
 }
 
-parsec::Parser<json::Json> dummyTextParser(std::list<std::string> endTokens,
+parsec::Parser<json::Json> dummyTextParser(std::string,
+                                           std::list<std::string> endTokens,
                                            std::vector<std::string> args)
 {
     if (endTokens.empty())
@@ -82,8 +83,8 @@ parsec::Parser<json::Json> dummyTextParser(std::list<std::string> endTokens,
     return p;
 }
 
-parsec::Parser<json::Json> dummyLongParser(std::list<std::string>,
-                                           std::vector<std::string> args)
+parsec::Parser<json::Json>
+dummyLongParser(std::string, std::list<std::string>, std::vector<std::string> args)
 {
     if (!args.empty())
     {
@@ -115,7 +116,8 @@ parsec::Parser<json::Json> dummyLongParser(std::list<std::string>,
     };
 }
 
-parsec::Parser<json::Json> dummyLiteralParser(std::list<std::string>,
+parsec::Parser<json::Json> dummyLiteralParser(std::string,
+                                              std::list<std::string>,
                                               std::vector<std::string> args)
 {
     if (args.size() != 1)
