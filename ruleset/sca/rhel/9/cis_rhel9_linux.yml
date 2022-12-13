@@ -1197,10 +1197,16 @@ checks:
     remediation: "Run the following command to install chrony: # dnf install chrony."
     compliance:
       - cis: ["2.1.1"]
-      - cis_csc: ["6.1", "8.4"]
-      - pci_dss: ["10.4"]
-      - nist_800_53: ["AU.8"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cis_csc_v7: ["6.1"]
+      - cis_csc_v8: ["8.4"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.001"]
+      - mitre_tactics: ["TA0005"]
+      - cmmc_v2.0: ["AU.L2-3.3.7",""AU.2.043""]
+      - pci_dss_3.2.1: ["10.4"]
+      - pci_dss_4.0: ["10.6","10.6.1","10.6.2","10.6.3"]
+      - nist_sp_800-53: ["AU-7","AU-8","AU-3","AU-15"]
+      - soc_2: ["CC4.1","CC5.2"]
+      - iso_27001-2013: ["A.12.4.4"]
     condition: all
     rules:
       - "c:rpm -q chrony -> r:^chrony-"
