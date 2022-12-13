@@ -19,7 +19,7 @@ namespace builder::internals::builders
  * @param definition Definition of the stage
  * @return base::Expression
  */
-Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar);
+Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t debugLvl);
 
 } // namespace builder::internals::builders
 

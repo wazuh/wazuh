@@ -14,7 +14,7 @@
 
 namespace hlp
 {
-parsec::Parser<json::Json> getIPParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getIPParser(std::string name, Stop endTokens, Options lst)
 {
     // if (endTokens.empty())
     // {
@@ -26,7 +26,7 @@ parsec::Parser<json::Json> getIPParser(Stop endTokens, Options lst)
         throw std::runtime_error("The IP parser does not accept any argument");
     }
 
-    return [endTokens](std::string_view text, size_t index)
+    return [endTokens, name](std::string_view text, size_t index)
     {
         struct in_addr ip;
         struct in6_addr ipv6;
@@ -47,17 +47,16 @@ parsec::Parser<json::Json> getIPParser(Stop endTokens, Options lst)
         if (inet_pton(AF_INET, addr.c_str(), &ip))
         {
             doc.setString(addr);
-            return parsec::makeSuccess<json::Json>(std::move(doc),pos);
+            return parsec::makeSuccess<json::Json>(std::move(doc), pos);
         }
         else if (inet_pton(AF_INET6, addr.c_str(), &ipv6))
         {
             doc.setString(addr);
-            return parsec::makeSuccess<json::Json>(std::move(doc),pos);
+            return parsec::makeSuccess<json::Json>(std::move(doc), pos);
         }
 
         return parsec::makeError<json::Json>(
-            fmt::format("IP parser is unable to parse '{}' as IPv4 or IPv6", addr),
-            index);
+            fmt::format("{}: Expected IPv4 or IPv6", name), index);
     };
 }
 } // namespace hlp

@@ -13,8 +13,6 @@
 #include <hlp/parsec.hpp>
 #include <json/json.hpp>
 
-#include "stream_view.hpp"
-
 namespace hlp
 {
 
@@ -62,7 +60,7 @@ std::string formatDateFromSample(std::string dateSample, std::string locale)
     std::vector<std::string> matchingFormats;
     for (const auto& [name, format] : TimeFormat)
     {
-        auto p = getDateParser({}, Options {format, "en_US.UTF-8"});
+        auto p = getDateParser({}, {}, Options {format, "en_US.UTF-8"});
         auto res = p(dateSample, 0);
 
         if (res.success())
@@ -95,7 +93,7 @@ std::string formatDateFromSample(std::string dateSample, std::string locale)
 }
 } // namespace internal
 
-parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getDateParser(std::string name, Stop endTokens, Options lst)
 {
 
     if (lst.size() == 0 || (lst.size() > 2) != 0)
@@ -126,7 +124,7 @@ parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
         format = internal::formatDateFromSample(format, localeStr);
     }
 
-    return [endTokens, format, locale](std::string_view text, size_t index)
+    return [endTokens, format, locale, name](std::string_view text, size_t index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
         if (std::holds_alternative<parsec::Result<json::Json>>(res))
@@ -148,8 +146,8 @@ parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst)
 
         if (streamText.fail())
         {
-            return parsec::makeError<json::Json>(
-                fmt::format("Error parsing '{}' date at {}", text, index), index);
+            return parsec::makeError<json::Json>(fmt::format("{}: Expected a date", name),
+                                                 index);
         }
 
         // Caculate the offset in the input string

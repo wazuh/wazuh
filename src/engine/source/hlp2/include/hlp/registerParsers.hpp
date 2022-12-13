@@ -28,6 +28,8 @@ inline void registerParsers(std::shared_ptr<logpar::Logpar> logpar)
     logpar->registerBuilder(ParserType::P_DSV, hlp::getDSVParser);
     logpar->registerBuilder(ParserType::P_JSON, hlp::getJSONParser);
     logpar->registerBuilder(ParserType::P_USER_AGENT, hlp::getUAParser);
+    logpar->registerBuilder(ParserType::P_XML, hlp::getXMLParser);
+    logpar->registerBuilder(ParserType::P_KV, hlp::getKVParser);
 }
 
 } // namespace hlp

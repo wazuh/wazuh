@@ -58,29 +58,29 @@ std::from_chars_result from_chars(const char* first, const char* last, double& v
 namespace hlp
 {
 
-parsec::Parser<json::Json> getByteParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getByteParser(std::string name, Stop endTokens, Options lst)
 {
-    return getNumericParser<int8_t>(endTokens, lst);
+    return getNumericParser<int8_t>(name, endTokens, lst);
 }
 
-parsec::Parser<json::Json> getLongParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getLongParser(std::string name, Stop endTokens, Options lst)
 {
-    return getNumericParser<int64_t>(endTokens, lst);
+    return getNumericParser<int64_t>(name, endTokens, lst);
 }
 
-parsec::Parser<json::Json> getFloatParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getFloatParser(std::string name, Stop endTokens, Options lst)
 {
-    return getNumericParser<float_t>(endTokens, lst);
+    return getNumericParser<float_t>(name, endTokens, lst);
 }
 
-parsec::Parser<json::Json> getDoubleParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getDoubleParser(std::string name, Stop endTokens, Options lst)
 {
-    return getNumericParser<double_t>(endTokens, lst);
+    return getNumericParser<double_t>(name, endTokens, lst);
 }
 
-parsec::Parser<json::Json> getScaledFloatParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getScaledFloatParser(std::string name, Stop endTokens, Options lst)
 {
-    return getNumericParser<double_t>(endTokens, lst);
+    return getNumericParser<double_t>(name, endTokens, lst);
 }
 
 } // namespace hlp

@@ -60,7 +60,7 @@ void graph(const std::string& kvdbPath,
     auto registry = std::make_shared<builder::internals::Registry>();
     try
     {
-        builder::internals::registerBuilders(registry, {kvdb, logpar});
+        builder::internals::registerBuilders(registry, {kvdb, logpar, 0});
     }
     catch (const std::exception& e)
     {

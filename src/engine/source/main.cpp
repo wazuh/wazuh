@@ -186,11 +186,12 @@ void configureSubcommandLogtest(std::shared_ptr<CLI::App> app)
         ->default_val(3);
 
     // Debug levels
-    auto debug = logtest->add_flag(
-        "-d, --debug",
-        args::debug_level,
-        "Enables the debug mode [0-2]. The flag can appear multiple times. No flag[0]: "
-        "No debug, d[1]: Assets history, dd[2]: 1 + Full tracing.");
+    auto debug =
+        logtest->add_flag("-d, --debug",
+                          args::debug_level,
+                          "Enable debug mode [0-3]. Flag can appear multiple times. "
+                          "No flag[0]: No debug, d[1]: Asset history, dd[2]: 1 + "
+                          "Full tracing, ddd[3]: 2 + detailed parser trace.");
 
     // Trace
     logtest

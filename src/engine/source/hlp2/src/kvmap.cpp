@@ -16,7 +16,7 @@
 namespace hlp
 {
 
-parsec::Parser<json::Json> getKVParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getKVParser(std::string name, Stop endTokens, Options lst)
 {
 
     if (lst.size() != 4)
@@ -32,7 +32,7 @@ parsec::Parser<json::Json> getKVParser(Stop endTokens, Options lst)
     const char quote = lst[2][0];
     const char esc = lst[3][0];
 
-    return [endTokens, sep, delim, quote, esc](std::string_view text, int index)
+    return [endTokens, sep, delim, quote, esc, name](std::string_view text, int index)
     {
         size_t start {0}, end {0};
         json::Json doc;
@@ -64,7 +64,10 @@ parsec::Parser<json::Json> getKVParser(Stop endTokens, Options lst)
 
         if (kv.size() <= 1)
             return parsec::makeError<json::Json>(
-                fmt::format("No fields found with delim '{}' and sep '{}')", delim, sep),
+                fmt::format("{}: No key-value fields found with delim '{}' and sep '{}')",
+                            name,
+                            delim,
+                            sep),
                 index);
 
         for (auto i = 0; i < kv.size() - 1; i += 2)
@@ -73,7 +76,8 @@ parsec::Parser<json::Json> getKVParser(Stop endTokens, Options lst)
             auto v = fp.substr(kv[i + 1].start(), kv[i + 1].len());
             if (k.empty())
                 return parsec::makeError<json::Json>(
-                    fmt::format("Unable to parse key-value between '{}'-'{}' chars))",
+                    fmt::format("{}: Unable to parse key-value between '{}'-'{}' chars",
+                                name,
                                 kv[i].start(),
                                 kv[i].end()),
                     index);
@@ -84,7 +88,7 @@ parsec::Parser<json::Json> getKVParser(Stop endTokens, Options lst)
 
         if (end != pos)
             return parsec::makeError<json::Json>(
-                fmt::format("Unable to parse from {} to {}", end, pos), index);
+                fmt::format("{}: Invalid key-value string", name), index);
 
         return parsec::makeSuccess(std::move(doc), end);
     };

@@ -73,7 +73,7 @@ static void xmlToJson(pugi::xml_node& docXml,
 namespace hlp
 {
 
-parsec::Parser<json::Json> getXMLParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getXMLParser(std::string name, Stop endTokens, Options lst)
 {
 
     if (lst.size() > 1)
@@ -83,7 +83,7 @@ parsec::Parser<json::Json> getXMLParser(Stop endTokens, Options lst)
 
     bool notWin = lst.empty();
 
-    return [notWin, endTokens](std::string_view text, int index)
+    return [notWin, endTokens, name](std::string_view text, int index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
         if (std::holds_alternative<parsec::Result<json::Json>>(res))
@@ -110,7 +110,7 @@ parsec::Parser<json::Json> getXMLParser(Stop endTokens, Options lst)
         }
 
         return parsec::makeError<json::Json>(
-            fmt::format("{}", parseResult.description()), index);
+            fmt::format("{}: {}", name, parseResult.description()), index);
     };
 }
 } // namespace hlp

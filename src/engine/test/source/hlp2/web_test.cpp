@@ -12,18 +12,18 @@
 
 TEST(URIParser, build_OK)
 {
-    ASSERT_NO_THROW(hlp::getUriParser({"stop1"}, {}));
-    ASSERT_NO_THROW(hlp::getUriParser({"stop1", "stop2"}, {}));
+    ASSERT_NO_THROW(hlp::getUriParser({}, {"stop1"}, {}));
+    ASSERT_NO_THROW(hlp::getUriParser({}, {"stop1", "stop2"}, {}));
 }
 
 TEST(URIParser, build_fail)
 {
     // Parser with no stop
-    ASSERT_THROW(hlp::getUriParser({}, {}), std::runtime_error);
-    ASSERT_THROW(hlp::getUriParser({}, {"arg1"}), std::runtime_error);
-    ASSERT_THROW(hlp::getUriParser({}, {"arg1", "arg2"}), std::runtime_error);
+    ASSERT_THROW(hlp::getUriParser({}, {}, {}), std::runtime_error);
+    ASSERT_THROW(hlp::getUriParser({}, {}, {"arg1"}), std::runtime_error);
+    ASSERT_THROW(hlp::getUriParser({}, {}, {"arg1", "arg2"}), std::runtime_error);
     // stop but also options
-    ASSERT_THROW(hlp::getUriParser({"stop1"}, {"opt1"}), std::runtime_error);
+    ASSERT_THROW(hlp::getUriParser({}, {"stop1"}, {"opt1"}), std::runtime_error);
 }
 
 TEST(URIParser, parser)
@@ -95,19 +95,19 @@ TEST(URIParser, parser)
  ************************************/
 TEST(UAParser, build_OK)
 {
-    ASSERT_NO_THROW(hlp::getUAParser({"stop1"}, {}));
-    ASSERT_NO_THROW(hlp::getUAParser({"stop1", "stop2"}, {}));
+    ASSERT_NO_THROW(hlp::getUAParser({}, {"stop1"}, {}));
+    ASSERT_NO_THROW(hlp::getUAParser({}, {"stop1", "stop2"}, {}));
 }
 
 TEST(UAParser, build_fail)
 {
 
     // Parser with no stop
-    ASSERT_THROW(hlp::getUAParser({}, {}), std::runtime_error);
-    ASSERT_THROW(hlp::getUAParser({}, {"arg1"}), std::runtime_error);
-    ASSERT_THROW(hlp::getUAParser({}, {"arg1", "arg2"}), std::runtime_error);
+    ASSERT_THROW(hlp::getUAParser({}, {}, {}), std::runtime_error);
+    ASSERT_THROW(hlp::getUAParser({}, {}, {"arg1"}), std::runtime_error);
+    ASSERT_THROW(hlp::getUAParser({}, {}, {"arg1", "arg2"}), std::runtime_error);
     // stop but also options
-    ASSERT_THROW(hlp::getUAParser({"stop1"}, {"opt1"}), std::runtime_error);
+    ASSERT_THROW(hlp::getUAParser({}, {"stop1"}, {"opt1"}), std::runtime_error);
 }
 
 TEST(UAParser, parser)
@@ -234,16 +234,16 @@ TEST(FQDNParser, build_fail)
 {
 
     // Parser cannot be built with arguments
-    ASSERT_THROW(hlp::getFQDNParser({}, {"arg1"}), std::runtime_error);
-    ASSERT_THROW(hlp::getFQDNParser({}, {"arg1", "arg2"}), std::runtime_error);
-    ASSERT_THROW(hlp::getFQDNParser({"stop1"}, {"opt1"}), std::runtime_error);
+    ASSERT_THROW(hlp::getFQDNParser({}, {}, {"arg1"}), std::runtime_error);
+    ASSERT_THROW(hlp::getFQDNParser({}, {}, {"arg1", "arg2"}), std::runtime_error);
+    ASSERT_THROW(hlp::getFQDNParser({}, {"stop1"}, {"opt1"}), std::runtime_error);
 }
 
 TEST(FQDNParser, build_OK)
 {
-    ASSERT_NO_THROW(hlp::getFQDNParser({"stop1"}, {}));
-    ASSERT_NO_THROW(hlp::getFQDNParser({"stop1", "stop2"}, {}));
-    ASSERT_NO_THROW(hlp::getFQDNParser({}, {}));
+    ASSERT_NO_THROW(hlp::getFQDNParser({}, {"stop1"}, {}));
+    ASSERT_NO_THROW(hlp::getFQDNParser({}, {"stop1", "stop2"}, {}));
+    ASSERT_NO_THROW(hlp::getFQDNParser({}, {}, {}));
 }
 
 TEST(FQDNParser, parser)

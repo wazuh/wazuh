@@ -27,45 +27,47 @@ using namespace hlp;
 //   [6] ReturnDoc a funcion wihch receives [4] and returns a json::Json document
 using TestCase = std::tuple<std::string, bool, Stop, Options, json::Json, size_t>;
 
-namespace {
+namespace
+{
 
-    // Print a stop as a string
-    std::string printStop(const Stop& stop)
-    {
-        std::string res = fmt::format("{}", fmt::join(stop, ", "));
-        return res;
-    }
-    // Print a list of options as a string
-    std::string printOptions(const Options& options)
-    {
-        std::string res = fmt::format("{}", fmt::join(options, ", "));
-        return res;
-    }
-
-    // Print a TestCase to a std::string
-    std::string to_string(const TestCase& testCase)
-    {
-        auto [input, success, stop, options, doc, index] = testCase;
-        return fmt::format("TestCase: \ninput: {}\n success: {}\n stop: {}\n options: "
-                           "{}\n doc: {}\n index: {}\n",
-                           input,
-                           success,
-                           printStop(stop),
-                           printOptions(options),
-                           doc.str(),
-                           index);
-    }
+// Print a stop as a string
+std::string printStop(const Stop& stop)
+{
+    std::string res = fmt::format("{}", fmt::join(stop, ", "));
+    return res;
+}
+// Print a list of options as a string
+std::string printOptions(const Options& options)
+{
+    std::string res = fmt::format("{}", fmt::join(options, ", "));
+    return res;
 }
 
-static void runTest(TestCase t,
-                    std::function<parsec::Parser<json::Json>(Stop, Options)> parserBuilder)
+// Print a TestCase to a std::string
+std::string to_string(const TestCase& testCase)
+{
+    auto [input, success, stop, options, doc, index] = testCase;
+    return fmt::format("TestCase: \ninput: {}\n success: {}\n stop: {}\n options: "
+                       "{}\n doc: {}\n index: {}\n",
+                       input,
+                       success,
+                       printStop(stop),
+                       printOptions(options),
+                       doc.str(),
+                       index);
+}
+} // namespace
+
+static void runTest(
+    TestCase t,
+    std::function<parsec::Parser<json::Json>(std::string, Stop, Options)> parserBuilder)
 {
     parsec::Parser<json::Json> parser;
     auto expectedSuccess = std::get<1>(t);
     auto expectedDoc = std::get<4>(t);
     try
     {
-        parser = parserBuilder(std::get<2>(t), std::get<3>(t));
+        parser = parserBuilder({}, std::get<2>(t), std::get<3>(t));
     }
     catch (std::runtime_error& e)
     {
