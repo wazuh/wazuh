@@ -277,7 +277,7 @@ typedef struct fim_file_data {
     char * gid;
     char * user_name;
     char * group_name;
-    unsigned int mtime;
+    time_t mtime;
     unsigned long long int inode;
     os_md5 hash_md5;
     os_sha1 hash_sha1;
@@ -302,7 +302,7 @@ typedef struct fim_registry_key {
     char* gid;
     char* user_name;
     char* group_name;
-    unsigned int mtime;
+    time_t mtime;
     int arch;
 
     unsigned int scanned;
