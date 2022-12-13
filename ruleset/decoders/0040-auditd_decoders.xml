@@ -24,21 +24,21 @@
 <!-- SYSCALL -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">^arch=(\S+) syscall=(\d+) success=(\S+) exit=(\S+) a0=\S+ a1=\S+ a2=\S+ a3=\S+ items=\S+ ppid=(\S+) pid=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) euid=(\S+) suid=(\S+) fsuid=(\S+) egid=(\S+) sgid=(\S+) fsgid=(\S+) tty=(\S+) ses=(\S+) comm=\p(\S+)\p exe=\p(\S+)\p</regex>
+  <regex offset="after_regex" type="pcre2">^arch=(\S+) syscall=(\d+) success=(\S+) exit=(\S+) a0=\S+ a1=\S+ a2=\S+ a3=\S+ items=\S+ ppid=(\S+) pid=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) euid=(\S+) suid=(\S+) fsuid=(\S+) egid=(\S+) sgid=(\S+) fsgid=(\S+) tty=(\S+) ses=(\S+) comm="([^"]+)" exe="([^"]+)"</regex>
   <order>audit.arch,audit.syscall,audit.success,audit.exit,audit.ppid,audit.pid,audit.auid,audit.uid,audit.gid,audit.euid,audit.suid,audit.fsuid,audit.egid,audit.sgid,audit.fsgid,audit.tty,audit.session,audit.command,audit.exe</order>
 </decoder>
 
 <!-- SYSCALL - command -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">comm=\p*(\w+)\p*</regex>
+  <regex offset="after_regex" type="pcre2">comm="([^"]+)"|\(([^)]+)\)|(\S+)</regex>
   <order>audit.command</order>
 </decoder>
 
 <!-- SYSCALL - exe -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">exe=\p(\S+)\p</regex>
+  <regex offset="after_regex" type="pcre2">exe="([^"]+)"</regex>
   <order>audit.exe</order>
 </decoder>
 
@@ -58,64 +58,64 @@
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a1="(\.+)" </regex>
+  <regex offset="after_regex" type="pcre2">a1="([^"]+)" </regex>
   <order>audit.execve.a1</order>
 </decoder>
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a2="(\.+)" </regex>
+  <regex offset="after_regex" type="pcre2">a2="([^"]+)" </regex>
   <order>audit.execve.a2</order>
 </decoder>
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a3="(\.+)" </regex>
+  <regex offset="after_regex" type="pcre2">a3="([^"]+)" </regex>
   <order>audit.execve.a3</order>
 </decoder>
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a4="(\.+)" </regex>
+  <regex offset="after_regex" type="pcre2">a4="([^"]+)" </regex>
   <order>audit.execve.a4</order>
 </decoder>
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a5="(\.+)" </regex>
+  <regex offset="after_regex" type="pcre2">a5="([^"]+)" </regex>
   <order>audit.execve.a5</order>
 </decoder>
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a6="(\.+)" </regex>
+  <regex offset="after_regex" type="pcre2">a6="([^"]+)" </regex>
   <order>audit.execve.a6</order>
 </decoder>
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a7="(\.+)" </regex>
+  <regex offset="after_regex" type="pcre2">a7="([^"]+)" </regex>
   <order>audit.execve.a7</order>
 </decoder>
 
 <!-- CWD -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">type=CWD msg=audit\(\S+\):\s+cwd="(\.+)" </regex>
+  <regex offset="after_regex" type="pcre2">type=CWD msg=audit\(\S+\):\s+cwd="([^"]+)" </regex>
   <order>audit.cwd</order>
 </decoder>
 
 <!-- PATH - DIRECTORY: mode=04* -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">type=PATH msg=audit\(\S+\): item=\S+ name="(\.+)" inode=(\S+) dev=\S+ mode=(04\S+) ouid=\S+ ogid=\S+ </regex>
+  <regex offset="after_regex" type="pcre2">type=PATH msg=audit\(\S+\): item=\S+ name="([^"]+)" inode=(\S+) dev=\S+ mode=(04\S+) ouid=\S+ ogid=\S+ </regex>
   <order>audit.directory.name, audit.directory.inode, audit.directory.mode</order>
 </decoder>
 
 <!-- PATH - FILE -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">type=PATH msg=audit\(\S+\): item=\S+ name="(\.+)" inode=(\S+) dev=\S+ mode=(\S+) ouid=\S+ ogid=\S+ |type=PATH msg=audit\(\S+\): item=\S+ name=\((null)\) inode=(\S+) dev=\S+ mode=(\S+) ouid=\S+ ogid=\S+ </regex>
+  <regex offset="after_regex" type="pcre2">type=PATH msg=audit\(\S+\): item=\S+ name="([^"]+)" inode=(\S+) dev=\S+ mode=(\S+) ouid=\S+ ogid=\S+ |type=PATH msg=audit\(\S+\): item=\S+ name=\((null)\) inode=(\S+) dev=\S+ mode=(\S+) ouid=\S+ ogid=\S+ </regex>
   <order>audit.file.name, audit.file.inode, audit.file.mode</order>
 </decoder>
 
@@ -131,13 +131,13 @@
 
 <decoder name="auditd-config_change">
   <parent>auditd</parent>
-  <regex offset="after_regex">^auid=(\S+) ses=(\S+) op="(\.+)"</regex>
+  <regex offset="after_regex" type="pcre2">^auid=(\S+) ses=(\S+) op="([^"]+)"</regex>
   <order>audit.auid,audit.session,audit.op</order>
 </decoder>
 
 <decoder name="auditd-config_change">
   <parent>auditd</parent>
-  <regex offset="after_regex">key=\((\S+)\)|key="(\S+)"|key=(\S+) </regex>
+  <regex offset="after_regex" type="pcre2">key=\((\S+)\)|key="([^"]+)"|key=(\S+) </regex>
   <order>audit.key</order>
 </decoder>
 
@@ -188,7 +188,7 @@
 
 <decoder name="auditd-selinux_macstatus">
   <parent>auditd</parent>
-  <regex offset="after_regex">ppid=(\S+) pid=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) euid=(\S+) suid=(\S+) fsuid=(\S+) egid=(\S+) sgid=(\S+) fsgid=(\S+) tty=(\S+) ses=(\S+) comm="(\S+)" exe="(\S+)"</regex>
+  <regex offset="after_regex" type="pcre2">ppid=(\S+) pid=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) euid=(\S+) suid=(\S+) fsuid=(\S+) egid=(\S+) sgid=(\S+) fsgid=(\S+) tty=(\S+) ses=(\S+) comm="([^"]+)" exe="([^"]+)"</regex>
   <order>audit.ppid,audit.pid,audit.auid,audit.uid,audit.gid,audit.euid,audit.suid,audit.fsuid,audit.egid,audit.sgid,audit.fsgid,audit.tty,audit.session,audit.command,audit.exe</order>
 </decoder>
 
@@ -233,13 +233,13 @@
 
 <decoder name="auditd-user_and_cred">
   <parent>auditd</parent>
-  <regex offset="after_regex">acct="(\S+)"</regex>
+  <regex offset="after_regex" type="pcre2">acct="([^"]+)"</regex>
   <order>audit.acct</order>
 </decoder>
 
 <decoder name="auditd-user_and_cred">
   <parent>auditd</parent>
-  <regex offset="after_regex">exe="(\S+)"</regex>
+  <regex offset="after_regex" type="pcre2">exe="([^"]+)"</regex>
   <order>audit.exe</order>
 </decoder>
 
@@ -326,13 +326,13 @@
 
 <decoder name="auditd-generic">
   <parent>auditd</parent>
-  <regex>comm=\p(\S+)\p</regex>
+  <regex type="pcre2">comm="([^"]+)"</regex>
   <order>audit.command</order>
 </decoder>
 
 <decoder name="auditd-generic">
   <parent>auditd</parent>
-  <regex>exe=\p(\S+)\p</regex>
+  <regex type="pcre2">exe="([^"]+)"</regex>
   <order>audit.exe</order>
 </decoder>
 
@@ -346,4 +346,46 @@
   <parent>auditd</parent>
   <regex>res=(\w+)</regex>
   <order>audit.res</order>
+</decoder>
+
+<!-- Fields in AVC 
+    # Wrapped for readability
+    type=AVC msg=audit(1363289005.532:184): avc:  denied  { read } for  pid=29199 comm="Trace"
+        name="online" dev="sysfs" ino=30 scontext=staff_u:staff_r:googletalk_plugin_t
+        tcontext=system_u:object_r:sysfs_t tclass=file
+-->
+<decoder name="auditd-generic">
+  <parent>auditd</parent>
+  <regex type="pcre2">\s+avc:\s+(\S+)\s+\{\s+([^}]+)\s+\}</regex>
+  <order>audit.action,audit.permission</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex type="pcre2">path="([^"]+)"</regex>
+    <order>audit.path</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>permissive=(\S+)</regex>
+    <order>audit.permissive</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>scontext=(\S+)</regex>
+    <order>audit.scontext</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>tclass=(\S+)</regex>
+    <order>audit.tclass</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>tcontext=(\S+)</regex>
+    <order>audit.tcontext</order>
 </decoder>
