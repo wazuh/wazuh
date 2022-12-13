@@ -302,6 +302,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                         cJSON_Delete(error_msg);
                         os_free(error_msg_string);
                         os_free(clean);
+                        result = wdb_update_agent_status_code(atoi(key->id), AGENT_STATUS_CODE_INVALID_VERSION, wdb_sock);
                         return;
                     }
                 } else {

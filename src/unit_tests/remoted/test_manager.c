@@ -4661,7 +4661,6 @@ void test_save_controlmsg_could_not_add_pending_data(void **state)
 
     expect_string(__wrap_rem_inc_recv_ctrl_keepalive, agent_id, "001");
 
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
     pending_data = OSHash_Create();

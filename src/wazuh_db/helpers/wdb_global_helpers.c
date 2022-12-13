@@ -24,6 +24,7 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_AGENT_DATA] = "global update-agent-data %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
     [WDB_UPDATE_AGENT_CONNECTION_STATUS] = "global update-connection-status %s",
+    [WDB_UPDATE_AGENT_STATUS_CODE] = "global update-status-code %s",
     [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %d",
     [WDB_FIND_AGENT] = "global find-agent %s",
     [WDB_GET_AGENT_INFO] = "global get-agent-info %d",
@@ -373,6 +374,61 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
         default:
             mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
+            result = OS_INVALID;
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    cJSON_Delete(data_in);
+    os_free(data_in_str);
+    os_free(wdbquery);
+    os_free(wdboutput);
+
+    return result;
+}
+
+int wdb_update_agent_status_code(int id, const int status_code, int *sock) {
+    int result = 0;
+    cJSON *data_in = NULL;
+    char *data_in_str = NULL;
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mwarn("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddNumberToObject(data_in, "status_code", status_code);
+    data_in_str = cJSON_PrintUnformatted(data_in);
+
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, global_db_commands[WDB_UPDATE_AGENT_STATUS_CODE], data_in_str);
+
+    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mwarn("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mwarn("Global DB Error in the response from socket");
+            mwarn("Global DB SQL query: %s", wdbquery);
+            break;
+        default:
+            mwarn("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mwarn("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }
 

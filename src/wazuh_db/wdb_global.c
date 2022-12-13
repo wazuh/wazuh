@@ -443,6 +443,42 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char *co
     }
 }
 
+int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE) < 0) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE];
+
+    if (sqlite3_bind_int(stmt, 1, status_code) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    if (sqlite3_bind_int(stmt, 2, id) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    switch (wdb_step(stmt)) {
+    case SQLITE_ROW:
+    case SQLITE_DONE:
+        return OS_SUCCESS;
+        break;
+    default:
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+}
+
 int wdb_global_delete_agent(wdb_t *wdb, int id) {
     sqlite3_stmt *stmt = NULL;
 

@@ -1,16 +1,14 @@
 /*
- * SQL Schema for global database
- * Copyright (C) 2015, Wazuh Inc.
+ * SQL Schema for upgrading databases
+ * Copyright (C) 2015-2022, Wazuh Inc.
  *
- * June 30, 2016.
+ * December, 2022.
  *
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
 */
 
-PRAGMA foreign_keys=ON;
-
-CREATE TABLE IF NOT EXISTS agent (
+CREATE TABLE IF NOT EXISTS _agent (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     ip TEXT,
@@ -42,46 +40,14 @@ CREATE TABLE IF NOT EXISTS agent (
     status_code INTEGER DEFAULT NULL
 );
 
+BEGIN;
+INSERT INTO _agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add, last_keepalive, `group`, sync_status, connection_status) SELECT id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add, last_keepalive, `group`, sync_status, connection_status FROM agent;
+END;
+
+DROP TABLE IF EXISTS agent;
+ALTER TABLE _agent RENAME TO agent;
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
 CREATE INDEX IF NOT EXISTS agent_group_hash ON agent (group_hash);
 
-INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, `group`, connection_status) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', strftime('%s','now'), 253402300799, NULL, 'active');
-
-CREATE TABLE IF NOT EXISTS labels (
-    id INTEGER,
-    key TEXT NOT NULL,
-    value TEXT NOT NULL,
-    PRIMARY KEY (id,key)
-);
-
-CREATE TABLE IF NOT EXISTS info (
-    key TEXT PRIMARY KEY,
-    value TEXT
-);
-
-CREATE TABLE IF NOT EXISTS `group` (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    UNIQUE (name)
-);
-
-CREATE INDEX IF NOT EXISTS group_name ON `group` (name);
-
-CREATE TABLE IF NOT EXISTS belongs (
-    id_agent INTEGER REFERENCES agent (id) ON DELETE CASCADE,
-    id_group INTEGER REFERENCES `group` (id) ON DELETE CASCADE,
-    priority INTEGER NOT NULL DEFAULT 0,
-    UNIQUE (id_agent, priority),
-    PRIMARY KEY (id_agent, id_group)
-);
-
-CREATE INDEX IF NOT EXISTS belongs_id_agent ON belongs (id_agent);
-CREATE INDEX IF NOT EXISTS belongs_id_group ON belongs (id_group);
-
-CREATE TABLE IF NOT EXISTS metadata (
-    key TEXT PRIMARY KEY,
-    value TEXT
-);
-
-INSERT INTO metadata (key, value) VALUES ('db_version', '5');
+UPDATE metadata SET value = '5' where key = 'db_version';

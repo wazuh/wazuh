@@ -280,7 +280,6 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
-    // expect_string(__wrap_send_msg, msg, startup_msg);
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
