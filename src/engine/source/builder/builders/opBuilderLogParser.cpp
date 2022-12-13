@@ -9,9 +9,16 @@
 namespace builder::internals::builders
 {
 
-Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar)
+Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar,
+                              size_t debugLvl)
 {
-    return [logpar](std::any definition)
+    if (debugLvl != 0 && debugLvl != 1)
+    {
+        throw std::runtime_error(
+            "[builder::opBuilderLogParser] Invalid debug level: expected 0 or 1");
+    }
+
+    return [logpar, debugLvl](std::any definition)
     {
         // Assert definition is as expected
         json::Json jsonDefinition;
@@ -83,7 +90,7 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar)
             auto errorTrace1 =
                 fmt::format("[{}] -> Failure: field [{}] not found", name, field);
             // Parsing failed
-            auto errorTrace2 = fmt::format("[{}] -> Failure:\nParser trace: ", name);
+            auto errorTrace2 = fmt::format("[{}] -> Failure:\n", name);
             // Field to be parsed is not a string
             auto errorTrace3 =
                 fmt::format("[{}] -> Failure: field [{}] is not a string", name, field);
@@ -112,7 +119,9 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar)
                         {
                             return base::result::makeFailure(
                                 std::move(event),
-                                errorTrace2 + parsec::prettyTrace(parseResult.trace()));
+                                errorTrace2
+                                    + parsec::formatTrace(
+                                        ev, parseResult.trace(), debugLvl));
                         }
 
                         auto val = parseResult.value();

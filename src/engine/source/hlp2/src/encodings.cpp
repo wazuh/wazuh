@@ -42,14 +42,14 @@ inline bool is_valid_base64_char(const char c)
 namespace hlp
 {
 
-parsec::Parser<json::Json> getBinaryParser(Stop, Options lst)
+parsec::Parser<json::Json> getBinaryParser(std::string name, Stop, Options lst)
 {
     if (!lst.empty())
     {
         throw std::runtime_error("binary parser doesn't accept parameters");
     }
 
-    return [](std::string_view text, int index)
+    return [name](std::string_view text, int index)
     {
         auto error = internal::eofError<json::Json>(text, index);
         if (error.has_value())
@@ -65,15 +65,15 @@ parsec::Parser<json::Json> getBinaryParser(Stop, Options lst)
         if (endPos == index)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Invalid base64 char '{}' found at '{}'", *end, endPos),
-                endPos);
+                fmt::format("{}: Invalid base64 char '{}'", name, *end), endPos);
         }
         // consume up to two '=' padding chars
         if ('=' == *end)
         {
             ++endPos;
             auto nx = std::next(end);
-            if ('=' == *nx) {
+            if ('=' == *nx)
+            {
                 ++endPos;
             }
         }
@@ -81,10 +81,10 @@ parsec::Parser<json::Json> getBinaryParser(Stop, Options lst)
         if (0 != (endPos - index) % 4)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Wrong string size '{}' for base64 from offset {} to {}",
+                fmt::format("{}: Wrong string size '{}' for base64 from offset {}",
+                            name,
                             endPos - index,
-                            index,
-                            endPos),
+                            index),
                 endPos);
         }
         json::Json doc;

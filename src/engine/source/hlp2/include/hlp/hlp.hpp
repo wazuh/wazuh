@@ -19,24 +19,27 @@ using Options = std::vector<std::string>;
  * Returns a parser which will accept booleans represented by the strings
  * 'true' and 'false'.
  *
+ * @param name
  * @param endTokens
  * @param lst
  * @return
  */
-parsec::Parser<json::Json> getBoolParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getBoolParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will accept numbers represented by the strings
  * accepted by std::from_char in the C++ STL.
+ * @param name
  * @param endTokens
  * @param lst
  * @return
  */
-parsec::Parser<json::Json> getByteParser(Stop endTokens, Options lst);
-parsec::Parser<json::Json> getLongParser(Stop endTokens, Options lst);
-parsec::Parser<json::Json> getFloatParser(Stop endTokens, Options lst);
-parsec::Parser<json::Json> getDoubleParser(Stop endTokens, Options lst);
-parsec::Parser<json::Json> getScaledFloatParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getByteParser(std::string name, Stop endTokens, Options lst);
+parsec::Parser<json::Json> getLongParser(std::string name, Stop endTokens, Options lst);
+parsec::Parser<json::Json> getFloatParser(std::string name, Stop endTokens, Options lst);
+parsec::Parser<json::Json> getDoubleParser(std::string name, Stop endTokens, Options lst);
+parsec::Parser<json::Json>
+getScaledFloatParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will accept any text until it finds the
@@ -44,11 +47,12 @@ parsec::Parser<json::Json> getScaledFloatParser(Stop endTokens, Options lst);
  * The stop substring must be found complete, or it will not accept
  * the input.
  *
+ * @param name
  * @param endTokens
  * @param lst
  * @return
  */
-parsec::Parser<json::Json> getTextParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getTextParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will accept a base64 encoded string.
@@ -56,12 +60,12 @@ parsec::Parser<json::Json> getTextParser(Stop endTokens, Options lst);
  * base64 char, then it will consume the padding '='.
  *
  * The accepted base64 chars are A-Z, a-z, 0-9, +, or /
+ * @param name
  * @param endTokens
  * @param lst
  * @return
  */
-parsec::Parser<json::Json> getBinaryParser(Stop endTokens, Options lst);
-
+parsec::Parser<json::Json> getBinaryParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will accept a formatted date,
@@ -90,11 +94,12 @@ parsec::Parser<json::Json> getBinaryParser(Stop endTokens, Options lst);
  *
  *
  *
+ * @param name
  * @param endTokens
  * @param lst format, locale
  * @return
  */
-parsec::Parser<json::Json> getDateParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getDateParser(std::string name, Stop endTokens, Options lst);
 
 namespace internal
 {
@@ -113,11 +118,12 @@ std::string formatDateFromSample(std::string dateSample, std::string locale);
  * inet_pton implementation might differ depending
  * on the system on which the engine is built.
  *
+ * @param name
  * @param endTokens
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getIPParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getIPParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will accept a string
@@ -127,21 +133,23 @@ parsec::Parser<json::Json> getIPParser(Stop endTokens, Options lst);
  * encoded in a JSON string.
  *
  * https://www.elastic.co/guide/en/ecs/current/ecs-url.html
+ * @param name
  * @param endTokens
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getUriParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will consume input
  * until the str substring.
  *
+ * @param name
  * @param endTokens
  * @param lst
  * @return
  */
-parsec::Parser<json::Json> getUAParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getUAParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * Returns a parser which accepts domain names as specified
@@ -151,22 +159,25 @@ parsec::Parser<json::Json> getUAParser(Stop endTokens, Options lst);
  *
  *  Which is a max len of 255 and ('-', 0-9, and a-z)
  *  chars plus the dot for separation.
+ * @param name
  * @param endTokens
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getFQDNParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getFQDNParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will accept a filepath as specified
  * in
  *   https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats
  *
+ * @param name
  * @param endTokens
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getFilePathParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json>
+getFilePathParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * Returns a parser that consumes the input while
@@ -174,10 +185,11 @@ parsec::Parser<json::Json> getFilePathParser(Stop endTokens, Options lst);
  *
  * The parsing is done using rapidJSON doc parser.
  *
+ * @param name
  * @param endTokens
  * @param lst list of field names
  */
-parsec::Parser<json::Json> getJSONParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getJSONParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * Returns a parser that consumes the input while
@@ -185,11 +197,12 @@ parsec::Parser<json::Json> getJSONParser(Stop endTokens, Options lst);
  *
  * The parsing is done using pugixml doc parser.
  *
+ * @param name
  * @param endTokens
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getXMLParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getXMLParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * Returns a parser that consumes the input until
@@ -204,11 +217,12 @@ parsec::Parser<json::Json> getXMLParser(Stop endTokens, Options lst);
  * The parsing is done using vincentlaucsb/csv-parser
  * library.
  *
+ * @param name
  * @param endTokens
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getDSVParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getDSVParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * Returns a parser that consumes the input until
@@ -223,11 +237,12 @@ parsec::Parser<json::Json> getDSVParser(Stop endTokens, Options lst);
  * Its a wrapper around getDSVParser with the delimiter set to ','
  * and the quote char set to '"'
  *
+ * @param name
  * @param endTokens
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getCSVParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getCSVParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * Returns a parser which will accept a sequence of:
@@ -240,11 +255,12 @@ parsec::Parser<json::Json> getCSVParser(Stop endTokens, Options lst);
  * A value can be a quoted string which can contain
  * sep or dlm.
  *
+ * @param name
  * @param endTokens
  * @param lst sep and dlm
  * @return
  */
-parsec::Parser<json::Json> getKVParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getKVParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * @brief Returns a parser which will parse a literal, returning empty Json on succeed.
@@ -253,7 +269,8 @@ parsec::Parser<json::Json> getKVParser(Stop endTokens, Options lst);
  * @param lst a list with one element, the literal to parse
  * @return parsec::Parser<json::Json> the parser
  */
-parsec::Parser<json::Json> getLiteralParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json>
+getLiteralParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * @brief Returns a parser that will ignore a string, which may be repeated 0 or more
@@ -266,7 +283,7 @@ parsec::Parser<json::Json> getLiteralParser(Stop endTokens, Options lst);
  * @param lst a list with one element, the string to ignore
  * @return parsec::Parser<json::Json> the parser
  */
-parsec::Parser<json::Json> getIgnoreParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getIgnoreParser(std::string name, Stop endTokens, Options lst);
 
 /**
  * @brief Get the Quoted Parser, which will parse a quoted string, returning the string
@@ -276,6 +293,6 @@ parsec::Parser<json::Json> getIgnoreParser(Stop endTokens, Options lst);
  * provided, the default is " and \
  * @return parsec::Parser<json::Json>
  */
-parsec::Parser<json::Json> getQuotedParser(Stop endTokens, Options lst);
+parsec::Parser<json::Json> getQuotedParser(std::string name, Stop endTokens, Options lst);
 } // namespace hlp
 #endif // _HLP_HPP

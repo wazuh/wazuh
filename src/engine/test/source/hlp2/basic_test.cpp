@@ -83,7 +83,7 @@ TEST(HLP2, BaseStopStr)
 
 TEST(HLP2, BooleanParser)
 {
-    ASSERT_THROW(hlp::getBoolParser({}, {"arg"}), std::runtime_error);
+    ASSERT_THROW(hlp::getBoolParser({}, {}, {"arg"}), std::runtime_error);
 
     auto fn = [](bool in) -> json::Json
     {
@@ -112,7 +112,7 @@ TEST(HLP2, BooleanParser)
 
 TEST(HLP2, ByteParser)
 {
-    ASSERT_THROW(hlp::getByteParser({}, {"arg"}), std::runtime_error);
+    ASSERT_THROW(hlp::getByteParser({}, {}, {"arg"}), std::runtime_error);
 
     auto fn = [](int8_t in) -> json::Json
     {
@@ -143,7 +143,7 @@ TEST(HLP2, ByteParser)
 
 TEST(HLP2, LongParser)
 {
-    ASSERT_THROW(hlp::getLongParser({}, {"arg"}), std::runtime_error);
+    ASSERT_THROW(hlp::getLongParser({}, {}, {"arg"}), std::runtime_error);
 
     auto fn = [](int64_t in) -> json::Json
     {
@@ -177,7 +177,7 @@ TEST(HLP2, LongParser)
 
 TEST(HLP2, FloatParser)
 {
-    ASSERT_THROW(hlp::getFloatParser({}, {"arg"}), std::runtime_error);
+    ASSERT_THROW(hlp::getFloatParser({}, {}, {"arg"}), std::runtime_error);
 
     auto fn = [](float_t in) -> json::Json
     {
@@ -208,7 +208,7 @@ TEST(HLP2, FloatParser)
 
 TEST(HLP2, DoubleParser)
 {
-    ASSERT_THROW(hlp::getDoubleParser({}, {"arg"}), std::runtime_error);
+    ASSERT_THROW(hlp::getDoubleParser({}, {}, {"arg"}), std::runtime_error);
 
     auto fn = [](double_t in) -> json::Json
     {
@@ -239,7 +239,7 @@ TEST(HLP2, DoubleParser)
 
 TEST(HLP2, ScaledFloatParser)
 {
-    ASSERT_THROW(hlp::getScaledFloatParser({}, {"arg"}), std::runtime_error);
+    ASSERT_THROW(hlp::getScaledFloatParser({}, {}, {"arg"}), std::runtime_error);
 
     auto fn = [](double_t in) -> json::Json
     {
@@ -270,8 +270,8 @@ TEST(HLP2, ScaledFloatParser)
 
 TEST(HLP2, TextParser)
 {
-    ASSERT_THROW(hlp::getTextParser({}, {}), std::runtime_error);
-    ASSERT_THROW(hlp::getTextParser({""}, {"arg"}), std::runtime_error);
+    ASSERT_THROW(hlp::getTextParser({}, {}, {}), std::runtime_error);
+    ASSERT_THROW(hlp::getTextParser({}, {""}, {"arg"}), std::runtime_error);
 
     auto fn = [](std::string in) -> json::Json
     {
@@ -304,7 +304,7 @@ TEST(HLP2, TextParser)
 
 TEST(HLP2, BinaryParser)
 {
-    ASSERT_THROW(hlp::getBinaryParser({}, {"arg"}), std::runtime_error);
+    ASSERT_THROW(hlp::getBinaryParser({}, {}, {"arg"}), std::runtime_error);
 
     auto fn = [](std::string in) -> json::Json
     {

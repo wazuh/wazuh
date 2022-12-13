@@ -15,14 +15,14 @@
 namespace hlp
 {
 
-parsec::Parser<json::Json> getBoolParser(Stop, Options lst)
+parsec::Parser<json::Json> getBoolParser(std::string name, Stop, Options lst)
 {
     if (!lst.empty())
     {
         throw std::runtime_error("bool parser doesn't accept parameters");
     }
 
-    return [](std::string_view text, int index)
+    return [name](std::string_view text, int index)
     {
         auto res = internal::eofError<json::Json>(text, index);
         if (res.has_value())
@@ -44,7 +44,7 @@ parsec::Parser<json::Json> getBoolParser(Stop, Options lst)
         else
         {
             return parsec::makeError<json::Json>(
-                "Expected 'true' or 'false'", index);
+                fmt::format("{}: Expected 'true' or 'false'", name), index);
         }
     };
 }

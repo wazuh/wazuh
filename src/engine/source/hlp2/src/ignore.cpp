@@ -14,7 +14,7 @@
 namespace hlp
 {
 
-parsec::Parser<json::Json> getIgnoreParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getIgnoreParser(std::string name, Stop endTokens, Options lst)
 {
     if (lst.size() != 1 || lst[0].empty())
     {
@@ -22,7 +22,7 @@ parsec::Parser<json::Json> getIgnoreParser(Stop endTokens, Options lst)
                                  " with the string to match");
     }
 
-    return [repeatStr = lst.at(0)](std::string_view text, int index)
+    return [repeatStr = lst.at(0), name](std::string_view text, int index)
     {
         auto res = internal::eofError<json::Json>(text, index);
         if (res.has_value())

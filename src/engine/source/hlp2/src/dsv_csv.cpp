@@ -28,7 +28,8 @@ namespace
  * @param headers The header names (destination)
  * @return parsec::Parser<json::Json>
  */
-inline auto dsvParserFunction(Stop endTokens,
+inline auto dsvParserFunction(std::string name,
+                              Stop endTokens,
                               const char delimiterChar,
                               const char quoteChar,
                               const char scapeChar,
@@ -39,7 +40,7 @@ inline auto dsvParserFunction(Stop endTokens,
     {
         throw std::runtime_error(fmt::format("CSV/DSV parser needs a stop string"));
     }
-    return [endTokens, delimiterChar, quoteChar, headers, scapeChar](
+    return [endTokens, delimiterChar, quoteChar, headers, scapeChar, name](
                std::string_view text, int index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
@@ -83,7 +84,7 @@ inline auto dsvParserFunction(Stop endTokens,
         if (headers.size() != i)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Unable to parse from {} to {}", end, pos), end);
+                fmt::format("{}: Expected a DSV/CSV string", name), end);
         }
 
         return parsec::makeSuccess<json::Json>(std::move(doc), end + index);
@@ -91,7 +92,7 @@ inline auto dsvParserFunction(Stop endTokens,
 }
 } // namespace
 
-parsec::Parser<json::Json> getDSVParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getDSVParser(std::string name, Stop endTokens, Options lst)
 {
     if (lst.size() < 5)
     {
@@ -114,10 +115,10 @@ parsec::Parser<json::Json> getDSVParser(Stop endTokens, Options lst)
                    std::back_inserter(headers),
                    [](auto s) { return fmt::format("/{}", s); });
 
-    return dsvParserFunction(endTokens, delimiter, quote, scape, headers);
+    return dsvParserFunction(name, endTokens, delimiter, quote, scape, headers);
 }
 
-parsec::Parser<json::Json> getCSVParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getCSVParser(std::string name, Stop endTokens, Options lst)
 {
     if (lst.size() < 2)
     {
@@ -134,7 +135,7 @@ parsec::Parser<json::Json> getCSVParser(Stop endTokens, Options lst)
                    std::back_inserter(headers),
                    [](auto s) { return fmt::format("/{}", s); });
 
-    return dsvParserFunction(endTokens, delimiter, quote, scape, headers);
+    return dsvParserFunction(name, endTokens, delimiter, quote, scape, headers);
 }
 
 } // namespace hlp

@@ -249,18 +249,93 @@ Result<T> makeError(std::string&& error,
                              std::move(innerTrace)}};
 }
 
-inline std::string prettyTrace(const Trace& trace, size_t indent = 0)
+inline const Trace& firstError(const Trace& trace)
 {
-    std::string tr = std::string(indent, ' ');
-    tr += trace.message().has_value()
-              ? fmt::format("{} at {}\n", trace.message().value(), trace.index())
-              : "\n";
     if (trace.innerTraces().has_value())
     {
         for (const auto& t : trace.innerTraces().value())
         {
-            tr += prettyTrace(t, indent + 1);
+            if (!t.success())
+            {
+                return firstError(t);
+            }
         }
+    }
+
+    return trace;
+}
+
+inline std::list<const Trace*> getLeafErrors(const Trace& trace)
+{
+    std::list<const Trace*> errors;
+    if (trace.innerTraces().has_value())
+    {
+        for (const auto& t : trace.innerTraces().value())
+        {
+            auto aux = getLeafErrors(t);
+            errors.splice(errors.end(), aux);
+        }
+    }
+    else if (!trace.success())
+    {
+        errors.push_back(&trace);
+    }
+
+    return errors;
+}
+
+inline std::string detailedTrace(const Trace& trace, bool last, std::string prefix = "")
+{
+    std::string tr = prefix;
+
+    tr += last ? "└─" : "├─";
+
+    tr += trace.message().has_value()
+              ? fmt::format("{} at {}\n", trace.message().value(), trace.index())
+              : "succeeded \n";
+    if (trace.innerTraces().has_value())
+    {
+        auto auxPrefix = prefix + (last ? "   " : "│  ");
+        for (auto i = 0; i < trace.innerTraces().value().size() - 1; ++i)
+        {
+            tr += detailedTrace(trace.innerTraces().value()[i], false, auxPrefix);
+        }
+        tr += detailedTrace(trace.innerTraces().value().back(), true, auxPrefix);
+    }
+
+    return tr;
+}
+
+inline std::string formatTrace(std::string_view text, const Trace& trace, size_t debugLvl)
+{
+    std::string tr;
+
+    // Print the first error as it's probably the most relevant
+    auto first = firstError(trace);
+    tr = fmt::format("\nMain error: {} at {}\n{}\n{}^\n",
+                     first.message().value(),
+                     first.index(),
+                     text,
+                     std::string(first.index(), '-'));
+
+    // Get all leaf errors (errors from our parsers, not combinators)
+    auto errors = getLeafErrors(trace);
+
+    if (!errors.empty())
+    {
+        // Print all errors
+        tr += "\nList of errors:\n";
+        for (auto e : errors)
+        {
+            tr += fmt::format("{} at {}\n", e->message().value(), e->index());
+        }
+    }
+
+    // Get detailed trace
+    if (debugLvl > 0)
+    {
+        tr += "\nDetailed trace:\n";
+        tr += detailedTrace(trace, true);
     }
 
     return tr;

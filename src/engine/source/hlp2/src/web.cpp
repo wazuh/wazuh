@@ -18,7 +18,7 @@
 namespace hlp
 {
 
-parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getUriParser(std::string name, Stop endTokens, Options lst)
 {
     if (endTokens.empty())
     {
@@ -43,8 +43,8 @@ parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
         // {CURLUPART_OPTIONS, "/options"}
     };
 
-    return [endTokens, mapCurlFields = std::move(mapCurlFields)](std::string_view text,
-                                                                 int index)
+    return [endTokens, mapCurlFields = std::move(mapCurlFields), name](
+               std::string_view text, int index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
         if (std::holds_alternative<parsec::Result<json::Json>>(res))
@@ -63,13 +63,14 @@ parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
         if (url.get() == nullptr)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("Unable to initialize the url container"), index);
+                fmt::format("{}: Unable to initialize the url container", name), index);
         }
 
         auto uc = curl_url_set(url.get(), CURLUPART_URL, urlStr.c_str(), 0);
         if (uc)
         {
-            return parsec::makeError<json::Json>(fmt::format("error parsing url"), index);
+            return parsec::makeError<json::Json>(
+                fmt::format("{}: Error parsing url", name), index);
         }
 
         // TODO curl will parse and copy the URL into an allocated
@@ -98,7 +99,7 @@ parsec::Parser<json::Json> getUriParser(Stop endTokens, Options lst)
     };
 }
 
-parsec::Parser<json::Json> getUAParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getUAParser(std::string name, Stop endTokens, Options lst)
 {
     if (endTokens.empty())
     {
@@ -110,7 +111,7 @@ parsec::Parser<json::Json> getUAParser(Stop endTokens, Options lst)
         throw std::runtime_error(fmt::format("URL parser do not accept arguments!"));
     }
 
-    return [endTokens](std::string_view text, int index)
+    return [endTokens, name](std::string_view text, int index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
         if (std::holds_alternative<parsec::Result<json::Json>>(res))
@@ -130,7 +131,7 @@ parsec::Parser<json::Json> getUAParser(Stop endTokens, Options lst)
 
 // We validate it is a valid FQDN or PQDN we do not
 // extract any component here.
-parsec::Parser<json::Json> getFQDNParser(Stop endTokens, Options lst)
+parsec::Parser<json::Json> getFQDNParser(std::string name, Stop endTokens, Options lst)
 {
 
     if (lst.size() > 0)
@@ -138,7 +139,7 @@ parsec::Parser<json::Json> getFQDNParser(Stop endTokens, Options lst)
         throw std::runtime_error("FQDN parser do not accept arguments!");
     }
 
-    return [endTokens](std::string_view text, int index)
+    return [endTokens, name](std::string_view text, int index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
         if (std::holds_alternative<parsec::Result<json::Json>>(res))
@@ -158,7 +159,7 @@ parsec::Parser<json::Json> getFQDNParser(Stop endTokens, Options lst)
         if (fp.size() > 253)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("size '{}' too big for an fqdn", fp.size()), index);
+                fmt::format("{}: Size '{}' too big for an fqdn", name, fp.size()), index);
         }
 
         char last = 0;
@@ -178,7 +179,7 @@ parsec::Parser<json::Json> getFQDNParser(Stop endTokens, Options lst)
             return parsec::makeSuccess<json::Json>(std::move(doc), pos);
         }
         return parsec::makeError<json::Json>(
-            fmt::format("invalid char '{}' found while parsing", e[0]), index);
+            fmt::format("{}: Invalid char '{}' found while parsing", name, e[0]), index);
     };
 }
 
