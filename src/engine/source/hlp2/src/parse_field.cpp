@@ -32,7 +32,8 @@ std::optional<Field> getField(const char* in,
         }
         else
         {
-            if (quote_opened && quote != escape && in[i] == escape){
+            if (quote_opened && quote != escape && in[i] == escape)
+            {
                 last_escape_location = i;
             }
             // TODO: If it does not begin with quotation marks, why does it advance until
@@ -98,7 +99,7 @@ void updateDoc(json::Json& doc,
 
     int64_t i;
     auto [ptr, ec] {utils::from_chars(val.data(), val.data() + val.size(), i)};
-    if (ec == std::errc())
+    if (std::errc() == ec && (val.data() + val.size()) == ptr)
     {
         doc.setInt64(i, hdr);
         return;
@@ -107,7 +108,7 @@ void updateDoc(json::Json& doc,
     {
         double_t d;
         auto [ptr, ec] {utils::from_chars(val.data(), val.data() + val.size(), d)};
-        if (ec == std::errc())
+        if (std::errc() == ec && (val.data() + val.size()) == ptr)
         {
             doc.setDouble(d, hdr);
             return;
