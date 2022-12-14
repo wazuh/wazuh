@@ -73,7 +73,18 @@ normalize:
     - destination.domain: $~event_channel.Event.EventData.DestinationHostname
     - destination.port: $~event_channel.Event.EventData.DestinationPort
     - dns.question.name: $~event_channel.Event.EventData.QueryName
-    - 
+  
+  ## User fields
+    #- user.id:
+    - ~temp.user_parts: +s_to_array/$~event_channel.Event.EventData.User/\\
+    - user.domain: $~temp.user_parts.0
+    - user.name: $~temp.user_parts.1
+
+  ## Sysmon fields
+    - sysmon.dns.status: $~event_channel.Event.EventData.QueryStatus
+    - sysmon.dns.status: +kvdb_get/sysmon_dns_status/$~event_channel.Event.EventData.QueryStatus
+    - sysmon.file.archived: $~event_channel.Event.EventData.Archived
+    - sysmon.file.is_executable: $~event_channel.Event.EventData.IsExecutable
 
  - check: event.code==255 
    map:
