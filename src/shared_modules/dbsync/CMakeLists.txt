@@ -13,6 +13,11 @@ file(GLOB DBSYNC_SRC
 add_library(dbsync SHARED
   ${DBSYNC_SRC})
 
+# The debug symbols are stripped from the binary in Release mode if the compiler is not Clang
+if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:-s>")
+endif(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN_EXPORT)
   set_target_properties(dbsync PROPERTIES

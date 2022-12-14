@@ -82,6 +82,11 @@ add_library(sysinfo SHARED
   ${SYSINFO_SRC}
   ${PROJECT_SOURCE_DIR}/src/sysInfo.cpp)
 
+# The debug symbols are stripped from the binary in Release mode if the compiler is not Clang
+if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:-s>")
+endif(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(sysinfo psapi iphlpapi ws2_32)
   set_target_properties(sysinfo PROPERTIES

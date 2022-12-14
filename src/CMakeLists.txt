@@ -30,26 +30,26 @@ set(ALL_UNIT_TEST_TARGET all_unit_test)
 add_custom_target(${ALL_UNIT_TEST_TARGET})
 enable_testing()
 
+# Compiling this library even if the unit_test target isn't used later
+add_subdirectory(${SRC_FOLDER}/external/googletest)
+include_directories(${SRC_FOLDER}/external/googletest/googletest/include)
+include_directories(${SRC_FOLDER}/external/googletest/googlemock/include)
+link_directories(${SRC_FOLDER}/external/googletest/lib/)
+
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
 # Address sanitizer only in Debug mode
 if(FSANITIZE)
-  string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=address,leak,undefined")
+  add_compile_options("$<$<CONFIG:DEBUG>:-fsanitize=address,leak,undefined>")
 
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
+    add_compile_options("$<$<CONFIG:DEBUG>:-fprofile-arcs>")
   else()
-    string(APPEND CMAKE_EXE_LINKER_FLAGS " -lgcov ")
+    add_compile_options("$<$<CONFIG:DEBUG>:-lgcov>")
   endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif(FSANITIZE)
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options("$<$<CONFIG:RELEASE>:-O3>")
-else()
-  add_compile_options("$<$<CONFIG:RELEASE>:-O3;-s>")
-endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
@@ -81,14 +81,6 @@ link_directories(${SRC_FOLDER}/external/libplist/bin/lib/)
 link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/)
-
-# Compile GTest/GMock if the tests are on
-if(UNIT_TEST)
-  add_subdirectory(${SRC_FOLDER}/external/googletest)
-  include_directories(${SRC_FOLDER}/external/googletest/googletest/include)
-  include_directories(${SRC_FOLDER}/external/googletest/googlemock/include)
-  link_directories(${SRC_FOLDER}/external/googletest/lib/)
-endif(UNIT_TEST)
 
 add_subdirectory(data_provider)
 add_subdirectory(shared_modules)
