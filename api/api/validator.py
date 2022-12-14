@@ -22,7 +22,7 @@ _boolean = re.compile(r'^true$|^false$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
 _group_names = re.compile(r'^(?!^(\.{1,2}|all)$)[A-Za-z0-9.\-_]+$')
-_group_names_or_all = re.compile(r'^(?!^\.{1,2}$)[\w.\-]+$')
+_group_names_or_all = re.compile(r'^(?!^\.{1,2}$)[A-Za-z0-9.\-_]+$')
 _hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{56})?$|(?:[\da-fA-F]{64})?$|(?:['
                      r'\da-fA-F]{96})?$|(?:[\da-fA-F]{128})?$')
 _ips = re.compile(
