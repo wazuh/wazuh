@@ -33,7 +33,7 @@
 #endif
 
 /* Main methods */
-static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_address);
+static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_address, uint32_t network_interface);
 static int w_enrollment_send_message(w_enrollment_ctx *cfg);
 static int w_enrollment_process_response(SSL *ssl);
 /* Auxiliary */
@@ -57,6 +57,7 @@ w_enrollment_target *w_enrollment_target_init() {
     os_malloc(sizeof(w_enrollment_target), target_cfg);
     target_cfg->port = DEFAULT_PORT;
     target_cfg->manager_name = NULL;
+    target_cfg->network_interface = 0;
     target_cfg->agent_name = NULL;
     target_cfg->centralized_group = NULL;
     target_cfg->sender_ip = NULL;
@@ -115,11 +116,11 @@ void w_enrollment_destroy(w_enrollment_ctx *cfg) {
     os_free(cfg);
 }
 
-int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address) {
+int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address, uint32_t network_interface) {
     assert(cfg != NULL);
     int ret = -1;
     minfo("Requesting a key from server: %s", server_address ? server_address : cfg->target_cfg->manager_name);
-    int socket = w_enrollment_connect(cfg, server_address ? server_address : cfg->target_cfg->manager_name);
+    int socket = w_enrollment_connect(cfg, server_address ? server_address : cfg->target_cfg->manager_name, network_interface ? network_interface : cfg->target_cfg->network_interface);
     if ( socket >= 0) {
         w_enrollment_load_pass(cfg->cert_cfg);
         if (w_enrollment_send_message(cfg) == 0) {
@@ -184,7 +185,7 @@ static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg) {
  * @retval ENROLLMENT_WRONG_CONFIGURATION(-1) on invalid configuration
  * @retval ENROLLMENT_CONNECTION_FAILURE(-2) connection error
  */
-static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_address)
+static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_address, uint32_t network_interface)
 {
     assert(cfg != NULL);
     assert(server_address != NULL);
@@ -216,7 +217,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     }
 
     /* Connect via TCP */
-    int sock = OS_ConnectTCP((u_int16_t) cfg->target_cfg->port, ip_address, strchr(ip_address, ':') != NULL);
+    int sock = OS_ConnectTCP((u_int16_t) cfg->target_cfg->port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, network_interface);
     if (sock < 0) {
         merror(ENROLL_CONN_ERROR, ip_address, cfg->target_cfg->port);
         os_free(ip_address);

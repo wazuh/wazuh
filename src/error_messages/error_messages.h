@@ -300,6 +300,7 @@
 #define AG_NOKEYS_EXIT  "(4109): Unable to start without auth keys. Exiting."
 #define AG_INV_MNGIP    "(4112): Invalid server address found: '%s'"
 #define AG_ENROLL_FAIL  "(4113): Auto Enrollment configuration failed."
+#define AG_INV_INT      "(4114): All server addresses are IPv6 link-local and no interface to any <server> block has been configured."
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."

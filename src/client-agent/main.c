@@ -155,6 +155,11 @@ int main(int argc, char **argv)
         merror_exit(CLIENT_ERROR);
     }
 
+    if (!Validate_IPv6_Link_Local_Interface(agt->server)){
+        merror(AG_INV_INT);
+        merror_exit(CLIENT_ERROR);
+    }
+
     if (agt->notify_time == 0) {
         agt->notify_time = NOTIFY_TIME;
     }
