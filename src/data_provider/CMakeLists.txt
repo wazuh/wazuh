@@ -1,5 +1,4 @@
 project(sysinfo)
-add_library(sysinfo)
 
 include_directories(${PROJECT_SOURCE_DIR}/src/
   ${PROJECT_SOURCE_DIR}/include/)
@@ -79,7 +78,7 @@ else()
     "${PROJECT_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_sources(sysinfo PUBLIC
+add_library(sysinfo SHARED
   ${SYSINFO_SRC}
   ${PROJECT_SOURCE_DIR}/src/sysInfo.cpp)
 

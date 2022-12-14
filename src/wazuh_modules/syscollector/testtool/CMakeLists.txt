@@ -1,12 +1,12 @@
 project(syscollector_test_tool)
 
 file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
-        "${CMAKE_SOURCE_DIR}/wazuh_modules/syscollector/testtool/*.cpp"
-        )
+    "${CMAKE_SOURCE_DIR}/wazuh_modules/syscollector/testtool/*.cpp"
+)
 
 add_executable(syscollector_test_tool
-               ${SYSCOLLECTOR_TESTTOOL_SRC}
-               )
+    ${SYSCOLLECTOR_TESTTOOL_SRC}
+)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(syscollector_test_tool
@@ -22,14 +22,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         crypt32
         -static-libstdc++
     )
-elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     target_link_libraries(syscollector_test_tool
         rsync
         dbsync
         sysinfo
         syscollector
         pthread)
-elseif (CMAKE_SYSTEM_NAME STREQUAL "AIX")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
     target_link_libraries(syscollector_test_tool
         rsync
         dbsync
