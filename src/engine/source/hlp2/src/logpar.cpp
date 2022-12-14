@@ -480,7 +480,7 @@ Logpar::buildFieldParser(const parser::Field& field,
     else
     {
         auto targetField = field.name.value;
-        targetField = json::Json::formatJsonPath(targetField);
+        targetField = json::Json::formatJsonPath(targetField, true);
 
         ret = parsec::fmap<json::Json, json::Json>(
             [targetField](auto v)
@@ -623,6 +623,52 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
         // Field
         if (std::holds_alternative<parser::Field>(*parserInfo))
         {
+            // If the field is followed by a group, make a choice between the field, and
+            // the field and group
+            auto next = std::next(parserInfo);
+            if (std::holds_alternative<parser::Group>(*next))
+            {
+                auto group = std::get<parser::Group>(*next);
+                auto endTokens = groupEndToken(group, groupEndToken);
+
+                // Dependendant of recursion allowed, as for now we only allow one
+                auto pF = buildFieldParser(std::get<parser::Field>(*parserInfo),
+                                           {endTokens.front()});
+                auto pG = buildParsers(group.children, recurLvl + 1);
+                auto choice1 =
+                    parsec::fmap<json::Json, std::tuple<json::Json, json::Json>>(
+                        [](auto&& t) -> json::Json
+                        {
+                            auto& [a, b] = t;
+                            if (a.isObject() && b.isObject())
+                            {
+                                a.merge(b);
+                                return a;
+                            }
+                            else if (a.isObject())
+                            {
+                                return a;
+                            }
+                            else if (b.isObject())
+                            {
+                                return b;
+                            }
+                            else
+                            {
+                                return json::Json();
+                            }
+                        },
+                        pF& pG);
+                auto endToken2 = getEndToken(parserInfos, next, getEndToken);
+                auto choice2 = buildFieldParser(std::get<parser::Field>(*parserInfo),endToken2);
+
+                parsers.push_back(choice1 | choice2);
+                // Skip group
+                ++parserInfo;
+                continue;
+            }
+
+            // Normal case
             std::list<std::string> endTokens =
                 getEndToken(parserInfos, parserInfo, getEndToken);
 

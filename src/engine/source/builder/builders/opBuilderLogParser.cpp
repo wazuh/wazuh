@@ -127,7 +127,13 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar,
                         auto val = parseResult.value();
                         if (!val.isNull() && val.size() > 0)
                         {
-                            event->merge(val);
+                            // event->merge(val);
+                            auto obj = val.getObject().value();
+                            for (auto& [key, value] : obj)
+                            {
+                                auto formatKey = json::Json::formatJsonPath(key);
+                                event->set(formatKey, value);
+                            }
                         }
 
                         return base::result::makeSuccess(std::move(event), successTrace);
