@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} syscollectorimp_unit_test)
 project(syscollectorimp_unit_test)
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
@@ -56,4 +57,4 @@ else()
 endif()
 
 add_test(NAME syscollectorimp_unit_test
-         COMMAND syscollectorimp_unit_test)
+    COMMAND syscollectorimp_unit_test)

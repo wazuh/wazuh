@@ -1,3 +1,4 @@
+add_dependencies(${PROJECT_NAME} sys_normalizer_unit_test)
 project(sys_normalizer_unit_test)
 
 file(GLOB SYS_NORMALIZER_UNIT_TEST_SRC
@@ -33,4 +34,4 @@ else()
 endif()
 
 add_test(NAME sys_normalizer_unit_test
-         COMMAND sys_normalizer_unit_test)
+    COMMAND sys_normalizer_unit_test)
