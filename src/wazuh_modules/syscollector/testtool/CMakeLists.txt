@@ -21,7 +21,7 @@ if(COVERITY)
 endif(COVERITY)
 add_definitions(-DWAZUH_UNIT_TESTING)
 
-set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++17 -pthread")
 
 if(FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address,leak,undefined")

@@ -9,9 +9,9 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++17")
 
-add_executable(dbsync_example 
+add_executable(dbsync_example
     "${CMAKE_SOURCE_DIR}/example/main.cpp" )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

@@ -11,7 +11,7 @@ endif(COVERITY)
 # Enable testing
 enable_testing()
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++17")
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 include_directories(${SRC_FOLDER}/)

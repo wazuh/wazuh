@@ -321,7 +321,7 @@ def runCppCheck(moduleName):
     printHeader(moduleName, 'cppcheck')
 
     currentDir = currentDirPath(moduleName)
-    cppcheckCommand = f'cppcheck --force --std=c++14 --quiet {currentDir}'
+    cppcheckCommand = f'cppcheck --force --std=c++17 --quiet {currentDir}'
 
     out = subprocess.run(cppcheckCommand, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE, shell=True)
