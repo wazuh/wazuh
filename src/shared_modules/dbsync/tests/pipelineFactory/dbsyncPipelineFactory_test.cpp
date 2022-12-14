@@ -217,10 +217,10 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowAndGetDeleted)
             wrapper.callback(resultType, result);
         }
     };
-    EXPECT_CALL(wrapper, callback(MODIFIED, nlohmann::json::parse(R"([{"pid":4,"tid":101}])"))).Times(1);
+    EXPECT_CALL(wrapper, callback(MODIFIED, nlohmann::json::parse(R"([{"pid":4,"name":"System","tid":101}])"))).Times(1);
     EXPECT_CALL(wrapper, callback(INSERTED, nlohmann::json::parse(R"([{"pid":6,"name":"System2","tid":105}])"))).Times(1);
-    EXPECT_CALL(wrapper, callback(DELETED, nlohmann::json::parse(R"({"pid":5})"))).Times(1);
-    EXPECT_CALL(wrapper, callback(DELETED, nlohmann::json::parse(R"({"pid":7})"))).Times(1);
+    EXPECT_CALL(wrapper, callback(DELETED, nlohmann::json::parse(R"({"pid":5,"name":"System1","tid":101})"))).Times(1);
+    EXPECT_CALL(wrapper, callback(DELETED, nlohmann::json::parse(R"({"pid":7,"name":"System7","tid":101})"))).Times(1);
     DBSyncImplementation::instance().syncRowData(m_dbHandle, nlohmann::json::parse(jsonInputNoTxn), nullptr);
     const auto& json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
     const int threadNumber{ 1 };
@@ -255,9 +255,9 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowAndGetDeletedSameData)
             wrapper.callback(resultType, result);
         }
     };
-    EXPECT_CALL(wrapper, callback(MODIFIED, nlohmann::json::parse(R"([{"pid":4,"tid":101}])"))).Times(1);
+    EXPECT_CALL(wrapper, callback(MODIFIED, nlohmann::json::parse(R"([{"pid":4,"name":"System","tid":101}])"))).Times(1);
     EXPECT_CALL(wrapper, callback(INSERTED, nlohmann::json::parse(R"([{"pid":6,"name":"System2","tid":105}])"))).Times(1);
-    EXPECT_CALL(wrapper, callback(DELETED, nlohmann::json::parse(R"({"pid":7})"))).Times(1);
+    EXPECT_CALL(wrapper, callback(DELETED, nlohmann::json::parse(R"({"pid":7,"name":"System7","tid":101})"))).Times(1);
     DBSyncImplementation::instance().syncRowData(m_dbHandle, nlohmann::json::parse(jsonInputNoTxn), nullptr);
     const auto& json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
     const int threadNumber{ 1 };
