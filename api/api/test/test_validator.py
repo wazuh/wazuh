@@ -108,6 +108,9 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('all', _group_names),
     ('.', _group_names),
     ('..', _group_names),
+    ('解放加大了看', _group_names),
+    ('тестирование',_group_names),
+    ('בדיקה', _group_names),
     ('.', _group_names_or_all),
     ('..', _group_names_or_all),
     # IPs
