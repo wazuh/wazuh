@@ -129,7 +129,7 @@ public:
      * @param dotPath The dot path string.
      * @return std::string The pointer path string.
      */
-    static std::string formatJsonPath(std::string_view dotPath);
+    static std::string formatJsonPath(std::string_view dotPath, bool skipDot = false);
 
     /************************************************************************************/
     // Runtime functionality, used only by our operations.
