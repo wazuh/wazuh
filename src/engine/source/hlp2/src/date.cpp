@@ -39,7 +39,6 @@ static const std::vector<std::tuple<std::string, std::string>> TimeFormat {
     {"HTTPDATE", "%d/%b/%Y:%T %z"},     // 26/Dec/2016:16:22:14 +0000
     // HTTP-date = rfc1123-date |rfc850-date | asctime-date
     {"NGINX_ERROR", "%D %T"},                  // 10/25/2006 14:49:34
-    {"APACHE_ERROR", "%a %b %d %H:%M:%9S %Y"}, // Mon Dec 26 16:15:55.103786 2016
     {"POSTGRES", "%F %H:%M:%6S %Z"},           // 2021-02-14 10:45:33 UTC
 };
 
