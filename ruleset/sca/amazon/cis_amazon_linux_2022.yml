@@ -1,0 +1,30 @@
+# Security Configuration Assessment
+# CIS Checks for Amazon Linux 2022
+# Copyright (C) 2022, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# Based on:
+# Center for Internet Security Amazon Linux 2022 Benchmark v1.0.0 - 06-02-2022
+
+policy:
+  id: "cis_amazon_linux_2022"
+  file: "cis_amazon_linux_2022.yml"
+  name: "CIS Benchmark for Amazon Linux 2022"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Amazon Linux 2022 systems running on x86 and x64 platforms. This document was tested against Amazon Linux 2022."
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+
+requirements:
+  title: "Check Amazon Linux platform."
+  description: "Requirements for running the policy against Amazon Linux 2022."
+  condition: any
+  rules:
+    - "f:/etc/system-release -> r:^Amazon && r:release 2022"
+
+variables:
+  $sshd_file: /etc/ssh/sshd_config
+
