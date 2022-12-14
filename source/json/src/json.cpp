@@ -81,7 +81,7 @@ bool Json::operator==(const Json& other) const
     return m_document == other.m_document;
 }
 
-std::string Json::formatJsonPath(std::string_view dotPath)
+std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
 {
     // TODO: Handle array indices and pointer path operators.
     std::string ptrPath {dotPath};
@@ -109,7 +109,9 @@ std::string Json::formatJsonPath(std::string_view dotPath)
         }
 
         // Replace . with /
-        std::replace(std::begin(ptrPath), std::end(ptrPath), '.', '/');
+        if(!skipDot) {
+            std::replace(std::begin(pointerPath), std::end(pointerPath), '.', '/');
+        }
 
         // Add / at the beginning
         if (ptrPath.front() != '/')
