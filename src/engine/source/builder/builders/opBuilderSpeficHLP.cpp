@@ -75,7 +75,7 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
                                                HLPParserType type)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(rawParameters);
+    auto parameters = helper::base::processParameters(name, rawParameters);
 
     if (parameters.empty())
     {
@@ -162,7 +162,7 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
     }
 
     const auto traceName =
-        helper::base::formatHelperFilterName(name, targetField, parameters);
+        helper::base::formatHelperName(name, targetField, parameters);
     const auto successTrace = fmt::format("[{}] -> Success", traceName);
     const auto failureTrace1 = fmt::format("[{}] -> Failure: parameter is not a string"
                                            " or it doesn't exist",

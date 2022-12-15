@@ -118,22 +118,6 @@ void run(const std::string& kvdbPath,
         }
         logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
         hlp::registerParsers(logpar);
-        WAZUH_LOG_INFO("Engine \"run\" command: Builders successfully registered.");
-
-        base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
-        auto hlpParsers = store->get(hlpConfigFileName);
-        if (std::holds_alternative<base::Error>(hlpParsers))
-        {
-            WAZUH_LOG_ERROR("Could not retreive configuration file [{}] needed by the "
-                            "HLP module, error: {}",
-                            hlpConfigFileName.fullName(),
-                            std::get<base::Error>(hlpParsers).message);
-
-            g_exitHanlder.execute();
-            return;
-        }
-        logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
-        hlp::registerParsers(logpar);
         WAZUH_LOG_INFO("Engine \"run\" command: HLP initialized.");
 
         auto registry = std::make_shared<builder::internals::Registry>();
