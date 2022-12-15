@@ -16,10 +16,10 @@ namespace hlp
 {
 parsec::Parser<json::Json> getIPParser(std::string name, Stop endTokens, Options lst)
 {
-    // if (endTokens.empty())
-    // {
-    //     throw std::runtime_error("IP parser needs a stop string");
-    // }
+    if (endTokens.empty())
+    {
+        throw std::runtime_error("IP parser needs a stop string");
+    }
 
     if (lst.size() > 0)
     {

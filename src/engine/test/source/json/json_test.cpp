@@ -1487,7 +1487,7 @@ TEST(JsonSettersTest, SetInt64)
     ASSERT_EQ(9223372036854775807, jObjEmpty.getInt64("/nested").value());
 
     // Invalid pointer
-    ASSERT_THROW(jObjInt64.setInt64(9223372036854775808, "object/key"), std::runtime_error);
+    ASSERT_THROW(jObjInt64.setInt64(9223372036854775808ull, "object/key"), std::runtime_error);
 }
 
 TEST(JsonSettersTest, SetFloat)

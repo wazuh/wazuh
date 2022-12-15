@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-TEST(BinaryParser, BinaryParser)
+TEST(BinaryParser, parser)
 {
     auto fn = [](std::string in) -> json::Json
     {
@@ -106,23 +106,16 @@ TEST(BinaryParser, BinaryParser)
     }
 }
 
-TEST(BinaryParser, getBinaryParserConfigErrors)
+TEST(BinaryParser, build)
 {
-    auto fn = [](std::string in) -> json::Json
-    {
-        json::Json doc;
-        doc.setString(in);
-        return doc;
-    };
+    // OK
+    ASSERT_NO_THROW(hlp::getBinaryParser({}, {}, Options {}));
+    // The stop are optional
+    ASSERT_NO_THROW(hlp::getBinaryParser({}, {""}, Options {}));
 
-    std::vector<TestCase> testCases {
-        TestCase {"192.168.0.1", false, {}, Options {""}, fn("{}"), 0},
-        TestCase {"192.168.0.1", false, {}, Options {"", ""}, fn("{}"), 0},
-        TestCase {"192.168.0.1", false, {}, Options {"", "", ""}, fn("{}"), 0},
-    };
+    // Do not allow options
+    ASSERT_THROW(hlp::getBinaryParser({}, {}, Options {{""}}), std::runtime_error);
+    ASSERT_THROW(hlp::getBinaryParser({}, {}, Options {{"foo"}}), std::runtime_error);
+    ASSERT_THROW(hlp::getBinaryParser({}, {}, Options {{"foo", "bar"}}), std::runtime_error);
 
-    for (auto t : testCases)
-    {
-        runTest(t, hlp::getKVParser);
-    }
 }
