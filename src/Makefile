@@ -792,17 +792,17 @@ winagent: external win32/libwinpthread-1.dll ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_
 
 # Test targets will be empty if the TEST flag isn't set
 win32/shared_modules: $(WAZUHEXT_LIB)
-	cmake --build build/ -t ${DBSYNC_TARGET} ${RSYNC_TARGET} ${DBSYNC_TEST_TARGET} ${RSYNC_TEST_TARGET} ${SHARED_UTILS_TEST_TARGET}
+	$(MAKE) -C build/ ${DBSYNC_TARGET} ${RSYNC_TARGET} ${DBSYNC_TEST_TARGET} ${RSYNC_TEST_TARGET} ${SHARED_UTILS_TEST_TARGET}
 
 #### Sysinfo ##
 
 win32/sysinfo: $(WAZUHEXT_LIB)
-	cmake --build build/ -t ${SYSINFO_TARGET} ${SYSINFO_TEST_TARGET}
+	$(MAKE) -C build/ ${SYSINFO_TARGET} ${SYSINFO_TEST_TARGET}
 
 #### Syscollector ##
 
 win32/syscollector: win32/shared_modules win32/sysinfo
-	cmake --build build/ -t ${SYSCOLLECTOR_TARGET} ${SYSCOLLECTOR_TEST_TARGET}
+	$(MAKE) -C build/ ${SYSCOLLECTOR_TARGET} ${SYSCOLLECTOR_TEST_TARGET}
 
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 	cp $< $@
@@ -1550,16 +1550,16 @@ config/%.o: config/%.c
 # Test targets will be empty if the TEST flag isn't set
 
 build_shared_modules: $(WAZUHEXT_LIB)
-	cmake --build build/ -t ${DBSYNC_TARGET} ${RSYNC_TARGET} ${DBSYNC_TEST_TARGET} ${RSYNC_TEST_TARGET} ${SHARED_UTILS_TEST_TARGET}
+	$(MAKE) -C build/ ${DBSYNC_TARGET} ${RSYNC_TARGET} ${DBSYNC_TEST_TARGET} ${RSYNC_TEST_TARGET} ${SHARED_UTILS_TEST_TARGET}
 
 #### Sysinfo ##
 build_sysinfo: $(WAZUHEXT_LIB)
-	cmake --build build/ -t ${SYSINFO_TARGET} ${SYSINFO_TEST_TARGET}
+	$(MAKE) -C build/ ${SYSINFO_TARGET} ${SYSINFO_TEST_TARGET}
 
 #### Syscollector ##
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
 build_syscollector: build_shared_modules build_sysinfo
-	cmake --build build/ -t ${SYSCOLLECTOR_TARGET} ${SYSCOLLECTOR_TEST_TARGET}
+	$(MAKE) -C build/ ${SYSCOLLECTOR_TARGET} ${SYSCOLLECTOR_TEST_TARGET}
 endif
 
 #### Wazuh modules ##
@@ -2534,11 +2534,11 @@ clean-unit-tests:
 	rm -f ${wrappers_logcollector_o}
 	rm -f ${wrappers_macos_o}
 	rm -f ${wrappers_data_provider_o}
-	cmake --build build/${RSYNC}tests -t clean
-	cmake --build build/${DBSYNC}tests -t clean
-	cmake --build build/${DBSYNC}integrationTests -t clean
-	cmake --build build/${SYSINFO}tests -t clean
-	cmake --build build/${SYSCOLLECTOR}tests -t clean
+	cmake --build build/${RSYNC}tests -t clean || true
+	cmake --build build/${DBSYNC}tests -t clean || true
+	cmake --build build/${DBSYNC}integrationTests -t clean || true
+	cmake --build build/${SYSINFO}tests -t clean || true
+	cmake --build build/${SYSCOLLECTOR}tests -t clean || true
 
 clean-framework:
 	${MAKE} -C ../framework clean
