@@ -32,7 +32,7 @@ inline auto dsvParserFunction(std::string name,
                               Stop endTokens,
                               const char delimiterChar,
                               const char quoteChar,
-                              const char scapeChar,
+                              const char escapeChar,
                               std::vector<std::string> headers)
     -> parsec::Parser<json::Json>
 {
@@ -40,7 +40,7 @@ inline auto dsvParserFunction(std::string name,
     {
         throw std::runtime_error(fmt::format("CSV/DSV parser needs a stop string"));
     }
-    return [endTokens, delimiterChar, quoteChar, headers, scapeChar, name](
+    return [endTokens, delimiterChar, quoteChar, headers, escapeChar, name](
                std::string_view text, int index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
@@ -51,19 +51,17 @@ inline auto dsvParserFunction(std::string name,
 
         auto rawText = std::get<std::string_view>(res);
         std::size_t start {0};
-        std::size_t end {0};
-        auto pos = rawText.size() + index;
 
         json::Json doc {};
         auto i = 0;
-        while (end <= rawText.size() && i < headers.size())
+
+        while (start <= rawText.size() && i < headers.size())
         {
-            auto field = getField(rawText.begin(),
-                                  start,
-                                  rawText.size(),
+            auto remaining = rawText.substr(start, rawText.size() - start);
+            auto field = getField(remaining,
                                   delimiterChar,
                                   quoteChar,
-                                  scapeChar,
+                                  escapeChar,
                                   true);
 
             if (!field.has_value())
@@ -72,22 +70,21 @@ inline auto dsvParserFunction(std::string name,
             }
 
             auto fValue = field.value();
-            end = fValue.end();
 
-            auto v = rawText.substr(fValue.start(), fValue.len());
-            updateDoc(doc, headers[i], v, fValue.is_escaped, R"(")");
+            auto v = remaining.substr(fValue.start(), fValue.len());
+            updateDoc(doc, headers[i], v, fValue.isEscaped(), R"(")");
 
-            start = fValue.end() + 1;
+            start += fValue.end() + 1;
             i++;
         }
 
+        auto end = start + index - 1;
         if (headers.size() != i)
         {
             return parsec::makeError<json::Json>(
-                fmt::format("{}: Expected a DSV/CSV string", name), end);
+                fmt::format("{}: Expected a DSV/CSV string", name), start + index);
         }
-
-        return parsec::makeSuccess<json::Json>(std::move(doc), end + index);
+        return parsec::makeSuccess<json::Json>(std::move(doc), end);
     };
 }
 } // namespace
