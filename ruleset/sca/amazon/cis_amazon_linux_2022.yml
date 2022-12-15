@@ -28,3 +28,71 @@ requirements:
 variables:
   $sshd_file: /etc/ssh/sshd_config
 
+checks:
+  ############################################################
+  # 1.1 Filesystem Configuration
+  ############################################################
+
+  # 1.1.1.1 Ensure mounting of cramfs filesystems is disabled.
+  - id: 31000
+    title: "Ensure mounting of cramfs filesystems is disabled."
+    description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the server. If this filesystem type is not needed, disable it."
+    remediation: "Edit or create the file /etc/modprobe.d/cis.conf and add a line that reads install cramfs /bin/false and a line that reads blacklist cramfs. Run the following command to unload the cramfs module: modprobe -r cramfs"
+    compliance:
+      - cis: ["1.1.1.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
+      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
+      - soc_2: ["CC6.3","CC6.6"]
+    condition: all
+    rules:
+      - "c:modprobe -n -v cramfs -> r:install /bin/false|Module cramfs not found"
+      - "not c:lsmod -> r:cramfs"
+      - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\scramfs'
+
+  # 1.1.1.2 Ensure mounting of squashfs filesystems is disabled.
+  - id: 31001
+    title: "Ensure mounting of squashfs filesystems is disabled."
+    description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems (similar to cramfs). A squashfs image can be used without having to first decompress the image."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    impact: "As Snap packages utilizes squashfs as a compressed filesystem, disabling squashfs will cause Snap packages to fail."
+    remediation: "Edit or create the file /etc/modprobe.d/cis.conf and add a line that reads install squashfs /bin/false and a line that reads blacklist squashfs. Run the following command to unload the squashfs module: modprobe -r squashfs"
+    compliance:
+      - cis: ["1.1.1.2"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
+      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
+      - soc_2: ["CC6.3","CC6.6"]
+    condition: all
+    rules:
+      - "c:modprobe -n -v squashfs -> r:install /bin/false|Module squashfs not found"
+      - "not c:lsmod -> r:squashfs"
+      - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\ssquashfs'
+
+  # 1.1.1.3 Ensure mounting of udf filesystems is disabled.
+  - id: 31002
+    title: "Ensure mounting of udf filesystems is disabled."
+    description: "The udf filesystem type is the universal disk format used to implement ISO/IEC 13346 and ECMA-167 specifications. This is an open vendor filesystem type for data storage on a broad range of media. This filesystem type is necessary to support writing DVDs and newer optical disc formats."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    impact: "Microsoft Azure requires the usage of udf. udf should not be disabled on systems run on Microsoft Azure."
+    remediation: "Edit or create the file /etc/modprobe.d/cis.conf and add a line that reads install udf /bin/false and a line that reads blacklist udf. Run the following command to unload the squashfs module: modprobe -r udf"
+    compliance:
+      - cis: ["1.1.1.3"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
+      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
+      - soc_2: ["CC6.3","CC6.6"]
+    condition: all
+    rules:
+      - "c:modprobe -n -v udf -> r:install /bin/false|Module udf not found"
+      - "not c:lsmod -> r:udf"
+      - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\sudf'
+  
