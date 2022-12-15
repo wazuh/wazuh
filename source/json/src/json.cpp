@@ -110,7 +110,7 @@ std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
 
         // Replace . with /
         if(!skipDot) {
-            std::replace(std::begin(pointerPath), std::end(pointerPath), '.', '/');
+            std::replace(std::begin(ptrPath), std::end(ptrPath), '.', '/');
         }
 
         // Add / at the beginning
