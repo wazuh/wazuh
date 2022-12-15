@@ -26,12 +26,25 @@ parsec::Parser<json::Json> getKVParser(std::string name, Stop endTokens, Options
                         "character and escape character"));
     }
 
-    // TODO: should we check the size of the parameters? (To be one character long)
+    const char sep = lst[0][0];   // separator between key and value
+    const char delim = lst[1][0]; // delimiter between key-value pairs
+    const char quote = lst[2][0]; // quote character
+    const char esc = lst[3][0];   // escape character
 
-    const char sep = lst[0][0];
-    const char delim = lst[1][0];
-    const char quote = lst[2][0];
-    const char esc = lst[3][0];
+    // Check if the arguments of the parser are valid
+    if (sep == delim)
+    {
+        throw std::runtime_error(
+            fmt::format("KV parser: separator and delimiter must be different"));
+    }
+
+    if(lst[0].size() != 1 || lst[1].size() != 1 || lst[2].size() != 1 || lst[3].size() != 1)
+    {
+        throw std::runtime_error(
+            fmt::format("KV parser: separator, delimiter, quote and escape must be single "
+                        "characters"));
+    }
+
 
     return [endTokens, sep, delim, quote, esc, name](std::string_view text, int index)
     {
