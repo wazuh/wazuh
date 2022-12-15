@@ -49,9 +49,10 @@ parsec::Parser<json::Json> getKVParser(std::string name, Stop endTokens, Options
 
         std::vector<Field> kv;
         auto dlm = sep;
-        while (end <= fp.size())
+        while (start <= fp.size())
         {
-            auto f = getField(fp.begin(), start, fp.size(), dlm, quote, '\\', false);
+            auto remaining = fp.substr(start, fp.size() - start);
+            auto f = getField(remaining, dlm, quote, '\\', false);
             if (!f.has_value())
             {
                 break;
@@ -60,15 +61,22 @@ parsec::Parser<json::Json> getKVParser(std::string name, Stop endTokens, Options
             dlm = ((dlm == delim) ? sep : delim);
 
             auto fld = f.value();
+            fld.addOffset(start);
             end = fld.end();
-            kv.insert(kv.end(), fld);
             start = end + 1;
+            kv.insert(kv.end(), fld);
         };
 
         if (kv.size() <= 1)
         {
             return parsec::makeError<json::Json>(
                 fmt::format("{}: No key-value fields found)", name), index);
+        }
+
+        if (kv.size() % 2 != 0)
+        {
+            return parsec::makeError<json::Json>(
+                fmt::format("{}: Invalid number of key-value fields", name), index);
         }
 
         for (auto i = 0; i < kv.size() - 1; i += 2)
@@ -86,10 +94,10 @@ parsec::Parser<json::Json> getKVParser(std::string name, Stop endTokens, Options
             }
             end = kv[i + 1].end();
             updateDoc(
-                doc, fmt::format("/{}", k), v, kv[i + 1].is_escaped, std::string {esc});
+                doc, fmt::format("/{}", k), v, kv[i + 1].isEscaped(), std::string {esc});
         }
 
-        if (end != pos)
+        if (start - 1 != pos)
         {
             return parsec::makeError<json::Json>(
                 fmt::format("{}: Invalid key-value string", name), index);

@@ -48,7 +48,7 @@ TEST(DateParser, formatDateFromSample_not_match)
     }
 }
 
-TEST(DateParser, DateParser)
+TEST(DateParser, parser)
 {
     auto fn = [](std::string in) -> json::Json
     {

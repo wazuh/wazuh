@@ -7,9 +7,7 @@
 namespace hlp
 {
 
-std::optional<Field> getField(const char* in,
-                              size_t pos,
-                              size_t size,
+std::optional<Field> getField(std::string_view input,
                               const char delimiter,
                               const char quote,
                               const char escape,
@@ -17,60 +15,63 @@ std::optional<Field> getField(const char* in,
 {
     size_t last_escape_location = 0;
 
-    bool escaped {false};
-    bool quote_opened = false;
-
-    Field f {pos, size, false, false};
-
-    for (auto i = pos; i < size; i++)
+    if (input.empty())
     {
-        pos = i;
-        if (in[i] == delimiter && !quote_opened)
+        return Field {0,0,false,false};
+    }
+
+    bool quote_opened {false};
+    bool isEscaped = false;
+    bool isQuoted = false;
+
+    for (auto i = 0ul; i < input.size(); i++)
+    {
+        if (input[i] == delimiter && !quote_opened)
         {
-            f.end_ = pos;
-            return f;
+            return Field {0, i, isEscaped, isQuoted};
         }
         else
         {
-            if (quote_opened && quote != escape && in[i] == escape)
+            if (quote_opened && quote != escape && input[i] == escape)
             {
                 last_escape_location = i;
             }
             // TODO: If it does not begin with quotation marks, why does it advance until
             // it is found?
-            if (in[i] == quote)
+            if (input[i] == quote)
             {
                 if (!quote_opened)
                 {
                     quote_opened = true;
                     // If fields are not enclosed with double quotes, then
                     // double quotes may not appear inside the fields.
-                    if (s && i > 1 & in[i - 1] != delimiter)
+                    if (s && (i > 1) && input[i - 1] != delimiter)
+                    {
                         return {};
+                    }
                     if (quote == escape)
+                    {
                         last_escape_location = i;
+                    }
                 }
                 else
                 {
-                    escaped = (last_escape_location == i - 1);
-                    f.is_escaped = f.is_escaped || escaped;
+                    bool escaped = (last_escape_location + 1 == i);
+                    isEscaped = isEscaped || escaped;
                     last_escape_location += (i - last_escape_location) * size_t(!escaped);
-                    quote_opened = escaped || (in[i + 1] != delimiter);
-                    f.is_quoted = true;
+                    quote_opened = escaped || (input[i + 1] != delimiter);
+                    isQuoted = true;
                 }
             }
         }
     }
     // unclosed quote
-    if (quote_opened && in[pos] != quote)
+    if (quote_opened && input.back() != quote)
+    {
         return {};
+    }
 
-    if (f.start_ > f.end_)
-        return {};
-
-    f.end_ = pos + 1;
-
-    return f;
+    return Field {0, input.size(), isEscaped, isQuoted};
 };
 
 void unescape(bool is_escaped, std::string& vs, std::string_view escape)

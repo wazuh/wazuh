@@ -8,28 +8,57 @@
 
 namespace hlp
 {
-// TODO:DOC THIS
+
 /**
  * @brief
  */
-struct Field
+class Field
 {
-    size_t start_;
-    size_t end_;
-    bool is_escaped;
-    bool is_quoted;
+private:
+    size_t m_start;
+    size_t m_end;
+    bool m_isEscaped;
+    bool m_isQuoted;
 
-    inline const int end() const { return end_; }
+public:
+    Field(size_t start, size_t end, bool isEscaped, bool isQuoted)
+        : m_start(start)
+        , m_end(end)
+        , m_isEscaped(isEscaped)
+        , m_isQuoted(isQuoted)
+    {
+    }
+    inline const int end() const { return m_end; }
 
-    inline const int len() const { return is_quoted ? end_ - start_ - 2 : end_ - start_; }
+    inline const int len() const
+    {
+        return m_isQuoted ? m_end - m_start - 2 : m_end - m_start;
+    }
 
-    inline const int start() const { return is_quoted ? start_ + 1 : start_; }
+    inline const int start() const { return m_isQuoted ? m_start + 1 : m_start; }
+
+    inline const bool isEscaped() const { return m_isEscaped; }
+
+    inline void addOffset(const int offset)
+    {
+        m_start += offset;
+        m_end += offset;
+    }
 };
 
-// TODO:DOC THIS
-std::optional<Field> getField(const char* in,
-                              size_t pos,
-                              size_t size,
+/**
+ * @brief Get the Field object
+ *
+ * @param in
+ * @param pos
+ * @param size
+ * @param delimiter
+ * @param quote
+ * @param escape
+ * @param s
+ * @return std::optional<Field>
+ */
+std::optional<Field> getField(std::string_view input,
                               const char delimiter,
                               const char quote,
                               const char ecsape,
