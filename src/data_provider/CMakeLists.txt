@@ -50,6 +50,9 @@ include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
 include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
 include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
 endif(NOT CMAKE_CHECK_CENTOS5)
+include_directories(${SRC_FOLDER}/shared/http-request/include/)
+include_directories(${SRC_FOLDER}/external/curl/include/curl/)
+
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   link_directories(${INSTALL_PREFIX}/lib)
@@ -68,6 +71,8 @@ link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
 link_directories(${SRC_FOLDER}/external/rpm/builddir/)
 endif(NOT CMAKE_CHECK_CENTOS5)
 link_directories(${SRC_FOLDER}/external/openssl/)
+link_directories(${SRC_FOLDER}/shared/http-request/build)
+link_directories(${SRC_FOLDER}/external/curl/lib/.libs/)
 
 
 
@@ -177,7 +182,9 @@ elseif(APPLE)
   target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a ${iokit_lib} ${corefoundation_lib})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(sysinfo wazuhext)
+add_subdirectory(${SRC_FOLDER}/shared/http-request ${SRC_FOLDER}/shared/http-request/build)
+
+target_link_libraries(sysinfo wazuhext urlrequest curl)
 
 
 if(APPLE)
