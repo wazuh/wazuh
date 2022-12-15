@@ -1369,8 +1369,6 @@ TEST(Parse_csv, Ref_not_found)
 }
 
 
-
-
 // parse key value
 TEST(Parse_key_value, Builds)
 {
@@ -1405,7 +1403,7 @@ TEST(Parse_key_value, Match_value)
     auto tuple = std::make_tuple(
         std::string {"/field"},
         std::string {"parse_key_value"},
-        std::vector<std::string> {"key1=value1 key2=\"value2\"", " ", "=", "\"", "\\"});
+        std::vector<std::string> {"key1=value1 key2=\"value2\"", "=", " ", "\"", "\\"});
 
     auto op {
         bld::opBuilderSpecificHLPKeyValueParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -1424,7 +1422,7 @@ TEST(Parse_key_value, Match_ref)
     auto tuple =
         std::make_tuple(std::string {"/field"},
                         std::string {"parse_key_value"},
-                        std::vector<std::string> {"$field_ref", " ", "=", "\"", "\\"});
+                        std::vector<std::string> {"$field_ref", "=", " ", "\"", "\\"});
 
     auto op {
         bld::opBuilderSpecificHLPKeyValueParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
