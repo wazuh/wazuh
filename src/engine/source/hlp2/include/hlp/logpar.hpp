@@ -18,19 +18,26 @@ namespace hlp
  */
 enum class SchemaType
 {
-    IP,
+    // Numeric types
     LONG,
+    DOUBLE,
+    FLOAT,
+    SCALED_FLOAT,
+    BYTE,
+    // String types
+    KEYWORD,
+    TEXT,
+    // Other types
+    BOOLEAN,
+    IP,
     OBJECT,
     GEO_POINT,
-    KEYWORD,
     NESTED,
-    SCALED_FLOAT,
-    TEXT,
-    BOOLEAN,
     DATE,
-    FLOAT,
-    URL,
+    // Special types, not in schema
     USER_AGENT,
+    URL,
+    // Error type
     ERROR_TYPE
 };
 
@@ -38,51 +45,57 @@ constexpr auto schemaTypeToStr(SchemaType type)
 {
     switch (type)
     {
-        case SchemaType::IP: return "ip";
         case SchemaType::LONG: return "long";
-        case SchemaType::OBJECT: return "object";
-        case SchemaType::GEO_POINT: return "geo_point";
-        case SchemaType::KEYWORD: return "keyword";
-        case SchemaType::NESTED: return "nested";
+        case SchemaType::DOUBLE: return "double";
+        case SchemaType::FLOAT: return "float";
         case SchemaType::SCALED_FLOAT: return "scaled_float";
+        case SchemaType::BYTE: return "byte";
+        case SchemaType::KEYWORD: return "keyword";
         case SchemaType::TEXT: return "text";
         case SchemaType::BOOLEAN: return "boolean";
+        case SchemaType::IP: return "ip";
+        case SchemaType::OBJECT: return "object";
+        case SchemaType::GEO_POINT: return "geo_point";
+        case SchemaType::NESTED: return "nested";
         case SchemaType::DATE: return "date";
-        case SchemaType::FLOAT: return "float";
-        case SchemaType::URL: return "url";
         case SchemaType::USER_AGENT: return "useragent";
+        case SchemaType::URL: return "url";
         default: return "error_type";
     }
 }
 
 constexpr auto strToSchemaType(std::string_view str)
 {
-    if (str == schemaTypeToStr(SchemaType::IP))
-        return SchemaType::IP;
     if (str == schemaTypeToStr(SchemaType::LONG))
         return SchemaType::LONG;
-    if (str == schemaTypeToStr(SchemaType::OBJECT))
-        return SchemaType::OBJECT;
-    if (str == schemaTypeToStr(SchemaType::GEO_POINT))
-        return SchemaType::GEO_POINT;
-    if (str == schemaTypeToStr(SchemaType::KEYWORD))
-        return SchemaType::KEYWORD;
-    if (str == schemaTypeToStr(SchemaType::NESTED))
-        return SchemaType::NESTED;
+    if (str == schemaTypeToStr(SchemaType::DOUBLE))
+        return SchemaType::DOUBLE;
+    if (str == schemaTypeToStr(SchemaType::FLOAT))
+        return SchemaType::FLOAT;
     if (str == schemaTypeToStr(SchemaType::SCALED_FLOAT))
         return SchemaType::SCALED_FLOAT;
+    if (str == schemaTypeToStr(SchemaType::BYTE))
+        return SchemaType::BYTE;
+    if (str == schemaTypeToStr(SchemaType::KEYWORD))
+        return SchemaType::KEYWORD;
     if (str == schemaTypeToStr(SchemaType::TEXT))
         return SchemaType::TEXT;
     if (str == schemaTypeToStr(SchemaType::BOOLEAN))
         return SchemaType::BOOLEAN;
+    if (str == schemaTypeToStr(SchemaType::IP))
+        return SchemaType::IP;
+    if (str == schemaTypeToStr(SchemaType::OBJECT))
+        return SchemaType::OBJECT;
+    if (str == schemaTypeToStr(SchemaType::GEO_POINT))
+        return SchemaType::GEO_POINT;
+    if (str == schemaTypeToStr(SchemaType::NESTED))
+        return SchemaType::NESTED;
     if (str == schemaTypeToStr(SchemaType::DATE))
         return SchemaType::DATE;
-    if (str == schemaTypeToStr(SchemaType::FLOAT))
-        return SchemaType::FLOAT;
-    if (str == schemaTypeToStr(SchemaType::URL))
-        return SchemaType::URL;
     if (str == schemaTypeToStr(SchemaType::USER_AGENT))
         return SchemaType::USER_AGENT;
+    if (str == schemaTypeToStr(SchemaType::URL))
+        return SchemaType::URL;
     return SchemaType::ERROR_TYPE;
 }
 
@@ -92,28 +105,34 @@ constexpr auto strToSchemaType(std::string_view str)
  */
 enum class ParserType
 {
-    P_BOOL,
-    P_BYTE,
+    // Numeric
     P_LONG,
-    P_FLOAT,
     P_DOUBLE,
+    P_FLOAT,
     P_SCALED_FLOAT,
+    P_BYTE,
+    // String
     P_TEXT,
-    P_BINARY,
-    P_DATE,
-    P_IP,
-    P_URI,
-    P_FQDN,
-    P_FILE,
     P_LITERAL,
-    P_IGNORE,
     P_QUOTED,
+    // Enconding
+    P_BINARY,
+    // Format
     P_CSV,
     P_DSV,
     P_JSON,
-    P_USER_AGENT,
     P_XML,
     P_KV,
+    // Other types
+    P_BOOL,
+    P_USER_AGENT,
+    P_IP,
+    P_DATE,
+    P_URI,
+    P_FQDN,
+    P_FILE,
+    P_IGNORE,
+    // Error type
     ERROR_TYPE
 };
 
@@ -121,78 +140,78 @@ constexpr auto parserTypeToStr(ParserType type)
 {
     switch (type)
     {
-        case ParserType::P_BOOL: return "bool";
-        case ParserType::P_BYTE: return "byte";
         case ParserType::P_LONG: return "long";
-        case ParserType::P_FLOAT: return "float";
         case ParserType::P_DOUBLE: return "double";
+        case ParserType::P_FLOAT: return "float";
         case ParserType::P_SCALED_FLOAT: return "scaled_float";
+        case ParserType::P_BYTE: return "byte";
         case ParserType::P_TEXT: return "text";
-        case ParserType::P_BINARY: return "binary";
-        case ParserType::P_DATE: return "date";
-        case ParserType::P_IP: return "ip";
-        case ParserType::P_URI: return "uri";
-        case ParserType::P_FQDN: return "fqdn";
-        case ParserType::P_FILE: return "filepath";
         case ParserType::P_LITERAL: return "literal";
-        case ParserType::P_IGNORE: return "ignore";
         case ParserType::P_QUOTED: return "quoted";
+        case ParserType::P_BINARY: return "binary";
         case ParserType::P_CSV: return "csv";
         case ParserType::P_DSV: return "dsv";
         case ParserType::P_JSON: return "json";
-        case ParserType::P_USER_AGENT: return "user_agent";
         case ParserType::P_XML: return "xml";
         case ParserType::P_KV: return "kv";
+        case ParserType::P_BOOL: return "bool";
+        case ParserType::P_USER_AGENT: return "useragent";
+        case ParserType::P_IP: return "ip";
+        case ParserType::P_DATE: return "date";
+        case ParserType::P_URI: return "uri";
+        case ParserType::P_FQDN: return "fqdn";
+        case ParserType::P_FILE: return "file";
+        case ParserType::P_IGNORE: return "ignore";
         default: return "error_type";
     }
 }
 
 constexpr auto strToParserType(std::string_view str)
 {
-    if (str == parserTypeToStr(ParserType::P_BOOL))
-        return ParserType::P_BOOL;
-    if (str == parserTypeToStr(ParserType::P_BYTE))
-        return ParserType::P_BYTE;
     if (str == parserTypeToStr(ParserType::P_LONG))
         return ParserType::P_LONG;
-    if (str == parserTypeToStr(ParserType::P_FLOAT))
-        return ParserType::P_FLOAT;
     if (str == parserTypeToStr(ParserType::P_DOUBLE))
         return ParserType::P_DOUBLE;
+    if (str == parserTypeToStr(ParserType::P_FLOAT))
+        return ParserType::P_FLOAT;
     if (str == parserTypeToStr(ParserType::P_SCALED_FLOAT))
         return ParserType::P_SCALED_FLOAT;
+    if (str == parserTypeToStr(ParserType::P_BYTE))
+        return ParserType::P_BYTE;
     if (str == parserTypeToStr(ParserType::P_TEXT))
         return ParserType::P_TEXT;
-    if (str == parserTypeToStr(ParserType::P_BINARY))
-        return ParserType::P_BINARY;
-    if (str == parserTypeToStr(ParserType::P_DATE))
-        return ParserType::P_DATE;
-    if (str == parserTypeToStr(ParserType::P_IP))
-        return ParserType::P_IP;
-    if (str == parserTypeToStr(ParserType::P_URI))
-        return ParserType::P_URI;
-    if (str == parserTypeToStr(ParserType::P_FQDN))
-        return ParserType::P_FQDN;
-    if (str == parserTypeToStr(ParserType::P_FILE))
-        return ParserType::P_FILE;
     if (str == parserTypeToStr(ParserType::P_LITERAL))
         return ParserType::P_LITERAL;
-    if (str == parserTypeToStr(ParserType::P_IGNORE))
-        return ParserType::P_IGNORE;
     if (str == parserTypeToStr(ParserType::P_QUOTED))
         return ParserType::P_QUOTED;
+    if (str == parserTypeToStr(ParserType::P_BINARY))
+        return ParserType::P_BINARY;
     if (str == parserTypeToStr(ParserType::P_CSV))
         return ParserType::P_CSV;
     if (str == parserTypeToStr(ParserType::P_DSV))
         return ParserType::P_DSV;
     if (str == parserTypeToStr(ParserType::P_JSON))
         return ParserType::P_JSON;
-    if (str == parserTypeToStr(ParserType::P_USER_AGENT))
-        return ParserType::P_USER_AGENT;
     if (str == parserTypeToStr(ParserType::P_XML))
         return ParserType::P_XML;
     if (str == parserTypeToStr(ParserType::P_KV))
         return ParserType::P_KV;
+    if (str == parserTypeToStr(ParserType::P_BOOL))
+        return ParserType::P_BOOL;
+    if (str == parserTypeToStr(ParserType::P_USER_AGENT))
+        return ParserType::P_USER_AGENT;
+    if (str == parserTypeToStr(ParserType::P_IP))
+        return ParserType::P_IP;
+    if (str == parserTypeToStr(ParserType::P_DATE))
+        return ParserType::P_DATE;
+    if (str == parserTypeToStr(ParserType::P_URI))
+        return ParserType::P_URI;
+    if (str == parserTypeToStr(ParserType::P_FQDN))
+        return ParserType::P_FQDN;
+    if (str == parserTypeToStr(ParserType::P_FILE))
+        return ParserType::P_FILE;
+    if (str == parserTypeToStr(ParserType::P_IGNORE))
+        return ParserType::P_IGNORE;
     return ParserType::ERROR_TYPE;
 }
 
