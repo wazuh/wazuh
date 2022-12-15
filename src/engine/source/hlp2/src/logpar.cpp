@@ -386,19 +386,27 @@ Logpar::Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion, size_t
         m_fieldTypes[key] = schemaType;
     }
 
-    m_typeParsers = {{SchemaType::IP, ParserType::P_IP},
-                     {SchemaType::LONG, ParserType::P_LONG},
-                     {SchemaType::OBJECT, ParserType::P_TEXT},
-                     {SchemaType::GEO_POINT, ParserType::P_TEXT},
-                     {SchemaType::KEYWORD, ParserType::P_TEXT},
-                     {SchemaType::NESTED, ParserType::P_TEXT},
-                     {SchemaType::SCALED_FLOAT, ParserType::P_SCALED_FLOAT},
-                     {SchemaType::TEXT, ParserType::P_TEXT},
-                     {SchemaType::BOOLEAN, ParserType::P_BOOL},
-                     {SchemaType::DATE, ParserType::P_DATE},
-                     {SchemaType::FLOAT, ParserType::P_FLOAT},
-                     {SchemaType::URL, ParserType::P_URI},
-                     {SchemaType::USER_AGENT, ParserType::P_USER_AGENT}};
+    m_typeParsers = {
+        // Numeric types
+        {SchemaType::LONG, ParserType::P_LONG},
+        {SchemaType::DOUBLE, ParserType::P_DOUBLE},
+        {SchemaType::FLOAT, ParserType::P_FLOAT},
+        {SchemaType::SCALED_FLOAT, ParserType::P_SCALED_FLOAT},
+        {SchemaType::BYTE, ParserType::P_BYTE},
+        // String types
+        {SchemaType::KEYWORD, ParserType::P_TEXT},
+        {SchemaType::TEXT, ParserType::P_TEXT},
+        // Other types
+        {SchemaType::BOOLEAN, ParserType::P_BOOL},
+        {SchemaType::IP, ParserType::P_IP},
+        {SchemaType::OBJECT, ParserType::P_TEXT},
+         {SchemaType::GEO_POINT, ParserType::P_TEXT},
+        {SchemaType::NESTED, ParserType::P_TEXT},
+        {SchemaType::DATE, ParserType::P_DATE},
+        // Special types, not in schema
+        {SchemaType::USER_AGENT, ParserType::P_USER_AGENT},
+        {SchemaType::URL, ParserType::P_URI},
+    };
 
     m_parserBuilders = {};
 }
