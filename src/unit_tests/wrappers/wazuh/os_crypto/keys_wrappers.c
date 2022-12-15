@@ -41,3 +41,10 @@ int __wrap_OS_IsAllowedID(__attribute__((unused)) keystore *keys, const char *id
 
     return mock();
 }
+
+int __wrap_OS_AddSocket(__attribute__((unused)) keystore *keys, unsigned int i, int sock) {
+    check_expected(i);
+    check_expected(sock);
+
+    return mock();
+}

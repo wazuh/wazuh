@@ -44,6 +44,10 @@ void __wrap_rem_inc_recv_ctrl_keepalive(const char *agent_id) {
     check_expected(agent_id);
 }
 
+void __wrap_rem_inc_recv_ctrl(const char *agent_id) {
+    check_expected(agent_id);
+}
+
 void __wrap_rem_inc_recv_unknown() {
     function_called();
     return;

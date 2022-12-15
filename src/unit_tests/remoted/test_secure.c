@@ -29,6 +29,8 @@
 #include "../wrappers/wazuh/remoted/queue_wrappers.h"
 #include "../wrappers/wazuh/remoted/netbuffer_wrappers.h"
 #include "../wrappers/wazuh/remoted/netcounter_wrappers.h"
+#include "../wrappers/wazuh/os_crypto/msgs_wrappers.h"
+#include "../wrappers/wazuh/remoted/state_wrappers.h"
 #include "remoted/secure.c"
 
 extern keystore keys;
@@ -88,6 +90,22 @@ void __wrap_key_lock_read(){
 
 int __wrap_close(int __fd) {
     return mock();
+}
+
+/*****************WRAPS********************/
+int __wrap_w_mutex_lock(pthread_mutex_t *mutex) {
+    check_expected_ptr(mutex);
+    return 0;
+}
+
+int __wrap_w_mutex_unlock(pthread_mutex_t *mutex) {
+    check_expected_ptr(mutex);
+    return 0;
+}
+
+void __wrap_save_controlmsg(__attribute__((unused)) keystore *keys, char *msg, size_t msg_length, __attribute__((unused)) int *wdb_sock) {
+    check_expected(msg);
+    check_expected(msg_length);
 }
 
 /* Tests close_fp_main*/
@@ -379,6 +397,185 @@ void test_close_fp_main_close_fp_null(void **state)
     assert_int_equal(keys.opened_fp_queue->elements, 0);
     os_free(first_node_key->id);
     os_free(first_node_key);
+}
+
+void test_HandleSecureMessage_shutdown_message(void **state)
+{
+    char buffer[OS_MAXSTR + 1] = "#!-agent shutdown ";
+    message_t message = { .buffer = buffer, .size = 18, .sock = 1, .counter = 10 };
+    struct sockaddr_in peer_info;
+    int wdb_sock;
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry *key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("009");
+    key->sock = 1;
+    key->keyid = 1;
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 0);
+
+    expect_string(__wrap_ReadSecMSG, buffer, "#!-agent shutdown ");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, "#!-agent shutdown ");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, (time_t)123456789);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+
+    expect_value(__wrap_OS_AddSocket, i, 0);
+    expect_value(__wrap_OS_AddSocket, sock, message.sock);
+    will_return(__wrap_OS_AddSocket, 2);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "TCP socket 1 added to keystore.");
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_string(__wrap_save_controlmsg, msg, "agent shutdown ");
+    expect_value(__wrap_save_controlmsg, msg_length, message.size - 3);
+
+    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+
+    HandleSecureMessage(&message, &wdb_sock);
+
+    os_free(key->id);
+    os_free(key);
+    os_free(keyentries);
+}
+
+void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void **state)
+{
+    char buffer[OS_MAXSTR + 1] = "#!-agent startup ";
+    message_t message = { .buffer = buffer, .size = 17, .sock = 1, .counter = 11 };
+    struct sockaddr_in peer_info;
+    int wdb_sock;
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry *key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("009");
+    key->sock = 1;
+    key->keyid = 1;
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 0);
+
+    expect_string(__wrap_ReadSecMSG, buffer, "#!-agent startup ");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, "#!-agent startup ");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, (time_t)123456789);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+
+    expect_value(__wrap_OS_AddSocket, i, 0);
+    expect_value(__wrap_OS_AddSocket, sock, message.sock);
+    will_return(__wrap_OS_AddSocket, 2);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "TCP socket 1 added to keystore.");
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_string(__wrap_save_controlmsg, msg, "agent startup ");
+    expect_value(__wrap_save_controlmsg, msg_length, message.size - 3);
+
+    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+
+    HandleSecureMessage(&message, &wdb_sock);
+
+    os_free(key->id);
+    os_free(key);
+    os_free(keyentries);
+}
+
+
+void test_HandleSecureMessage_OldMessage_NoShutdownMessage(void **state)
+{
+    char buffer[OS_MAXSTR + 1] = "#!-agent startup ";
+    message_t message = { .buffer = buffer, .size = 17, .sock = 1, .counter = 5 };
+    struct sockaddr_in peer_info;
+    int wdb_sock;
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry *key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("009");
+    key->sock = 1;
+    key->keyid = 1;
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 0);
+
+    expect_string(__wrap_ReadSecMSG, buffer, "#!-agent startup ");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, "#!-agent startup ");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    HandleSecureMessage(&message, &wdb_sock);
+
+    os_free(key->id);
+    os_free(key);
+    os_free(keyentries);
 }
 
 void test_HandleSecureMessage_unvalid_message(void **state)
@@ -919,6 +1116,9 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_fp_null, setup_config, teardown_config),
         // Tests HandleSecureMessage
         cmocka_unit_test(test_HandleSecureMessage_unvalid_message),
+        cmocka_unit_test(test_HandleSecureMessage_shutdown_message),
+        cmocka_unit_test(test_HandleSecureMessage_NewMessage_NoShutdownMessage),
+        cmocka_unit_test(test_HandleSecureMessage_OldMessage_NoShutdownMessage),
         cmocka_unit_test(test_HandleSecureMessage_different_sock),
         cmocka_unit_test(test_HandleSecureMessage_different_sock_2),
         // Tests handle_new_tcp_connection

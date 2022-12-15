@@ -21,3 +21,8 @@ void __wrap_rem_setCounter(int fd, size_t counter) {
     check_expected(fd);
     check_expected(counter);
 }
+
+size_t __wrap_rem_getCounter(int fd) {
+    check_expected(fd);
+    return mock();
+}

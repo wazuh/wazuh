@@ -28,6 +28,8 @@ void __wrap_rem_inc_recv_ctrl_shutdown(const char *agent_id);
 
 void __wrap_rem_inc_recv_ctrl_keepalive(const char *agent_id);
 
+void __wrap_rem_inc_recv_ctrl(const char *agent_id);
+
 void __wrap_rem_inc_recv_unknown();
 
 void __wrap_rem_add_send(unsigned long bytes);
