@@ -21,15 +21,14 @@ DO_TEST_ENGINE=true
 STATS_MONITOR_POLL_TIME_SECS=0.1
 
 # Benchmark configuration
-BT_TIME=360
+BT_TIME=60
 BT_RATE=0
 BT_INPUT=./utils/zz_test.log
 BT_OUTPUT=/tmp/filepath.txt
 
 # Engine Configurations
 ENGINE_BUILD_ABSOLUTE_PATH=$(realpath ../../build)
-ENGINE_LISTEN_PORT=5054
-ENGINE_N_THREADS=8
+ENGINE_N_THREADS=16
 
 # Constants for the test
 CONFIG_SRC_DIR=./analysisd/config
@@ -142,7 +141,12 @@ then
 
     # Clear the alert file
     echo -n > $BT_OUTPUT
-    ./main run --endpoint "tcp:127.0.0.1:5054" --threads $ENGINE_N_THREADS --file_storage ../test/assets --environment demo-environment --kvdb_path ../test/assets/zz_kvdb/ -l 0 &
+    ./main start --event_endpoint /var/ossec/queue/sockets/queue      \
+                --api_endpoint /var/ossec/queue/sockets/engine-api    \
+                --threads ${ENGINE_N_THREADS}                         \
+                --file_storage ../ruleset/store                       \
+                --kvdb_path /var/ossec/etc/kvdb/                      \
+                --environment environment/wazuh/0 &
 
     ENGINE_PID=$!
 
@@ -154,8 +158,7 @@ then
 
     MONITOR_PID=$!
 
-    # go run ./utils/benchmark_tool.go -o /tmp/filepath.txt -p tcp -s localhost:$ENGINE_LISTEN_PORT -t $BT_TIME  -r $BT_RATE -b -i $BT_INPUT -f -T
-    go run ./utils/benchmark_tool.go -o /tmp/filepath.txt -p tcp -s localhost:$ENGINE_LISTEN_PORT -t $BT_TIME  -r $BT_RATE -b -i $BT_INPUT -f  | tee "engine-bench-${ENGINE_N_THREADS}-threads-${RANDOM}.log"
+    go run ./utils/benchmark_tool.go -o /tmp/filepath.txt -t $BT_TIME  -r $BT_RATE -i $BT_INPUT -f  | tee "engine-bench-${ENGINE_N_THREADS}-threads-${RANDOM}.log"
 
     kill -INT $MONITOR_PID
     kill -INT $ENGINE_PID
