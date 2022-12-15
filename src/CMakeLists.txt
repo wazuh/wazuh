@@ -30,8 +30,7 @@ set(ALL_UNIT_TEST_TARGET all_unit_test)
 add_custom_target(${ALL_UNIT_TEST_TARGET})
 enable_testing()
 
-# Compiling this library even if the unit_test target isn't used later
-add_subdirectory(${SRC_FOLDER}/external/googletest)
+# The external/googletest directory is managed by the Makefile target build_gtest
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
