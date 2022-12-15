@@ -125,8 +125,6 @@ def currentDirPath(moduleName):
     :return Lib dir path
     """
     currentDir = os.path.join(currentBuildDir.parent, str(moduleName))
-    if str(moduleName) == 'shared_modules/utils':
-        currentDir = os.path.join(currentDir, 'tests/')
 
     return currentDir
 
@@ -437,7 +435,12 @@ def makeTarget(targetName, tests, debug):
 
 def configureCMake(moduleName, debugMode, testMode, withAsan):
     printHeader(moduleName, 'configurecmake')
-    currentModuleNameDir = currentDirPath(moduleName)
+
+    if moduleName == 'shared_modules/utils':
+        currentModuleNameDir = os.path.join(currentDirPath(moduleName), "tests")
+    else:
+        currentModuleNameDir = currentDirPath(moduleName)
+
     currentPathDir = currentDirPathBuild(moduleName)
 
     if not os.path.exists(currentPathDir):

@@ -83,7 +83,7 @@ SELINUX_POLICY=selinux/wazuh.pp
 SHARED_MODULES=shared_modules/
 DBSYNC=${SHARED_MODULES}dbsync/
 RSYNC=${SHARED_MODULES}rsync/
-SHARED_UTILS_TEST=${SHARED_MODULES}utils/tests/
+SHARED_UTILS_TEST=${SHARED_MODULES}utils
 SYSCOLLECTOR=wazuh_modules/syscollector/
 SYSINFO=data_provider/
 
@@ -789,7 +789,7 @@ win32/shared_modules: $(WAZUHEXT_LIB)
 	cd ${RSYNC} &&  mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
+	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} ../tests && ${MAKE}
 endif
 endif
 
@@ -1550,7 +1550,7 @@ build_shared_modules: $(WAZUHEXT_LIB)
 	cd ${RSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
+	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} ../tests && ${MAKE}
 endif
 endif
 
