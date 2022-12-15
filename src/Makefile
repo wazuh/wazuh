@@ -124,7 +124,6 @@ SYSINFO_TEST_TARGET=data_provider_unit_test
 endif
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 CMAKE_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-GTEST_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 endif
 
 ifeq (${COVERITY}, YES)
@@ -2167,7 +2166,7 @@ wazuh-modulesd: ${wmodulesd_o}
 ### wazuh-gtest-gmock ###
 
 build_gtest:
-	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${CMAKE_OPTS} ${GTEST_RELEASE_TYPE}  -DBUILD_GMOCK=ON -DBUILD_SHARED_LIBS=0 && ${MAKE} && cp -r lib ..
+	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${CMAKE_OPTS} -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=ON -DBUILD_SHARED_LIBS=0 && ${MAKE} && cp -r lib ..
 
 ### wazuh-python ###
 

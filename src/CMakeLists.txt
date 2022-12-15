@@ -25,15 +25,15 @@ else()
   message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 endif()
 
-# Target to compile all the tests of the subdirectories
-set(ALL_UNIT_TEST_TARGET all_unit_test)
-add_custom_target(${ALL_UNIT_TEST_TARGET})
-enable_testing()
-
 # The external/googletest directory is managed by the Makefile target build_gtest
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
+
+# Target to compile all the tests of the subdirectories
+set(ALL_UNIT_TEST_TARGET all_unit_test)
+add_custom_target(${ALL_UNIT_TEST_TARGET})
+enable_testing()
 
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
