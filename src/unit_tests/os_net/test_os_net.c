@@ -27,6 +27,7 @@
 
 #define IPV4 "127.0.0.1"
 #define IPV6 "::1"
+#define IPV6_LINK_LOCAL "FE80:0000:0000:0000:ABCD:ABCD:ABCD:ABCD"
 #define PORT 4321
 #define SENDSTRING "Hello World!\n"
 #define BUFFERSIZE 1024
@@ -135,7 +136,7 @@ void test_connect_TCP_ipv4(void **state) {
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_getsockopt, 0);
 
-    data->client_socket = OS_ConnectTCP(PORT, IPV4, 0);
+    data->client_socket = OS_ConnectTCP(PORT, IPV4, 0, 0);
     assert_return_code(data->client_socket , 0);
 }
 
@@ -147,7 +148,33 @@ void test_connect_TCP_ipv6(void **state) {
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_getsockopt, 0);
 
-    data->client_socket = OS_ConnectTCP(PORT, IPV6, 1);
+    data->client_socket = OS_ConnectTCP(PORT, IPV6, 1, 0);
+    assert_return_code(data->client_socket , 0);
+}
+
+void test_connect_TCP_ipv6_link_local_no_interface(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_socket, 3);
+    will_return(__wrap_connect, 0);
+    will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_getsockopt, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "No network interface provided to use with link-local IPv6 address.");
+
+    data->client_socket = OS_ConnectTCP(PORT, IPV6_LINK_LOCAL, 1, 0);
+    assert_return_code(data->client_socket , 0);
+}
+
+void test_connect_TCP_ipv6_link_local_with_interface(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_socket, 3);
+    will_return(__wrap_connect, 0);
+    will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_getsockopt, 0);
+
+    data->client_socket = OS_ConnectTCP(PORT, IPV6_LINK_LOCAL, 1, 1);
     assert_return_code(data->client_socket , 0);
 }
 
@@ -297,7 +324,7 @@ void test_connect_UDP_ipv4(void **state) {
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_getsockopt, 0);
 
-    data->client_socket = OS_ConnectUDP(PORT, IPV4, 0);
+    data->client_socket = OS_ConnectUDP(PORT, IPV4, 0, 0);
     assert_return_code(data->client_socket , 0);
 }
 
@@ -309,7 +336,33 @@ void test_connect_UDP_ipv6(void **state) {
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_getsockopt, 0);
 
-    data->client_socket = OS_ConnectUDP(PORT, IPV6, 1);
+    data->client_socket = OS_ConnectUDP(PORT, IPV6, 1, 0);
+    assert_return_code(data->client_socket , 0);
+}
+
+void test_connect_UDP_ipv6_link_local_no_interface(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_socket, 3);
+    will_return(__wrap_connect, 0);
+    will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_getsockopt, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "No network interface provided to use with link-local IPv6 address.");
+
+    data->client_socket = OS_ConnectUDP(PORT, IPV6_LINK_LOCAL, 1, 0);
+    assert_return_code(data->client_socket , 0);
+}
+
+void test_connect_UDP_ipv6_link_local_with_interface(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_socket, 3);
+    will_return(__wrap_connect, 0);
+    will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_getsockopt, 0);
+
+    data->client_socket = OS_ConnectUDP(PORT, IPV6_LINK_LOCAL, 1, 1);
     assert_return_code(data->client_socket , 0);
 }
 
@@ -899,6 +952,8 @@ int main(void) {
         /* Open a TCP socket */
         cmocka_unit_test_setup_teardown(test_connect_TCP_ipv4, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_connect_TCP_ipv6, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_connect_TCP_ipv6_link_local_no_interface, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_connect_TCP_ipv6_link_local_with_interface, test_setup, test_teardown),
 
         /* Accept a TCP connection */
         cmocka_unit_test_setup_teardown(test_accept_TCP, test_setup, test_teardown),
@@ -932,6 +987,8 @@ int main(void) {
         /* Open a UDP socket */
         cmocka_unit_test_setup_teardown(test_connect_UDP_ipv4, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_connect_UDP_ipv6, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_connect_UDP_ipv6_link_local_no_interface, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_connect_UDP_ipv6_link_local_with_interface, test_setup, test_teardown),
 
         /* Send a UDP packet */
         cmocka_unit_test_setup_teardown(test_send_UDP_by_size, test_setup, test_teardown),
