@@ -30,20 +30,18 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar,
         catch (const std::exception& e)
         {
             throw std::runtime_error(
-                "[builder::opBuilderLogParser(json)] Received unexpected argument type");
+                std::string("Definition could not be converted to json: ") + e.what());
         }
         if (!jsonDefinition.isArray())
         {
-            throw std::runtime_error(
-                fmt::format("[builder::opBuilderLogParser(json)] Invalid json definition "
-                            "type: expected [array] but got [{}]",
-                            jsonDefinition.typeName()));
+            throw std::runtime_error(fmt::format(
+                "Invalid json definition type: Expected \"array\" but got \"{}\"",
+                jsonDefinition.typeName()));
         }
         if (jsonDefinition.size() < 1)
         {
             throw std::runtime_error(
-                "[builder::opBuilderLogParser(json)] Invalid json definition: expected "
-                "at least one element");
+                "Invalid json definition, expected at least one element");
         }
 
         auto logparArr = jsonDefinition.getArray().value();
@@ -52,17 +50,15 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar,
         {
             if (!item.isObject())
             {
-                throw std::runtime_error(
-                    fmt::format("[builder::opBuilderLogParser(json)] Invalid item json "
-                                "type: expected [object] but got [{}]",
-                                item.typeName()));
+                throw std::runtime_error(fmt::format(
+                    "Invalid json item type: Expected an \"object\" but got \"{}\"",
+                    item.typeName()));
             }
             if (item.size() != 1)
             {
-                throw std::runtime_error(
-                    fmt::format("[builder::opBuilderLogParser(json)] Invalid item json "
-                                "size: expected exactly one element but got {}",
-                                item.size()));
+                throw std::runtime_error(fmt::format(
+                    "Invalid json item size: Expected exactly one element but got {}",
+                    item.size()));
             }
 
             auto itemObj = item.getObject().value();
@@ -76,23 +72,22 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar,
             }
             catch (const std::exception& e)
             {
-                const char* msg =
-                    "Stage [parse] builder encountered exception parsing logpar "
-                    "expr";
-                std::throw_with_nested(std::runtime_error(msg));
+                throw std::runtime_error(
+                    fmt::format("An error occurred while parsing a log: {}", e.what()));
             }
 
             // Traces
-            auto name = fmt::format("{}: {}", field, logparExpr);
-            auto successTrace = fmt::format("{} -> Success", name);
+            const auto name = fmt::format("{}: {}", field, logpar);
+            const auto successTrace = fmt::format("[{}] -> Success", name);
 
             // field to be parsed not exists
-            auto errorTrace1 =
-                fmt::format("[{}] -> Failure: field [{}] not found", name, field);
+            const std::string failureTrace1 = fmt::format(
+                "[{}] -> Failure: Parameter \"{}\" reference not found", name, field);
             // Parsing failed
-            auto errorTrace2 = fmt::format("[{}] -> Failure:\n", name);
-            // Field to be parsed is not a string
-            auto errorTrace3 =
+            const std::string failureTrace2 =
+                fmt::format("[{}] -> Failure: Parse operation failed: ", name);
+            // Parsing ok, mapping failed
+            const std::string failureTrace3 =
                 fmt::format("[{}] -> Failure: field [{}] is not a string", name, field);
 
             base::Expression parseExpression;
@@ -105,12 +100,12 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar,
                         if (!event->exists(field))
                         {
                             return base::result::makeFailure(std::move(event),
-                                                             errorTrace1);
+                                                             failureTrace1);
                         }
                         if (!event->isString(field))
                         {
                             return base::result::makeFailure(std::move(event),
-                                                             errorTrace3);
+                                                             failureTrace3);
                         }
 
                         auto ev = event->getString(field).value();
@@ -119,7 +114,7 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar,
                         {
                             return base::result::makeFailure(
                                 std::move(event),
-                                errorTrace2
+                                failureTrace2
                                     + parsec::formatTrace(
                                         ev, parseResult.trace(), debugLvl));
                         }
