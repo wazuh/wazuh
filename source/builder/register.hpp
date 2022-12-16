@@ -175,27 +175,29 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
                               "helper.parse_float");
     registry->registerBuilder(builders::opBuilderSpecificHLPDoubleParse,
                               "helper.parse_double");
-    registry->registerBuilder(builders::opBuilderSpecificHLPBase64Parse,
-                              "helper.parse_base64");
+    registry->registerBuilder(builders::opBuilderSpecificHLPBinaryParse,
+                              "helper.parse_binary");
     registry->registerBuilder(builders::opBuilderSpecificHLPDateParse,
                               "helper.parse_date");
     registry->registerBuilder(builders::opBuilderSpecificHLPIPParse, "helper.parse_ip");
     registry->registerBuilder(builders::opBuilderSpecificHLPURIParse, "helper.parse_uri");
     registry->registerBuilder(builders::opBuilderSpecificHLPUserAgentParse,
-                              "helper.parse_user_agent");
+                              "helper.parse_useragent");
     registry->registerBuilder(builders::opBuilderSpecificHLPFQDNParse,
                               "helper.parse_fqdn");
     registry->registerBuilder(builders::opBuilderSpecificHLPFilePathParse,
-                              "helper.parse_file_path");
+                              "helper.parse_file");
     registry->registerBuilder(builders::opBuilderSpecificHLPJSONParse,
                               "helper.parse_json");
     registry->registerBuilder(builders::opBuilderSpecificHLPXMLParse, "helper.parse_xml");
     registry->registerBuilder(builders::opBuilderSpecificHLPCSVParse, "helper.parse_csv");
     registry->registerBuilder(builders::opBuilderSpecificHLPDSVParse, "helper.parse_dsv");
     registry->registerBuilder(builders::opBuilderSpecificHLPKeyValueParse,
-                              "helper.parse_key_value");
+                              "helper.parse_kv");
     registry->registerBuilder(builders::opBuilderSpecificHLPQuotedParse,
                               "helper.parse_quoted");
+    registry->registerBuilder(builders::opBuilderSpecificHLPBetweenParse,
+                              "helper.parse_between");
 }
 } // namespace builder::internals
 
