@@ -1,6 +1,7 @@
 import pytest
 import sqlite3
 import os
+import tempfile
 
 @pytest.fixture()
 def custom_database():
@@ -16,4 +17,3 @@ def custom_database():
     for table in [table[0] for table in table_list]:
         memory_db.execute(f"DROP TABLE {table};")
     memory_db.close()
-

@@ -15,13 +15,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import wazuh_integration
 
 
-# Error codes
-INVALID_CREDENTIALS_ERROR_CODE = 3
-METADATA_ERROR_CODE = 5
-UNABLE_TO_CREATE_DB = 6
-UNABLE_TO_CONNECT_SOCKET_ERROR_CODE = 11
-SENDING_MESSAGE_SOCKET_ERROR_CODE = 13
-
 TEST_METADATA_SCHEMA = "schema_metadata_test.sql"
 TEST_METADATA_DEPRECATED_TABLES_SCHEMA = "schema_metadata_deprecated_tables_test.sql"
 METADATA_TABLE_NAME = 'metadata'
@@ -36,7 +29,7 @@ DB_TABLENAME = "test_table"
 def test_WazuhIntegration__init__(mock_version, mock_path, mock_client, mock_connect, mock_metadata):
     """Test if the instances of WazuhIntegration are created properly."""
     mock_connect.return_value = MagicMock()
-    args = utils.get_WazuhIntegration_parameters(bucket="test")
+    args = utils.get_WazuhIntegration_parameters()
     integration = wazuh_integration.WazuhIntegration(**args)
     mock_path.assert_called_once()
     mock_version.assert_called_once()
@@ -104,7 +97,7 @@ def test_WazuhIntegration_check_metadata_version_ko(custom_database, table_exist
 
     with pytest.raises(SystemExit) as e:
         instance.check_metadata_version()
-    assert e.value.code == METADATA_ERROR_CODE
+    assert e.value.code == utils.METADATA_ERROR_CODE
 
 
 def test_WazuhIntegration_delete_deprecated_tables(custom_database):
@@ -266,7 +259,7 @@ def test_WazuhIntegration_get_client_ko():
             patch('wazuh_integration.boto3.Session', return_value=mock_boto_session):
         with pytest.raises(SystemExit) as e:
             wazuh_integration.WazuhIntegration(**utils.get_WazuhIntegration_parameters())
-        assert e.value.code == INVALID_CREDENTIALS_ERROR_CODE
+        assert e.value.code == utils.INVALID_CREDENTIALS_ERROR_CODE
 
 
 @pytest.mark.parametrize('access_key, secret_key, profile', [
@@ -316,7 +309,7 @@ def test_WazuhIntegration_get_sts_client_ko():
     with patch('wazuh_integration.boto3.Session', return_value=mock_boto_session):
         with pytest.raises(SystemExit) as e:
             instance.get_sts_client(access_key=None, secret_key=None, profile=None)
-        assert e.value.code == INVALID_CREDENTIALS_ERROR_CODE
+        assert e.value.code == utils.INVALID_CREDENTIALS_ERROR_CODE
 
 
 @pytest.mark.parametrize("dump_json", [True, False])
@@ -340,8 +333,8 @@ def test_WazuhIntegration_send_msg(dump_json):
 
 
 @pytest.mark.parametrize("error_code, expected_exit_code", [
-    (111, UNABLE_TO_CONNECT_SOCKET_ERROR_CODE),
-    (1, SENDING_MESSAGE_SOCKET_ERROR_CODE),
+    (111, utils.UNABLE_TO_CONNECT_SOCKET_ERROR_CODE),
+    (1, utils.SENDING_MESSAGE_SOCKET_ERROR_CODE),
     (90, None)
 ])
 def test_WazuhIntegration_send_msg_socket_error(error_code, expected_exit_code):
@@ -376,7 +369,7 @@ def test_WazuhIntegration_send_msg_ko():
         mock_socket.side_effect = TypeError
         with pytest.raises(SystemExit) as e:
             instance.send_msg(utils.TEST_MESSAGE)
-        assert e.value.code == SENDING_MESSAGE_SOCKET_ERROR_CODE
+        assert e.value.code == utils.SENDING_MESSAGE_SOCKET_ERROR_CODE
 
 
 def test_WazuhIntegration_create_table():
@@ -396,7 +389,7 @@ def test_WazuhIntegration_create_table_ko():
 
     with pytest.raises(SystemExit) as e:
         instance.create_table("")
-    assert e.value.code == UNABLE_TO_CREATE_DB
+    assert e.value.code == utils.UNABLE_TO_CREATE_DB
 
 
 @pytest.mark.parametrize("table_list", [
@@ -435,7 +428,7 @@ def test_WazuhIntegration_init_db_ko():
 
     with pytest.raises(SystemExit) as e:
         instance.init_db("")
-    assert e.value.code == METADATA_ERROR_CODE
+    assert e.value.code == utils.METADATA_ERROR_CODE
 
 
 

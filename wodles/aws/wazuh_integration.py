@@ -32,14 +32,12 @@ class WazuhIntegration:
     :param iam_role_arn: IAM Role
     :param service name: Name of the service (s3 for services which stores logs in buckets)
     :param region: Region of service
-    :param bucket: Bucket name to extract logs from
     :param iam_role_duration: The desired duration of the session that is going to be assumed.
     """
 
-    def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
-                 service_name=None, region=None, bucket=None, discard_field=None,
-                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None,
-                 db_name=None):
+    def __init__(self, db_name, db_table_name, service_name, access_key=None, secret_key=None, aws_profile=None,
+                 iam_role_arn=None, region=None, discard_field=None, discard_regex=None, sts_endpoint=None,
+                 service_endpoint=None, iam_role_duration=None):
         # SQL queries
         self.sql_find_table_names = """
             SELECT
@@ -112,13 +110,10 @@ class WazuhIntegration:
                                       service_endpoint=service_endpoint,
                                       iam_role_duration=iam_role_duration
                                       )
-
-        # db_name is an instance variable of subclass
         self.db_path = f"{self.wazuh_wodle}/{db_name}.db"
         self.db_connector = sqlite3.connect(self.db_path)
         self.db_cursor = self.db_connector.cursor()
-        if bucket:
-            self.bucket = bucket
+        self.db_table_name = db_table_name
         self.check_metadata_version()
         self.discard_field = discard_field
         self.discard_regex = re.compile(fr'{discard_regex}')
@@ -166,8 +161,8 @@ class WazuhIntegration:
             aws_s3.debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',2)
         return args
 
-    def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, region=None, sts_endpoint=None,
-                   service_endpoint=None, iam_role_duration=None):
+    def get_client(self, access_key=None, secret_key=None, profile=None, iam_role_arn=None, service_name=None,
+                   region=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
         conn_args = {}
         if access_key is not None and secret_key is not None:
             print(aws_s3.DEPRECATED_MESSAGE.format(name="access_key and secret_key", release="4.4", url=aws_s3.CREDENTIALS_URL))

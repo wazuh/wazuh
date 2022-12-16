@@ -25,7 +25,7 @@ INSERT INTO 'vpcflow' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'us-east-1',
     'fl-1234',
     'vpc/AWSLogs/123456789/vpcflowlogs/us-east-1/2019/04/15/123456789_vpcflowlogs_us-east-1_fl-1234_20190415T0945Z_c23ab7.log.gz',
@@ -41,7 +41,7 @@ INSERT INTO 'vpcflow' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'us-east-1',
     'fl-1234',
     'vpc/AWSLogs/123456789/vpcflowlogs/us-east-1/2019/04/15/123456789_vpcflowlogs_us-east-1_fl-1234_20190415T0950Z_c23ab7.log.gz',
@@ -57,7 +57,7 @@ INSERT INTO 'vpcflow' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'us-east-1',
     'fl-1234',
     'vpc/AWSLogs/123456789/vpcflowlogs/us-east-1/2019/04/15/123456789_vpcflowlogs_us-east-1_fl-1234_20190415T0955Z_c23ab7.log.gz',
@@ -73,7 +73,7 @@ INSERT INTO 'vpcflow' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'us-east-1',
     'fl-1234',
     'vpc/AWSLogs/123456789/vpcflowlogs/us-east-1/2019/04/15/123456789_vpcflowlogs_us-east-1_fl-1234_20190415T0940Z_c23ab7.log.gz',
@@ -89,7 +89,7 @@ INSERT INTO 'vpcflow' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'us-east-1',
     'fl-1234',
     'vpc/AWSLogs/123456789/vpcflowlogs/us-east-1/2019/04/15/123456789_vpcflowlogs_us-east-1_fl-1234_20190415T1000Z_c23ab7.log.gz',
@@ -105,7 +105,7 @@ INSERT INTO 'vpcflow' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'us-east-1',
     'fl-1234',
     'vpc/AWSLogs/123456789/vpcflowlogs/us-east-1/2019/04/15/123456789_vpcflowlogs_us-east-1_fl-1234_20190415T115Z_c23ab7.log.gz',
@@ -121,7 +121,7 @@ INSERT INTO 'vpcflow' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'us-east-1',
     'fl-1234',
     'vpc/AWSLogs/123456789/vpcflowlogs/us-east-1/2019/04/15/123456789_vpcflowlogs_us-east-1_fl-1234_20190415T1005Z_c23ab7.log.gz',
@@ -137,7 +137,7 @@ INSERT INTO 'vpcflow' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'us-east-1',
     'fl-1234',
     'vpc/AWSLogs/123456789/vpcflowlogs/us-east-1/2019/04/15/123456789_vpcflowlogs_us-east-1_fl-1234_20190415T110Z_c23ab7.log.gz',
