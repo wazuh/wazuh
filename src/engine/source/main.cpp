@@ -286,6 +286,13 @@ void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
                    "[default] Use YAML as Input/Output format.")
         ->excludes(catalog->get_option("--json"));
 
+    // Log level
+    catalog->add_option("-l, --log_level",
+                    args::log_level,
+                    "Sets the logging level: 0 = Debug, 1 = Info, 2 = Warning, 3 = Error")
+        ->default_val(3)
+        ->check(CLI::Range(0, 3));
+
     // Shared obpitons among subcommands
     auto name = "name";
     std::string nameDesc = "Name that identifies the ";
@@ -576,7 +583,8 @@ int main(int argc, char* argv[])
                          formatString,
                          args::catalogContent,
                          args::catalogPath,
-                         args::catalogRecursive);
+                         args::catalogRecursive,
+                         args::log_level);
         }
         else if (app->get_subcommand(args::SUBCOMMAND_ENVIRONMENT)->parsed())
         {
