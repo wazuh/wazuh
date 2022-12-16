@@ -15,8 +15,8 @@ import aws_s3
 class AWSServerAccess(AWSCustomBucket):
 
     def __init__(self, **kwargs):
-        db_table_name = 's3_server_access'
-        AWSCustomBucket.__init__(self, db_table_name=db_table_name, **kwargs)
+        kwargs['db_table_name'] = 's3_server_access'
+        AWSCustomBucket.__init__(self, **kwargs)
         self.date_regex = re.compile(r'(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2})')
         self.date_format = '%Y-%m-%d'
 

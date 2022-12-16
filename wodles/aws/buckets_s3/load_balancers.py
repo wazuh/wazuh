@@ -33,8 +33,8 @@ class AWSLBBucket(AWSCustomBucket):
 class AWSALBBucket(AWSLBBucket):
 
     def __init__(self, **kwargs):
-        db_table_name = 'alb'
-        AWSLBBucket.__init__(self, db_table_name, **kwargs)
+        kwargs['db_table_name'] = 'alb'
+        AWSLBBucket.__init__(self, **kwargs)
 
     def load_information_from_file(self, log_key):
         """Load data from a ALB access log file."""

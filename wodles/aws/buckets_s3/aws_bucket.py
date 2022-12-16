@@ -187,7 +187,6 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                 bucket_path=:bucket_path AND
                 aws_account_id=:aws_account_id AND
                 aws_region=:aws_region;"""
-
         wazuh_integration.WazuhIntegration.__init__(self,
                                                     db_name=DEFAULT_DATABASE_NAME,
                                                     db_table_name=db_table_name,
@@ -213,7 +212,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         self.bucket = bucket
         self.bucket_path = f"{self.bucket}/{self.prefix}"
         self.aws_organization_id = aws_organization_id
-        self.date_format = None
+        self.date_format = "%Y/%m/%d"
         self.date_regex = re.compile(r'(\d{4}/\d{2}/\d{2})')
         self.prefix_regex = re.compile("^\d{12}$")
         self.check_prefix = False
@@ -820,7 +819,7 @@ class AWSCustomBucket(AWSBucket):
         # get STS client
         access_key = kwargs.get('access_key', None)
         secret_key = kwargs.get('secret_key', None)
-        profile = kwargs.get('profile', None)
+        profile = kwargs.get('aws_profile', None)
         self.sts_client = self.get_sts_client(access_key, secret_key, profile=profile)
         # get account ID
         self.aws_account_id = self.sts_client.get_caller_identity().get('Account')

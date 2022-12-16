@@ -4,8 +4,8 @@ from aws_bucket import AWSCustomBucket
 class CiscoUmbrella(AWSCustomBucket):
 
     def __init__(self, **kwargs):
-        db_table_name = 'cisco_umbrella'
-        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+        kwargs['db_table_name'] = 'cisco_umbrella'
+        AWSCustomBucket.__init__(self, **kwargs)
         self.check_prefix = False
         self.date_format = '%Y-%m-%d'
 

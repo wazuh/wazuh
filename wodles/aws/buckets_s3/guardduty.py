@@ -9,8 +9,8 @@ import aws_s3
 class AWSGuardDutyBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
-        db_table_name = 'guardduty'
-        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+        kwargs['db_table_name'] = 'guardduty'
+        AWSCustomBucket.__init__(self, **kwargs)
 
     def send_event(self, event):
         # Send the message (split if it is necessary)
