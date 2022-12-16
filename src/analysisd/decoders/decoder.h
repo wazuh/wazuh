@@ -96,8 +96,8 @@ typedef struct dbsync_context_t {
  *  data fields and their corresponding table
  */
 struct deltas_fields_match {
-    char key[OS_SIZE_32];
-    char value[OS_SIZE_32];
+    char *key;
+    char *value;
 };
 
 /**
