@@ -330,7 +330,7 @@ parsec::Parser<std::list<ParserInfo>> pLogpar()
                         parsec::Values<parsec::Values<ParserInfo>>>(
                [](auto v)
                {
-                   std::list<ParserInfo> merged;
+                   std::list<ParserInfo> merged {};
                    for (auto& l : v)
                    {
                        merged.splice(merged.end(), l);
@@ -400,7 +400,7 @@ Logpar::Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion, size_t
         {SchemaType::BOOLEAN, ParserType::P_BOOL},
         {SchemaType::IP, ParserType::P_IP},
         {SchemaType::OBJECT, ParserType::P_TEXT},
-         {SchemaType::GEO_POINT, ParserType::P_TEXT},
+        {SchemaType::GEO_POINT, ParserType::P_TEXT},
         {SchemaType::NESTED, ParserType::P_TEXT},
         {SchemaType::DATE, ParserType::P_DATE},
         // Special types, not in schema
@@ -634,7 +634,7 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
             // If the field is followed by a group, make a choice between the field, and
             // the field and group
             auto next = std::next(parserInfo);
-            if (std::holds_alternative<parser::Group>(*next))
+            if (next != parserInfos.end() && std::holds_alternative<parser::Group>(*next))
             {
                 auto group = std::get<parser::Group>(*next);
                 auto endTokens = groupEndToken(group, groupEndToken);
@@ -668,7 +668,8 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
                         },
                         pF& pG);
                 auto endToken2 = getEndToken(parserInfos, next, getEndToken);
-                auto choice2 = buildFieldParser(std::get<parser::Field>(*parserInfo),endToken2);
+                auto choice2 =
+                    buildFieldParser(std::get<parser::Field>(*parserInfo), endToken2);
 
                 parsers.push_back(choice1 | choice2);
                 // Skip group
