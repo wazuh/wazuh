@@ -16,6 +16,16 @@ using Stop = std::list<std::string>;
 using Options = std::vector<std::string>;
 
 /**
+ * @brief Returns a parser which will accept a string between two substrings.
+ *
+ * The parser will consume the start substring, until the end substring is found.
+ * @param name
+ * @param lst
+ * @return parsec::Parser<json::Json>
+ */
+parsec::Parser<json::Json> getBetweenParser(std::string name, Stop, Options lst);
+
+/**
  * Returns a parser which will accept booleans represented by the strings
  * 'true' and 'false'.
  *
