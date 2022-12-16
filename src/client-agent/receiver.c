@@ -23,7 +23,6 @@
 static FILE *fp = NULL;
 static char file_sum[34] = "";
 static char file[OS_SIZE_1024 + 1] = "";
-static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
 #ifdef WIN32
 w_queue_t * winexec_queue;
 #endif
@@ -275,17 +274,19 @@ int receive_msg()
                         final_file = strrchr(file, '/');
                         if (final_file) {
                             if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
-                                if (cldir_ex_ignore(SHAREDCFG_DIR, IGNORE_LIST)) {
-                                    mwarn("Could not clean up shared directory.");
-                                }
-
-                                if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
+                                const char **IGNORE_LIST = malloc(2 * sizeof(char *));
+                                IGNORE_LIST[0] = SHAREDCFG_FILENAME;
+                                IGNORE_LIST[1] = NULL;
+                                if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT, &IGNORE_LIST)){
                                     char msg_output[OS_MAXSTR];
 
                                     snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
                                     send_msg(msg_output, -1);
                                 }
                                 else {
+                                    if (cldir_ex_ignore(SHAREDCFG_DIR, IGNORE_LIST)) {
+                                        mwarn("Could not clean up shared directory.");
+                                    }
                                     clear_merged_hash_cache();
                                     if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                         if (agt->flags.auto_restart) {
@@ -296,6 +297,7 @@ int receive_msg()
                                         }
                                     }
                                 }
+                                os_free(IGNORE_LIST);
                             }
                         } else {
                             /* Remove file */

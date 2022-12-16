@@ -218,7 +218,7 @@ int MergeAppendFile(FILE *finalfp, const char *files, int path_offset) __attribu
  * @param mode Indicates if the merged file must be readed as a binary file  or not. Use `#OS_TEXT`, `#OS_BINARY`.
  * @return 1 if the file was unmerged, 0 on error.
  */
-int UnmergeFiles(const char *finalpath, const char *optdir, int mode) __attribute__((nonnull(1)));
+int UnmergeFiles(const char *finalpath, const char *optdir, int mode, const char ***unmerged_files) __attribute__((nonnull(1)));
 
 
 /**

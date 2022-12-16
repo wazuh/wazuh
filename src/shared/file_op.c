@@ -623,15 +623,17 @@ void DeleteState() {
 }
 
 
-int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
+int UnmergeFiles(const char *finalpath, const char *optdir, int mode, const char ***unmerged_files)
 {
     int ret = 1;
     int state_ok;
+    int file_count = 0;
     size_t i = 0, n = 0, files_size = 0;
     char *files;
     char * copy;
     char final_name[2048 + 1];
     char buf[2048 + 1];
+    char *file_name;
     FILE *fp;
     FILE *finalfp;
 
@@ -639,6 +641,11 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
     if (!finalfp) {
         merror("Unable to read merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
         return (0);
+    }
+
+    /* Finds index of the last element on the list */
+    if(unmerged_files != NULL){
+        for(file_count = 0; *(*unmerged_files + file_count); file_count++);
     }
 
     while (1) {
@@ -693,12 +700,22 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
 
         free(copy);
 
+
+        /* Create temporary file */
+        char tmp_file[strlen(final_name) + 7];
+        snprintf(tmp_file, sizeof(tmp_file), "%sXXXXXX", final_name);
+
+        if (mkstemp_ex(tmp_file) == -1) {
+            merror("Unmerging '%s': could not create temporary file for '%s'", finalpath, files);
+            state_ok = 0;
+        }
+
         /* Open filename */
 
         if (state_ok) {
-            if (fp = fopen(final_name, mode == OS_BINARY ? "wb" : "w"), !fp) {
+            if (fp = fopen(tmp_file, mode == OS_BINARY ? "wb" : "w"), !fp) {
                 ret = 0;
-                merror("Unable to unmerge file '%s' due to [(%d)-(%s)].", final_name, errno, strerror(errno));
+                merror("Unable to unmerge file '%s' due to [(%d)-(%s)].", tmp_file, errno, strerror(errno));
             }
         } else {
             fp = NULL;
@@ -736,6 +753,29 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
         if (fp) {
             fclose(fp);
         }
+
+        /* Mv to original name */
+        rename_ex(tmp_file, final_name);
+
+        if(unmerged_files != NULL){
+            /* Removes path from file name */
+            file_name = strrchr(final_name, '/');
+            if(file_name){
+                file_name++;
+            }
+            else{
+                file_name = final_name;
+            }
+
+            /* Appends file name to unmerged files list */
+            *unmerged_files = realloc(*unmerged_files, (file_count + 1) * sizeof(char *));
+            *(*unmerged_files + file_count) = strdup(file_name);
+            file_count++;
+        }
+    }
+
+    if(unmerged_files != NULL){
+        *(*unmerged_files + file_count) = NULL;
     }
 
     fclose(finalfp);
