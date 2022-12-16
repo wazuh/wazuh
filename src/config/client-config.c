@@ -619,7 +619,7 @@ bool Validate_Address(agent_server *servers)
 
 /* Checks if at least one <server> block is not a link-local ipv6 address or it has a network interface configured. */
 bool Validate_IPv6_Link_Local_Interface(agent_server *servers) {
-    int i;
+    unsigned int i;
 
     for (i = 0; servers[i].rip; i++) {
         char *ip_address = NULL;
