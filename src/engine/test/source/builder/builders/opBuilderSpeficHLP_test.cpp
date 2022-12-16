@@ -416,41 +416,41 @@ TEST(Parse_float, Ref_not_found)
 }
 
 // Parse base64
-TEST(Parse_base64, Builds)
+TEST(parse_binary, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_base64"},
+                                 std::string {"parse_binary"},
                                  std::vector<std::string> {"TEST"});
 
-    ASSERT_NO_THROW(bld::opBuilderSpecificHLPBase64Parse(tuple));
+    ASSERT_NO_THROW(bld::opBuilderSpecificHLPBinaryParse(tuple));
 }
 
-TEST(Parse_base64, Builds_bad_parameters)
+TEST(parse_binary, Builds_bad_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_base64"},
+                                 std::string {"parse_binary"},
                                  std::vector<std::string> {"test", "TEST"});
 
-    ASSERT_THROW(bld::opBuilderSpecificHLPBase64Parse(tuple), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderSpecificHLPBinaryParse(tuple), std::runtime_error);
 }
 
-TEST(Parse_base64, Builds_bad_parameters2)
+TEST(parse_binary, Builds_bad_parameters2)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_base64"},
+                                 std::string {"parse_binary"},
                                  std::vector<std::string> {});
 
-    ASSERT_THROW(bld::opBuilderSpecificHLPBase64Parse(tuple), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderSpecificHLPBinaryParse(tuple), std::runtime_error);
 }
 
-TEST(Parse_base64, Match_value)
+TEST(parse_binary, Match_value)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_base64"},
+                                 std::string {"parse_binary"},
                                  std::vector<std::string> {"dGVzdA=="});
 
     auto op {
-        bld::opBuilderSpecificHLPBase64Parse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+        bld::opBuilderSpecificHLPBinaryParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event1 {std::make_shared<json::Json>(R"({"field": "test"})")};
 
@@ -461,14 +461,14 @@ TEST(Parse_base64, Match_value)
     ASSERT_TRUE(result1.payload().get()->getString("/field").value() == "dGVzdA==");
 }
 
-TEST(Parse_base64, Match_fail)
+TEST(parse_binary, Match_fail)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_base64"},
+                                 std::string {"parse_binary"},
                                  std::vector<std::string> {"invalid Value %^&*!@#$%"});
 
     auto op {
-        bld::opBuilderSpecificHLPBase64Parse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+        bld::opBuilderSpecificHLPBinaryParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"field": "test"})")};
 
     result::Result<Event> result1 {op(event1)};
@@ -478,14 +478,14 @@ TEST(Parse_base64, Match_fail)
     ASSERT_TRUE(result1.payload().get()->getString("/field").value() == "test");
 }
 
-TEST(Parse_base64, Match_ref)
+TEST(parse_binary, Match_ref)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_base64"},
+                                 std::string {"parse_binary"},
                                  std::vector<std::string> {"$field_ref"});
 
     auto op {
-        bld::opBuilderSpecificHLPBase64Parse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+        bld::opBuilderSpecificHLPBinaryParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event1 {
         std::make_shared<json::Json>(R"({"field": "test", "field_ref": "dGVzdA=="})")};
@@ -497,14 +497,14 @@ TEST(Parse_base64, Match_ref)
     ASSERT_TRUE(result1.payload().get()->getString("/field").value() == "dGVzdA==");
 }
 
-TEST(Parse_base64, Ref_not_found)
+TEST(parse_binary, Ref_not_found)
 {
     auto tuple = std::make_tuple(std::string {"/field_dst"},
-                                 std::string {"parse_base64"},
+                                 std::string {"parse_binary"},
                                  std::vector<std::string> {"$field_ref"});
 
     auto op {
-        bld::opBuilderSpecificHLPBase64Parse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+        bld::opBuilderSpecificHLPBinaryParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event1 {std::make_shared<json::Json>(R"({"field": "test"})")};
 
@@ -782,38 +782,38 @@ TEST(Parse_uri, Ref_not_found)
 }
 
 // parser user_agent
-TEST(Parse_user_agent, Builds)
+TEST(parse_useragent, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_user_agent"},
+                                 std::string {"parse_useragent"},
                                  std::vector<std::string> {"TEST"});
 
     ASSERT_NO_THROW(bld::opBuilderSpecificHLPUserAgentParse(tuple));
 }
 
-TEST(Parse_user_agent, Builds_bad_parameters)
+TEST(parse_useragent, Builds_bad_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_user_agent"},
+                                 std::string {"parse_useragent"},
                                  std::vector<std::string> {"test", "TEST"});
 
     ASSERT_THROW(bld::opBuilderSpecificHLPUserAgentParse(tuple), std::runtime_error);
 }
 
-TEST(Parse_user_agent, Builds_bad_parameters2)
+TEST(parse_useragent, Builds_bad_parameters2)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_user_agent"},
+                                 std::string {"parse_useragent"},
                                  std::vector<std::string> {});
 
     ASSERT_THROW(bld::opBuilderSpecificHLPUserAgentParse(tuple), std::runtime_error);
 }
 
-TEST(Parse_user_agent, Match_value)
+TEST(parse_useragent, Match_value)
 {
     auto tuple =
         std::make_tuple(std::string {"/field"},
-                        std::string {"parse_user_agent"},
+                        std::string {"parse_useragent"},
                         std::vector<std::string> {
                             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, "
                             "like Gecko) Chrome/80.0.3987.149 Safari/537.36"});
@@ -832,10 +832,10 @@ TEST(Parse_user_agent, Match_value)
     ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
 }
 
-TEST(Parse_user_agent, Match_ref)
+TEST(parse_useragent, Match_ref)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_user_agent"},
+                                 std::string {"parse_useragent"},
                                  std::vector<std::string> {"$field_ref"});
 
     auto op {bld::opBuilderSpecificHLPUserAgentParse(tuple)
@@ -854,10 +854,10 @@ TEST(Parse_user_agent, Match_ref)
     ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
 }
 
-TEST(Parse_user_agent, Ref_not_found)
+TEST(parse_useragent, Ref_not_found)
 {
     auto tuple = std::make_tuple(std::string {"/field_dst"},
-                                 std::string {"parse_user_agent"},
+                                 std::string {"parse_useragent"},
                                  std::vector<std::string> {"$field_ref"});
 
     auto op {bld::opBuilderSpecificHLPUserAgentParse(tuple)
@@ -972,38 +972,38 @@ TEST(Parse_fqdn, Ref_not_found)
     ASSERT_FALSE(result1.payload().get()->exists("/field_ref"));
 }
 
-// parser parse_file_path
-TEST(Parse_file_path, Builds)
+// parser parse_file
+TEST(parse_file, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_file_path"},
+                                 std::string {"parse_file"},
                                  std::vector<std::string> {"TEST"});
 
     ASSERT_NO_THROW(bld::opBuilderSpecificHLPFilePathParse(tuple));
 }
 
-TEST(Parse_file_path, Builds_bad_parameters)
+TEST(parse_file, Builds_bad_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_file_path"},
+                                 std::string {"parse_file"},
                                  std::vector<std::string> {"test", "TEST"});
 
     ASSERT_THROW(bld::opBuilderSpecificHLPFilePathParse(tuple), std::runtime_error);
 }
 
-TEST(Parse_file_path, Builds_bad_parameters2)
+TEST(parse_file, Builds_bad_parameters2)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_file_path"},
+                                 std::string {"parse_file"},
                                  std::vector<std::string> {});
 
     ASSERT_THROW(bld::opBuilderSpecificHLPFilePathParse(tuple), std::runtime_error);
 }
 
-TEST(Parse_file_path, Match_value)
+TEST(parse_file, Match_value)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_file_path"},
+                                 std::string {"parse_file"},
                                  std::vector<std::string> {"C:\\Users\\test\\test.txt"});
 
     auto op {
@@ -1019,10 +1019,10 @@ TEST(Parse_file_path, Match_value)
     ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
 }
 
-TEST(Parse_file_path, Match_ref)
+TEST(parse_file, Match_ref)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_file_path"},
+                                 std::string {"parse_file"},
                                  std::vector<std::string> {"$field_ref"});
 
     auto op {
@@ -1040,10 +1040,10 @@ TEST(Parse_file_path, Match_ref)
     ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
 }
 
-TEST(Parse_file_path, Ref_not_found)
+TEST(parse_file, Ref_not_found)
 {
     auto tuple = std::make_tuple(std::string {"/field_dst"},
-                                 std::string {"parse_file_path"},
+                                 std::string {"parse_file"},
                                  std::vector<std::string> {"$field_ref"});
 
     auto op {
@@ -1370,39 +1370,39 @@ TEST(Parse_csv, Ref_not_found)
 
 
 // parse key value
-TEST(Parse_key_value, Builds)
+TEST(parse_kv, Builds)
 {
     auto tuple = std::make_tuple(
         std::string {"/field"},
-        std::string {"parse_key_value"},
+        std::string {"parse_kv"},
         std::vector<std::string> {"test string map", " ", "=", "\"", "\\"});
 
     ASSERT_NO_THROW(bld::opBuilderSpecificHLPKeyValueParse(tuple));
 }
 
-TEST(Parse_key_value, Builds_bad_parameters)
+TEST(parse_kv, Builds_bad_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_key_value"},
+                                 std::string {"parse_kv"},
                                  std::vector<std::string> {"test", "TEST", "test"});
 
     ASSERT_THROW(bld::opBuilderSpecificHLPKeyValueParse(tuple), std::runtime_error);
 }
 
-TEST(Parse_key_value, Builds_bad_parameters2)
+TEST(parse_kv, Builds_bad_parameters2)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_key_value"},
+                                 std::string {"parse_kv"},
                                  std::vector<std::string> {});
 
     ASSERT_THROW(bld::opBuilderSpecificHLPKeyValueParse(tuple), std::runtime_error);
 }
 
-TEST(Parse_key_value, Match_value)
+TEST(parse_kv, Match_value)
 {
     auto tuple = std::make_tuple(
         std::string {"/field"},
-        std::string {"parse_key_value"},
+        std::string {"parse_kv"},
         std::vector<std::string> {"key1=value1 key2=\"value2\"", "=", " ", "\"", "\\"});
 
     auto op {
@@ -1417,11 +1417,11 @@ TEST(Parse_key_value, Match_value)
     ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
 }
 
-TEST(Parse_key_value, Match_ref)
+TEST(parse_kv, Match_ref)
 {
     auto tuple =
         std::make_tuple(std::string {"/field"},
-                        std::string {"parse_key_value"},
+                        std::string {"parse_kv"},
                         std::vector<std::string> {"$field_ref", "=", " ", "\"", "\\"});
 
     auto op {
@@ -1438,11 +1438,11 @@ TEST(Parse_key_value, Match_ref)
     ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
 }
 
-TEST(Parse_key_value, Match_fail)
+TEST(parse_kv, Match_fail)
 {
     auto tuple =
         std::make_tuple(std::string {"/field"},
-                        std::string {"parse_key_value"},
+                        std::string {"parse_kv"},
                         std::vector<std::string> {"$field_ref", " ", "=", "\"", "\\"});
 
     auto op {
@@ -1458,11 +1458,11 @@ TEST(Parse_key_value, Match_fail)
     ASSERT_STREQ(result1.payload().get()->getString("/field").value().c_str(), "test");
 }
 
-TEST(Parse_key_value, Ref_not_found)
+TEST(parse_kv, Ref_not_found)
 {
     auto tuple =
         std::make_tuple(std::string {"/field_dst"},
-                        std::string {"parse_key_value"},
+                        std::string {"parse_kv"},
                         std::vector<std::string> {"$field_ref", " ", "=", "\"", "\\"});
 
     auto op {
@@ -1582,5 +1582,100 @@ TEST(Parse_quoted, Ref_not_found)
     result::Result<Event> result1 {op(event1)};
     ASSERT_FALSE(result1);
     ASSERT_FALSE(result1.payload().get()->exists("/field_dst"));
+    ASSERT_FALSE(result1.payload().get()->exists("/field_ref"));
+}
+
+// parse between
+TEST(Parse_between, Builds_ok)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_between"},
+                                 std::vector<std::string> {"start value end", "start", "end"});
+
+    ASSERT_NO_THROW(bld::opBuilderSpecificHLPBetweenParse(tuple));
+}
+
+TEST(Parse_between, Builds_bad_parameters)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_between"},
+                                 std::vector<std::string> {"test", "test"});
+
+    ASSERT_THROW(bld::opBuilderSpecificHLPBetweenParse(tuple), std::runtime_error);
+}
+
+TEST(Parse_between, Builds_bad_parameters2)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_between"},
+                                 std::vector<std::string> {});
+
+    ASSERT_THROW(bld::opBuilderSpecificHLPBetweenParse(tuple), std::runtime_error);
+}
+
+TEST(Parse_between, Match_value)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_between"},
+                                 std::vector<std::string> {"start value end", "start ", " end"});
+
+    auto op {
+        bld::opBuilderSpecificHLPBetweenParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto event1 {std::make_shared<json::Json>(R"({"field": "test"})")};
+
+    result::Result<Event> result1 {op(event1)};
+    ASSERT_TRUE(result1);
+    ASSERT_TRUE(result1.payload().get()->exists("/field"));
+    ASSERT_TRUE(result1.payload().get()->isString("/field"));
+    ASSERT_STREQ(result1.payload().get()->getString("/field").value().c_str(), "value");
+}
+
+TEST(Parse_between, Match_ref)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_between"},
+                                 std::vector<std::string> {"$field_ref", "start ", " end"});
+
+    auto op {
+        bld::opBuilderSpecificHLPBetweenParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto event1 {std::make_shared<json::Json>(
+        R"({"field": "test", "field_ref": "start value end"})")};
+
+    result::Result<Event> result1 {op(event1)};
+    ASSERT_TRUE(result1);
+    ASSERT_TRUE(result1.payload().get()->exists("/field"));
+    ASSERT_TRUE(result1.payload().get()->isString("/field"));
+    ASSERT_STREQ(result1.payload().get()->getString("/field").value().c_str(), "value");
+}
+
+TEST(Parse_between, Match_fail)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"parse_between"},
+                                 std::vector<std::string> {"$field_ref", "start ", " end"});
+
+    auto op {
+        bld::opBuilderSpecificHLPBetweenParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto event1 {std::make_shared<json::Json>(R"({"field": "test", "field_ref": "1234567890"})")};
+
+    result::Result<Event> result1 {op(event1)};
+    ASSERT_FALSE(result1);
+    ASSERT_TRUE(result1.payload().get()->exists("/field"));
+    ASSERT_TRUE(result1.payload().get()->isString("/field"));
+    ASSERT_STREQ(result1.payload().get()->getString("/field").value().c_str(), "test");
+}
+
+TEST(Parse_between, Ref_not_found)
+{
+    auto tuple = std::make_tuple(std::string {"/field_dst"},
+                                 std::string {"parse_between"},
+                                 std::vector<std::string> {"$field_ref", "start ", " end"});
+
+    auto op {
+        bld::opBuilderSpecificHLPBetweenParse(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto event1 {std::make_shared<json::Json>(R"({"field": "test"})")};
+
+    result::Result<Event> result1 {op(event1)};
+    ASSERT_FALSE(result1);
     ASSERT_FALSE(result1.payload().get()->exists("/field_ref"));
 }
