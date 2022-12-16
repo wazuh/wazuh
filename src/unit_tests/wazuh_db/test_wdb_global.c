@@ -6522,6 +6522,7 @@ void test_wdb_global_create_backup_prepare_failed(void **state) {
     will_return(__wrap_w_get_timestamp, test_date);
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_wdb_finalize_all_statements);
+    will_return(__wrap_sqlite3_prepare_v2, NULL);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
 
@@ -6541,6 +6542,7 @@ void test_wdb_global_create_backup_bind_failed(void **state) {
     will_return(__wrap_w_get_timestamp, test_date);
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_wdb_finalize_all_statements);
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -6565,6 +6567,7 @@ void test_wdb_global_create_backup_exec_failed(void **state) {
     will_return(__wrap_w_get_timestamp, test_date);
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_wdb_finalize_all_statements);
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -6590,6 +6593,7 @@ void test_wdb_global_create_backup_compress_failed(void **state) {
     will_return(__wrap_w_get_timestamp, test_date);
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_wdb_finalize_all_statements);
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -6620,6 +6624,7 @@ void test_wdb_global_create_backup_success(void **state) {
     will_return(__wrap_w_get_timestamp, test_date);
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_wdb_finalize_all_statements);
+    will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);

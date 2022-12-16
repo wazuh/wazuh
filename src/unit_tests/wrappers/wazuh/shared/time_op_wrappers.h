@@ -19,6 +19,8 @@ void __wrap_w_time_delay(unsigned long int msec);
 
 char* __wrap_w_get_timestamp(time_t time);
 
+double __wrap_time_diff(__attribute__((unused)) const struct timespec * a, __attribute__((unused)) const struct timespec * b);
+
 extern time_t current_time;
 
 #ifdef WIN32

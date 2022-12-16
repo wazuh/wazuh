@@ -853,12 +853,14 @@ int Read_Global_limits_eps(XML_NODE node, _Config *Config) {
     /* XML definitions */
     static const char *xml_max_eps = "maximum";
     static const char *xml_timeframe_eps = "timeframe";
-    bool maximum = false;
+    if (Config) {
+        Config->eps.maximum_found = false;
+        Config->eps.timeframe = EPS_LIMITS_DEFAULT_TIMEFRAME;
+    }
 
     for (int i = 0; node[i]; i++) {
         // max_eps
         if (!strcmp(node[i]->element, xml_max_eps)) {
-            maximum = true;
 
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -866,6 +868,7 @@ int Read_Global_limits_eps(XML_NODE node, _Config *Config) {
             }
 
             if (Config) {
+                Config->eps.maximum_found = true;
                 Config->eps.maximum = (unsigned int) atoi(node[i]->content);
                 if (Config->eps.maximum > EPS_LIMITS_MAX_EPS) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -888,10 +891,6 @@ int Read_Global_limits_eps(XML_NODE node, _Config *Config) {
                 }
             }
         }
-    }
-
-    if (!maximum) {
-        mwarn("EPS limit disabled. The maximum value is missing in the configuration block.");
     }
 
     return OS_SUCCESS;

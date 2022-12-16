@@ -11,7 +11,7 @@
 #ifndef SYSINFO_WRAPPERS_H
 #define SYSINFO_WRAPPERS_H
 
-#include "sysInfo.h"
+#include "cJSON.h"
 
 int __wrap_sysinfo_hardware(cJSON** js_result);
 int __wrap_sysinfo_packages(cJSON** js_result);

@@ -3648,10 +3648,6 @@ void test_save_controlmsg_invalid_msg(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_send_msg, msg, "001");
-
-    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
-
     expect_string(__wrap__mwarn, formatted_msg, "Invalid message from agent: 'NEW_AGENT' (001)");
 
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
@@ -4033,10 +4029,6 @@ void test_save_controlmsg_shutdown(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_send_msg, msg, "001");
-
-    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
-
     expect_string(__wrap_rem_inc_recv_ctrl_shutdown, agent_id, "001");
 
     expect_any(__wrap_get_ipv4_string, address);
@@ -4102,10 +4094,6 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     key.peer_info.ss_family = AF_INET6;
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
-
-    expect_string(__wrap_send_msg, msg, "001");
-
-    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
     expect_string(__wrap_rem_inc_recv_ctrl_shutdown, agent_id, "001");
 

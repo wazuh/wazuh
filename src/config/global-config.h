@@ -23,6 +23,7 @@ typedef struct __eps {
     // EPS limits configuration
     unsigned int maximum;
     unsigned int timeframe;
+    bool maximum_found;
 } _eps;
 
 /* Configuration structure */

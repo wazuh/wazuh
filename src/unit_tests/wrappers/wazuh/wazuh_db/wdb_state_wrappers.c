@@ -46,6 +46,22 @@ void __wrap_w_inc_global_backup_time(__attribute__((unused))struct timeval diff)
     function_called();
 }
 
+void __wrap_w_inc_global_vacuum() {
+    function_called();
+}
+
+void __wrap_w_inc_global_vacuum_time(__attribute__((unused))struct timeval diff) {
+    function_called();
+}
+
+void __wrap_w_inc_global_get_fragmentation() {
+    function_called();
+}
+
+void __wrap_w_inc_global_get_fragmentation_time(__attribute__((unused))struct timeval diff) {
+    function_called();
+}
+
 // Global agent counters
 
 void __wrap_w_inc_global_agent_insert_agent() {

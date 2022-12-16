@@ -158,7 +158,20 @@ void test_load_limits_disabled(void ** state)
 
     expect_string(__wrap__minfo, formatted_msg, "EPS limit disabled");
 
-    load_limits(0, 5);
+    load_limits(0, 5, true);
+
+    assert_false(limits.enabled);
+}
+
+// load_limits
+void test_load_limits_maximun_block_not_found(void ** state)
+{
+    int current_credits;
+    limits.enabled = false;
+
+    expect_string(__wrap__mwarn, formatted_msg, "EPS limit disabled. The maximum value is missing in the configuration block.");
+
+    load_limits(0, 5, false);
 
     assert_false(limits.enabled);
 }
@@ -170,7 +183,7 @@ void test_load_limits_timeframe_zero(void ** state)
 
     expect_string(__wrap__minfo, formatted_msg, "EPS limit disabled");
 
-    load_limits(100, 0);
+    load_limits(100, 0, true);
 
     assert_false(limits.enabled);
 }
@@ -182,7 +195,7 @@ void test_load_limits_ok(void ** state)
 
     expect_string(__wrap__minfo, formatted_msg, "EPS limit enabled, EPS: '100', timeframe: '5'");
 
-    load_limits(100, 5);
+    load_limits(100, 5, true);
 
     assert_int_equal(limits.eps, 100);
     assert_int_equal(limits.timeframe, 5);
@@ -247,6 +260,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_get_eps_credit_ok, test_setup, test_teardown),
         // Test load_limits
         cmocka_unit_test_teardown(test_load_limits_disabled, test_teardown),
+        cmocka_unit_test_teardown(test_load_limits_maximun_block_not_found, test_teardown),
         cmocka_unit_test_teardown(test_load_limits_timeframe_zero, test_teardown),
         cmocka_unit_test_teardown(test_load_limits_ok, test_teardown),
         // // Test update_limits

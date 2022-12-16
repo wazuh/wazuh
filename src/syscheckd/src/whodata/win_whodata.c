@@ -14,6 +14,7 @@
 
 #ifdef WIN_WHODATA
 
+#include <ntsecapi.h>
 #include <winsock2.h>
 #include <windows.h>
 #include <aclapi.h>
@@ -31,10 +32,10 @@
 #define criteria (DELETE | modify_criteria)
 #define WHODATA_DIR_REMOVE_INTERVAL 2
 #define FILETIME_SECOND 10000000
-
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
 #include "unit_tests/wrappers/windows/aclapi_wrappers.h"
+#include "unit_tests/wrappers/windows/ntsecapi_wrappers.h"
 #include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
 #include "unit_tests/wrappers/windows/fileapi_wrappers.h"
 #include "unit_tests/wrappers/windows/handleapi_wrappers.h"
@@ -90,6 +91,9 @@ static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
 static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 static LPCTSTR priv = "SeSecurityPrivilege";
 STATIC int restore_policies = 0;
+STATIC int policies_checked = 0;
+atomic_int_t whodata_end = ATOMIC_INT_INITIALIZER(0);
+EVT_HANDLE evt_subscribe_handle;  // Subscribe handle.
 
 // Whodata function headers
 void restore_sacls();
@@ -104,6 +108,11 @@ void notify_SACL_change(char *dir);
 int whodata_path_filter(char **path);
 void whodata_adapt_path(char **path);
 int whodata_check_arch();
+/**
+ * @brief Release all whodata allocated resources. Frees all data stored in the structure, not the structure.
+ * Also switches the directories to realtime.
+ */
+STATIC void win_whodata_release_resources(whodata *wdata);
 
 /**
  * @brief Checks the sacl status of an object.
@@ -138,6 +147,55 @@ char *get_whodata_path(const short unsigned int *win_path);
 int get_volume_names();
 int get_drive_names(wchar_t *volume_name, char *device);
 void replace_device_path(char **path);
+
+/**
+ * @brief Function to check if a global policy is configured as Success.
+ *
+ * @return int 0 if the policies are configured properly, 1 if not and -1 if some function fail.
+ */
+int policy_check();
+
+STATIC void win_whodata_release_resources(whodata *wdata) {
+    directory_t *dir_it;
+    OSListNode *node_it;
+    // Move all directories to realtime
+    w_rwlock_wrlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = (directory_t *) node_it->data;
+        dir_it->dirs_status.status &= ~WD_CHECK_WHODATA;
+        dir_it->options &= ~WHODATA_ACTIVE;
+        dir_it->dirs_status.status &= ~WD_IGNORE_REST;
+        dir_it->dirs_status.status |= WD_CHECK_REALTIME;
+        syscheck.realtime_change = 1;
+    }
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+    if (evt_subscribe_handle != NULL) {
+        EvtClose(evt_subscribe_handle);
+    }
+
+    if (wdata->fd != NULL) {
+        OSHash_Free(wdata->fd);
+        wdata->fd = NULL;
+    }
+
+    if (wdata->directories != NULL) {
+        OSHash_Free(wdata->directories);
+        wdata->directories = NULL;
+    }
+
+    if (wdata->device != NULL) {
+        free_strarray(wdata->device);
+        wdata->device = NULL;
+    }
+
+    if (wdata->drive != NULL) {
+        free_strarray(wdata->drive);
+        wdata->drive = NULL;
+    }
+
+    atomic_int_set(&whodata_end, 1);
+}
 
 int set_winsacl(const char *dir, directory_t *configuration) {
     DWORD result = 0;
@@ -383,10 +441,17 @@ int run_whodata_scan() {
     }
 
     set_subscription_query(query);
-
     // Set the whodata callback
-    if (!EvtSubscribe(NULL, NULL, L"Security", query,
-            NULL, NULL, (EVT_SUBSCRIBE_CALLBACK)whodata_callback, EvtSubscribeToFutureEvents)) {
+
+    evt_subscribe_handle = EvtSubscribe(NULL,
+                           NULL,
+                           L"Security",
+                           query,
+                           NULL,
+                           NULL,
+                           (EVT_SUBSCRIBE_CALLBACK) whodata_callback,
+                           EvtSubscribeToFutureEvents);
+    if (evt_subscribe_handle == NULL) {
         merror(FIM_ERROR_WHODATA_EVENTCHANNEL);
         return 1;
     }
@@ -687,10 +752,12 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             goto clean;
         }
 
-        if (whodata_get_handle_id(buffer, &handle_id)) {
-            goto clean;
+        if (event_id == 4656 || event_id == 4663 || event_id == 4658) {
+            if (whodata_get_handle_id(buffer, &handle_id)) {
+                goto clean;
+            }
+            snprintf(hash_id, 21, "%llu", handle_id);
         }
-        snprintf(hash_id, 21, "%llu", handle_id);
 
         switch(event_id) {
 
@@ -888,6 +955,12 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 free_whodata_event(w_evt);
                 break;
 
+            case 4719:
+                if (policies_checked) {
+                    mwarn(FIM_WHODATA_POLICY_CHANGE_CHANNEL);
+                    win_whodata_release_resources(&syscheck.wdata);
+                }
+            break;
             default:
                 merror(FIM_ERROR_WHODATA_EVENTID);
                 goto clean;
@@ -918,6 +991,117 @@ int whodata_audit_start() {
     return 0;
 }
 
+int policy_check() {
+    static const char *guid_ObjectAccess = "{6997984a-797a-11d9-bed3-505054503030}";
+    static const char *guid_FileSystem = "{0CCE921D-69AE-11D9-BED3-505054503030}";
+    static const char *guid_Handle =  "{0CCE9223-69AE-11D9-BED3-505054503030}";
+
+    int file_system_success = 0;
+    int handle_manipulation_success = 0;
+    LSA_HANDLE PolicyHandle;
+    LSA_OBJECT_ATTRIBUTES ObjectAttributes;
+    PPOLICY_AUDIT_EVENTS_INFO AuditEvents;
+    GUID *pAuditSubCategoryGuids = NULL;
+    AUDIT_POLICY_INFORMATION *pAuditPolicies = NULL;
+    BOOL open_policy = FALSE;
+    NTSTATUS Status;
+    DWORD err_code;
+    LPSTR err_msg = NULL;
+
+    ZeroMemory(&ObjectAttributes, sizeof(ObjectAttributes));
+    Status = LsaOpenPolicy(NULL, &ObjectAttributes, POLICY_VIEW_AUDIT_INFORMATION, &PolicyHandle);
+
+    if(!Status) {
+        open_policy = TRUE;
+        Status = LsaQueryInformationPolicy(PolicyHandle, PolicyAuditEventsInformation, (PVOID *)&AuditEvents);
+
+        if(!Status) {
+            if(AuditEvents->AuditingMode) {
+                GUID auditCategoryId;
+                ULONG subCategoryCount = 0;
+                ULONG policyAuditEventType = 0;
+                char guid_string[40];
+
+                mdebug2(FIM_WHODATA_POLICY_OPENED);
+
+                while (policyAuditEventType < AuditEvents->MaximumAuditEventCount) {
+                    if(AuditLookupCategoryGuidFromCategoryId((POLICY_AUDIT_EVENT_TYPE)policyAuditEventType, &auditCategoryId) == FALSE) {
+                        goto error;
+                    }
+                    snprintf(guid_string, 40, "{%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}",
+                                                auditCategoryId.Data1, auditCategoryId.Data2, auditCategoryId.Data3,
+                                                auditCategoryId.Data4[0], auditCategoryId.Data4[1], auditCategoryId.Data4[2], auditCategoryId.Data4[3],
+                                                auditCategoryId.Data4[4], auditCategoryId.Data4[5], auditCategoryId.Data4[6], auditCategoryId.Data4[7]);
+
+                    if(!strcasecmp(guid_string, guid_ObjectAccess)) {
+                        mdebug2(FIM_WHODATA_OBJECT_ACCESS, guid_string);
+
+                        if(AuditEnumerateSubCategories(&auditCategoryId, FALSE, &pAuditSubCategoryGuids, &subCategoryCount) == FALSE) {
+                            goto error;
+                        }
+
+                        if(AuditQuerySystemPolicy(pAuditSubCategoryGuids, subCategoryCount, &pAuditPolicies) == FALSE) {
+                            goto error;
+                        }
+
+                        // Probe each subcategory in the category
+                        for(ULONG subcategoryIndex = 0; subcategoryIndex < subCategoryCount; subcategoryIndex++) {
+                            AUDIT_POLICY_INFORMATION currentPolicy = pAuditPolicies[subcategoryIndex];
+
+                            snprintf(guid_string, 40, "{%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}",
+                                                        currentPolicy.AuditSubCategoryGuid.Data1, currentPolicy.AuditSubCategoryGuid.Data2, currentPolicy.AuditSubCategoryGuid.Data3,
+                                                        currentPolicy.AuditSubCategoryGuid.Data4[0], currentPolicy.AuditSubCategoryGuid.Data4[1], currentPolicy.AuditSubCategoryGuid.Data4[2], currentPolicy.AuditSubCategoryGuid.Data4[3],
+                                                        currentPolicy.AuditSubCategoryGuid.Data4[4], currentPolicy.AuditSubCategoryGuid.Data4[5], currentPolicy.AuditSubCategoryGuid.Data4[6], currentPolicy.AuditSubCategoryGuid.Data4[7]);
+
+                            if(currentPolicy.AuditingInformation & POLICY_AUDIT_EVENT_SUCCESS) {
+                                if(!strcasecmp(guid_string, guid_FileSystem)) {
+                                    file_system_success = 1;
+                                    mdebug2(FIM_WHODATA_SUCCESS_POLICY, "File System", guid_string);
+                                }
+                                if(!strcasecmp(guid_string, guid_Handle)) {
+                                    handle_manipulation_success = 1;
+                                    mdebug2(FIM_WHODATA_SUCCESS_POLICY, "Handle Manipulation", guid_string);
+                                }
+                                if(file_system_success && handle_manipulation_success) {
+                                    LsaFreeMemory(AuditEvents);
+                                    LsaClose(PolicyHandle);
+
+                                    return 0;
+                                }
+                            }
+                        }
+                    }
+                    policyAuditEventType++;
+                }
+            }
+        } else {
+            SetLastError(LsaNtStatusToWinError(Status));
+            goto error;
+        }
+    } else {
+        SetLastError(LsaNtStatusToWinError(Status));
+        goto error;
+    }
+    LsaFreeMemory(AuditEvents);
+    LsaClose(PolicyHandle);
+
+    return 1;
+
+error:
+    err_code = GetLastError();
+
+    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+                  NULL, err_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) &err_msg, OS_SIZE_1024, NULL);
+    mwarn(FIM_WHODATA_ERROR_CHECKING_POL, err_msg, err_code);
+
+    if(open_policy) {
+        LsaFreeMemory(AuditEvents);
+        LsaClose(PolicyHandle);
+    }
+
+    return -1;
+}
+
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     int exists;
     whodata_dir_status *d_status;
@@ -939,7 +1123,16 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
 
     mdebug1(FIM_WHODATA_CHECKTHREAD, interval);
 
-    while (FOREVER()) {
+    while (atomic_int_get(&whodata_end) == 0) {
+        mdebug2(FIM_WHODATA_STATE_CHECKER);
+
+        // Check File System and Handle Manipulation policies. Switch to realtime in case these policies are disabled.
+        if (policy_check() == 1) {
+            mwarn(FIM_WHODATA_POLICY_CHANGE_CHECKER);
+            win_whodata_release_resources(&syscheck.wdata);
+            break;
+        }
+
         w_rwlock_wrlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
             dir_it = node_it->data;
@@ -1040,6 +1233,10 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
         w_rwlock_unlock(&syscheck.wdata.directories->mutex);
 
         sleep(interval);
+
+        if (!policies_checked) {
+            policies_checked = 1;
+        }
     }
 
     return 0;
@@ -1131,7 +1328,27 @@ void set_subscription_query(wchar_t *query) {
                                                 ") " \
                                             ") " \
                                         "or " \
-                                            "System/EventID = 4658 " \
+                                            "( " \
+                                                "System/EventID = 4658 " \
+                                            ") " \
+                                        "or " \
+                                            "( " \
+                                                "System/EventID = 4719 " \
+                                                "and " \
+                                                    "( " \
+                                                        "EventData/Data[@Name='SubcategoryGuid'] = '{0CCE9223-69AE-11D9-BED3-505054503030}' " \
+                                                    "or " \
+                                                        "EventData/Data[@Name='SubcategoryGuid'] = '{0CCE921D-69AE-11D9-BED3-505054503030}' " \
+                                                    ") " \
+                                                "and " \
+                                                    "( " \
+                                                        "EventData/Data[@Name='AuditPolicyChanges'] = '%%%%8448'" \
+                                                    "or " \
+                                                        "EventData/Data[@Name='AuditPolicyChanges'] = '%%%%8448, %%%%8450'" \
+                                                    "or " \
+                                                        "EventData/Data[@Name='AuditPolicyChanges'] = '%%%%8448, %%%%8451'" \
+                                                    " )" \
+                                            ") " \
                                         ") " \
                                     "]",
             AUDIT_SUCCESS, // Only successful events

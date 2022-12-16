@@ -1,3 +1,10 @@
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
+
 # Generate os_regex library
 file(GLOB os_regex_files
     ${SRC_FOLDER}/os_regex/*.o)
@@ -30,6 +37,11 @@ else()
 list(APPEND os_regex_flags " ")
 endif()
 
+list(APPEND os_regex_def " ")
+
+# Generate os_regex_match tests
+list(APPEND os_regex_names "test_os_regex_match")
+list(APPEND os_regex_flags " ")
 list(APPEND os_regex_def " ")
 
 # OS_Regex execute, regex_matching

@@ -196,7 +196,7 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def get_daemons_stats(daemons_list: str) -> AffectedItemsWazuhResult:
+def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
     """Get statistical information from the specified daemons.
     If the list is empty, the stats from all daemons will be retrieved.
 

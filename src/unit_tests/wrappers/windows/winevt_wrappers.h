@@ -17,6 +17,8 @@
 #define EvtRender wrap_EvtRender
 #define EvtCreateRenderContext wrap_EvtCreateRenderContext
 #define EvtSubscribe wrap_EvtSubscribe
+#define EvtClose wrap_EvtClose
+
 
 BOOL wrap_EvtRender(EVT_HANDLE Context,
                     EVT_HANDLE Fragment,
@@ -38,5 +40,7 @@ EVT_HANDLE wrap_EvtSubscribe(EVT_HANDLE             Session,
                              PVOID                  Context,
                              EVT_SUBSCRIBE_CALLBACK Callback,
                              DWORD                  Flags);
+
+BOOL wrap_EvtClose(EVT_HANDLE object);
 
 #endif

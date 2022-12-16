@@ -1128,8 +1128,10 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
             # Socket connection
             try:
                 s = wazuh_socket.WazuhSocket(dest_socket)
-            except Exception:
-                raise WazuhInternalError(1121)
+            except WazuhInternalError:
+                raise
+            except Exception as unhandled_exc:
+                raise WazuhInternalError(1121, extra_message=str(unhandled_exc))
 
             # Send message
             s.send(msg.encode())
@@ -1154,8 +1156,10 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
             # Socket connection
             try:
                 s = wazuh_socket.WazuhSocketJSON(dest_socket)
-            except Exception:
-                raise WazuhInternalError(1121)
+            except WazuhInternalError:
+                raise
+            except Exception as unhandled_exc:
+                raise WazuhInternalError(1121, extra_message=str(unhandled_exc))
 
             # Send message
             s.send(msg)
@@ -1181,8 +1185,10 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
         # Socket connection
         try:
             s = wazuh_socket.WazuhSocket(dest_socket)
-        except Exception:
-            raise WazuhInternalError(1121)
+        except WazuhInternalError:
+            raise
+        except Exception as unhandled_exc:
+            raise WazuhInternalError(1121, extra_message=str(unhandled_exc))
 
         # Send message
         s.send(msg.encode())

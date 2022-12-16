@@ -50,19 +50,22 @@ static registry_ignore_regex default_reg_ignore_regex[] = { { NULL, ARCH_32BIT }
 
 #define KEY_NAME_HASHED "b9b175e8810d3475f15976dd3b5f9210f3af6604"
 #define VALUE_NAME_HASHED "3f17670fd80d6563a3d4283adfe14140907b75b0"
+#define FILE_NAME_HASHED "750621a746c8d786022a931ab9a99b918f7208f4"
 
 static const char GENERIC_PATH [OS_SIZE_256] =        "c:\\file\\path";
 static const char COMPRESS_FOLDER_REG [OS_SIZE_256] = "queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED;
-static const char COMPRESS_FOLDER [OS_SIZE_256] =     "queue/diff/local/c\\file\\path";
-static const char COMPRESS_FILE [OS_SIZE_256] =       "queue/diff/local/c\\file\\path/last-entry.gz";
+static const char COMPRESS_FOLDER [OS_SIZE_256] =     "queue/diff/file/" FILE_NAME_HASHED "";
+static const char COMPRESS_FILE [OS_SIZE_256] =       "queue/diff/file/" FILE_NAME_HASHED "/last-entry.gz";
 static const char UNCOMPRESS_FILE [OS_SIZE_256] =     "queue/diff/tmp/tmp-entry";
 static const char COMPRESS_TMP_FILE [OS_SIZE_256] =   "queue/diff/tmp/tmp-entry.gz";
 
 #else
 
+#define FILE_NAME_HASHED "7cdbc5364a7aeb60f61d8fd2e6243056227bd6d3"
+
 static const char GENERIC_PATH [OS_SIZE_256] =        "/path/to/file";
-static const char COMPRESS_FOLDER [OS_SIZE_256] =     "queue/diff/local/path/to/file";
-static const char COMPRESS_FILE [OS_SIZE_256] =       "queue/diff/local/path/to/file/last-entry.gz";
+static const char COMPRESS_FOLDER [OS_SIZE_256] =     "queue/diff/file/" FILE_NAME_HASHED "";
+static const char COMPRESS_FILE [OS_SIZE_256] =       "queue/diff/file/" FILE_NAME_HASHED "/last-entry.gz";
 static const char UNCOMPRESS_FILE [OS_SIZE_256] =     "queue/diff/tmp/tmp-entry";
 static const char COMPRESS_TMP_FILE [OS_SIZE_256] =   "queue/diff/tmp/tmp-entry.gz";
 
@@ -541,8 +544,8 @@ void test_initialize_file_diff_data(void **state) {
     diff = initialize_file_diff_data("C:\\path\\to\\file");
 
     assert_non_null(diff);
-    assert_string_equal(diff->compress_folder, "queue/diff/local/C\\path\\to\\file");
-    assert_string_equal(diff->compress_file, "queue/diff/local/C\\path\\to\\file/last-entry.gz");
+    assert_string_equal(diff->compress_folder, "queue/diff/file/95632dd0fe0cc86cd21b6b7cf6d9db8d0cc1fe6c");
+    assert_string_equal(diff->compress_file, "queue/diff/file/95632dd0fe0cc86cd21b6b7cf6d9db8d0cc1fe6c/last-entry.gz");
     assert_string_equal(diff->tmp_folder, "queue/diff/tmp");
     assert_string_equal(diff->file_origin, "C:\\path\\to\\file");
     assert_string_equal(diff->uncompress_file, "queue/diff/tmp/tmp-entry");
@@ -571,33 +574,6 @@ void test_initialize_file_diff_data(void **state) {
 }
 
 #endif // END TEST_AGENT and TEST_SERVER
-
-void test_initialize_file_diff_data_too_long_path(void **state) {
-    diff_data *diff = *state;
-
-    // Long path
-#ifdef TEST_WINAGENT
-    char path[PATH_MAX] = "c:\\";
-    for (int i = 0; i < PATH_MAX - 26; i++) {
-        strcat (path, "a");
-    }
-    expect_abspath(path, 1);
-    expect_abspath("queue/diff", 1);
-#else
-    char path[PATH_MAX] = "/aa";
-    for (int i = 0; i < PATH_MAX - 26; i++) {
-        strcat (path, "a");
-    }
-
-    expect_abspath(path, 1);
-#endif
-
-    expect_any(__wrap__merror, formatted_msg);
-
-    diff = initialize_file_diff_data(path);
-
-    assert_null(diff);
-}
 
 void test_initialize_file_diff_data_abspath_fail(void **state) {
     diff_data *diff = *state;
@@ -1681,9 +1657,9 @@ void test_fim_file_diff_nodiff(void **state) {
 
     expect_fim_diff_check_limits("c:\\file\\nodiff", "aaa", 0);
 
-    expect_w_uncompress_gzfile("queue/diff/local/c\\file\\nodiff/last-entry.gz", UNCOMPRESS_FILE, NULL);
+    expect_w_uncompress_gzfile("queue/diff/file/2ddcb012cae2957e19d31b10df12abc8c852cfb7/last-entry.gz", UNCOMPRESS_FILE, NULL);
 
-    expect_FileSize("queue/diff/local/c\\file\\nodiff/last-entry.gz", 1024 * 1024);
+    expect_FileSize("queue/diff/file/2ddcb012cae2957e19d31b10df12abc8c852cfb7/last-entry.gz", 1024 * 1024);
 
     expect_fim_diff_create_compress_file("c:\\file\\nodiff", COMPRESS_TMP_FILE, 0);
 
@@ -1712,9 +1688,9 @@ void test_fim_file_diff_nodiff(void **state) {
 
     expect_fim_diff_check_limits("/path/to/ignore", "aaa", 0);
 
-    expect_w_uncompress_gzfile("queue/diff/local/path/to/ignore/last-entry.gz", UNCOMPRESS_FILE, NULL);
+    expect_w_uncompress_gzfile("queue/diff/file/2ee531af6f6a5f133cdd38e818e1de895c29114c/last-entry.gz", UNCOMPRESS_FILE, NULL);
 
-    expect_FileSize("queue/diff/local/path/to/ignore/last-entry.gz", 1024 * 1024);
+    expect_FileSize("queue/diff/file/2ee531af6f6a5f133cdd38e818e1de895c29114c/last-entry.gz", 1024 * 1024);
 
     expect_fim_diff_create_compress_file("/path/to/ignore", COMPRESS_TMP_FILE, 0);
 
@@ -1898,36 +1874,48 @@ void test_fim_file_diff_generate_diff_str_too_long(void **state) {
 }
 
 void test_fim_diff_process_delete_file_ok(void **state) {
+#ifdef TEST_WINAGENT
+    expect_abspath("c:\\file\\path", 1);
+#else
+    expect_abspath("/path/to/file", 1);
+#endif
     expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, 0, 0, 0);
 
-    int ret = fim_diff_process_delete_file(GENERIC_PATH);
-    assert_int_equal(ret, 0);
+    fim_diff_process_delete_file(GENERIC_PATH);
 }
 
 void test_fim_diff_process_delete_file_delete_error(void **state) {
+#ifdef TEST_WINAGENT
+    expect_abspath("c:\\file\\path", 1);
+#else
+    expect_abspath("/path/to/file", 1);
+#endif
     expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, 0, -1, 0);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/local/c\\file\\path'");
+    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/file/750621a746c8d786022a931ab9a99b918f7208f4'");
 #else
-    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/local/path/to/file'");
+    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/file/7cdbc5364a7aeb60f61d8fd2e6243056227bd6d3'");
 #endif
 
-    int ret = fim_diff_process_delete_file(GENERIC_PATH);
-    assert_int_equal(ret, -1);
+    fim_diff_process_delete_file(GENERIC_PATH);
 }
 
 void test_fim_diff_process_delete_file_folder_not_exist(void **state) {
+#ifdef TEST_WINAGENT
+    expect_abspath("c:\\file\\path", 1);
+#else
+    expect_abspath("/path/to/file", 1);
+#endif
     expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, -1, 0, 0);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/c\\file\\path', it does not exist.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/file/750621a746c8d786022a931ab9a99b918f7208f4', it does not exist.");
 #else
-    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/path/to/file', it does not exist.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/file/7cdbc5364a7aeb60f61d8fd2e6243056227bd6d3', it does not exist.");
 #endif
 
-    int ret = fim_diff_process_delete_file(GENERIC_PATH);
-    assert_int_equal(ret, -1);
+    fim_diff_process_delete_file(GENERIC_PATH);
 }
 
 #ifdef TEST_WINAGENT
@@ -1936,17 +1924,17 @@ void test_fim_diff_process_delete_registry_ok(void **state) {
 
     expect_fim_diff_delete_compress_folder("queue/diff/registry/[x32] " KEY_NAME_HASHED, 0, 0, 0);
 
-    int ret = fim_diff_process_delete_registry(key_name, 0);
-    assert_int_equal(ret, 0);
+    fim_diff_process_delete_registry(key_name, 0);
 }
 
 void test_fim_diff_process_delete_registry_delete_error(void **state) {
     const char *key_name = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile");
 
+    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604'");
+
     expect_fim_diff_delete_compress_folder("queue/diff/registry/[x64] " KEY_NAME_HASHED, 0, -1, 0);
 
-    int ret = fim_diff_process_delete_registry(key_name, 1);
-    assert_int_equal(ret, -1);
+    fim_diff_process_delete_registry(key_name, 1);
 }
 
 void test_fim_diff_process_delete_value_ok(void **state) {
@@ -1954,17 +1942,17 @@ void test_fim_diff_process_delete_value_ok(void **state) {
 
     expect_fim_diff_delete_compress_folder("queue/diff/registry/[x32] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED, 0, 0, 0);
 
-    int ret = fim_diff_process_delete_value(key_name, "valuename", 0);
-    assert_int_equal(ret, 0);
+    fim_diff_process_delete_value(key_name, "valuename", 0);
 }
 
 void test_fim_diff_process_delete_value_delete_error(void **state) {
     const char *key_name = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile");
 
+    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0'");
+
     expect_fim_diff_delete_compress_folder("queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED, 0, -1, 0);
 
-    int ret = fim_diff_process_delete_value(key_name, "valuename", 1);
-    assert_int_equal(ret, -1);
+    fim_diff_process_delete_value(key_name, "valuename", 1);
 }
 #endif
 
@@ -1986,7 +1974,6 @@ int main(void) {
 #endif
         // initialize_file_diff_data
         cmocka_unit_test_teardown(test_initialize_file_diff_data, teardown_free_diff_data),
-        cmocka_unit_test_teardown(test_initialize_file_diff_data_too_long_path, teardown_free_diff_data),
         cmocka_unit_test_teardown(test_initialize_file_diff_data_abspath_fail, teardown_free_diff_data),
 
         // filter

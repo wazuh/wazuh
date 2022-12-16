@@ -918,6 +918,7 @@ static void test_fim_registry_key_transaction_callback_delete(){
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604', it does not exist.");
 
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
@@ -1020,6 +1021,7 @@ static void test_fim_registry_value_transaction_callback_delete(){
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/6797a8200934259ad5d56d1eb8dd24afc4f7ae2e', it does not exist.");
 
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }

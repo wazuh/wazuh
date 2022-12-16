@@ -35,7 +35,7 @@ extern remoted_state_t remoted_state;
 extern OSHash *remoted_agents_state;
 
 remoted_agent_state_t * get_node(const char *agent_id);
-void w_remoted_clean_agents_state();
+void w_remoted_clean_agents_state(int *sock);
 
 /* setup/teardown */
 
@@ -336,7 +336,9 @@ void test_w_remoted_clean_agents_state_empty_table(void ** state) {
     expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
     will_return(__wrap_OSHash_Begin, NULL);
 
-    w_remoted_clean_agents_state();
+    int sock = 1;
+
+    w_remoted_clean_agents_state(&sock);
 }
 
 void test_w_remoted_clean_agents_state_completed(void ** state) {
@@ -361,7 +363,9 @@ void test_w_remoted_clean_agents_state_completed(void ** state) {
     expect_value(__wrap_OSHash_Delete_ex, key, "001");
     will_return(__wrap_OSHash_Delete_ex, test_data->agent_state);
 
-    w_remoted_clean_agents_state();
+    int sock = 1;
+
+    w_remoted_clean_agents_state(&sock);
 }
 
 void test_w_remoted_clean_agents_state_completed_without_delete(void ** state) {
@@ -382,7 +386,9 @@ void test_w_remoted_clean_agents_state_completed_without_delete(void ** state) {
     expect_value(__wrap_OSHash_Next, self, remoted_agents_state);
     will_return(__wrap_OSHash_Next, NULL);
 
-    w_remoted_clean_agents_state();
+    int sock = 1;
+
+    w_remoted_clean_agents_state(&sock);
 
     os_free(test_data->agent_state);
 }
@@ -400,7 +406,9 @@ void test_w_remoted_clean_agents_state_query_fail(void ** state) {
     expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
     will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
 
-    w_remoted_clean_agents_state();
+    int sock = 1;
+
+    w_remoted_clean_agents_state(&sock);
 
     os_free(test_data->agent_state);
 }

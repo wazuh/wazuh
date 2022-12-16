@@ -421,7 +421,7 @@ typedef struct _config {
     registry_ignore_regex *value_ignore_regex;         /* Regex of registry values to ignore */
     registry_t *registry;                              /* array of registry entries to be scanned */
     unsigned int max_fd_win_rt;                        /* Maximum number of descriptors in realtime */
-    whodata wdata;
+    whodata wdata;                                     /* Whodata struct */
     registry_t *registry_nodiff;                       /* list of values/registries to never output diff */
     registry_ignore_regex *registry_nodiff_regex;      /* regex of values/registries to never output diff */
 #endif

@@ -887,7 +887,7 @@ def check_disabled_limits_in_conf(data):
     """
     blocked_configurations = configuration.api_conf['upload_configuration']
 
-    xml_file = fromstring(data)
+    xml_file = fromstring(f"<root_tag>{data}</root_tag>")
     found_limits = []
     for global_section in xml_file.findall("global"):
         found_limits += [limit_section for limit_section in global_section.findall("limits") or []]
@@ -940,7 +940,7 @@ def load_wazuh_xml(xml_path, data=None):
                '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) + \
                '\n]>\n'
 
-    return fromstring(entities + '<root_tag>' + data + '</root_tag>', forbid_entities=False)
+    return fromstring(f"{entities}<root_tag>{data}</root_tag>", forbid_entities=False)
 
 
 class WazuhVersion:

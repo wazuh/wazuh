@@ -270,9 +270,12 @@
 #define FIM_WILDCARDS_UPDATE_FINALIZE       "(6363): Configuration wildcards update finalize."
 #define FIM_REALTIME_MAXNUM_WATCHES         "(6364): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
 #define FIM_ADDED_RULE_TO_FILE              "(6365): Added directory '%s' to audit rules file."
-#define FIM_REGISTRY_LIMIT_VALUE            "(6366): Maximum number of registry values to be monitored: '%u'"
-#define FIM_REGISTRY_VALUES_ENTRIES_INFO    "(6367): Fim registry values entries count: '%d'"
-
+#define FIM_WHODATA_STATE_CHECKER           "(6366): Starting check of Windows Audit Policies and SACLs."
+#define FIM_WHODATA_POLICY_OPENED           "(6367): Audit policy opened successfully. Audit mode enabled."
+#define FIM_WHODATA_OBJECT_ACCESS           "(6368): Detected Audit Object Access category, checking subcategories. GUID: %s"
+#define FIM_WHODATA_SUCCESS_POLICY          "(6369): Found Audit %s subcategory configured to success. GUID: %s"
+#define FIM_REGISTRY_LIMIT_VALUE            "(6370): Maximum number of registry values to be monitored: '%u'"
+#define FIM_REGISTRY_VALUES_ENTRIES_INFO    "(6371): Fim registry values entries count: '%d'"
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"

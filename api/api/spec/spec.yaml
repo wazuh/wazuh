@@ -530,6 +530,14 @@ x-rbac-catalog:
         actions: [ 'vulnerability:read' ]
         resources: [ 'agent:id:011', 'agent:group:us-west' ]
         effect: "allow"
+    'vulnerability:run':
+      description: "Allow running a vulnerability detector scan"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'vulnerability:run' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
 
 components:
   responses:
@@ -14340,19 +14348,19 @@ paths:
               example:
                 data:
                   affected_items:
-                    - description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in 
+                    - description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in
                       small footprint systems. A cramfs image can be used without having to first decompress the image."
                       id: 19000
                       reason: "Invalid path or wrong permissions to run command 'modprobe -n -v cramfs'"
                       command: "modprobe -n -v cramfs,lsmod"
-                      rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the 
+                      rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the
                       server. If this filesystem type is not needed, disable it."
                       condition: "all"
                       title: "Ensure mounting of cramfs filesystems is disabled."
                       result: ""
                       policy_id: "cis_ubuntu20-04"
-                      remediation: "1) Edit or create a file in the /etc/modprobe.d/ directory ending in .conf and add 
-                      the following line: install cramfs /bin/true. 2) Run the following command to unload the cramfs 
+                      remediation: "1) Edit or create a file in the /etc/modprobe.d/ directory ending in .conf and add
+                      the following line: install cramfs /bin/true. 2) Run the following command to unload the cramfs
                       module: # rmmod cramfs"
                       status: "Not applicable"
                       compliance:
@@ -18847,6 +18855,47 @@ paths:
                   failed_items: []
                 message: "All specified task's status were returned"
                 error: 0
+
+  /vulnerability:
+    put:
+      tags:
+        - Vulnerability
+      summary: "Run vulnerability detector scan"
+      description: "Run a vulnerability detector scan in all nodes"
+      operationId: api.controllers.vulnerability_controller.run_vulnerability_scan
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/vulnerability:run'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Run vulnerability detector scan"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - master-node
+                    - worker1
+                    - worker2
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: "A vulnerability detector scan was requested in all nodes"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /vulnerability/{agent_id}:
     get:
