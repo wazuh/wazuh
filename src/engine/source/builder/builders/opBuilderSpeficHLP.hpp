@@ -77,7 +77,7 @@ base::Expression opBuilderSpecificHLPDoubleParse(const std::any& definition);
  * @return base::Expression Expression of the operation
  * @throw std::runtime_error If the number of parameters is not 1 (source)
  */
-base::Expression opBuilderSpecificHLPBase64Parse(const std::any& definition);
+base::Expression opBuilderSpecificHLPBinaryParse(const std::any& definition);
 
 /**
  * @brief Helper function of date parser from HLP
@@ -174,6 +174,14 @@ base::Expression opBuilderSpecificHLPKeyValueParse(const std::any& definition);
  * @return base::Expression Expression of the operation
  */
 base::Expression opBuilderSpecificHLPQuotedParse(const std::any& definition);
+
+/**
+ * @brief Helper function of between parser from HLP
+ *
+ * @param definition Definition of the operation
+ * @return base::Expression Expression of the operation
+ */
+base::Expression opBuilderSpecificHLPBetweenParse(const std::any& definition);
 
 } // namespace builder::internals::builders
 
