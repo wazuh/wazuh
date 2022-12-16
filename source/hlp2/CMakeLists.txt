@@ -49,6 +49,7 @@ add_library(hlp2 STATIC
         src/parse_field.hpp
         src/date.cpp
         src/parse_field.cpp
+        src/between.cpp
         src/bool.cpp
         src/ignore.cpp
         src/ip.cpp
