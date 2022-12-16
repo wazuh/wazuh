@@ -125,6 +125,8 @@ def currentDirPath(moduleName):
     :return Lib dir path
     """
     currentDir = os.path.join(currentBuildDir.parent, str(moduleName))
+    if str(moduleName) == 'shared_modules/utils':
+        currentDir = os.path.join(currentDir, 'tests/')
 
     return currentDir
 
@@ -264,7 +266,11 @@ def runCoverage(moduleName):
     :param moduleName: Lib to be analyzed using gcov and lcov tools.
     """
     currentDir = currentDirPath(moduleName)
-    reportFolder = os.path.join(currentDir, 'coverage_report')
+    if moduleName == 'shared_modules/utils':
+        reportFolder = os.path.join(moduleName, 'coverage_report')
+    else:
+        reportFolder = os.path.join(currentDir, 'coverage_report')
+
     includeDir = Path(currentDir)
     moduleCMakeFiles = ""
 
@@ -435,12 +441,7 @@ def makeTarget(targetName, tests, debug):
 
 def configureCMake(moduleName, debugMode, testMode, withAsan):
     printHeader(moduleName, 'configurecmake')
-
-    if moduleName == 'shared_modules/utils':
-        currentModuleNameDir = os.path.join(currentDirPath(moduleName), "tests")
-    else:
-        currentModuleNameDir = currentDirPath(moduleName)
-
+    currentModuleNameDir = currentDirPath(moduleName)
     currentPathDir = currentDirPathBuild(moduleName)
 
     if not os.path.exists(currentPathDir):
