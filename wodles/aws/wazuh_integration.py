@@ -10,7 +10,7 @@ import operator
 from datetime import datetime
 from datetime import timezone
 
-import aws_s3
+import tools
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import utils
@@ -148,24 +148,24 @@ class WazuhIntegration:
     def delete_deprecated_tables(self):
         tables = set([t[0] for t in self.db_cursor.execute(self.sql_find_table_names).fetchall()])
         for table in tables.intersection(DEPRECATED_TABLES):
-            aws_s3.debug(f"Removing deprecated '{table} 'table from {self.db_path}", 2)
+            tools.debug(f"Removing deprecated '{table} 'table from {self.db_path}", 2)
             self.db_cursor.execute(self.sql_drop_table.format(table_name=table))
 
     @staticmethod
     def default_config():
         args = {}
-        if not path.exists(aws_s3.DEFAULT_AWS_CONFIG_PATH):
+        if not path.exists(tools.DEFAULT_AWS_CONFIG_PATH):
             args['config'] = botocore.config.Config(retries=WAZUH_DEFAULT_RETRY_CONFIGURATION)
-            aws_s3.debug(f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",2)
+            tools.debug(f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",2)
         else:
-            aws_s3.debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',2)
+            tools.debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',2)
         return args
 
     def get_client(self, access_key=None, secret_key=None, profile=None, iam_role_arn=None, service_name=None,
                    region=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
         conn_args = {}
         if access_key is not None and secret_key is not None:
-            print(aws_s3.DEPRECATED_MESSAGE.format(name="access_key and secret_key", release="4.4", url=aws_s3.CREDENTIALS_URL))
+            print(tools.DEPRECATED_MESSAGE.format(name="access_key and secret_key", release="4.4", url=tools.CREDENTIALS_URL))
             conn_args['aws_access_key_id'] = access_key
             conn_args['aws_secret_access_key'] = secret_key
 
@@ -231,7 +231,7 @@ class WazuhIntegration:
         """
         try:
             json_msg = json.dumps(msg, default=str)
-            aws_s3.debug(json_msg, 3)
+            tools.debug(json_msg, 3)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
             s.send(f"{MESSAGE_HEADER}{json_msg if dump_json else msg}".encode())
@@ -242,7 +242,7 @@ class WazuhIntegration:
                 sys.exit(11)
             elif e.errno == 90:
                 print("ERROR: Message too long to send to Wazuh.  Skipping message...")
-                aws_s3.debug('+++ ERROR: Message longer than buffer socket for Wazuh. Consider increasing rmem_max. '
+                tools.debug('+++ ERROR: Message longer than buffer socket for Wazuh. Consider increasing rmem_max. '
                       'Skipping message...', 1)
             else:
                 print("ERROR: Error sending message to wazuh: {}".format(e))
@@ -256,7 +256,7 @@ class WazuhIntegration:
         :param sql_create_table: SQL query to create the table
         """
         try:
-            aws_s3.debug('+++ Table does not exist; create', 1)
+            tools.debug('+++ Table does not exist; create', 1)
             self.db_cursor.execute(sql_create_table)
         except Exception as e:
             print("ERROR: Unable to create SQLite DB: {}".format(e))
