@@ -4,9 +4,12 @@ from unittest.mock import patch
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import wazuh_integration
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
 import aws_bucket
 
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'services'))
+import aws_service
 
 TEST_TABLE_NAME = "cloudtrail"
 TEST_SERVICE_NAME = "s3"
@@ -21,11 +24,14 @@ TEST_ORGANIZATION_ID = "test_organization_id"
 TEST_TOKEN = 'test_token'
 TEST_CREATION_DATE = "2022-01-01"
 TEST_BUCKET = "test_bucket"
+TEST_SERVICE = "test_service"
 TEST_PREFIX = "test_prefix"
 TEST_SUFFIX = "test_suffix"
 TEST_REGION = "us-east-1"
 TEST_DISCARD_FIELD = "test_field"
 TEST_DISCARD_REGEX = "test_regex"
+TEST_ONLY_LOGS_AFTER = "20220101"
+TEST_ONLY_LOGS_AFTER_WITH_FORMAT = "2022-01-01 00:00:00.0"
 
 TEST_SERVICE_ENDPOINT = 'test_service_endpoint'
 TEST_STS_ENDPOINT = "test_sts_endpoint"
@@ -129,6 +135,31 @@ def get_AWSBucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str =
             'region': region, 'discard_field': discard_field, 'discard_regex': discard_regex,
             'sts_endpoint': sts_endpoint, 'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
 
+def get_AWSService_parameters(db_table_name: str = TEST_TABLE_NAME, service_name: str = 'cloudwatchlogs',
+                              reparse: bool = False, access_key: str = None, secret_key: str = None,
+                              aws_profile: str = TEST_AWS_PROFILE, iam_role_arn: str = None,
+                              only_logs_after: str = None, region: str = None, discard_field: str = None,
+                              discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
+                              iam_role_duration: str = None):
+
+    """Return a dict containing every parameter supported by AWSService. Used to simulate different ossec.conf
+    configurations.
+
+    Parameters
+    ----------
+    TODO
+
+    Returns
+    -------
+    dict
+        A dict containing the configuration parameters with their default values.
+    """
+    return {'db_table_name': db_table_name, 'service_name': service_name, 'reparse': reparse, 'access_key': access_key,
+            'secret_key': secret_key, 'aws_profile': aws_profile, 'iam_role_arn': iam_role_arn,
+            'only_logs_after': only_logs_after, 'region': region, 'discard_field': discard_field,
+            'discard_regex': discard_regex, 'sts_endpoint': sts_endpoint,
+            'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
+
 def get_mocked_WazuhIntegration(**kwargs):
     with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
             patch('wazuh_integration.WazuhIntegration.get_client'), \
@@ -152,6 +183,14 @@ def get_mocked_bucket(class_=aws_bucket.AWSBucket, **kwargs):
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
         return class_(**get_AWSBucket_parameters(**kwargs))
+
+def get_mocked_service(class_=aws_service.AWSService, **kwargs):
+    with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
+            patch('wazuh_integration.WazuhIntegration.get_client'), \
+            patch('wazuh_integration.sqlite3.connect'), \
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
+        return class_(**get_AWSService_parameters(**kwargs))
 
 def database_execute_script(connector, sql_file):
     with open(os.path.join(data_path, sql_file)) as f:
