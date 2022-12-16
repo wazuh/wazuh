@@ -114,8 +114,27 @@ deleteFolderDic = {
     'shared_modules/utils':         ['build'],
 }
 
-currentBuildDir = Path(__file__).parent
+targetsFolderDic = {
+    'syscollector' : 'wazuh_modules/syscollector',
+    'dbsync' : 'shared_modules/dbsync',
+    'dbsync_test_tool' : 'shared_modules/dbsync/testtool',
+    'dbsync_example' : 'shared_modules/dbsync/example',
+    'rsync' : 'shared_modules/rsync',
+    'rsync_test_tool' : 'shared_modules/rsync/testtool',
+    'sysinfo' : 'data_provider',
+    'sysinfo_test_tool' : 'data_provider/testtool',
+    'syscollector_unit_test' : 'wazuh_modules/syscollector/tests',
+    'dbsync_unit_test' : 'shared_modules/dbsync/tests',
+    'dbsync_integration_tests' : 'shared_modules/dbsync/integrationTests',
+    'rsync_unit_test' : 'shared_modules/rsync/tests',
+    'data_provider_unit_test' : 'data_provider/tests',
+    'utils_unit_test' : 'shared_modules/utils/tests',
+    'all' : '.',
+    'all_unit_test' : '.'
+}
 
+currentBuildDir = Path(__file__).parent
+cmakeBuildDir = f'{currentBuildDir}/../build/'
 
 def currentDirPath(moduleName):
     """
@@ -148,7 +167,7 @@ def makeLib(moduleName):
 
     :param moduleName: Lib to be built.
     """
-    command = f'make -C {currentDirPathBuild(moduleName)}'
+    command = f'make -C {cmakeBuildDir} {moduleName}'
     printHeader(moduleName, 'make')
 
     out = subprocess.run(command, stdout=subprocess.PIPE,
@@ -169,29 +188,18 @@ def runTests(moduleName):
     :param moduleName: Lib representing the tests to be executed.
     """
     printHeader(moduleName, 'tests')
-    tests = []
-    reg = re.compile(
-        ".*unit_test|.*unit_test.exe|.*integration_test|.*integration_test.exe")
-    currentDir = currentDirPathBuild(moduleName)
+    command = f'ctest --output-on-failure --test-dir {cmakeBuildDir}{targetsFolderDic[moduleName]}'
 
-    if not moduleName == 'shared_modules/utils':
-        currentDir = os.path.join(currentDirPathBuild(moduleName), 'bin')
-
-    objects = os.scandir(currentDir)
-    for entry in objects:
-        if entry.is_file() and bool(re.match(reg, entry.name)):
-            tests.append(entry.name)
-    for test in tests:
-        out = subprocess.run(os.path.join(currentDir, test), stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, shell=True)
-        if out.returncode == 0:
-            printGreen(f'[{test}: PASSED]')
-        else:
-            print(out.stdout)
-            print(out.stderr)
-            printFail(f'[{test}: FAILED]')
-            errorString = 'Error Running test: ' + str(out.returncode)
-            raise ValueError(errorString)
+    out = subprocess.run(command, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0:
+        printGreen(f'[{moduleName}: PASSED]')
+    else:
+        print(out.stdout.decode('utf-8', 'ignore'))
+        print(out.stderr.decode('utf-8', 'ignore'))
+        printFail(f'[{moduleName}: FAILED]')
+        errorString = 'Error Running test: ' + str(out.returncode)
+        raise ValueError(errorString)
 
 
 def checkCoverage(output):
@@ -344,8 +352,7 @@ def cleanLib(moduleName):
 
     :param moduleName: Lib to be clean.
     """
-    currentDir = currentDirPathBuild(moduleName)
-    os.system('make clean -C' + currentDir)
+    os.system(f'make clean -C {cmakeBuildDir}{targetsFolderDic[moduleName]}')
 
 
 def cleanFolder(moduleName, additionalFolder):
