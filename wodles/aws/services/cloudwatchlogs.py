@@ -6,12 +6,13 @@ from datetime import datetime
 from datetime import timezone
 
 sys.path.append(path.dirname(path.realpath(__file__)))
-from aws_service import AWSService
+import aws_service
+
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_s3
 
 
-class AWSCloudWatchLogs(AWSService):
+class AWSCloudWatchLogs(aws_service.AWSService):
     """
     Class for getting AWS Cloudwatch logs
 
@@ -126,16 +127,12 @@ class AWSCloudWatchLogs(AWSService):
                 aws_log_group=:aws_log_group AND
                 aws_log_stream=:aws_log_stream;"""
 
-        AWSService.__init__(self, reparse=reparse, access_key=access_key, secret_key=secret_key,
-                            aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
-                            region=region, aws_log_groups=aws_log_groups, remove_log_streams=remove_log_streams,
-                            service_name='cloudwatchlogs', discard_field=discard_field, discard_regex=discard_regex,
-                            iam_role_duration=iam_role_duration, sts_endpoint=sts_endpoint,
-                            service_endpoint=service_endpoint)
-
-        self.reparse = reparse
-        self.region = region
-        self.db_table_name = 'cloudwatch_logs'
+        aws_service.AWSService.__init__(self, db_table_name = 'cloudwatch_logs', service_name='cloudwatchlogs',
+                                        reparse=reparse, access_key=access_key, secret_key=secret_key,
+                                        aws_profile=aws_profile, iam_role_arn=iam_role_arn,
+                                        only_logs_after=only_logs_after, region=region, discard_field=discard_field,
+                                        discard_regex=discard_regex, iam_role_duration=iam_role_duration,
+                                        sts_endpoint=sts_endpoint, service_endpoint=service_endpoint)
         self.log_group_list = [group for group in aws_log_groups.split(",") if group != ""] if aws_log_groups else []
         self.remove_log_streams = remove_log_streams
         self.only_logs_after_millis = int(datetime.strptime(only_logs_after, '%Y%m%d').replace(
@@ -238,12 +235,12 @@ class AWSCloudWatchLogs(AWSService):
             Name of the log group where the log stream is stored
         log_stream : str
             Name of the log stream to get its logs
-        token : str
+        token : str or None
             Token to the next set of logs. Obtained from a previous call and stored in DB.
         start_time : int
             The start of the time range, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.
             Logs with a timestamp equal to this time or later will be fetched.
-        end_time : int
+        end_time : int or None
             The end of the time range, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.
             Events with a timestamp equal to or later than this time won't be fetched.
 

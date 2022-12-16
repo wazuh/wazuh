@@ -1,37 +1,32 @@
+import copy
 import sys
 from os import path
 from datetime import datetime
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-from wazuh_integration import WazuhIntegration
+import wazuh_integration
 
 
-class AWSService(WazuhIntegration):
-    """
-    Class for getting AWS Services logs from API calls
-    :param access_key: AWS access key id
-    :param secret_key: AWS secret access key
-    :param profile: AWS profile
-    :param iam_role_arn: IAM Role
-    :param only_logs_after: Date after which obtain logs.
-    :param region: Region of service
-    """
+DEFAULT_DATABASE_NAME = "aws_services"
+DEFAULT_TABLENAME = "aws_services"
 
-    def __init__(self, reparse, access_key, secret_key, aws_profile, iam_role_arn,
-                 service_name, only_logs_after, region, aws_log_groups=None, remove_log_streams=None,
-                 discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None,
-                 iam_role_duration=None):
-        # DB name
-        self.db_name = 'aws_services'
-        # table name
-        self.db_table_name = 'aws_services'
+AWS_SERVICE_MSG_TEMPLATE = {'integration': 'aws', 'aws': ''}
+
+
+class AWSService(wazuh_integration.WazuhIntegration):
+
+    def __init__(self, db_table_name, service_name, reparse, access_key, secret_key, aws_profile, iam_role_arn,
+                 only_logs_after, region, discard_field=None, discard_regex=None, sts_endpoint=None,
+                 service_endpoint=None, iam_role_duration=None):
+        wazuh_integration.WazuhIntegration.__init__(self, db_name=DEFAULT_DATABASE_NAME, db_table_name=db_table_name,
+                                                    service_name=service_name, access_key=access_key,
+                                                    secret_key=secret_key, aws_profile=aws_profile,
+                                                    iam_role_arn=iam_role_arn, region=region,
+                                                    discard_field=discard_field, discard_regex=discard_regex,
+                                                    sts_endpoint=sts_endpoint, service_endpoint=service_endpoint,
+                                                    iam_role_duration=iam_role_duration)
         self.reparse = reparse
-
-        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
-                                  aws_profile=aws_profile, iam_role_arn=iam_role_arn,
-                                  service_name=service_name, region=region, discard_field=discard_field,
-                                  discard_regex=discard_regex, sts_endpoint=sts_endpoint,
-                                  service_endpoint=service_endpoint, iam_role_duration=iam_role_duration)
+        self.region = region
 
         # get sts client (necessary for getting account ID)
         self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
@@ -101,11 +96,10 @@ class AWSService(WazuhIntegration):
             del msg['service']
         # cast createdAt
         if 'createdAt' in msg:
-            msg['createdAt'] = datetime.strftime(msg['createdAt'],
-                                                 '%Y-%m-%dT%H:%M:%SZ')
+            msg['createdAt'] = datetime.strftime(msg['createdAt'], '%Y-%m-%dT%H:%M:%SZ')
         # cast updatedAt
         if 'updatedAt' in msg:
-            msg['updatedAt'] = datetime.strftime(msg['updatedAt'],
-                                                 '%Y-%m-%dT%H:%M:%SZ')
-
-        return {'integration': 'aws', 'aws': msg}
+            msg['updatedAt'] = datetime.strftime(msg['updatedAt'], '%Y-%m-%dT%H:%M:%SZ')
+        formatted_msg = copy.deepcopy(AWS_SERVICE_MSG_TEMPLATE)
+        formatted_msg['aws'] = msg
+        return formatted_msg
