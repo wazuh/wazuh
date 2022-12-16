@@ -77,7 +77,7 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar,
             }
 
             // Traces
-            const auto name = fmt::format("{}: {}", field, logpar);
+            const auto name = fmt::format("{}: {}", field, logparExpr);
             const auto successTrace = fmt::format("[{}] -> Success", name);
 
             // field to be parsed not exists

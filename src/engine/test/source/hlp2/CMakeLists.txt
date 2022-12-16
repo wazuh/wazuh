@@ -12,6 +12,7 @@ gtest_discover_tests(logpar_test)
 
 add_executable(hlp2_test
         basic_test.cpp
+        between_test.cpp
         binary_test.cpp
         date_test.cpp
         dsv_csv_test.cpp
