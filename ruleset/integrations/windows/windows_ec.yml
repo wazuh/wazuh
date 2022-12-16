@@ -15,5 +15,5 @@ parse:
 
 normalize:
  - map:
-  - event.code: $~event_channel.Event.System.EventID.#text
-  - event.@timestamp: $~event_channel.Event.System.TimeCreated.@SystemTime
+   - event.code: $~event_channel.Event.System.EventID.#text
+   - event.@timestamp: $~event_channel.Event.System.TimeCreated.@SystemTime
