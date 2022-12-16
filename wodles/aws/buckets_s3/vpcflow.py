@@ -16,12 +16,12 @@ class AWSVPCFlowBucket(AWSLogsBucket):
     """
 
     def __init__(self, **kwargs):
-        self.db_table_name = 'vpcflow'
+        kwargs['db_table_name'] = 'vpcflow'
         AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'vpcflowlogs'
         self.access_key = kwargs['access_key']
         self.secret_key = kwargs['secret_key']
-        self.profile_name = kwargs['profile']
+        self.profile_name = kwargs['aws_profile']
         # SQL queries for VPC must be after constructor call
         self.sql_already_processed = """
             SELECT

@@ -127,7 +127,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                 aws_log_group=:aws_log_group AND
                 aws_log_stream=:aws_log_stream;"""
 
-        aws_service.AWSService.__init__(self, db_table_name = 'cloudwatch_logs', service_name='cloudwatchlogs',
+        aws_service.AWSService.__init__(self, db_table_name='cloudwatch_logs', service_name='cloudwatchlogs',
                                         reparse=reparse, access_key=access_key, secret_key=secret_key,
                                         aws_profile=aws_profile, iam_role_arn=iam_role_arn,
                                         only_logs_after=only_logs_after, region=region, discard_field=discard_field,

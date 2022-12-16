@@ -6,20 +6,20 @@ from datetime import datetime
 from datetime import timedelta
 from time import mktime
 
-from aws_bucket import AWSBucket, AWSLogsBucket
+import aws_bucket
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_s3
 
 
-class AWSConfigBucket(AWSLogsBucket):
+class AWSConfigBucket(aws_bucket.AWSLogsBucket):
     """
     Represents a bucket with AWS Config logs
     """
 
     def __init__(self, **kwargs):
-        self.db_table_name = 'config'
-        AWSLogsBucket.__init__(self, **kwargs)
+        kwargs['db_table_name'] = 'config'
+        aws_bucket.AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'Config'
         self.field_to_load = 'configurationItems'
         # SQL queries for AWS Config
@@ -110,7 +110,7 @@ class AWSConfigBucket(AWSLogsBucket):
         str
             Date with the format used by the database.
         """
-        return datetime.strftime(datetime.strptime(date, self.date_format), self.db_date_format)
+        return datetime.strftime(datetime.strptime(date, self.date_format), aws_bucket.DB_DATE_FORMAT)
 
     def _remove_padding_zeros_from_marker(self, marker: str) -> str:
         """Remove the leading zeros from the month and day of a given marker.
@@ -155,7 +155,7 @@ class AWSConfigBucket(AWSLogsBucket):
         str
             Marker generated using the only_logs_after value.
         """
-        return self._remove_padding_zeros_from_marker(AWSBucket.marker_only_logs_after(self, aws_region,
+        return self._remove_padding_zeros_from_marker(aws_bucket.AWSBucket.marker_only_logs_after(self, aws_region,
                                                                                        aws_account_id))
 
     def marker_custom_date(self, aws_region: str, aws_account_id: str, date: datetime) -> str:
@@ -178,7 +178,7 @@ class AWSConfigBucket(AWSLogsBucket):
         str
             Marker generated using the specified date.
         """
-        return self._remove_padding_zeros_from_marker(AWSBucket.marker_custom_date(self, aws_region, aws_account_id,
+        return self._remove_padding_zeros_from_marker(aws_bucket.AWSBucket.marker_custom_date(self, aws_region, aws_account_id,
                                                                                    date))
 
     def build_s3_filter_args(self, aws_account_id, aws_region, date, iterating=False):
@@ -309,7 +309,7 @@ class AWSConfigBucket(AWSLogsBucket):
             sys.exit(7)
 
     def reformat_msg(self, event):
-        AWSBucket.reformat_msg(self, event)
+        aws_bucket.AWSBucket.reformat_msg(self, event)
         if 'configuration' in event['aws']:
             configuration = event['aws']['configuration']
 

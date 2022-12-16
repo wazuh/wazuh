@@ -14,8 +14,8 @@ class AWSWAFBucket(AWSCustomBucket):
                              'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto']
 
     def __init__(self, **kwargs):
-        db_table_name = 'waf'
-        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+        kwargs['db_table_name'] = 'waf'
+        AWSCustomBucket.__init__(self, **kwargs)
 
     def load_information_from_file(self, log_key):
         """Load data from a WAF log file."""
