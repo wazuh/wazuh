@@ -462,7 +462,7 @@ cleanup:
 diff_data *initialize_file_diff_data(const char *filename, const directory_t *configuration){
     diff_data *diff;
     char buffer[PATH_MAX];
-    char abs_diff_dir_path[PATH_MAX + 1];
+    char abs_diff_dir_path[PATH_MAX];
     os_sha1 encoded_path;
 
     os_calloc(1, sizeof(diff_data), diff);
@@ -494,13 +494,13 @@ diff_data *initialize_file_diff_data(const char *filename, const directory_t *co
 
     OS_SHA1_Str(buffer, -1, encoded_path);
 
-    snprintf(buffer, PATH_MAX, "%s/file/%s", abs_diff_dir_path, encoded_path);
+    os_snprintf(buffer, PATH_MAX, "%s/file/%s", abs_diff_dir_path, encoded_path);
     os_strdup(buffer, diff->compress_folder);
 
     snprintf(buffer, PATH_MAX, "%s/last-entry.gz", diff->compress_folder);
     os_strdup(buffer, diff->compress_file);
 
-    snprintf(buffer, PATH_MAX, "%.4091s/tmp", abs_diff_dir_path);
+    os_snprintf(buffer, PATH_MAX, "%s/tmp", abs_diff_dir_path);
     os_strdup(buffer, diff->tmp_folder);
 
     snprintf(buffer, PATH_MAX, "%s/tmp-entry", diff->tmp_folder);
