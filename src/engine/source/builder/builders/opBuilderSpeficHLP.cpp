@@ -32,20 +32,21 @@ enum class HLPParserType
     FLOAT,
     DOUBLE,
     SCALED_FLOAT,
-    TEXT, // Unimplemented
+    TEXT,
     QUOTED,
-    BASE64,
+    BETWEEN,
+    BINARY,
     DATE,
     IP,
     URI,
-    USER_AGENT,
+    USERAGENT,
     FQDN,
-    FILE_PATH,
+    FILE,
     JSON,
-    XML, // TODO: Exception in HLP
+    XML,
     DSV,
     CSV,
-    KEY_VALUE,
+    KV,
 };
 
 /**
@@ -122,7 +123,10 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
         case HLPParserType::QUOTED:
             parser = hlp::getQuotedParser({}, {""}, hlpOptionsList);
             break;
-        case HLPParserType::BASE64:
+        case HLPParserType::BETWEEN:
+            parser = hlp::getBetweenParser({}, {""}, hlpOptionsList);
+            break;
+        case HLPParserType::BINARY:
             parser = hlp::getBinaryParser({}, {""}, hlpOptionsList);
             break;
         case HLPParserType::DATE:
@@ -134,13 +138,13 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
         case HLPParserType::URI:
             parser = hlp::getUriParser({}, {""}, hlpOptionsList);
             break;
-        case HLPParserType::USER_AGENT:
+        case HLPParserType::USERAGENT:
             parser = hlp::getUAParser({}, {""}, hlpOptionsList);
             break;
         case HLPParserType::FQDN:
             parser = hlp::getFQDNParser({}, {""}, hlpOptionsList);
             break;
-        case HLPParserType::FILE_PATH:
+        case HLPParserType::FILE:
             parser = hlp::getFilePathParser({}, {""}, hlpOptionsList);
             break;
         case HLPParserType::JSON:
@@ -155,7 +159,7 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
         case HLPParserType::CSV:
             parser = hlp::getCSVParser({}, {""}, hlpOptionsList);
             break;
-        case HLPParserType::KEY_VALUE:
+        case HLPParserType::KV:
             parser = hlp::getKVParser({}, {""}, hlpOptionsList);
             break;
         default: throw std::logic_error("Invalid HLP parser type");
@@ -246,10 +250,10 @@ base::Expression opBuilderSpecificHLPDoubleParse(const std::any& definition)
     return opBuilderSpecificHLPTypeParse(definition, HLPParserType::DOUBLE);
 }
 
-// +parse_base64/[$ref|value]
-base::Expression opBuilderSpecificHLPBase64Parse(const std::any& definition)
+// +parse_binary/[$ref|value]
+base::Expression opBuilderSpecificHLPBinaryParse(const std::any& definition)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::BASE64);
+    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::BINARY);
 }
 
 // +parse_date/[$ref|value]
@@ -270,10 +274,10 @@ base::Expression opBuilderSpecificHLPURIParse(const std::any& definition)
     return opBuilderSpecificHLPTypeParse(definition, HLPParserType::URI);
 }
 
-// +parse_user_agent/[$ref|value]
+// +parse_useragent/[$ref|value]
 base::Expression opBuilderSpecificHLPUserAgentParse(const std::any& definition)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::USER_AGENT);
+    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::USERAGENT);
 }
 
 // +parse_fqdn/[$ref|value]
@@ -282,10 +286,10 @@ base::Expression opBuilderSpecificHLPFQDNParse(const std::any& definition)
     return opBuilderSpecificHLPTypeParse(definition, HLPParserType::FQDN);
 }
 
-// +parse_file_path/[$ref|value]
+// +parse_file/[$ref|value]
 base::Expression opBuilderSpecificHLPFilePathParse(const std::any& definition)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::FILE_PATH);
+    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::FILE);
 }
 
 // +parse_json/[$ref|value]
@@ -312,16 +316,20 @@ base::Expression opBuilderSpecificHLPDSVParse(const std::any& definition)
     return opBuilderSpecificHLPTypeParse(definition, HLPParserType::DSV);
 }
 
-// +parse_keyvalue/[$ref|value]
+// +parse_kv/[$ref|value]
 base::Expression opBuilderSpecificHLPKeyValueParse(const std::any& definition)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::KEY_VALUE);
+    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::KV);
 }
 
 // +parse_quoted/[$ref|value]
 base::Expression opBuilderSpecificHLPQuotedParse(const std::any& definition)
 {
     return opBuilderSpecificHLPTypeParse(definition, HLPParserType::QUOTED);
+}
+
+base::Expression opBuilderSpecificHLPBetweenParse(const std::any& definition){
+    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::BETWEEN);
 }
 
 } // namespace builder::internals::builders
