@@ -115,6 +115,7 @@ enum class ParserType
     P_TEXT,
     P_LITERAL,
     P_QUOTED,
+    P_BETWEEN,
     // Enconding
     P_BINARY,
     // Format
@@ -148,6 +149,7 @@ constexpr auto parserTypeToStr(ParserType type)
         case ParserType::P_TEXT: return "text";
         case ParserType::P_LITERAL: return "literal";
         case ParserType::P_QUOTED: return "quoted";
+        case ParserType::P_BETWEEN: return "between";
         case ParserType::P_BINARY: return "binary";
         case ParserType::P_CSV: return "csv";
         case ParserType::P_DSV: return "dsv";
@@ -184,6 +186,8 @@ constexpr auto strToParserType(std::string_view str)
         return ParserType::P_LITERAL;
     if (str == parserTypeToStr(ParserType::P_QUOTED))
         return ParserType::P_QUOTED;
+    if (str == parserTypeToStr(ParserType::P_BETWEEN))
+        return ParserType::P_BETWEEN;
     if (str == parserTypeToStr(ParserType::P_BINARY))
         return ParserType::P_BINARY;
     if (str == parserTypeToStr(ParserType::P_CSV))
