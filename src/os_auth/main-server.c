@@ -521,10 +521,18 @@ int main(int argc, char **argv)
             exit(1);
         }
 
+
         /* Check if password is enabled */
         if (config.flags.use_password) {
             fp = fopen(AUTHD_PASS, "r");
             buf[0] = '\0';
+
+            fseek(fp, 0, SEEK_END);
+
+            if (ftell(fp) <= 1) {
+                merror("Empty password provided.");
+                return OS_INVALID;
+            }
 
             /* Checking if there is a custom password file */
             if (fp) {
