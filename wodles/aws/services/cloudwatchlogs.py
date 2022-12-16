@@ -138,7 +138,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         self.only_logs_after_millis = int(datetime.strptime(only_logs_after, '%Y%m%d').replace(
             tzinfo=timezone.utc).timestamp() * 1000) if only_logs_after else None
         self.default_date_millis = int(self.default_date.timestamp() * 1000)
-        tools("only logs: {}".format(self.only_logs_after_millis), 1)
+        tools.debug("only logs: {}".format(self.only_logs_after_millis), 1)
 
     def get_alerts(self):
         """Iterate over all the log streams for each log group provided by the user in the given region to get their
@@ -155,14 +155,14 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         self.init_db(self.sql_cloudwatch_create_table.format(table_name=self.db_table_name))
 
         if self.reparse:
-            tools('Reparse mode ON', 1)
+            tools.debug('Reparse mode ON', 1)
 
         try:
             for log_group in self.log_group_list:
                 for log_stream in self.get_log_streams(log_group=log_group):
-                    tools('Getting data from DB for log stream "{}" in log group "{}"'.format(log_stream, log_group), 1)
+                    tools.debug('Getting data from DB for log stream "{}" in log group "{}"'.format(log_stream, log_group), 1)
                     db_values = self.get_data_from_db(log_group=log_group, log_stream=log_stream)
-                    tools('Token: "{}", start_time: "{}", '
+                    tools.debug('Token: "{}", start_time: "{}", '
                           'end_time: "{}"'.format(db_values['token'] if db_values else None,
                                                   db_values['start_time'] if db_values else None,
                                                   db_values['end_time'] if db_values else None), 2)
@@ -200,7 +200,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
 
                 self.purge_db(log_group=log_group)
         finally:
-            tools("committing changes and closing the DB", 1)
+            tools.debug("committing changes and closing the DB", 1)
             self.close_db()
 
     def remove_aws_log_stream(self, log_group, log_stream):
@@ -214,13 +214,13 @@ class AWSCloudWatchLogs(aws_service.AWSService):
             Name of the log stream to be removed
         """
         try:
-            tools('Removing log stream "{}" from log group "{}"'.format(log_group, log_stream), 1)
+            tools.debug('Removing log stream "{}" from log group "{}"'.format(log_group, log_stream), 1)
             self.client.delete_log_stream(logGroupName=log_group, logStreamName=log_stream)
         except botocore.exceptions.ClientError as err:
-            tools(f'ERROR: The "remove_aws_log_stream" request failed: {err}', 1)
+            tools.debug(f'ERROR: The "remove_aws_log_stream" request failed: {err}', 1)
             sys.exit(16)
         except Exception:
-            tools('Error trying to remove "{}" log stream from "{}" log group.'.format(log_stream, log_group), 0)
+            tools.debug('Error trying to remove "{}" log stream from "{}" log group.'.format(log_stream, log_group), 0)
 
     def get_alerts_within_range(self, log_group, log_stream, token, start_time, end_time):
         """Get all the logs from a log stream with a timestamp between the range of the provided start and end times and
@@ -262,7 +262,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
 
         # Request event logs until CloudWatch returns an empty list for the log stream
         while response is None or response['events'] != list():
-            tools('Getting CloudWatch logs from log stream "{}" in log group "{}" using token "{}", start_time '
+            tools.debug('Getting CloudWatch logs from log stream "{}" in log group "{}" using token "{}", start_time '
                   '"{}" and end_time "{}"'.format(log_stream, log_group, token, start_time, end_time), 1)
 
             # Try to get CloudWatch Log events until the request succeeds or the allowed number of attempts is reached
@@ -271,10 +271,10 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                     **{param: value for param, value in parameters.items() if value is not None})
 
             except botocore.exceptions.EndpointConnectionError:
-                tools(f'WARNING: The "get_log_events" request was denied because the endpoint URL was not '
+                tools.debug(f'WARNING: The "get_log_events" request was denied because the endpoint URL was not '
                       f'available. Attempting again.', 1)
             except botocore.exceptions.ClientError as err:
-                tools(f'ERROR: The "get_log_events" request failed: {err}', 1)
+                tools.debug(f'ERROR: The "get_log_events" request failed: {err}', 1)
                 sys.exit(16)
 
             # Update token
@@ -283,10 +283,10 @@ class AWSCloudWatchLogs(aws_service.AWSService):
 
             # Send events to Analysisd
             if response['events']:
-                tools('+++ Sending events to Analysisd...', 1)
+                tools.debug('+++ Sending events to Analysisd...', 1)
                 for event in response['events']:
-                    tools('The message is "{}"'.format(event['message']), 3)
-                    tools('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
+                    tools.debug('The message is "{}"'.format(event['message']), 3)
+                    tools.debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
                     self.send_msg(event['message'], dump_json=False)
 
                     if min_start_time is None:
@@ -298,7 +298,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                         max_end_time = event['timestamp']
                     elif event['timestamp'] > max_end_time:
                         max_end_time = event['timestamp']
-                tools(f"+++ Sent {len(response['events'])} events to Analysisd", 1)
+                tools.debug(f"+++ Sent {len(response['events'])} events to Analysisd", 1)
 
         return {'token': token, 'start_time': min_start_time, 'end_time': max_end_time}
 
@@ -395,8 +395,8 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         values : dict
             Dict containing the token, start_time and end_time.
         """
-        tools('Saving data for log group "{}" and log stream "{}".'.format(log_group, log_stream), 1)
-        tools('The saved values are "{}"'.format(values), 2)
+        tools.debug('Saving data for log group "{}" and log stream "{}".'.format(log_group, log_stream), 1)
+        tools.debug('The saved values are "{}"'.format(values), 2)
         try:
             self.db_cursor.execute(self.sql_cloudwatch_insert.format(table_name=self.db_table_name), {
                 'aws_region': self.region,
@@ -406,7 +406,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                 'start_time': values['start_time'],
                 'end_time': values['end_time']})
         except sqlite3.IntegrityError:
-            tools("Some data already exists on DB for that key. Updating their values...", 2)
+            tools.debug("Some data already exists on DB for that key. Updating their values...", 2)
             self.db_cursor.execute(self.sql_cloudwatch_update.format(table_name=self.db_table_name), {
                 'aws_region': self.region,
                 'aws_log_group': log_group,
@@ -429,7 +429,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         """
 
         result_list = list()
-        tools('Getting log streams for "{}" log group'.format(log_group), 1)
+        tools.debug('Getting log streams for "{}" log group'.format(log_group), 1)
 
         try:
             # Get all log streams using the token of the previous call to describe_log_streams
@@ -442,19 +442,19 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                 token = response.get('nextToken')
 
             for log_stream in log_streams:
-                tools('Found "{}" log stream in {}'.format(log_stream['logStreamName'], log_group), 2)
+                tools.debug('Found "{}" log stream in {}'.format(log_stream['logStreamName'], log_group), 2)
                 result_list.append(log_stream['logStreamName'])
 
             if result_list == list():
-                tools('No log streams were found for log group "{}"'.format(log_group), 1)
+                tools.debug('No log streams were found for log group "{}"'.format(log_group), 1)
 
         except botocore.exceptions.EndpointConnectionError as e:
             print(f'ERROR: {str(e)}')
         except botocore.exceptions.ClientError as err:
-            tools(f'ERROR: The "get_log_streams" request failed: {err}', 1)
+            tools.debug(f'ERROR: The "get_log_streams" request failed: {err}', 1)
             sys.exit(16)
         except Exception:
-            tools(
+            tools.debug(
                 '++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(
                     log_group), 0)
 
@@ -468,7 +468,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         log group : str
             Name of the log group to check its log streams
         """
-        tools('Purging the BD', 1)
+        tools.debug('Purging the BD', 1)
         # Get the list of log streams from DB
         self.db_cursor.execute(self.sql_cloudwatch_select_logstreams.format(table_name=self.db_table_name), {
             'aws_region': self.region,
@@ -484,7 +484,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         # Check the difference and remove if applicable
         log_streams_to_purge = log_streams_sql - log_streams_aws
         if log_streams_to_purge != set():
-            tools('Data for the following log streams will be removed from {}: "{}"'.format(self.db_table_name,
+            tools.debug('Data for the following log streams will be removed from {}: "{}"'.format(self.db_table_name,
                                                                                             log_streams_to_purge), 2)
         for log_stream in log_streams_to_purge:
             self.db_cursor.execute(self.sql_cloudwatch_purge.format(tablename=self.db_table_name), {
