@@ -389,11 +389,19 @@ void catalog(const std::string& socketPath,
              const std::string& format,
              const std::string& content,
              const std::string& path,
-             const bool recursive)
+             bool recursive,
+             int logLevel)
 {
-    // TODO: logging level should be configured for every command
+    // Init logging
     logging::LoggingConfig logConfig;
-    logConfig.logLevel = logging::LogLevel::Debug;
+    switch (logLevel)
+    {
+        case 0: logConfig.logLevel = logging::LogLevel::Debug; break;
+        case 1: logConfig.logLevel = logging::LogLevel::Info; break;
+        case 2: logConfig.logLevel = logging::LogLevel::Warn; break;
+        case 3: logConfig.logLevel = logging::LogLevel::Error; break;
+        default: logging::LogLevel::Error;
+    }
     logging::loggingInit(logConfig);
 
     auto action = catalog_details::stringToAction(actionStr.c_str());

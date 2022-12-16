@@ -45,7 +45,7 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar,
         }
 
         auto logparArr = jsonDefinition.getArray().value();
-        std::vector<base::Expression> parsersExpressions;
+        std::vector<base::Expression> parsersExpressions{};
         for (const json::Json& item : logparArr)
         {
             if (!item.isObject())

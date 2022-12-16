@@ -56,7 +56,7 @@ std::string formatDateFromSample(std::string dateSample, std::string locale)
 {
 
     // Check if the dateSample matches with more than one format
-    std::vector<std::string> matchingFormats;
+    std::vector<std::string> matchingFormats{};
     for (const auto& [name, format] : TimeFormat)
     {
         auto p = getDateParser({}, {}, Options {format, "en_US.UTF-8"});
@@ -138,7 +138,7 @@ parsec::Parser<json::Json> getDateParser(std::string name, Stop endTokens, Optio
         auto streamText = std::stringstream {textRaw.data()};
         streamText.imbue(locale);
 
-        std::string abbrev;
+        std::string abbrev{};
         std::chrono::minutes offset {0};
         date::fields<std::chrono::nanoseconds> fds {};
         streamText >> date::parse(format, fds, abbrev, offset);
@@ -170,7 +170,7 @@ parsec::Parser<json::Json> getDateParser(std::string name, Stop endTokens, Optio
         auto tp = date::sys_days(fds.ymd) + fds.tod.to_duration();
 
         // Format to strict_date_optional_time
-        std::ostringstream out;
+        std::ostringstream out{};
         out.imbue(std::locale("en_US.UTF-8"));
 
         // If we have timezone information, transform it to UTC
@@ -201,7 +201,7 @@ parsec::Parser<json::Json> getDateParser(std::string name, Stop endTokens, Optio
             }
         }
 
-        json::Json doc;
+        json::Json doc{};
         doc.setString(out.str().data());
         return parsec::makeSuccess<json::Json>(std::move(doc), endDatePos);
     };
