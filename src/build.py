@@ -10,20 +10,39 @@
 import argparse
 from ci import utils
 
-module_list = ['wazuh_modules/syscollector', 'shared_modules/dbsync', 'shared_modules/rsync', 'shared_modules/utils',
-               'data_provider']
+target_list = ['syscollector', 'dbsync', 'rsync','rsync_test_tool', 'sysinfo', 'sysinfo_test_tool', 'dbsync_test_tool', 'dbsync_example', 'all']
+unit_test_target_list = ['syscollector_unit_test', 'dbsync_unit_test', 'dbsync_integration_tests', 'rsync_unit_test',
+'data_provider_unit_test', 'utils_unit_test', 'all_unit_test']
 
 
 class CommandLineParser:
 
-    def _argIsValid(self, arg):
+    def _argIsCmakeTargetValid(self, arg):
         """
         Checks if the argument being selected is a correct one.
 
         :param arg: Argument being selected in the command line.
         :return True is 'arg' is a correct one, False otherwise.
         """
-        return arg in module_list
+        return arg in target_list
+
+    def _argIsCmakeTestTargetValid(self, arg):
+        """
+        Checks if the argument being selected is a correct one.
+
+        :param arg: Argument being selected in the command line.
+        :return True is 'arg' is a correct one, False otherwise.
+        """
+        return arg in unit_test_target_list
+
+    def _argIsCmakeLibAndTestTargetValid(self, arg):
+        """
+        Checks if the argument being selected is a correct one.
+
+        :param arg: Argument being selected in the command line.
+        :return True is 'arg' is a correct one, False otherwise.
+        """
+        return (arg in target_list) or (arg in unit_test_target_list)
 
     def _targetIsValid(self, arg):
         """
@@ -56,35 +75,35 @@ class CommandLineParser:
         parser.add_argument("--scanbuild", help="Run scan-build on the code. Example: python3 build.py --scanbuild <agent|server|winagent>")
 
         args = parser.parse_args()
-        if self._argIsValid(args.readytoreview):
+        if self._argIsCmakeTargetValid(args.readytoreview):
             utils.runReadyToReview(args.readytoreview)
             action = True
         else:
-            if self._argIsValid(args.clean):
+            if self._argIsCmakeLibAndTestTargetValid(args.clean):
                 utils.cleanLib(args.clean)
                 action = True
-            if self._argIsValid(args.make):
+            if self._argIsCmakeLibAndTestTargetValid(args.make):
                 utils.makeLib(args.make)
                 action = True
-            if self._argIsValid(args.tests):
+            if self._argIsCmakeLibAndTestTargetValid(args.tests):
                 utils.runTests(args.tests)
                 action = True
-            if self._argIsValid(args.coverage):
+            if self._argIsCmakeTargetValid(args.coverage):
                 utils.runCoverage(args.coverage)
                 action = True
-            if self._argIsValid(args.valgrind):
+            if self._argIsCmakeLibAndTestTargetValid(args.valgrind):
                 utils.runValgrind(args.valgrind)
                 action = True
-            if self._argIsValid(args.cppcheck):
+            if self._argIsCmakeLibAndTestTargetValid(args.cppcheck):
                 utils.runCppCheck(args.cppcheck)
                 action = True
-            if self._argIsValid(args.asan):
+            if self._argIsCmakeLibAndTestTargetValid(args.asan):
                 utils.runASAN(args.asan)
                 action = True
-            if self._argIsValid(args.scheck):
+            if self._argIsCmakeLibAndTestTargetValid(args.scheck):
                 utils.runAStyleCheck(args.scheck)
                 action = True
-            if self._argIsValid(args.sformat):
+            if self._argIsCmakeLibAndTestTargetValid(args.sformat):
                 utils.runAStyleFormat(args.sformat)
                 action = True
             if self._targetIsValid(args.scanbuild):
