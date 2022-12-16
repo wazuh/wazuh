@@ -1,3 +1,4 @@
+import copy
 import sys
 import botocore
 import json
@@ -15,6 +16,11 @@ from datetime import datetime
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
 
+MAX_RECORD_RETENTION = 500
+PATH_DATE_FORMAT = "%Y/%m/%d"
+DB_DATE_FORMAT = "%Y%m%d"
+DEFAULT_DATABASE_NAME = "s3_cloudtrail"
+
 RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/considerations.html#Connection-configuration-for-retries'
 
 INVALID_CREDENTIALS_ERROR_CODE = "SignatureDoesNotMatch"
@@ -26,6 +32,8 @@ INVALID_REQUEST_TIME_ERROR_MESSAGE = "The server datetime and datetime of the AW
 THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to request throttling. If the problem persists" \
                                      " check the following link to learn how to use the Retry configuration to avoid it: " \
                                      f"'{RETRY_CONFIGURATION_URL}'"
+
+AWS_BUCKET_MSG_TEMPLATE = {'integration': 'aws', 'aws': {'log_info': {'aws_account_alias': '', 'log_file': '', 's3bucket': ''}}}
 
 class AWSBucket(wazuh_integration.WazuhIntegration):
     """
@@ -41,7 +49,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         AWS access key id.
     secret_key : str
         AWS secret access key.
-    profile : str
+    aws_profile : str
         AWS profile.
     iam_role_arn : str
         IAM Role.
@@ -72,10 +80,9 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         The format that the service uses to store the date in the bucket's path.
     """
 
-    def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
-                 bucket, only_logs_after, skip_on_error, account_alias,
-                 prefix, suffix, delete_file, aws_organization_id, region,
-                 discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None):
+    def __init__(self, db_table_name, bucket, reparse, access_key, secret_key, aws_profile, iam_role_arn,
+                 only_logs_after, skip_on_error, account_alias, prefix, suffix, delete_file, aws_organization_id,
+                 region, discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None):
         # common SQL queries
         self.sql_already_processed = """
             SELECT
@@ -181,35 +188,36 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                 aws_account_id=:aws_account_id AND
                 aws_region=:aws_region;"""
 
-        wazuh_integration.WazuhIntegration.__init__(self, access_key=access_key,
-                                  secret_key=secret_key,
-                                  aws_profile=profile,
-                                  iam_role_arn=iam_role_arn,
-                                  bucket=bucket,
-                                  service_name='s3',
-                                  region=region,
-                                  discard_field=discard_field,
-                                  discard_regex=discard_regex,
-                                  sts_endpoint=sts_endpoint,
-                                  service_endpoint=service_endpoint,
-                                  iam_role_duration=iam_role_duration,
-                                  db_name='s3_cloudtrail'
-                                  )
-        self.retain_db_records = 500
+        wazuh_integration.WazuhIntegration.__init__(self,
+                                                    db_name=DEFAULT_DATABASE_NAME,
+                                                    db_table_name=db_table_name,
+                                                    service_name='s3',
+                                                    access_key=access_key,
+                                                    secret_key=secret_key,
+                                                    aws_profile=aws_profile,
+                                                    iam_role_arn=iam_role_arn,
+                                                    region=region,
+                                                    discard_field=discard_field,
+                                                    discard_regex=discard_regex,
+                                                    sts_endpoint=sts_endpoint,
+                                                    service_endpoint=service_endpoint,
+                                                    iam_role_duration=iam_role_duration)
+        self.retain_db_records = MAX_RECORD_RETENTION
         self.reparse = reparse
-        self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d") if only_logs_after else None
+        self.only_logs_after = datetime.strptime(only_logs_after, DB_DATE_FORMAT) if only_logs_after else None
         self.skip_on_error = skip_on_error
         self.account_alias = account_alias
         self.prefix = prefix
         self.suffix = suffix
         self.delete_file = delete_file
-        self.bucket_path = self.bucket + '/' + self.prefix
+        self.bucket = bucket
+        self.bucket_path = f"{self.bucket}/{self.prefix}"
         self.aws_organization_id = aws_organization_id
+        self.date_format = None
         self.date_regex = re.compile(r'(\d{4}/\d{2}/\d{2})')
         self.prefix_regex = re.compile("^\d{12}$")
         self.check_prefix = False
-        self.date_format = "%Y/%m/%d"
-        self.db_date_format = "%Y%m%d"
+
 
     def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
         """
@@ -231,29 +239,6 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         """
         return isinstance(match_start, int) and match_start == len(self.get_full_prefix(aws_account_id, aws_region))
 
-    def _get_last_key_processed(self, aws_account_id: str) -> str or None:
-        """
-        Get the key of the last file processed by the module.
-
-        Parameters
-        ----------
-        aws_account_id : str
-            The account ID of the AWS account.
-
-        Returns
-        -------
-        str or None
-            A str with the key of the last file processed, None if no file has been processed yet.
-        """
-        query_last_key = self.db_cursor.execute(
-            self.sql_find_last_key_processed.format(table_name=self.db_table_name), {'bucket_path': self.bucket_path,
-                                                                                     'aws_account_id': aws_account_id,
-                                                                                     'prefix': f'{self.prefix}%'})
-        try:
-            return query_last_key.fetchone()[0]
-        except (TypeError, IndexError):
-            # if DB is empty for a region
-            return None
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_cursor.execute(self.sql_already_processed.format(table_name=self.db_table_name), {
@@ -358,16 +343,12 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                     del event[key]
 
         # error_msg will only have a value when event is None and vice versa
-        msg = {
-            'integration': 'aws',
-            'aws': {
-                'log_info': {
-                    'aws_account_alias': self.account_alias,
-                    'log_file': log_key,
-                    's3bucket': self.bucket
-                }
-            }
-        }
+        msg = copy.deepcopy(AWS_BUCKET_MSG_TEMPLATE)
+        msg['aws']['log_info'].update({
+            'aws_account_alias': self.account_alias,
+            'log_file': log_key,
+            's3bucket': self.bucket
+        })
         if event:
             remove_none_fields(event)
             msg['aws'].update(event)
@@ -403,8 +384,8 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                 sys.exit(1)
 
         except KeyError:
-            print(f"ERROR: No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of the logs for the bucket "
-                  f"type '{wazuh_integration.aws_s3.debugget_script_arguments().type.lower()}'")
+            print(f"ERROR: No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of "
+                  f"the logs for the bucket type'")
             sys.exit(18)
 
     def find_regions(self, account_id):
@@ -727,6 +708,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                 exit_number = 1
             print(f"ERROR: {error_message}")
             exit(exit_number)
+
         except Exception as err:
             if hasattr(err, 'message'):
                 wazuh_integration.aws_s3.debug(f"+++ Unexpected error: {err.message}", 2)
@@ -777,6 +759,7 @@ class AWSLogsBucket(AWSBucket):
         AWSBucket.__init__(self, **kwargs)
         # If not empty, both self.prefix and self.suffix always have a trailing '/'
         self.bucket_path = f"{self.bucket}/{self.prefix}{self.suffix}"
+        self.service = None
 
     def get_base_prefix(self):
         base_path = '{}AWSLogs/{}'.format(self.prefix, self.suffix)
@@ -832,12 +815,8 @@ class AWSCustomBucket(AWSBucket):
 
     def __init__(self, db_table_name=None, **kwargs):
         # only special services have a different DB table
-        if db_table_name:
-            self.db_table_name = db_table_name
-        else:
-            self.db_table_name = 'custom'
-        AWSBucket.__init__(self, **kwargs)
-        self.retain_db_records = 500
+        AWSBucket.__init__(self, db_table_name=db_table_name if db_table_name else 'custom', **kwargs)
+        self.retain_db_records = MAX_RECORD_RETENTION
         # get STS client
         access_key = kwargs.get('access_key', None)
         secret_key = kwargs.get('secret_key', None)
@@ -945,8 +924,7 @@ class AWSCustomBucket(AWSBucket):
                     lat = float(match.group(1))
                     lon = float(match.group(2))
                     new_pattern = f'"lat":{lat},"lon":{lon}'
-                    data = re.sub(self.macie_location_pattern, new_pattern, data)
-                    json_data, json_index = decoder.raw_decode(data)
+                    json_data, json_index = decoder.raw_decode(re.sub(self.macie_location_pattern, new_pattern, data))
                 data = data[json_index:]
                 yield json_data
 
