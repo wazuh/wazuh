@@ -64,8 +64,8 @@ class AWSALBBucket(AWSLBBucket):
                             port += f"{item[1]} "
                         log_entry[field_to_process], log_entry[ip_field] = port.strip(), ip.strip()
                     except (ValueError, IndexError):
-                        tools(f"Unable to process correctly ABL log entry, for field {field_to_process}.", msg_level=1)
-                        tools(f"Log Entry: {log_entry}", msg_level=2)
+                        tools.debug(f"Unable to process correctly ABL log entry, for field {field_to_process}.", msg_level=1)
+                        tools.debug(f"Log Entry: {log_entry}", msg_level=2)
 
             return tsv_file
 

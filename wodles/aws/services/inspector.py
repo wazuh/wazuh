@@ -63,7 +63,7 @@ class AWSInspector(aws_service.AWSService):
         if len(arn_list) != 0:
             response = self.client.describe_findings(findingArns=arn_list)['findings']
             self.sent_events += len(response)
-            tools(f"+++ Processing {len(response)} events", 3)
+            tools.debug(f"+++ Processing {len(response)} events", 3)
             for elem in response:
                 self.send_msg(self.format_message(elem))
 
@@ -101,7 +101,7 @@ class AWSInspector(aws_service.AWSService):
         response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
                                                                          {'beginDate': date_scan,
                                                                           'endDate': date_current}})
-        tools(f"+++ Listing findings starting from {date_scan}", 2)
+        tools.debug(f"+++ Listing findings starting from {date_scan}", 2)
         self.send_describe_findings(response['findingArns'])
         # Iterate if there are more elements
         while 'nextToken' in response:
@@ -111,9 +111,9 @@ class AWSInspector(aws_service.AWSService):
             self.send_describe_findings(response['findingArns'])
 
         if self.sent_events:
-            tools(f"+++ {self.sent_events} events collected and processed in {self.region}", 1)
+            tools.debug(f"+++ {self.sent_events} events collected and processed in {self.region}", 1)
         else:
-            tools(f'+++ There are no new events in the "{self.region}" region', 1)
+            tools.debug(f'+++ There are no new events in the "{self.region}" region', 1)
 
         # insert last scan in DB
         self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name), {

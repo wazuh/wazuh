@@ -226,7 +226,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 if regions == []:
                     continue
             for aws_region in regions:
-                tools("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
+                tools.debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 # get flow log ids for the current region
                 flow_logs_ids = self.get_flow_logs_ids(self.access_key,
                                                        self.secret_key,
@@ -258,7 +258,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         return query_count_region.fetchone()[0]
 
     def db_maintenance(self, aws_account_id=None, aws_region=None, flow_log_id=None):
-        tools("+++ DB Maintenance", 1)
+        tools.debug("+++ DB Maintenance", 1)
         try:
             if self.db_count_region(aws_account_id, aws_region, flow_log_id) > self.retain_db_records:
                 self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
@@ -306,7 +306,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             if self.only_logs_after:
                 only_logs_marker = self.marker_only_logs_after(aws_region, aws_account_id)
                 filter_args['StartAfter'] = only_logs_marker if only_logs_marker > filter_marker else filter_marker
-            tools(f'+++ Marker: {filter_args.get("StartAfter")}', 2)
+            tools.debug(f'+++ Marker: {filter_args.get("StartAfter")}', 2)
 
         return filter_args
 
@@ -316,7 +316,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 **self.build_s3_filter_args(aws_account_id, aws_region, date, flow_log_id))
 
             if 'Contents' not in bucket_files:
-                tools("+++ No logs to process for {} flow log ID in bucket: {}/{}".format(flow_log_id,
+                tools.debug("+++ No logs to process for {} flow log ID in bucket: {}/{}".format(flow_log_id,
                                                                                           aws_account_id, aws_region),
                       1)
                 return
@@ -331,19 +331,19 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
                 if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, flow_log_id):
                     if self.reparse:
-                        tools("++ File previously processed, but reparse flag set: {file}".format(
+                        tools.debug("++ File previously processed, but reparse flag set: {file}".format(
                             file=bucket_file['Key']), 1)
                     else:
-                        tools("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
+                        tools.debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
                         continue
 
-                tools("++ Found new log: {0}".format(bucket_file['Key']), 2)
+                tools.debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
                 # Get the log file from S3 and decompress it
                 log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
                 self.iter_events(log_json, bucket_file['Key'], aws_account_id)
                 # Remove file from S3 Bucket
                 if self.delete_file:
-                    tools("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
+                    tools.debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
             # Iterate if there are more logs
@@ -353,7 +353,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 bucket_files = self.client.list_objects_v2(**new_s3_args)
 
                 if 'Contents' not in bucket_files:
-                    tools("+++ No logs to process for {} flow log ID in bucket: {}/{}".format(flow_log_id,
+                    tools.debug("+++ No logs to process for {} flow log ID in bucket: {}/{}".format(flow_log_id,
                                                                                               aws_account_id,
                                                                                               aws_region), 1)
                     return
@@ -368,37 +368,37 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, flow_log_id):
                         if self.reparse:
-                            tools("++ File previously processed, but reparse flag set: {file}".format(
+                            tools.debug("++ File previously processed, but reparse flag set: {file}".format(
                                 file=bucket_file['Key']), 1)
                         else:
-                            tools("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
+                            tools.debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
                             continue
-                    tools("++ Found new log: {0}".format(bucket_file['Key']), 2)
+                    tools.debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
                     # Get the log file from S3 and decompress it
                     log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
                     self.iter_events(log_json, bucket_file['Key'], aws_account_id)
                     # Remove file from S3 Bucket
                     if self.delete_file:
-                        tools("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
+                        tools.debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
 
         except botocore.exceptions.ClientError as err:
-            tools(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
+            tools.debug(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
             sys.exit(16)
 
         except Exception as err:
             if hasattr(err, 'message'):
-                tools("+++ Unexpected error: {}".format(err.message), 2)
+                tools.debug("+++ Unexpected error: {}".format(err.message), 2)
             else:
-                tools("+++ Unexpected error: {}".format(err), 2)
+                tools.debug("+++ Unexpected error: {}".format(err), 2)
             print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
 
     def mark_complete(self, aws_account_id, aws_region, log_file, flow_log_id):
         if self.reparse:
             if self.already_processed(log_file['Key'], aws_account_id, aws_region, flow_log_id):
-                tools(
+                tools.debug(
                     '+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']),
                     2)
         else:
@@ -411,5 +411,5 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     'log_key': log_file['Key'],
                     'created_date': self.get_creation_date(log_file)})
             except Exception as e:
-                tools("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
+                tools.debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
 

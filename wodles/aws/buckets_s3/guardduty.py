@@ -18,7 +18,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             self.send_msg(msg)
 
     def reformat_msg(self, event):
-        tools('++ Reformat message', 3)
+        tools.debug('++ Reformat message', 3)
         if event['aws']['source'] == 'guardduty' and 'service' in event['aws'] and \
                 'action' in event['aws']['service'] and \
                 'portProbeAction' in event['aws']['service']['action'] and \

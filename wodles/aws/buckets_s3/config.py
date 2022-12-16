@@ -89,7 +89,7 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
                 if regions == []:
                     continue
             for aws_region in regions:
-                tools("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
+                tools.debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 # for processing logs day by day
                 date_list = self.get_date_list(aws_account_id, aws_region)
                 for date in date_list:
@@ -224,7 +224,7 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
                 else:
                     filter_args['StartAfter'] = self.marker_only_logs_after(aws_region, aws_account_id)
 
-                tools(f'+++ Marker: {filter_args.get("StartAfter")}', 2)
+                tools.debug(f'+++ Marker: {filter_args.get("StartAfter")}', 2)
 
         return filter_args
 
@@ -233,7 +233,7 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region, date))
 
             if 'Contents' not in bucket_files:
-                tools("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
+                tools.debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                 return
 
             for bucket_file in bucket_files['Contents']:
@@ -246,19 +246,19 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
 
                 if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                     if self.reparse:
-                        tools("++ File previously processed, but reparse flag set: {file}".format(
+                        tools.debug("++ File previously processed, but reparse flag set: {file}".format(
                             file=bucket_file['Key']), 1)
                     else:
-                        tools("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
+                        tools.debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
                         continue
 
-                tools("++ Found new log: {0}".format(bucket_file['Key']), 2)
+                tools.debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
                 # Get the log file from S3 and decompress it
                 log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
                 self.iter_events(log_json, bucket_file['Key'], aws_account_id)
                 # Remove file from S3 Bucket
                 if self.delete_file:
-                    tools("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
+                    tools.debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file)
             # Iterate if there are more logs
@@ -268,7 +268,7 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
                 bucket_files = self.client.list_objects_v2(**new_s3_args)
 
                 if 'Contents' not in bucket_files:
-                    tools("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
+                    tools.debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                     return
 
                 for bucket_file in bucket_files['Contents']:
@@ -281,30 +281,30 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                         if self.reparse:
-                            tools("++ File previously processed, but reparse flag set: {file}".format(
+                            tools.debug("++ File previously processed, but reparse flag set: {file}".format(
                                 file=bucket_file['Key']), 1)
                         else:
-                            tools("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
+                            tools.debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
                             continue
-                    tools("++ Found new log: {0}".format(bucket_file['Key']), 2)
+                    tools.debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
                     # Get the log file from S3 and decompress it
                     log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
                     self.iter_events(log_json, bucket_file['Key'], aws_account_id)
                     # Remove file from S3 Bucket
                     if self.delete_file:
-                        tools("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
+                        tools.debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
 
         except botocore.exceptions.ClientError as err:
-            tools(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
+            tools.debug(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
             sys.exit(16)
 
         except Exception as err:
             if hasattr(err, 'message'):
-                tools("+++ Unexpected error: {}".format(err.message), 2)
+                tools.debug("+++ Unexpected error: {}".format(err.message), 2)
             else:
-                tools("+++ Unexpected error: {}".format(err), 2)
+                tools.debug("+++ Unexpected error: {}".format(err), 2)
             print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
 
