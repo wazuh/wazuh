@@ -10,7 +10,7 @@ from aws_bucket import THROTTLING_EXCEPTION_ERROR_CODE, THROTTLING_EXCEPTION_ERR
 from aws_bucket import AWSCustomBucket
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_s3
+import tools
 
 class AWSServerAccess(AWSCustomBucket):
 
@@ -49,7 +49,7 @@ class AWSServerAccess(AWSCustomBucket):
                                                                                    custom_delimiter='-'))
             while True:
                 if 'Contents' not in bucket_files:
-                    aws_s3.debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
+                    tools(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
                     return
 
                 for bucket_file in bucket_files['Contents']:
@@ -65,7 +65,7 @@ class AWSServerAccess(AWSCustomBucket):
                         match_start = date_match.span()[0] if date_match else None
                     except TypeError:
                         if self.skip_on_error:
-                            aws_s3.debug(f"+++ WARNING: The format of the {bucket_file['Key']} filename is not valid, "
+                            tools(f"+++ WARNING: The format of the {bucket_file['Key']} filename is not valid, "
                                   "skipping it.", 1)
                             continue
                         else:
@@ -73,23 +73,23 @@ class AWSServerAccess(AWSCustomBucket):
                             sys.exit(17)
 
                     if not self._same_prefix(match_start, aws_account_id, aws_region):
-                        aws_s3.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
+                        tools(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
                         continue
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                         if self.reparse:
-                            aws_s3.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}", 1)
+                            tools(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}", 1)
                         else:
-                            aws_s3.debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 2)
+                            tools(f"++ Skipping previously processed file: {bucket_file['Key']}", 2)
                             continue
 
-                    aws_s3.debug(f"++ Found new log: {bucket_file['Key']}", 2)
+                    tools(f"++ Found new log: {bucket_file['Key']}", 2)
                     # Get the log file from S3 and decompress it
                     log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
                     self.iter_events(log_json, bucket_file['Key'], aws_account_id)
                     # Remove file from S3 Bucket
                     if self.delete_file:
-                        aws_s3.debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
+                        tools(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
 
@@ -102,9 +102,9 @@ class AWSServerAccess(AWSCustomBucket):
 
         except Exception as err:
             if hasattr(err, 'message'):
-                aws_s3.debug(f"+++ Unexpected error: {err.message}", 2)
+                tools(f"+++ Unexpected error: {err.message}", 2)
             else:
-                aws_s3.debug(f"+++ Unexpected error: {err}", 2)
+                tools(f"+++ Unexpected error: {err}", 2)
             print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
             sys.exit(7)
 
