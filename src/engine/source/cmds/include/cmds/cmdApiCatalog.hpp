@@ -104,7 +104,8 @@ void catalog(const std::string& socketPath,
              const std::string& format,
              const std::string& content,
              const std::string& path,
-             const bool recursive);
+             bool recursive,
+             int logLevel);
 } // namespace cmd
 
 #endif // _CMD_APICLNT_CATALOG_HPP

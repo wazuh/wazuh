@@ -21,14 +21,14 @@ sources:
 parse:
   logpar:
     # BSD Syslog RFC 3164 standard
-    - event.original: "<event.start/SYSLOG> <host.hostname> <process.name>[<process.pid>]:<~/ignore/ ><message>"
+    - event.original: "<event.start/Jun 14 15:16:01> <host.hostname> <process.name>[<process.pid>]:<~/ignore/ ><message>"
     # BSD Syslog RFC 3164 no pid
-    - event.original: "<event.start/SYSLOG> <host.hostname> <process.name>:<~/ignore/ ><message>"
+    - event.original: "<event.start/Jun 14 15:16:01> <host.hostname> <process.name>:<~/ignore/ ><message>"
 
     # BSD Syslog RFC 3164 standard ISO8601
-    - event.original: "<event.start/ISO8601> <host.hostname> <process.name>[<process.pid>]: <message>"
+    - event.original: "<event.start/2018-08-14T14:30:02.203151+02:00> <host.hostname> <process.name>[<process.pid>]: <message>"
     # BSD Syslog RFC 3164 no pid ISO8601
-    - event.original: "<event.start/ISO8601> <host.hostname> <process.name>: <message>"
+    - event.original: "<event.start/2018-08-14T14:30:02.203151+02:00> <host.hostname> <process.name>: <message>"
 
 normalize:
   - map:
