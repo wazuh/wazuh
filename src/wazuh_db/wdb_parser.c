@@ -17,172 +17,172 @@
 
 #define HOTFIXES_FIELD_COUNT 3
 static struct column_list const TABLE_HOTFIXES[HOTFIXES_FIELD_COUNT+1] = {
-    { .value = {FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}}, .next = &TABLE_HOTFIXES[1] },
-    { .value = {FIELD_TEXT, 2, false, false, NULL,"scan_time", {.text = ""}}, .next = &TABLE_HOTFIXES[2] },
-    { .value = {FIELD_TEXT, 3, false, true, NULL,"hotfix", {.text = ""}}, .next = &TABLE_HOTFIXES[3] },
-    { .value = {FIELD_TEXT, 4, false, false, NULL,"checksum", {.text = ""}}, .next = NULL },
+    { .value = {FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_HOTFIXES[1] },
+    { .value = {FIELD_TEXT, 2, false, false, NULL,"scan_time", {.text = ""}, true}, .next = &TABLE_HOTFIXES[2] },
+    { .value = {FIELD_TEXT, 3, false, true, NULL,"hotfix", {.text = ""}, true}, .next = &TABLE_HOTFIXES[3] },
+    { .value = {FIELD_TEXT, 4, false, false, NULL,"checksum", {.text = ""}, false}, .next = NULL },
 };
 
 #define PROCESSES_FIELD_COUNT 30
 static struct column_list const TABLE_PROCESSES[PROCESSES_FIELD_COUNT+1] = {
-    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}}, .next = &TABLE_PROCESSES[1] },
-    { .value = { FIELD_TEXT, 2, false, false, NULL,"scan_time", {.text = ""}}, .next = &TABLE_PROCESSES[2] },
-    { .value = { FIELD_TEXT, 3, false, true, NULL, "pid", {.text = ""}}, .next = &TABLE_PROCESSES[3] },
-    { .value = { FIELD_TEXT, 4, false, false, NULL, "name", {.text = ""}}, .next = &TABLE_PROCESSES[4] },
-    { .value = { FIELD_TEXT, 5, false, false, NULL, "state", {.text = ""}}, .next = &TABLE_PROCESSES[5] },
-    { .value = { FIELD_INTEGER, 6, false, false, NULL, "ppid", {.integer = 0}}, .next = &TABLE_PROCESSES[6] },
-    { .value = { FIELD_INTEGER, 7, false, false, NULL, "utime", {.integer = 0}}, .next = &TABLE_PROCESSES[7] },
-    { .value = { FIELD_INTEGER, 8, false, false, NULL, "stime", {.integer = 0}}, .next = &TABLE_PROCESSES[8] },
-    { .value = { FIELD_TEXT, 9, false, false, NULL, "cmd", {.text = ""}}, .next = &TABLE_PROCESSES[9] },
-    { .value = { FIELD_TEXT, 10, false, false, NULL, "argvs", {.text = ""}}, .next = &TABLE_PROCESSES[10] },
-    { .value = { FIELD_TEXT, 11, false, false, NULL, "euser", {.text = ""}}, .next = &TABLE_PROCESSES[11] },
-    { .value = { FIELD_TEXT, 12, false, false, NULL, "ruser", {.text = ""}}, .next = &TABLE_PROCESSES[12] },
-    { .value = { FIELD_TEXT, 13, false, false, NULL, "suser", {.text = ""}}, .next = &TABLE_PROCESSES[13] },
-    { .value = { FIELD_TEXT, 14, false, false, NULL, "egroup", {.text = ""}}, .next = &TABLE_PROCESSES[14] },
-    { .value = { FIELD_TEXT, 15, false, false, NULL, "rgroup", {.text = ""}}, .next = &TABLE_PROCESSES[15] },
-    { .value = { FIELD_TEXT, 16, false, false, NULL, "sgroup", {.text = ""}}, .next = &TABLE_PROCESSES[16] },
-    { .value = { FIELD_TEXT, 17, false, false, NULL, "fgroup", {.text = ""}}, .next = &TABLE_PROCESSES[17] },
-    { .value = { FIELD_INTEGER, 18, false, false, NULL, "priority", {.integer = 0}}, .next = &TABLE_PROCESSES[18] },
-    { .value = { FIELD_INTEGER, 19, false, false, NULL, "nice", {.integer = 0}}, .next = &TABLE_PROCESSES[19] },
-    { .value = { FIELD_INTEGER, 20, false, false, NULL, "size", {.integer = 0}}, .next = &TABLE_PROCESSES[20] },
-    { .value = { FIELD_INTEGER, 21, false, false, NULL, "vm_size", {.integer = 0}}, .next = &TABLE_PROCESSES[21] },
-    { .value = { FIELD_INTEGER, 22, false, false, NULL, "resident", {.integer = 0}}, .next = &TABLE_PROCESSES[22] },
-    { .value = { FIELD_INTEGER, 23, false, false, NULL, "share", {.integer = 0}}, .next = &TABLE_PROCESSES[23] },
-    { .value = { FIELD_INTEGER_LONG, 24, false, false, NULL, "start_time", {.integer_long = 0LL}}, .next = &TABLE_PROCESSES[24] },
-    { .value = { FIELD_INTEGER, 25, false, false, NULL, "pgrp", {.integer = 0}}, .next = &TABLE_PROCESSES[25] },
-    { .value = { FIELD_INTEGER, 26, false, false, NULL, "session", }, .next = &TABLE_PROCESSES[26] },
-    { .value = { FIELD_INTEGER, 27, false, false, NULL, "nlwp", {.integer = 0}}, .next = &TABLE_PROCESSES[27] },
-    { .value = { FIELD_INTEGER, 28, false, false, NULL, "tgid", {.integer = 0}}, .next = &TABLE_PROCESSES[28] },
-    { .value = { FIELD_INTEGER, 29, false, false, NULL, "tty", {.integer = 0}}, .next = &TABLE_PROCESSES[29] },
-    { .value = { FIELD_INTEGER, 30, false, false, NULL, "processor", {.integer = 0}}, .next = &TABLE_PROCESSES[30] },
-    { .value = { FIELD_TEXT, 31, false, false, NULL, "checksum", {.text = ""}}, .next = NULL }
+    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_PROCESSES[1] },
+    { .value = { FIELD_TEXT, 2, false, false, NULL,"scan_time", {.text = ""}, true}, .next = &TABLE_PROCESSES[2] },
+    { .value = { FIELD_TEXT, 3, false, true, NULL, "pid", {.text = ""}, true}, .next = &TABLE_PROCESSES[3] },
+    { .value = { FIELD_TEXT, 4, false, false, NULL, "name", {.text = ""}, true}, .next = &TABLE_PROCESSES[4] },
+    { .value = { FIELD_TEXT, 5, false, false, NULL, "state", {.text = ""}, true}, .next = &TABLE_PROCESSES[5] },
+    { .value = { FIELD_INTEGER, 6, false, false, NULL, "ppid", {.integer = 0}, true}, .next = &TABLE_PROCESSES[6] },
+    { .value = { FIELD_INTEGER, 7, false, false, NULL, "utime", {.integer = 0}, true}, .next = &TABLE_PROCESSES[7] },
+    { .value = { FIELD_INTEGER, 8, false, false, NULL, "stime", {.integer = 0}, true}, .next = &TABLE_PROCESSES[8] },
+    { .value = { FIELD_TEXT, 9, false, false, NULL, "cmd", {.text = ""}, true}, .next = &TABLE_PROCESSES[9] },
+    { .value = { FIELD_TEXT, 10, false, false, NULL, "argvs", {.text = ""}, true}, .next = &TABLE_PROCESSES[10] },
+    { .value = { FIELD_TEXT, 11, false, false, NULL, "euser", {.text = ""}, true}, .next = &TABLE_PROCESSES[11] },
+    { .value = { FIELD_TEXT, 12, false, false, NULL, "ruser", {.text = ""}, true}, .next = &TABLE_PROCESSES[12] },
+    { .value = { FIELD_TEXT, 13, false, false, NULL, "suser", {.text = ""}, true}, .next = &TABLE_PROCESSES[13] },
+    { .value = { FIELD_TEXT, 14, false, false, NULL, "egroup", {.text = ""}, true}, .next = &TABLE_PROCESSES[14] },
+    { .value = { FIELD_TEXT, 15, false, false, NULL, "rgroup", {.text = ""}, true}, .next = &TABLE_PROCESSES[15] },
+    { .value = { FIELD_TEXT, 16, false, false, NULL, "sgroup", {.text = ""}, true}, .next = &TABLE_PROCESSES[16] },
+    { .value = { FIELD_TEXT, 17, false, false, NULL, "fgroup", {.text = ""}, true}, .next = &TABLE_PROCESSES[17] },
+    { .value = { FIELD_INTEGER, 18, false, false, NULL, "priority", {.integer = 0}, true}, .next = &TABLE_PROCESSES[18] },
+    { .value = { FIELD_INTEGER, 19, false, false, NULL, "nice", {.integer = 0}, true}, .next = &TABLE_PROCESSES[19] },
+    { .value = { FIELD_INTEGER, 20, false, false, NULL, "size", {.integer = 0}, true}, .next = &TABLE_PROCESSES[20] },
+    { .value = { FIELD_INTEGER, 21, false, false, NULL, "vm_size", {.integer = 0}, true}, .next = &TABLE_PROCESSES[21] },
+    { .value = { FIELD_INTEGER, 22, false, false, NULL, "resident", {.integer = 0}, true}, .next = &TABLE_PROCESSES[22] },
+    { .value = { FIELD_INTEGER, 23, false, false, NULL, "share", {.integer = 0}, true}, .next = &TABLE_PROCESSES[23] },
+    { .value = { FIELD_INTEGER_LONG, 24, false, false, NULL, "start_time", {.integer_long = 0LL}, true}, .next = &TABLE_PROCESSES[24] },
+    { .value = { FIELD_INTEGER, 25, false, false, NULL, "pgrp", {.integer = 0}, true}, .next = &TABLE_PROCESSES[25] },
+    { .value = { FIELD_INTEGER, 26, false, false, NULL, "session", {.integer = 0}, true}, .next = &TABLE_PROCESSES[26] },
+    { .value = { FIELD_INTEGER, 27, false, false, NULL, "nlwp", {.integer = 0}, true}, .next = &TABLE_PROCESSES[27] },
+    { .value = { FIELD_INTEGER, 28, false, false, NULL, "tgid", {.integer = 0}, true}, .next = &TABLE_PROCESSES[28] },
+    { .value = { FIELD_INTEGER, 29, false, false, NULL, "tty", {.integer = 0}, true}, .next = &TABLE_PROCESSES[29] },
+    { .value = { FIELD_INTEGER, 30, false, false, NULL, "processor", {.integer = 0}, true}, .next = &TABLE_PROCESSES[30] },
+    { .value = { FIELD_TEXT, 31, false, false, NULL, "checksum", {.text = ""}, false}, .next = NULL }
 };
 
 #define NETIFACE_FIELD_COUNT 17
 static struct column_list const TABLE_NETIFACE[NETIFACE_FIELD_COUNT+1] = {
-    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}}, .next = &TABLE_NETIFACE[1] },
-    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}}, .next = &TABLE_NETIFACE[2] },
-    { .value = { FIELD_TEXT, 3, false, true, NULL, "name", {.text = ""}}, .next = &TABLE_NETIFACE[3] },
-    { .value = { FIELD_TEXT, 4, false, false, NULL, "adapter", {.text = ""}}, .next = &TABLE_NETIFACE[4] },
-    { .value = { FIELD_TEXT, 5, false, false, NULL, "type", {.text = ""}}, .next = &TABLE_NETIFACE[5] },
-    { .value = { FIELD_TEXT, 6, false, false, NULL, "state", {.text = ""}}, .next = &TABLE_NETIFACE[6] },
-    { .value = { FIELD_INTEGER, 7, false, false, NULL, "mtu", {.integer = 0}}, .next = &TABLE_NETIFACE[7] },
-    { .value = { FIELD_TEXT, 8, false, false, NULL, "mac", {.text = ""}}, .next = &TABLE_NETIFACE[8] },
-    { .value = { FIELD_INTEGER, 9, false, false, NULL, "tx_packets", {.integer = 0}}, .next = &TABLE_NETIFACE[9] },
-    { .value = { FIELD_INTEGER, 10, false, false, NULL, "rx_packets", {.integer = 0}}, .next = &TABLE_NETIFACE[10] },
-    { .value = { FIELD_INTEGER, 11, false, false, NULL, "tx_bytes", {.integer = 0}}, .next = &TABLE_NETIFACE[11] },
-    { .value = { FIELD_INTEGER, 12, false, false, NULL, "rx_bytes", {.integer = 0}}, .next = &TABLE_NETIFACE[12] },
-    { .value = { FIELD_INTEGER, 13, false, false, NULL, "tx_errors", {.integer = 0}}, .next = &TABLE_NETIFACE[13] },
-    { .value = { FIELD_INTEGER, 14, false, false, NULL, "rx_errors", {.integer = 0}}, .next = &TABLE_NETIFACE[14] },
-    { .value = { FIELD_INTEGER, 15, false, false, NULL, "tx_dropped", {.integer = 0}}, .next = &TABLE_NETIFACE[15] },
-    { .value = { FIELD_INTEGER, 16, false, false, NULL, "rx_dropped", {.integer = 0}}, .next = &TABLE_NETIFACE[16] },
-    { .value = { FIELD_TEXT, 17, false, false, NULL, "checksum", {.text = ""}}, .next = &TABLE_NETIFACE[17] },
-    { .value = { FIELD_TEXT, 18, false, false, NULL, "item_id", {.text = ""}}, .next = NULL }
+    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_NETIFACE[1] },
+    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_NETIFACE[2] },
+    { .value = { FIELD_TEXT, 3, false, true, NULL, "name", {.text = ""}, true}, .next = &TABLE_NETIFACE[3] },
+    { .value = { FIELD_TEXT, 4, false, false, NULL, "adapter", {.text = ""}, true}, .next = &TABLE_NETIFACE[4] },
+    { .value = { FIELD_TEXT, 5, false, false, NULL, "type", {.text = ""}, true}, .next = &TABLE_NETIFACE[5] },
+    { .value = { FIELD_TEXT, 6, false, false, NULL, "state", {.text = ""}, true}, .next = &TABLE_NETIFACE[6] },
+    { .value = { FIELD_INTEGER, 7, false, false, NULL, "mtu", {.integer = 0}, true}, .next = &TABLE_NETIFACE[7] },
+    { .value = { FIELD_TEXT, 8, false, false, NULL, "mac", {.text = ""}, true}, .next = &TABLE_NETIFACE[8] },
+    { .value = { FIELD_INTEGER, 9, false, false, NULL, "tx_packets", {.integer = 0}, true}, .next = &TABLE_NETIFACE[9] },
+    { .value = { FIELD_INTEGER, 10, false, false, NULL, "rx_packets", {.integer = 0}, true}, .next = &TABLE_NETIFACE[10] },
+    { .value = { FIELD_INTEGER, 11, false, false, NULL, "tx_bytes", {.integer = 0}, true}, .next = &TABLE_NETIFACE[11] },
+    { .value = { FIELD_INTEGER, 12, false, false, NULL, "rx_bytes", {.integer = 0}, true}, .next = &TABLE_NETIFACE[12] },
+    { .value = { FIELD_INTEGER, 13, false, false, NULL, "tx_errors", {.integer = 0}, true}, .next = &TABLE_NETIFACE[13] },
+    { .value = { FIELD_INTEGER, 14, false, false, NULL, "rx_errors", {.integer = 0}, true}, .next = &TABLE_NETIFACE[14] },
+    { .value = { FIELD_INTEGER, 15, false, false, NULL, "tx_dropped", {.integer = 0}, true}, .next = &TABLE_NETIFACE[15] },
+    { .value = { FIELD_INTEGER, 16, false, false, NULL, "rx_dropped", {.integer = 0}, true}, .next = &TABLE_NETIFACE[16] },
+    { .value = { FIELD_TEXT, 17, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_NETIFACE[17] },
+    { .value = { FIELD_TEXT, 18, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL }
 };
 
 #define NETPROTO_FIELD_COUNT 7
 static struct column_list const TABLE_NETPROTO[NETPROTO_FIELD_COUNT+1] = {
-    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}}, .next = &TABLE_NETPROTO[1]},
-    { .value = { FIELD_TEXT, 2, false, true, NULL, "iface", {.text = ""}}, .next = &TABLE_NETPROTO[2]},
-    { .value = { FIELD_TEXT, 3, false, true, NULL, "type", {.text = ""}}, .next = &TABLE_NETPROTO[3]},
-    { .value = { FIELD_TEXT, 4, false, false, NULL, "gateway", {.text = ""}}, .next = &TABLE_NETPROTO[4]},
-    { .value = { FIELD_TEXT, 5, false, false, NULL, "dhcp", {.text = ""}}, .next = &TABLE_NETPROTO[5]},
-    { .value = { FIELD_INTEGER, 6, false, false, NULL, "metric", {.integer = 0}}, .next = &TABLE_NETPROTO[6]},
-    { .value = { FIELD_TEXT, 7, false, false, NULL, "checksum", {.text = ""}}, .next = &TABLE_NETPROTO[7]},
-    { .value = { FIELD_TEXT, 8, false, false, NULL, "item_id", {.text = ""}}, .next = NULL }
+    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_NETPROTO[1]},
+    { .value = { FIELD_TEXT, 2, false, true, NULL, "iface", {.text = ""}, true}, .next = &TABLE_NETPROTO[2]},
+    { .value = { FIELD_TEXT, 3, false, true, NULL, "type", {.text = ""}, true}, .next = &TABLE_NETPROTO[3]},
+    { .value = { FIELD_TEXT, 4, false, false, NULL, "gateway", {.text = ""}, true}, .next = &TABLE_NETPROTO[4]},
+    { .value = { FIELD_TEXT, 5, false, false, NULL, "dhcp", {.text = ""}, false}, .next = &TABLE_NETPROTO[5]},
+    { .value = { FIELD_INTEGER, 6, false, false, NULL, "metric", {.integer = 0}, true}, .next = &TABLE_NETPROTO[6]},
+    { .value = { FIELD_TEXT, 7, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_NETPROTO[7]},
+    { .value = { FIELD_TEXT, 8, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL }
 };
 
 #define NETADDR_FIELD_COUNT 7
 static struct column_list const TABLE_NETADDR[NETADDR_FIELD_COUNT+1] = {
-    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}}, .next = &TABLE_NETADDR[1]},
-    { .value = { FIELD_TEXT, 2, false, true, NULL, "iface", {.text = ""}}, .next = &TABLE_NETADDR[2]},
-    { .value = { FIELD_TEXT, 3, false, true, NULL, "proto", {.text = ""}}, .next = &TABLE_NETADDR[3]},
-    { .value = { FIELD_TEXT, 4, false, true, NULL, "address", {.text = ""}}, .next = &TABLE_NETADDR[4]},
-    { .value = { FIELD_TEXT, 5, false, false, NULL, "netmask", {.text = ""}}, .next = &TABLE_NETADDR[5]},
-    { .value = { FIELD_TEXT, 6, false, false, NULL, "broadcast", {.text = ""}}, .next = &TABLE_NETADDR[6]},
-    { .value = { FIELD_TEXT, 7, false, false, NULL, "checksum", {.text = ""}}, .next = &TABLE_NETADDR[7]},
-    { .value = { FIELD_TEXT, 8, false, false, NULL, "item_id", {.text = ""}}, .next = NULL},
+    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_NETADDR[1]},
+    { .value = { FIELD_TEXT, 2, false, true, NULL, "iface", {.text = ""}, true}, .next = &TABLE_NETADDR[2]},
+    { .value = { FIELD_TEXT, 3, false, true, NULL, "proto", {.text = ""}, true}, .next = &TABLE_NETADDR[3]},
+    { .value = { FIELD_TEXT, 4, false, true, NULL, "address", {.text = ""}, true}, .next = &TABLE_NETADDR[4]},
+    { .value = { FIELD_TEXT, 5, false, false, NULL, "netmask", {.text = ""}, true}, .next = &TABLE_NETADDR[5]},
+    { .value = { FIELD_TEXT, 6, false, false, NULL, "broadcast", {.text = ""}, true}, .next = &TABLE_NETADDR[6]},
+    { .value = { FIELD_TEXT, 7, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_NETADDR[7]},
+    { .value = { FIELD_TEXT, 8, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL},
 };
 
 #define PORTS_FIELD_COUNT 14
 static struct column_list const TABLE_PORTS[PORTS_FIELD_COUNT+1] = {
-    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}}, .next = &TABLE_PORTS[1]},
-    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}}, .next = &TABLE_PORTS[2]},
-    { .value = { FIELD_TEXT, 3, false, true, NULL, "protocol", {.text = ""}}, .next = &TABLE_PORTS[3]},
-    { .value = { FIELD_TEXT, 4, false, true, NULL, "local_ip", {.text = ""}}, .next = &TABLE_PORTS[4]},
-    { .value = { FIELD_INTEGER, 5, false, true, NULL, "local_port", {.integer = 0}}, .next = &TABLE_PORTS[5]},
-    { .value = { FIELD_TEXT, 6, false, false, NULL, "remote_ip", {.text = ""}}, .next = &TABLE_PORTS[6]},
-    { .value = { FIELD_INTEGER, 7, false, false, NULL, "remote_port", {.integer = 0}}, .next = &TABLE_PORTS[7]},
-    { .value = { FIELD_INTEGER, 8, false, false, NULL, "tx_queue", {.integer = 0}}, .next = &TABLE_PORTS[8]},
-    { .value = { FIELD_INTEGER, 9, false, false, NULL, "rx_queue", {.integer = 0}}, .next = &TABLE_PORTS[9]},
-    { .value = { FIELD_INTEGER_LONG, 10, false, true, NULL, "inode", {.integer_long = 0LL}}, .next = &TABLE_PORTS[10]},
-    { .value = { FIELD_TEXT, 11, false, false, NULL, "state", {.text = ""}}, .next = &TABLE_PORTS[11]},
-    { .value = { FIELD_INTEGER, 12, false, false, "pid", "PID", {.integer = 0}}, .next = &TABLE_PORTS[12]},
-    { .value = { FIELD_TEXT, 13, false, false, NULL, "process", {.text = ""}}, .next = &TABLE_PORTS[13]},
-    { .value = { FIELD_TEXT, 14, false, false, NULL, "checksum", {.text = ""}}, .next = &TABLE_PORTS[14]},
-    { .value = { FIELD_TEXT, 15, false, false, NULL, "item_id", {.text = ""}}, .next = NULL},
+    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_PORTS[1]},
+    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_PORTS[2]},
+    { .value = { FIELD_TEXT, 3, false, true, NULL, "protocol", {.text = ""}, true}, .next = &TABLE_PORTS[3]},
+    { .value = { FIELD_TEXT, 4, false, true, NULL, "local_ip", {.text = ""}, true}, .next = &TABLE_PORTS[4]},
+    { .value = { FIELD_INTEGER, 5, false, true, NULL, "local_port", {.integer = 0}, true}, .next = &TABLE_PORTS[5]},
+    { .value = { FIELD_TEXT, 6, false, false, NULL, "remote_ip", {.text = ""}, true}, .next = &TABLE_PORTS[6]},
+    { .value = { FIELD_INTEGER, 7, false, false, NULL, "remote_port", {.integer = 0}, true}, .next = &TABLE_PORTS[7]},
+    { .value = { FIELD_INTEGER, 8, false, false, NULL, "tx_queue", {.integer = 0}, true}, .next = &TABLE_PORTS[8]},
+    { .value = { FIELD_INTEGER, 9, false, false, NULL, "rx_queue", {.integer = 0}, true}, .next = &TABLE_PORTS[9]},
+    { .value = { FIELD_INTEGER_LONG, 10, false, true, NULL, "inode", {.integer_long = 0LL}, true}, .next = &TABLE_PORTS[10]},
+    { .value = { FIELD_TEXT, 11, false, false, NULL, "state", {.text = ""}, true}, .next = &TABLE_PORTS[11]},
+    { .value = { FIELD_INTEGER, 12, false, false, "pid", "PID", {.integer = 0}, true}, .next = &TABLE_PORTS[12]},
+    { .value = { FIELD_TEXT, 13, false, false, NULL, "process", {.text = ""}, true}, .next = &TABLE_PORTS[13]},
+    { .value = { FIELD_TEXT, 14, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_PORTS[14]},
+    { .value = { FIELD_TEXT, 15, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL},
 };
 
 #define PACKAGES_FIELD_COUNT 19  //Se corrigio
 static struct column_list const TABLE_PACKAGES[PACKAGES_FIELD_COUNT+1] = {
-    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}}, .next = &TABLE_PACKAGES[1] },
-    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}}, .next = &TABLE_PACKAGES[2] },
-    { .value = { FIELD_TEXT, 3, false, false, NULL, "format", {.text = ""}}, .next = &TABLE_PACKAGES[3] },
-    { .value = { FIELD_TEXT, 4, false, true, NULL, "name", {.text = ""}}, .next = &TABLE_PACKAGES[4] },
-    { .value = { FIELD_TEXT, 5, false, false, NULL, "priority", {.text = ""}}, .next = &TABLE_PACKAGES[5] },
-    { .value = { FIELD_TEXT, 6, false, false, "groups", "section", {.text = ""}}, .next = &TABLE_PACKAGES[6] },
-    { .value = { FIELD_INTEGER, 7, false, false, NULL, "size", {.integer = 0}}, .next = &TABLE_PACKAGES[7] },
-    { .value = { FIELD_TEXT, 8, false, false, NULL, "vendor", {.text = ""}}, .next = &TABLE_PACKAGES[8] },
-    { .value = { FIELD_TEXT, 9, false, false, NULL, "install_time", {.text = ""}}, .next = &TABLE_PACKAGES[9] },
-    { .value = { FIELD_TEXT, 10, false, true, NULL, "version", {.text = ""}}, .next = &TABLE_PACKAGES[10] },
-    { .value = { FIELD_TEXT, 11, false, true, NULL, "architecture", {.text = ""}}, .next = &TABLE_PACKAGES[11] },
-    { .value = { FIELD_TEXT, 12, false, false, NULL, "multiarch", {.text = ""}}, .next = &TABLE_PACKAGES[12] },
-    { .value = { FIELD_TEXT, 13, false, false, NULL, "source", {.text = ""}}, .next = &TABLE_PACKAGES[13] },
-    { .value = { FIELD_TEXT, 14, false, false, NULL, "description", {.text = ""}}, .next = &TABLE_PACKAGES[14] },
-    { .value = { FIELD_TEXT, 15, false, false, NULL, "location", {.text = ""}}, .next = &TABLE_PACKAGES[15] },
-    { .value = { FIELD_INTEGER, 16, true, false, NULL, "triaged", {.integer = 0}}, .next = &TABLE_PACKAGES[16] },
-    { .value = { FIELD_TEXT, 17, true, false, NULL, "cpe", {.text = ""}}, .next = &TABLE_PACKAGES[17] },
-    { .value = { FIELD_TEXT, 18, true, false, NULL, "msu_name", {.text = ""}}, .next = &TABLE_PACKAGES[18] },
-    { .value = { FIELD_TEXT, 19, false, false, NULL, "checksum", {.text = ""}}, .next = &TABLE_PACKAGES[19] },
-    { .value = { FIELD_TEXT, 20, false, false, NULL, "item_id", {.text = ""}}, .next = NULL },
+    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_PACKAGES[1] },
+    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_PACKAGES[2] },
+    { .value = { FIELD_TEXT, 3, false, false, NULL, "format", {.text = ""}, false}, .next = &TABLE_PACKAGES[3] },
+    { .value = { FIELD_TEXT, 4, false, true, NULL, "name", {.text = ""}, true}, .next = &TABLE_PACKAGES[4] },
+    { .value = { FIELD_TEXT, 5, false, false, NULL, "priority", {.text = ""}, true}, .next = &TABLE_PACKAGES[5] },
+    { .value = { FIELD_TEXT, 6, false, false, "groups", "section", {.text = ""}, true}, .next = &TABLE_PACKAGES[6] },
+    { .value = { FIELD_INTEGER, 7, false, false, NULL, "size", {.integer = 0}, true}, .next = &TABLE_PACKAGES[7] },
+    { .value = { FIELD_TEXT, 8, false, false, NULL, "vendor", {.text = ""}, true}, .next = &TABLE_PACKAGES[8] },
+    { .value = { FIELD_TEXT, 9, false, false, NULL, "install_time", {.text = ""}, true}, .next = &TABLE_PACKAGES[9] },
+    { .value = { FIELD_TEXT, 10, false, true, NULL, "version", {.text = ""}, true}, .next = &TABLE_PACKAGES[10] },
+    { .value = { FIELD_TEXT, 11, false, true, NULL, "architecture", {.text = ""}, true}, .next = &TABLE_PACKAGES[11] },
+    { .value = { FIELD_TEXT, 12, false, false, NULL, "multiarch", {.text = ""}, true}, .next = &TABLE_PACKAGES[12] },
+    { .value = { FIELD_TEXT, 13, false, false, NULL, "source", {.text = ""}, true}, .next = &TABLE_PACKAGES[13] },
+    { .value = { FIELD_TEXT, 14, false, false, NULL, "description", {.text = ""}, true}, .next = &TABLE_PACKAGES[14] },
+    { .value = { FIELD_TEXT, 15, false, false, NULL, "location", {.text = ""}, true}, .next = &TABLE_PACKAGES[15] },
+    { .value = { FIELD_INTEGER, 16, true, false, NULL, "triaged", {.integer = 0}, true}, .next = &TABLE_PACKAGES[16] },
+    { .value = { FIELD_TEXT, 17, true, false, NULL, "cpe", {.text = ""}, true}, .next = &TABLE_PACKAGES[17] },
+    { .value = { FIELD_TEXT, 18, true, false, NULL, "msu_name", {.text = ""}, true}, .next = &TABLE_PACKAGES[18] },
+    { .value = { FIELD_TEXT, 19, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_PACKAGES[19] },
+    { .value = { FIELD_TEXT, 20, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL },
 };
 
 #define OS_FIELD_COUNT 19
 static struct column_list const TABLE_OS[OS_FIELD_COUNT+1] = {
-    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}}, .next = &TABLE_OS[1] },
-    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}}, .next = &TABLE_OS[2] },
-    { .value = { FIELD_TEXT, 3, false, false, NULL, "hostname", {.text = ""}}, .next = &TABLE_OS[3] },
-    { .value = { FIELD_TEXT, 4, false, false, NULL, "architecture", {.text = ""}}, .next = &TABLE_OS[4] },
-    { .value = { FIELD_TEXT, 5, false, true, NULL, "os_name", {.text = ""}}, .next = &TABLE_OS[5] },
-    { .value = { FIELD_TEXT, 6, false, false, NULL, "os_version", {.text = ""}}, .next = &TABLE_OS[6] },
-    { .value = { FIELD_TEXT, 7, false, false, NULL, "os_codename", {.text = ""}}, .next = &TABLE_OS[7] },
-    { .value = { FIELD_TEXT, 8, false, false, NULL, "os_major", {.text = ""}}, .next = &TABLE_OS[8] },
-    { .value = { FIELD_TEXT, 9, false, false, NULL, "os_minor", {.text = ""}}, .next = &TABLE_OS[9] },
-    { .value = { FIELD_TEXT, 10, false, false, NULL, "os_patch", {.text = ""}}, .next = &TABLE_OS[10] },
-    { .value = { FIELD_TEXT, 11, false, false, NULL, "os_build", {.text = ""}}, .next = &TABLE_OS[11] },
-    { .value = { FIELD_TEXT, 12, false, false, NULL, "os_platform", {.text = ""}}, .next = &TABLE_OS[12] },
-    { .value = { FIELD_TEXT, 13, false, false, NULL, "sysname", {.text = ""}}, .next = &TABLE_OS[13] },
-    { .value = { FIELD_TEXT, 14, false, false, NULL, "release", {.text = ""}}, .next = &TABLE_OS[14] },
-    { .value = { FIELD_TEXT, 15, false, false, NULL, "version", {.text = ""}}, .next = &TABLE_OS[15] },
-    { .value = { FIELD_TEXT, 16, false, false, NULL, "os_release", {.text = ""}}, .next = &TABLE_OS[16] },
-    { .value = { FIELD_TEXT, 17, false, false, NULL, "checksum", {.text = ""}}, .next = &TABLE_OS[17] },
-    { .value = { FIELD_TEXT, 18, false, false, NULL, "os_display_version", {.text = ""}}, .next = &TABLE_OS[18] },
-    { .value = { FIELD_INTEGER, 19, true, false, NULL, "triaged", {.integer = 0}}, .next = &TABLE_OS[19] },
-    { .value = { FIELD_TEXT, 20, true, false, NULL, "reference", {.text = ""}}, .next = NULL },
+    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_OS[1] },
+    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_OS[2] },
+    { .value = { FIELD_TEXT, 3, false, false, NULL, "hostname", {.text = ""}, true}, .next = &TABLE_OS[3] },
+    { .value = { FIELD_TEXT, 4, false, false, NULL, "architecture", {.text = ""}, true}, .next = &TABLE_OS[4] },
+    { .value = { FIELD_TEXT, 5, false, true, NULL, "os_name", {.text = ""}, true}, .next = &TABLE_OS[5] },
+    { .value = { FIELD_TEXT, 6, false, false, NULL, "os_version", {.text = ""}, true}, .next = &TABLE_OS[6] },
+    { .value = { FIELD_TEXT, 7, false, false, NULL, "os_codename", {.text = ""}, true}, .next = &TABLE_OS[7] },
+    { .value = { FIELD_TEXT, 8, false, false, NULL, "os_major", {.text = ""}, true}, .next = &TABLE_OS[8] },
+    { .value = { FIELD_TEXT, 9, false, false, NULL, "os_minor", {.text = ""}, true}, .next = &TABLE_OS[9] },
+    { .value = { FIELD_TEXT, 10, false, false, NULL, "os_patch", {.text = ""}, true}, .next = &TABLE_OS[10] },
+    { .value = { FIELD_TEXT, 11, false, false, NULL, "os_build", {.text = ""}, true}, .next = &TABLE_OS[11] },
+    { .value = { FIELD_TEXT, 12, false, false, NULL, "os_platform", {.text = ""}, true}, .next = &TABLE_OS[12] },
+    { .value = { FIELD_TEXT, 13, false, false, NULL, "sysname", {.text = ""}, true}, .next = &TABLE_OS[13] },
+    { .value = { FIELD_TEXT, 14, false, false, NULL, "release", {.text = ""}, true}, .next = &TABLE_OS[14] },
+    { .value = { FIELD_TEXT, 15, false, false, NULL, "version", {.text = ""}, true}, .next = &TABLE_OS[15] },
+    { .value = { FIELD_TEXT, 16, false, false, NULL, "os_release", {.text = ""}, true}, .next = &TABLE_OS[16] },
+    { .value = { FIELD_TEXT, 17, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_OS[17] },
+    { .value = { FIELD_TEXT, 18, false, false, NULL, "os_display_version", {.text = ""}, true}, .next = &TABLE_OS[18] },
+    { .value = { FIELD_INTEGER, 19, true, false, NULL, "triaged", {.integer = 0}, true}, .next = &TABLE_OS[19] },
+    { .value = { FIELD_TEXT, 20, true, false, NULL, "reference", {.text = ""}, false}, .next = NULL },
 };
 
 #define HARDWARE_FIELD_COUNT 9
 static struct column_list const TABLE_HARDWARE[HARDWARE_FIELD_COUNT+1] = {
-    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}}, .next = &TABLE_HARDWARE[1] },
-    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}}, .next = &TABLE_HARDWARE[2] },
-    { .value = { FIELD_TEXT, 3, false, true, NULL, "board_serial", {.text = ""}}, .next = &TABLE_HARDWARE[3] },
-    { .value = { FIELD_TEXT, 4, false, false, NULL, "cpu_name", {.text = ""}}, .next = &TABLE_HARDWARE[4] },
-    { .value = { FIELD_INTEGER, 5, false, false, NULL, "cpu_cores", {.integer = 0}}, .next = &TABLE_HARDWARE[5] },
-    { .value = { FIELD_REAL, 6, false, false, NULL, "cpu_mhz", {.real = 0.0}}, .next = &TABLE_HARDWARE[6] },
-    { .value = { FIELD_INTEGER, 7, false, false, NULL, "ram_total", {.integer = 0}}, .next = &TABLE_HARDWARE[7] },
-    { .value = { FIELD_INTEGER, 8, false, false, NULL, "ram_free", {.integer = 0}}, .next = &TABLE_HARDWARE[8] },
-    { .value = { FIELD_INTEGER, 9, false, false, NULL, "ram_usage", {.integer = 0}}, .next = &TABLE_HARDWARE[9] },
-    { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}}, .next = NULL }
+    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_HARDWARE[1] },
+    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_HARDWARE[2] },
+    { .value = { FIELD_TEXT, 3, false, true, NULL, "board_serial", {.text = ""}, true}, .next = &TABLE_HARDWARE[3] },
+    { .value = { FIELD_TEXT, 4, false, false, NULL, "cpu_name", {.text = ""}, true}, .next = &TABLE_HARDWARE[4] },
+    { .value = { FIELD_INTEGER, 5, false, false, NULL, "cpu_cores", {.integer = 0}, true}, .next = &TABLE_HARDWARE[5] },
+    { .value = { FIELD_REAL, 6, false, false, NULL, "cpu_mhz", {.real = 0.0}, true}, .next = &TABLE_HARDWARE[6] },
+    { .value = { FIELD_INTEGER, 7, false, false, NULL, "ram_total", {.integer = 0}, true}, .next = &TABLE_HARDWARE[7] },
+    { .value = { FIELD_INTEGER, 8, false, false, NULL, "ram_free", {.integer = 0}, true}, .next = &TABLE_HARDWARE[8] },
+    { .value = { FIELD_INTEGER, 9, false, false, NULL, "ram_usage", {.integer = 0}, true}, .next = &TABLE_HARDWARE[9] },
+    { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, false}, .next = NULL }
 };
 
 static struct kv_list const TABLE_MAP[] = {
@@ -6163,16 +6163,25 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *ope
     bool ret_val = false;
     cJSON * data = cJSON_Parse(raw_data);
     if (NULL != data) {
-        if (strcmp(operation, "INSERTED") == 0 || strcmp(operation, "MODIFIED") == 0) {
-            if (wdb_record_exist_dbsync(wdb, kv_value, data)){
-                ret_val = wdb_modify_dbsync(wdb, kv_value, data);
+        /*
+        if (strcmp(operation, "INSERTED") == 0 || strcmp(operation, "DELETED") == 0 ||
+            strcmp(operation, "DELETED") == 0) {
+            if (wdb_record_exist_dbsync(wdb, kv_value, data)) {
+                if (strcmp(operation, "DELETED") == 0) {
+                    ret_val = wdb_delete_dbsync(wdb, kv_value, data);
+                } else if (strcmp(operation, "MODIFIED") == 0) {
+                    ret_val = wdb_modify_dbsync(wdb, kv_value, data);
+                }
             } else {
                 ret_val = wdb_insert_dbsync(wdb, kv_value, data);
             }
+        */
+        if (strcmp(operation, "INSERTED") == 0 || strcmp(operation, "MODIFIED") == 0){
+            ret_val = wdb_upsert_dbsync(wdb, kv_value, data);
         } else if (strcmp(operation, "DELETED") == 0) {
-            ret_val = wdb_delete_dbsync(wdb, kv_value, data);
-        }
-        else {
+            wdb_delete_dbsync(wdb, kv_value, data);
+            ret_val = true;
+        } else {
             mdebug1("Invalid operation type: %s", operation);
         }
         cJSON_free(data);

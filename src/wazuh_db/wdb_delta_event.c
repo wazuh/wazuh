@@ -8,7 +8,7 @@
 #define STATIC static
 #endif
 
-STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value);
+STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value, bool can_be_null);
 
 STATIC inline const char * wdb_dbsync_translate_field(const struct field * field) {
     return NULL == field->source_name ? field->target_name : field->source_name;
@@ -36,74 +36,25 @@ STATIC cJSON * wdb_dbsync_get_field_default(const struct field * field) {
     return retval;
 }
 
-bool wdb_record_exist_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
-
+bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
     bool ret_val = false;
-
     if (NULL != data && NULL != wdb && NULL != kv_value) {
         char query[OS_SIZE_2048] = {0};
-        strcat(query, "SELECT EXISTS(SELECT 1 FROM ");
+        strcat(query, "INSERT INTO ");
         strcat(query, kv_value->value);
-        strcat(query, " WHERE ");
+        strcat(query, " VALUES( ");
 
-        bool first_condition_element = true;
         struct column_list const * column = NULL;
         for (column = kv_value->column_list; column; column = column->next) {
-            if (!column->value.is_aux_field) { // esto no hace falta
-                if (column->value.is_pk) {
-                    const char * field_name = wdb_dbsync_translate_field(&column->value);
-                    if (first_condition_element) {
-                        strcat(query, field_name);
-                        strcat(query, "=?");
-                        first_condition_element = false;
-                    } else {
-                        strcat(query, " AND ");
-                        strcat(query, field_name);
-                        strcat(query, "=?");
-                    }
-                }
+            strcat(query, "?");
+            if (column->next) {
+                strcat(query, ",");
             }
         }
-        strcat(query, ");");
-
-        sqlite3_stmt * stmt = wdb_get_cache_stmt(wdb, query);
-
-        if (NULL != stmt) {
-            struct column_list const * column = NULL;
-            bool has_error = false;
-            int index = 1;
-            for (column = kv_value->column_list; column && !has_error; column = column->next) {
-                if (column->value.is_pk) {
-                    const char * field_name = wdb_dbsync_translate_field(&column->value);
-                    cJSON * field_value = cJSON_GetObjectItem(data, field_name);
-                    if (NULL != field_value &&
-                        !wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value)) {
-                        merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
-                        has_error = true;
-                    }
-                    ++index;
-                }
-            }
-            if (!has_error && SQLITE_ROW == wdb_step(stmt)) {
-                ret_val = sqlite3_column_int(stmt, 0) == 1;
-            }
-        } else {
-            merror(DB_CACHE_NULL_STMT);
-        }
-    }
-    return ret_val;
-}
-
-bool wdb_modify_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
-    bool ret_val = false;
-    if (NULL != data && NULL != wdb && NULL != kv_value) {
-        char query[OS_SIZE_2048] = {0};
-        strcat(query, "UPDATE ");
-        strcat(query, kv_value->value);
-        strcat(query, " SET ");
+    
+        strcat(query, ") ON CONFLICT DO UPDATE SET ");
 
         bool first_condition_element = true;
-        struct column_list const * column = NULL;
         for (column = kv_value->column_list; column; column = column->next) {
             const char * field_name = wdb_dbsync_translate_field(&column->value);
             if (!column->value.is_aux_field && !column->value.is_pk) {
@@ -119,82 +70,11 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
             }
         }
 
-        strcat(query, " WHERE ");
-
-        first_condition_element = true;
-        for (column = kv_value->column_list; column; column = column->next) {
-            const char * field_name = wdb_dbsync_translate_field(&column->value);
-            if (column->value.is_pk) {
-                if (first_condition_element) {
-                    strcat(query, field_name);
-                    strcat(query, "=?");
-                    first_condition_element = false;
-                } else {
-                    strcat(query, " AND ");
-                    strcat(query, field_name);
-                    strcat(query, "=?");
-                }
-            }
-        }
-        strcat(query, ";");
 
         sqlite3_stmt * stmt = wdb_get_cache_stmt(wdb, query);
         bool has_error = false;
         if (NULL != stmt) {
             int index = 1;
-            for (column = kv_value->column_list; column && !has_error; column = column->next) {
-                if (!column->value.is_aux_field && !column->value.is_pk) {
-                    const char * field_name = wdb_dbsync_translate_field(&column->value);
-                    cJSON * field_value = cJSON_GetObjectItem(data, field_name);
-                    if (NULL != field_value &&
-                        !wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value)) {
-                        merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
-                        has_error = true;
-                    }
-                    ++index;
-                }
-            }
-            for (column = kv_value->column_list; column && !has_error; column = column->next) {
-                if (!column->value.is_aux_field && column->value.is_pk) {
-                    const char * field_name = wdb_dbsync_translate_field(&column->value);
-                    cJSON * field_value = cJSON_GetObjectItem(data, field_name);
-                    if (NULL != field_value &&
-                        !wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value)) {
-                        merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
-                        has_error = true;
-                    }
-                    ++index;
-                }
-            }
-            ret_val = !has_error && SQLITE_DONE == wdb_step(stmt);
-        } else {
-            merror(DB_CACHE_NULL_STMT);
-        }
-    }
-    return ret_val;
-}
-
-bool wdb_insert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
-
-    bool ret_val = false;
-    if (NULL != data && NULL != wdb && NULL != kv_value) {
-        char query[OS_SIZE_2048] = {0};
-        strcat(query, "INSERT INTO ");
-        strcat(query, kv_value->value);
-        strcat(query, " VALUES (");
-        struct column_list const * column = NULL;
-
-        for (column = kv_value->column_list; column; column = column->next) {
-            strcat(query, "?");
-            if (column->next) {
-                strcat(query, ",");
-            }
-        }
-        strcat(query, ");");
-
-        sqlite3_stmt * stmt = wdb_get_cache_stmt(wdb, query);
-        bool has_error = false;
-        if (NULL != stmt) {
             for (column = kv_value->column_list; column && !has_error; column = column->next) {
                 bool is_default = true;
                 cJSON * field_value = NULL;
@@ -207,20 +87,32 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                 } else {
                     field_value = cJSON_GetObjectItem(data, field_name);
                     if (NULL == field_value) {
-                        mdebug2("Field %s not found in JSON. Setting default", field_name);
                         field_value = wdb_dbsync_get_field_default(&column->value);
                         is_default = true;
                     }
                 }
 
                 if (NULL != field_value) {
-                    if (!wdb_dbsync_stmt_bind_from_json(stmt, column->value.index, column->value.type, field_value)) {
+                    if (!wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value, column->value.can_be_null)) {
                         merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
                         has_error = true;
                     }
+                    ++index;
                     if (!is_default) {
                         cJSON_free(field_value);
                     }
+                }
+            }
+            for (column = kv_value->column_list; column && !has_error; column = column->next) {
+                if (!column->value.is_aux_field && !column->value.is_pk) {
+                    const char * field_name = wdb_dbsync_translate_field(&column->value);
+                    cJSON * field_value = cJSON_GetObjectItem(data, field_name);
+                    if (NULL != field_value &&
+                        !wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value, column->value.can_be_null)) {
+                        merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
+                        has_error = true;
+                    }
+                    ++index;
                 }
             }
             ret_val = !has_error && SQLITE_DONE == wdb_step(stmt);
@@ -269,7 +161,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                     const char * field_name = wdb_dbsync_translate_field(&column->value);
                     cJSON * field_value = cJSON_GetObjectItem(data, field_name);
                     if (NULL != field_value &&
-                        !wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value)) {
+                        !wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value, column->value.can_be_null)) {
                         merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
                         has_error = true;
                     }
@@ -284,7 +176,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
     return ret_val;
 }
 
-STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value) {
+STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value, bool can_be_null) {
 
     bool ret_val = false;
 
@@ -296,12 +188,10 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
             case FIELD_TEXT: {
                 switch (value->type) {
                 case cJSON_String:
-                    if ('\0' != *value->valuestring) {
-                        if (SQLITE_OK == sqlite3_bind_text(stmt, index, value->valuestring, -1, SQLITE_TRANSIENT)) {
-                            ret_val = true;
-                        }
-                    } else {
+                    if ('\0' == *value->valuestring && can_be_null){
                         ret_val = sqlite3_bind_null(stmt, index) == SQLITE_OK ? true : false;
+                    } else if (SQLITE_OK == sqlite3_bind_text(stmt, index, value->valuestring, -1, SQLITE_TRANSIENT)) {
+                            ret_val = true;
                     }
                     break;
                 case cJSON_Number: {
