@@ -451,9 +451,16 @@ typedef enum {
 struct field {
     field_type_t type;
     int index;
-    bool is_old_implementation;
+    bool is_aux_field;
     bool is_pk;
-    char name[OS_SIZE_256];
+    const char * source_name;
+    const char * target_name;
+    union {
+        const char * text;
+        int integer;
+        double real;
+        long long integer_long;
+    } default_value;
 };
 
 struct column_list {
@@ -2202,11 +2209,11 @@ bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, const 
  *
  * @param wdb The Global struct database.
  * @param kv_value Table metadata to build dynamic queries.
- * @param data Values separated with pipe character '|'.
+ * @param data JSON object containing delta information.
  * @retval true when the database insertion is executed successfully.
  * @retval false on error.
  */
-bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
+bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, cJSON *data);
 
 /**
  * @brief Function to modify existing rows with a dynamic query based on metadata.
@@ -2214,11 +2221,22 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
  *
  * @param wdb The Global struct database.
  * @param kv_value Table metadata to build dynamic queries.
- * @param data Values separated with pipe character '|'.
+ * @param data JSON object containing delta information.
  * @retval true when the database update is executed successfully.
  * @retval false on error.
  */
-bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
+bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, cJSON *data);
+
+/**
+ * @brief Function to check if a row exists based on table's PKs.
+ *
+ * @param wdb The Global struct database.
+ * @param kv_value Table metadata to build dynamic queries.
+ * @param data JSON object containing delta information.
+ * @retval true when the database contains the information.
+ * @retval false otherwise.
+ */
+bool wdb_record_exist_dbsync(wdb_t * wdb, struct kv const *kv_value, cJSON *data);
 
 /**
  * @brief Function to delete rows with a dynamic query based on metadata.
@@ -2226,11 +2244,11 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
  *
  * @param wdb The Global struct database.
  * @param kv_value Table metadata to build dynamic queries.
- * @param data Values separated with pipe character '|'.
+ * @param data JSON object containing delta information.
  * @retval true when the database delete is executed successfully.
  * @retval false on error.
  */
-bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
+bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, cJSON *data);
 
 /**
  * @brief Function to select rows with a dynamic query based on metadata.
