@@ -3,6 +3,15 @@ project(utils_unit_test)
 # Adding the utils tests to the general unit_test target
 add_dependencies(${ALL_UNIT_TEST_TARGET} utils_unit_test)
 
+# Setting options for all the rsync tests
+add_compile_options(-O0 -g --coverage)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    link_libraries(-fprofile-arcs)
+else()
+    link_libraries(-lgcov)
+endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
 file(GLOB UTIL_CXX_UNITTEST_WINDOWS_SRC
     "windowsHelper_test.cpp"
     "registryHelper_test.cpp"

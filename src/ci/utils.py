@@ -129,12 +129,14 @@ targetsFolderDic = {
     'rsync_unit_test' : 'shared_modules/rsync/tests',
     'data_provider_unit_test' : 'data_provider/tests',
     'utils_unit_test' : 'shared_modules/utils/tests',
+    'utils_unit_test_coverage' : 'shared_modules/utils',
     'all' : '.',
     'all_unit_test' : '.'
 }
 
 currentBuildDir = Path(__file__).parent
-cmakeBuildDir = f'{currentBuildDir}/../build/'
+currentSrcDir = currentBuildDir.parent
+cmakeBuildDir = f'{currentSrcDir}/build/'
 
 def currentDirPath(moduleName):
     """
@@ -273,21 +275,19 @@ def runCoverage(moduleName):
 
     :param moduleName: Lib to be analyzed using gcov and lcov tools.
     """
-    currentDir = currentDirPath(moduleName)
-    if moduleName == 'shared_modules/utils':
-        reportFolder = os.path.join(moduleName, 'coverage_report')
-    else:
-        reportFolder = os.path.join(currentDir, 'coverage_report')
-
+    moduleNameCoverage = moduleName if moduleName != 'utils_unit_test' else 'utils_unit_test_coverage'
+    currentDir = os.path.join(currentSrcDir, targetsFolderDic[moduleNameCoverage])
+    reportFolder = os.path.join(currentDir, 'coverage_report')
     includeDir = Path(currentDir)
     moduleCMakeFiles = ""
 
-    if moduleName == 'shared_modules/utils':
-        moduleCMakeFiles = os.path.join(currentDir, '*/CMakeFiles/*.dir')
+    if moduleName == 'utils_unit_test':
+        moduleCMakeFiles = os.path.join(
+        cmakeBuildDir, f'{targetsFolderDic[moduleNameCoverage]}/*/CMakeFiles/*.dir')
         includeDir = includeDir.parent
     else:
-        moduleCMakeFiles = os.path.join(
-            currentDir, 'build/tests/*/CMakeFiles/*.dir')
+        moduleCMakeFiles =  os.path.join(
+        cmakeBuildDir, f'{targetsFolderDic[moduleNameCoverage]}/tests/*/CMakeFiles/*.dir')
 
     printHeader(moduleName, 'coverage')
     folders = ''
