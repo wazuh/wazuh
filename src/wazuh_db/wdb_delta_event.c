@@ -77,7 +77,7 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
         if (NULL != stmt) {
             int index = 1;
             for (column = kv_value->column_list; column && !has_error; column = column->next) {
-                bool is_default = true;
+                bool is_default = false;
                 cJSON * field_value = NULL;
 
                 const char * field_name = wdb_dbsync_translate_field(&column->value);
