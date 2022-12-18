@@ -10,7 +10,7 @@
 
 STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value, bool can_be_null);
 
-STATIC inline const char * wdb_dbsync_translate_field(const struct field * field) {
+STATIC const char * wdb_dbsync_translate_field(const struct field * field) {
     return NULL == field->source_name ? field->target_name : field->source_name;
 }
 
@@ -18,19 +18,21 @@ STATIC cJSON * wdb_dbsync_get_field_default(const struct field * field) {
 
     cJSON * retval = NULL;
 
-    switch (field->type) {
-    case FIELD_INTEGER:
-        retval = cJSON_CreateNumber(field->default_value.integer);
-        break;
-    case FIELD_TEXT:
-        retval = cJSON_CreateString(field->default_value.text);
-        break;
-    case FIELD_INTEGER_LONG:
-        retval = cJSON_CreateNumber(field->default_value.integer_long);
-        break;
-    case FIELD_REAL:
-        retval = cJSON_CreateNumber(field->default_value.real);
-        break;
+    if (NULL != field){
+        switch (field->type) {
+            case FIELD_INTEGER:
+                retval = cJSON_CreateNumber(field->default_value.integer);
+                break;
+            case FIELD_TEXT:
+                retval = cJSON_CreateString(field->default_value.text);
+                break;
+            case FIELD_INTEGER_LONG:
+                retval = cJSON_CreateNumber(field->default_value.integer_long);
+                break;
+            case FIELD_REAL:
+                retval = cJSON_CreateNumber(field->default_value.real);
+                break;
+        }
     }
 
     return retval;
@@ -98,8 +100,8 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                         has_error = true;
                     }
                     ++index;
-                    if (!is_default) {
-                        cJSON_free(field_value);
+                    if (is_default) {
+                        cJSON_Delete(field_value);
                     }
                 }
             }

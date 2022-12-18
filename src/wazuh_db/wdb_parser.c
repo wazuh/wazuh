@@ -6163,19 +6163,6 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *ope
     bool ret_val = false;
     cJSON * data = cJSON_Parse(raw_data);
     if (NULL != data) {
-        /*
-        if (strcmp(operation, "INSERTED") == 0 || strcmp(operation, "DELETED") == 0 ||
-            strcmp(operation, "DELETED") == 0) {
-            if (wdb_record_exist_dbsync(wdb, kv_value, data)) {
-                if (strcmp(operation, "DELETED") == 0) {
-                    ret_val = wdb_delete_dbsync(wdb, kv_value, data);
-                } else if (strcmp(operation, "MODIFIED") == 0) {
-                    ret_val = wdb_modify_dbsync(wdb, kv_value, data);
-                }
-            } else {
-                ret_val = wdb_insert_dbsync(wdb, kv_value, data);
-            }
-        */
         if (strcmp(operation, "INSERTED") == 0 || strcmp(operation, "MODIFIED") == 0){
             ret_val = wdb_upsert_dbsync(wdb, kv_value, data);
         } else if (strcmp(operation, "DELETED") == 0) {
@@ -6184,10 +6171,10 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *ope
         } else {
             mdebug1("Invalid operation type: %s", operation);
         }
-        cJSON_free(data);
+        cJSON_Delete(data);
     }
     else {
-        mdebug1("Invalid data: %s", raw_data);
+        merror(DB_DELTA_PARSING_ERR);
     }
     return ret_val;
 }
@@ -6225,7 +6212,7 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
     struct kv_list const *head = TABLE_MAP;
     while (NULL != head) {
         if (strncmp(head->current.key, table_key, OS_SIZE_256 - 1) == 0) {
-            ret_val = process_dbsync_data(wdb, &head->current, operation, data) ? OS_SUCCESS : OS_NOTFOUND;
+            ret_val = process_dbsync_data(wdb, &head->current, operation, data) ? OS_SUCCESS : OS_INVALID;
             break;
         }
         head = head->next;
