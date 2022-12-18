@@ -206,6 +206,9 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                     } else {
                         snprintf(text, OS_SIZE_1024, "%f", value->valuedouble);
                     }
+                    if (SQLITE_OK == sqlite3_bind_text(stmt, index, text, -1, SQLITE_TRANSIENT)) {
+                        ret_val = true;
+                    }
                     break;
                 }
                 }
