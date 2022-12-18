@@ -2313,10 +2313,13 @@ void test_hotfixes_no_action(void **state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_no_table(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+/* wdb_parse_dbsync */
 
-    const char * query = "";
+void test_wdb_parse_dbsync_no_table(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+
+    char * query = NULL;
+    os_strdup("", query);
 
     expect_string(__wrap__mdebug2, formatted_msg, "DBSYNC query: ");
 
@@ -2324,11 +2327,14 @@ void test_wdb_parse_dbsync_no_table(void **state) {
 
     assert_string_equal(data->output, "err Invalid dbsync query syntax, near ''");
     assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
 }
 
-void test_wdb_parse_dbsync_no_operation(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
+void test_wdb_parse_dbsync_no_operation(void ** state) {
+
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
 
     os_strdup("osinfo ", query);
 
@@ -2342,10 +2348,9 @@ void test_wdb_parse_dbsync_no_operation(void **state) {
     os_free(query);
 }
 
-
-void test_wdb_parse_dbsync_no_delta_data(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
+void test_wdb_parse_dbsync_no_delta_data(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
 
     os_strdup("osinfo INSERTED ", query);
 
@@ -2358,9 +2363,9 @@ void test_wdb_parse_dbsync_no_delta_data(void **state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_invalid_table(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
+void test_wdb_parse_dbsync_invalid_table(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
 
     os_strdup("not_existant_table INSERTED data", query);
 
@@ -2372,9 +2377,9 @@ void test_wdb_parse_dbsync_invalid_table(void **state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_delta_data_not_json(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
+void test_wdb_parse_dbsync_delta_data_not_json(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
 
     os_strdup("osinfo INSERTED data", query);
 
@@ -2388,9 +2393,9 @@ void test_wdb_parse_dbsync_delta_data_not_json(void **state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_invalid_operation(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
+void test_wdb_parse_dbsync_invalid_operation(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
 
     os_strdup("osinfo NOOP {}", query);
 
@@ -2404,11 +2409,10 @@ void test_wdb_parse_dbsync_invalid_operation(void **state) {
     os_free(query);
 }
 
+void test_wdb_parse_dbsync_insert_ok(void ** state) {
 
-void test_wdb_parse_dbsync_insert_ok(void **state) {
-    
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
 
     os_strdup("osinfo INSERTED {\"key\": \"value\"}", query);
 
@@ -2423,10 +2427,10 @@ void test_wdb_parse_dbsync_insert_ok(void **state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_insert_err(void **state) {
+void test_wdb_parse_dbsync_insert_err(void ** state) {
 
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
 
     os_strdup("osinfo INSERTED {\"key\": \"value\"}", query);
 
@@ -2441,9 +2445,9 @@ void test_wdb_parse_dbsync_insert_err(void **state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_modified_ok(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
+void test_wdb_parse_dbsync_modified_ok(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
 
     os_strdup("osinfo MODIFIED {\"key\": \"value\"}", query);
 
@@ -2458,9 +2462,9 @@ void test_wdb_parse_dbsync_modified_ok(void **state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_modified_err(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
+void test_wdb_parse_dbsync_modified_err(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
 
     os_strdup("osinfo MODIFIED {\"key\": \"value\"}", query);
 
@@ -2475,10 +2479,9 @@ void test_wdb_parse_dbsync_modified_err(void **state) {
     os_free(query);
 }
 
-
-void test_wdb_parse_dbsync_deleted_ok(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
+void test_wdb_parse_dbsync_deleted_ok(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
 
     os_strdup("osinfo DELETED {\"key\": \"value\"}", query);
 
@@ -2493,9 +2496,9 @@ void test_wdb_parse_dbsync_deleted_ok(void **state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_deleted_err(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
+void test_wdb_parse_dbsync_deleted_err(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
 
     os_strdup("osinfo DELETED {\"key\": \"value\"}", query);
 

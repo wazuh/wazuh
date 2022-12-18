@@ -699,8 +699,7 @@ void test_wdb_dbsync_get_field_default_null(void **state)
     assert_null(wdb_dbsync_get_field_default(NULL));
 }
 
-void test_wdb_dbsync_get_field_default_text(void **state)
-{
+void test_wdb_dbsync_get_field_default_text(void ** state) {
     struct field test_field = {.type = FIELD_TEXT, .default_value.text = "test"};
     cJSON * retval = wdb_dbsync_get_field_default(&test_field);
     assert_non_null(retval);
@@ -708,8 +707,7 @@ void test_wdb_dbsync_get_field_default_text(void **state)
     cJSON_Delete(retval);
 }
 
-void test_wdb_dbsync_get_field_default_integer(void **state)
-{
+void test_wdb_dbsync_get_field_default_integer(void ** state) {
     struct field test_field = {.type = FIELD_INTEGER, .default_value.integer = 1234};
     cJSON * retval = wdb_dbsync_get_field_default(&test_field);
     assert_non_null(retval);
@@ -717,32 +715,28 @@ void test_wdb_dbsync_get_field_default_integer(void **state)
     cJSON_Delete(retval);
 }
 
-void test_wdb_dbsync_get_field_default_real(void **state)
-{
+void test_wdb_dbsync_get_field_default_real(void ** state) {
     struct field test_field = {.type = FIELD_REAL, .default_value.real = 3.14159265};
     cJSON * retval = wdb_dbsync_get_field_default(&test_field);
     assert_non_null(retval);
-    assert_double_equal(retval->valuedouble, 3.14159265,0 );
+    assert_float_equal(retval->valuedouble, 3.14159265, 0.001);
     cJSON_Delete(retval);
 }
 
-void test_wdb_dbsync_get_field_default_long(void **state)
-{
+void test_wdb_dbsync_get_field_default_long(void ** state) {
     struct field test_field = {.type = FIELD_INTEGER_LONG, .default_value.integer_long = LONG_MAX};
     cJSON * retval = wdb_dbsync_get_field_default(&test_field);
     assert_non_null(retval);
-    assert_double_equal(retval->valuedouble, LONG_MAX, 0);
+    assert_float_equal(retval->valuedouble, LONG_MAX, 0.001);
     cJSON_Delete(retval);
 }
 
-void test_wdb_dbsync_translate_field_not_translated(void **state)
-{
+void test_wdb_dbsync_translate_field_not_translated(void ** state) {
     struct field test_field = {.source_name = NULL, .target_name = "db_field_name"};
     assert_string_equal(wdb_dbsync_translate_field(&test_field), "db_field_name");
 }
 
-void test_wdb_dbsync_translate_field_translated(void **state)
-{
+void test_wdb_dbsync_translate_field_translated(void ** state) {
     struct field test_field = {.source_name = "delta_field_name", .target_name = "db_field_name"};
     assert_string_equal(wdb_dbsync_translate_field(&test_field), "delta_field_name");
 }

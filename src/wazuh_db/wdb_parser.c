@@ -6158,12 +6158,11 @@ int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output) {
     return result;
 }
 
-bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *operation, const char *raw_data)
-{
+bool process_dbsync_data(wdb_t * wdb, const struct kv * kv_value, const char * operation, const char * raw_data) {
     bool ret_val = false;
     cJSON * data = cJSON_Parse(raw_data);
     if (NULL != data) {
-        if (strcmp(operation, "INSERTED") == 0 || strcmp(operation, "MODIFIED") == 0){
+        if (strcmp(operation, "INSERTED") == 0 || strcmp(operation, "MODIFIED") == 0) {
             ret_val = wdb_upsert_dbsync(wdb, kv_value, data);
         } else if (strcmp(operation, "DELETED") == 0) {
             wdb_delete_dbsync(wdb, kv_value, data);
@@ -6172,8 +6171,7 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *ope
             mdebug1("Invalid operation type: %s", operation);
         }
         cJSON_Delete(data);
-    }
-    else {
+    } else {
         merror(DB_DELTA_PARSING_ERR);
     }
     return ret_val;

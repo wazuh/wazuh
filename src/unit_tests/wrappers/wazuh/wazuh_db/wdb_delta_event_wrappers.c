@@ -7,19 +7,21 @@
  * Foundation
  */
 
-
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
 #include "wdb_delta_event_wrappers.h"
 
-
-bool __wrap_wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data){
+bool __wrap_wdb_delete_dbsync(__attribute__((__unused__)) wdb_t * wdb,
+                              __attribute__((__unused__)) struct kv const * kv_value,
+                              __attribute__((__unused__)) cJSON * data) {
     function_called();
     return mock();
 }
-bool __wrap_wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data){
+bool __wrap_wdb_upsert_dbsync(__attribute__((__unused__)) wdb_t * wdb,
+                              __attribute__((__unused__)) struct kv const * kv_value,
+                              __attribute__((__unused__)) cJSON * data) {
     function_called();
     return mock();
 }
