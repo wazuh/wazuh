@@ -23,3 +23,7 @@ target_link_libraries(sysInfoPort_unit_test
 
 add_test(NAME sysInfoPort_unit_test
     COMMAND sysInfoPort_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sysInfoPort_unit_test sysInfoPort_unit_test)
+endif()

@@ -37,3 +37,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME sqlite_unit_test
     COMMAND sqlite_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sqlite_unit_test sqlite_unit_test)
+endif()

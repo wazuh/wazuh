@@ -35,3 +35,7 @@ endif()
 
 add_test(NAME sys_normalizer_unit_test
     COMMAND sys_normalizer_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sys_normalizer_unit_test sys_normalizer_unit_test)
+endif()

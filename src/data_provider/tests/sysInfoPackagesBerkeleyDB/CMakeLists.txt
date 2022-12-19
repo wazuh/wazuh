@@ -21,3 +21,7 @@ target_link_libraries(sysInfoPackagesBerkeleyDB_unit_test
 
 add_test(NAME sysInfoPackagesBerkeleyDB_unit_test
     COMMAND sysInfoPackagesBerkeleyDB_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sysInfoPackagesBerkeleyDB_unit_test sysInfoPackagesBerkeleyDB_unit_test)
+endif()

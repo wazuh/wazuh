@@ -75,3 +75,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME utils_unit_test
     COMMAND utils_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(utils_unit_test utils_unit_test)
+endif()

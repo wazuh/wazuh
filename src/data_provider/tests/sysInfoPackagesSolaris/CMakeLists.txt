@@ -21,3 +21,7 @@ target_link_libraries(sysInfoSolarisPackage_unit_test
 
 add_test(NAME sysInfoSolarisPackage_unit_test
     COMMAND sysInfoSolarisPackage_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sysInfoSolarisPackage_unit_test sysInfoSolarisPackage_unit_test)
+endif()

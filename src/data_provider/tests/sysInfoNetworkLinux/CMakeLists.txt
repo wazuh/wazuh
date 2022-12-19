@@ -24,3 +24,7 @@ target_link_libraries(sysInfoNetworkLinux_unit_test
 
 add_test(NAME sysInfoNetworkLinux_unit_test
     COMMAND sysInfoNetworkLinux_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sysInfoNetworkLinux_unit_test sysInfoNetworkLinux_unit_test)
+endif()

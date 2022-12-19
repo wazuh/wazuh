@@ -24,3 +24,7 @@ target_link_libraries(sysInfoNetworkSolaris_unit_test
 
 add_test(NAME sysInfoNetworkSolaris_unit_test
     COMMAND sysInfoNetworkSolaris_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sysInfoNetworkSolaris_unit_test sysInfoNetworkSolaris_unit_test)
+endif()

@@ -20,3 +20,7 @@ target_link_libraries(RpmPackageManager_unit_test
 
 add_test(NAME RpmPackageManager_unit_test
     COMMAND RpmPackageManager_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(RpmPackageManager_unit_test RpmPackageManager_unit_test)
+endif()

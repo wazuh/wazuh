@@ -25,3 +25,7 @@ target_link_libraries(sysInfoPackagesLinuxHelper_unit_test
 
 add_test(NAME sysInfoPackagesLinuxHelper_unit_test
     COMMAND sysInfoPackagesLinuxHelper_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sysInfoPackagesLinuxHelper_unit_test sysInfoPackagesLinuxHelper_unit_test)
+endif()

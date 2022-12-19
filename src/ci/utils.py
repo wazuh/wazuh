@@ -176,8 +176,8 @@ def makeLib(moduleName):
                          stderr=subprocess.PIPE, shell=True)
     if out.returncode != 0:
         print(command)
-        print(out.stdout)
-        print(out.stderr)
+        print(out.stdout.decode('utf-8', 'ignore'))
+        print(out.stderr.decode('utf-8', 'ignore'))
         errorString = f'Error compiling library: {str(out.returncode)}'
         raise ValueError(errorString)
     printGreen(f'{moduleName} > [make: PASSED]')
@@ -190,7 +190,7 @@ def runTests(moduleName):
     :param moduleName: Lib representing the tests to be executed.
     """
     printHeader(moduleName, 'tests')
-    command = f'ctest --output-on-failure --test-dir {cmakeBuildDir}{targetsFolderDic[moduleName]}'
+    command = f'ctest --output-on-failure --test-dir {cmakeBuildDir}{targetsFolderDic[moduleName]} -E memcheck'
 
     out = subprocess.run(command, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, shell=True)
@@ -240,33 +240,18 @@ def runValgrind(moduleName):
 
     :param moduleName: Lib to be analyzed using valgrind tool.
     """
-    printHeader(moduleName, 'valgrind')
-    tests = []
-    reg = re.compile(
-        ".*unit_test|.*unit_test.exe|.*integration_test|.*integration_test.exe")
-    currentDir = ""
-    if str(moduleName) == 'shared_modules/utils':
-        currentDir = os.path.join(currentDirPath(moduleName), 'build')
+    valgrindCommand = f'ctest --output-on-failure --test-dir {cmakeBuildDir}{targetsFolderDic[moduleName]} -R memcheck'
+
+    out = subprocess.run(valgrindCommand, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0:
+        printGreen(f'[{moduleName} : PASSED]')
     else:
-        currentDir = os.path.join(currentDirPath(moduleName), 'build/bin')
-
-    objects = os.scandir(currentDir)
-    for entry in objects:
-        if entry.is_file() and bool(re.match(reg, entry.name)):
-            tests.append(entry.name)
-    valgrindCommand = "valgrind --leak-check=full --show-leak-kinds=all -q --error-exitcode=1 " + currentDir
-
-    for test in tests:
-        out = subprocess.run(os.path.join(valgrindCommand, test), stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, shell=True)
-        if out.returncode == 0:
-            printGreen(f'[{test} : PASSED]')
-        else:
-            print(out.stdout)
-            print(out.stderr)
-            printFail(f'[{test} : FAILED]')
-            errorString = 'Error Running valgrind: ' + str(out.returncode)
-            raise ValueError(errorString)
+        print(out.stdout.decode('utf-8', 'ignore'))
+        print(out.stderr.decode('utf-8', 'ignore'))
+        printFail(f'[{moduleName} : FAILED]')
+        errorString = 'Error Running valgrind: ' + str(out.returncode)
+        raise ValueError(errorString)
 
 
 def runCoverage(moduleName):
