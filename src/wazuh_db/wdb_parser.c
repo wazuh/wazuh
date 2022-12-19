@@ -123,7 +123,7 @@ static struct column_list const TABLE_PORTS[PORTS_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 15, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL},
 };
 
-#define PACKAGES_FIELD_COUNT 19  //Se corrigio
+#define PACKAGES_FIELD_COUNT 19
 static struct column_list const TABLE_PACKAGES[PACKAGES_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_PACKAGES[1] },
     { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_PACKAGES[2] },
