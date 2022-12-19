@@ -187,7 +187,7 @@ void test_wdb_dbsync_stmt_bind_from_json_integer_to_long(void ** state) {
     expect_value(__wrap_sqlite3_bind_int64, index, TEST_INDEX);
     expect_value(__wrap_sqlite3_bind_int64, value, 123456789);
     will_return(__wrap_sqlite3_bind_int64, SQLITE_OK);
-    assert_false(
+    assert_true(
         wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, FIELD_INTEGER_LONG, value, true));
     cJSON_Delete(value);
 }
@@ -250,20 +250,112 @@ void test_wdb_upsert_dbsync_bad_cache(void ** state) {
     assert_false(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, (cJSON *) ANY_PTR_VALUE));
 }
 
-void test_wdb_upsert_dbsync_step_nok(void ** state) {
+void test_wdb_upsert_dbsync_stmt_nok(void ** state) {
     struct column_list const TEST_FIELDS[] = {
-        {.value = {FIELD_INTEGER, 1, true, false, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
-        {.value = {FIELD_TEXT, 2, false, false, NULL, "test_2", {.text = ""}, true}, .next = &TEST_FIELDS[2]},
-        {.value = {FIELD_INTEGER, 3, true, false, NULL, "test_3", {.integer = 0}, true}, .next = NULL},
+        // PKs
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        {.value = {FIELD_TEXT, 2, false, true, NULL, "test_2", {.text = ""}, true}, .next = &TEST_FIELDS[2]},
+        // Regular fields
+        {.value = {FIELD_INTEGER, 3, false, false, NULL, "test_3", {.integer = 0}, true}, .next = &TEST_FIELDS[3]},
+        {.value = {FIELD_TEXT, 5, false, false, NULL, "test_4", {.text = ""}, true}, .next = &TEST_FIELDS[4]},
+        // Old values
+        {.value = {FIELD_INTEGER, 6, true, false, NULL, "test_5", {.integer = 0}, true}, .next = NULL},
     };
 
     struct kv const TEST_TABLE = {"table_origin_name", "table_target_name", false, TEST_FIELDS};
 
-    cJSON * delta = cJSON_Parse("{\"test_1\":3210,\"test_2\":\"value_1\",\"test_3\":1234}");
+    cJSON * delta = cJSON_Parse("{\"test_1\":4321,\"test_2\":\"value_2\",\"test_3\":1234,\"test_4\":\"value_4\"}");
+    wdb_t db = {.id = "test-db"};
     will_return(__wrap_wdb_get_cache_stmt, (sqlite3_stmt *) ANY_PTR_VALUE);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 3210);
+    expect_value(__wrap_sqlite3_bind_int, value, 4321);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    expect_string(__wrap__merror, formatted_msg,
+                  "(5216): DB(test-db) Could not bind delta field 'test_1' from 'table_origin_name' scan.");
+    assert_false(wdb_upsert_dbsync(&db, &TEST_TABLE, delta));
+    cJSON_Delete(delta);
+}
+
+void test_wdb_upsert_dbsync_field_stmt_nok(void ** state) {
+    struct column_list const TEST_FIELDS[] = {
+        // PKs
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        {.value = {FIELD_TEXT, 2, false, true, NULL, "test_2", {.text = ""}, true}, .next = &TEST_FIELDS[2]},
+        // Regular fields
+        {.value = {FIELD_INTEGER, 3, false, false, NULL, "test_3", {.integer = 0}, true}, .next = &TEST_FIELDS[3]},
+        {.value = {FIELD_TEXT, 5, false, false, NULL, "test_4", {.text = ""}, true}, .next = &TEST_FIELDS[4]},
+        // Old values
+        {.value = {FIELD_INTEGER, 6, true, false, NULL, "test_5", {.integer = 0}, true}, .next = NULL},
+    };
+
+    struct kv const TEST_TABLE = {"table_origin_name", "table_target_name", false, TEST_FIELDS};
+
+    cJSON * delta = cJSON_Parse("{\"test_1\":4321,\"test_2\":\"value_2\",\"test_3\":1234,\"test_4\":\"value_4\"}");
+    wdb_t db = {.id = "test-db"};
+
+    will_return(__wrap_wdb_get_cache_stmt, (sqlite3_stmt *) ANY_PTR_VALUE);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 4321);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "value_2");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "value_4");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 5);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    // Not PKs or Aux fields
+    expect_value(__wrap_sqlite3_bind_int, index, 6);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "value_4");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    expect_string(__wrap__merror, formatted_msg,
+                  "(5216): DB(test-db) Could not bind delta field 'test_4' from 'table_origin_name' scan.");
+    assert_false(wdb_upsert_dbsync(&db, &TEST_TABLE, delta));
+    cJSON_Delete(delta);
+}
+
+void test_wdb_upsert_dbsync_step_nok(void ** state) {
+    struct column_list const TEST_FIELDS[] = {
+        // PKs
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        {.value = {FIELD_TEXT, 2, false, true, NULL, "test_2", {.text = ""}, true}, .next = &TEST_FIELDS[2]},
+        // Regular fields
+        {.value = {FIELD_INTEGER, 3, false, false, NULL, "test_3", {.integer = 0}, true}, .next = &TEST_FIELDS[3]},
+        {.value = {FIELD_TEXT, 5, false, false, NULL, "test_4", {.text = ""}, true}, .next = &TEST_FIELDS[4]},
+        // Old values
+        {.value = {FIELD_INTEGER, 6, true, false, NULL, "test_5", {.integer = 0}, true}, .next = NULL},
+    };
+
+    struct kv const TEST_TABLE = {"table_origin_name", "table_target_name", false, TEST_FIELDS};
+
+    cJSON * delta = cJSON_Parse("{\"test_1\":4321,\"test_2\":\"value_2\",\"test_3\":1234,\"test_4\":\"value_4\"}");
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    will_return(__wrap_wdb_get_cache_stmt, (sqlite3_stmt *) ANY_PTR_VALUE);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 4321);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "value_2");
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "value_4");
+    expect_value(__wrap_sqlite3_bind_int, index, 5);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    // Not PKs or Aux fields
+    expect_value(__wrap_sqlite3_bind_int, index, 6);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "value_4");
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     assert_false(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
     cJSON_Delete(delta);
@@ -271,23 +363,116 @@ void test_wdb_upsert_dbsync_step_nok(void ** state) {
 
 void test_wdb_upsert_dbsync_ok(void ** state) {
     struct column_list const TEST_FIELDS[] = {
-        {.value = {FIELD_INTEGER, 1, true, false, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
-        {.value = {FIELD_TEXT, 2, false, false, NULL, "test_2", {.text = ""}, true}, .next = &TEST_FIELDS[2]},
-        {.value = {FIELD_INTEGER, 3, true, false, NULL, "test_3", {.integer = 0}, true}, .next = NULL},
+        // PKs
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        {.value = {FIELD_TEXT, 2, false, true, NULL, "test_2", {.text = ""}, true}, .next = &TEST_FIELDS[2]},
+        // Regular fields
+        {.value = {FIELD_INTEGER, 3, false, false, NULL, "test_3", {.integer = 0}, true}, .next = &TEST_FIELDS[3]},
+        {.value = {FIELD_TEXT, 5, false, false, NULL, "test_4", {.text = ""}, true}, .next = &TEST_FIELDS[4]},
+        // Old values
+        {.value = {FIELD_INTEGER, 6, true, false, NULL, "test_5", {.integer = 0}, true}, .next = NULL},
     };
 
     struct kv const TEST_TABLE = {"table_origin_name", "table_target_name", false, TEST_FIELDS};
 
-    cJSON * delta = cJSON_Parse("{\"test_1\":3210,\"test_2\":\"value_1\",\"test_3\":1234}");
+    cJSON * delta = cJSON_Parse("{\"test_1\":4321,\"test_2\":\"value_2\",\"test_3\":1234,\"test_4\":\"value_4\"}");
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+
     will_return(__wrap_wdb_get_cache_stmt, (sqlite3_stmt *) ANY_PTR_VALUE);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 3210);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, value, 4321);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "value_2");
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "value_4");
+    expect_value(__wrap_sqlite3_bind_int, index, 5);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    // Not PKs or Aux fields
+    expect_value(__wrap_sqlite3_bind_int, index, 6);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "value_4");
     will_return(__wrap_wdb_step, SQLITE_DONE);
     assert_true(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
     cJSON_Delete(delta);
 }
 
+void test_wdb_upsert_dbsync_default_regular_field_canbenull(void ** state) {
+    struct column_list const TEST_FIELDS[] = {
+        // PKs
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        {.value = {FIELD_TEXT, 2, false, true, NULL, "test_2", {.text = ""}, true}, .next = &TEST_FIELDS[2]},
+        // Regular fields
+        {.value = {FIELD_INTEGER, 3, false, false, NULL, "test_3", {.integer = 0}, true}, .next = &TEST_FIELDS[3]},
+        {.value = {FIELD_TEXT, 5, false, false, NULL, "test_4", {.text = ""}, true}, .next = &TEST_FIELDS[4]},
+        // Old values
+        {.value = {FIELD_INTEGER, 6, true, false, NULL, "test_5", {.integer = 0}, true}, .next = NULL},
+    };
+
+    struct kv const TEST_TABLE = {"table_origin_name", "table_target_name", false, TEST_FIELDS};
+
+    cJSON * delta = cJSON_Parse("{\"test_1\":4321,\"test_2\":\"value_2\",\"test_3\":1234}");
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_null, SQLITE_OK);
+
+    will_return(__wrap_wdb_get_cache_stmt, (sqlite3_stmt *) ANY_PTR_VALUE);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 4321);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "value_2");
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    expect_value(__wrap_sqlite3_bind_null, index, 4);
+    expect_value(__wrap_sqlite3_bind_int, index, 5);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    // Not PKs or Aux fields
+    expect_value(__wrap_sqlite3_bind_int, index, 6);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    assert_true(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
+    cJSON_Delete(delta);
+}
+
+void test_wdb_upsert_dbsync_default_regular_field_cannotbenull(void ** state) {
+    struct column_list const TEST_FIELDS[] = {
+        // PKs
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        {.value = {FIELD_TEXT, 2, false, true, NULL, "test_2", {.text = ""}, true}, .next = &TEST_FIELDS[2]},
+        // Regular fields
+        {.value = {FIELD_INTEGER, 3, false, false, NULL, "test_3", {.integer = 0}, true}, .next = &TEST_FIELDS[3]},
+        {.value = {FIELD_TEXT, 5, false, false, NULL, "test_4", {.text = ""}, false}, .next = &TEST_FIELDS[4]},
+        // Old values
+        {.value = {FIELD_INTEGER, 6, true, false, NULL, "test_5", {.integer = 0}, true}, .next = NULL},
+    };
+
+    struct kv const TEST_TABLE = {"table_origin_name", "table_target_name", false, TEST_FIELDS};
+
+    cJSON * delta = cJSON_Parse("{\"test_1\":4321,\"test_2\":\"value_2\",\"test_3\":1234}");
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    will_return(__wrap_wdb_get_cache_stmt, (sqlite3_stmt *) ANY_PTR_VALUE);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 4321);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "value_2");
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_int, index, 5);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    // Not PKs or Aux fields
+    expect_value(__wrap_sqlite3_bind_int, index, 6);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    assert_true(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
+    cJSON_Delete(delta);
+}
 //
 // wdb_delete_dbsync
 //
@@ -344,6 +529,32 @@ void test_wdb_delete_dbsync_step_nok(void ** state) {
     cJSON_Delete(delta);
 }
 
+void test_wdb_delete_dbsync_stmt_nok(void ** state) {
+    struct column_list const TEST_FIELDS[] = {
+        // PKs
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        {.value = {FIELD_TEXT, 2, false, true, NULL, "test_2", {.text = ""}, true}, .next = &TEST_FIELDS[2]},
+        // Regular fields
+        {.value = {FIELD_INTEGER, 3, false, false, NULL, "test_3", {.integer = 0}, true}, .next = &TEST_FIELDS[3]},
+        {.value = {FIELD_TEXT, 5, false, false, NULL, "test_4", {.text = ""}, true}, .next = &TEST_FIELDS[4]},
+        // Old values
+        {.value = {FIELD_INTEGER, 6, true, false, NULL, "test_5", {.integer = 0}, true}, .next = NULL},
+    };
+
+    struct kv const TEST_TABLE = {"table_origin_name", "table_target_name", false, TEST_FIELDS};
+
+    cJSON * delta = cJSON_Parse("{\"test_1\":4321,\"test_2\":\"value_2\",\"test_3\":1234,\"test_4\":\"value_4\"}");
+    wdb_t db = {.id = "test-db"};
+    will_return(__wrap_wdb_get_cache_stmt, (sqlite3_stmt *) ANY_PTR_VALUE);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 4321);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    expect_string(__wrap__merror, formatted_msg,
+                  "(5216): DB(test-db) Could not bind delta field 'test_1' from 'table_origin_name' scan.");
+    assert_false(wdb_delete_dbsync(&db, &TEST_TABLE, delta));
+    cJSON_Delete(delta);
+}
+
 void test_wdb_delete_dbsync_ok(void ** state) {
     struct column_list const TEST_FIELDS[] = {
         // PKs
@@ -358,7 +569,7 @@ void test_wdb_delete_dbsync_ok(void ** state) {
 
     struct kv const TEST_TABLE = {"table_origin_name", "table_target_name", false, TEST_FIELDS};
 
-    cJSON * delta = cJSON_Parse("{\"test_1\":4321,\"test_2\":\"value_2\",\"test_3\":1234,\"test_4\":\"value_1\"}");
+    cJSON * delta = cJSON_Parse("{\"test_1\":4321,\"test_2\":\"value_2\",\"test_3\":1234,\"test_4\":\"value_4\"}");
     will_return(__wrap_wdb_get_cache_stmt, (sqlite3_stmt *) ANY_PTR_VALUE);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 4321);
@@ -450,29 +661,23 @@ int main() {
         cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_string_to_real_err),
         cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_integer_to_real_ok),
         cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_integer_to_real_err),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_long_to_text),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_integer_to_text),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_string_to_integer_ok),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_string_to_integer_err),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_integer_to_integer),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_real_to_integer),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_double_to_integer),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_string_to_long_ok),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_string_to_long_err),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_double_to_long),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_long_to_long),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_integer_to_long),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_string_to_real_ok),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_string_to_real_err),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_long_to_real),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_double_to_real),
-        // cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_integer_to_real),
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_string_to_long_err_stmt),
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_string_to_long_ok),
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_string_to_long_err),
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_json_integer_to_long),
+        /* wdb_upsert_dbsync */
+        cmocka_unit_test(test_wdb_upsert_dbsync_err),
+        cmocka_unit_test(test_wdb_upsert_dbsync_bad_cache),
+        cmocka_unit_test(test_wdb_upsert_dbsync_stmt_nok),
+        cmocka_unit_test(test_wdb_upsert_dbsync_field_stmt_nok),
+        cmocka_unit_test(test_wdb_upsert_dbsync_step_nok),
+        cmocka_unit_test(test_wdb_upsert_dbsync_ok),
+        cmocka_unit_test(test_wdb_upsert_dbsync_default_regular_field_canbenull),
+        cmocka_unit_test(test_wdb_upsert_dbsync_default_regular_field_cannotbenull),
         /* wdb_delete_dbsync */
-        cmocka_unit_test(test_wdb_delete_dbsync_err),
-        cmocka_unit_test(test_wdb_delete_dbsync_bad_cache),
-        cmocka_unit_test(test_wdb_delete_dbsync_step_nok),
-        cmocka_unit_test(test_wdb_delete_dbsync_ok)
-    };
+        cmocka_unit_test(test_wdb_delete_dbsync_err), cmocka_unit_test(test_wdb_delete_dbsync_bad_cache),
+        cmocka_unit_test(test_wdb_delete_dbsync_step_nok), cmocka_unit_test(test_wdb_delete_dbsync_ok),
+        cmocka_unit_test(test_wdb_delete_dbsync_stmt_nok)};
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
