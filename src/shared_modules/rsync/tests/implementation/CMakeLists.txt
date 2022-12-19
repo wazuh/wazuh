@@ -43,3 +43,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME rsync_implementation_unit_test
     COMMAND rsync_implementation_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(rsync_implementation_unit_test rsync_implementation_unit_test)
+endif()

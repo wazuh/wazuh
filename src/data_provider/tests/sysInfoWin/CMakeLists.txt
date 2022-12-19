@@ -20,3 +20,7 @@ target_link_libraries(sysInfoWindows_unit_test
 
 add_test(NAME sysInfoWindows_unit_test
     COMMAND sysInfoWindows_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sysInfoWindows_unit_test sysInfoWindows_unit_test)
+endif()

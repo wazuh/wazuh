@@ -101,7 +101,7 @@ class CommandLineParser:
             if self._argIsCmakeCoverageTargetValid(args.coverage):
                 utils.runCoverage(args.coverage)
                 action = True
-            if self._argIsCmakeLibOrTestTargetValid(args.valgrind):
+            if self._argIsCmakeTestTargetValid(args.valgrind):
                 utils.runValgrind(args.valgrind)
                 action = True
             if self._argIsCmakeLibOrTestTargetValid(args.cppcheck):

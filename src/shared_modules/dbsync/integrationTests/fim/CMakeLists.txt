@@ -41,3 +41,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME fim_integration_test
     COMMAND fim_integration_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(fim_integration_test fim_integration_test)
+endif()

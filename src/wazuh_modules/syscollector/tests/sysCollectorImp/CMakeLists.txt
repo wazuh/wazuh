@@ -58,3 +58,7 @@ endif()
 
 add_test(NAME syscollectorimp_unit_test
     COMMAND syscollectorimp_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(syscollectorimp_unit_test syscollectorimp_unit_test)
+endif()

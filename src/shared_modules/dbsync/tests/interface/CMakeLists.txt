@@ -33,3 +33,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME dbsyncInterface_unit_test
     COMMAND dbsyncInterface_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(dbsyncInterface_unit_test dbsyncInterface_unit_test)
+endif()

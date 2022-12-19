@@ -25,3 +25,7 @@ endif(APPLE)
 
 add_test(NAME sysInfoMacPackage_unit_test
     COMMAND sysInfoMacPackage_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sysInfoMacPackage_unit_test sysInfoMacPackage_unit_test)
+endif()

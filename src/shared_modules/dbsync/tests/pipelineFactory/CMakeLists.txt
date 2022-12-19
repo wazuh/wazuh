@@ -38,3 +38,7 @@ endif()
 
 add_test(NAME dbsyncPipelineFactory_unit_test
     COMMAND dbsyncPipelineFactory_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(dbsyncPipelineFactory_unit_test dbsyncPipelineFactory_unit_test)
+endif()

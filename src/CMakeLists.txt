@@ -35,6 +35,19 @@ set(ALL_UNIT_TEST_TARGET all_unit_test)
 add_custom_target(${ALL_UNIT_TEST_TARGET})
 enable_testing()
 
+# Functions to add Valgrind tests
+find_program(CMAKE_MEMORYCHECK_COMMAND valgrind)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+  set(CMAKE_MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --show-leak-kinds=all -q --error-exitcode=1")
+
+  function(add_memcheck_test name binary)
+    set(memcheck_command "${CMAKE_MEMORYCHECK_COMMAND} ${CMAKE_MEMORYCHECK_COMMAND_OPTIONS}")
+    separate_arguments(memcheck_command)
+    add_test(memcheck_${name} ${memcheck_command} ${SRC_FOLDER}/build/bin/${binary})
+  endfunction(add_memcheck_test)
+endif()
+
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)

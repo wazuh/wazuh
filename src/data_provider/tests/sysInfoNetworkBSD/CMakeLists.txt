@@ -21,5 +21,10 @@ target_link_libraries(sysInfoNetworkBSD_unit_test
     cjson
     dl
 )
+
 add_test(NAME sysInfoNetworkBSD_unit_test
     COMMAND sysInfoNetworkBSD_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sysInfoNetworkBSD_unit_test sysInfoNetworkBSD_unit_test)
+endif()

@@ -25,3 +25,7 @@ target_link_libraries(sysInfoPackageLinuxParserRPM_unit_test
 
 add_test(NAME sysInfoPackageLinuxParserRPM_unit_test
     COMMAND sysInfoPackageLinuxParserRPM_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sysInfoPackageLinuxParserRPM_unit_test sysInfoPackageLinuxParserRPM_unit_test)
+endif()

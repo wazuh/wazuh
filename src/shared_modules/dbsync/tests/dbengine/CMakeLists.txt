@@ -33,3 +33,7 @@ endif()
 
 add_test(NAME dbengine_unit_test
     COMMAND dbengine_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(dbengine_unit_test dbengine_unit_test)
+endif()

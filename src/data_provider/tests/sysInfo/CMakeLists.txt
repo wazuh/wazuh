@@ -38,3 +38,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME sysinfo_unit_test
     COMMAND sysinfo_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sysinfo_unit_test sysinfo_unit_test)
+endif()
