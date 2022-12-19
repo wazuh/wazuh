@@ -4,7 +4,7 @@ from os import path
 from aws_bucket import AWSBucket, AWSCustomBucket
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import tools
+import aws_tools
 
 
 class AWSLBBucket(AWSCustomBucket):
@@ -64,8 +64,8 @@ class AWSALBBucket(AWSLBBucket):
                             port += f"{item[1]} "
                         log_entry[field_to_process], log_entry[ip_field] = port.strip(), ip.strip()
                     except (ValueError, IndexError):
-                        tools.debug(f"Unable to process correctly ABL log entry, for field {field_to_process}.", msg_level=1)
-                        tools.debug(f"Log Entry: {log_entry}", msg_level=2)
+                        aws_tools.debug(f"Unable to process correctly ABL log entry, for field {field_to_process}.", msg_level=1)
+                        aws_tools.debug(f"Log Entry: {log_entry}", msg_level=2)
 
             return tsv_file
 

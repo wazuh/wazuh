@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import aws_s3
-import tools
+import aws_tools
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
@@ -27,7 +27,7 @@ import aws_utils as utils
     (['main', '--service', 'inspector'], 'services.inspector.AWSInspector'),
     (['main', '--service', 'cloudwatchlogs'], 'services.cloudwatchlogs.AWSCloudWatchLogs')
 ])
-@patch('tools.get_script_arguments', side_effect=tools.get_script_arguments)
+@patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
 def test_main(mock_arguments, args, class_):
     instance = MagicMock()
     with patch("sys.argv", args), \
@@ -40,15 +40,15 @@ def test_main(mock_arguments, args, class_):
         instance.check_bucket.assert_called_once()
         instance.iter_bucket.assert_called_once()
     elif 'service' in args[1]:
-        assert mocked_class.call_count == len(tools.ALL_REGIONS)
-        assert instance.get_alerts.call_count == len(tools.ALL_REGIONS)
+        assert mocked_class.call_count == len(aws_tools.ALL_REGIONS)
+        assert instance.get_alerts.call_count == len(aws_tools.ALL_REGIONS)
 
 
 @pytest.mark.parametrize('args', [
     ['main', '--bucket', 'bucket_name', '--type', 'invalid'],
     ['main', '--service', 'invalid']
 ])
-@patch('tools.get_script_arguments', side_effect=tools.get_script_arguments)
+@patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
 def test_main_ko(mock_arguments, args):
     with patch("sys.argv", args), \
             pytest.raises(SystemExit) as e:
