@@ -3,7 +3,7 @@ from os import path
 from aws_bucket import AWSBucket, AWSCustomBucket
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import tools
+import aws_tools
 
 
 class AWSGuardDutyBucket(AWSCustomBucket):
@@ -18,7 +18,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             self.send_msg(msg)
 
     def reformat_msg(self, event):
-        tools.debug('++ Reformat message', 3)
+        aws_tools.debug('++ Reformat message', 3)
         if event['aws']['source'] == 'guardduty' and 'service' in event['aws'] and \
                 'action' in event['aws']['service'] and \
                 'portProbeAction' in event['aws']['service']['action'] and \
