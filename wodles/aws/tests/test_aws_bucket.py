@@ -356,16 +356,30 @@ def test_AWSBucket_find_regions_ko(mock_prefix, error_code, exit_code):
         bucket.find_regions(utils.TEST_ACCOUNT_ID)
     assert e.value.code == exit_code
 
+
 @pytest.mark.skip("Not implemented yet")
 def test_AWSBucket_build_s3_filter_args():
     pass
 
 
-@pytest.mark.skip("Not implemented yet")
 def test_AWSBucket_reformat_msg():
-    """Test 'reformat_msg' returns expected event."""
+    """Test 'reformat_msg' function applies the expected format to a given event."""
+    bucket = utils.get_mocked_AWSBucket()
+    event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    event['aws'].update(
+        {
+            'sourceIPAddress': '255.255.255.255',
+            'tags': ['tag1', 'tag2'],
+            'additional_field': ['element']
+        }
+    )
 
-    pass
+    formatted_event = bucket.reformat_msg(event)
+
+    assert isinstance(formatted_event['aws']['tags'], dict)
+    assert not isinstance(formatted_event['aws']['additional_field'], list)
+    assert formatted_event['aws']['source_ip_address'] == '255.255.255.255'
+    assert formatted_event['aws']['tags'] == {'value': ['tag1', 'tag2']}
 
 
 @patch('gzip.open')
@@ -441,9 +455,32 @@ def test_AWSBucket_decompress_file_ko(mock_io):
     assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSBucket_get_log_file():
-    pass
+@patch('aws_bucket.AWSBucket.load_information_from_file', return_value=[SAMPLE_EVENT_1, SAMPLE_EVENT_2])
+def test_AWSBucket_get_log_file(mock_load_from_file):
+    bucket = utils.get_mocked_AWSBucket()
+    bucket.get_log_file(utils.TEST_ACCOUNT_ID, 'test.log')
+    mock_load_from_file.assert_called_with(log_key='test.log')
+
+
+import csv
+
+
+@pytest.mark.parametrize('exception, error_message, exit_code', [
+    (TypeError, 'Failed to decompress file test.log: ', utils.DECOMPRESS_FILE_ERROR_CODE),
+    (zipfile.BadZipfile, 'Failed to decompress file test.log: ', utils.DECOMPRESS_FILE_ERROR_CODE),
+    (zipfile.LargeZipFile, 'Failed to decompress file test.log: ', utils.DECOMPRESS_FILE_ERROR_CODE),
+    (IOError, 'Failed to decompress file test.log: ', utils.DECOMPRESS_FILE_ERROR_CODE),
+    (ValueError, 'Failed to parse file test.log: ', utils.PARSE_FILE_ERROR_CODE),
+    (csv.Error, 'Failed to parse file test.log: ', utils.PARSE_FILE_ERROR_CODE),
+    (Exception, 'Unknown error reading/parsing file test.log: ', utils.UNKNOWN_ERROR_CODE)
+])
+@patch('aws_bucket.AWSBucket.load_information_from_file')
+@patch('aws_bucket.AWSBucket._exception_handler')
+def test_AWSBucket_get_log_file_ko(mock_exception_handler, mock_load_from_file, exception, error_message, exit_code):
+    bucket = utils.get_mocked_AWSBucket()
+    mock_load_from_file.side_effect = exception
+    bucket.get_log_file(utils.TEST_ACCOUNT_ID, 'test.log')
+    mock_exception_handler.assert_called_once_with(error_message, exit_code)
 
 
 @pytest.mark.skip("Not implemented yet")

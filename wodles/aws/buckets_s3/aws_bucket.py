@@ -554,30 +554,30 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         """
         raise NotImplementedError
 
-    def get_log_file(self, aws_account_id, log_key):
-        def exception_handler(error_txt, error_code):
-            if self.skip_on_error:
-                wazuh_integration.aws_tools.debug("++ {}; skipping...".format(error_txt), 1)
-                try:
-                    error_msg = self.get_alert_msg(aws_account_id,
-                                                   log_key,
-                                                   None,
-                                                   error_txt)
-                    self.send_msg(error_msg)
-                except:
-                    wazuh_integration.aws_tools.debug("++ Failed to send message to Wazuh", 1)
-            else:
-                print("ERROR: {}".format(error_txt))
-                sys.exit(error_code)
+    def _exception_handler(self, error_txt, error_code):
+        if self.skip_on_error:
+            wazuh_integration.aws_tools.debug("++ {}; skipping...".format(error_txt), 1)
+            try:
+                error_msg = self.get_alert_msg(aws_account_id,
+                                               log_key,
+                                               None,
+                                               error_txt)
+                self.send_msg(error_msg)
+            except:
+                wazuh_integration.aws_tools.debug("++ Failed to send message to Wazuh", 1)
+        else:
+            print("ERROR: {}".format(error_txt))
+            sys.exit(error_code)
 
+    def get_log_file(self, aws_account_id, log_key):
         try:
             return self.load_information_from_file(log_key=log_key)
         except (TypeError, IOError, zipfile.BadZipfile, zipfile.LargeZipFile) as e:
-            exception_handler("Failed to decompress file {}: {}".format(log_key, e), 8)
+            self._exception_handler("Failed to decompress file {}: {}".format(log_key, e), 8)
         except (ValueError, csv.Error) as e:
-            exception_handler("Failed to parse file {}: {}".format(log_key, e), 9)
+            self._exception_handler("Failed to parse file {}: {}".format(log_key, e), 9)
         except Exception as e:
-            exception_handler("Unkown error reading/parsing file {}: {}".format(log_key, e), 1)
+            self._exception_handler("Unknown error reading/parsing file {}: {}".format(log_key, e), 1)
 
     def iter_bucket(self, account_id, regions):
         self.init_db()
