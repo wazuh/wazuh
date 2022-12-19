@@ -215,7 +215,7 @@ static void kvdbGetValue(const std::string& socketPath,
         return;
     }
 
-    const std::string msg {fmt::format("KVDB \"{}\": Key \"{}\": Value: {}",
+    const std::string msg {fmt::format("KVDB: {}\n- Key: {}\n- Value: {}",
                                        kvdbName,
                                        resultKey.value(),
                                        resultVal.value())};
@@ -388,8 +388,7 @@ static void kvdbRemoveKV(const std::string& socketPath,
 
 } // namespace
 
-void kvdb(const std::string& kvdbPath,
-          const std::string& kvdbName,
+void kvdb(const std::string& kvdbName,
           const std::string& socketPath,
           const std::string& action,
           const std::string& kvdbInputFilePath,
