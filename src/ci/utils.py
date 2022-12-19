@@ -162,6 +162,14 @@ def currentDirPathBuild(moduleName):
     currentDir = currentDirPath(moduleName)
     return os.path.join(currentDir, 'build')
 
+def getModuleBuildPath(moduleName='all'):
+
+    return os.path.join(cmakeBuildDir, targetsFolderDic[moduleName])
+
+def getModuleSourcePath(moduleName='all'):
+
+    return os.path.join(currentSrcDir, targetsFolderDic[moduleName])
+
 
 def makeLib(moduleName):
     """
@@ -169,7 +177,7 @@ def makeLib(moduleName):
 
     :param moduleName: Lib to be built.
     """
-    command = f'make -C {cmakeBuildDir} {moduleName}'
+    command = f'make -C {getModuleBuildPath()} {moduleName}'
     printHeader(moduleName, 'make')
 
     out = subprocess.run(command, stdout=subprocess.PIPE,
@@ -190,7 +198,7 @@ def runTests(moduleName):
     :param moduleName: Lib representing the tests to be executed.
     """
     printHeader(moduleName, 'tests')
-    command = f'ctest --output-on-failure --test-dir {cmakeBuildDir}{targetsFolderDic[moduleName]} -E memcheck'
+    command = f'ctest --output-on-failure --test-dir {getModuleBuildPath(moduleName)} -E memcheck'
 
     out = subprocess.run(command, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, shell=True)
@@ -240,7 +248,7 @@ def runValgrind(moduleName):
 
     :param moduleName: Lib to be analyzed using valgrind tool.
     """
-    valgrindCommand = f'ctest --output-on-failure --test-dir {cmakeBuildDir}{targetsFolderDic[moduleName]} -R memcheck'
+    valgrindCommand = f'ctest --output-on-failure --test-dir {getModuleBuildPath(moduleName)} -R memcheck'
 
     out = subprocess.run(valgrindCommand, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, shell=True)
@@ -261,18 +269,16 @@ def runCoverage(moduleName):
     :param moduleName: Lib to be analyzed using gcov and lcov tools.
     """
     moduleNameCoverage = moduleName if moduleName != 'utils_unit_test' else 'utils_unit_test_coverage'
-    currentDir = os.path.join(currentSrcDir, targetsFolderDic[moduleNameCoverage])
+    currentDir = getModuleSourcePath(moduleName)
     reportFolder = os.path.join(currentDir, 'coverage_report')
     includeDir = Path(currentDir)
     moduleCMakeFiles = ""
 
     if moduleName == 'utils_unit_test':
-        moduleCMakeFiles = os.path.join(
-        cmakeBuildDir, f'{targetsFolderDic[moduleNameCoverage]}/*/CMakeFiles/*.dir')
+        moduleCMakeFiles = f'{getModuleBuildPath(moduleName)}/*/CMakeFiles/*.dir'
         includeDir = includeDir.parent
     else:
-        moduleCMakeFiles =  os.path.join(
-        cmakeBuildDir, f'{targetsFolderDic[moduleNameCoverage]}/tests/*/CMakeFiles/*.dir')
+        moduleCMakeFiles =  f'{getModuleBuildPath(moduleName)}/tests/*/CMakeFiles/*.dir'
 
     printHeader(moduleName, 'coverage')
     folders = ''
@@ -317,8 +323,7 @@ def runCppCheck(moduleName):
     """
     printHeader(moduleName, 'cppcheck')
 
-    currentDir = currentDirPath(moduleName)
-    cppcheckCommand = f'cppcheck --force --std=c++14 --quiet {currentDir}'
+    cppcheckCommand = f'cppcheck --force --std=c++17 --quiet {getModuleSourcePath(moduleName)}'
 
     out = subprocess.run(cppcheckCommand, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE, shell=True)
