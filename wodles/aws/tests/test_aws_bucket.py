@@ -144,6 +144,7 @@ def test_AWSBucket_mark_complete(custom_database):
     assert row[3] == utils.TEST_LOG_FULL_PATH_1
     assert row[4] == utils.TEST_CREATION_DATE
 
+
 def test_AWSBucket_create_table(custom_database):
     bucket = utils.get_mocked_AWSBucket()
     bucket.db_connector = custom_database
@@ -153,6 +154,7 @@ def test_AWSBucket_create_table(custom_database):
     assert utils.database_execute_query(bucket.db_connector, SQL_COUNT_TABLES) == 0
     bucket.create_table()
     assert utils.database_execute_query(bucket.db_connector, SQL_SELECT_TABLES) == utils.TEST_TABLE_NAME
+
 
 def test_AWSBucket_create_table_ko(custom_database):
     bucket = utils.get_mocked_AWSBucket()
@@ -181,7 +183,8 @@ def test_AWSBucket_init_db(custom_database, already_initialised):
                                      bucket.sql_create_table.format(table_name=bucket.db_table_name))
         assert utils.database_execute_query(bucket.db_connector, bucket.sql_find_table, {'name': bucket.db_table_name})
     else:
-        assert not utils.database_execute_query(bucket.db_connector, bucket.sql_find_table, {'name': bucket.db_table_name})
+        assert not utils.database_execute_query(bucket.db_connector, bucket.sql_find_table,
+                                                {'name': bucket.db_table_name})
     bucket.init_db()
     assert utils.database_execute_query(bucket.db_connector, bucket.sql_find_table, {'name': bucket.db_table_name})
 
@@ -242,7 +245,7 @@ def test_AWSBucket_marker_custom_date():
     full_prefix = f"{utils.TEST_ACCOUNT_ID}/{utils.TEST_REGION}/"
     with patch('aws_bucket.AWSBucket.get_full_prefix', return_value=full_prefix):
         marker = bucket.marker_custom_date(aws_region=utils.TEST_REGION, aws_account_id=utils.TEST_ACCOUNT_ID,
-                                                date=test_date)
+                                           date=test_date)
     assert marker == f"{full_prefix}{test_date.strftime(bucket.date_format)}"
 
 
@@ -293,21 +296,21 @@ def test_AWSBucket_find_account_ids(mock_prefix):
     assert accounts == [utils.TEST_ACCOUNT_ID for _ in object_list['CommonPrefixes']]
 
 
-@pytest.mark.skip("Not implemented yet")
 @pytest.mark.parametrize('error_code, exit_code', [
-    (aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE, 16),
-    (aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE, 1)
+    (aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
+    ('OtherClientException', utils.UNKNOWN_ERROR_CODE)
 ])
 @patch('aws_bucket.AWSBucket.get_base_prefix', return_value=utils.TEST_PREFIX)
 def test_AWSBucket_find_account_ids_ko_client_error(mock_prefix, error_code, exit_code):
     """Test 'find_account_ids' function handles client errors as expected."""
     bucket = utils.get_mocked_AWSBucket(bucket=utils.TEST_BUCKET, prefix=utils.TEST_PREFIX)
     bucket.client = MagicMock()
-    bucket.client.list_objects_v2.side_effect = botocore.exceptions.ClientError(error_code, "name")
+    bucket.client.list_objects_v2.side_effect = botocore.exceptions.ClientError({'Error': {'Code': error_code}}, "name")
 
     with pytest.raises(SystemExit) as e:
         bucket.find_account_ids()
     assert e.value.code == exit_code
+
 
 @patch('aws_bucket.AWSBucket.get_base_prefix', return_value=utils.TEST_PREFIX)
 def test_AWSBucket_find_account_ids_ko_key_error(mock_prefix):
@@ -337,16 +340,31 @@ def test_AWSBucket_find_regions(mock_prefix, object_list):
     else:
         assert len(accounts) == 0
 
+
+@pytest.mark.parametrize('error_code, exit_code', [
+    (aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
+    ('OtherClientException', utils.UNKNOWN_ERROR_CODE)
+])
+@patch('aws_bucket.AWSBucket.get_service_prefix', return_value=utils.TEST_PREFIX)
+def test_AWSBucket_find_regions_ko(mock_prefix, error_code, exit_code):
+    """Test 'find_regions' function handles client errors as expected."""
+    bucket = utils.get_mocked_AWSBucket(bucket=utils.TEST_BUCKET, prefix=utils.TEST_PREFIX)
+    bucket.client = MagicMock()
+    bucket.client.list_objects_v2.side_effect = botocore.exceptions.ClientError({'Error': {'Code': error_code}}, "name")
+
+    with pytest.raises(SystemExit) as e:
+        bucket.find_regions(utils.TEST_ACCOUNT_ID)
+    assert e.value.code == exit_code
+
 @pytest.mark.skip("Not implemented yet")
-def test_AWSBucket_find_regions_ko():
-    pass
-
-
 def test_AWSBucket_build_s3_filter_args():
     pass
 
+
 @pytest.mark.skip("Not implemented yet")
 def test_AWSBucket_reformat_msg():
+    """Test 'reformat_msg' returns expected event."""
+
     pass
 
 
@@ -396,7 +414,6 @@ def test_AWSBucket__decompress_zip_ko(mock_zip):
     assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
 
 
-
 @pytest.mark.parametrize('log_key, mocked_function', [
     ('test.gz', 'aws_bucket.AWSBucket._decompress_gzip'),
     ('test.zip', 'aws_bucket.AWSBucket._decompress_zip'),
@@ -427,6 +444,7 @@ def test_AWSBucket_decompress_file_ko(mock_io):
 @pytest.mark.skip("Not implemented yet")
 def test_AWSBucket_get_log_file():
     pass
+
 
 @pytest.mark.skip("Not implemented yet")
 def test_AWSBucket_exception_handler():
@@ -467,26 +485,30 @@ def test_AWSBucket_send_event(mock_reformat, mock_send):
 def test_AWSBucket_iter_events():
     pass
 
+
 @pytest.mark.skip("Not implemented yet")
 def test_AWSBucket_check_recursive():
     pass
+
 
 @pytest.mark.skip("Not implemented yet")
 def test_AWSBucket_check_regex():
     pass
 
+
 @pytest.mark.skip("Not implemented yet")
 def test_AWSBucket_event_should_be_skipped():
     pass
+
 
 @pytest.mark.skip("Not implemented yet")
 def test_AWSBucket_iter_files_in_bucket():
     pass
 
+
 @pytest.mark.skip("Not implemented yet")
 def test_AWSBucket_check_bucket():
     pass
-
 
 
 @pytest.mark.parametrize('prefix', [utils.TEST_PREFIX, None])
@@ -538,34 +560,35 @@ def test_AWSLogsBucket_get_creation_date(mock_bucket, mock_integration):
     assert instance.get_creation_date(log_file) == expected_result
 
 
-
 @pytest.mark.skip("Not implemented yet")
 def test_AWSLogsBucket_get_extra_data_from_filename():
     pass
 
+
 @pytest.mark.skip("Not implemented yet")
 def test_AWSLogsBucket_get_alert_msg():
     pass
+
 
 @pytest.mark.skip("Not implemented yet")
 def test_AWSLogsBucket_load_information_from_file():
     pass
 
 
-
-
-
 @pytest.mark.skip("Not implemented yet")
 def test_AWSCustomBucket__init__():
     pass
+
 
 @pytest.mark.skip("Not implemented yet")
 def test_AWSCustomBucket_load_information_from_file():
     pass
 
+
 @pytest.mark.skip("Not implemented yet")
 def test_AWSCustomBucket_json_event_generator():
     pass
+
 
 # @pytest.mark.skip("Not implemented yet")
 # @pytest.mark.parametrize('log_file, expected_date', [
@@ -604,29 +627,36 @@ def test_AWSCustomBucket_json_event_generator():
 def test_AWSCustomBucket_get_full_prefix():
     pass
 
+
 @pytest.mark.skip("Not implemented yet")
 def test_AWSCustomBucket_reformat_msg():
     pass
+
 
 @pytest.mark.skip("Not implemented yet")
 def test_AWSCustomBucket_list_paths_from_dict():
     pass
 
+
 @pytest.mark.skip("Not implemented yet")
 def test_AWSCustomBucket_iter_regions_and_accounts():
     pass
+
 
 @pytest.mark.skip("Not implemented yet")
 def test_AWSCustomBucket_already_processed():
     pass
 
+
 @pytest.mark.skip("Not implemented yet")
 def test_AWSCustomBucket_mark_complete():
     pass
 
+
 @pytest.mark.skip("Not implemented yet")
 def test_AWSCustomBucket_db_count_custom():
     pass
+
 
 @pytest.mark.skip("Not implemented yet")
 def test_AWSCustomBucket_db_maintenance():
