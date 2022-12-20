@@ -19,24 +19,33 @@ void getApkInfo(const std::string& fileName, std::function<void(nlohmann::json&)
     std::string line;
     std::vector<std::string> data;
 
-    if(apkDb.is_open())
+    if (apkDb.is_open())
     {
-        while(getline(apkDb, line))
+        while (getline(apkDb, line))
         {
-            if(!line.empty())
+            if (!line.empty())
             {
-                switch(line.front())
+                switch (line.front())
                 {
-                    case 'P': data.push_back(line.substr(valuePos));
-                    break;
-                    case 'V': data.push_back(line.substr(valuePos));
-                    break;
-                    case 'A': data.push_back(line.substr(valuePos));
-                    break;
-                    case 'I': data.push_back(line.substr(valuePos));
-                    break;
-                    case 'T': data.push_back(line.substr(valuePos));
-                    break;
+                    case 'P':
+                        data.push_back(line.substr(valuePos));
+                        break;
+
+                    case 'V':
+                        data.push_back(line.substr(valuePos));
+                        break;
+
+                    case 'A':
+                        data.push_back(line.substr(valuePos));
+                        break;
+
+                    case 'I':
+                        data.push_back(line.substr(valuePos));
+                        break;
+
+                    case 'T':
+                        data.push_back(line.substr(valuePos));
+                        break;
                 }
             }
             else

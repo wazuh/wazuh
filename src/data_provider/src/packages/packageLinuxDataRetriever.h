@@ -88,7 +88,7 @@ class FactoryPackagesCreator<LinuxType::STANDARD> final
                 getRpmInfo(callback);
             }
 
-            if(Utils::existsDir(APK_PATH))
+            if (Utils::existsDir(APK_PATH))
             {
                 getApkInfo(APK_DB_PATH, callback);
             }
