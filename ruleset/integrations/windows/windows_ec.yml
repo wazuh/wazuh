@@ -17,3 +17,7 @@ normalize:
  - map:
    - event.code: $~event_channel.Event.System.EventID.#text
    - event.@timestamp: $~event_channel.Event.System.TimeCreated.@SystemTime
+   - event.kind: event
+   - event.provider: $~event_channel.Event.System.Provider.@Name
+   - event.host.name: $~event_channel.Event.System.Computer.#text
+   - event.level: +kvdb_get/win_log_level/$~event_channel.Event.System.Level.#text
