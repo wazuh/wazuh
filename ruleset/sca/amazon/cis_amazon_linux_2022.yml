@@ -1129,7 +1129,6 @@ checks:
   ############################################################
   # 1.5 Additional Process Hardening.
   ############################################################
-
   # 1.5.1 Ensure core dump storage is disabled.
   - id: 31039
     title: "Ensure core dump storage is disabled."
@@ -1146,7 +1145,7 @@ checks:
       - https://www.freedesktop.org/software/systemd/man/coredump.conf.html
     condition: all
     rules:
-      - 'f: /etc/systemd/coredump.conf -> r:Storage=none'
+      - "f: /etc/systemd/coredump.conf -> r:Storage=none"
       # ^\s*storage\s*=\s*none
 
     # 1.5.2 Ensure core dump backtraces are disabled.
@@ -1162,7 +1161,7 @@ checks:
       - https://www.freedesktop.org/software/systemd/man/coredump.conf.html
     condition: all
     rules:
-      - 'f: /etc/systemd/coredump.conf -> r:ProcessSizeMax=0'
+      - "f: /etc/systemd/coredump.conf -> r:ProcessSizeMax=0"
       # ^\s*ProcessSizeMax\s*=\s*0
 
   # 1.5.3 Ensure address space layout randomization (ASLR) is enabled.
@@ -1178,10 +1177,10 @@ checks:
       - pci_dss_3.2.1: ["1.4"]
       - nist_sp_800-53: ["SI-16"]
       - soc_2: ["CC6.8"]
-      
+
       - cis_csc: ["8.3"]
       - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1", "CM-6b"]
+      - nist_800-53: ["CM.1", "CM-6b"]
       - tsc: ["CC5.2"]
     condition: all
     rules:
@@ -1204,10 +1203,17 @@ checks:
       - cis: ["1.6.1.1"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-3", "MP-2"]
     condition: all
     rules:
@@ -1224,10 +1230,17 @@ checks:
       - cis: ["1.6.1.2"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-3", "MP-2"]
     condition: none
     rules:
@@ -1245,10 +1258,17 @@ checks:
       - cis: ["1.6.1.3"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-3", "MP-2"]
     condition: all
     rules:
@@ -1265,10 +1285,17 @@ checks:
       - cis: ["1.6.1.4"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-3", "MP-2"]
     references:
       - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/sect-security-enhanced_linux-introduction-selinux_modes
@@ -1287,10 +1314,17 @@ checks:
       - cis: ["1.6.1.5"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-3", "MP-2"]
     references:
       - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/sect-security-enhanced_linux-introduction-selinux_modes
@@ -1309,10 +1343,17 @@ checks:
       - cis: ["1.6.1.6"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-3", "MP-2"]
     references:
       - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/sect-security-enhanced_linux-introduction-selinux_modes
@@ -1330,10 +1371,10 @@ checks:
       - cis: ["1.6.1.7"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
       - nist_sp_800-53: ["AC-3", "MP-2"]
     references:
       - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/sect-security-enhanced_linux-introduction-selinux_modes
@@ -1351,10 +1392,10 @@ checks:
       - cis: ["1.6.1.8"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
       - nist_sp_800-53: ["AC-3", "MP-2"]
     condition: all
     rules:
@@ -1363,7 +1404,6 @@ checks:
   ############################################################
   # 1.7  Warning Banners.
   ############################################################
-
   # 1.7.1 Ensure message of the day is configured properly.
   - id: 31050
     title: "Ensure message of the day is configured properly."
@@ -1387,7 +1427,7 @@ checks:
     condition: none
     rules:
       - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|Amazon'
-  
+
   # 1.7.3 "Ensure remote login warning banner is configured properly.
   - id: 31052
     title: "Ensure remote login warning banner is configured properly."
@@ -1410,15 +1450,22 @@ checks:
       - cis: ["1.7.4"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-3", "MP-2"]
     condition: all
     rules:
       - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-  
+
   # 1.7.5 Ensure permissions on /etc/issue are configured.
   - id: 31054
     title: "Ensure permissions on /etc/issue are configured."
@@ -1429,10 +1476,17 @@ checks:
       - cis: ["1.7.5"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-3", "MP-2"]
     condition: all
     rules:
@@ -1448,10 +1502,17 @@ checks:
       - cis: ["1.7.6"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-3", "MP-2"]
     condition: all
     rules:
@@ -1461,4 +1522,773 @@ checks:
   # 1.8  GNOME Display Manager.
   ############################################################
 
-  # 1.8.1 Ensure GNOME Display Manager is removed -> can't be implemented - requires manual action.
+  # 1.8.1 Ensure GNOME Display Manager is removed
+  - id: 31056
+    title: "Ensure GNOME Display Manager is removed."
+    description: "The GNOME Display Manager (GDM) is a program that manages graphical display servers and handles graphical user logins."
+    rationale: "If a Graphical User Interface (GUI) is not required, it should be removed to reduce the attack surface of the system."
+    impact: "Removing the GNOME Display manager will remove the Graphical User Interface (GUI) from the system."
+    remediation: "Run the following command to remove the gdm package: # dnf remove gdm"
+    compliance:
+      - cis: ["1.8.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    references:
+      - https://wiki.gnome.org/Projects/GDM
+    condition: all
+    rules:
+      - "c:rpm -q gdm -> r:package gdm is not installed"
+
+  # 1.8.2 Ensure GDM login banner is configured (Automated) - Not implemented
+  # 1.8.3 Ensure user list display is disabled (Automated) - Not implemented
+
+  # 1.8.4 Ensure XDCMP is not enabled (Automated)
+  - id: 31057
+    title: "Ensure XDCMP is not enabled."
+    description: "X Display Manager Control Protocol (XDMCP) is designed to provide authenticated access to display management services for remote displays."
+    rationale: "XDMCP is inherently insecure. XDMCP is not a ciphered protocol. This may allow an attacker to capture keystrokes entered by a user XDMCP is vulnerable to man-in-the-middle attacks. This may allow an attacker to steal the credentials of legitimate users by impersonating the XDMCP server."
+    remediation: "Edit the file /etc/gdm/custom.conf and remove the line: Enable=true Default Value: false (This is denoted by no Enabled= entry in the file /etc/gdm/custom.conf in the [xdmcp] section."
+    compliance:
+      - cis: ["1.8.4"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["SC-8"]
+    references:
+      - https://help.gnome.org/admin/gdm/2.32/configuration.html.en
+    condition: any
+    rules:
+      - "not f:/etc/gdm"
+      - 'not f:/etc/gdm/custom.conf -> r:^\s*Enable\s*=\s*true'
+
+  # 1.8.5 Ensure automatic mounting of removable media is disabled (Automated) - Not implemented
+
+  # 1.9 Ensure updates, patches, and additional security software are installed (Manual) - Not implemented
+
+  # 1.10 Ensure system-wide crypto policy is not legacy.
+  - id: 31058
+    title: "Ensure system-wide crypto policy is not legacy."
+    description: "The system-wide crypto-policies followed by the crypto core components allow consistently deprecating and disabling algorithms system-wide. The individual policy levels (DEFAULT, LEGACY, FUTURE, and FIPS) are included in the crypto-policies(7) package."
+    rationale: "If the Legacy system-wide crypto policy is selected, it includes support for TLS 1.0, TLS 1.1, and SSH2 protocols or later. The algorithms DSA, 3DES, and RC4 are allowed, while RSA and Diffie-Hellman parameters are accepted if larger than 1023-bits. These legacy protocols and algorithms can make the system vulnerable to attacks, including those listed in RFC 7457."
+    impact: "Environments that require compatibility with older insecure protocols may require the use of the less secure LEGACY policy level."
+    remediation: "Run the following command to change the system-wide crypto policy: # update-crypto-policies --set <CRYPTO POLICY>. Run the following command to make the updated system-wide crypto policy active: # update-crypto-policies. NOTE: To switch to FIPS mode, run the following command: # fips-mode-setup --enable."
+    compliance:
+      - cis: ["1.10"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4"]
+      - cmmc_v2.0: ["SC.3.177", "SC.3.185"]
+      - iso_27001-2013: ["A.13.1.1", "A.10.1.1"]
+      - mitre_techniques:
+          [
+            "T1527",
+            "T1119",
+            "T1530",
+            "T1114",
+            "T1070",
+            "T1208",
+            "T1040",
+            "T1145",
+            "T1492",
+            "T1493",
+          ]
+      - pci_dss_v3.2.1: ["4.1"]
+    references:
+      - CRYPTO-POLICIES(7)
+      - https://access.redhat.com/articles/3642912#what-polices-are-provided-1
+    condition: any
+    rules:
+      - "not f:/etc/gdm"
+      - 'not f:/etc/gdm/custom.conf -> r:^\s*Enable\s*=\s*true'
+
+  ############################################################
+  # 2 Services.
+  ############################################################
+  ############################################################
+  # 2.1 Time Synchronization.
+  ############################################################
+
+  # 2.1.1 Ensure time synchronization is in use.
+  - id: 31059
+    title: "Ensure time synchronization is in use."
+    description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them."
+    rationale: "Time synchronization is important to support time sensitive security mechanisms like Kerberos and also ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
+    remediation: "Run One of the following commands to install chrony: # dnf install chrony"
+    compliance:
+      - cis: ["2.1.1"]
+      - cis_csc_v8: ["8.4"]
+      - cis_csc_v7: ["6.1"]
+      - nist_800-53: ["AU-3", "AU-12"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cmmc_v2.0: ["AU.L2-3.3.7"]
+      - pci_dss_3.2.1: ["10.4"]
+      - pci_dss_4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
+      - soc_2: ["CC4.1", "CC5.2"]
+    condition: any
+    rules:
+      # - "not c:rpm -q ntp -> r:^package ntp is not installed"
+      - "not c:rpm -q chrony -> r:^package chrony is not installed"
+
+  # 2.1.2  Ensure chrony is configured.
+  - id: 31060
+    title: "Ensure chrony is configured."
+    description: "chrony is a daemon which implements the Network Time Protocol (NTP) and is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on chrony can be found at http://chrony.tuxfamily.org/. chrony can be configured to be a client and/or a server."
+    rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly. Note: This recommendation only applies if chrony is in use on the system."
+    remediation: '1) Add or edit server or pool lines to /etc/chrony.conf as appropriate: server <remote-server>. 2) Add or edit the OPTIONS in /etc/sysconfig/chronyd to include ''-u chrony'':OPTIONS=" -u chrony"'
+    compliance:
+      - cis: ["2.1.2"]
+      - cis_csc_v8: ["8.4"]
+      - cis_csc_v7: ["6.1"]
+      - nist_800-53: ["AU-3", "AU-12"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cmmc_v2.0: ["AU.L2-3.3.7"]
+      - pci_dss_3.2.1: ["10.4"]
+      - pci_dss_4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
+      - soc_2: ["CC4.1", "CC5.2"]
+    condition: all
+    rules:
+      - 'f:/etc/chrony.conf -> r:^server\.+$|^pool\.+$'
+      - 'f:/etc/sysconfig/chronyd -> r:^OPTIONS\s*=\s* && r:-u chrony'
+
+  # 2.2.1  Ensure xinetd is not installed.
+  - id: 31061
+    title: "Ensure xinetd is not installed."
+    description: "The eXtended InterNET Daemon ( xinetd ) is an open source super daemon that replaced the original inetd daemon. The xinetd daemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests."
+    rationale: "If there are no xinetd services required, it is recommended that the package be removed to reduce the attack surface are of the system. Note: If an xinetd service or services are required, ensure that any xinetd service not required is stopped and disabled."
+    remediation: "Run the following command to remove xinetd: # dnf remove xinetd"
+    compliance:
+      - cis: ["2.2.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["2.6", "9.2"]
+      - nist_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q xinetd -> r:^package xinetd is not installed"
+
+  # 2.2.2 Ensure xorg-x11-server-common is not installed
+  - id: 31062
+    title: "Ensure xorg-x11-server-common is not installed."
+    description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
+    rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
+    impact: "Many Linux systems run applications which require a Java runtime. Some Linux Java packages have a dependency on specific X Windows xorg-x11-fonts. One workaround to avoid this dependency is to use the 'headless' Java packages for your specific Java runtime."
+    remediation: "Run the following command to remove the X Windows Server packages: # dnf remove xorg-x11-server-common"
+    compliance:
+      - cis: ["2.1.2"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: any
+    rules:
+      - "c:rpm -q xorg-x11-server-common -> r:package xorg-x11-server-common is not installed"
+
+  # 2.2.3 Ensure Avahi Server is not installed.
+  - id: 31063
+    title: "Ensure Avahi Server is not installed."
+    description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
+    rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to disable this package to reduce the potential attack surface."
+    remediation: "Run the following commands to stop, mask and remove avahi-autoipd and avahi: # systemctl stop avahi-daemon.socket avahi-daemon.service # dnf remove avahi-autoipd avahi"
+    compliance:
+      - cis: ["2.2.3"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q avahi-autoipd -> r:package avahi-autoipd is not installed"
+      - "c:rpm -q avahi -> r:package avahi is not installed"
+
+  # 2.2.4 Ensure CUPS is not installed.
+  - id: 31064
+    title: "Ensure CUPS is not installed."
+    description: "The Common Unix Print System (CUPS) provides the ability to print to both local and network printers. A system running CUPS can also accept print jobs from remote systems and print them to local printers. It also provides a web based remote administration capability."
+    rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be disabled to reduce the potential attack surface. Disabling CUPS will prevent printing from the system, a common task for workstation systems."
+    impact: "Disabling CUPS will prevent printing from the system, a common task for workstation systems."
+    remediation: "Run the following command to remove cups: # dnf remove cups"
+    references:
+      - More detailed documentation on CUPS is available at the project homepage at https://www.cups.org
+    compliance:
+      - cis: ["2.2.4"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q cups -> r:package cups is not installed"
+
+  # 2.2.5 Ensure DHCP Server is not installed.
+  - id: 31065
+    title: "Ensure DHCP Server is not installed."
+    description: "The Dynamic Host Configuration Protocol (DHCP) is a service that allows machines to be dynamically assigned IP addresses."
+    rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that the dhcp-server package be removed to reduce the potential attack surface."
+    remediation: "Run the following command to remove dhcp: # dnf remove dhcp"
+    compliance:
+      - cis: ["2.2.5"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    references:
+      - dhcpd(8)
+    condition: all
+    rules:
+      - "c:rpm -q dhcp -> r:package dhcp is not installed"
+
+  # 2.2.6 Ensure DNS Server is not installed.
+  - id: 31066
+    title: "Ensure DNS Server is not installed."
+    description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network."
+    rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the package be removed to reduce the potential attack surface."
+    remediation: "Run the following command to remove bind: # dnf remove bind"
+    compliance:
+      - cis: ["2.2.6"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q bind -> r:package bind is not installed"
+
+  # 2.2.7 Ensure FTP client is not installed.
+  - id: 31067
+    title: "Ensure FTP client is not installed."
+    description: "FTP (File Transfer Protocol) is a traditional and widely used standard tool for transferring files between a server and clients over a network, especially where no authentication is necessary (permits anonymous users to connect to a server)."
+    rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended SFTP be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be removed to reduce the potential attack surface."
+    remediation: "Run the following command to remove ftp: # dnf remove ftp"
+    compliance:
+      - cis: ["2.2.7"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q ftp -> r:package ftp is not installed"
+
+  # 2.2.8 Ensure FTP Server is not installed.
+  - id: 31068
+    title: "Ensure FTP Server is not installed."
+    description: "FTP (File Transfer Protocol) is a traditional and widely used standard tool for transferring files between a server and clients over a network, especially where no authentication is necessary (permits anonymous users to connect to a server)."
+    rationale: "Unless there is a need to run the system as a FTP server, it is recommended that the package be removed to reduce the potential attack surface."
+    remediation: "Run the following command to remove vsftpd: # dnf remove vsftpd"
+    compliance:
+      - cis: ["2.2.8"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q vsftpd -> r:package vsftpd is not installed"
+
+  # 2.2.9 Ensure TFTP Server is not installed.
+  - id: 31069
+    title: "Ensure TFTP Server is not installed."
+    description: "Trivial File Transfer Protocol (TFTP) is a simple protocol for exchanging files between two TCP/IP machines. TFTP servers allow connections from a TFTP Client for sending and receiving files."
+    rationale: "TFTP does not have built-in encryption, access control or authentication. This makes it very easy for an attacker to exploit TFTP to gain access to files."
+    remediation: "Run the following command to remove tftp-server: # dnf remove tftp-server"
+    compliance:
+      - cis: ["2.2.9"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q tftp-server -> r:package tftp-server is not installed"
+
+  # 2.2.10 Ensure a web server is not installed.
+  - id: 31070
+    title: "Ensure a web server is not installed."
+    description: "Web servers provide the ability to host web site content."
+    rationale: "Unless there is a need to run the system as a web server, it is recommended that the packages be removed to reduce the potential attack surface. Note: Several http servers exist. They should also be audited, and removed, if not required."
+    remediation: "Run the following command to remove httpd and nginx: # dnf remove httpd nginx"
+    compliance:
+      - cis: ["2.2.10"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q httpd -> r:package httpd is not installed"
+      - "c:rpm -q nginx -> r:package nginx is not installed"
+
+  # 2.2.11 Ensure IMAP and POP3 server is not installed.
+  - id: 31071
+    title: "Ensure IMAP and POP3 server is not installed."
+    description: "dovecot is an open source IMAP and POP3 server for Linux based systems."
+    rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface."
+    remediation: "Run the following command to remove dovecot and cyrus-imapd: # dnf remove dovecot cyrus-imapd"
+    compliance:
+      - cis: ["2.2.11"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q dovecot -> r:package dovecot is not installed"
+      - "c:rpm -q cyrus-imapd -> r:package cyrus-imapd is not installed"
+
+  # 2.2.12 Ensure Samba is not installed.
+  - id: 31072
+    title: "Ensure Samba is not installed."
+    description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Small Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
+    rationale: "If there is no need to mount directories and file systems to Windows systems, then this package can be removed to reduce the potential attack surface."
+    remediation: "Run the following command to remove samba: # dnf remove samba"
+    compliance:
+      - cis: ["2.2.12"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q samba -> r:package samba is not installed"
+
+  # 2.2.13 Ensure HTTP Proxy Server is not installed.
+  - id: 31073
+    title: "Ensure HTTP Proxy Server is not installed."
+    description: "Squid is a standard proxy server used in many distributions and environments."
+    rationale: "If there is no need for a proxy server, it is recommended that the squid package be removed to reduce the potential attack surface."
+    remediation: "Run the following command to remove squid: # dnf remove squid"
+    compliance:
+      - cis: ["2.2.13"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q squid -> r:package squid is not installed"
+
+  # 2.2.14 Ensure net-snmp is not installed.
+  - id: 31074
+    title: "Ensure SNMP Server is not installed."
+    description: "The Simple Network Management Protocol (SNMP) server is used to listen for SNMP commands from an SNMP management system, execute the commands or collect the information and then send results back to the requesting system."
+    rationale: "The SNMP server can communicate using SNMPv1, which transmits data in the clear and does not require authentication to execute commands. SNMPv3replaces the simple/clear text password sharing used in SNMPv2with more securely encoded parameters. If the SNMP service is not required, the net-snmp package should be removed to reduce the attack surface of the system."
+    remediation: "Run the following command to remove net-snmp: # dnf remove net-snmp"
+    compliance:
+      - cis: ["2.2.14"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2", "2.6"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q net-snmp -> r:package net-snmp is not installed"
+
+  # 2.2.15 Ensure NIS server is not installed.
+  - id: 31075
+    title: "Ensure NIS server is not installed."
+    description: "The ypserv package provides the Network Information Service (NIS). This service, formally known as Yellow Pages, is a client-server directory service protocol for distributing system configuration files. The NIS server is a collection of programs that allow for the distribution of configuration files."
+    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the ypserv package be removed, and if required a more secure services be used."
+    remediation: "Run the following command to remove ypserv: # dnf remove ypserv"
+    compliance:
+      - cis: ["2.2.15"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2", "2.6"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q ypserv -> r:package ypserv is not installed"
+
+  # 2.2.16 Ensure telnet-server is not installed.
+  - id: 31076
+    title: "Ensure NIS server is not installed."
+    description: "The telnet-server package contains the telnet daemon, which accepts connections from users from other systems via the telnet protocol."
+    rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow a user with access to sniff network traffic the ability to steal credentials. The ssh package provides an encrypted session and stronger security."
+    remediation: "Run the following command to remove telnet-server: # dnf remove telnet-server"
+    compliance:
+      - cis: ["2.2.16"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2", "2.6"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q telnet-server -> r:package telnet-server is not installed"
+
+  # 2.2.17 Ensure mail transfer agent is configured for local-only mode.
+  - id: 31077
+    title: "Ensure mail transfer agent is configured for local-only mode."
+    description: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
+    rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems."
+    remediation: "Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below: inet_interfaces = loopback-only . Restart postfix: # systemctl restart postfix"
+    compliance:
+      - cis: ["2.2.17"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: none
+    rules:
+      - 'c:ss -lntu -> r:\.*:25\s* && !r:127.0.0.1:25\.*|::1:25\.*'
+
+  # 2.2.18 Ensure nfs-utils is not installed or the nfs-server service is masked.
+  - id: 31078
+    title: "Ensure nfs-utils is not installed or the nfs-server service is masked."
+    description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
+    rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface of the system."
+    impact: "Many of the libvirt packages used by Enterprise Linux virtualization are dependent on the nfs-utils package. If the nfs-package is required as a dependency, the nfs-server should be disabled and masked to reduce the attack surface of the system."
+    remediation: "Run the following command to remove nfs-utils: # dnf remove nfs-utils OR If the nfs-package is required as a dependency, run the following command to stop and mask the nfs-server service: # systemctl --now mask nfs-server"
+    compliance:
+      - cis: ["2.2.18"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: any
+    rules:
+      - "c:rpm -q nfs-utils -> r:package nfs-utils is not installed"
+      - "c:systemctl is-enabled nfs-server -> r:masked"
+
+  # 2.2.19 Ensure rpcbind is not installed or the rpcbind services are masked.
+  - id: 31079
+    title: "Ensure rpcbind is not installed or the rpcbind services are masked."
+    description: "The rpcbind utility maps RPC services to the ports on which they listen. RPC processes notify rpcbind when they start, registering the ports they are listening on and the RPC program numbers they expect to serve. The client system then contacts rpcbind on the server with a particular RPC program number. The rpcbind service redirects the client to the proper port number so it can communicate with the requested service Portmapper is an RPC service, which always listens on tcp and udp 111, and is used to map other RPC services (such as nfs, nlockmgr, quotad, mountd, etc.) to their corresponding port number on the server. When a remote host makes an RPC call to that server, it first consults with portmap to determine where the RPC server is listening."
+    rationale: "A small request (~82 bytes via UDP) sent to the Portmapper generates a large response (7x to 28x amplification), which makes it a suitable tool for DDoS attacks. If rpcbind is not required, it is recommended that the rpcbind package be removed to reduce the attack surface of the system."
+    impact: "Many of the libvirt packages used by Enterprise Linux virtualization, and the nfs-utils package used for The Network File System (NFS), are dependent on the rpcbind package. If the rpcbind package is required as a dependency, the services rpcbind.service and rpcbind.socket should be stopped and masked to reduce the attack surface of the system."
+    remediation: "Run the following command to remove rpcbind: # dnf remove rpcbind OR If the rpcbind is required as a dependency, run the following command to stop and mask the rpcbind and rpcbind.socket services: # systemctl --now mask nfs-server && # systemctl --now mask rpcbind.socket"
+    compliance:
+      - cis: ["2.2.19"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: any
+    rules:
+      - "c:rpm -q rpcbind -> r:package rpcbind is not installed"
+      - "c:systemctl is-enabled rpcbind -> r:masked"
+      - "c:systemctl is-enabled rpcbind.socket -> r:masked"
+
+  # 2.2.20 Ensure rsync is not installed or the rsyncd service is masked.
+  - id: 31080
+    title: "Ensure rsync is not installed or the rsyncd service is masked."
+    description: "The rsyncd service can be used to synchronize files between systems over network links."
+    rationale: "Unless required, the rsync package should be removed to reduce the attack surface area of the system. The rsyncd service presents a security risk as it uses unencrypted protocols for communication."
+    impact: "There are packages that are dependent on the rsync package. If the rsync package is removed, these packages will be removed as well. Before removing the rsync package, review any dependent packages to determine if they are required on the system. If a dependent package is required, mask the rsyncd service and leave the rsync package installed."
+    remediation: "Run the following command to remove the rsync package: # dnf remove rsync    OR    Run the following command to mask the rsyncd service: # systemctl --now mask rsyncd"
+    compliance:
+      - cis: ["2.2.20"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: any
+    rules:
+      - "c:rpm -q rsync -> r:package rsync is not installed"
+      - "c:systemctl is-enabled rsyncd -> r:masked"
+
+  ############################################################
+  # 2.3 Service Clients.
+  ############################################################
+
+  # 2.3.1 Ensure NIS Client is not enabled.
+  - id: 31081
+    title: "Ensure NIS Client is not installed."
+    description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client ( ypbind ) was used to bind a machine to an NIS server and receive the distributed configuration files."
+    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
+    impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Run the following command to uninstall ypbind: # dnf remove ypbind"
+    compliance:
+      - cis: ["2.3.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: all
+    rules:
+      - "c:rpm -q ypbind -> r:package ypbind is not installed"
+
+  # 2.3.2 Ensure rsh client is not installed.
+  - id: 31082
+    title: "Ensure rsh client is not installed."
+    description: "The rsh package contains the client commands for the rsh services."
+    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh, rcp and rlogin ."
+    impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Run the following command to uninstall rsh: # dnf remove rsh"
+    compliance:
+      - cis: ["2.3.2"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: all
+    rules:
+      - "c:rpm -q rsh -> r:^package rsh is not installed"
+
+  # 2.3.3 Ensure talk client is not installed.
+  - id: 31083
+    title: "Ensure talk client is not installed."
+    description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talk client, which allows initialization of talk sessions, is installed by default."
+    rationale: "The software presents a security risk as it uses unencrypted protocols for communication."
+    impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Run the following command to uninstall talk: # dnf remove talk"
+    compliance:
+      - cis: ["2.3.3"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: all
+    rules:
+      - "c:rpm -q talk -> r:^package talk is not installed"
+
+  # 2.3.4 Ensure telnet client is not installed.
+  - id: 31084
+    title: "Ensure telnet client is not installed."
+    description: "The telnet package contains the telnet client, which allows users to start connections to other systems via the telnet protocol."
+    rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow an unauthorized user to steal credentials. The ssh package provides an encrypted session and stronger security and is included in most Linux distributions."
+    impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Run the following command to uninstall telnet: # dnf remove telnet"
+    compliance:
+      - cis: ["2.3.4"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: all
+    rules:
+      - "c:rpm -q telnet -> r:^package telnet is not installed"
+
+  # 2.3.5 Ensure LDAP client is not installed.
+  - id: 31085
+    title: "Ensure LDAP client is not installed."
+    description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
+    rationale: "If the system will not need to act as an LDAP client, it is recommended that the software be removed to reduce the potential attack surface."
+    impact: "Removing the LDAP client will prevent or inhibit using LDAP for authentication in your environment."
+    remediation: "Run the following command to uninstall openldap-clients: # dnf remove openldap-clients"
+    compliance:
+      - cis: ["2.3.5"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: all
+    rules:
+      - "c:rpm -q openldap-clients -> r:^package openldap-clients is not installed"
+
+  # 2.3.6 Ensure TTFTP client is not installed.
+  - id: 31086
+    title: "Ensure TTFTP client is not installed.."
+    description: "Trivial File Transfer Protocol (TFTP) is a simple protocol for exchanging files between two TCP/IP machines. TFTP servers allow connections from a TFTP Client for sending and receiving files."
+    rationale: "TFTP does not have built-in encryption, access control or authentication. This makes it very easy for an attacker to exploit TFTP to gain access to files."
+    remediation: "Run the following command to remove tftp: # dnf remove tftp"
+    compliance:
+      - cis: ["2.3.6"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["CM-7"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q tftp -> r:package tftp is not installed"
+
+  # 2.4 Ensure nonessential services are removed or masked (Manual) - Not implemented
+
+  ############################################################
+  # 3 Network Configuration
+  ############################################################
+
+  #######################################################
+  # 3.1 Disable unused network protocols and devices.
+  #######################################################
+
+  # 3.1.1 Review if IPv6 is in use on the system (Manual) - Not implemented
+  # 3.1.2 Ensure wireless interfaces are disabled (Automated) - Not implemented
+
+  #######################################################
+  # 3.2 Network Parameters (Host Only).
+  # TODO copy from cis_amazon_linux_1 (?)
+  #######################################################
+  # 3.2.1 Ensure IP forwarding is disabled (Automated) - Not implemented
+  # 3.2.2 Ensure packet redirect sending is disabled (Automated) - Not implemented
+
+  ##################################################
+  # 3.3 Network Parameters (Host and Router).
+  # TODO copy from cis_amazon_linux_1 (?)
+  ##################################################
+  # 3.3.1 Ensure source routed packets are not accepted (Automated) - Not implemented
+  # 3.3.2 Ensure ICMP redirects are not accepted (Automated) - Not implemented
+  # 3.3.3 Ensure secure ICMP redirects are not accepted (Automated) - Not implemented
+  # 3.3.4 Ensure suspicious packets are logged (Automated) - Not implemented
+  # 3.3.5 Ensure broadcast ICMP requests are ignored (Automated) - Not implemented
+  # 3.3.6 Ensure bogus ICMP responses are ignored (Automated) - Not implemented
+  # 3.3.7 Ensure Reverse Path Filtering is enabled (Automated) - Not implemented
+  # 3.3.8 Ensure TCP SYN Cookies is enabled (Automated) - Not implemented
+  # 3.3.9 Ensure IPv6 router advertisements are not accepted (Automated) - Not implemented
+
+  ############################################################
+  # 3.4 Firewall Configuration.
+  ############################################################
+
+  ############################################################
+  # 3.4.1 Configure firewalld.
+  ############################################################
+
+  # 3.4.1.1 Ensure firewalld is installed.
+  - id: 31087
+    title: "Ensure firewalld is installed."
+    description: "firewalld is a firewall management tool for Linux operating systems. It provides firewall features by acting as a front-end for the Linux kernel's netfilter framework via the iptables backend or provides firewall features by acting as a front-end for the Linux kernel's netfilter framework via the nftables utility. firewalld replaces iptables as the default firewall management tool. Use the firewalld utility to configure a firewall for less complex firewalls. The utility is easy to use and covers the typical use cases scenario. FirewallD supports both IPv4 and IPv6 networks and can administer separate firewall zones with varying degrees of trust as defined in zone profiles."
+    rationale: "A firewall utility is required to configure the Linux kernel's netfilter framework via the iptables or nftables back-end. The Linux kernel's netfilter framework host-based firewall can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host."
+    impact: "Changing firewall settings while connected over the network can result in being locked out of the system."
+    remediation: "Run the following command to install FirewallD and iptables: # dnf install firewalld iptables"
+    compliance:
+      - cis: ["3.4.1.1"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q firewalld -> r:firewalld-"
+      - "c:rpm -q iptables -> r:iptables-"
+
+  # 3.4.1.2 Ensure iptables-services not installed with firewalld.
+  # 3.4.2.3 Ensure iptables-services not installed with nftables.
+  - id: 31088
+    title: "Ensure iptables-services not installed with firewalld or nftables."
+    description: "The iptables-services package contains the iptables.service and ip6tables.service. These services allow for management of the Host Based Firewall provided by the iptables package."
+    rationale: "iptables.service and ip6tables.service are still supported and can be installed with the iptables-services package. Running both firewalld and the services included in the iptables-services package may lead to conflict."
+    impact: "Running both firewalld and iptables/ip6tables service may lead to conflict."
+    remediation: "Run the following commands to stop the services included in the iptables-services package and remove the iptables-services package # systemctl stop iptables # systemctl stop ip6tables # dnf remove iptables-services"
+    compliance:
+      - cis: ["3.4.1.2", "3.4.2.3"]
+      - cis_csc_v8: ["4.4", "4.8"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.20",
+            "CM.L2-3.4.7",
+            "CM.L2-3.4.8",
+            "SC.L1-3.13.1",
+            "SC.L2-3.13.6",
+          ]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5", "1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1", "1.2.5", "2.2.4", "6.4.1"]
+      - nist_sp_800-53: ["CA-9", "CM-7"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q iptables-services -> r:package iptables-services is not installed"
+      # - "not c:rpm -q firewalld -> r:firewalld-"
+      # - "not c:rpm -q nftables -> r:nftables-"
+
+  # 3.4.1.3 Ensure nftables either not installed or masked with firewalld.
+  - id: 31089
+    title: "Ensure nftables either not installed or masked with firewalld."
+    description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames and is the successor to iptables."
+    rationale: "Running both firewalld and nftables may lead to conflict."
+    remediation: "Run the following command to remove nftables: # dnf remove nftables OR Run the following command to stop and mask nftables: # systemctl --now mask nftables"
+    compliance:
+      - cis: ["3.4.1.3"]
+      - cis_csc_v8: ["4.4", "4.8"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.20",
+            "CM.L2-3.4.7",
+            "CM.L2-3.4.8",
+            "SC.L1-3.13.1",
+            "SC.L2-3.13.6",
+          ]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5", "1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1", "1.2.5", "2.2.4", "6.4.1"]
+      - nist_sp_800-53: ["CA-9", "CM-7"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: any
+    rules:
+      - "c:rpm -q nftables -> r:^package nftables is not installed"
+      - "c:ystemctl is-enabled nftables -> r:masked"
+      - "c:systemctl is-active nftables -> r:inactive"
