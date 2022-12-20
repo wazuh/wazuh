@@ -9,9 +9,9 @@ metadata:
 check:
   - ~event_channel.Event.System.Provider.@Name: Microsoft-Windows-Sysmon
 
-parse:
-  logpar:
-    - ~event_channel.Event.EventData.Hashes: <~temp.hashes/kv_map/=/,>
+#parse:
+  #logpar:
+  #  - ~event_channel.Event.EventData.Hashes: <~temp.hashes/kv/=/,>
 
 normalize:
  - map:
