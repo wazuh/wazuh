@@ -927,16 +927,7 @@ class Handler(asyncio.Protocol):
         elif command == b'cancel_task':
             return self.cancel_task(data)
         elif command == b'dapi_err':
-            dapi_client, error_msg = data.split(b' ', 1)
-            if dapi_client.decode() in self.server.local_server.clients:
-                try:
-                    asyncio.create_task(
-                        self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
-                except exception.WazuhClusterError:
-                    raise exception.WazuhClusterError(3025)
-            else:
-                raise exception.WazuhClusterError(3032, extra_message=dapi_client.decode())
-            return b'ok', b'DAPI error forwarded to worker'
+            return self.process_dapi_error(data)
         else:
             return self.process_unknown_cmd(command)
 
@@ -978,6 +969,32 @@ class Handler(asyncio.Protocol):
             Response message.
         """
         return b'ok', data
+
+    def process_dapi_error(self, data: bytes) -> Tuple[bytes, bytes]:
+        """Send DAPI error command to client.
+
+        Parameters
+        ----------
+        data : bytes
+            Bytes containing client and error message separated by ' '.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        dapi_client, error_msg = data.split(b' ', 1)
+        if dapi_client.decode() in self.server.local_server.clients:
+            try:
+                asyncio.create_task(
+                    self.server.local_server.clients[dapi_client.decode()].send_request(b'dapi_err', error_msg))
+            except exception.WazuhClusterError:
+                raise exception.WazuhClusterError(3025)
+        else:
+            raise exception.WazuhClusterError(3032, extra_message=dapi_client.decode())
+        return b'ok', b'DAPI error forwarded to worker'
 
     def receive_file(self, data: bytes) -> Tuple[bytes, bytes]:
         """Create a file descriptor to store the incoming file.
