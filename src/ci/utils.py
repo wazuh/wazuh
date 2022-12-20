@@ -646,12 +646,13 @@ def runReadyToReview(moduleName):
     runCppCheck(str(moduleName))
     cleanFolder('all', "build")
     configureCMake(str(moduleName), True, False)
-    makeLib(str(moduleName))
+    makeLib('all_unit_test')
+    makeAllLib(str(moduleName))
     runTests(str(moduleName))
     runValgrind(str(moduleName))
     runCoverage(str(moduleName))
     runAStyleCheck(str(moduleName))
-    if str(moduleName) != 'shared_modules/utils':
+    if str(moduleName) != 'utils_unit_test':
         runASAN(moduleName)
 
     printGreen(f'<{moduleName}>[RTR: PASSED]<{moduleName}>')
