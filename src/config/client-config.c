@@ -620,6 +620,7 @@ bool Validate_Address(agent_server *servers)
 /* Checks if at least one <server> block is not a link-local ipv6 address or it has a network interface configured. */
 bool Validate_IPv6_Link_Local_Interface(agent_server *servers) {
     unsigned int i;
+    bool ret = false;
 
     for (i = 0; servers[i].rip; i++) {
         char *ip_address = NULL;
@@ -642,21 +643,27 @@ bool Validate_IPv6_Link_Local_Interface(agent_server *servers) {
                 mdebug1("Could not resolve hostname");
             }
             os_free(ip_address);
-            return true;
+            ret = true;
+            continue;
         }
 
         if (strchr(ip_address, ':') != NULL) {
+            /* IPv6 */
             if (strncmp(ip_address, IPV6_LINK_LOCAL_PREFIX, 20) != 0 ||
                 (strncmp(ip_address, IPV6_LINK_LOCAL_PREFIX, 20) == 0 && servers[i].network_interface > 0)) {
                 os_free(ip_address);
-                return true;
+                ret = true;
+                continue;
+            }
+            else if ((strncmp(ip_address, IPV6_LINK_LOCAL_PREFIX, 20) == 0 && servers[i].network_interface <= 0)) {
+                mwarn("No network interface index provided to use %s link-local IPv6 address.", ip_address);
             }
         } else {
-            os_free(ip_address);
-            return true;
+            /* IPv4 */
+            ret = true;
         }
         os_free(ip_address);
     }
 
-    return false;
+    return ret;
 }
