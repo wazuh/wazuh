@@ -573,13 +573,13 @@ def _getFoldersToAStyle(moduleName):
     :return specific folders and files to be analyzed.
     """
     printHeader(moduleName, 'AStyle')
-    cleanFolder(str(moduleName), "build")
+    cleanFolder('all', "build")
 
     foldersToScan = ""
-    if str(moduleName) == 'shared_modules/utils':
-        foldersToScan = f'{moduleName}/../*.h {moduleName}/*.cpp'
+    if str(moduleName) == 'utils_unit_test':
+        foldersToScan = f'{getModuleSourcePath(moduleName)}/../*.h {getModuleSourcePath(moduleName)}/*.cpp'
     else:
-        foldersToScan = f'{moduleName}/*.h {moduleName}/*.cpp'
+        foldersToScan = f'{getModuleSourcePath(moduleName)}/*.h {getModuleSourcePath(moduleName)}/*.cpp'
     return foldersToScan
 
 
@@ -644,7 +644,7 @@ def runReadyToReview(moduleName):
 
     printHeader(moduleName, 'rtr')
     runCppCheck(str(moduleName))
-    cleanFolder(str(moduleName), "build")
+    cleanFolder('all', "build")
     configureCMake(str(moduleName), True, False)
     makeLib(str(moduleName))
     runTests(str(moduleName))
