@@ -15,6 +15,7 @@ from datetime import datetime
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
+import aws_tools
 
 MAX_RECORD_RETENTION = 500
 PATH_DATE_FORMAT = "%Y/%m/%d"
@@ -260,11 +261,11 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                     'log_key': log_file['Key'],
                     'created_date': self.get_creation_date(log_file)})
             except Exception as e:
-                wazuh_integration.aws_tools.debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
+                aws_tools.debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
 
     def create_table(self):
         try:
-            wazuh_integration.aws_tools.debug('+++ Table does not exist; create', 1)
+            aws_tools.debug('+++ Table does not exist; create', 1)
             self.db_cursor.execute(self.sql_create_table.format(table_name=self.db_table_name))
         except Exception as e:
             print("ERROR: Unable to create SQLite DB: {}".format(e))
@@ -296,7 +297,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         return query_count_region.fetchone()[0]
 
     def db_maintenance(self, aws_account_id=None, aws_region=None):
-        wazuh_integration.aws_tools.debug("+++ DB Maintenance", 1)
+        aws_tools.debug("+++ DB Maintenance", 1)
         try:
             if self.db_count_region(aws_account_id, aws_region) > self.retain_db_records:
                 self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
@@ -376,10 +377,10 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
             return accounts
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_CODE:
-                wazuh_integration.aws_tools.debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_account_ids")}.', 2)
+                aws_tools.debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_account_ids")}.', 2)
                 sys.exit(16)
             else:
-                wazuh_integration.aws_tools.debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
+                aws_tools.debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
                 sys.exit(1)
 
         except KeyError:
@@ -396,14 +397,14 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
             if 'CommonPrefixes' in regions:
                 return [common_prefix['Prefix'].split('/')[-2] for common_prefix in regions['CommonPrefixes']]
             else:
-                wazuh_integration.aws_tools.debug(f"+++ No regions found for AWS Account {account_id}", 1)
+                aws_tools.debug(f"+++ No regions found for AWS Account {account_id}", 1)
                 return []
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_CODE:
-                wazuh_integration.aws_tools.debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_regions")}. ', 2)
+                aws_tools.debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_regions")}. ', 2)
                 sys.exit(16)
             else:
-                wazuh_integration.aws_tools.debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
+                aws_tools.debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
                 sys.exit(1)
 
     def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter=''):
@@ -446,12 +447,12 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                 prefix_len = len(filter_args['Prefix'])
                 filter_args['StartAfter'] = filter_args['StartAfter'][:prefix_len] + \
                                             filter_args['StartAfter'][prefix_len:].replace('/', custom_delimiter)
-            wazuh_integration.aws_tools.debug(f"+++ Marker: {filter_args['StartAfter']}", 2)
+            aws_tools.debug(f"+++ Marker: {filter_args['StartAfter']}", 2)
 
         return filter_args
 
     def reformat_msg(self, event):
-        wazuh_integration.aws_tools.debug('++ Reformat message', 3)
+        aws_tools.debug('++ Reformat message', 3)
 
         def single_element_list_to_dictionary(my_event):
             for name, value in list(my_event.items()):
@@ -554,9 +555,9 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         """
         raise NotImplementedError
 
-    def _exception_handler(self, error_txt, error_code):
+    def _exception_handler(self, aws_account_id, log_key, error_txt, error_code):
         if self.skip_on_error:
-            wazuh_integration.aws_tools.debug("++ {}; skipping...".format(error_txt), 1)
+            aws_tools.debug("++ {}; skipping...".format(error_txt), 1)
             try:
                 error_msg = self.get_alert_msg(aws_account_id,
                                                log_key,
@@ -564,7 +565,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                                                error_txt)
                 self.send_msg(error_msg)
             except:
-                wazuh_integration.aws_tools.debug("++ Failed to send message to Wazuh", 1)
+                aws_tools.debug("++ Failed to send message to Wazuh", 1)
         else:
             print("ERROR: {}".format(error_txt))
             sys.exit(error_code)
@@ -573,11 +574,11 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         try:
             return self.load_information_from_file(log_key=log_key)
         except (TypeError, IOError, zipfile.BadZipfile, zipfile.LargeZipFile) as e:
-            self._exception_handler("Failed to decompress file {}: {}".format(log_key, e), 8)
+            self._exception_handler(aws_account_id, log_key, "Failed to decompress file {}: {}".format(log_key, repr(e)), 8)
         except (ValueError, csv.Error) as e:
-            self._exception_handler("Failed to parse file {}: {}".format(log_key, e), 9)
+            self._exception_handler(aws_account_id, log_key, "Failed to parse file {}: {}".format(log_key, repr(e)), 9)
         except Exception as e:
-            self._exception_handler("Unknown error reading/parsing file {}: {}".format(log_key, e), 1)
+            self._exception_handler(aws_account_id, log_key, "Unknown error reading/parsing file {}: {}".format(log_key, repr(e)), 1)
 
     def iter_bucket(self, account_id, regions):
         self.init_db()
@@ -597,7 +598,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                 if not regions:
                     continue
             for aws_region in regions:
-                wazuh_integration.aws_tools.debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
+                aws_tools.debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 self.iter_files_in_bucket(aws_account_id, aws_region)
                 self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
@@ -635,7 +636,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         if event_list is not None:
             for event in event_list:
                 if _event_should_be_skipped(event):
-                    wazuh_integration.aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
+                    aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
                           f'field. The event will be skipped.', 2)
                     continue
                 # Parse out all the values of 'None'
@@ -648,11 +649,11 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
             if self.reparse:
-                wazuh_integration.aws_tools.debug('++ Reparse mode enabled', 2)
+                aws_tools.debug('++ Reparse mode enabled', 2)
 
             while True:
                 if 'Contents' not in bucket_files:
-                    wazuh_integration.aws_tools.debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
+                    aws_tools.debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
                     return
 
                 for bucket_file in bucket_files['Contents']:
@@ -668,23 +669,23 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                         match_start = date_match.span()[0] if date_match else None
 
                         if not self._same_prefix(match_start, aws_account_id, aws_region):
-                            wazuh_integration.aws_tools.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
+                            aws_tools.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
                             continue
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                         if self.reparse:
-                            wazuh_integration.aws_tools.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}", 1)
+                            aws_tools.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}", 1)
                         else:
-                            wazuh_integration.aws_tools.debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
+                            aws_tools.debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
                             continue
 
-                    wazuh_integration.aws_tools.debug(f"++ Found new log: {bucket_file['Key']}", 2)
+                    aws_tools.debug(f"++ Found new log: {bucket_file['Key']}", 2)
                     # Get the log file from S3 and decompress it
                     log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
                     self.iter_events(log_json, bucket_file['Key'], aws_account_id)
                     # Remove file from S3 Bucket
                     if self.delete_file:
-                        wazuh_integration.aws_tools.debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
+                        aws_tools.debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
 
@@ -710,9 +711,9 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
 
         except Exception as err:
             if hasattr(err, 'message'):
-                wazuh_integration.aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
+                aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
             else:
-                wazuh_integration.aws_tools.debug(f"+++ Unexpected error: {err}", 2)
+                aws_tools.debug(f"+++ Unexpected error: {err}", 2)
             print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
             sys.exit(7)
 
@@ -787,7 +788,7 @@ class AWSLogsBucket(AWSBucket):
         return int(path.basename(log_file['Key']).split('_')[-2].split('T')[0])
 
     def get_extra_data_from_filename(self, filename):
-        wazuh_integration.aws_tools.debug('++ Parse arguments from log file name', 2)
+        aws_tools.debug('++ Parse arguments from log file name', 2)
         filename_parts = filename.split('_')
         aws_account_id = filename_parts[0]
         aws_region = filename_parts[2]
@@ -1027,7 +1028,7 @@ class AWSCustomBucket(AWSBucket):
         return query_count_custom.fetchone()[0]
 
     def db_maintenance(self, aws_account_id=None, **kwargs):
-        wazuh_integration.aws_tools.debug("+++ DB Maintenance", 1)
+        aws_tools.debug("+++ DB Maintenance", 1)
         try:
             if self.db_count_custom(aws_account_id) > self.retain_db_records:
                 self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
