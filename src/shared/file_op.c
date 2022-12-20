@@ -768,7 +768,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, const char
             }
 
             /* Appends file name to unmerged files list */
-            *unmerged_files = realloc(*unmerged_files, (file_count + 1) * sizeof(char *));
+            *unmerged_files = realloc(*unmerged_files, (file_count + 2) * sizeof(char *));
             *(*unmerged_files + file_count) = strdup(file_name);
             file_count++;
         }
