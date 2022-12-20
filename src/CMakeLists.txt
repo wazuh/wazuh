@@ -56,6 +56,9 @@ endif(COVERITY)
 if(FSANITIZE)
   add_compile_options("$<$<CONFIG:DEBUG>:-fsanitize=address,leak,undefined>")
 
+  # add_link_options is available in CMake 3.13 and above
+  link_libraries("$<$<CONFIG:DEBUG>:-fsanitize=address,leak,undefined>")
+
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options("$<$<CONFIG:DEBUG>:-fprofile-arcs>")
   else()

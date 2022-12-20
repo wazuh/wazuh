@@ -14,6 +14,7 @@ target_list = ['syscollector', 'dbsync', 'rsync','rsync_test_tool', 'sysinfo', '
 unit_test_target_list = ['syscollector_unit_test', 'dbsync_unit_test', 'dbsync_integration_tests', 'rsync_unit_test',
 'data_provider_unit_test', 'utils_unit_test', 'all_unit_test']
 coverage_target_list = ['syscollector', 'dbsync', 'rsync', 'sysinfo', 'utils_unit_test']
+asan_target_list = ['syscollector', 'dbsync', 'rsync', 'data_provider']
 
 
 class CommandLineParser:
@@ -53,6 +54,15 @@ class CommandLineParser:
         :return True is 'arg' is a correct one, False otherwise.
         """
         return arg in coverage_target_list
+
+    def _argIsCmakeAsanTargetValid(self, arg):
+        """
+        Checks if the argument being selected is a correct one.
+
+        :param arg: Argument being selected in the command line.
+        :return True is 'arg' is a correct one, False otherwise.
+        """
+        return arg in asan_target_list
 
     def _targetIsValid(self, arg):
         """
@@ -107,7 +117,7 @@ class CommandLineParser:
             if self._argIsCmakeLibOrTestTargetValid(args.cppcheck):
                 utils.runCppCheck(args.cppcheck)
                 action = True
-            if self._argIsCmakeLibOrTestTargetValid(args.asan):
+            if self._argIsCmakeAsanTargetValid(args.asan):
                 utils.runASAN(args.asan)
                 action = True
             if self._argIsCmakeLibOrTestTargetValid(args.scheck):
