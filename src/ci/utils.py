@@ -43,7 +43,7 @@ headerDic = {
 }
 
 smokeTestsDic = {
-    'wazuh_modules/syscollector': [
+    'syscollector': [
         {
             'test_tool_name': 'syscollector_test_tool',
             'is_smoke_with_configuration': False,
@@ -52,7 +52,7 @@ smokeTestsDic = {
             ]
         }
     ],
-    'shared_modules/dbsync': [
+    'dbsync': [
         {
             'test_tool_name': 'dbsync_test_tool',
             'is_smoke_with_configuration': True,
@@ -90,7 +90,7 @@ smokeTestsDic = {
             ]
         }
     ],
-    'shared_modules/rsync': [
+    'rsync': [
         {
             'test_tool_name': 'rsync_test_tool',
             'is_smoke_with_configuration': False,
@@ -107,11 +107,12 @@ smokeTestsDic = {
 }
 
 deleteFolderDic = {
-    'wazuh_modules/syscollector':   ['build', 'smokeTests/output'],
-    'shared_modules/dbsync':        ['build', 'smokeTests/output'],
-    'shared_modules/rsync':         ['build', 'smokeTests/output'],
+    'syscollector':                 ['build', 'smokeTests/output'],
+    'dbsync':                       ['build', 'smokeTests/output'],
+    'rsync':                        ['build', 'smokeTests/output'],
     'data_provider':                ['build', 'smokeTests/output'],
-    'shared_modules/utils':         ['build'],
+    'utils_unit_test':              ['build'],
+    'all':                          ['build'],
 }
 
 targetsFolderDic = {
@@ -122,6 +123,7 @@ targetsFolderDic = {
     'rsync' : 'shared_modules/rsync',
     'rsync_test_tool' : 'shared_modules/rsync/testtool',
     'sysinfo' : 'data_provider',
+    'data_provider' : 'data_provider',
     'sysinfo_test_tool' : 'data_provider/testtool',
     'syscollector_unit_test' : 'wazuh_modules/syscollector/tests',
     'dbsync_unit_test' : 'shared_modules/dbsync/tests',
@@ -190,6 +192,24 @@ def makeLib(moduleName):
         raise ValueError(errorString)
     printGreen(f'{moduleName} > [make: PASSED]')
 
+def makeAllLib(moduleName):
+    """
+    Builds the 'moduleName' lib.
+
+    :param moduleName: Lib to be built.
+    """
+    command = f'make -C {getModuleBuildPath(moduleName)} all --trace'
+    printHeader(moduleName, 'make')
+
+    out = subprocess.run(command, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE, shell=True)
+    if out.returncode != 0:
+        print(command)
+        print(out.stdout.decode('utf-8', 'ignore'))
+        print(out.stderr.decode('utf-8', 'ignore'))
+        errorString = f'Error compiling library: {str(out.returncode)}'
+        raise ValueError(errorString)
+    printGreen(f'{moduleName} > [make: PASSED]')
 
 def runTests(moduleName):
     """
@@ -342,12 +362,12 @@ def cleanLib(moduleName):
 
     :param moduleName: Lib to be clean.
     """
-    os.system(f'make clean -C {cmakeBuildDir}{targetsFolderDic[moduleName]}')
+    os.system(f'make clean -C {getModuleBuildPath(moduleName)}')
 
 
 def cleanFolder(moduleName, additionalFolder):
 
-    currentDir = currentDirPath(moduleName)
+    currentDir = getModuleSourcePath(moduleName)
     cleanFolderCommand = f'rm -rf {os.path.join(currentDir, additionalFolder)}'
 
     if deleteFolderDic[moduleName].count(additionalFolder) > 0:
@@ -436,21 +456,13 @@ def makeTarget(targetName, tests, debug):
         raise ValueError(errorString)
 
 
-def configureCMake(moduleName, debugMode, testMode, withAsan):
+def configureCMake(moduleName, debugMode, withAsan):
     printHeader(moduleName, 'configurecmake')
-    currentModuleNameDir = currentDirPath(moduleName)
-    currentPathDir = currentDirPathBuild(moduleName)
 
-    if not os.path.exists(currentPathDir):
-        os.mkdir(currentPathDir)
-
-    configureCMakeCommand = "cmake -S" + currentModuleNameDir + " -B" + currentPathDir
+    configureCMakeCommand = f'cmake -S  {currentSrcDir} -B {cmakeBuildDir}'
 
     if debugMode:
         configureCMakeCommand += " -DCMAKE_BUILD_TYPE=Debug"
-
-    if testMode:
-        configureCMakeCommand += " -DUNIT_TEST=1"
 
     if withAsan:
         configureCMakeCommand += " -DFSANITIZE=1"
@@ -473,7 +485,7 @@ def runTestTool(moduleName, testToolCommand, isSmokeTest=False):
     cwd = os.getcwd()
 
     if isSmokeTest:
-        currentmoduleNameDir = currentDirPath(moduleName)
+        currentmoduleNameDir = getModuleSourcePath(moduleName)
         output_folder = os.path.join(currentmoduleNameDir, 'smokeTests/output')
         os.chdir(os.path.join(currentmoduleNameDir, 'smokeTests'))
         cleanFolder(moduleName, 'smokeTests/output')
@@ -502,13 +514,12 @@ def runASAN(moduleName):
     :param moduleName: Lib to be analyzed using ASAN dynamic analysis tool.
     """
     printHeader(moduleName, 'asan')
-    cleanFolder(str(moduleName), "build")
-    configureCMake(str(moduleName), True, False, True)
-    makeLib(str(moduleName))
+    cleanFolder('all', "build")
+    configureCMake(str(moduleName), True, True)
+    makeAllLib(str(moduleName))
 
     for element in smokeTestsDic[moduleName]:
-        path = os.path.join(currentDirPathBuild(moduleName),
-                            'bin', element['test_tool_name'])
+        path = os.path.join(cmakeBuildDir, 'bin', element['test_tool_name'])
         args = ' '.join(element['args'])
         testToolCommand = f'{path} {args}'
         runTestTool(str(moduleName), testToolCommand,
@@ -634,8 +645,7 @@ def runReadyToReview(moduleName):
     printHeader(moduleName, 'rtr')
     runCppCheck(str(moduleName))
     cleanFolder(str(moduleName), "build")
-    configureCMake(str(moduleName), True, (False, True)[
-                   str(moduleName) != 'shared_modules/utils'], False)
+    configureCMake(str(moduleName), True, False)
     makeLib(str(moduleName))
     runTests(str(moduleName))
     runValgrind(str(moduleName))
