@@ -4,6 +4,7 @@ import os
 import sqlite3
 import sys
 import zipfile
+import csv
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -458,35 +459,63 @@ def test_AWSBucket_decompress_file_ko(mock_io):
 @patch('aws_bucket.AWSBucket.load_information_from_file', return_value=[SAMPLE_EVENT_1, SAMPLE_EVENT_2])
 def test_AWSBucket_get_log_file(mock_load_from_file):
     bucket = utils.get_mocked_AWSBucket()
-    bucket.get_log_file(utils.TEST_ACCOUNT_ID, 'test.log')
-    mock_load_from_file.assert_called_with(log_key='test.log')
-
-
-import csv
+    log_key = 'test.log'
+    bucket.get_log_file(utils.TEST_ACCOUNT_ID, log_key)
+    mock_load_from_file.assert_called_with(log_key=log_key)
 
 
 @pytest.mark.parametrize('exception, error_message, exit_code', [
-    (TypeError, 'Failed to decompress file test.log: ', utils.DECOMPRESS_FILE_ERROR_CODE),
-    (zipfile.BadZipfile, 'Failed to decompress file test.log: ', utils.DECOMPRESS_FILE_ERROR_CODE),
-    (zipfile.LargeZipFile, 'Failed to decompress file test.log: ', utils.DECOMPRESS_FILE_ERROR_CODE),
-    (IOError, 'Failed to decompress file test.log: ', utils.DECOMPRESS_FILE_ERROR_CODE),
-    (ValueError, 'Failed to parse file test.log: ', utils.PARSE_FILE_ERROR_CODE),
-    (csv.Error, 'Failed to parse file test.log: ', utils.PARSE_FILE_ERROR_CODE),
-    (Exception, 'Unknown error reading/parsing file test.log: ', utils.UNKNOWN_ERROR_CODE)
+    (TypeError, 'Failed to decompress file test.log: TypeError()', utils.DECOMPRESS_FILE_ERROR_CODE),
+    (zipfile.BadZipfile, 'Failed to decompress file test.log: BadZipFile()', utils.DECOMPRESS_FILE_ERROR_CODE),
+    (zipfile.LargeZipFile, 'Failed to decompress file test.log: LargeZipFile()', utils.DECOMPRESS_FILE_ERROR_CODE),
+    (IOError, 'Failed to decompress file test.log: OSError()', utils.DECOMPRESS_FILE_ERROR_CODE),
+    (ValueError, 'Failed to parse file test.log: ValueError()', utils.PARSE_FILE_ERROR_CODE),
+    (csv.Error, 'Failed to parse file test.log: Error()', utils.PARSE_FILE_ERROR_CODE),
+    (Exception, 'Unknown error reading/parsing file test.log: Exception()', utils.UNKNOWN_ERROR_CODE)
 ])
 @patch('aws_bucket.AWSBucket.load_information_from_file')
 @patch('aws_bucket.AWSBucket._exception_handler')
 def test_AWSBucket_get_log_file_ko(mock_exception_handler, mock_load_from_file, exception, error_message, exit_code):
     bucket = utils.get_mocked_AWSBucket()
+    log_key = 'test.log'
     mock_load_from_file.side_effect = exception
-    bucket.get_log_file(utils.TEST_ACCOUNT_ID, 'test.log')
-    mock_exception_handler.assert_called_once_with(error_message, exit_code)
+    bucket.get_log_file(utils.TEST_ACCOUNT_ID, log_key)
+    mock_exception_handler.assert_called_once_with(utils.TEST_ACCOUNT_ID, log_key, error_message, exit_code)
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSBucket_exception_handler():
-    pass
+@patch('aws_bucket.aws_tools.debug')
+@patch('aws_bucket.AWSBucket.get_alert_msg', return_value='error_msg')
+def test_AWSBucket__exception_handler(mock_get_alert_msg, mock_debug):
+    error_text_example = 'error text'
+    error_code_example = 0
+    log_key = 'test.log'
 
+    debug_message_example = "++ {}; skipping...".format(error_text_example)
+
+    bucket = utils.get_mocked_AWSBucket()
+    bucket.skip_on_error = True
+
+    with patch('aws_bucket.AWSBucket.send_msg') as mock_send_msg:
+        bucket._exception_handler(utils.TEST_ACCOUNT_ID, log_key, error_text_example, error_code_example)
+        mock_debug.assert_called_with(debug_message_example, 1)
+        mock_get_alert_msg.assert_called_once_with(utils.TEST_ACCOUNT_ID, log_key, None, error_text_example)
+        mock_send_msg.assert_called_once_with('error_msg')
+
+        mock_send_msg.side_effect = Exception
+        bucket._exception_handler(utils.TEST_ACCOUNT_ID, log_key, error_text_example, error_code_example)
+        mock_debug.assert_called_with("++ Failed to send message to Wazuh", 1)
+
+def test_AWSBucket__exception_handler_ko():
+    error_text_example = 'error text'
+    error_code_example = 0
+    log_key = 'test.log'
+
+    bucket = utils.get_mocked_AWSBucket()
+    bucket.skip_on_error = False
+
+    with pytest.raises(SystemExit) as e:
+        bucket._exception_handler(utils.TEST_ACCOUNT_ID, log_key, error_text_example, error_code_example)
+    assert e.value.code == error_code_example
 
 @patch('aws_bucket.AWSBucket.iter_regions_and_accounts')
 @patch('aws_bucket.AWSBucket.init_db')
