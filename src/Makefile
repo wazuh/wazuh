@@ -338,15 +338,10 @@ OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
 AR_LDFLAGS+=${OFLAGS}
 
-DBSYNC_LIB+=-ldbsync
-RSYNC_LIB+=-lrsync
-
 ifeq (${TARGET}, winagent)
-	OSSEC_LDFLAGS+=-Lbuild/${DBSYNC}bin
-	OSSEC_LDFLAGS+=-Lbuild/${RSYNC}bin
+	OSSEC_LDFLAGS+=-Lbuild/bin
 else
-	OSSEC_LDFLAGS+=-Lbuild/${DBSYNC}lib
-	OSSEC_LDFLAGS+=-Lbuild/${RSYNC}lib
+	OSSEC_LDFLAGS+=-Lbuild/lib
 endif
 
 ifneq (,$(filter ${CLEANFULL},YES yes y Y 1))
@@ -358,7 +353,7 @@ ifneq (,$(filter ${ONEWAY},YES yes y Y 1))
 endif
 
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
-        DEFINES+=-DENABLE_AUDIT
+	DEFINES+=-DENABLE_AUDIT
 endif
 
 ifeq (${COVERITY}, YES)
@@ -481,20 +476,6 @@ ifneq (,$(filter ${USE_GEOIP},YES auto yes y Y 1))
 	DEFINES+=-DLIBGEOIP_ENABLED
 	OSSEC_LIBS+=-lGeoIP
 endif # USE_GEOIP
-
-SYSINFO_LIB+=-lsysinfo
-
-ifeq (${TARGET}, winagent)
-	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/bin
-	OSSEC_LDFLAGS+=-L${SYSINFO}build/bin
-else
-	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/lib
-	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib
-endif
-
-ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
-	SYSCOLLECTOR_LIB+=-lsyscollector
-endif
 
 MI :=
 PI :=
