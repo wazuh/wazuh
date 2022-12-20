@@ -1,0 +1,16 @@
+<decoder name="macOS_tcc_process">
+  <program_name>tccd</program_name>
+</decoder>
+
+<decoder name="macOS_tcc_process1">
+  <parent>macOS_tcc_process</parent>
+  <regex>[com.apple.TCC:access] Update Access Record: (\S+) for (\S+) to Denied at \d+ \p\d+-\d+-\d+ (\d+:\d+:\d+) +\d+\p</regex>
+  <order>service, application, time_access_denied</order>
+</decoder>
+
+
+<decoder name="macOS_tcc_process1">
+  <parent>macOS_tcc_process</parent>
+  <regex>[com.apple.TCC:access] Update Access Record: (\S+) for (\S+) to Allowed at \d+ \p\d+-\d+-\d+ (\d+:\d+:\d+) +\d+\p</regex>
+  <order>service, application, time_access_granted</order>
+</decoder>
