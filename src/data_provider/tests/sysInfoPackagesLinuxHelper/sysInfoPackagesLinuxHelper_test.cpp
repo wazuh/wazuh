@@ -435,107 +435,48 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformationNull)
     EXPECT_EQ("", jsPackageInfo["description"]);
 }
 
-TEST_F(SysInfoPackagesLinuxHelperTest, parseApkNameKeyNotFound)
+TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapCorrectMapping)
 {
-    std::vector<std::pair<char, std::string>> input;
-    input.push_back(std::pair<char, std::string>('V', "1.2.3-r4"));
-    input.push_back(std::pair<char, std::string>('A', "x86_64"));
-    input.push_back(std::pair<char, std::string>('I', "634880"));
-    input.push_back(std::pair<char, std::string>('T', "the musl c library (libc) implementation"));
+    std::string jData = "{\"id\":\"rw36mkAjdIKl13dzfwyxP87cejpyIcct\",\"title\":\"gnome-3-38-2004\",\"summary\":\"Shared GNOME 3.38 Ubuntu stack\",\"description\":\"This snap includes a GNOME 3.38 stack (the base libraries and desktop \\nintegration components) and shares it through the content interface. \\n\",\"icon\":\"/v2/icons/gnome-3-38-2004/icon\",\"installed-size\":363151360,\"name\":\"gnome-3-38-2004\",\"publisher\":{\"id\":\"canonical\",\"username\":\"canonical\",\"display-name\":\"Canonical\",\"validation\":\"verified\"},\"developer\":\"canonical\",\"status\":\"active\",\"type\":\"app\",\"base\":\"core20\",\"version\":\"0+git.6f39565\",\"channel\":\"latest/stable\",\"tracking-channel\":\"latest/stable/ubuntu-22.04\",\"ignore-validation\":false,\"revision\":\"119\",\"confinement\":\"strict\",\"private\":false,\"devmode\":false,\"jailmode\":false,\"contact\":\"\",\"mounted-from\":\"/var/lib/snapd/snaps/gnome-3-38-2004_119.snap\",\"media\":[{\"type\":\"icon\",\"url\":\"https://dashboard.snapcraft.io/site_media/appmedia/2021/01/icon_FvbmexL.png\"}],\"install-date\":\"2022-11-23T20:33:59.025662696-03:00\"}";
+    nlohmann::json jsonInput = nlohmann::json::parse(jData);
 
-    const auto& jsPackageInfo { PackageLinuxHelper::parseApk(input) };
-    EXPECT_EQ(true, jsPackageInfo.empty());
+    const auto& jsPackageInfo { PackageLinuxHelper::parseSnap(jsonInput) };
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ("gnome-3-38-2004", jsPackageInfo["name"]);
+    EXPECT_EQ(363151360, jsPackageInfo["size"]);
+    EXPECT_EQ("2022-11-23T20:33:59.025662696-03:00", jsPackageInfo["install_time"]);
+    EXPECT_EQ(" ", jsPackageInfo["groups"]);
+    EXPECT_EQ("0+git.6f39565", jsPackageInfo["version"]);
+    EXPECT_EQ(" ", jsPackageInfo["architecture"]);
+    EXPECT_EQ("snap", jsPackageInfo["format"]);
+    EXPECT_EQ("Canonical", jsPackageInfo["vendor"]);
+    EXPECT_EQ("Shared GNOME 3.38 Ubuntu stack", jsPackageInfo["description"]);
 }
 
-TEST_F(SysInfoPackagesLinuxHelperTest, parseApkVersionKeyNotFound)
+TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapInvalidInputName)
 {
-    std::vector<std::pair<char, std::string>> input;
-    input.push_back(std::pair<char, std::string>('P', "musl"));
-    input.push_back(std::pair<char, std::string>('A', "x86_64"));
-    input.push_back(std::pair<char, std::string>('I', "634880"));
-    input.push_back(std::pair<char, std::string>('T', "the musl c library (libc) implementation"));
+    std::string jData = "{\"id\":\"rw36mkAjdIKl13dzfwyxP87cejpyIcct\",\"title\":\"gnome-3-38-2004\",\"summary\":\"Shared GNOME 3.38 Ubuntu stack\",\"description\":\"This snap includes a GNOME 3.38 stack (the base libraries and desktop \\nintegration components) and shares it through the content interface. \\n\",\"icon\":\"/v2/icons/gnome-3-38-2004/icon\",\"installed-size\":363151360,\"publisher\":{\"id\":\"canonical\",\"username\":\"canonical\",\"display-name\":\"Canonical\",\"validation\":\"verified\"},\"developer\":\"canonical\",\"status\":\"active\",\"type\":\"app\",\"base\":\"core20\",\"version\":\"0+git.6f39565\",\"channel\":\"latest/stable\",\"tracking-channel\":\"latest/stable/ubuntu-22.04\",\"ignore-validation\":false,\"revision\":\"119\",\"confinement\":\"strict\",\"private\":false,\"devmode\":false,\"jailmode\":false,\"contact\":\"\",\"mounted-from\":\"/var/lib/snapd/snaps/gnome-3-38-2004_119.snap\",\"media\":[{\"type\":\"icon\",\"url\":\"https://dashboard.snapcraft.io/site_media/appmedia/2021/01/icon_FvbmexL.png\"}],\"install-date\":\"2022-11-23T20:33:59.025662696-03:00\"}";
+    nlohmann::json jsonInput = nlohmann::json::parse(jData);
 
-    const auto& jsPackageInfo { PackageLinuxHelper::parseApk(input) };
-    EXPECT_EQ(true, jsPackageInfo.empty());
+    const auto& jsPackageInfo { PackageLinuxHelper::parseSnap(jsonInput) };
+    EXPECT_TRUE(jsPackageInfo.empty());
 }
 
-TEST_F(SysInfoPackagesLinuxHelperTest, parseApkArchitectureKeyNotFound)
+TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapInvalidInputVersion)
 {
-    std::vector<std::pair<char, std::string>> input;
-    input.push_back(std::pair<char, std::string>('P', "musl"));
-    input.push_back(std::pair<char, std::string>('V', "1.2.3-r4"));
-    input.push_back(std::pair<char, std::string>('I', "634880"));
-    input.push_back(std::pair<char, std::string>('T', "the musl c library (libc) implementation"));
+    std::string jData = "{\"id\":\"rw36mkAjdIKl13dzfwyxP87cejpyIcct\",\"title\":\"gnome-3-38-2004\",\"summary\":\"Shared GNOME 3.38 Ubuntu stack\",\"description\":\"This snap includes a GNOME 3.38 stack (the base libraries and desktop \\nintegration components) and shares it through the content interface. \\n\",\"icon\":\"/v2/icons/gnome-3-38-2004/icon\",\"installed-size\":363151360,\"publisher\":{\"id\":\"canonical\",\"username\":\"canonical\",\"display-name\":\"Canonical\",\"validation\":\"verified\"},\"developer\":\"canonical\",\"status\":\"active\",\"type\":\"app\",\"base\":\"core20\",\"channel\":\"latest/stable\",\"tracking-channel\":\"latest/stable/ubuntu-22.04\",\"ignore-validation\":false,\"revision\":\"119\",\"confinement\":\"strict\",\"private\":false,\"devmode\":false,\"jailmode\":false,\"contact\":\"\",\"mounted-from\":\"/var/lib/snapd/snaps/gnome-3-38-2004_119.snap\",\"media\":[{\"type\":\"icon\",\"url\":\"https://dashboard.snapcraft.io/site_media/appmedia/2021/01/icon_FvbmexL.png\"}],\"install-date\":\"2022-11-23T20:33:59.025662696-03:00\"}";
+    nlohmann::json jsonInput = nlohmann::json::parse(jData);
 
-    const auto& jsPackageInfo { PackageLinuxHelper::parseApk(input) };
-    EXPECT_EQ("musl", jsPackageInfo.at("name"));
-    EXPECT_EQ("1.2.3-r4", jsPackageInfo.at("version"));
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo.at("architecture"));
-    EXPECT_EQ(634880, jsPackageInfo.at("size"));
-    EXPECT_EQ("the musl c library (libc) implementation", jsPackageInfo.at("description"));
-    EXPECT_EQ("apk", jsPackageInfo.at("format"));
-    EXPECT_EQ("Alpine Linux", jsPackageInfo.at("vendor"));
+    const auto& jsPackageInfo { PackageLinuxHelper::parseSnap(jsonInput) };
+    EXPECT_TRUE(jsPackageInfo.empty());
 }
 
-TEST_F(SysInfoPackagesLinuxHelperTest, parseApkNameValueEmpty)
+TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapValidSizeAsString)
 {
-    std::vector<std::pair<char, std::string>> input;
-    input.push_back(std::pair<char, std::string>('P', ""));
-    input.push_back(std::pair<char, std::string>('V', "1.2.3-r4"));
-    input.push_back(std::pair<char, std::string>('A', "x86_64"));
-    input.push_back(std::pair<char, std::string>('I', "634880"));
-    input.push_back(std::pair<char, std::string>('T', "the musl c library (libc) implementation"));
+    std::string jData = "{\"id\":\"rw36mkAjdIKl13dzfwyxP87cejpyIcct\",\"title\":\"gnome-3-38-2004\",\"summary\":\"Shared GNOME 3.38 Ubuntu stack\",\"description\":\"This snap includes a GNOME 3.38 stack (the base libraries and desktop \\nintegration components) and shares it through the content interface. \\n\",\"icon\":\"/v2/icons/gnome-3-38-2004/icon\",\"installed-size\":\"363151360\",\"name\":\"gnome-3-38-2004\",\"publisher\":{\"id\":\"canonical\",\"username\":\"canonical\",\"display-name\":\"Canonical\",\"validation\":\"verified\"},\"developer\":\"canonical\",\"status\":\"active\",\"type\":\"app\",\"base\":\"core20\",\"version\":\"0+git.6f39565\",\"channel\":\"latest/stable\",\"tracking-channel\":\"latest/stable/ubuntu-22.04\",\"ignore-validation\":false,\"revision\":\"119\",\"confinement\":\"strict\",\"private\":false,\"devmode\":false,\"jailmode\":false,\"contact\":\"\",\"mounted-from\":\"/var/lib/snapd/snaps/gnome-3-38-2004_119.snap\",\"media\":[{\"type\":\"icon\",\"url\":\"https://dashboard.snapcraft.io/site_media/appmedia/2021/01/icon_FvbmexL.png\"}],\"install-date\":\"2022-11-23T20:33:59.025662696-03:00\"}";
+    nlohmann::json jsonInput = nlohmann::json::parse(jData);
 
-    const auto& jsPackageInfo { PackageLinuxHelper::parseApk(input) };
-    EXPECT_EQ(true, jsPackageInfo.empty());
-}
-
-TEST_F(SysInfoPackagesLinuxHelperTest, parseApkVersionValueEmpty)
-{
-    std::vector<std::pair<char, std::string>> input;
-    input.push_back(std::pair<char, std::string>('P', "musl"));
-    input.push_back(std::pair<char, std::string>('V', ""));
-    input.push_back(std::pair<char, std::string>('A', "x86_64"));
-    input.push_back(std::pair<char, std::string>('I', "634880"));
-    input.push_back(std::pair<char, std::string>('T', "the musl c library (libc) implementation"));
-
-    const auto& jsPackageInfo { PackageLinuxHelper::parseApk(input) };
-    EXPECT_EQ(true, jsPackageInfo.empty());
-}
-
-TEST_F(SysInfoPackagesLinuxHelperTest, parseApkSizeValueEmpty)
-{
-    std::vector<std::pair<char, std::string>> input;
-    input.push_back(std::pair<char, std::string>('P', "musl"));
-    input.push_back(std::pair<char, std::string>('V', "1.2.3-r4"));
-    input.push_back(std::pair<char, std::string>('A', "x86_64"));
-    input.push_back(std::pair<char, std::string>('I', ""));
-    input.push_back(std::pair<char, std::string>('T', "the musl c library (libc) implementation"));
-
-    const auto& jsPackageInfo { PackageLinuxHelper::parseApk(input) };
-    EXPECT_EQ("musl", jsPackageInfo.at("name"));
-    EXPECT_EQ("1.2.3-r4", jsPackageInfo.at("version"));
-    EXPECT_EQ("x86_64", jsPackageInfo.at("architecture"));
-    EXPECT_EQ(0, jsPackageInfo.at("size"));
-    EXPECT_EQ("the musl c library (libc) implementation", jsPackageInfo.at("description"));
-    EXPECT_EQ("apk", jsPackageInfo.at("format"));
-    EXPECT_EQ("Alpine Linux", jsPackageInfo.at("vendor"));
-}
-
-TEST_F(SysInfoPackagesLinuxHelperTest, parseApkSuccess)
-{
-    std::vector<std::pair<char, std::string>> input;
-    input.push_back(std::pair<char, std::string>('P', "musl"));
-    input.push_back(std::pair<char, std::string>('V', "1.2.3-r4"));
-    input.push_back(std::pair<char, std::string>('A', "x86_64"));
-    input.push_back(std::pair<char, std::string>('I', "634880"));
-    input.push_back(std::pair<char, std::string>('T', "the musl c library (libc) implementation"));
-
-    const auto& jsPackageInfo { PackageLinuxHelper::parseApk(input) };
-    EXPECT_EQ("musl", jsPackageInfo.at("name"));
-    EXPECT_EQ("1.2.3-r4", jsPackageInfo.at("version"));
-    EXPECT_EQ(634880, jsPackageInfo.at("size"));
-    EXPECT_EQ("the musl c library (libc) implementation", jsPackageInfo.at("description"));
-    EXPECT_EQ("apk", jsPackageInfo.at("format"));
-    EXPECT_EQ("Alpine Linux", jsPackageInfo.at("vendor"));
+    const auto& jsPackageInfo { PackageLinuxHelper::parseSnap(jsonInput) };
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ(363151360, jsPackageInfo["size"]);
 }

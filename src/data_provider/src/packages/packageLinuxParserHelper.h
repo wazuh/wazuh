@@ -15,6 +15,7 @@
 #include "stringHelper.h"
 #include "json.hpp"
 #include "timeHelper.h"
+#include "sharedDefs.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -145,41 +146,80 @@ namespace PackageLinuxHelper
         std::string install_time;
         std::string location;
         std::string architecture;
-        std::string group;
+        std::string groups;
         std::string description;
-        int         size;
         std::string priority;
         std::string multiarch;
         std::string source;
         std::string format;
-    
-        if (info.contains("name")) {
+        int         size = 0;
+
+        bool        hasName    = false;
+        bool        hasVersion = false;
+
+        // TODO: Dismiss record if name or version are not present. 
+
+        if (info.contains("name")) 
+        {
             name = info.at("name");
+            
+            if (name.length()) 
+            {
+                hasName = true;
+            }
         } 
 
-        if (info.contains("version")) {
+        if (info.contains("version")) 
+        {
             version = info.at("version");
+
+            if (version.length()) 
+            {
+                hasVersion = true;
+            }
         }
 
-        if (info.contains("publisher")) {
-            auto publisher = info.at("publisher");
-            if (publisher.contains("display-name")) {
+        if (!(hasVersion && hasName)) {
+            ret.clear();
+            return ret;
+        }
+
+        if (info.contains("publisher")) 
+        {
+            auto &publisher = info.at("publisher");
+            
+            if (publisher.contains("display-name")) 
+            {
                 vendor = publisher.at("display-name");
             }
         }
 
-
-        if (info.contains("install-date")) {
+        if (info.contains("install-date")) 
+        {
             install_time = info.at("install-date");
         }
 
-        if (info.contains("description")) {
-            description = info.at("description");
+        if (info.contains("summary")) 
+        {
+            description = info.at("summary");
         }
 
-        if (info.contains("installed-size")) {
-            if (info.at("installed-size").is_number()) {
-                size = (int)info.at("installed-size");
+        if (info.contains("installed-size")) 
+        {
+            auto &data = info.at("installed-size");
+
+            if (data.is_number()) 
+            {
+                size = data.get<int>();
+            } 
+            else if (data.is_string()) 
+            {
+                auto stringData = data.get_ref<const std::string&>();
+
+                if (stringData.length()) 
+                {
+                    size = std::stoi( stringData );
+                }
             }
         }
 
@@ -196,7 +236,7 @@ namespace PackageLinuxHelper
         ret["priority"]         = UNKNOWN_VALUE;
         ret["multiarch"]        = UNKNOWN_VALUE;
         ret["architecture"]     = UNKNOWN_VALUE;
-        ret["group"]            = UNKNOWN_VALUE;
+        ret["groups"]            = UNKNOWN_VALUE;
 
         return ret;
     }
