@@ -1635,7 +1635,6 @@ char *get_whodata_path(const short unsigned int *win_path) {
     return path;
 }
 
-//787878
 int whodata_path_filter(char **path) {
     if (check_removed_file(*path)) {
         mdebug2(FIM_DISCARD_RECYCLEBIN, *path);
