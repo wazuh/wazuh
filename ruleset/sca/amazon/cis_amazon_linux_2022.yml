@@ -2292,3 +2292,486 @@ checks:
       - "c:rpm -q nftables -> r:^package nftables is not installed"
       - "c:ystemctl is-enabled nftables -> r:masked"
       - "c:systemctl is-active nftables -> r:inactive"
+
+  # 3.4.1.4 Ensure firewalld service enabled and running.
+  - id: 31090
+    title: "Ensure firewalld service enabled and running."
+    description: "firewalld.service enables the enforcement of firewall rules configured through firewalld."
+    rationale: "Ensure that the firewalld.service is enabled and running to enforce firewall rules configured through firewalld."
+    remediation: "Run the following command to unmask firewalld # systemctl unmask firewalld Run the following command to enable and start firewalld # systemctl --now enable firewalld"
+    compliance:
+      - cis: ["3.4.1.4"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:systemctl is-enabled firewalld -> r:enabled"
+      - "c:firewalld-cmd --state -> r:running"
+
+  # 3.4.1.5 Ensure firewalld default zone is set.
+  - id: 31091
+    title: "Ensure firewalld default zone is set."
+    description: "A firewall zone defines the trust level for a connection, interface or source address binding. This is a one to many relation, which means that a connection, interface or source can only be part of one zone, but a zone can be used for many network connections, interfaces and sources. 1.- The default zone is the zone that is used for everything that is not explicitly bound/assigned to another zone. 2.- If no zone assigned to a connection, interface or source, only the default zone is used. 3.- The default zone is not always listed as being used for an interface or source as it will be used for it either way. This depends on the manager of the interfaces. Connections handled by NetworkManager are listed as NetworkManager requests to add the zone binding for the interface used by the connection. Also interfaces under control of the network service are listed also because the service requests it."
+    rationale: "Because the default zone is the zone that is used for everything that is not explicitly bound/assigned to another zone, it is important for the default zone to set."
+    remediation: "Run the following command to set the default zone: # firewall-cmd --set-default-zone=<NAME_OF_ZONE> Example: # firewall-cmd --set-default-zone=public"
+    compliance:
+      - cis: ["3.4.1.5"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    references:
+      - https://firewalld.org/documentation
+      - https://firewalld.org/documentation/man-pages/firewalld.zone
+    condition: all
+    rules:
+      - "c:systemctl is-enabled firewalld -> r:enabled"
+      - "c:firewalld-cmd --state -> r:running"
+
+  # 3.4.1.6 Ensure network interfaces are assigned to appropriate zone. (Manual) -> Not Implemented
+  # 3.4.1.7 Ensure firewalld drops unnecessary services and ports. (Manual) -> Not Implemented
+
+  ############################################################
+  # 3.4.2 Configure nfttables.
+  ############################################################
+
+  # 3.4.2.1 Ensure nftables is installed.
+  - id: 31092
+    title: "Ensure nftables is installed."
+    description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem."
+    rationale: "nftables is a subsystem of the Linux kernel that can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host."
+    impact: "Changing firewall settings while connected over the network can result in being locked out of the system."
+    remediation: "Run the following command to install nftables # dnf install nftables"
+    compliance:
+      - cis: ["3.4.2.1"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q nftables -> r:nftables-"
+
+  # 3.4.2.2 Ensure firewalld is either not installed or masked with nftables.
+  - id: 31093
+    title: "Ensure firewalld is either not installed or masked with nftables."
+    description: "firewalld (Dynamic Firewall Manager) provides a dynamically managed firewall with support for network/firewall “zones” to assign a level of trust to a network and its associated connections, interfaces or sources. It has support for IPv4, IPv6, Ethernet bridges and also for IPSet firewall settings. There is a separation of the runtime and permanent configuration options."
+    rationale: "Running both nftables.service and firewalld.service may lead to conflict and unexpected results."
+    remediation: "Run the following command to remove firewalld # dnf remove firewalld OR Run the following command to stop and mask firewalld # systemctl --now mask firewalld"
+    compliance:
+      - cis: ["3.4.2.2"]
+      - cis_csc_v8: ["4.4", "4.8"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.20",
+            "CM.L2-3.4.7",
+            "CM.L2-3.4.8",
+            "SC.L1-3.13.1",
+            "SC.L2-3.13.6",
+          ]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5", "1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1", "1.2.5", "2.2.4", "6.4.1"]
+      - nist_sp_800-53: ["CA-9", "CM-7"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: any
+    rules:
+      - "c:rpm -q firewalld -> r:^package firewalld is not installed"
+      - "c:systemctl is-enabled firewalld -> r:masked"
+
+  # 3.4.2.3 Ensure iptables-services not installed with nftables.
+  - id: 31094
+    title: "Ensure iptables-services not installed with nftables."
+    description: "The iptables-services package contains the iptables.service and ip6tables.service. These services allow for management of the Host Based Firewall provided by the iptables package."
+    rationale: "iptables.service and ip6tables.service are still supported and can be installed with the iptables-services package. Running both nftables and the services included in the iptables-services package may lead to conflict."
+    remediation: "Run the following commands to stop the services included in the iptables-services package and remove the iptables-services package: # systemctl stop iptables # systemctl stop ip6tables # dnf remove iptables-services"
+    compliance:
+      - cis: ["3.4.2.3"]
+      - cis_csc_v8: ["4.4", "4.8"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.20",
+            "CM.L2-3.4.7",
+            "CM.L2-3.4.8",
+            "SC.L1-3.13.1",
+            "SC.L2-3.13.6",
+          ]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5", "1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1", "1.2.5", "2.2.4", "6.4.1"]
+      - nist_sp_800-53: ["CA-9", "CM-7"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: any
+    rules:
+      - "c:rpm -q iptables-services -> r:^package iptables-services is not installed"
+
+  # 3.4.2.4 Ensure iptables are flushed with nftables.
+  - id: 31095
+    title: "Ensure iptables are flushed with nftables."
+    description: "nftables is a replacement for iptables, ip6tables, ebtables and arptables."
+    rationale: "It is possible to mix iptables and nftables. However, this increases complexity and also the chance to introduce errors. For simplicity flush out all iptables rules, and ensure it is not loaded."
+    remediation: "Run the following commands to flush iptables: For iptables: # iptables -F For ip6tables: # ip6tables -F"
+    compliance:
+      - cis: ["3.4.2.4"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - 'not c:sh -c "iptables -L | egrep -v  \"^target|^Chain\"" -> r:^\w+'
+      - 'not c:sh -c "ip6tables -L | egrep -v  \"^target|^Chain\"" -> r:^\w+'
+      - "c:rpm -q nftables -> r:^nftables-"
+
+  # 3.4.2.5 Ensure an nftables table exists.
+  - id: 31096
+    title: "Ensure an nftables table exists."
+    description: "Tables hold chains. Each table only has one address family and only applies to packets of this family. Tables can have one of five families."
+    rationale: "nftables doesn't have any default tables. Without a table being build, nftables will not filter network traffic."
+    impact: "Adding rules to a running nftables can cause loss of connectivity to the system."
+    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter"
+    compliance:
+      - cis: ["3.4.2.5"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:nft list tables -> r:^table"
+      - "c:rpm -q nftables -> r:^nftables-"
+
+  # 3.4.2.6 Ensure nftables base chains exist.
+  # 3.4.2.9 Ensure nftables default deny firewall policy.
+  - id: 31097
+    title: "Ensure nftables base chains exist."
+    description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
+    rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
+    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \\; }"
+    compliance:
+      - cis: ["3.4.2.6", "3.4.2.9"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:nft list ruleset -> r:input"
+      - "c:nft list ruleset -> r:forward"
+      - "c:nft list ruleset -> r:output"
+      - "c:rpm -q nftables -> r:nftables-"
+
+  # 3.4.2.7 Ensure nftables loopback traffic is configured - Not implemented, SCA limitation.
+  # 3.4.2.8 Ensure nftables outbound and established connections are configured - Not implemented, SCA limitation.
+  # 3.4.2.9 Ensure nftables default deny firewall policy - covered by 20596.
+
+  # 3.4.2.10 Ensure nftables service is enabled.
+  - id: 31098
+    title: "Ensure nftables service is enabled."
+    description: "The nftables service allows for the loading of nftables rulesets during boot, or starting on the nftables service."
+    rationale: "The nftables service restores the nftables rules from the rules files referenced in the /etc/sysconfig/nftables.conf file during boot or the starting of the nftables service."
+    remediation: "Run the following command to enable the nftables service: # systemctl enable nftables"
+    compliance:
+      - cis: ["3.4.2.10"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:systemctl is-enabled nftables -> r:enabled"
+
+  # 3.4.2.11 Ensure nftables rules are permanent - Not implemented, requires manual operation.
+
+  ############################################################
+  # 3.4.3 Configure iptables.
+  ############################################################
+
+  ############################################################
+  # 3.4.3.1 Configure iptables software.
+  ############################################################
+
+  # 3.4.3.1.1 Ensure iptables packages are installed.
+  # 3.4.3.1.2 Ensure nftables is not installed with iptables.
+  # 3.4.3.1.3 Ensure firewalld is either not installed or masked with iptables.
+  - id: 31099
+    title: "Ensure iptables packages are installed."
+    description: "iptables is a utility program that allows a system administrator to configure the tables provided by the Linux kernel firewall, implemented as different Netfilter modules, and the chains and rules it stores. Different kernel modules and programs are used for different protocols; iptables applies to IPv4, ip6tables to IPv6, arptables to ARP, and ebtables to Ethernet frames."
+    rationale: "A method of configuring and maintaining firewall rules is necessary to configure a Host Based Firewall."
+    remediation: "Run the following command to install iptables and iptables-services # dnf install iptables iptables-services"
+    compliance:
+      - cis: ["3.4.3.1.1", "3.4.3.1.2", "3.4.3.1.3"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:rpm -q firewalld -> r:^package firewalld is not installed"
+      - "c:rpm -q nftables -> r:^package nftables is not installed"
+      - "c:rpm -q iptables -> r:iptables-"
+
+  ############################################################
+  # 3.4.3.2 Configure IPv4 iptables.
+  ############################################################
+
+  # 3.4.3.2.1 Ensure iptables loopback traffic is configured - Not implemented, requires manual operation.
+  # 3.4.3.2.2 Ensure iptables outbound and established connections are configured - Not implemented, requires manual operation.
+  # 3.4.3.2.3 Ensure iptables rules exist for all open ports - Not implemented, SCA limitation.
+
+  # 3.4.3.2.4 Ensure iptables default deny firewall policy.
+  - id: 31100
+    title: "Ensure iptables default deny firewall policy."
+    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
+    rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
+    remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP # iptables -P OUTPUT DROP # iptables -P FORWARD DROP"
+    compliance:
+      - cis: ["3.4.3.2.4"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:iptables -L INPUT   -> r:policy DROP"
+      - "c:iptables -L FORWARD -> r:policy DROP"
+      - "c:iptables -L OUTPUT  -> r:policy DROP"
+
+  # 3.4.3.2.5 Ensure iptables rules are saved - Not implemented, requires manual operation.
+
+  # 3.4.3.2.6 Ensure iptables is enabled and active.
+  - id: 31101
+    title: "Ensure iptables is enabled and active."
+    description: "iptables.service is a utility for configuring and maintaining iptables."
+    rationale: "iptables.service will load the iptables rules saved in the file /etc/sysconfig/iptables at boot, otherwise the iptables rules will be cleared during a re-boot of the system."
+    remediation: "Run the following command to enable and start iptables: # systemctl --now enable iptables"
+    compliance:
+      - cis: ["3.4.3.2.6"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:systemctl is-enabled iptables -> r:enabled"
+      - "c:systemctl is-active iptables -> r:active"
+
+  # 3.4.3.3.1 Ensure IPv6 loopback traffic is configured.
+  - id: 31102
+    title: "Ensure IPv6 loopback traffic is configured."
+    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic tothe loopback network (::1)."
+    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (::1) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
+    remediation: "Run the following commands to implement the loopback rules:# ip6tables -A INPUT -i lo -j ACCEPT# ip6tables -A OUTPUT -o lo -j ACCEPT# ip6tables -A INPUT -s::1 -j DROP"
+    compliance:
+      - cis: ["3.4.3.3.1"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:ip6tables -L INPUT -v -n -> r:ACCEPT && r:lo"
+      - "c:ip6tables -L INPUT -v -n -> r:DROP"
+      - "c:ip6tables -L OUTPUT -v -n -> r:ACCEPT && r:lo"
+
+  # 3.4.3.3.2 Ensure ip6tables outbound and established connections are configured - Not implemented, requires manual operation.
+  # 3.4.3.3.3 Ensure ip6tables firewall rules exist for all open ports - Not implemented, requires manual operation.
+
+  # 3.4.3.3.4 Ensure ip6tables default deny firewall policy.
+  - id: 31103
+    title: "Ensure ip6tables default deny firewall policy."
+    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
+    rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
+    remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP; # ip6tables -P OUTPUT DROP; # ip6tables -PFORWARD DROP"
+    compliance:
+      - cis: ["3.4.3.3.4"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:ip6tables -L INPUT -> r:policy DROP"
+      - "c:ip6tables -L FORWARD -> r:policy DROP"
+      - "c:ip6tables -L OUTPUT -> r:policy DROP"
+
+  # 3.4.3.3.5 Ensure ip6tables rules are saved - Not implemented, requires manual operation.
+
+  # 3.4.3.3.6 Ensure ip6tables is enabled and running
+  - id: 31104
+    title: "Ensure ip6tables is enabled and running."
+    description: "ip6tables.service is a utility for configuring and maintaining ip6tables."
+    rationale: "ip6tables.service will load the iptables rules saved in the file /etc/sysconfig/ip6tables at boot, otherwise the ip6tables rules will be cleared during a re-boot of the system."
+    remediation: "Run the following command to enable and start iptables: # systemctl --now start ip6tables"
+    compliance:
+      - cis: ["3.4.3.3.6"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0:
+          ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["CA-9"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:systemctl is-enabled ip6tables -> r:enabled"
+      - "c:systemctl is-active ip6tables -> r:active"
+
+  ############################################################
+  # 4 Logging and Auditing.
+  ############################################################
+ 
+  ############################################################
+  # 4.1 Configure System Accounting (auditd).
+  ############################################################
+  
+  ############################################################
+  # 4.1.1 Ensure auditing is enabled.
+  ############################################################
+
+    # 4.1.1.1 Ensure auditd is installed.
+  - id: 31105
+    title: "Ensure auditd is installed."
+    description: "auditd is the userspace component to the Linux Auditing System. It's responsible for writing audit records to the disk."
+    rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
+    remediation: "Run the following command to Install auditd # dnf install audit"
+    compliance:
+      - cis: ["4.1.1.1"]
+      - cis_csc_v8: ["8.2", "8.5"]
+      - cis_csc_v7: ["6.2", "6.3"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - hipaa: ["164.312(b)"]
+      - pci_dss_3.2.1: ["10.1", "10.2", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_4.0:
+          [
+            "5.3.4",
+            "6.4.1",
+            "6.4.2",
+            "9.4.5",
+            "10.2",
+            "10.2.1",
+            "10.2.1.1",
+            "10.2.1.2",
+            "10.2.1.3",
+            "10.2.1.4",
+            "10.2.1.5",
+            "10.2.1.6",
+            "10.2.1.7",
+            "10.2.2",
+          ]
+      - nist_sp_800-53: ["AU-2", "AU-3", "AU-3(1)", "AU-12", "SI-5", "AU-7"]
+      - soc_2: ["CC5.2", "CC7.2"]
+    condition: all
+    rules:
+      - "c:rpm -q audit -> r:^audit-"
+
+  # 4.1.1.2 Ensure auditd service is enabled.
+  - id: 31106
+    title: "Ensure auditd service is enabled."
+    description: "Turn on the auditd daemon to record system events."
+    rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
+    remediation: "Run the following command to enable auditd: # systemctl --now enable auditd"
+    compliance:
+      - cis: ["4.1.1.2"]
+      - cis_csc_v8: ["8.2"]
+      - cis_csc_v7: ["6.2", "6.3"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - hipaa: ["164.312(b)"]
+      - pci_dss_3.2.1: ["10.2","10.3"]
+      - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
+      - nist_sp_800-53: ["AU-2", "AU-12", "SI-5"]
+    condition: all
+    rules:
+      - "c:systemctl is-enabled auditd -> r:enabled"
+
+  # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled.
+  - id: 31107
+    title: "Ensure auditing for processes that start prior to auditd is enabled."
+    description: "Configure grub2 so that processes that are capable of being audited can be audited even if they start up prior to auditd startup."
+    rationale: "Audit events need to be captured on processes that start up prior to auditd, so that potential malicious activity cannot go undetected. Note: This recommendation is designed around the grub2 bootloader, if another bootloader is in use in your environment enact equivalent settings."
+    remediation: 'Run the following command to add audit=1 to GRUB_CMDLINE_LINUX: # grubby --update-kernel ALL --args "audit=1"'
+    compliance:
+      - cis: ["4.1.1.3"]
+      - cis_csc_v8: ["8.2"]
+      - cis_csc_v7: ["6.2", "6.3"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - hipaa: ["164.312(b)"]
+      - pci_dss_3.2.1: ["10.2","10.3"]
+      - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
+      - nist_sp_800-53: ["AU-2", "AU-12", "SI-5"]
+    condition: any
+    rules:
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*linux && r:audit=1'
+      - 'f:/boot/grub2/grubenv -> r:kernelopts=([^#\n\r]+\h+)?(audit=1)'
+
+
+  # 4.1.1.4 Ensure audit_backlog_limit is sufficient
+  - id: 31108
+    title: "Ensure audit_backlog_limit is sufficient."
+    description: "The backlog limit has a default setting of 64. Recommended that this value be 8192 or larger."
+    rationale: "Audit events need to be captured on processes that start up prior to auditd, so that potential malicious activity cannot go undetected. Note: This recommendation is designed around the grub2 bootloader, if another bootloader is in use in your environment enact equivalent settings."
+    remediation: 'Run the following command to add audit_backlog_limit=<BACKLOG SIZE> to GRUB_CMDLINE_LINUX: # grubby --update-kernel ALL --args "audit_backlog_limit=<BACKLOG SIZE>"'
+    compliance:
+      - cis: ["4.1.1.4"]
+      - cis_csc_v8: ["8.2"]
+      - cis_csc_v7: ["6.2", "6.3"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - hipaa: ["164.312(b)"]
+      - pci_dss_3.2.1: ["10.2","10.3"]
+      - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
+      - nist_sp_800-53: ["AU-2", "AU-12", "SI-5"]
+    condition: any
+    rules:
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*linux && r:audit=1'
+      - 'f:/boot/grub2/grubenv -> r:kernelopts=([^#\n\r]+\h+)?(audit=1)'
