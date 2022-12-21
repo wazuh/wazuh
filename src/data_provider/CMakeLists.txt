@@ -51,7 +51,7 @@ include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
 include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
 endif(NOT CMAKE_CHECK_CENTOS5)
 include_directories(${SRC_FOLDER}/shared/http-request/include/)
-include_directories(${SRC_FOLDER}/external/curl/include/curl/)
+include_directories(${SRC_FOLDER}/shared/http-request/shared/)
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
@@ -73,7 +73,6 @@ endif(NOT CMAKE_CHECK_CENTOS5)
 link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/shared/http-request/build)
 link_directories(${SRC_FOLDER}/external/curl/lib/.libs/)
-
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -182,10 +181,9 @@ elseif(APPLE)
   target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a ${iokit_lib} ${corefoundation_lib})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
+target_link_libraries(sysinfo wazuhext urlrequest)
+
 add_subdirectory(${SRC_FOLDER}/shared/http-request ${SRC_FOLDER}/shared/http-request/build)
-
-target_link_libraries(sysinfo wazuhext urlrequest curl)
-
 
 if(APPLE)
   add_custom_command(TARGET sysinfo

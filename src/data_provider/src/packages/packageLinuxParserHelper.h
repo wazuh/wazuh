@@ -19,6 +19,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
+#include <iostream>
 
 // Parse helpers for standard Linux packaging systems (rpm, dpkg, ...)
 namespace PackageLinuxHelper
@@ -132,6 +133,74 @@ namespace PackageLinuxHelper
 
         return ret;
     }
+
+
+    static nlohmann::json parseSnap(const nlohmann::json& info)
+    {
+        nlohmann::json ret;
+
+    /*    std::string name;
+        std::string version;
+        std::string vendor;
+        std::string install_time;
+        std::string location;
+        std::string architecture;
+        std::string group;
+        std::string description;
+        std::string size;
+        std::string priority;
+        std::string multiarch;
+        std::string source;
+        std::string format;
+    
+        if (info.find("name")!=info.end()) {
+            name = info.at("name");
+        } 
+
+        if (info.find("version")!=info.end()) {
+            version = info.at("version");
+        }
+
+        if (info.find("publisher")!=info.end()) {
+            auto publisher = info.at("publisher");
+            if (publisher.find("display-name")!=publisher.end()) {
+                vendor = publisher.at("display-name");
+            }
+        }
+
+
+        if (info.find("install_time")!=info.end()) {
+            install_time = info.at("install_time");
+        }
+
+        if (info.find("description")!=info.end()) {
+            description = info.at("description");
+        }
+
+        if (info.find("installed-size")!=info.end()) {
+            size = info.at("installed-size");
+        }
+
+        ret["name"]             = name;
+        ret["location"]         = "/snap/" + name.substr(1, name.length()-2);
+        ret["version"]          = version;
+        ret["vendor"]           = vendor;
+        ret["install_time"]     = install_time;
+        ret["description"]      = description;
+        ret["size"]             = size;
+        ret["source"]           = "snapcraft";
+        ret["format"]           = "snap";
+
+        ret["priority"]         = "UNKOWN_VALUE";
+        ret["multiarch"]        = "UNKOWN_VALUE";
+        ret["architecture"]     = "UNKOWN_VALUE";
+        ret["group"]            = "UNKOWN_VALUE";
+*/
+        std::cout << ret.dump() << std::endl;
+
+        return ret;
+    }
+
 
 };
 
