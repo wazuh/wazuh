@@ -582,39 +582,52 @@ struct KVDB::Impl
         return true;
     }
 
-    std::string_view dumpContent(json::Json& dump)
+    json::Json dumpContent()
     {
-        std::string errorMessage{}, jsonFill{};
+        json::Json dump {};
+        dump.setArray();
 
-        rocksdb::Iterator* iter = m_db->NewIterator(kOptions.read);
-        iter->SeekToFirst();
-        for (; iter->Valid(); iter->Next())
+        std::shared_ptr<rocksdb::Iterator> iter(m_db->NewIterator(kOptions.read));
+
+        iter->Refresh(); // TODO: Check if this is needed, i think it is not and its
+                         // expensive
+        for (iter->SeekToFirst(); iter->Valid(); iter->Next())
         {
-            const auto value = iter->value().ToString();
-            if (value.empty())
-            {
-                jsonFill = fmt::format("{{\"key\": \"{}\"}}", iter->key().ToString());
-            }
-            else
-            {
-                jsonFill = fmt::format("{{\"key\": \"{}\",\"value\": {}}}",
-                                        iter->key().ToString(),value);
-            }
 
+            // TODO: The performance of this is not good. We should have a method to
+            // append a json object to an array without copying
+            json::Json jItem {};
+            jItem.setObject();
+            jItem.setString(iter->key().ToString(), "/key");
+            json::Json jVal;
             try
             {
-                json::Json keyValueObject {jsonFill.c_str()};
-                dump.appendJson(keyValueObject);
+                jVal = json::Json {iter->value().ToString().c_str()};
             }
             catch (const std::exception& e)
             {
-                errorMessage =
-                    fmt::format("Couldn't create and append object to array: {}", e.what());
+                // WAZUH_LOG_ERROR("Engine KVDB, corrupted DB: Database '{}': Couldn't "
+                //                 "create and append object to array: '{}'",
+                //                 m_name,
+                //                 e.what());
+                //  TODO All the values should be json, if not then the DB is corrupted
+                jVal.setString(iter->value().ToString(), "/value");
             }
+            jItem.set("/value", jVal);
+            dump.appendJson(jItem);
         }
 
-        delete iter;
-        return errorMessage;
+        // check for error
+        if (!iter->status().ok())
+        {
+            WAZUH_LOG_WARN("Engine KVDB: Database \"{}\": Couldn't iterate over "
+                           "database: \"{}\"",
+                           m_name,
+                           iter->status().ToString());
+            return {};
+        }
+
+        return dump;
     }
 
     std::string m_name;
@@ -736,7 +749,7 @@ std::string_view KVDB::getName() const
     return mImpl->getName();
 }
 
-std::string_view KVDB::dumpContent(json::Json& dump)
+json::Json KVDB::jDump()
 {
-    return mImpl->dumpContent(dump);
+    return mImpl->dumpContent();
 }
