@@ -115,15 +115,16 @@ api::CommandFn kvdbDumpCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManage
         json::Json data;
         data.setArray("/data");
 
-        auto retVal = kvdbManager->dumpContent(kvdbNameValue, data);
-        if (!retVal.has_value())
+        auto jDump = kvdbManager->jDumpDB(kvdbNameValue);
+
+        if (std::holds_alternative<base::Error>(jDump))
         {
             return api::WazuhResponse {
-                json::Json {"{}"}, kvdb_manager::API_SUCCESS_CODE, retVal.value()};
+                json::Json {"{}"}, kvdb_manager::API_ERROR_CODE, std::get<base::Error>(jDump).message};
         }
 
-        std::string val {data.str()};
-        return api::WazuhResponse {std::move(data), kvdb_manager::API_SUCCESS_CODE, "OK"};
+
+        return api::WazuhResponse {std::get<json::Json>(jDump), kvdb_manager::API_SUCCESS_CODE, "OK"};
     };
 }
 

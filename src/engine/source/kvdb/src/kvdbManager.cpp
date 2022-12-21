@@ -297,36 +297,41 @@ bool KVDBManager::getDBFromPath(const std::string& name, KVDBHandle& dbHandle)
             || KVDB::CreationStatus::OkCreated == result);
 }
 
-std::optional<std::string_view> KVDBManager::dumpContent(const std::string& name,
-                                                         json::Json& data)
+std::variant<json::Json, base::Error> KVDBManager::jDumpDB(const std::string& name)
 {
-    std::optional<std::string_view> result {std::nullopt};
-    KVDBHandle dbHandle;
-    if (getDBFromPath(name, dbHandle))
+
+    auto kvdb = getDB(name);
+    if (!kvdb)
     {
-        result = dbHandle->dumpContent(data);
-    }
-    else
-    {
-        result = fmt::format("Database \"{}\" could not be obtained", name.c_str());
+        loadDB(name, false);
+        kvdb = getDB(name);
+        if (!kvdb)
+        {
+            return base::Error {"Database not found or could not be loaded"};
+        }
     }
 
-    return result;
+    return kvdb->jDump();
 }
 
 bool KVDBManager::writeKey(const std::string& name,
                            const std::string& key,
                            const std::string value)
 {
-    bool result {false};
-    KVDBHandle dbHandle;
-
-    if (getDBFromPath(name, dbHandle))
+    auto kvdb = getDB(name);
+    if (!kvdb)
     {
-        result = dbHandle->write(key, value);
+        loadDB(name, false);
+        kvdb = getDB(name);
+        if (!kvdb)
+        {
+            //return base::Error {"Database not found or could not be loaded"};
+            // TODO: FIX THIS, cannot insert 
+            return false;
+        }
     }
 
-    return result;
+    return kvdb->write(key, value);
 }
 
 std::optional<std::string> KVDBManager::getKeyValue(const std::string& name,
@@ -369,6 +374,7 @@ bool KVDBManager::isDBOnPath(const std::string& name)
     return (result != KVDB::CreationStatus::ErrorUnknown);
 }
 
+// TODO: Delete this method.
 bool KVDBManager::isLoaded(const std::string& name)
 {
     auto it = m_loadedDBs.find(name);
@@ -377,6 +383,8 @@ bool KVDBManager::isLoaded(const std::string& name)
 
 std::optional<std::string> KVDBManager::deleteDB(const std::string& name)
 {
+    std::shared_lock lk(m_mtx);
+    // TODO: Fix this. concurrency issues
     if (isLoaded(name))
     {
         // TODO: double check instances because it could have been updated
