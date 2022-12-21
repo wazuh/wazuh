@@ -217,9 +217,6 @@ int test_setup_packages_valid_msg(void **state)
                 \"source\" : \"11\",\
                 \"description\" : \"12\",\
                 \"location\" : \"13\",\
-                \"triaged\" : \"14\",\
-                \"cpe\" : \"15\",\
-                \"msu_name\" : \"16\",\
                 \"checksum\" : \"17\",\
                 \"item_id\" : \"18\"\
             }\
@@ -478,7 +475,6 @@ int test_setup_os_valid_msg(void **state)
                 \"os_release\" : \"106\",\
                 \"checksum\" : \"107\",\
                 \"os_display_version\" : \"108\",\
-                \"triaged\" : \"109\",\
                 \"reference\" : \"110\"\
             }\
         }"), lf->log == NULL)
@@ -540,9 +536,6 @@ int test_setup_packages_valid_msg_inserted(void **state)
                 \"source\" : \"11\",\
                 \"description\" : \"12\",\
                 \"location\" : \"13\",\
-                \"triaged\" : \"14\",\
-                \"cpe\" : \"15\",\
-                \"msu_name\" : \"16\",\
                 \"checksum\" : \"17\",\
                 \"item_id\" : \"18\"\
             }\
@@ -799,7 +792,6 @@ int test_setup_os_valid_msg_inserted(void **state)
                 \"os_release\" : \"106\",\
                 \"checksum\" : \"107\",\
                 \"os_display_version\" : \"108\",\
-                \"triaged\" : \"109\",\
                 \"reference\" : \"110\"\
             }\
         }"),
@@ -841,7 +833,6 @@ int test_setup_os_valid_msg_with_number_pk(void **state)
                 \"os_release\" : \"106\",\
                 \"checksum\" : \"107\",\
                 \"os_display_version\" : \"108\",\
-                \"triaged\" : \"109\",\
                 \"reference\" : \"110\"\
             }\
         }"),
@@ -1222,9 +1213,6 @@ void test_syscollector_dbsync_packages_valid_msg(void **state)
             "\"source\":\"11\","
             "\"description\":\"12\","
             "\"location\":\"13\","
-            "\"triaged\":\"14\","
-            "\"cpe\":\"15\","
-            "\"msu_name\":\"16\","
             "\"checksum\":\"17\","
             "\"item_id\":\"18\""
         "}";
@@ -1468,7 +1456,6 @@ void test_syscollector_dbsync_os_valid_msg(void **state)
             "\"os_release\":\"106\","
             "\"checksum\":\"107\","
             "\"os_display_version\":\"108\","
-            "\"triaged\":\"109\","
             "\"reference\":\"110\""
         "}";
     const char *result = "ok ";
@@ -1526,9 +1513,6 @@ void test_syscollector_dbsync_packages_valid_msg_inserted(void **state)
             "\"source\":\"11\","
             "\"description\":\"12\","
             "\"location\":\"13\","
-            "\"triaged\":\"14\","
-            "\"cpe\":\"15\","
-            "\"msu_name\":\"16\","
             "\"checksum\":\"17\","
             "\"item_id\":\"18\""
         "}";
@@ -1772,7 +1756,6 @@ void test_syscollector_dbsync_os_valid_msg_inserted(void **state)
             "\"os_release\":\"106\","
             "\"checksum\":\"107\","
             "\"os_display_version\":\"108\","
-            "\"triaged\":\"109\","
             "\"reference\":\"110\""
         "}";
     const char *result = "ok ";
@@ -1812,7 +1795,6 @@ void test_syscollector_dbsync_os_valid_msg_with_number_pk(void **state)
             "\"os_release\":\"106\","
             "\"checksum\":\"107\","
             "\"os_display_version\":\"108\","
-            "\"triaged\":\"109\","
             "\"reference\":\"110\""
         "}";
     const char *result = "ok ";
@@ -1892,7 +1874,6 @@ void test_syscollector_dbsync_os_valid_msg_no_result_payload(void **state)
             "\"os_release\":\"106\","
             "\"checksum\":\"107\","
             "\"os_display_version\":\"108\","
-            "\"triaged\":\"109\","
             "\"reference\":\"110\""
         "}";
     const char *result = "";
