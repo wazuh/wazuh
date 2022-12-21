@@ -290,7 +290,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             if (agent_info = cJSON_Parse(strchr(r_msg, '{')), agent_info) {
                 char *error_msg_string = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
-                    if (compare_wazuh_versions(__ossec_version, version->valuestring) < 0) {
+                    if (compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
                         /* Reply to the agent */
                         cJSON *error_msg = cJSON_CreateObject();
                         cJSON_AddStringToObject(error_msg, "message", HC_INVALID_VERSION);

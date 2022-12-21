@@ -123,6 +123,22 @@ w_err_t w_auth_parse_data(const char* buf,
         return OS_INVALID;
     }
 
+    /* Check for valid agent version */
+    char agent_version_token[2] = "V:";
+    if (strncmp(++buf, agent_version_token, 2) == 0) {
+        char version[OS_BUFFER_SIZE] = {0};
+        sscanf(buf," V:\'%2048[^\']\"",version);
+
+        /* Validate the version */
+        if (compare_wazuh_versions(__ossec_version, version, false) < 0) {
+            merror("Incompatible version for new agent from: %s", ip);
+            snprintf(response, OS_SIZE_2048, "ERROR: %s", HC_INVALID_VERSION);
+            return OS_INVALID;
+        }
+
+        buf+= 2+strlen(version)+2;
+    }
+
     /* Check for valid centralized group */
     const char * centralized_group_token = " G:";
     if (strncmp(buf, centralized_group_token, 3) == 0) {

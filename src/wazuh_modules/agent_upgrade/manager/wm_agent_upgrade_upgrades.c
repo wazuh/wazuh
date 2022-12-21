@@ -206,7 +206,7 @@ STATIC void* wm_agent_upgrade_start_upgrade(void *arg) {
             if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
                 wm_upgrade_task *upgrade_task = agent_task->task_info->task;
 
-                if (upgrade_task->custom_version && (compare_wazuh_versions(upgrade_task->custom_version, WM_UPGRADE_NEW_UPGRADE_MECHANISM) < 0)) {
+                if (upgrade_task->custom_version && (compare_wazuh_versions(upgrade_task->custom_version, WM_UPGRADE_NEW_UPGRADE_MECHANISM, true) < 0)) {
 
                     cJSON_Delete(status_request);
                     cJSON_Delete(status_response);
@@ -320,7 +320,7 @@ STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, c
     }
 
     // Compare actual agent version to know which command format to use
-    int wpk_message_format = compare_wazuh_versions(strchr(agent_task->agent_info->wazuh_version, 'v'), WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    int wpk_message_format = compare_wazuh_versions(strchr(agent_task->agent_info->wazuh_version, 'v'), WM_UPGRADE_NEW_UPGRADE_MECHANISM, true);
 
     // open wb
     if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_open(agent_task->agent_info->agent_id, wpk_message_format, wpk_path)) {

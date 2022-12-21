@@ -286,6 +286,10 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
         snprintf(buf, 2048, "OSSEC A:'%s'", lhostname);
     }
 
+    if (cfg->agent_version) {
+        w_enrollment_concat_agent_version(buf, cfg->agent_version);
+    }
+
     if (cfg->target_cfg->centralized_group) {
         w_enrollment_concat_group(buf, cfg->target_cfg->centralized_group);
     }
@@ -299,10 +303,6 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
 
     if (cfg->keys->keysize > 0) {
         w_enrollment_concat_key(buf, cfg->keys->keyentries[0]);
-    }
-
-    if (cfg->agent_version) {
-        w_enrollment_concat_agent_version(buf, cfg->agent_version);
     }
 
     /* Append new line character */

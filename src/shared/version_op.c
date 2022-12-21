@@ -978,7 +978,7 @@ int get_nproc() {
 #endif
 }
 
-int compare_wazuh_versions(const char *version1, const char *version2) {
+int compare_wazuh_versions(const char *version1, const char *version2, bool compare_patch) {
     char ver1[10];
     char ver2[10];
     char *tmp_v1 = NULL;
@@ -1045,7 +1045,7 @@ int compare_wazuh_versions(const char *version1, const char *version2) {
             result = 1;
         } else if (minor1 < minor2) {
             result = -1;
-        } else {
+        } else if (compare_patch) {
             if (patch1 > patch2) {
                 result = 1;
             } else if (patch1 < patch2) {
@@ -1053,6 +1053,8 @@ int compare_wazuh_versions(const char *version1, const char *version2) {
             } else {
                 result = 0;
             }
+        } else {
+            result = 0;
         }
     }
 
