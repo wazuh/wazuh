@@ -139,7 +139,7 @@ namespace PackageLinuxHelper
     {
         nlohmann::json ret;
 
-    /*    std::string name;
+        std::string name;
         std::string version;
         std::string vendor;
         std::string install_time;
@@ -147,42 +147,44 @@ namespace PackageLinuxHelper
         std::string architecture;
         std::string group;
         std::string description;
-        std::string size;
+        int         size;
         std::string priority;
         std::string multiarch;
         std::string source;
         std::string format;
     
-        if (info.find("name")!=info.end()) {
+        if (info.contains("name")) {
             name = info.at("name");
         } 
 
-        if (info.find("version")!=info.end()) {
+        if (info.contains("version")) {
             version = info.at("version");
         }
 
-        if (info.find("publisher")!=info.end()) {
+        if (info.contains("publisher")) {
             auto publisher = info.at("publisher");
-            if (publisher.find("display-name")!=publisher.end()) {
+            if (publisher.contains("display-name")) {
                 vendor = publisher.at("display-name");
             }
         }
 
 
-        if (info.find("install_time")!=info.end()) {
-            install_time = info.at("install_time");
+        if (info.contains("install-date")) {
+            install_time = info.at("install-date");
         }
 
-        if (info.find("description")!=info.end()) {
+        if (info.contains("description")) {
             description = info.at("description");
         }
 
-        if (info.find("installed-size")!=info.end()) {
-            size = info.at("installed-size");
+        if (info.contains("installed-size")) {
+            if (info.at("installed-size").is_number()) {
+                size = (int)info.at("installed-size");
+            }
         }
 
         ret["name"]             = name;
-        ret["location"]         = "/snap/" + name.substr(1, name.length()-2);
+        ret["location"]         = "/snap/" + name;
         ret["version"]          = version;
         ret["vendor"]           = vendor;
         ret["install_time"]     = install_time;
@@ -191,12 +193,10 @@ namespace PackageLinuxHelper
         ret["source"]           = "snapcraft";
         ret["format"]           = "snap";
 
-        ret["priority"]         = "UNKOWN_VALUE";
-        ret["multiarch"]        = "UNKOWN_VALUE";
-        ret["architecture"]     = "UNKOWN_VALUE";
-        ret["group"]            = "UNKOWN_VALUE";
-*/
-        std::cout << ret.dump() << std::endl;
+        ret["priority"]         = UNKNOWN_VALUE;
+        ret["multiarch"]        = UNKNOWN_VALUE;
+        ret["architecture"]     = UNKNOWN_VALUE;
+        ret["group"]            = UNKNOWN_VALUE;
 
         return ret;
     }
