@@ -2,11 +2,12 @@
 #define _KVDBMANAGER_H
 
 #include <filesystem>
-#include <optional>
+#include <optional> // TODO Delete this
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <variant>
 
 #include <json/json.hpp>
 #include <kvdb/kvdb.hpp>
@@ -112,8 +113,7 @@ public:
      * @param data Json object where the DB will be dumped
      * @return std::optional<std::string_view> error message or std::nullopt if no error
      */
-    std::optional<std::string_view> dumpContent(const std::string& name,
-                                                json::Json& data);
+    std::variant<json::Json, base::Error> jDumpDB(const std::string& name);
 
     /**
      * @brief Writes a key or a key value to the KVDB named name.

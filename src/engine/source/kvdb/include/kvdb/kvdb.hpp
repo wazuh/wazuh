@@ -184,13 +184,12 @@ public:
                    const std::string& columnName = DEFAULT_CF_NAME);
 
     /**
-     * @brief Iterates throug the whole KVDB and fills dump json with the content
-     * of the DB.
+     * @brief Returns a JSON array of all pair key-values of a CF
      *
      * @param dump where the result will be stored.
      * @return std::string error message if it could finish properly.
      */
-    std::string_view dumpContent(json::Json& dump);
+    json::Json jDump();
 
     /**
      * @brief DB closing cleaning all elements used to acces it
