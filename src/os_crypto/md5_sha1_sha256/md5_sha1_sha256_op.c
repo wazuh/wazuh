@@ -64,9 +64,13 @@ int OS_MD5_SHA1_SHA256_File(const char *fname,
         os_strdup(fname, command[cnt]);
 
         wfd = wpopenv(*command, command, W_BIND_STDOUT);
-        fp = wfd->file_out;
-
         free_strarray(command);
+
+        if (wfd == NULL) {
+            return -1;
+        }
+
+        fp = wfd->file_out;
     }
 
     /* Initialize both hashes */
