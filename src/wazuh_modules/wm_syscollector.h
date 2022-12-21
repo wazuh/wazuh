@@ -18,7 +18,7 @@
 extern const wm_context WM_SYS_CONTEXT;     // Context
 
 #define WM_SYS_LOGTAG ARGV0 ":syscollector" // Tag for log messages
-#define WM_SYSCOLLECTOR_DEFAULT_INTERVAL 3600 // 1 hour
+#define WM_SYSCOLLECTOR_DEFAULT_INTERVAL W_HOUR_SECONDS
 
 typedef struct wm_sys_flags_t {
     unsigned int enabled:1;                 // Main switch
