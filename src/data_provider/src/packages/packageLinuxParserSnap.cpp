@@ -24,10 +24,14 @@ void getSnapInfo(std::function<void(nlohmann::json&)> callback)
 
             int count = (int)feed.size();
 
-            for (int k=0; k<count; k++) {
+            for (int k=0; k<count; k++) 
+            {
                 auto &entry = feed.at(k);
+                
                 nlohmann::json mapping = PackageLinuxHelper::parseSnap(entry);
-                if (!mapping.empty()) {
+
+                if (!mapping.empty()) 
+                {
                     callback(mapping);
                 }
             }
