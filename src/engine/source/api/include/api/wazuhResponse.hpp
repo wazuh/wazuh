@@ -50,6 +50,22 @@ public:
         m_message = message.empty() ? std::nullopt : std::optional<std::string> {message};
     }
 
+    /**
+     * @brief  Construct a new Wazuh Response object
+     *
+     * @param data Data to be sent, it can be a json object or a string
+     * @param error Error code (0 if no error)
+     * @param message Optional message
+     */
+    explicit WazuhResponse(json::Json&& data,
+                           int error,
+                           std::string_view message = "") noexcept
+        : m_data(data)
+        , m_error(error)
+    {
+        m_message = message.empty() ? std::nullopt : std::optional<std::string> {message};
+    }
+
     explicit WazuhResponse() noexcept
         : m_data(json::Json {R"({})"})
         , m_error(static_cast<int>(RESPONSE_ERROR_CODES::OK))
