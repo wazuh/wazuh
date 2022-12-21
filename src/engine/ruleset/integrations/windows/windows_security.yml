@@ -150,6 +150,7 @@ normalize:
     
  - check:
       - ~id_target_user_array: +a_contains/$event.code
+
    map:
       - ~is_copy_target_user: true
     # TargetUserSid to user.id or user.target.id  
@@ -177,9 +178,10 @@ normalize:
    map:
         - event.user.target.name: ~event_channel.Event.EventData.TargetUserName
  - check: 
-      - ~is_copy_target_user: +t_is_true  
+      - ~is_copy_target_user: +t_is_true
+      - ~event_channel.Event.EventData.TargetUserName: +s_ne/-/
    map:
-        - event.related.user: +a_append/$~event_channel.Event.EventData.TargetUserName 
+        - related.user: +a_append/$~event_channel.Event.EventData.TargetUserName 
     # TargetUserDomain to user.domain or user.target.domain
  - check:
       - ~is_copy_target_user: +t_is_true
@@ -233,7 +235,7 @@ normalize:
    map:
      - event.user.id: $~event_channel.Event.EventData.SubjectUserSid
      - event.user.name: $~event_channel.Event.EventData.SubjectUserName
-     - event.related.user: +a_append/$~event_channel.Event.EventData.SubjectUserName
+     - related.user: +a_append/$~event_channel.Event.EventData.SubjectUserName
      - event.user.domain: $~event_channel.Event.EventData.SubjectDomainName
 
  # Copy Target User to Target
@@ -267,8 +269,9 @@ normalize:
  - check:
      - ~id_rename_common_auth_fields: +a_contains/$event.code
    map:
-     - event.process.pid: $~event_channel.Event.EventData.ProcessId
-     - event.process.executable: $~event_channel.Event.EventData.ProcessName
+     - process.pid: $~event_channel.Event.EventData.ProcessId
+     - process.executable: $~event_channel.Event.EventData.ProcessName
+     - process.name: +r_ext/$~event_channel.Event.EventData.ProcessName/\\\\(.+\\..+)$
      - event.source.ip: $~event_channel.Event.EventData.IpAddress
      - event.source.port: $~event_channel.Event.EventData.IpPort
      - event.source.domain: $~event_channel.Event.EventData.WorkstationName
@@ -279,29 +282,26 @@ normalize:
 # Process Event 4688
  - check: event.code==4688 
    map:
-     - event.process.pid: $~event_channel.Event.EventData.NewProcessId
-     - event.process.executable: $~event_channel.Event.EventData.NewProcessName
-     - event.process.parent.executable: $~event_channel.Event.EventData.ParentProcessName
-     # - ~process_name: +s_to_array/$event.process.executable/\
-     # - event.process.name: $~process_name.-1
-     # - ~process_name: +s_to_array/$event.process.parent.executable/\
-     # - event.process.parent.name: $~process_name.-1 
-     - event.process.parent.pid: $~event_channel.Event.EventData.ProcessId
-     # - event.process.args: # rather hard to get maybe use regex?
-     - event.process.commands_line: $~event_channel.Event.EventData.CommandLine
-     - event.related.user: +a_append/$~event_channel.Event.EventData.TargetUserName
+     - process.args: +s_to_array/$~event_channel.Event.EventData.CommandLine/ /
+     - process.pid: +s_hex_to_num/$~event_channel.Event.EventData.NewProcessId
+     - process.executable: $~event_channel.Event.EventData.NewProcessName
+     - process.name: +r_ext/$~event_channel.Event.EventData.NewProcessName/^.*[^\\](.*\\..*)$ 
+     - process.parent.pid: +s_hex_to_num/$~event_channel.Event.EventData.ProcessId
+     - process.parent.executable:  $~event_channel.Event.EventData.ParentProcessName
+     - process.parent.name: +r_ext/$~event_channel.Event.EventData.ParentProcessName/^.*[^\\](.*\\..*)$ 
+     - process.command_line: $~event_channel.Event.EventData.CommandLine
 
  - check: event.code==4624 OR event.code==4648
    map:
-     - event.related.user: $~event_channel.Event.EventData.SubjectUserName
+     - related.user: $~event_channel.Event.EventData.SubjectUserName
 
  - check: 
       - ~id_related_user: +a_contains/$event.code
    map:
-      - event.related.user: $~event_channel.Event.EventData.TargetUserName
+      - related.user: +a_append/$~event_channel.Event.EventData.TargetUserName
 
  - map:
-     - event.related.ip: event.source.ip
+     - event.related.ip: $event.source.ip
 
  # Object Policy Change and SidListDesc
  # - check: event.code==4670 OR event.code==4817 OR event.code==4907 OR event.code==4808
