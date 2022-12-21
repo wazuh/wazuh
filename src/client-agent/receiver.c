@@ -275,8 +275,8 @@ int receive_msg()
                         if (final_file) {
                             if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
                                 const char **IGNORE_LIST = malloc(2 * sizeof(char *));
-                                IGNORE_LIST[0] = SHAREDCFG_FILENAME;
-                                IGNORE_LIST[1] = NULL;
+                                *IGNORE_LIST = strdup(SHAREDCFG_FILENAME);
+                                *(IGNORE_LIST + 1) = NULL;
                                 if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT, &IGNORE_LIST)){
                                     char msg_output[OS_MAXSTR];
 
@@ -296,6 +296,10 @@ int receive_msg()
                                             minfo("Shared agent configuration has been updated.");
                                         }
                                     }
+                                }
+                                int j = 0;
+                                while (*(IGNORE_LIST + j)) {
+                                    free(*(IGNORE_LIST + j++));
                                 }
                                 os_free(IGNORE_LIST);
                             }
