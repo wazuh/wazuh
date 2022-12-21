@@ -521,7 +521,6 @@ int main(int argc, char **argv)
             exit(1);
         }
 
-
         /* Check if password is enabled */
         if (config.flags.use_password) {
             fp = fopen(AUTHD_PASS, "r");
