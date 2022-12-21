@@ -20,7 +20,7 @@ configtest() {
 }
 
 checkconfig() {
-    CONFIGFILE="${CONFIGFILE:-WAZUH_HOME/etc/ossec.conf}"
+    CONFIGFILE="${CONFIGFILE:-$WAZUH_HOME/etc/ossec.conf}"
     if [ ! -r "${CONFIGFILE}" ]; then
         eerror "Unable to read configuration file: ${CONFIGFILE}"
         return 1
