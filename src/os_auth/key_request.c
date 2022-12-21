@@ -253,7 +253,7 @@ void* run_key_request_main(__attribute__((unused)) void *arg) {
             }
         }
 
-        if ((recv = OS_RecvUnix(sock, OS_MAXSTR, buffer)) > 0) {
+        if (recv = OS_RecvUnix(sock, OS_MAXSTR, buffer), recv > 0) {
             if(OSHash_Get_ex(request_hash, buffer)){
                 mdebug2("Request '%s' already being processed. Discarding request.", buffer);
                 continue;
