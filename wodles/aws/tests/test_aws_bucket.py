@@ -31,6 +31,7 @@ SQL_COUNT_ROWS = """SELECT count(*) FROM {table_name};"""
 SQL_GET_ROW = "SELECT bucket_path, aws_account_id, aws_region, log_key, created_date FROM {table_name};"
 SQL_COUNT_TABLES = """SELECT count(*) FROM sqlite_master WHERE type ='table' AND name NOT LIKE 'sqlite_%';"""
 SQL_SELECT_TABLES = """SELECT name FROM sqlite_master WHERE type ='table' AND name NOT LIKE 'sqlite_%';"""
+SQL_FIND_LAST_KEY_PROCESSED = """SELECT log_key FROM {table_name} ORDER BY log_key DESC LIMIT 1;"""
 
 SAMPLE_EVENT_1 = {'key1': 'value1', 'key2': 'value2'}
 SAMPLE_EVENT_2 = {'key1': 'value1', 'key2': None}
@@ -252,7 +253,7 @@ def test_AWSBucket_marker_custom_date():
 
 def test_AWSBucket_marker_only_logs_after():
     """Test 'marker_only_logs_after' function returns a valid marker using only_log_after."""
-    test_only_logs_after = "20220101"
+    test_only_logs_after = utils.TEST_ONLY_LOGS_AFTER
     bucket = utils.get_mocked_AWSBucket(only_logs_after=test_only_logs_after)
     bucket.date_format = '%Y-%m-%d'
 
@@ -358,9 +359,49 @@ def test_AWSBucket_find_regions_ko(mock_prefix, error_code, exit_code):
     assert e.value.code == exit_code
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSBucket_build_s3_filter_args():
-    pass
+@pytest.mark.parametrize('reparse', [True, False])
+@pytest.mark.parametrize('only_logs_after', [utils.TEST_ONLY_LOGS_AFTER, None])
+@pytest.mark.parametrize('iterating', [True, False])
+@pytest.mark.parametrize('custom_delimiter', ['', '-'])
+@patch('aws_bucket.AWSBucket.get_full_prefix', return_value=TEST_FULL_PREFIX)
+def test_AWSBucket_build_s3_filter_args(mock_get_full_prefix, custom_database, custom_delimiter, iterating,
+                                        only_logs_after, reparse):
+    utils.database_execute_script(custom_database, TEST_CLOUDTRAIL_SCHEMA)
+
+    bucket = utils.get_mocked_AWSBucket(bucket=utils.TEST_BUCKET, reparse=reparse, only_logs_after=only_logs_after)
+    bucket.db_connector = custom_database
+    bucket.db_cursor = bucket.db_connector.cursor()
+    bucket.db_table_name = utils.TEST_TABLE_NAME
+
+    expected_filter_args = {
+        'Bucket': bucket.bucket,
+        'MaxKeys': 1000,
+        'Prefix': mock_get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+    }
+
+    if reparse:
+        if only_logs_after:
+            filter_marker = bucket.marker_only_logs_after(utils.TEST_REGION, utils.TEST_ACCOUNT_ID)
+        else:
+            filter_marker = bucket.marker_custom_date(utils.TEST_REGION, utils.TEST_ACCOUNT_ID, bucket.default_date)
+    else:
+        filter_marker = utils.database_execute_query(bucket.db_connector, SQL_FIND_LAST_KEY_PROCESSED.format(
+            table_name=bucket.db_table_name))
+
+    if not iterating:
+        expected_filter_args['StartAfter'] = filter_marker
+        if only_logs_after:
+            only_logs_marker = bucket.marker_only_logs_after(utils.TEST_REGION, utils.TEST_ACCOUNT_ID)
+            expected_filter_args['StartAfter'] = only_logs_marker if only_logs_marker > filter_marker else filter_marker
+
+        if custom_delimiter:
+            prefix_len = len(expected_filter_args['Prefix'])
+            expected_filter_args['StartAfter'] = expected_filter_args['StartAfter'][:prefix_len] + \
+                                                 expected_filter_args['StartAfter'][prefix_len:].replace('/',
+                                                                                                         custom_delimiter)
+
+    assert expected_filter_args == bucket.build_s3_filter_args(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, iterating,
+                                                               custom_delimiter)
 
 
 def test_AWSBucket_reformat_msg():
@@ -505,6 +546,7 @@ def test_AWSBucket__exception_handler(mock_get_alert_msg, mock_debug):
         bucket._exception_handler(utils.TEST_ACCOUNT_ID, log_key, error_text_example, error_code_example)
         mock_debug.assert_called_with("++ Failed to send message to Wazuh", 1)
 
+
 def test_AWSBucket__exception_handler_ko():
     error_text_example = 'error text'
     error_code_example = 0
@@ -516,6 +558,7 @@ def test_AWSBucket__exception_handler_ko():
     with pytest.raises(SystemExit) as e:
         bucket._exception_handler(utils.TEST_ACCOUNT_ID, log_key, error_text_example, error_code_example)
     assert e.value.code == error_code_example
+
 
 @patch('aws_bucket.AWSBucket.iter_regions_and_accounts')
 @patch('aws_bucket.AWSBucket.init_db')
@@ -533,9 +576,30 @@ def test_AWSBucket_iter_bucket(mock_init, mock_iter):
     bucket.db_connector.close.assert_called_once()
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSBucket_iter_regions_and_accounts():
-    pass
+@pytest.mark.parametrize('account_id', [[utils.TEST_ACCOUNT_ID], None])
+@pytest.mark.parametrize('regions', [[utils.TEST_REGION], None])
+@patch('aws_bucket.AWSBucket.find_account_ids', return_value=[utils.TEST_ACCOUNT_ID])
+@patch('aws_bucket.AWSBucket.find_regions', side_effect=[[utils.TEST_REGION], None])
+@patch('aws_bucket.AWSBucket.iter_files_in_bucket')
+@patch('aws_bucket.AWSBucket.db_maintenance')
+def test_AWSBucket_iter_regions_and_accounts(mock_db_maintenance, mock_iter_files, mock_find_regions, mock_accounts,
+                                             regions, account_id):
+    bucket = utils.get_mocked_AWSBucket()
+
+    bucket.iter_regions_and_accounts(account_id, regions)
+
+    if not account_id:
+        mock_accounts.assert_called_once()
+        account_id = bucket.find_account_ids()
+    for aws_account_id in account_id:
+        if not regions:
+            mock_find_regions.assert_called_with(aws_account_id)
+            regions = bucket.find_regions(aws_account_id)
+            if not regions:
+                continue
+        for region in regions:
+            mock_iter_files.assert_called_with(aws_account_id, region)
+            mock_db_maintenance.assert_called_with(aws_account_id=aws_account_id, aws_region=region)
 
 
 @patch('aws_bucket.AWSBucket.send_msg')
@@ -572,9 +636,73 @@ def test_AWSBucket_iter_files_in_bucket():
     pass
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSBucket_check_bucket():
-    pass
+@pytest.mark.parametrize('error_code, exit_code', [
+    (aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
+    ('OtherClientException', utils.UNKNOWN_ERROR_CODE),
+])
+def test_AWSBucket_iter_files_in_bucket_ko(error_code, exit_code):
+    bucket = utils.get_mocked_AWSBucket()
+    bucket.client = MagicMock()
+
+    with patch('aws_bucket.AWSBucket.build_s3_filter_args') as mock_build_filter:
+        with pytest.raises(SystemExit) as e:
+            bucket.client.list_objects_v2.side_effect = botocore.exceptions.ClientError({'Error': {'Code': error_code}},
+                                                                                        "name")
+            bucket.iter_files_in_bucket(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+        assert e.value.code == exit_code
+
+        with pytest.raises(SystemExit) as e:
+            mock_build_filter.side_effect = Exception
+            bucket.iter_files_in_bucket(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+        assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
+
+
+# TODO
+# def test_AWSBucket_check_bucket():
+#     page = {'CommonPrefixes': 'list of Prefix'}
+#     bucket = utils.get_mocked_AWSBucket()
+#     bucket.client = MagicMock()
+#     paginator = MagicMock()
+#
+#     bucket.client.get_paginator = paginator
+#     paginator.paginate.return_value = MagicMock(return_value=page)
+#     bucket.check_bucket()
+#     bucket.client.get_paginator.assert_called_once()
+#     paginator.paginate.assert_called_onche()
+
+def test_AWSBucket_check_bucket_no_files():
+    bucket = utils.get_mocked_AWSBucket()
+    bucket.client = MagicMock()
+
+    with pytest.raises(SystemExit) as e:
+        bucket.check_bucket()
+    assert e.value.code == 14
+
+@pytest.mark.parametrize('error_code, exit_code', [
+    (aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
+    (aws_bucket.INVALID_CREDENTIALS_ERROR_CODE, utils.INVALID_CREDENTIALS_ERROR_CODE),
+    (aws_bucket.INVALID_REQUEST_TIME_ERROR_CODE, utils.INVALID_REQUEST_TIME_ERROR_CODE),
+    ("OtherClientError", utils.UNKNOWN_ERROR_CODE)
+])
+def test_AWSBucket_check_bucket_ko_client_error(error_code, exit_code):
+    bucket = utils.get_mocked_AWSBucket()
+    bucket.client = MagicMock()
+
+    with pytest.raises(SystemExit) as e:
+        bucket.client.get_paginator.side_effect = botocore.exceptions.ClientError({'Error': {'Code': error_code}},
+                                                                                  "name")
+        bucket.check_bucket()
+    assert e.value.code == exit_code
+
+
+def test_AWSBucket_check_bucket_ko_endpoint_error():
+    bucket = utils.get_mocked_AWSBucket()
+    bucket.client = MagicMock()
+
+    with pytest.raises(SystemExit) as e:
+        bucket.client.get_paginator.side_effect = botocore.exceptions.EndpointConnectionError(endpoint_url='endpoint.aws.com')
+        bucket.check_bucket()
+    assert e.value.code == utils.INVALID_ENDPOINT_ERROR_CODE
 
 
 @pytest.mark.parametrize('prefix', [utils.TEST_PREFIX, None])
