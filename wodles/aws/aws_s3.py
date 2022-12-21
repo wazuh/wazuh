@@ -260,7 +260,7 @@ class WazuhIntegration:
             conn_args['profile_name'] = profile
 
         # set region name
-        if region and service_name in ('inspector', 'cloudwatchlogs'):
+        if region and service_name in ('inspector', 'inspector2', 'cloudwatchlogs'):
             conn_args['region_name'] = region
         else:
             # it is necessary to set region_name for GovCloud regions
@@ -2763,6 +2763,13 @@ class AWSService(WazuhIntegration):
         if 'updatedAt' in msg:
             msg['updatedAt'] = datetime.strftime(msg['updatedAt'],
                                                  '%Y-%m-%dT%H:%M:%SZ')
+        if 'firstObservedAt' in msg:
+            msg['firstObservedAt'] = datetime.strftime(msg['firstObservedAt'],
+                                                 '%Y-%m-%dT%H:%M:%SZ')
+        # cast updatedAt
+        if 'lastObservedAt' in msg:
+            msg['lastObservedAt'] = datetime.strftime(msg['lastObservedAt'],
+                                                 '%Y-%m-%dT%H:%M:%SZ')
 
         return {'integration': 'aws', 'aws': msg}
 
@@ -2890,6 +2897,139 @@ class AWSInspector(AWSService):
             'retain_db_records': self.retain_db_records})
         # close connection with DB
         self.close_db()
+
+
+class AWSInspector2(AWSService):
+    """
+    Class for getting AWS Inspector logs
+
+    Parameters
+    ----------
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
+    aws_profile : str
+        AWS profile.
+    iam_role_arn : str
+        IAM Role that will be assumed to use the service.
+    only_logs_after : str
+        Date after which obtain logs.
+    region : str
+        AWS region that will be used to fetch the events.
+
+    Attributes
+    ----------
+    sent_events : int
+        The number of events collected and sent to analysisd.
+    """
+
+    def __init__(self, reparse, access_key, secret_key, aws_profile,
+                 iam_role_arn, only_logs_after, region, aws_log_groups=None,
+                 remove_log_streams=None, discard_field=None, discard_regex=None,
+                 sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
+
+        self.service_name = 'inspector2'
+        self.inspector_region = region
+
+        AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
+                            aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
+                            service_name=self.service_name, region=region, aws_log_groups=aws_log_groups,
+                            remove_log_streams=remove_log_streams, discard_field=discard_field,
+                            discard_regex=discard_regex, sts_endpoint=sts_endpoint, service_endpoint=service_endpoint,
+                            iam_role_duration=iam_role_duration)
+
+        # max DB records for region
+        self.retain_db_records = 5
+        self.reparse = reparse
+        self.sent_events = 0
+
+    def send_findings(self, findings: list):
+        """
+        Collect and send to analysisd the requested findings.
+
+        Parameters
+        ----------
+        findings : list[str]
+            List of inspector findings
+        """
+        debug(f"+++ Processing {len(findings)} events", 3)
+        for finding in findings:
+            self.sent_events += 1
+            finding['source'] = self.service_name
+            self.send_msg(self.format_message(finding))
+
+    def get_alerts(self):
+        self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
+        try:
+            initial_date = self.get_last_log_date()
+            # reparse logs if this parameter exists
+            if self.reparse:
+                last_scan = initial_date
+            else:
+                self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
+                                                                      service_name=self.service_name,
+                                                                      aws_account_id=self.account_id,
+                                                                      aws_region=self.inspector_region))
+                last_scan = self.db_cursor.fetchone()[0]
+        except TypeError as e:
+            # write initial date if DB is empty
+            self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
+                                                                service_name=self.service_name,
+                                                                aws_account_id=self.account_id,
+                                                                aws_region=self.inspector_region,
+                                                                scan_date=initial_date))
+            last_scan = initial_date
+
+        date_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
+        date_scan = date_last_scan
+        if self.only_logs_after:
+            date_only_logs = datetime.strptime(self.only_logs_after, "%Y%m%d")
+            date_scan = date_only_logs if date_only_logs > date_last_scan else date_last_scan
+
+        # get current time (UTC)
+        date_current = datetime.utcnow()
+        # describe_findings only retrieves 100 results per call
+
+        filterCriteria = {
+            'firstObservedAt': [
+                {
+                    'startInclusive': date_scan,
+                    'endInclusive': date_current,
+                }
+            ]
+        }
+
+        response = self.client.list_findings(maxResults=100, filterCriteria=filterCriteria)
+        debug(f"+++ Listing findings starting from {date_scan}", 2)
+        self.send_findings(response['findings'])
+        # Iterate if there are more elements
+        while 'nextToken' in response:
+            response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'],
+                                                 filterCriteria=filterCriteria)
+            self.send_findings(response['findings'])
+
+        if self.sent_events:
+            debug(f"+++ {self.sent_events} events collected and processed in {self.inspector_region}", 1)
+        else:
+            debug(f'+++ There are no new events in the "{self.inspector_region}" region', 1)
+
+        # insert last scan in DB
+        self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
+                                                            service_name=self.service_name,
+                                                            aws_account_id=self.account_id,
+                                                            aws_region=self.inspector_region,
+                                                            scan_date=date_current))
+        # DB maintenance
+        self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name,
+                                                              service_name=self.service_name,
+                                                              aws_account_id=self.account_id,
+                                                              aws_region=self.inspector_region,
+                                                              retain_db_records=self.retain_db_records))
+        # close connection with DB
+        self.close_db()
+
+
 
 
 class AWSCloudWatchLogs(AWSService):
@@ -3603,6 +3743,8 @@ def main(argv):
         elif options.service:
             if options.service.lower() == 'inspector':
                 service_type = AWSInspector
+            elif options.service.lower() == 'inspector2':
+                service_type = AWSInspector2
             elif options.service.lower() == 'cloudwatchlogs':
                 service_type = AWSCloudWatchLogs
             else:

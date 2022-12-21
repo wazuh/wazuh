@@ -558,7 +558,7 @@
 
   <rule id="80495" level="0">
     <if_sid>80200</if_sid>
-    <field name="aws.source">inspector</field>
+    <field name="aws.source">^inspector$</field>
     <options>no_full_log</options>
     <description>AWS inspector - network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
@@ -596,4 +596,51 @@
     <group>aws_inspector,</group>
   </rule>
 
+  <!-- AWS Inspector2 -->
+  <!-- Documentation: https://docs.aws.amazon.com/inspector/index.html -->
+
+  <rule id="80600" level="3">
+    <if_sid>80200</if_sid>
+    <field name="aws.source">^inspector2$</field>
+    <options>no_full_log</options>
+    <description>AWS inspector - $(aws.type) [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <group>aws_inspector,</group>
+  </rule>
+
+  <rule id="80601" level="10">
+    <if_sid>80600</if_sid>
+    <field name="aws.status">ACTIVE</field>
+    <field name="aws.severity">High</field>
+    <options>no_full_log</options>
+    <description>AWS inspector - $(aws.type) [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <group>aws_inspector,</group>
+  </rule>
+
+  <rule id="80602" level="7">
+    <if_sid>80600</if_sid>
+    <field name="aws.status">ACTIVE</field>
+    <field name="aws.severity">Medium</field>
+    <options>no_full_log</options>
+    <description>AWS inspector - $(aws.type) [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <group>aws_inspector,</group>
+  </rule>
+
+  <rule id="80603" level="4">
+    <if_sid>80600</if_sid>
+    <field name="aws.status">ACTIVE</field>
+    <field name="aws.severity">Low</field>
+    <options>no_full_log</options>
+    <description>AWS inspector - $(aws.type) [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <group>aws_inspector,</group>
+  </rule>
+
+  <rule id="80604" level="3">
+    <if_sid>80600</if_sid>
+    <field name="aws.status">ACTIVE</field>
+    <field name="aws.severity">Informational</field>
+    <options>no_full_log</options>
+    <description>AWS inspector - $(aws.type) [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <group>aws_inspector,</group>
+  </rule>
+ 
 </group>
