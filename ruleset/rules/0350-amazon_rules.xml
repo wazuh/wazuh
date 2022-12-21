@@ -603,7 +603,7 @@
     <if_sid>80200</if_sid>
     <field name="aws.source">^inspector2$</field>
     <options>no_full_log</options>
-    <description>AWS inspector - $(aws.type) [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <description>AWS inspector - $(aws.type) [$(aws.firstObservedAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
   </rule>
 
@@ -612,7 +612,7 @@
     <field name="aws.status">ACTIVE</field>
     <field name="aws.severity">High</field>
     <options>no_full_log</options>
-    <description>AWS inspector - $(aws.type) [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <description>AWS inspector - $(aws.type) [$(aws.firstObservedAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
   </rule>
 
@@ -621,7 +621,7 @@
     <field name="aws.status">ACTIVE</field>
     <field name="aws.severity">Medium</field>
     <options>no_full_log</options>
-    <description>AWS inspector - $(aws.type) [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <description>AWS inspector - $(aws.type) [$(aws.firstObservedAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
   </rule>
 
@@ -630,7 +630,7 @@
     <field name="aws.status">ACTIVE</field>
     <field name="aws.severity">Low</field>
     <options>no_full_log</options>
-    <description>AWS inspector - $(aws.type) [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <description>AWS inspector - $(aws.type) [$(aws.firstObservedAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
   </rule>
 
@@ -639,7 +639,7 @@
     <field name="aws.status">ACTIVE</field>
     <field name="aws.severity">Informational</field>
     <options>no_full_log</options>
-    <description>AWS inspector - $(aws.type) [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <description>AWS inspector - $(aws.type) [$(aws.firstObservedAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
   </rule>
  
