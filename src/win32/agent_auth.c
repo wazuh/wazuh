@@ -32,11 +32,12 @@ void report_help()
 {
     printf("\n%s %s: Connects to the manager to extract the agent key.\n", __ossec_name, ARGV0);
     printf("Available options:\n");
-    printf("\t-h                  This help message.\n");
-    printf("\t-m <manager ip>     Manager IP Address.\n");
-    printf("\t-p <port>           Manager port (default 1515).\n");
-    printf("\t-A <agent name>     Agent name (default is the hostname).\n");
-    printf("\t-P <pass>           Authorization password.\n");
+    printf("\t-h                     This help message.\n");
+    printf("\t-m <manager ip>        Manager IP Address.\n");
+    printf("\t-p <port>              Manager port (default 1515).\n");
+    printf("\t-n <network-interface> Network interface to use in an IPv6 connection (only necessary in case of use of link-local address).\n");
+    printf("\t-A <agent name>        Agent name (default is the hostname).\n");
+    printf("\t-P <pass>              Authorization password.\n");
     exit(1);
 }
 
@@ -57,7 +58,7 @@ void SendSecurityToken(const int socket, SecBuffer *OutBuffers)
     }
 }
 
-void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *context, CredHandle *cred)
+void CreateSecureConnection(char *manager, int port, uint32_t network_interface, int *socket, CtxtHandle *context, CredHandle *cred)
 {
     SECURITY_STATUS status;
     SCHANNEL_CRED auth_cred;
@@ -77,7 +78,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
         merror_exit("Could not resolve manager's hostname");
 
     // Connect via TCP
-    *socket = OS_ConnectTCP(port, manager, strchr(manager, ':') != NULL);
+    *socket = OS_ConnectTCP(port, manager, strchr(manager, ':') != NULL ? 1 : 0, network_interface);
     if (*socket < 0)
         merror_exit("Unable to connect to [%s]:%d", manager, port);
 
@@ -382,6 +383,7 @@ int main(int argc, char **argv)
     int port = 1515;
     char c = 0;
     char *manager = NULL;
+    uint32_t network_interface = 0;
     char *agentname = NULL;
     char hostname[512];
     char *msg = NULL;
@@ -394,7 +396,7 @@ int main(int argc, char **argv)
     /* Setting the name */
     OS_SetName(ARGV0);
 
-    while((c = getopt(argc, argv, "hm:p:A:P:")) != -1)
+    while((c = getopt(argc, argv, "hm:n:p:A:P:")) != -1)
     {
         switch(c){
             case 'h':
@@ -404,6 +406,15 @@ int main(int argc, char **argv)
                if(!optarg)
                     merror_exit("-%c needs an argument", c);
                 manager = optarg;
+                break;
+            case 'n':
+                if(!optarg)
+                    merror_exit("-%c needs an argument", c);
+                network_interface = atoi(optarg);
+                if(network_interface <= 0)
+                {
+                    merror_exit("Invalid network_interface: %s", optarg);
+                }
                 break;
             case 'A':
                if(!optarg)
@@ -469,7 +480,7 @@ int main(int argc, char **argv)
     }
 
     // Connect to socket and init security context
-    CreateSecureConnection(manager, port, &socket, &context, &cred);
+    CreateSecureConnection(manager, port, network_interface, &socket, &context, &cred);
 
     printf("INFO: Using agent name as: %s\n", agentname);
 

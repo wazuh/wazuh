@@ -89,9 +89,9 @@ bool connect_server(int server_id, bool verbose)
             agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
     }
     if (agt->server[server_id].protocol == IPPROTO_UDP) {
-        agt->sock = OS_ConnectUDP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL);
+        agt->sock = OS_ConnectUDP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
     } else {
-        agt->sock = OS_ConnectTCP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL);
+        agt->sock = OS_ConnectTCP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
     }
 
     if (agt->sock < 0) {
@@ -154,7 +154,7 @@ void start_agent(int is_startup)
         // Try to enroll and extra attempt
 
         if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
-            if (try_enroll_to_server(agt->server[current_server_id].rip) == 0) {
+            if (try_enroll_to_server(agt->server[current_server_id].rip, agt->server[current_server_id].network_interface) == 0) {
                 if (agent_handshake_to_server(current_server_id, is_startup)) {
                     return;
                 }
@@ -194,12 +194,12 @@ static void w_agentd_keys_init (void) {
                 int rc = 0;
                 if (agt->enrollment_cfg->target_cfg->manager_name) {
                     /* Configured enrollment server */
-                    registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name);
+                    registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name, agt->enrollment_cfg->target_cfg->network_interface);
                 }
 
                 /* Try to enroll to server list */
                 while (agt->server[rc].rip && (registration_status != 0)) {
-                    registration_status = try_enroll_to_server(agt->server[rc].rip);
+                    registration_status = try_enroll_to_server(agt->server[rc].rip, agt->server[rc].network_interface);
                     rc++;
                 }
 
@@ -297,8 +297,8 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
     return 0;
 }
 
-int try_enroll_to_server(const char * server_rip) {
-    int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, server_rip);
+int try_enroll_to_server(const char * server_rip, uint32_t network_interface) {
+    int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, server_rip, network_interface);
     if (enroll_result == 0) {
         /* Wait for key update on agent side */
         minfo("Waiting %ld seconds before server connection", (long)agt->enrollment_cfg->delay_after_enrollment);
