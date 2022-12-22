@@ -302,7 +302,12 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                         cJSON_Delete(error_msg);
                         os_free(error_msg_string);
                         os_free(clean);
-                        result = wdb_update_agent_status_code(atoi(key->id), AGENT_STATUS_CODE_INVALID_VERSION, wdb_sock);
+                        result = wdb_update_agent_status_code(atoi(key->id), INVALID_VERSION, wdb_sock);
+
+                        if (OS_SUCCESS != result) {
+                            mwarn("Unable to set status code for agent: %s", key->id);
+                        }
+
                         return;
                     }
                 } else {
@@ -399,7 +404,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             agent_id = atoi(key->id);
 
-            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq" : "synced", wdb_sock);
+            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq" : "synced", wdb_sock, HC_SHUTDOWN_RECV);
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to set connection status as disconnected for agent: %s", key->id);
@@ -503,6 +508,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             agent_data->id = atoi(key->id);
             os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
             os_strdup(logr.worker_node ? "syncreq" : "synced", agent_data->sync_status);
+            agent_data->status_code = NOT_APPLY;
 
             w_mutex_lock(&lastmsg_mutex);
 

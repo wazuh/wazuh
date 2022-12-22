@@ -46,7 +46,7 @@ int __wrap_wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value
 
 int __wrap_wdb_global_update_agent_keepalive(wdb_t *wdb, int id, char* connection_status, char* status);
 
-int __wrap_wdb_global_update_agent_connection_status(wdb_t *wdb, int id, char* connection_status);
+int __wrap_wdb_global_update_agent_connection_status(wdb_t *wdb, int id, char* connection_status, int status_code);
 
 int __wrap_wdb_global_delete_agent(wdb_t *wdb, int id);
 

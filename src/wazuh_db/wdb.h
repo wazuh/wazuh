@@ -51,7 +51,14 @@
 #define AGENT_CS_ACTIVE          "active"
 #define AGENT_CS_DISCONNECTED    "disconnected"
 
-#define AGENT_STATUS_CODE_INVALID_VERSION 1
+/// Enumeration of agents disconected status reasons.
+typedef enum agent_disconnected_status_code_t {
+        NOT_APPLY,          ///< Not apply to other status than disconnected
+        INVALID_VERSION,    ///< Invalid anget version
+        INVALID_MSG_RECV,   ///< Invalid message received
+        HC_SHUTDOWN_RECV,   ///< Shutdown message received
+        NO_KEEPALIVE           ///< Disconnected because no keepalive received.
+} agent_disconnected_status_code_t;
 
 #define VULN_CVES_STATUS_VALID              "VALID"
 #define VULN_CVES_STATUS_PENDING            "PENDING"
@@ -458,6 +465,7 @@ typedef struct agent_info_data {
     char *connection_status;
     char *sync_status;
     char *group_config_status;
+    agent_disconnected_status_code_t status_code;
 } agent_info_data;
 
 typedef enum {
@@ -1828,7 +1836,7 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
  * @param [in] sync_status The value of sync_status.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status, const char *sync_status);
+int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status, const char *sync_status, int status_code);
 
 /**
  * @brief Function to update an agent status code and the synchronization status.
