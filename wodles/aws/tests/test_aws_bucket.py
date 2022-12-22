@@ -764,11 +764,6 @@ def test_AWSLogsBucket_get_creation_date(mock_bucket, mock_integration):
 
 
 @pytest.mark.skip("Not implemented yet")
-def test_AWSLogsBucket_get_extra_data_from_filename():
-    pass
-
-
-@pytest.mark.skip("Not implemented yet")
 def test_AWSLogsBucket_get_alert_msg():
     pass
 
