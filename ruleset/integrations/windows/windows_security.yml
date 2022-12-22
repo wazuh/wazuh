@@ -65,6 +65,7 @@ normalize:
 
     - event.time_created: $~event_channel.Event.System.TimeCreated.@SystemTime
 
+    #- user.id: test  
     # map helper arrays
     - ~id_target_user_array: ["4624","4625","4634","4647","4648","4768","4769","4770","4771","4776","4964"]
     - ~id_memberName_array: ["4727", "4728", "4729", "4730", "4731", "4732", "4733", "4734", "4735",
@@ -154,45 +155,34 @@ normalize:
    map:
       - ~is_copy_target_user: true
     # TargetUserSid to user.id or user.target.id  
- - check: 
-      - event.user.id: +ef_not_exists
-      - ~is_copy_target_user: +t_is_true
+ - check: +ef_not_exists/user.id AND +a_contains/~id_target_user_array/$event.code
    map:
-        - event.user.id: ~event_channel.Event.EventData.TargetUserSid
-        - event.user.id: ~event_channel.Event.EventData.TargetSid
- - check:
-      - event.user.id: +ef_exists
-      - ~id_array: +t_is_true
+        - user.id: $~event_channel.Event.EventData.TargetUserSid
+        - user.id: $~event_channel.Event.EventData.TargetSid
+ - check: +ef_exists/user.id AND +a_contains/~id_target_user_array/$event.code
    map:
-        - event.user.target.id: ~event_channel.Event.EventData.TargetUserSid
-        - event.user.target.id: ~event_channel.Event.EventData.TargetSid
+        - user.target.id: $~event_channel.Event.EventData.TargetUserSid
+        - user.target.id: $~event_channel.Event.EventData.TargetSid
+
  # TargetUserName to related.user and user.name or user.target.name
- - check: 
-      - event.user.name: +ef_not_exists
-      - ~is_copy_target_user: +t_is_true
+ - check: +ef_not_exists/user.name AND +a_contains/~id_target_user_array/$event.code
    map:
-        - event.user.name: ~event_channel.Event.EventData.TargetUserName
- - check: 
-      - event.user.name: +ef_exists
-      - ~is_copy_target_user: +t_is_true
+        - user.name: ~event_channel.Event.EventData.TargetUserName
+ - check: +ef_exists/user.name AND +a_contains/~id_target_user_array/$event.code
    map:
-        - event.user.target.name: ~event_channel.Event.EventData.TargetUserName
- - check: 
-      - ~is_copy_target_user: +t_is_true
-      - ~event_channel.Event.EventData.TargetUserName: +s_ne/-/
+        - user.target.name: ~event_channel.Event.EventData.TargetUserName
+ 
+ - check: +s_ne/~event_channel.Event.EventData.TargetUserName/-/ AND +a_contains/~id_target_user_array/$event.code
    map:
         - related.user: +a_append/$~event_channel.Event.EventData.TargetUserName 
+    
     # TargetUserDomain to user.domain or user.target.domain
- - check:
-      - ~is_copy_target_user: +t_is_true
-      - event.user.domain: +ef_not_exists
+ - check: +ef_not_exists/user.domain AND +a_contains/~id_target_user_array/$event.code
    map:
-        - event.user.domain: ~event_channel.Event.EventData.TargetDomainName
- - check:
-      - ~is_copy_target_user: +t_is_true
-      - event.user.domain: +ef_exists
+        - user.domain: ~event_channel.Event.EventData.TargetDomainName
+ - check: +ef_exists/user.domain AND +a_contains/~id_target_user_array/$event.code
    map:
-        - event.user.target.domain: ~event_channel.Event.EventData.TargetDomainName
+        - user.target.domain: ~event_channel.Event.EventData.TargetDomainName
 
     # Copy MemberName to User and User to Group
  - check:
@@ -227,16 +217,16 @@ normalize:
         
  - check: event.code==4634 OR event.code==4647 OR event.code==4964
    map:
-    - event.logon.id: $~event_channel.Event.EventData.TargetLogonId 
+    - logon.id: $~event_channel.Event.EventData.TargetLogonId 
  
  # Copy Subject User from Event Data
  - check: 
      - ~id_copy_subject_user_array: +a_contains/$event.code
    map:
-     - event.user.id: $~event_channel.Event.EventData.SubjectUserSid
-     - event.user.name: $~event_channel.Event.EventData.SubjectUserName
+     - user.id: $~event_channel.Event.EventData.SubjectUserSid
+     - user.name: $~event_channel.Event.EventData.SubjectUserName
      - related.user: +a_append/$~event_channel.Event.EventData.SubjectUserName
-     - event.user.domain: $~event_channel.Event.EventData.SubjectDomainName
+     - user.domain: $~event_channel.Event.EventData.SubjectDomainName
 
  # Copy Target User to Target
  - check: 
@@ -249,13 +239,21 @@ normalize:
      - event.user.target.domain: $~event_channel.Event.EventData.TargetDomainName
 
 # Copy Target User to Effective
- - check: event.code==4741 OR event.code==4742
+ - check: event.code==4648 OR event.code==4688
    map:
-     - event.user.effective.id: $~event_channel.Event.EventData.TargetUserSid
+     - user.effective.id: $~event_channel.Event.EventData.TargetUserSid
+ 
+
+ - check: +s_ne/$~event_channel.Event.EventData.TargetUserName/-/ AND  (event.code==4648 OR event.code==4688)
+   map:     
      - ~name_part: +s_to_array/$~event_channel.Event.EventData.TargetUserName/@
-     - event.user.effective.name: $~name_part.0
-     - event.related.user: +a_append/$event.user.effective.name
-     - event.user.effective.domain: $~event_channel.Event.EventData.TargetDomainName
+     - user.effective.name: $~name_part.0
+     - related.user: +a_append/$event.user.effective.name
+
+
+ - check: +s_ne/$~event_channel.Event.EventData.TargetDomainName/-/ AND  (event.code==4648 OR event.code==4688)
+   map:     
+     - user.effective.domain: $~event_channel.Event.EventData.TargetDomainName
 
 # Copy Subject User from user_data
  - check: event.code==1102
