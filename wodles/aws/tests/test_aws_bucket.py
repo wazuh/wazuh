@@ -4,6 +4,7 @@ import os
 import sqlite3
 import sys
 import zipfile
+import re
 import csv
 from datetime import datetime
 from unittest.mock import MagicMock, patch
@@ -20,6 +21,8 @@ import wazuh_integration
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
 import aws_bucket
+from cloudtrail import AWSCloudTrailBucket
+from config import AWSConfigBucket
 
 TEST_FULL_PREFIX = "base/account_id/service/region/"
 TEST_CLOUDTRAIL_SCHEMA = "schema_cloudtrail_test.sql"
@@ -267,12 +270,12 @@ def test_AWSBucket_marker_only_logs_after():
 def test_AWSBucket_get_alert_msg(event):
     """Test 'get_alert_msg' function returns messages with valid format."""
     bucket = utils.get_mocked_AWSBucket(account_alias=utils.TEST_ACCOUNT_ALIAS)
-    test_log_key = "test_log_key"
+    log_key = "test_log_key"
     expected_error_message = "error message"
     expected_msg = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
     expected_msg['aws']['log_info'].update({
         'aws_account_alias': bucket.account_alias,
-        'log_file': test_log_key,
+        'log_file': log_key,
         's3bucket': bucket.bucket
     })
     if event:
@@ -280,7 +283,7 @@ def test_AWSBucket_get_alert_msg(event):
         expected_msg['aws'].update({k: v for k, v in event.items() if v is not None})
     else:
         expected_msg['error_msg'] = expected_error_message
-    assert bucket.get_alert_msg(utils.TEST_ACCOUNT_ID, test_log_key, event,
+    assert bucket.get_alert_msg(utils.TEST_ACCOUNT_ID, log_key, event,
                                 error_msg=expected_error_message) == expected_msg
 
 
@@ -763,68 +766,143 @@ def test_AWSLogsBucket_get_creation_date(mock_bucket, mock_integration):
     assert instance.get_creation_date(log_file) == expected_result
 
 
-@pytest.mark.skip("Not implemented yet")
 def test_AWSLogsBucket_get_alert_msg():
-    pass
+    bucket = utils.get_mocked_AWSBucket()
+
+    with patch('wazuh_integration.WazuhIntegration.__init__'), \
+            patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__):
+        instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket)
+        log_key = "test_log_key"
+        aws_account_id = utils.TEST_ACCOUNT_ID
+        expected_msg = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+        expected_error_message = "error message"
+
+        expected_alert_msg = bucket.get_alert_msg(aws_account_id, log_key, expected_msg,
+                                                  error_msg=expected_error_message)
+        expected_alert_msg['aws']['aws_account_id'] = aws_account_id
+
+        assert expected_alert_msg == instance.get_alert_msg(aws_account_id, log_key, expected_msg,
+                                                            expected_error_message)
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSLogsBucket_load_information_from_file():
-    pass
+@pytest.mark.parametrize('class_, json_file_content, result', [
+    (AWSCloudTrailBucket, {"field_to_load": "example"}, None),
+    (AWSCloudTrailBucket, {"Records": [{"example_key": "example_value"}]},
+     [{"example_key": "example_value", 'source': 'cloudtrail'}]),
+    (AWSConfigBucket, {"configurationItems": [{"example_key": "example_value"}]},
+     [{"example_key": "example_value", 'source': 'config'}])])
+@patch('json.load')
+@patch('aws_bucket.AWSBucket.decompress_file')
+@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
+def test_AWSLogsBucket_load_information_from_file(mock_bucket, mock_integration, mock_decompress, mock_json_load,
+                                                  class_, json_file_content, result):
+    log_key = "test_log_key"
+    instance = utils.get_mocked_bucket(class_=class_)
+
+    mock_json_load.return_value = json_file_content
+
+    assert result == instance.load_information_from_file(log_key)
+    mock_decompress.assert_called_once_with(log_key=log_key)
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSCustomBucket__init__():
-    pass
+@pytest.mark.parametrize('profile', [utils.TEST_AWS_PROFILE, None])
+@pytest.mark.parametrize('secret_key', [utils.TEST_SECRET_KEY, None])
+@pytest.mark.parametrize('access_key', [utils.TEST_ACCESS_KEY, None])
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
+def test_AWSCustomBucket__init__(mock_bucket, mock_integration, mock_sts, access_key, secret_key, profile):
+    """Test if the instances of AWSCustomBucket are created properly."""
+
+    mock_client = MagicMock()
+    mock_sts.return_value = mock_client
+
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket,
+                                       aws_profile=profile,
+                                       secret_key=secret_key,
+                                       access_key=access_key)
+    mock_bucket.assert_called_once()
+
+    assert instance.retain_db_records == aws_bucket.MAX_RECORD_RETENTION
+    mock_sts.assert_called_with(access_key, secret_key, profile=profile)
+    mock_client.get_caller_identity.assert_called_once()
+    assert instance.macie_location_pattern == re.compile(r'"lat":(-?0+\d+\.\d+),"lon":(-?0+\d+\.\d+)')
+    assert instance.check_prefix
+
+# TODO: FIX
+@pytest.mark.parametrize('first_char, data, result', [
+    # TODO: ('{', '{"source": "aws.custombucket", "detail": {"schemaVersion": "2.0"}}', [{"source": "custombucket", "schemaVersion": "2.0"}]),
+    ('', {"source": "aws.vpc"}, [{"source": "vpc", "version": "version"}])
+])
+@patch('csv.DictReader', return_value=[{"version": "version"}])
+@patch('aws_bucket.AWSBucket.decompress_file')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
+def test_AWSCustomBucket_load_information_from_file(mock_bucket, mock_integration, mock_sts, mock_decompress,
+                                                    mock_reader, first_char, data, result):
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+
+    log_key = "test_log_key"
+
+    decompress_read = MagicMock()
+    mock_decompress.return_value = decompress_read
+
+    decompress_read(read_data=data)
+    # decompress_read.read(1).return_value = first_char
+    decompress_read.read.return_value = data
+
+    assert result == instance.load_information_from_file(log_key)
+    mock_decompress.assert_called_with(log_key=log_key)
+    mock_reader.assert_called_once()
+    # decompress_read.read.assert_called_once_with(1)
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSCustomBucket_load_information_from_file():
-    pass
+@pytest.mark.parametrize('log_file, expected_date', [
+    ({'Key': 'AWSLogs/166157441623/elasticloadbalancing/us-west-1/2021/12/21/166157441623_elasticloadbalancing'},
+     20211221),
+    ({'Key': 'AWSLogs/875611522134/elasticloadbalancing/us-west-1/2020/01/03/166157441623_elasticloadbalancing'},
+     20200103),
+    ({'Key': '981837383623/iplogs/2020-09-20/2020-09-20-00-00-moyl.csv.gz'}, 20200920),
+    ({'Key': '836629801214/iplogs/2021-01-18/2021-01-18-00-00-zxsb.csv.gz'}, 20210118),
+    ({'Key': '2020/09/30/13/firehose_guardduty-1-2020-09-30-13-17-05-532e184c-1hfba.zip'}, 20200930),
+    ({'Key': '2020/10/15/03/firehose_guardduty-1-2020-10-15-03-22-01-ea728dd1-763a4.zip'}, 20201015),
+    ({'Key': '2021/03/18/aws-waf-logs-delivery-stream-1-2021-03-18-10-32-48-77baca34f-efad-4f14-45bd7871'},
+     20210318),
+    ({'Key': '2021/09/06/aws-waf-logs-delivery-stream-1-2021-09-06-21-02-18-8ba031bbd-babf-4c6a-83ba282c'},
+     20210906),
+    ({'Key': '2021-11-12-09-11-26-B9F9F891E8D0EB13'}, 20211112),
+    ({'Key': '20-03-02-21-02-43-A8269E82CA8BDD21', 'LastModified': datetime.strptime('2021/01/23', '%Y/%m/%d')},
+     20210123)
+])
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
+def test_AWSCustomBucket_get_creation_date(mock_bucket, mock_integration, mock_sts, log_file: dict, expected_date: int):
+    """
+    Test AWSCustomBucket's get_creation_date method.
+    Parameters
+    ----------
+    log_file : dict
+        The log file introduced
+    expected_date : int
+        The date that the method should return.
+    aws_custom_bucket : aws_bucket.AWSCustomBucket
+        Instance of the AWSCustomBucket class.
+    """
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+
+    assert instance.get_creation_date(log_file) == expected_date
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSCustomBucket_json_event_generator():
-    pass
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
+def test_AWSCustomBucket_get_full_prefix(mock_bucket, mock_integration, mock_sts):
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket, prefix=utils.TEST_PREFIX)
 
-
-# @pytest.mark.skip("Not implemented yet")
-# @pytest.mark.parametrize('log_file, expected_date', [
-#     ({'Key': 'AWSLogs/166157441623/elasticloadbalancing/us-west-1/2021/12/21/166157441623_elasticloadbalancing'},
-#      20211221),
-#     ({'Key': 'AWSLogs/875611522134/elasticloadbalancing/us-west-1/2020/01/03/166157441623_elasticloadbalancing'},
-#      20200103),
-#     ({'Key': '981837383623/iplogs/2020-09-20/2020-09-20-00-00-moyl.csv.gz'}, 20200920),
-#     ({'Key': '836629801214/iplogs/2021-01-18/2021-01-18-00-00-zxsb.csv.gz'}, 20210118),
-#     ({'Key': '2020/09/30/13/firehose_guardduty-1-2020-09-30-13-17-05-532e184c-1hfba.zip'}, 20200930),
-#     ({'Key': '2020/10/15/03/firehose_guardduty-1-2020-10-15-03-22-01-ea728dd1-763a4.zip'}, 20201015),
-#     ({'Key': '2021/03/18/aws-waf-logs-delivery-stream-1-2021-03-18-10-32-48-77baca34f-efad-4f14-45bd7871'},
-#      20210318),
-#     ({'Key': '2021/09/06/aws-waf-logs-delivery-stream-1-2021-09-06-21-02-18-8ba031bbd-babf-4c6a-83ba282c'},
-#      20210906),
-#     ({'Key': '2021-11-12-09-11-26-B9F9F891E8D0EB13'}, 20211112),
-#     ({'Key': '20-03-02-21-02-43-A8269E82CA8BDD21', 'LastModified': datetime.strptime('2021/01/23', '%Y/%m/%d')},
-#      20210123)
-# ])
-# def test_AWSCustomBucket_get_creation_date(log_file: dict, expected_date: int, aws_custom_bucket: AWSCustomBucket):
-#     """
-#     Test AWSCustomBucket's get_creation_date method.
-#     Parameters
-#     ----------
-#     log_file : dict
-#         The log file introduced
-#     expected_date : int
-#         The date that the method should return.
-#     aws_custom_bucket : aws_bucket.AWSCustomBucket
-#         Instance of the AWSCustomBucket class.
-#     """
-#     assert aws_custom_bucket.get_creation_date(log_file) == expected_date
-
-
-@pytest.mark.skip("Not implemented yet")
-def test_AWSCustomBucket_get_full_prefix():
-    pass
-
+    assert instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION) == utils.TEST_PREFIX
 
 @pytest.mark.skip("Not implemented yet")
 def test_AWSCustomBucket_reformat_msg():
@@ -840,15 +918,45 @@ def test_AWSCustomBucket_list_paths_from_dict():
 def test_AWSCustomBucket_iter_regions_and_accounts():
     pass
 
+# TODO
+# @pytest.mark.parametrize('log_file, bucket, account_id, region, expected_result', [
+#     (utils.TEST_LOG_FULL_PATH_1, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
+#     (utils.TEST_LOG_FULL_PATH_2, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
+#     ("", utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, False),
+#     (utils.TEST_LOG_FULL_PATH_1, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, "", False),
+#     (utils.TEST_LOG_FULL_PATH_1, utils.TEST_BUCKET, "", utils.TEST_REGION, False),
+# ])
+# @patch('wazuh_integration.WazuhIntegration.get_sts_client')
+# @patch('wazuh_integration.WazuhIntegration.__init__')
+# @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
+# def test_AWSCustomBucket_already_processed(mock_bucket, mock_integration, mock_sts,
+#                                            custom_database, log_file, bucket, account_id, region, expected_result):
+#     """Test `_get_last_key_processed` find the required keys in the database as expected."""
+#     utils.database_execute_script(custom_database, TEST_CLOUDTRAIL_SCHEMA)
+#
+#     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket, bucket=bucket, region=region)
+#     instance.db_connector = custom_database
+#     instance.db_cursor = instance.db_connector.cursor()
+#     # instance.db_table_name = 'guardduty'
+#
+#     assert instance.already_processed(downloaded_file=log_file, aws_account_id=account_id,
+#                                     aws_region=region) == expected_result
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSCustomBucket_already_processed():
-    pass
 
 
-@pytest.mark.skip("Not implemented yet")
 def test_AWSCustomBucket_mark_complete():
-    pass
+    test_log_file = 'log_file'
+
+    bucket = utils.get_mocked_AWSBucket()
+
+    with patch('wazuh_integration.WazuhIntegration.get_sts_client'), \
+            patch('wazuh_integration.WazuhIntegration.__init__'), \
+            patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__), \
+            patch('aws_bucket.AWSBucket.mark_complete'):
+        instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+
+        instance.mark_complete(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, test_log_file)
+        bucket.mark_complete.assert_called_once_with(instance, instance.aws_account_id, utils.TEST_REGION, test_log_file)
 
 
 @pytest.mark.skip("Not implemented yet")
@@ -858,4 +966,8 @@ def test_AWSCustomBucket_db_count_custom():
 
 @pytest.mark.skip("Not implemented yet")
 def test_AWSCustomBucket_db_maintenance():
+    pass
+
+@pytest.mark.skip("Not implemented yet")
+def test_AWSCustomBucket_db_maintenance_ko():
     pass
