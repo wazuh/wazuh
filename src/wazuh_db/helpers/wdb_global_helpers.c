@@ -38,7 +38,8 @@ static const char *global_db_commands[] = {
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "global get-agents-by-connection-status %d %s %s %d",
-    [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s"
+    [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s",
+    [WDB_GET_DISTINCT_AGENT_GROUP] = "global get-distinct-groups"
 };
 
 int wdb_insert_agent(int id,
@@ -1180,4 +1181,23 @@ int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock
     }
 
     return array;
+}
+
+cJSON* wdb_get_distinct_agent_groups(int *sock) {
+    cJSON *root = NULL;
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int aux_sock = -1;
+
+    root = wdbc_query_parse_json(sock?sock:&aux_sock, global_db_commands[WDB_GET_DISTINCT_AGENT_GROUP], wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    if (!root) {
+        merror("Error querying Wazuh DB to get agent's groups.");
+        return NULL;
+    }
+
+    return root;
 }

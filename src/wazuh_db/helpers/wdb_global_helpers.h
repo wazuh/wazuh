@@ -35,7 +35,8 @@ typedef enum global_db_access {
     WDB_RESET_AGENTS_CONNECTION,
     WDB_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
-    WDB_DISCONNECT_AGENTS
+    WDB_DISCONNECT_AGENTS,
+    WDB_GET_DISTINCT_AGENT_GROUP
 } global_db_access;
 
 /**
@@ -290,5 +291,14 @@ time_t get_agent_date_added(int agent_id);
  * @return Returns pointer to the array of agents ids, on success. NULL on errors.
  */
 int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock, int last_id, int limit);
+
+/**
+ * @brief Returns an array containing the group and group_hash assigned to all agents,
+ *        if two agents have the same group assigned it is only included once
+ *
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Returns pointer to the array of groups/group_hash, on success. NULL on errors.
+ */
+cJSON* wdb_get_distinct_agent_groups(int *sock);
 
 #endif

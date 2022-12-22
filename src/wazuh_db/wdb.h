@@ -240,6 +240,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GROUP_CTX_SET,
     WDB_STMT_GLOBAL_GROUP_HASH_GET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
+    WDB_STMT_GLOBAL_GET_GROUPS,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
@@ -1343,6 +1344,15 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output);
 int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output);
 
 /**
+ * @brief Function to parse the get-distinct-groups command data.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_get_distinct_agent_groups(wdb_t* wdb, char* output);
+
+/**
  * @brief Function to parse the reset agent connection status request.
  *
  * @param [in] wdb The global struct database.
@@ -2192,6 +2202,17 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
  * @retval -1 The table "agent" is missing or an error occurred.
  */
 int wdb_global_check_manager_keepalive(wdb_t *wdb);
+
+/**
+ * @brief Returns an array containing the group and group_hash assigned to all agents,
+ *        if two agents have the same group assigned it is only included once
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [out] status wdbc_result to represent if all group/group_hash has being obtained or any error occurred.
+ * @retval JSON with group/group_hash on success.
+ * @retval NULL on error.
+ */
+cJSON* wdb_global_get_distinct_agent_groups(wdb_t *wdb, wdbc_result* status);
 
 /**
  * @brief Function to insert or update rows with a dynamic query based on metadata.

@@ -872,33 +872,28 @@ STATIC void process_multi_groups() {
     char path[PATH_MAX + 1];
     OSHashNode *my_node;
     unsigned int i;
+    cJSON *group_item = NULL;
 
-    int *agents_array = wdb_get_all_agents(false, NULL);
+    cJSON *groups_array = wdb_get_distinct_agent_groups(NULL);
 
-    if(agents_array) {
-        for(int i = 0; agents_array[i] != -1; i++ ) {
-            cJSON* j_agent_info = wdb_get_agent_info(agents_array[i], NULL);
-            if(j_agent_info) {
-                char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
-                // If we don't duplicate the group_hash, the cJSON_Delete() will remove the string pointer from m_hash
-                char* agent_groups_hash = NULL;
-                w_strdup(cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group_hash")), agent_groups_hash);
+    cJSON_ArrayForEach(group_item, groups_array) {
+        char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(group_item, "group"));
 
-                // If it's not a multigroup, skip it
-                if(agent_groups && agent_groups_hash && strstr(agent_groups, ",")) {
-                    if (OSHash_Add_ex(m_hash, agent_groups, agent_groups_hash) != 2) {
-                        os_free(agent_groups_hash);
-                        mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", agent_groups);
-                    }
-                } else {
-                    os_free(agent_groups_hash);
-                }
+        // If we don't duplicate the group_hash, the cJSON_Delete() will remove the string pointer from m_hash
+        char* agent_groups_hash = NULL;
+        w_strdup(cJSON_GetStringValue(cJSON_GetObjectItem(group_item, "group_hash")), agent_groups_hash);
 
-                cJSON_Delete(j_agent_info);
+        // If it's not a multigroup, skip it
+        if(agent_groups && agent_groups_hash && strstr(agent_groups, ",")) {
+            if (OSHash_Add_ex(m_hash, agent_groups, agent_groups_hash) != 2) {
+                os_free(agent_groups_hash);
+                mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", agent_groups);
             }
+        } else {
+            os_free(agent_groups_hash);
         }
-        os_free(agents_array);
     }
+    os_free(groups_array);
 
     for (my_node = OSHash_Begin(m_hash, &i); my_node; my_node = OSHash_Next(m_hash, &i, my_node)) {
         char *key = NULL;
