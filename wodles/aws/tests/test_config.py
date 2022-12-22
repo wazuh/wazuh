@@ -1,13 +1,37 @@
 import pytest
+import os
+import sys
+from unittest.mock import patch
+import re
+from datetime import datetime, timedelta
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
+import aws_utils as utils
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
+import aws_bucket
+import config
+
+@patch('aws_bucket.AWSLogsBucket.__init__')
+def test_AWSConfigBucket__init__(mock_logs_bucket):
+    """Test if the instances of AWSConfigBucket are created properly."""
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
+    mock_logs_bucket.assert_called_once()
+    assert instance.service == "Config"
+    assert instance.field_to_load == "configurationItems"
+    assert instance._leading_zero_regex == re.compile(r'/(0)(?P<num>\d)')
+    assert instance._extract_date_regex == re.compile(r'\d{4}/\d{1,2}/\d{1,2}')
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSConfigBucket__init__():
-    pass
+@patch('aws_bucket.AWSLogsBucket.__init__')
+def test_AWSConfigBucket_get_days_since_today(mock_logs_bucket):
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
+    test_date = "20220630"
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSConfigBucket_get_days_since_today():
-    pass
+    date = datetime.strptime(test_date, "%Y%m%d")
+    delta = datetime.utcnow() - date + timedelta(days=1)
+
+    assert instance.get_days_since_today(test_date) == delta.days
 
 @pytest.mark.skip("Not implemented yet")
 def test_AWSConfigBucket_get_date_list():
