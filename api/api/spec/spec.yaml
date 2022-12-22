@@ -4385,7 +4385,7 @@ components:
           enum:
             - passed
             - failed
-            - ""
+            - "not applicable"
         title:
           type: string
           description: "A brief description of what is being checked"
