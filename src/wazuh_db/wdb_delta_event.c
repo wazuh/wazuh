@@ -8,7 +8,7 @@
 #endif
 
 STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value,
-                                           bool can_be_null);
+                                           bool convert_empty_string_as_null);
 
 STATIC const char * wdb_dbsync_translate_field(const struct field * field) {
     return NULL == field->source_name ? field->target_name : field->source_name;
@@ -32,7 +32,9 @@ STATIC cJSON * wdb_dbsync_get_field_default(const struct field * field) {
         case FIELD_REAL:
             retval = cJSON_CreateNumber(field->default_value.real);
             break;
-            
+        default:
+            mdebug2("Invalid syscollector field type: %i", field->type);
+            break;
         }
     }
 
@@ -100,7 +102,7 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
 
                 if (NULL != field_value) {
                     if (!wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value,
-                                                        column->value.can_be_null)) {
+                                                        column->value.convert_empty_string_as_null)) {
                         merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
                         has_error = true;
                     }
@@ -116,7 +118,7 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                     cJSON * field_value = cJSON_GetObjectItem(data, field_name);
                     if (NULL != field_value &&
                         !wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value,
-                                                        column->value.can_be_null)) {
+                                                        column->value.convert_empty_string_as_null)) {
                         merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
                         has_error = true;
                     }
@@ -170,7 +172,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                     if (NULL == field_value) {
                         has_error = true;
                     } else if (!wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value,
-                                                        column->value.can_be_null)) {
+                                                        column->value.convert_empty_string_as_null)) {
                         merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
                         has_error = true;
                     }
@@ -186,7 +188,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
 }
 
 STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value,
-                                           bool can_be_null) {
+                                           bool convert_empty_string_as_null) {
 
     bool ret_val = false;
 
@@ -198,7 +200,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
             case FIELD_TEXT: {
                 switch (value->type) {
                 case cJSON_String:
-                    if ('\0' == *value->valuestring && can_be_null) {
+                    if ('\0' == *value->valuestring && convert_empty_string_as_null) {
                         ret_val = sqlite3_bind_null(stmt, index) == SQLITE_OK ? true : false;
                     } else if (SQLITE_OK == sqlite3_bind_text(stmt, index, value->valuestring, -1, SQLITE_TRANSIENT)) {
                         ret_val = true;

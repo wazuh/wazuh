@@ -22,7 +22,7 @@
 #include "wazuhdb_op.h"
 
 cJSON * wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value,
-                                       bool can_be_null);
+                                       bool convert_empty_string_as_null);
 const char * wdb_dbsync_translate_field(const struct field * field);
 cJSON * wdb_dbsync_get_field_default(const struct field * field);
 
@@ -594,6 +594,12 @@ void test_wdb_dbsync_get_field_default_text(void ** state) {
     cJSON_Delete(retval);
 }
 
+void test_wdb_dbsync_get_field_default_invalid_type(void ** state) {
+    struct field test_field = {.type = (field_type_t) 1234, .default_value.text = "test"};
+    expect_string(__wrap__mdebug2, formatted_msg, "Invalid syscollector field type: 1234");
+    assert_null(wdb_dbsync_get_field_default(&test_field));
+}
+
 void test_wdb_dbsync_get_field_default_integer(void ** state) {
     struct field test_field = {.type = FIELD_INTEGER, .default_value.integer = 1234};
     cJSON * retval = wdb_dbsync_get_field_default(&test_field);
@@ -638,6 +644,7 @@ int main() {
         cmocka_unit_test(test_wdb_dbsync_get_field_default_integer),
         cmocka_unit_test(test_wdb_dbsync_get_field_default_real),
         cmocka_unit_test(test_wdb_dbsync_get_field_default_long),
+        cmocka_unit_test(test_wdb_dbsync_get_field_default_invalid_type),
         /* wdb_dbsync_translate_field */
         cmocka_unit_test(test_wdb_dbsync_translate_field_not_translated),
         cmocka_unit_test(test_wdb_dbsync_translate_field_translated),

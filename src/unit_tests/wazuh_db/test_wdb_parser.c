@@ -2381,9 +2381,10 @@ void test_wdb_parse_dbsync_delta_data_not_json(void ** state) {
     test_struct_t * data = (test_struct_t *) *state;
     char * query = NULL;
 
-    os_strdup("osinfo INSERTED data", query);
+    os_strdup("osinfo INSERTED {\"unclosed\":\"json", query);
 
-    expect_string(__wrap__merror, formatted_msg, DB_DELTA_PARSING_ERR);
+    expect_string(__wrap__mdebug1, formatted_msg, DB_DELTA_PARSING_ERR);
+    expect_string(__wrap__mdebug2, formatted_msg, "JSON error near: json");
 
     const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
@@ -2973,8 +2974,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_modified_err, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_deleted_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_deleted_err, test_setup, test_teardown),
-
-
         /* wdb_parse_global_backup */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_syntax, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_missing_action, test_setup, test_teardown),

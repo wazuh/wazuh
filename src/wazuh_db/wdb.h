@@ -442,7 +442,7 @@ typedef struct agent_info_data {
 } agent_info_data;
 
 typedef enum {
-    FIELD_INTEGER,
+    FIELD_INTEGER = 0,
     FIELD_TEXT,
     FIELD_REAL,
     FIELD_INTEGER_LONG
@@ -461,7 +461,7 @@ struct field {
         double real;
         long long integer_long;
     } default_value;
-    bool can_be_null;
+    bool convert_empty_string_as_null;
 };
 
 struct column_list {

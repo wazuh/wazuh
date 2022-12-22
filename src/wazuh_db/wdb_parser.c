@@ -6160,7 +6160,8 @@ int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output) {
 
 bool process_dbsync_data(wdb_t * wdb, const struct kv * kv_value, const char * operation, const char * raw_data) {
     bool ret_val = false;
-    cJSON * data = cJSON_Parse(raw_data);
+    const char * parse_error;
+    cJSON * data = cJSON_ParseWithOpts(raw_data, &parse_error, true);
     if (NULL != data) {
         if (strcmp(operation, "INSERTED") == 0 || strcmp(operation, "MODIFIED") == 0) {
             ret_val = wdb_upsert_dbsync(wdb, kv_value, data);
@@ -6172,7 +6173,8 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv * kv_value, const char * o
         }
         cJSON_Delete(data);
     } else {
-        merror(DB_DELTA_PARSING_ERR);
+        mdebug1(DB_DELTA_PARSING_ERR);
+        mdebug2("JSON error near: %s", parse_error);
     }
     return ret_val;
 }
