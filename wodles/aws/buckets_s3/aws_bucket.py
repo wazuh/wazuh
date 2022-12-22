@@ -12,7 +12,6 @@ from os import path
 import operator
 from datetime import datetime
 
-
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
 import aws_tools
@@ -34,7 +33,9 @@ THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to req
                                      " check the following link to learn how to use the Retry configuration to avoid it: " \
                                      f"'{RETRY_CONFIGURATION_URL}'"
 
-AWS_BUCKET_MSG_TEMPLATE = {'integration': 'aws', 'aws': {'log_info': {'aws_account_alias': '', 'log_file': '', 's3bucket': ''}}}
+AWS_BUCKET_MSG_TEMPLATE = {'integration': 'aws',
+                           'aws': {'log_info': {'aws_account_alias': '', 'log_file': '', 's3bucket': ''}}}
+
 
 class AWSBucket(wazuh_integration.WazuhIntegration):
     """
@@ -218,7 +219,6 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         self.prefix_regex = re.compile("^\d{12}$")
         self.check_prefix = False
 
-
     def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
         """
         Check if the prefix of a file key is the same as the one expected.
@@ -238,7 +238,6 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
             True if the prefix is the same, False otherwise.
         """
         return isinstance(match_start, int) and match_start == len(self.get_full_prefix(aws_account_id, aws_region))
-
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_cursor.execute(self.sql_already_processed.format(table_name=self.db_table_name), {
@@ -542,8 +541,6 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         else:
             return io.TextIOWrapper(raw_object)
 
-
-
     def load_information_from_file(self, log_key):
         """
         AWS logs are stored in different formats depending on the service:
@@ -574,11 +571,13 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         try:
             return self.load_information_from_file(log_key=log_key)
         except (TypeError, IOError, zipfile.BadZipfile, zipfile.LargeZipFile) as e:
-            self._exception_handler(aws_account_id, log_key, "Failed to decompress file {}: {}".format(log_key, repr(e)), 8)
+            self._exception_handler(aws_account_id, log_key,
+                                    "Failed to decompress file {}: {}".format(log_key, repr(e)), 8)
         except (ValueError, csv.Error) as e:
             self._exception_handler(aws_account_id, log_key, "Failed to parse file {}: {}".format(log_key, repr(e)), 9)
         except Exception as e:
-            self._exception_handler(aws_account_id, log_key, "Unknown error reading/parsing file {}: {}".format(log_key, repr(e)), 1)
+            self._exception_handler(aws_account_id, log_key,
+                                    "Unknown error reading/parsing file {}: {}".format(log_key, repr(e)), 1)
 
     def iter_bucket(self, account_id, regions):
         self.init_db()
@@ -636,14 +635,14 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         if event_list is not None:
             for event in event_list:
                 if _event_should_be_skipped(event):
-                    aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
-                          f'field. The event will be skipped.', 2)
+                    aws_tools.debug(
+                        f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
+                        f'field. The event will be skipped.', 2)
                     continue
                 # Parse out all the values of 'None'
                 event_msg = self.get_alert_msg(aws_account_id, log_key, event)
 
                 self.send_event(event_msg)
-
 
     def iter_files_in_bucket(self, aws_account_id=None, aws_region=None):
         try:
@@ -674,7 +673,8 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                         if self.reparse:
-                            aws_tools.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}", 1)
+                            aws_tools.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",
+                                            1)
                         else:
                             aws_tools.debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
                             continue
@@ -704,7 +704,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                 error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='check_bucket')}: {error}"
                 exit_number = 16
             else:
-                error_message =f'ERROR: The "iter_files_in_bucket" request failed: {error}'
+                error_message = f'ERROR: The "iter_files_in_bucket" request failed: {error}'
                 exit_number = 1
             print(f"ERROR: {error_message}")
             exit(exit_number)
@@ -750,6 +750,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
             print(f"ERROR: {str(e)}")
             exit(15)
 
+
 class AWSLogsBucket(AWSBucket):
     """
     Abstract class for logs generated from services such as CloudTrail or Config
@@ -787,19 +788,6 @@ class AWSLogsBucket(AWSBucket):
         # the following line extracts this part -> 20180810
         return int(path.basename(log_file['Key']).split('_')[-2].split('T')[0])
 
-    def get_extra_data_from_filename(self, filename):
-        aws_tools.debug('++ Parse arguments from log file name', 2)
-        filename_parts = filename.split('_')
-        aws_account_id = filename_parts[0]
-        aws_region = filename_parts[2]
-        log_timestamp = datetime.strptime(filename_parts[3].split('.')[0], '%Y%m%dT%H%M%SZ')
-        log_key = '{init}/{date_path}/{log_filename}'.format(
-            init=self.get_full_prefix(aws_account_id, aws_region),
-            date_path=datetime.strftime(log_timestamp, self.date_format),
-            log_filename=filename
-        )
-        return aws_region, aws_account_id, log_key
-
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
         alert_msg = AWSBucket.get_alert_msg(self, aws_account_id, log_key, event, error_msg)
         alert_msg['aws']['aws_account_id'] = aws_account_id
@@ -810,6 +798,7 @@ class AWSLogsBucket(AWSBucket):
             json_file = json.load(f)
             return None if self.field_to_load not in json_file else [dict(x, source=self.service.lower()) for x in
                                                                      json_file[self.field_to_load]]
+
 
 class AWSCustomBucket(AWSBucket):
 
@@ -1022,7 +1011,7 @@ class AWSCustomBucket(AWSBucket):
         query_count_custom = self.db_cursor.execute(
             self.sql_count_custom.format(table_name=self.db_table_name), {
                 'bucket_path': self.bucket_path,
-                'aws_account_id':  aws_account_id if aws_account_id else self.aws_account_id,
+                'aws_account_id': aws_account_id if aws_account_id else self.aws_account_id,
                 'retain_db_records': self.retain_db_records})
 
         return query_count_custom.fetchone()[0]
@@ -1033,7 +1022,7 @@ class AWSCustomBucket(AWSBucket):
             if self.db_count_custom(aws_account_id) > self.retain_db_records:
                 self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
                     'bucket_path': self.bucket_path,
-                    'aws_account_id':  aws_account_id if aws_account_id else self.aws_account_id,
+                    'aws_account_id': aws_account_id if aws_account_id else self.aws_account_id,
                     'retain_db_records': self.retain_db_records})
         except Exception as e:
             print(f"ERROR: Failed to execute DB cleanup - Path: {self.bucket_path}: {e}")
