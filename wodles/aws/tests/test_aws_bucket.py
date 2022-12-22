@@ -657,26 +657,34 @@ def test_AWSBucket_iter_files_in_bucket_ko(error_code, exit_code):
         assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
 
 
-# TODO
-# def test_AWSBucket_check_bucket():
-#     page = {'CommonPrefixes': 'list of Prefix'}
-#     bucket = utils.get_mocked_AWSBucket()
-#     bucket.client = MagicMock()
-#     paginator = MagicMock()
-#
-#     bucket.client.get_paginator = paginator
-#     paginator.paginate.return_value = MagicMock(return_value=page)
-#     bucket.check_bucket()
-#     bucket.client.get_paginator.assert_called_once()
-#     paginator.paginate.assert_called_onche()
-
-def test_AWSBucket_check_bucket_no_files():
+def test_AWSBucket_check_bucket():
+    page = {'CommonPrefixes': 'list of Prefix'}
     bucket = utils.get_mocked_AWSBucket()
     bucket.client = MagicMock()
 
+    paginator = MagicMock()
+    bucket.client.get_paginator.return_value = paginator
+    paginator.paginate = MagicMock(return_value=[page])
+    bucket.check_bucket()
+
+    bucket.client.get_paginator.assert_called_once()
+    paginator.paginate.assert_called_with(Bucket=bucket.bucket, Prefix=bucket.prefix, Delimiter='/')
+
+
+def test_AWSBucket_check_bucket_no_files():
+    page = {'OtherKey': ''}
+    bucket = utils.get_mocked_AWSBucket()
+    bucket.client = MagicMock()
+
+    paginator = MagicMock()
+    bucket.client.get_paginator.return_value = paginator
+    paginator.paginate = MagicMock(return_value=[page])
+
     with pytest.raises(SystemExit) as e:
         bucket.check_bucket()
+    paginator.paginate.assert_called_with(Bucket=bucket.bucket, Prefix=bucket.prefix, Delimiter='/')
     assert e.value.code == 14
+
 
 @pytest.mark.parametrize('error_code, exit_code', [
     (aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
@@ -700,7 +708,8 @@ def test_AWSBucket_check_bucket_ko_endpoint_error():
     bucket.client = MagicMock()
 
     with pytest.raises(SystemExit) as e:
-        bucket.client.get_paginator.side_effect = botocore.exceptions.EndpointConnectionError(endpoint_url='endpoint.aws.com')
+        bucket.client.get_paginator.side_effect = botocore.exceptions.EndpointConnectionError(
+            endpoint_url='endpoint.aws.com')
         bucket.check_bucket()
     assert e.value.code == utils.INVALID_ENDPOINT_ERROR_CODE
 
