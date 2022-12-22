@@ -707,21 +707,21 @@ ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
 server: external ${CPPLIBDEPS}
-	cmake -S . -B build/ ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS}
+	mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS} .. && cd ..
 	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},local)
 $(error Do not use 'local' directly, use 'TARGET=local')
 endif
 local: external ${CPPLIBDEPS}
-	cmake -S . -B build/ ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS}
+	mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS} .. && cd ..
 	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},hybrid)
 $(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
 endif
 hybrid: external ${CPPLIBDEPS}
-	cmake -S . -B build/ ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS}
+	mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS} .. && cd ..
 	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},agent)
@@ -729,7 +729,7 @@ $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
 agent: external ${CPPLIBDEPS}
 ifneq (${uname_S},HP-UX)
-	cmake -S . -B build/ ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS}
+	mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS} .. && cd ..
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 endif
 	${MAKE} ${BUILD_AGENT}
@@ -754,7 +754,7 @@ $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
 winagent: external win32/libwinpthread-1.dll ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
-	cmake -S . -B build/ ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS}
+	mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS} .. && cd ..
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
