@@ -47,13 +47,13 @@ static void HandlePoliciesInfo(Eventinfo *lf, int *socket, cJSON *event);
 static void HandleDumpEvent(Eventinfo *lf, int *socket, cJSON *event);
 static int CheckEventJSON(cJSON *event, cJSON **scan_id, cJSON **id, cJSON **name, cJSON **title, cJSON **description,
         cJSON **rationale, cJSON **remediation, cJSON **compliance, cJSON **condition, cJSON **check, cJSON **reference,
-        cJSON **file, cJSON **directory, cJSON **process, cJSON **registry, cJSON **result, cJSON **status, cJSON **reason,
+        cJSON **file, cJSON **directory, cJSON **process, cJSON **registry, cJSON **result, cJSON **reason,
         cJSON **policy_id, cJSON **command, cJSON **rules);
 static int CheckPoliciesJSON(cJSON *event, cJSON **policies);
 static int CheckDumpJSON(cJSON *event, cJSON **elements_sent, cJSON **policy_id, cJSON **scan_id);
 static void FillCheckEventInfo(Eventinfo *lf, cJSON *scan_id, cJSON *id, cJSON *name, cJSON *title, cJSON *description,
         cJSON *rationale, cJSON *remediation, cJSON *compliance, cJSON *reference, cJSON *file,
-        cJSON *directory, cJSON *process, cJSON *registry, cJSON *result, cJSON *status, cJSON *reason, char *old_result,
+        cJSON *directory, cJSON *process, cJSON *registry, cJSON *result, cJSON *reason, char *old_result,
         cJSON *command);
 static void FillScanInfo(Eventinfo *lf, cJSON *scan_id, cJSON *name, cJSON *description, cJSON *pass, cJSON *failed,
         cJSON *invalid, cJSON *total_checks, cJSON *score, cJSON *file, cJSON *policy_id);
@@ -759,7 +759,6 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *registry = NULL;
     cJSON *command = NULL;
     cJSON *result = NULL;
-    cJSON *status = NULL;
     cJSON *reason = NULL;
     cJSON *policy_id = NULL;
     cJSON *rules = NULL;
@@ -768,7 +767,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
 
     if(!CheckEventJSON(event, &scan_id, &id, &name, &title, &description, &rationale,
             &remediation, &compliance, &condition, &check, &reference, &file, &directory,
-            &process, &registry, &result, &status, &reason, &policy_id, &command, &rules))
+            &process, &registry, &result, &reason, &policy_id, &command, &rules))
     {
 
         int result_event = 0;
@@ -776,7 +775,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
         os_calloc(OS_MAXSTR,sizeof(char),wdb_response);
 
         mdebug1("Querying database for check id: %d", id->valueint);
-        int result_db = FindEventcheck(lf, id->valueint, socket,wdb_response);
+        int result_db = FindEventcheck(lf, id->valueint, socket, wdb_response);
 
         switch (result_db)
         {
@@ -791,20 +790,10 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                         event
                 );
 
-                if (result){
-                    if(strcmp(wdb_response,result->valuestring)) {
-                        FillCheckEventInfo(lf, scan_id, id,name, title, description, rationale, remediation,
-                                compliance, reference, file, directory, process, registry, result,
-                                status, reason, wdb_response, command
-                        );
-                    }
-                } else if (status && status->valuestring) {
-                    if(strcmp(wdb_response, status->valuestring)) {
-                        FillCheckEventInfo(lf, scan_id, id,name, title, description, rationale, remediation,
-                                compliance, reference, file, directory, process, registry, result,
-                                status, reason, wdb_response, command
-                        );
-                    }
+                if (result && strcmp(wdb_response, result->valuestring)) {
+                    FillCheckEventInfo(lf, scan_id, id, name, title, description, rationale, remediation,
+                        compliance, reference, file, directory, process, registry, result,
+                        reason, wdb_response, command);
                 }
 
                 if (result_event < 0)
@@ -820,20 +809,10 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                         event
                 );
 
-                if (result) {
-                    if(strcmp(wdb_response,result->valuestring)) {
-                        FillCheckEventInfo(lf, scan_id, id, name, title, description, rationale, remediation,
-                                compliance, reference, file, directory, process, registry, result,
-                                status, reason, NULL, command
-                        );
-                    }
-                } else if (status && status->valuestring) {
-                    if(strcmp(wdb_response, status->valuestring)) {
-                        FillCheckEventInfo(lf, scan_id, id, name, title, description, rationale,
-                                remediation, compliance, reference, file, directory,
-                                process, registry, result, status, reason, NULL, command
-                        );
-                    }
+                if (result && strcmp(wdb_response, result->valuestring)) {
+                    FillCheckEventInfo(lf, scan_id, id, name, title, description, rationale, remediation,
+                        compliance, reference, file, directory, process, registry, result,
+                        reason, NULL, command);
                 }
 
                 if (result_event < 0)
@@ -1314,7 +1293,7 @@ static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJ
 static int CheckEventJSON(cJSON *event, cJSON **scan_id, cJSON **id, cJSON **name, cJSON **title,
         cJSON **description, cJSON **rationale, cJSON **remediation, cJSON **compliance,
         cJSON **condition, cJSON **check, cJSON **reference, cJSON **file, cJSON **directory,
-        cJSON **process, cJSON **registry, cJSON **result, cJSON **status, cJSON **reason,
+        cJSON **process, cJSON **registry, cJSON **result, cJSON **reason,
         cJSON **policy_id, cJSON **command, cJSON **rules)
 {
     assert(event);
@@ -1567,7 +1546,7 @@ static int CheckPoliciesJSON(cJSON *event,cJSON **policies) {
 
 static void FillCheckEventInfo(Eventinfo *lf, cJSON *scan_id, cJSON *id, cJSON *name, cJSON *title, cJSON *description,
         cJSON *rationale, cJSON *remediation, cJSON *compliance, cJSON *reference, cJSON *file,
-        cJSON *directory, cJSON *process, cJSON *registry, cJSON *result, cJSON *status, cJSON *reason,
+        cJSON *directory, cJSON *process, cJSON *registry, cJSON *result, cJSON *reason,
         char *old_result, cJSON *command)
 {
     assert(lf);
@@ -1692,11 +1671,10 @@ static void FillCheckEventInfo(Eventinfo *lf, cJSON *scan_id, cJSON *id, cJSON *
 
     if(result) {
         fillData(lf, "sca.check.result", result->valuestring);
-    } else {
-        fillData(lf, "sca.check.status", status->valuestring);
-        if (reason) {
-            fillData(lf, "sca.check.reason", reason->valuestring);
-        }
+    }
+
+    if (reason) {
+        fillData(lf, "sca.check.reason", reason->valuestring);
     }
 
     if(old_result) {
