@@ -11,6 +11,7 @@
 #include "sysInfo.hpp"
 #include "sysInfo.h"
 #include "cjsonSmartDeleter.hpp"
+#include "commonDefs.h"
 
 nlohmann::json SysInfo::hardware()
 {
