@@ -1913,8 +1913,7 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
 int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     char * curr;
     char * next;
-    char * result_check; // Pass, failed
-    char * status_check;
+    char * result_check; // Pass, failed, or not applicable
     char * reason_check;
     int result;
 
@@ -1976,17 +1975,6 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         }
 
         *next++ = '\0';
-        status_check = next;
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Security Configuration Assessment query syntax.");
-            mdebug2("Security Configuration Assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
-            return OS_INVALID;
-        }
-
-        *next++ = '\0';
         reason_check = next;
 
         curr = next;
@@ -2004,7 +1992,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         else
             scan_id = strtol(curr, NULL, 10);
 
-        if (result = wdb_sca_update(wdb, result_check, pm_id, scan_id, status_check, reason_check), result < 0) {
+        if (result = wdb_sca_update(wdb, result_check, pm_id, scan_id, reason_check), result < 0) {
             mdebug1("Cannot update Security Configuration Assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot update Security Configuration Assessment information.");
         } else {
@@ -2039,7 +2027,6 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         cJSON *result_check = NULL;
         cJSON *policy_id = NULL;
         cJSON *check = NULL;
-        cJSON *status = NULL;
         cJSON *reason = NULL;
 
         if (scan_id = cJSON_GetObjectItem(event, "id"), !scan_id) {
@@ -2154,33 +2141,16 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 return OS_INVALID;
             }
 
-            if (status = cJSON_GetObjectItem(check, "status"), status) {
-                if (reason = cJSON_GetObjectItem(check, "reason"), !reason) {
-                    merror("Malformed JSON: field 'reason' not found");
-                    return OS_INVALID;
-                }
-
-                if (!status->valuestring) {
-                    merror("Malformed JSON: field 'status' must be a string");
-                    return OS_INVALID;
-                }
-
-                if (!reason->valuestring) {
-                    merror("Malformed JSON: field 'reason' must be a string");
-                    return OS_INVALID;
-                }
+            result_check = cJSON_GetObjectItem(check, "result");
+            if (result_check && !result_check->valuestring) {
+                mdebug1("Malformed JSON: field 'result' must be a string");
+                return OS_INVALID;
             }
 
-            if (result_check = cJSON_GetObjectItem(check, "result"), !result_check) {
-                if (!status) {
-                    merror("Malformed JSON: field 'result' not found");
-                    return OS_INVALID;
-                }
-            } else {
-                if (!result_check->valuestring) {
-                    mdebug1("Malformed JSON: field 'result' must be a string");
-                    return OS_INVALID;
-                }
+            reason = cJSON_GetObjectItem(check, "reason");
+            if (reason && !reason->valuestring) {
+                mdebug1("Malformed JSON: field 'reason' must be a string");
+                return OS_INVALID;
             }
         }
 
@@ -2194,10 +2164,10 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                     process ? process->valuestring : NULL,
                     registry ? registry->valuestring : NULL,
                     reference ? reference->valuestring : NULL,
-                    result_check ? result_check->valuestring : "",
+                    result_check ? result_check->valuestring : "not applicable",
                     policy_id->valuestring,
                     command ? command->valuestring : NULL,
-                    status ? status->valuestring : NULL, reason ? reason->valuestring : NULL),
+                    reason ? reason->valuestring : NULL),
             result < 0)
         {
             mdebug1("Cannot save Security Configuration Assessment information.");
