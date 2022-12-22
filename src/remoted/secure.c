@@ -626,7 +626,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     if (IsValidHeader(tmp_msg)) {
 
         /* let through new and shutdown messages */
-        if (message->counter >  rem_getCounter(message->sock) || (strncmp(tmp_msg, HC_SHUTDOWN, strlen(HC_SHUTDOWN)) == 0)) {
+        if (message->sock == USING_UDP_NO_CLIENT_SOCKET || message->counter >  rem_getCounter(message->sock) || (strncmp(tmp_msg, HC_SHUTDOWN, strlen(HC_SHUTDOWN)) == 0)) {
             /* We need to save the peerinfo if it is a control msg */
 
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
@@ -642,21 +642,22 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                 }
 
                 w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+                if ((strncmp(tmp_msg, HC_SHUTDOWN, strlen(HC_SHUTDOWN)) != 0)) {
+                    r = OS_AddSocket(&keys, agentid, message->sock);
 
-                r = OS_AddSocket(&keys, agentid, message->sock);
-
-                switch (r) {
-                case OS_ADDSOCKET_ERROR:
-                    merror("Couldn't add TCP socket to keystore.");
-                    break;
-                case OS_ADDSOCKET_KEY_UPDATED:
-                    mdebug2("TCP socket %d already in keystore. Updating...", message->sock);
-                    break;
-                case OS_ADDSOCKET_KEY_ADDED:
-                    mdebug2("TCP socket %d added to keystore.", message->sock);
-                    break;
-                default:
-                    ;
+                    switch (r) {
+                    case OS_ADDSOCKET_ERROR:
+                        merror("Couldn't add TCP socket to keystore.");
+                        break;
+                    case OS_ADDSOCKET_KEY_UPDATED:
+                        mdebug2("TCP socket %d already in keystore. Updating...", message->sock);
+                        break;
+                    case OS_ADDSOCKET_KEY_ADDED:
+                        mdebug2("TCP socket %d added to keystore.", message->sock);
+                        break;
+                    default:
+                        ;
+                    }
                 }
             } else {
                 keys.keyentries[agentid]->sock = USING_UDP_NO_CLIENT_SOCKET;
@@ -671,6 +672,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
             OS_FreeKey(key);
         } else {
+            key_unlock();
             rem_inc_recv_dequeued();
         }
         return;
