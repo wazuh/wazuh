@@ -7,6 +7,8 @@
 #define STATIC static
 #endif
 
+#define QUERY_MAX_SIZE OS_SIZE_2048
+
 STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value,
                                            bool convert_empty_string_as_null);
 
@@ -44,33 +46,34 @@ STATIC cJSON * wdb_dbsync_get_field_default(const struct field * field) {
 bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
     bool ret_val = false;
     if (NULL != data && NULL != wdb && NULL != kv_value) {
-        char query[OS_SIZE_2048] = {0};
-        strcat(query, "INSERT INTO ");
-        strcat(query, kv_value->value);
-        strcat(query, " VALUES( ");
+        char query[QUERY_MAX_SIZE] = {0};
+        int query_actual_size = 0;
+
+        query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1,
+                                      "INSERT INTO %s VALUES( ", kv_value->value);
 
         struct column_list const * column = NULL;
         for (column = kv_value->column_list; column; column = column->next) {
-            strcat(query, "?");
+            query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, "?");
             if (column->next) {
-                strcat(query, ",");
+                query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, ",");
             }
         }
 
-        strcat(query, ") ON CONFLICT DO UPDATE SET ");
+        query_actual_size +=
+            snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, ") ON CONFLICT DO UPDATE SET ");
 
         bool first_condition_element = true;
         for (column = kv_value->column_list; column; column = column->next) {
             const char * field_name = column->value.target_name;
             if (!column->value.is_aux_field && !column->value.is_pk) {
                 if (first_condition_element) {
-                    strcat(query, field_name);
-                    strcat(query, "=?");
+                    query_actual_size +=
+                        snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, "%s=?", field_name);
                     first_condition_element = false;
                 } else {
-                    strcat(query, ",");
-                    strcat(query, field_name);
-                    strcat(query, "=?");
+                    query_actual_size +=
+                        snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, ",%s=?", field_name);
                 }
             }
         }
@@ -137,9 +140,10 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
     bool ret_val = false;
     if (NULL != wdb && NULL != kv_value && NULL != data) {
         char query[OS_SIZE_2048] = {0};
-        strcat(query, "DELETE FROM ");
-        strcat(query, kv_value->value);
-        strcat(query, " WHERE ");
+        int query_actual_size = 0;
+
+        query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1,
+                                      "DELETE FROM %s WHERE ", kv_value->value);
 
         bool first_condition_element = true;
         struct column_list const * column = NULL;
@@ -148,13 +152,12 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
             const char * field_name = column->value.target_name;
             if (column->value.is_pk) {
                 if (first_condition_element) {
-                    strcat(query, field_name);
-                    strcat(query, "=?");
+                    query_actual_size +=
+                        snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, "%s=?", field_name);
                     first_condition_element = false;
                 } else {
-                    strcat(query, " AND ");
-                    strcat(query, field_name);
-                    strcat(query, "=?");
+                    query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1,
+                                                  " AND %s=?", field_name);
                 }
             }
         }
@@ -172,7 +175,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                     if (NULL == field_value) {
                         has_error = true;
                     } else if (!wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value,
-                                                        column->value.convert_empty_string_as_null)) {
+                                                               column->value.convert_empty_string_as_null)) {
                         merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
                         has_error = true;
                     }
