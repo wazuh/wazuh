@@ -33,7 +33,7 @@ static int FindPoliciesIds(Eventinfo *lf, int *socket, char *wdb_response);
 static int DeletePolicy(Eventinfo *lf, char *policy, int *socket);
 static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket);
 static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id,int scan_id, int *socket);
-static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, int id , int scan_id, char * result, char *status,
+static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, int id , int scan_id, char * result,
         char *reason, cJSON *event);
 static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan,
         int pass,int failed, int invalid, int total_checks, int score,char * hash,int update);
@@ -588,7 +588,7 @@ static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id,int scan_id,
     return retval;
 }
 
-static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, int id , int scan_id, char * result, char *status, char *reason, cJSON *event)
+static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, int id , int scan_id, char * result, char *reason, cJSON *event)
 {
 
     assert(lf);
@@ -601,11 +601,11 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, int id , int s
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
     if (exists) {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s sca update %d|%s|%s|%s|%d", lf->agent_id, id, result ? result : "", status ? status : "", reason ? reason : "", scan_id);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s sca update %d|%s|%s|%d", lf->agent_id, id, result ? result : "", reason ? reason : "", scan_id);
     }
     else {
         char *json_event = cJSON_PrintUnformatted(event);
-        snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert %s", lf->agent_id,json_event);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert %s", lf->agent_id, json_event);
         os_free(json_event);
     }
 
@@ -787,7 +787,6 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 result_event = SaveEventcheck(lf, 1, socket, id->valueint,
                         scan_id ? scan_id->valueint : -1,
                         result ? result->valuestring : NULL,
-                        status ? status->valuestring : NULL,
                         reason ? reason->valuestring : NULL,
                         event
                 );
@@ -817,7 +816,6 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 result_event = SaveEventcheck(lf, 0, socket, id->valueint,
                         scan_id ? scan_id->valueint : -1,
                         result ? result->valuestring : NULL,
-                        status ? status->valuestring : NULL,
                         reason ? reason->valuestring : NULL,
                         event
                 );
@@ -1463,28 +1461,15 @@ static int CheckEventJSON(cJSON *event, cJSON **scan_id, cJSON **id, cJSON **nam
 
         *rules = cJSON_GetObjectItem(*check, "rules");
 
-        if ( *status = cJSON_GetObjectItem(*check, "status"), *status) {
-            if ( *reason = cJSON_GetObjectItem(*check, "reason"), !*reason) {
-                merror("Malformed JSON: field 'reason' not found.");
-                return retval;
-            }
-            obj = *status;
-            if( obj && !obj->valuestring ) {
-                merror("Malformed JSON: field 'status' must be a string.");
-                return retval;
-            }
-            obj = *reason;
-            if( obj && !obj->valuestring ) {
-                merror("Malformed JSON: field 'reason' must be a string.");
-                return retval;
-            }
+        *reason = cJSON_GetObjectItem(*check, "reason");
+        obj = *reason;
+        if( obj && !obj->valuestring ) {
+            merror("Malformed JSON: field 'reason' must be a string.");
+            return retval;
         }
 
         if ( *result = cJSON_GetObjectItem(*check, "result"), !*result) {
-            if (!*status){
-                merror("Malformed JSON: field 'result' not found.");
-                return retval;
-            }
+            *result = cJSON_CreateString("not applicable");
         } else {
             obj = *result;
             if(!obj->valuestring ) {
