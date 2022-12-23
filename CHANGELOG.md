@@ -15,7 +15,8 @@ All notable changes to this project will be documented in this file.
 - Added a software limit to limit the number of EPS that a manager can process. ([#13608](https://github.com/wazuh/wazuh/pull/13608))
 - Added a new wazuh-clusterd task for agent-groups info synchronization. ([#11753](https://github.com/wazuh/wazuh/pull/11753))
 - Added unit tests for functions in charge of getting ruleset sync status. ([#14950](https://github.com/wazuh/wazuh/pull/14950))
-
+- Added auto-vacuum mechanism in wazuh-db. ([#14950](https://github.com/wazuh/wazuh/pull/14950))
+ 
 #### Changed
 
 - wazuh-logtest now shows warnings about ruleset issues. ([#10822](https://github.com/wazuh/wazuh/pull/10822))
@@ -39,6 +40,8 @@ All notable changes to this project will be documented in this file.
 - Improved performance of the `agent_groups` CLI when listing agents belonging to a group. ([#14244](https://github.com/wazuh/wazuh/pull/14244)
 - Changed wazuh-clusterd binary behaviour to kill any existing cluster processes when executed. ([#14475](https://github.com/wazuh/wazuh/pull/14475))
 - Changed wazuh-clusterd tasks to wait asynchronously for responses coming from wazuh-db. ([#14791](https://github.com/wazuh/wazuh/pull/14843))
+- Use zlib for zip compression in cluster synchronization. ([#11190](https://github.com/wazuh/wazuh/pull/11190))
+- Added mechanism to dynamically adjust zip size limit in Integrity sync. ([#12241](https://github.com/wazuh/wazuh/pull/12241))
 
 #### Fixed
 
@@ -142,6 +145,7 @@ All notable changes to this project will be documented in this file.
 - Fixed FIM injection vulnerabilty when using `prefilter_cmd` option. ([#13044](https://github.com/wazuh/wazuh/pull/13044))
 - Fixed the parse of ALB logs splitting `client_port`, `target_port` and `target_port_list` in separated `ip` and `port` for each key. ([14525](https://github.com/wazuh/wazuh/pull/14525))
 - Fixed a bug that prevent processing Macie logs with problematic ipGeolocation values. ([15335](https://github.com/wazuh/wazuh/pull/15335))
+- Fixed GCP integration module error messages. ([#15584](https://github.com/wazuh/wazuh/pull/15584))
 
 #### Removed
 
@@ -184,6 +188,7 @@ All notable changes to this project will be documented in this file.
 - Improved parameter validation for API endpoints that require component and configuration parameters. ([#14766](https://github.com/wazuh/wazuh/pull/14766))
 - Improved `GET /sca/{agent_id}/checks/{policy_id}` API endpoint performance. ([#15017](https://github.com/wazuh/wazuh/pull/15017))
 - Improved exception handling when trying to connect to Wazuh sockets. ([#15334](https://github.com/wazuh/wazuh/pull/15334))
+- Modified _group_names and _group_names_or_all regexes to avoid invalid group names. ([#15671](https://github.com/wazuh/wazuh/pull/15671))
 
 #### Fixed
 
@@ -202,6 +207,7 @@ All notable changes to this project will be documented in this file.
 - Reduced amount of memory required to read CDB lists using the API. ([#14204](https://github.com/wazuh/wazuh/pull/14204))
 - Fixed a bug where the cluster health check endpoint and CLI would add an extra active agent to the master node. ([#14237](https://github.com/wazuh/wazuh/pull/14237))
 - Fixed bug that prevent updating the configuration when using various <ossec_conf> blocks from the API ([#15311](https://github.com/wazuh/wazuh/pull/15311))
+- Fixed vulnerability API integration tests' healthcheck. ([#15194](https://github.com/wazuh/wazuh/pull/15194))
 
 #### Removed
 
