@@ -626,7 +626,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     if (IsValidHeader(tmp_msg)) {
 
         /* let through new and shutdown messages */
-        if (message->sock == USING_UDP_NO_CLIENT_SOCKET || message->counter >  rem_getCounter(message->sock) || (strncmp(tmp_msg, HC_SHUTDOWN, strlen(HC_SHUTDOWN)) == 0)) {
+        if (message->sock == USING_UDP_NO_CLIENT_SOCKET || message->counter > rem_getCounter(message->sock) || (strncmp(tmp_msg, HC_SHUTDOWN, strlen(HC_SHUTDOWN)) == 0)) {
             /* We need to save the peerinfo if it is a control msg */
 
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
