@@ -1,13 +1,52 @@
-<group name="macOS,tccd_process,">
-<rule id="100020" level="5">
- <decoded_as>macOS_tcc_process</decoded_as>
- <match type="pcre2">(?i)update access record.+allowed</match>
- <description>$(application) has been granted permission to $(service) at $(time_access_granted)</description>
-</rule>
+<group name="macOS,">
 
-<rule id="100021" level="5">
- <decoded_as>macOS_tcc_process</decoded_as>
- <match type="pcre2">(?i)update access record.+denied</match>
- <description>$(application) has been denied permission to $(service) at $(time_access_denied)</description>
- </rule>
+  <rule id="110001" level="5">
+    <decoded_as>macOS_tccd</decoded_as>
+    <match type="pcre2">(?i)update access record.+allowed</match>
+    <description>$(application) has been granted permission to $(service) at $(time_access_granted)</description>
+  </rule>
+
+  <rule id="110002" level="5">
+    <decoded_as>macOS_tccd</decoded_as>
+    <match type="pcre2">(?i)update access record.+denied</match>
+    <description>$(application) has been denied permission to $(service) at $(time_access_denied)</description>
+  </rule>
+  
+  <rule id="110003" level="5">
+    <decoded_as>macOS_loginwindow</decoded_as>
+    <match>screenIsUnlocked</match>
+    <description>Screen Unlocked with UserID:$(userID)</description>
+  </rule>
+  
+  <rule id="110004" level="5">
+    <decoded_as>macOS_loginwindow</decoded_as>
+    <match>screenIsLocked</match>
+    <description>Screen locked for UserID:$(userID)</description>
+  </rule>
+  
+  <rule id="110005" level="5">
+    <decoded_as>macOS_loginwindow</decoded_as>
+    <match>logoutNoReturn</match>
+    <description>User LogOff</description>
+  </rule>
+  
+  <rule id="110006" level="5">
+    <decoded_as>macOS_loginwindow</decoded_as>
+    <match>loginIsComplete</match>
+    <description>User Login</description>
+  </rule>
+  
+  <rule id="110007" level="5">
+    <decoded_as>macOS_screensharingd</decoded_as>
+    <match type="pcre2">(?i)authentication.+failed</match>
+    <description>Attempt to connect to screen sharing with username $(dstuser) from $(ip_address) failed</description>
+  </rule>
+
+
+  <rule id="110008" level="5">
+    <decoded_as>macOS_screensharingd</decoded_as>
+    <match type="pcre2">(?i)authentication.+succeeded</match>
+    <description>Attempt to connect to screen sharing with username $(dstuser) from $(ip_address) succeeded</description>
+  </rule>
+  
 </group>
