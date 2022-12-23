@@ -1,41 +1,41 @@
-<decoder name="macOS_tcc_process">
-  <program_name>tccd</program_name>
+<decoder name="macOS_tccd">
+ <program_name>tccd</program_name>
 </decoder>
 
-<decoder name="macOS_tcc_process1">
-  <parent>macOS_tcc_process</parent>
+<decoder name="macOS_tccd_denied">
+  <parent>macOS_tccd</parent>
   <regex>[com.apple.TCC:access] Update Access Record: (\S+) for (\S+) to Denied at \d+ \p\d+-\d+-\d+ (\d+:\d+:\d+) +\d+\p</regex>
   <order>service, application, time_access_denied</order>
 </decoder>
 
-<decoder name="macOS_tcc_process1">
-  <parent>macOS_tcc_process</parent>
+<decoder name="macOS_tccd_granted">
+  <parent>macOS_tccd</parent>
   <regex>[com.apple.TCC:access] Update Access Record: (\S+) for (\S+) to Allowed at \d+ \p\d+-\d+-\d+ (\d+:\d+:\d+) +\d+\p</regex>
   <order>service, application, time_access_granted</order>
 </decoder>
 
-<decoder name="macOS_loginwindow_process">
+<decoder name="macOS_loginwindow">
   <program_name>loginwindow</program_name>
 </decoder>
 
-<decoder name="macOS_loginwindow_process1">
-  <parent>macOS_loginwindow_process</parent>
+<decoder name="macOS_loginwindow_1">
+  <parent>macOS_loginwindow</parent>
   <regex>[com.apple.loginwindow.logging:Standard] -[.+] | \w+: \w+.\w+.\w+.(\w+), with userID:(\d+)||loginIsComplete</regex>
   <order>data, userID</order>
 </decoder>
 
-<decoder name="macOS_screensharingd_process">
+<decoder name="macOS_screensharingd">
   <program_name>screensharingd</program_name>
 </decoder>
   
-<decoder name="screensharingd_process_1">
-  <parent>screensharingd_process</parent>
+<decoder name="macOS_screensharingd_success">
+  <parent>macOS_screensharingd</parent>
   <regex>Authentication: SUCCEEDED :: User Name: (\S+) :: Viewer Address: (\d+.\d+.\d+.\d+) :: Type: (\S+)</regex>
   <order>dstuser, ip_address, type</order>
 </decoder>
 
-<decoder name="macOS_screensharingd_process_2">
-  <parent>screensharingd_process</parent>
+<decoder name="macOS_screensharingd_failure">
+  <parent>macOS_screensharingd</parent>
   <regex>Authentication: FAILED :: User Name: (\S+) :: Viewer Address: (\d+.\d+.\d+.\d+) :: Type: (\S+)</regex>
   <order>dstuser, ip_address, type</order>
 </decoder>
