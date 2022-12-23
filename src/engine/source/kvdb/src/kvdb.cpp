@@ -2,6 +2,7 @@
 
 #include <shared_mutex>
 #include <unordered_map>
+#include <variant>
 
 #include <fmt/format.h>
 #include <rocksdb/db.h>
@@ -55,7 +56,7 @@ struct KVDB::Impl
                          "Engine KVDB: Trying to create a database with an empty name.");
         WAZUH_ASSERT_MSG(
             !m_path.empty(),
-            "Engine KVDB: Trying to create database \"{}\" on an empty path.",
+            "Engine KVDB: Trying to create database '{}' on an empty path.",
             m_name);
     }
 
@@ -102,7 +103,7 @@ struct KVDB::Impl
         if (!s.ok())
         {
             WAZUH_LOG_WARN(
-                "Engine KVDB: Database \"{}\": File could not be created: \"{}\"",
+                "Engine KVDB: Database '{}': File could not be created: '{}'",
                 m_name,
                 s.ToString());
 
@@ -160,10 +161,9 @@ struct KVDB::Impl
         WAZUH_ASSERT_MSG(!colName.empty(),
                          "Engine KVDB: Trying to get an empty column name.");
 
-        // TODO: could not we open it here?
         if (m_state != State::Open)
         {
-            WAZUH_LOG_ERROR("Engine KVDB: Database \"{}\" should be open to be executed.",
+            WAZUH_LOG_ERROR("Engine KVDB: Database '{}' should be open to be executed.",
                             m_name);
             return nullptr;
         }
@@ -171,8 +171,7 @@ struct KVDB::Impl
         auto cfh = m_CFHandlesMap.find(colName);
         if (cfh == m_CFHandlesMap.end())
         {
-            // TODO: CF means config?
-            WAZUH_LOG_ERROR("Engine KVDB: Database \"{}\": Failed to get CF \"{}\".",
+            WAZUH_LOG_ERROR("Engine KVDB: Database '{}': Failed to get CF '{}'.",
                             m_name,
                             colName);
             return nullptr;
@@ -205,7 +204,7 @@ struct KVDB::Impl
             return true;
         }
 
-        WAZUH_LOG_ERROR("Engine KVDB: Database \"{}\": Couldn't create CF \"{}\": {}",
+        WAZUH_LOG_ERROR("Engine KVDB: Database '{}': Couldn't create CF '{}': {}",
                         m_name,
                         columnName,
                         s.ToString());
@@ -275,6 +274,8 @@ struct KVDB::Impl
         return false;
     }
 
+    // TODO: this method should be support string_view instead of string, to avoid
+    // json --str()--> char * -> string conversions
     bool
     write(const std::string& key, const std::string& value, const std::string& columnName)
     {
@@ -293,8 +294,8 @@ struct KVDB::Impl
         rocksdb::Status s = m_db->Put(kOptions.write, cf, key, value);
         if (!s.ok())
         {
-            WAZUH_LOG_ERROR("Engine KVDB: Database \"{}\": Couldn't insert pair [{}:{}], "
-                            "CF \"{}\": \"{}\"",
+            WAZUH_LOG_WARN("Engine KVDB: Database '{}': Couldn't insert pair [{}:{}], "
+                            "CF '{}': '{}'",
                             m_name,
                             key,
                             value,
@@ -303,8 +304,8 @@ struct KVDB::Impl
             return false;
         }
 
-        WAZUH_LOG_DEBUG("Engine KVDB: Database \"{}\": Pair [{}:{}] was successfully "
-                        "inserted, CF \"{}\".",
+        WAZUH_LOG_DEBUG("Engine KVDB: Database '{}': Pair [{}:{}] was successfully "
+                        "inserted, CF '{}'.",
                         m_name,
                         key,
                         value,
@@ -330,7 +331,7 @@ struct KVDB::Impl
 
         if (!pairsVector.size())
         {
-            WAZUH_LOG_INFO("Engine KVDB: Database \"{}\": Transaction could not be "
+            WAZUH_LOG_INFO("Engine KVDB: Database '{}': Transaction could not be "
                            "written, at least 1 element is required.",
                            m_name);
             return false;
@@ -340,7 +341,7 @@ struct KVDB::Impl
         if (!txn)
         {
             WAZUH_LOG_ERROR(
-                "Engine KVDB: Database \"{}\": Transaction could not be started.",
+                "Engine KVDB: Database '{}': Transaction could not be started.",
                 m_name);
             return false;
         }
@@ -353,7 +354,7 @@ struct KVDB::Impl
         {
             if (key.empty())
             {
-                WAZUH_LOG_INFO("Engine KVDB: Database \"{}\": Pair [{}:{}] is discarded "
+                WAZUH_LOG_INFO("Engine KVDB: Database '{}': Pair [{}:{}] is discarded "
                                "because the key is empty.",
                                m_name,
                                key,
@@ -365,8 +366,8 @@ struct KVDB::Impl
             if (!s.ok())
             {
                 txnOk = false;
-                WAZUH_LOG_ERROR("Engine KVDB: Database \"{}\": PUT operation could not "
-                                "be executed in transaction: \"{}\"",
+                WAZUH_LOG_ERROR("Engine KVDB: Database '{}': PUT operation could not "
+                                "be executed in transaction: '{}'",
                                 m_name,
                                 s.ToString());
             }
@@ -377,7 +378,7 @@ struct KVDB::Impl
         {
             txnOk = false;
             WAZUH_LOG_ERROR(
-                "Engine KVDB: Database \"{}\": Transaction could not be commited: \"{}\"",
+                "Engine KVDB: Database '{}': Transaction could not be commited: '{}'",
                 m_name,
                 s.ToString());
         }
@@ -404,39 +405,32 @@ struct KVDB::Impl
         return m_db->KeyMayExist(kOptions.read, cf, key, &value);
     }
 
-    std::optional<std::string> read(const std::string& key, const std::string& columnName)
+    std::variant<std::string, base::Error> read(const std::string& key, const std::string& columnName)
     {
         if (key.empty() || columnName.empty())
         {
-            return std::nullopt;
+            return base::Error {"Empty key or column name"};
         }
 
         std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
         {
-            return std::nullopt;
+            return base::Error {"Cannot get column family handle"};
         }
 
-        std::string result, value;
+        std::string value;
         rocksdb::Status s = m_db->Get(kOptions.read, cf, key, &value);
         if (!s.ok())
         {
-            WAZUH_LOG_ERROR("Engine KVDB: Database \"{}\": Value from CF \"{}\" could "
-                            "not be read: \"{}\"",
+            auto error = fmt::format("Database '{}': Value from CF '{}' could "
+                            "not be read: '{}'",
                             m_name,
                             columnName,
                             s.ToString());
-            result.clear();
-            return std::nullopt;
+            return base::Error {std::move(error)};
         }
 
-        WAZUH_LOG_DEBUG("Engine KVDB: Database \"{}\": Value [{}:{}] successfully "
-                        "obtained is discarded from CF \"{}\".",
-                        m_name,
-                        key,
-                        value,
-                        columnName);
         return value;
     }
 
@@ -460,14 +454,14 @@ struct KVDB::Impl
         if (!s.ok())
         {
             WAZUH_LOG_ERROR(
-                "Engine KVDB: Database \"{}\": Pinned value could not be read: \"{}\"",
+                "Engine KVDB: Database '{}': Pinned value could not be read: '{}'",
                 m_name,
                 s.ToString());
             return false;
         }
 
         value = pinnable_val.ToString();
-        WAZUH_LOG_DEBUG("Engine KVDB: Database \"{}\": Pinned value [{}:{}] successfully "
+        WAZUH_LOG_DEBUG("Engine KVDB: Database '{}': Pinned value [{}:{}] successfully "
                         "read.",
                         m_name,
                         key,
@@ -495,8 +489,8 @@ struct KVDB::Impl
         rocksdb::Status s = m_db->Delete(WriteOptions, cf, key);
         if (!s.ok())
         {
-            WAZUH_LOG_ERROR("Engine KVDB: Database \"{}\": Couldn't delete key \"{}\" "
-                            "from CF \"{}\": \"{}\"",
+            WAZUH_LOG_ERROR("Engine KVDB: Database '{}': Couldn't delete key '{}' "
+                            "from CF '{}': '{}'",
                             m_name,
                             key,
                             columnName,
@@ -504,7 +498,7 @@ struct KVDB::Impl
             return false;
         }
 
-        WAZUH_LOG_INFO("Engine KVDB: Database \"{}\": Key \"{}\" deleted.", m_name, key);
+        WAZUH_LOG_INFO("Engine KVDB: Database '{}': Key '{}' deleted.", m_name, key);
         return true;
     }
 
@@ -523,8 +517,8 @@ struct KVDB::Impl
             s = m_db->DestroyColumnFamilyHandle(it.second);
             if (!s.ok())
             {
-                WAZUH_LOG_ERROR("Engine KVDB: Database \"{}\": Family handler could not "
-                                "be destroyed: \"{}\"",
+                WAZUH_LOG_ERROR("Engine KVDB: Database '{}': Family handler could not "
+                                "be destroyed: '{}'",
                                 m_name,
                                 s.ToString());
                 ret = false;
@@ -537,7 +531,7 @@ struct KVDB::Impl
         if (!s.ok())
         {
             WAZUH_LOG_ERROR(
-                "Engine KVDB: Database \"{}\": Database could not be closed: \"{}\"",
+                "Engine KVDB: Database '{}': Database could not be closed: '{}'",
                 m_name,
                 s.ToString());
             ret = false;
@@ -546,8 +540,8 @@ struct KVDB::Impl
         s = m_txDb->Close();
         if (!s.ok())
         {
-            WAZUH_LOG_ERROR("Engine KVDB: Database \"{}\": Tansaction database could not "
-                            "be closed: \"{}\"",
+            WAZUH_LOG_ERROR("Engine KVDB: Database '{}': Tansaction database could not "
+                            "be closed: '{}'",
                             m_name,
                             s.ToString());
             ret = false;
@@ -572,7 +566,7 @@ struct KVDB::Impl
         if (!s.ok())
         {
             WAZUH_LOG_ERROR(
-                "Engine KVDB: Database \"{}\": Database could not be destroyed: \"{}\"",
+                "Engine KVDB: Database '{}': Database could not be destroyed: '{}'",
                 m_name,
                 s.ToString());
             m_state = State::Error;
@@ -606,10 +600,11 @@ struct KVDB::Impl
             }
             catch (const std::exception& e)
             {
-                // WAZUH_LOG_ERROR("Engine KVDB, corrupted DB: Database '{}': Couldn't "
-                //                 "create and append object to array: '{}'",
-                //                 m_name,
-                //                 e.what());
+                WAZUH_LOG_WARN("Engine KVDB, corrupted DB: Database '{}': Couldn't "
+                                "parse value: '{}' Because: '{}'",
+                                m_name,
+                                iter->value().ToString(),
+                                e.what());
                 //  TODO All the values should be json, if not then the DB is corrupted
                 jVal.setString(iter->value().ToString(), "/value");
             }
@@ -620,8 +615,8 @@ struct KVDB::Impl
         // check for error
         if (!iter->status().ok())
         {
-            WAZUH_LOG_WARN("Engine KVDB: Database \"{}\": Couldn't iterate over "
-                           "database: \"{}\"",
+            WAZUH_LOG_WARN("Engine KVDB: Database '{}': Couldn't iterate over "
+                           "database: '{}'",
                            m_name,
                            iter->status().ToString());
             return {};
@@ -689,7 +684,7 @@ bool KVDB::write(const std::string& key,
     return mImpl->write(key, value, columnName);
 }
 
-std::optional<std::string> KVDB::read(const std::string& key,
+std::variant<std::string, base::Error> KVDB::read(const std::string& key,
                                       const std::string& columnName)
 {
     return mImpl->read(key, columnName);

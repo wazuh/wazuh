@@ -459,7 +459,7 @@ TEST_F(KVDBTest, writeKeySingleKV)
     ASSERT_NO_THROW(resultValue = kvdbManager->CreateAndFillDBfromFile("NEW_TEST_DB"));
     ASSERT_STREQ(resultValue.c_str(), "OK");
     bool retval;
-    ASSERT_NO_THROW(retval = kvdbManager->writeKey("NEW_TEST_DB", key, value));
+    ASSERT_NO_THROW(retval = kvdbManager->writeRaw("NEW_TEST_DB", key, value));
     ASSERT_TRUE(retval);
 
     // TODO: this replicates what the helper does and should be improved
@@ -525,17 +525,17 @@ TEST_F(KVDBTest, GetWriteDeleteKeyValueThroughManager)
     bool retval;
 
     // adding key value to db loaded causes error
-    retval = kvdbManager->writeKey(kTestDBName, KEY, VALUE);
+    retval = kvdbManager->writeRaw(kTestDBName, KEY, VALUE);
     ASSERT_FALSE(retval);
 
     // create unloaded DB
     resultValue = kvdbManager->CreateAndFillDBfromFile(kTestUnloadedDBName);
     ASSERT_STREQ(resultValue.c_str(), "OK");
 
-    retval = kvdbManager->writeKey(kTestUnloadedDBName, KEY, VALUE);
+    retval = kvdbManager->writeRaw(kTestUnloadedDBName, KEY, VALUE);
     ASSERT_TRUE(retval);
 
-    auto val = kvdbManager->getKeyValue(kTestUnloadedDBName, KEY);
+    auto val = kvdbManager->getRawValue(kTestUnloadedDBName, KEY);
     ASSERT_TRUE(val.has_value());
     ASSERT_EQ(val.value(), VALUE);
 
@@ -558,17 +558,17 @@ TEST_F(KVDBTest, GetWriteDeleteSingleKeyThroughManager)
     ASSERT_STREQ(resultValue.c_str(), "OK");
 
     // single key KVDB
-    retval = kvdbManager->writeKey(kTestUnloadedDBName, KEY);
+    retval = kvdbManager->writeRaw(kTestUnloadedDBName, KEY);
     ASSERT_TRUE(retval);
 
-    auto val = kvdbManager->getKeyValue(kTestUnloadedDBName, KEY);
+    auto val = kvdbManager->getRawValue(kTestUnloadedDBName, KEY);
     ASSERT_TRUE(val.has_value());
     ASSERT_EQ(val.value(), "");
 
     ASSERT_NO_THROW(retval = kvdbManager->deleteKey(kTestUnloadedDBName, KEY));
     ASSERT_TRUE(retval);
 
-    ASSERT_NO_THROW(val = kvdbManager->getKeyValue(kTestUnloadedDBName, KEY));
+    ASSERT_NO_THROW(val = kvdbManager->getRawValue(kTestUnloadedDBName, KEY));
     ASSERT_FALSE(val.has_value());
 }
 
@@ -582,10 +582,10 @@ TEST_F(KVDBTest, DoubleDeleteThroughManager)
                         kvdbManager->CreateAndFillDBfromFile(kTestUnloadedDBName));
     ASSERT_STREQ(resultValue.c_str(), "OK");
 
-    ASSERT_NO_THROW(retval = kvdbManager->writeKey(kTestUnloadedDBName, KEY, VALUE));
+    ASSERT_NO_THROW(retval = kvdbManager->writeRaw(kTestUnloadedDBName, KEY, VALUE));
     ASSERT_TRUE(retval);
 
-    auto val = kvdbManager->getKeyValue(kTestUnloadedDBName, KEY);
+    auto val = kvdbManager->getRawValue(kTestUnloadedDBName, KEY);
     ASSERT_TRUE(val.has_value());
     ASSERT_EQ(val.value(), VALUE);
 
