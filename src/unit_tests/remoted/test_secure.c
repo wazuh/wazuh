@@ -444,13 +444,6 @@ void test_HandleSecureMessage_shutdown_message(void **state)
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
 
-
-    expect_value(__wrap_OS_AddSocket, i, 0);
-    expect_value(__wrap_OS_AddSocket, sock, message.sock);
-    will_return(__wrap_OS_AddSocket, 2);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "TCP socket 1 added to keystore.");
-
     expect_function_call(__wrap_key_unlock);
 
     expect_string(__wrap_save_controlmsg, msg, "agent shutdown ");
@@ -571,6 +564,7 @@ void test_HandleSecureMessage_OldMessage_NoShutdownMessage(void **state)
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
 
+    expect_function_call(__wrap_key_unlock);
     HandleSecureMessage(&message, &wdb_sock);
 
     os_free(key->id);
