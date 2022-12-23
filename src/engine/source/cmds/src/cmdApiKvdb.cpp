@@ -235,7 +235,15 @@ static void kvdbInsertKeyValue(const std::string& socketPath,
     data.setString(API_KVDB_INSERT_SUBCOMMAND, "/action");
     data.setString(kvdbName, "/name");
     data.setString(key, "/key");
-    data.setString(keyValue, "/value");
+
+    // check if value is a json
+    try {
+        json::Json value {keyValue.c_str()};
+        data.set("/value", value);
+    } catch (const std::exception& e) {
+        // If not, set it as a string
+        data.setString(keyValue, "/value");
+    }
 
     auto req = api::WazuhRequest::create(
         std::string(API_KVDB_INSERT_SUBCOMMAND) + API_KVDB_CMD_SUFIX, "api", data);

@@ -14,6 +14,9 @@
 #include <utils/baseMacros.hpp>
 #include <utils/stringUtils.hpp>
 
+namespace kvdb_manager
+{
+
 namespace
 {
 
@@ -21,12 +24,11 @@ constexpr bool ERROR_IF_EXISTS {true};
 constexpr bool NO_ERROR_IF_EXISTS {false};
 constexpr bool CREATE_IF_MISSING {true};
 constexpr bool DONT_CREATE_IF_MISSING {false};
+
+// TODO: Delete this
 constexpr const char* LEGACY_DIRECTORY {"legacy"};
 
 } // namespace
-
-namespace kvdb_manager
-{
 
 KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath)
 {
@@ -145,7 +147,7 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
 {
     if (isLoaded(name))
     {
-        auto& db = m_loadedDBs[name];
+        auto db = m_loadedDBs[name];
         if (!db->isReady())
         {
             // In general it should never happen so we should consider just
@@ -163,7 +165,7 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
         }
 
         // return handle
-        return m_loadedDBs[name];
+        return db;
     }
 
     return nullptr;
@@ -202,6 +204,22 @@ std::vector<std::string> KVDBManager::listDBs(bool loaded)
     }
 
     return list;
+}
+
+std::variant<KVDBHandle, base::Error> KVDBManager::getHandler(const std::string& name)
+{
+    auto kvdb = getDB(name);
+    if (!kvdb)
+    {
+        loadDB(name, false);
+        kvdb = getDB(name);
+        if (!kvdb)
+        {
+            return base::Error {
+                fmt::format("Database '{}' not found or could not be loaded.", name)};
+        }
+    }
+    return kvdb;
 }
 
 std::string KVDBManager::CreateAndFillDBfromFile(const std::string& dbName,
@@ -299,71 +317,102 @@ bool KVDBManager::getDBFromPath(const std::string& name, KVDBHandle& dbHandle)
 
 std::variant<json::Json, base::Error> KVDBManager::jDumpDB(const std::string& name)
 {
-
-    auto kvdb = getDB(name);
-    if (!kvdb)
+    auto handle = getHandler(name);
+    if (std::holds_alternative<base::Error>(handle))
     {
-        loadDB(name, false);
-        kvdb = getDB(name);
-        if (!kvdb)
-        {
-            return base::Error {"Database not found or could not be loaded"};
-        }
+        return std::get<base::Error>(handle);
     }
+    auto& kvdb = std::get<KVDBHandle>(handle);
 
     return kvdb->jDump();
 }
 
-bool KVDBManager::writeKey(const std::string& name,
-                           const std::string& key,
-                           const std::string value)
+std::optional<base::Error> KVDBManager::writeRaw(const std::string& name,
+                                                 const std::string& key,
+                                                 const std::string value)
 {
-    auto kvdb = getDB(name);
-    if (!kvdb)
+    auto handle = getHandler(name);
+    if (std::holds_alternative<base::Error>(handle))
     {
-        loadDB(name, false);
-        kvdb = getDB(name);
-        if (!kvdb)
-        {
-            //return base::Error {"Database not found or could not be loaded"};
-            // TODO: FIX THIS, cannot insert 
-            return false;
-        }
+        return std::get<base::Error>(handle);
     }
+    auto& kvdb = std::get<KVDBHandle>(handle);
 
-    return kvdb->write(key, value);
+    if (kvdb->write(key, value))
+    {
+        return std::nullopt;
+    }
+    return base::Error {
+        fmt::format("Could not write key '{}' to database '{}'", key, name)};
 }
 
-std::optional<std::string> KVDBManager::getKeyValue(const std::string& name,
-                                                    const std::string& key)
+std::optional<base::Error> KVDBManager::writeKey(const std::string& name,
+                                                 const std::string& key,
+                                                 const std::string& value)
 {
-    std::optional<std::string> result {std::nullopt};
-    KVDBHandle dbHandle;
-
-    if (getDBFromPath(name, dbHandle))
+    json::Json jValue;
+    try
     {
-        if (dbHandle->hasKey(key))
-        {
-            result = dbHandle->read(key);
-        }
+        jValue = json::Json {value.c_str()};
+    }
+    catch (const std::exception& e)
+    {
+        jValue.setString(value);
     }
 
-    return result;
+    return writeKey(name, key, jValue);
+}
+
+std::variant<std::string, base::Error> KVDBManager::getRawValue(const std::string& name,
+                                                                const std::string& key)
+{
+    auto handle = getHandler(name);
+    if (std::holds_alternative<base::Error>(handle))
+    {
+        return std::get<base::Error>(handle);
+    }
+    auto& kvdb = std::get<KVDBHandle>(handle);
+
+    return kvdb->read(key);
+}
+
+std::variant<json::Json, base::Error> KVDBManager::getJValue(const std::string& name,
+                                                             const std::string& key)
+{
+    const auto result = getRawValue(name, key);
+    if (std::holds_alternative<base::Error>(result))
+    {
+        return std::get<base::Error>(result);
+    }
+    const auto& value = std::get<std::string>(result);
+    json::Json jValue;
+    try
+    {
+        jValue = json::Json {value.c_str()};
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format(
+            "Could not parse value '{}' from database '{}' (corrupted value: '{}')",
+            key,
+            value.c_str(),
+            name)};
+    }
+
+    return jValue;
 }
 
 bool KVDBManager::deleteKey(const std::string& name, const std::string& key)
 {
     bool result {false};
-    KVDBHandle dbHandle;
-
-    if (getDBFromPath(name, dbHandle))
+    auto handle = getHandler(name);
+    if (std::holds_alternative<base::Error>(handle))
     {
-        if (dbHandle->read(key).has_value())
-        {
-            result = dbHandle->deleteKey(key);
-        }
+        return result;
     }
+    auto& kvdb = std::get<KVDBHandle>(handle);
 
+    result = kvdb->deleteKey(key); // TODO check if exist before delete
     return result;
 }
 
@@ -399,7 +448,6 @@ std::optional<std::string> KVDBManager::deleteDB(const std::string& name)
             // When the only reference to the handle is in the map itself so clean it
             unloadDB(name);
         }
-
     }
 
     KVDBHandle dbHandle;
