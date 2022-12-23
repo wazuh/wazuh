@@ -266,7 +266,11 @@ def runCoverage(moduleName):
     :param moduleName: Lib to be analyzed using gcov and lcov tools.
     """
     currentDir = currentDirPath(moduleName)
-    reportFolder = os.path.join(currentDir, 'coverage_report')
+    if moduleName == 'shared_modules/utils':
+        reportFolder = os.path.join(moduleName, 'coverage_report')
+    else:
+        reportFolder = os.path.join(currentDir, 'coverage_report')
+
     includeDir = Path(currentDir)
     moduleCMakeFiles = ""
 

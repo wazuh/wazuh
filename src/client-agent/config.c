@@ -103,10 +103,14 @@ cJSON *getClientConfig(void) {
         cJSON *servers = cJSON_CreateArray();
         for (i=0;agt->server[i].rip;i++) {
             cJSON *server = cJSON_CreateObject();
-            cJSON_AddStringToObject(server,"address",agt->server[i].rip);
-            cJSON_AddNumberToObject(server,"port",agt->server[i].port);
-            cJSON_AddNumberToObject(server,"max_retries", agt->server[i].max_retries);
-            cJSON_AddNumberToObject(server,"retry_interval", agt->server[i].retry_interval);
+            cJSON_AddStringToObject(server, "address", agt->server[i].rip);
+            cJSON_AddNumberToObject(server, "port", agt->server[i].port);
+
+            if (agt->server[i].network_interface)
+                cJSON_AddNumberToObject(server, "interface_index", agt->server[i].network_interface);
+
+            cJSON_AddNumberToObject(server, "max_retries", agt->server[i].max_retries);
+            cJSON_AddNumberToObject(server, "retry_interval", agt->server[i].retry_interval);
 
             if (agt->server[i].protocol == IPPROTO_UDP) cJSON_AddStringToObject(server,"protocol","udp"); else cJSON_AddStringToObject(server,"protocol","tcp");
             cJSON_AddItemToArray(servers,server);
@@ -121,6 +125,9 @@ cJSON *getClientConfig(void) {
 
         if (agt->enrollment_cfg->target_cfg->manager_name)
             cJSON_AddStringToObject(enrollment_cfg, "manager_address", agt->enrollment_cfg->target_cfg->manager_name);
+
+        if (agt->enrollment_cfg->target_cfg->network_interface)
+            cJSON_AddNumberToObject(enrollment_cfg, "interface_index", agt->enrollment_cfg->target_cfg->network_interface);
 
         cJSON_AddNumberToObject(enrollment_cfg, "port", agt->enrollment_cfg->target_cfg->port);
 

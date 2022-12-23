@@ -15,6 +15,8 @@
 #ifndef OS_NET_H
 #define OS_NET_H
 
+#define IPV6_LINK_LOCAL_PREFIX "FE80:0000:0000:0000:"
+
 /* OS_Bindport*
  * Bind a specific port (protocol and a ip).
  * If the IP is not set, it is going to use ADDR_ANY
@@ -35,8 +37,8 @@ int OS_getsocketsize(int ossock);
 /* OS_Connect
  * Connect to a TCP/UDP socket
  */
-int OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6);
-int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6);
+int OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6, uint32_t network_interface);
+int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6, uint32_t network_interface);
 
 /* OS_RecvUDP
  * Receive a UDP packet. Return NULL if failed

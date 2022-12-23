@@ -205,7 +205,7 @@ static int wm_fluent_connect(wm_fluent_t * fluent) {
 
     /* Connect */
 
-    fluent->client_sock = OS_ConnectTCP(fluent->port, ip, 0);
+    fluent->client_sock = OS_ConnectTCP(fluent->port, ip, 0, 0);
     free(ip);
 
     if (fluent->client_sock < 0) {
