@@ -39,6 +39,7 @@ All notable changes to this project will be documented in this file.
 - Improved performance of the `agent_groups` CLI when listing agents belonging to a group. ([#14244](https://github.com/wazuh/wazuh/pull/14244)
 - Changed wazuh-clusterd binary behaviour to kill any existing cluster processes when executed. ([#14475](https://github.com/wazuh/wazuh/pull/14475))
 - Changed wazuh-clusterd tasks to wait asynchronously for responses coming from wazuh-db. ([#14791](https://github.com/wazuh/wazuh/pull/14843))
+- Deprecate status field in SCA database and alerts. ([#15745](https://github.com/wazuh/wazuh/pull/15745))
 
 #### Fixed
 

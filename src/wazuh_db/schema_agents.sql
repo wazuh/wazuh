@@ -330,7 +330,6 @@ CREATE TABLE IF NOT EXISTS sca_check (
    command TEXT,
    `references` TEXT,
    result TEXT,
-   `status` TEXT,
    reason TEXT,
    condition TEXT
 );
