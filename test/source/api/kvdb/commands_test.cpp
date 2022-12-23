@@ -220,19 +220,19 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithFilling)
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
     // check value
-    auto value = kvdbManager->getKeyValue(DB_NAME_2, "keyA");
+    auto value = kvdbManager->getRawValue(DB_NAME_2, "keyA");
     ASSERT_TRUE(value.has_value());
     ASSERT_STREQ(valueKeyA.c_str(), value.value().c_str());
 
-    value = kvdbManager->getKeyValue(DB_NAME_2, "keyB");
+    value = kvdbManager->getRawValue(DB_NAME_2, "keyB");
     ASSERT_TRUE(value.has_value());
     ASSERT_STREQ(valueKeyB.c_str(), value.value().c_str());
 
-    value = kvdbManager->getKeyValue(DB_NAME_2, "keyC");
+    value = kvdbManager->getRawValue(DB_NAME_2, "keyC");
     ASSERT_TRUE(value.has_value());
     ASSERT_STREQ(valueKeyC.c_str(), value.value().c_str());
 
-    value = kvdbManager->getKeyValue(DB_NAME_2, "keyD");
+    value = kvdbManager->getRawValue(DB_NAME_2, "keyD");
     ASSERT_TRUE(value.has_value());
     ASSERT_STREQ(valueKeyD.c_str(), value.value().c_str());
 }
@@ -255,19 +255,19 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithWrongFilling)
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
     // check value
-    auto value = kvdbManager->getKeyValue(DB_NAME_2, "keyA");
+    auto value = kvdbManager->getRawValue(DB_NAME_2, "keyA");
     ASSERT_TRUE(value.has_value());
     ASSERT_STREQ(valueKeyA.c_str(), value.value().c_str());
 
-    value = kvdbManager->getKeyValue(DB_NAME_2, "keyB");
+    value = kvdbManager->getRawValue(DB_NAME_2, "keyB");
     ASSERT_TRUE(value.has_value());
     ASSERT_STREQ(valueKeyB.c_str(), value.value().c_str());
 
-    value = kvdbManager->getKeyValue(DB_NAME_2, "keyC");
+    value = kvdbManager->getRawValue(DB_NAME_2, "keyC");
     ASSERT_TRUE(value.has_value());
     ASSERT_STREQ(valueKeyC.c_str(), value.value().c_str());
 
-    value = kvdbManager->getKeyValue(DB_NAME_2, "keyD");
+    value = kvdbManager->getRawValue(DB_NAME_2, "keyD");
     ASSERT_TRUE(value.has_value());
     ASSERT_STREQ(valueKeyD.c_str(), value.value().c_str());
 }
@@ -290,19 +290,19 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSingleValueFile)
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
     // check value
-    auto value = kvdbManager->getKeyValue(DB_NAME_2, "keyA");
+    auto value = kvdbManager->getRawValue(DB_NAME_2, "keyA");
     ASSERT_TRUE(value.has_value());
     ASSERT_STREQ(valueKeyA.c_str(), value.value().c_str());
 
-    value = kvdbManager->getKeyValue(DB_NAME_2, "keyB");
+    value = kvdbManager->getRawValue(DB_NAME_2, "keyB");
     ASSERT_TRUE(value.has_value());
     ASSERT_STREQ(valueKeyB.c_str(), value.value().c_str());
 
-    value = kvdbManager->getKeyValue(DB_NAME_2, "keyC");
+    value = kvdbManager->getRawValue(DB_NAME_2, "keyC");
     ASSERT_TRUE(value.has_value());
     ASSERT_STREQ(valueKeyC.c_str(), value.value().c_str());
 
-    value = kvdbManager->getKeyValue(DB_NAME_2, "keyD");
+    value = kvdbManager->getRawValue(DB_NAME_2, "keyD");
     ASSERT_TRUE(value.has_value());
     ASSERT_STREQ(valueKeyD.c_str(), value.value().c_str());
 }
@@ -848,7 +848,7 @@ protected:
         }
         kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
         kvdbManager->CreateAndFillDBfromFile(DB_NAME);
-        kvdbManager->writeKey(DB_NAME, KEY_A, VAL_A);
+        kvdbManager->writeRaw(DB_NAME, KEY_A, VAL_A);
     }
 
     virtual void TearDown() {}
@@ -1152,7 +1152,7 @@ TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyOnly)
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
     // get key and compare content
-    ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getKeyValue(DB_NAME, KEY_A).value(), "");
+    ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A).value(), "");
 }
 
 TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyValue)
@@ -1174,7 +1174,7 @@ TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyValue)
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
     // get key and compare content
-    ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getKeyValue(DB_NAME, KEY_A).value(),
+    ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A).value(),
               VAL_A);
 }
 
@@ -1195,7 +1195,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionEmptyValue)
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
     // get key and compare content
-    ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getKeyValue(DB_NAME, KEY_A).value(), "");
+    ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A).value(), "");
 }
 
 TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralKeys)
@@ -1223,7 +1223,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralKeys)
         ASSERT_STREQ(response.message().value().c_str(), "OK");
 
         // get key and compare content
-        ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getKeyValue(DB_NAME, key).value(),
+        ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, key).value(),
                   "");
     }
 }
@@ -1257,7 +1257,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralValues)
         ASSERT_STREQ(response.message().value().c_str(), "OK");
 
         // get key and compare content
-        ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getKeyValue(DB_NAME, KEY_A).value(),
+        ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A).value(),
                   value);
     }
 }
@@ -1439,7 +1439,7 @@ protected:
         }
         kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
         kvdbManager->CreateAndFillDBfromFile(DB_NAME);
-        kvdbManager->writeKey(DB_NAME, KEY_A, VAL_A);
+        kvdbManager->writeRaw(DB_NAME, KEY_A, VAL_A);
     }
 
     virtual void TearDown() {}
@@ -1579,7 +1579,7 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecution)
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
     ASSERT_FALSE(
-        kvdbAPIRemoveCommand::kvdbManager->getKeyValue(DB_NAME, KEY_A).has_value());
+        kvdbAPIRemoveCommand::kvdbManager->getRawValue(DB_NAME, KEY_A).has_value());
 }
 
 TEST_F(kvdbAPIRemoveCommand, SimpleExecutionDoubleRemove)

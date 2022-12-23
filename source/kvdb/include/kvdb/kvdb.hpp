@@ -6,6 +6,7 @@
 #include <shared_mutex>
 #include <string>
 #include <vector>
+#include <variant>
 
 #include <json/json.hpp>
 #include <utils/baseMacros.hpp>
@@ -154,7 +155,7 @@ public:
      * @return value read If the proccess finished successfully
      * @return nullopt If the proccess didn't finished successfully
      */
-    std::optional<std::string> read(const std::string& key,
+    std::variant<std::string, base::Error> read(const std::string& key,
                                     const std::string& columnName = DEFAULT_CF_NAME);
 
     /**

@@ -36,7 +36,7 @@ class KVDBManager
      * @return true if it could be found and loaded
      * @return false otherwise
      */
-    bool getDBFromPath(const std::string& name, KVDBHandle& dbHandle);
+    bool getDBFromPath(const std::string& name, KVDBHandle& dbHandle); // this is wrong, bad implementation
 
     /**
      * @brief Checks wether a path contains a KVDB
@@ -46,6 +46,9 @@ class KVDBManager
      * @return false otherwise
      */
     bool isDBOnPath(const std::string& name);
+
+    // Move this to public and use in opbuilders
+    std::variant<KVDBHandle, base::Error> getHandler(const std::string& name);
 
 public:
     KVDBManager(const std::filesystem::path& dbStoragePath);
@@ -85,7 +88,7 @@ public:
      * @param name of the KVDB to be returned
      * @return KVDBHandle where to access KVDB functionality.
      */
-    KVDBHandle getDB(const std::string& name);
+    KVDBHandle getDB(const std::string& name); // I think this its wrong, bad implementation
 
     /**
      * @brief Get the Available KVDB object
@@ -124,9 +127,18 @@ public:
      * @return true if the proccess finished successfully.
      * @return false otherwise.
      */
-    bool writeKey(const std::string& name,
-                  const std::string& key,
-                  const std::string value = "");
+    std::optional<base::Error> writeRaw(const std::string& name,
+                                        const std::string& key,
+                                        const std::string value = "null");
+
+    inline std::optional<base::Error>
+    writeKey(const std::string& name, const std::string& key, const std::string& value = "null");
+
+    std::optional<base::Error>
+    writeKey(const std::string& name, const std::string& key, const json::Json& value)
+    {
+        return writeRaw(name, key, value.str());
+    };
 
     /**
      * @brief Gets the Key Value object on the KVDB and returns its value, empty strins if
@@ -136,9 +148,11 @@ public:
      * @param key to use for the query.
      * @return std::optional<std::string> nullopt for not precense, value otherwise
      */
-    std::optional<std::string> getKeyValue(const std::string& name,
+    std::variant<std::string, base::Error> getRawValue(const std::string& name,
                                            const std::string& key);
 
+    std::variant<json::Json, base::Error> getJValue(const std::string& name,
+                                           const std::string& key);
     /**
      * @brief Deletes key from KVDB
      *
