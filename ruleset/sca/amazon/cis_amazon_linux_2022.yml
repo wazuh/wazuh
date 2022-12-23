@@ -3099,7 +3099,6 @@ checks:
       - cis: ["4.1.3.20"]
       - cis_csc_v8: ["3.3", "8.5"]
       - cis_csc_v7: ["6.2", "6.3"]
-
       - cmmc_v2.0:
           [
             "AU.L2-3.3.1",
@@ -3920,3 +3919,748 @@ checks:
     rules:
       - "c:sshd -T -> r:^usepam yes"
       - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*UsePAM\\s*\\t*no"
+
+  # 5.2.7 Ensure SSH root login is disabled
+  - id: 31145
+    title: "Ensure SSH root login is disabled."
+    description: "The PermitRootLogin parameter specifies if the root user can log in using SSH. The default is prohibit-password."
+    rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root. This limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no"
+    references:
+      - SSHD_CONFIG(5)
+    compliance:
+      - cis: ["5.2.7"]
+      - cis_csc_v8: ["5.4"]
+      - cis_csc_v7: ["4.3"]
+      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - soc_2: ["CC6.1", "CC6.3"]
+    condition: all
+    rules:
+      - "c:sshd -T -> r:^permitrootlogin no"
+      - "f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitRootLogin\\s*\\t*no"
+
+  # 5.2.8 Ensure SSH HostbasedAuthentication is disabled
+  - id: 31146
+    title: "Ensure SSH HostbasedAuthentication is disabled."
+    description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication."
+    rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no"
+    references:
+      - SSHD_CONFIG(5)
+    compliance:
+      - cis: ["5.2.8"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["16.3"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "c:sshd -T -> r:^hostbasedauthentication no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*HostBasedAuthentication\\s*\\t*yes"
+
+  # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled
+  - id: 31147
+    title: "Ensure SSH PermitEmptyPasswords is disabled."
+    description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
+    rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no"
+    references:
+      - SSHD_CONFIG(5)
+    compliance:
+      - cis: ["5.2.9"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["16.3"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "c:sshd -T -> r:^permitemptypasswords no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitEmptyPasswords\\s*\\t*yes"
+
+  # 5.2.10 Ensure SSH PermitUserEnvironment is disabled
+  - id: 31148
+    title: "Ensure SSH PermitUserEnvironment is disabled."
+    description: "The PermitUserEnvironment option allows users to present environment options to the SSH daemon."
+    rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has SSH executing trojan'd programs)."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no"
+    references:
+      - SSHD_CONFIG(5)
+    compliance:
+      - cis: ["5.2.10"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "c:sshd -T -> r:^permituserenvironment no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitUserEnvironment\\s*\\t*yes"
+
+  # 5.2.11 Ensure SSH IgnoreRhosts is enabled
+  - id: 31149
+    title: "Ensure SSH IgnoreRhosts is enabled."
+    description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
+    rationale: "Setting this parameter forces users to enter a password when authenticating with SSH."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
+    references:
+      - SSHD_CONFIG(5)
+    compliance:
+      - cis: ["5.2.11"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "c:sshd -T -> r:^ignorerhosts yes"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*IgnoreRhosts\\s*\\t*no"
+
+  # 5.2.12 Ensure SSH X11 forwarding is disabled
+  - id: 31150
+    title: "Ensure SSH X11 forwarding is disabled."
+    description: "The X11Forwarding parameter provides the ability to tunnel X11 traffic through the connection to enable remote graphic connections."
+    rationale: "Disable X11 forwarding unless there is an operational requirement to use X11 applications directly. There is a small risk that the remote X11 servers of users who are logged in via SSH with X11 forwarding could be compromised by other users on the X11 server. Note that even if X11 forwarding is disabled, users can always install their own forwarders."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: X11Forwarding no"
+    compliance:
+      - cis: ["5.2.12"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["AU.L2-3.3.1", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5", "10.2", "10.3"]
+      - pci_dss_4.0:
+          [
+            "1.2.5",
+            "2.2.4",
+            "5.3.4",
+            "6.4.1",
+            "6.4.2",
+            "10.2.1",
+            "10.2.1.1",
+            "10.2.1.2",
+            "10.2.1.3",
+            "10.2.1.4",
+            "10.2.1.5",
+            "10.2.1.6",
+            "10.2.1.7",
+            "10.2.2",
+          ]
+      - soc_2: ["CC6.3", "CC6.6"]
+      - hipaa: ["164.312(b)"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: all
+    rules:
+      - "c:sshd -T -> r:^x11forwarding no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*x11forwarding\\s*\\t*yes"
+
+  # 5.2.13 Ensure SSH AllowTcpForwarding is disabled.
+  - id: 31151
+    title: "Ensure SSH AllowTcpForwarding is disabled."
+    description: "SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines."
+    rationale: "Leaving port forwarding enabled can expose the organization to security risks and backdoors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
+    impact: "SSH tunnels are widely used in many corporate environments. In some environments the applications themselves may have very limited native support for security. By utilizing tunneling, compliance with SOX, HIPAA, PCI-DSS, and other standards can be achieved without having to modify the applications."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: AllowTcpForwarding no"
+    references:
+      - https://www.ssh.com/ssh/tunneling/example
+    compliance:
+      - cis: ["5.2.13"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "c:sshd -T -> r:^allowtcpforwarding && r:no$"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*AllowTcpForwarding\\s*\\t*yes"
+
+  # 5.2.14 Ensure system-wide crypto policy is not over-ridden.
+  - id: 31152
+    title: "Ensure system-wide crypto policy is not over-ridden."
+    description: "System-wide Crypto policy can be over-ridden or opted out of for openSSH."
+    rationale: "Over-riding or opting out of the system-wide crypto policy could allow for the use of less secure Ciphers, MACs, KexAlgorithms and GSSAPIKexAlgorithm."
+    remediation: 'Run the following command: # sed -ri "s/^\s* CRYPTO_POLICY\s*=.*)$/# \1/" /etc/sysconfig/sshd. Reload the sshd service: # systemctl reload sshd'
+    references:
+      - https://www.ssh.com/ssh/tunneling/example
+    compliance:
+      - cis: ["5.2.14"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4"]
+      - cmmc_v2.0:
+          [
+            "AC.L2-3.1.17",
+            "AC.L2-3.1.13",
+            "IA.L2-3.5.10",
+            "SC.L2-3.13.11",
+            "SC.L2-3.13.8",
+            "SC.L2-3.13.15",
+          ]
+      - hipaa:
+          [
+            "164.312(a)(2)(iv)",
+            "164.312(e)(1)",
+            "164.312(e)(2)(i)",
+            "164.312(e)(2)(ii)",
+          ]
+      - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
+      - nist_sp_800-53: ["SC-8"]
+    condition: all
+    rules:
+      - "not f:/etc/sysconfig/sshd -> r:^\\s*CRYPTO_POLICY="
+
+  # 5.3.15 Ensure SSH warning banner is configured.
+  - id: 31153
+    title: "Ensure SSH warning banner is configured."
+    description: "The Banner parameter specifies a file whose contents must be sent to the remote user before authentication is permitted. By default, no banner is displayed."
+    rationale: "Banners are used to warn connecting users of the particular site's policy regarding connection. Presenting a warning message prior to the normal user login may assist the prosecution of trespassers on the computer system."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: Banner /etc/issue.net"
+    compliance:
+      - cis: ["5.3.15"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "c:sshd -T -> r:^banner && r:/etc/issue.net$"
+
+  # 5.2.16 Ensure SSH MaxAuthTries is set to 4 or less.
+  - id: 31154
+    title: "Ensure SSH MaxAuthTries is set to 4 or less."
+    description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
+    rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4"
+    references:
+      - SSHD_CONFIG(5)
+    compliance:
+      - cis: ["5.2.16"]
+      - cis_csc_v8: ["8.5"]
+      - cis_csc_v7: ["16.13"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
+      - soc_2: ["CC5.2", "CC7.2"]
+    condition: all
+    rules:
+      - "c:sshd -T -> n:^maxauthtries\\s+(\\d+) compare <= 4"
+      - "not f:/etc/ssh/sshd_config -> n:^\\s*\\t*maxauthtries\\s+(\\d+) compare > 4"
+
+    # 5.2.17 Ensure SSH MaxStartups is configured.
+  - id: 31155
+    title: "Ensure SSH MaxStartups is configured."
+    description: "The MaxStartups parameter specifies the maximum number of concurrent unauthenticated connections to the SSH daemon."
+    rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxStartups 10:30:60"
+    references:
+      - SSHD_CONFIG(5)
+    compliance:
+      - cis: ["5.2.17"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'c:sshd -T -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10 && n:^maxstartups\s+(\d+):\d+:\d+ compare >= 1'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30 && n:^maxstartups\s+(\d+):\d+:\d+ compare >= 1'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60 && n:^maxstartups\s+(\d+):\d+:\d+ compare >= 1'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*(\d+):\d+:\d+ compare > 10'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*(\d+):\d+:\d+ compare == 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*\d+:(\d+):\d+ compare > 30'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*\d+:(\d+):\d+ compare == 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*\d+:\d+:(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*\d+:\d+:(\d+) compare == 0'
+
+  # 5.2.18 Ensure SSH MaxSessions is set to 10 or less.
+  - id: 31156
+    title: "Ensure SSH MaxSessions is set to 10 or less."
+    description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
+    rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10"
+    references:
+      - SSHD_CONFIG(5)
+    compliance:
+      - cis: ["5.2.18"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "c:sshd -T -> n:^maxsessions\\s*\\t*(\\d+) compare <= 10"
+      - "not f:/etc/ssh/sshd_config -> n:^^\\s*\\t*MaxSessions\\s+(\\d+) compare > 10"
+
+  # 5.2.19 Ensure SSH LoginGraceTime is set to one minute or less.
+  - id: 31157
+    title: "Ensure SSH LoginGraceTime is set to one minute or less."
+    description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
+    rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60"
+    references:
+      - SSHD_CONFIG(5)
+    compliance:
+      - cis: ["5.2.19"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'c:sshd -T -> n:^\s*logingracetime\s*(\d+) compare <= 60 && n:^logingracetime\s*(\d+) compare >= 1'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*LoginGraceTime\s*\t*(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*LoginGraceTime\s*\t*(\d+) compare == 0'
+
+  # 5.2.20 Ensure SSH Idle Timeout Interval is configured.
+  - id: 31158
+    title: "Ensure SSH Idle Timeout Interval is configured."
+    description: "The two options ClientAliveInterval and ClientAliveCountMax control the timeout of ssh sessions. a) ClientAliveInterval sets a timeout interval in seconds after which if no data has been received from the client, sshd will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. b) ClientAliveCountMax sets the number of client alive messages which may be sent without sshd receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. The default value is 3.  - The client alive messages are sent through the encrypted channel - Setting ClientAliveCountMax to 0 disables connection termination."
+    rationale: "Having no timeout value associated with a connection could allow an unauthorized user access to another user's ssh session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value reduces this risk.  - The recommended ClientAliveInterval setting is no greater than 900 seconds (15 minutes) - The recommended ClientAliveCountMax setting is 0  - At the 15 minute interval, if the ssh session is inactive, the session will be terminated."
+    impact: "In some cases this setting may cause termination of long-running scripts over SSH or remote automation tools which rely on SSH. In developing the local site policy, the requirements of such scripts should be considered and appropriate ServerAliveInterval and ClientAliveInterval settings should be calculated to insure operational continuity."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameters according to site policy. This should include ClientAliveInterval between 1 and 900 and ClientAliveCountMax of 0 ClientAliveCountMax 0."
+    references:
+      - https://man.openbsd.org/sshd_config
+    compliance:
+      - cis: ["5.2.20"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["16.11"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "c:sshd -T -> -> n:^clientaliveinterval\\s*\\t*(\\d+) compare > 0"
+      - "c:sshd -T -> -> n:^clientaliveinterval\\s*\\t*(\\d+) compare <= 900"
+      - "c:sshd -T -> -> n:^clientalivecountmax\\s*\\t*(\\d+) compare == 0"
+
+  ####################################################
+  # 5.3 Configure privilege escalation
+  ####################################################
+
+  # 5.3.1 Ensure sudo is installed (Automated)
+  - id: 31159
+    title: "Ensure sudo is installed."
+    description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
+    rationale: "sudo supports a plug-in architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plug-ins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers and any entries in /etc/sudoers.d. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
+    remediation: "Run the following command to install sudo: # dnf install sudo"
+    references:
+      - SUDO(8)
+    compliance:
+      - cis: ["5.3.1"]
+      - cis_csc_v8: ["5.4"]
+      - cis_csc_v7: ["4.3"]
+      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - soc_2: ["CC6.1", "CC6.3"]
+    condition: any
+    rules:
+      - "c:rpm -q sudo ->  r:sudo-"
+
+  # 5.3.2 Ensure sudo commands use pty (Automated)
+  - id: 31160
+    title: "Ensure sudo commands use pty."
+    description: "sudo can be configured to run only from a pseudo terminal (pseudo-pty)."
+    rationale: "Attackers can run a malicious program using sudo which would fork a background process that remains even when the main program has finished executing."
+    impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
+    remediation: "Edit the file /etc/sudoers with visudo or a file in /etc/sudoers.d/ with visudo -f <PATH TO FILE> and add the following line: Defaults use_pty"
+    references:
+      - SUDO(8)
+      - VISUDO(8)"
+    compliance:
+      - cis: ["5.3.2"]
+      - cis_csc_v8: ["5.4"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - soc_2: ["CC6.1", "CC6.3"]
+    condition: any
+    rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*use_pty'
+
+  # 5.3.3 Ensure sudo log file exists (Automated)
+  - id: 31161
+    title: "Ensure sudo log file exists."
+    description: "sudo can use a custom log file."
+    rationale: "A sudo log file simplifies auditing of sudo commands."
+    impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
+    remediation: "Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Example: Defaults logfile='/var/log/sudo.log'"
+    references:
+      - SUDO(8)
+      - VISUDO(8)
+    compliance:
+      - cis: ["5.3.3"]
+      - cis_csc_v8: ["8.5"]
+      - cis_csc_v7: ["6.3"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
+      - soc_2: ["CC5.2", "CC7.2"]
+    condition: any
+    rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile=\S+.log'
+      - 'd:/etc/sudoers.d -> \.* -> r:^\s*\t*Defaults\s*\t*logfile=\S+.log'
+
+  # 5.3.4 Ensure users must provide password for privilege escalation (Automated)
+  - id: 31162
+    title: "Ensure users must provide password for privilege escalation."
+    description: "The operating system must be configured so that users must provide a password for privilege escalation."
+    rationale: "Without (re-)authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical the user (re-)authenticate."
+    impact: "This will prevent automated processes from being able to elevate privileges. To include Ansible and AWS builds ."
+    remediation: "Based on the outcome of the audit procedure, use visudo -f <PATH TO FILE> to edit the relevant sudoers file. Remove any line with occurrences of NOPASSWD tags in the file."
+    compliance:
+      - cis: ["5.3.4"]
+      - cis_csc_v8: ["5.4"]
+      - cis_csc_v7: ["4.3"]
+      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - soc_2: ["CC6.1", "CC6.3"]
+    condition: none
+    rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*NOPASSWD'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*NOPASSWD'
+
+  # 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally (Automated)
+  - id: 31163
+    title: "Ensure re-authentication for privilege escalation is not disabled globally."
+    description: "The operating system must be configured so that users must re-authenticate for privilege escalation."
+    rationale: "Without re-authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical the user re-authenticate."
+    remediation: "Configure the operating system to require users to reauthenticate for privilege escalation. Based on the outcome of the audit procedure, use visudo -f <PATH TO FILE> to edit the relevant sudoers file. Remove any occurrences of !authenticate tags in the file(s)."
+    compliance:
+      - cis: ["5.3.5"]
+      - cis_csc_v8: ["5.4"]
+      - cis_csc_v7: ["4.3"]
+      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - soc_2: ["CC6.1", "CC6.3"]
+    condition: none
+    rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*!authenticate'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*!authenticate'
+
+  # 5.3.6 Ensure sudo authentication timeout is configured correctly (Automated)
+  - id: 31164
+    title: "Ensure sudo authentication timeout is configured correctly."
+    description: "sudo caches used credentials for a default of 15 minutes. This is for ease of use when there are multiple administrative tasks to perform. The timeout can be modified to suit local security policies. This default is distribution specific. See audit section for further information."
+    rationale: "Setting a timeout value reduces the window of opportunity for unauthorized privileged access to another user."
+    remediation: "If the currently configured timeout is larger than 15 minutes, edit the file listed in the audit section with visudo -f <PATH TO FILE> and modify the entry timestamp_timeout= to 15 minutes or less as per your site policy. The value is in minutes. This particular entry may appear on its own, or on the same line as env_reset. See the following two examples:  Defaults env_reset, timestamp_timeout=15 Defaults timestamp_timeout=15 Defaults env_reset"
+    references:
+      - https://www.sudo.ws/man/1.9.0/sudoers.man.html
+    compliance:
+      - cis: ["5.3.6"]
+      - cis_csc_v8: ["5.4"]
+      - cis_csc_v7: ["4.3"]
+      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - soc_2: ["CC6.1", "CC6.3"]
+    condition: any
+    rules:
+      - 'f:/etc/sudoers -> !r:^\s*\t*# && n:^\s*\t*timestamp_timeout=(\d+) compare <= 15 && n:^\s*\t*timestamp_timeout=(\d+) >=0'
+      - 'd:/etc/sudoers.d -> r:\.* -> !r:^\s*\t*# && n:^\s*\t*timestamp_timeout=(\d+) compare <= 15 && n:^\s*\t*timestamp_timeout=(\d+) >=0'
+      - 'c:sudo -V -> n:Authentication timestamp timeout:\s*\t*(\d+) compare <= 15 && n:Authentication timestamp timeout:\s*\t*(\d+) compare >= 0'
+
+  # 5.3.7 Ensure access to the su command is restricted (Automated)
+  - id: 31165
+    title: "Ensure access to the su command is restricted."
+    description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in a specific groups to execute su. This group should be empty to reinforce the use of sudo for privileged access."
+    rationale: "Restricting the use of su , and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo , whereas su can only record that a user executed the su program."
+    remediation: "Create an empty group that will be specified for use of the su command. The group should be named according to site policy. Example: # groupadd sugroup Add the following line to the /etc/pam.d/su file, specifying the empty group: auth required pam_wheel.so use_uid group=sugroup"
+    compliance:
+      - cis: ["5.3.7"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'f:/etc/pam.d/su -> !r:^# && r:auth\s*required\s*pam_wheel.so && r:use_uid && r:group='
+
+  ####################################################
+  # 5.4 Configure authselect
+  ####################################################
+
+  # 5.4.1 Ensure custom authselect profile is used (Manual) - Not implemented
+  # 5.4.2 Ensure authselect includes with-faillock
+  - id: 31166
+    title: "Ensure authselect includes with-faillock."
+    description: "The pam_faillock.so module maintains a list of failed authentication attempts per user during a specified interval and locks the account in case there were more than deny consecutive failed authentications. It stores the failure records into per-user files in the tally directory."
+    rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
+    remediation: "Run the following commands to include the with-faillock option to the current authselect profile: # authselect enable-feature with-faillock # authselect apply-changes"
+    compliance:
+      - cis: ["5.4.2"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["16.7"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    references:
+      - faillock(8) - Linux man page
+      - pam_faillock(8) - Linux man page
+    condition: all
+    rules:
+      - "f:pam_faillock.so -> r=^required"
+      - "f:/etc/pam.d/password-auth -> r=^required"
+      - "f:/etc/pam.d/system-auth -> r=^required"
+
+  ####################################################
+  # 5.5 Configure PAM
+  ####################################################
+
+  # 5.5.1 Ensure password creation requirements are configured (Automated)
+  - id: 31167
+    title: "Ensure password creation requirements are configured."
+    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more."
+    rationale: "Strong passwords protect systems from being hacked through brute force methods."
+    remediation: "The following setting is a recommend example policy. Alter these values to conform to your own organization's password policies. Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy: Option 1: minclass = 4 Option 2: dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1"
+    compliance:
+      - cis: ["5.5.1"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - "f:/etc/pam.d/system-auth -> r:pam_pwquality.so && r:requisite"
+      - "f:/etc/pam.d/password-auth -> r:pam_pwquality.so && r:requisite"
+      - 'f:/etc/security/pwquality.conf -> n:^\s*\t*minlen\s+=\s+(\d+) compare >=14'
+      - 'f:/etc/security/pwquality.conf -> r:^\s*\t*minclass\s+=\s+4'
+
+  # 5.5.2 Ensure lockout for failed password attempts is configured (Automated)
+  - id: 31168
+    title: "Ensure lockout for failed password attempts is configured."
+    description:
+      "Lock out users after n unsuccessful consecutive login attempts.
+      - deny: Number of attempts before the account is locked.
+      - unlock_time: Time in seconds before the account is unlocked.
+      Note: The maximum configurable value for unlock_time is 604800."
+    rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
+    remediation: "Set password lockouts and unlock times to conform to site policy. deny should be not greater than 5 and unlock_time should be 0 (never), or 900 seconds or greater. Depending on the version you are running, follow one of the two methods bellow. Versions 8.2 and later: Edit /etc/security/faillock.conf and update or add the following lines: deny = 5    unlock_time = 900. For versions 8.0 and 8.1: Edit /etc/pam.d/system-auth and /etc/pam.d/password-auth and edit or add the deny and unlock_time options."
+    compliance:
+      - cis: ["5.5.2"]
+      - cis_csc_v8: ["6.2"]
+      - cis_csc_v7: ["16.7"]
+      - cmmc_v2.0: ["AC.L1-3.1.1"]
+      - hipaa: ["164.308(a)(3)(ii)(C)"]
+      - pci_dss_3.2.1: ["8.1.3"]
+      - pci_dss_4.0: ["8.2.4", "8.2.5"]
+      - nist_sp_800-53: ["AC-2(1)"]
+      - soc_2: ["CC6.2", "CC6.3"]
+    condition: none
+    rules:
+      # deny should not be 0 or greater of 5
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*deny\s*\t*=\s*\t*(\d+) compare > 5'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*deny\s*\t*=\s*\t*(\d+) compare == 0'
+      # unlock_time should be 0 or greater of 900
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare > 900'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare == 0'
+      # Same for version 8.0 and 8.1. Configured in /etc/pam.d/system-auth and /etc/pam.d/password-auth
+      - 'f:/etc/pam.d/password-auth -> n:^\s*\t*deny\s*\t*=\s*\t*(\d+) compare > 5'
+      - 'f:/etc/pam.d/password-auth -> n:^\s*\t*deny\s*\t*=\s*\t*(\d+) n:^\s*\t*deny\s*\t*=\s*\t*(\d+) compare == 0'
+      - 'f:/etc/pam.d/password-auth -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare > 900'
+      - 'f:/etc/pam.d/password-auth -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare == 0'
+      - 'f:/etc/pam.d/system-auth -> n:^\s*\t*deny\s*\t*=\s*\t*(\d+) compare > 5'
+      - 'f:/etc/pam.d/system-auth -> n:^\s*\t*deny\s*\t*=\s*\t*(\d+) n:^\s*\t*deny\s*\t*=\s*\t*(\d+) compare == 0'
+      - 'f:/etc/pam.d/system-auth -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare > 900'
+      - 'f:/etc/pam.d/system-auth -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare == 0'
+
+  # 5.5.3 Ensure password reuse is limited (Automated)
+  - id: 31169
+    title: "Ensure password reuse is limited."
+    description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords."
+    rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password."
+    remediation: "Set remembered password history to conform to site policy. Modify the pam_pwhistory.so and pam_unix.so lines to include the remember option."
+    compliance:
+      - cis: ["5.5.3"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+      - nist_sp_800-53: ["IA-5(1)"]
+    condition: all
+    rules:
+      - "f:/etc/pam.d/system-auth -> r:^remember=([5-9]|[1-9][0-9]+)"
+
+  # 5.5.4 Ensure password hashing algorithm is SHA-512 (Automated)
+  - id: 31170
+    title: "Ensure password hashing algorithm is SHA-512."
+    description: "A cryptographic hash function converts an arbitrary-length input into a fixed length output. Password hashing performs a one-way transformation of a password, turning the password into another string, called the hashed password."
+    rationale: "The SHA-512 algorithm provides stronger hashing than other hashing algorithms used for password hashing with Linux, providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords."
+    remediation: "Set the password hashing algorithm to SHA-512. Edit /etc/libuser.conf and set the crypt_style option to sha512: crypt_style = sha512. Edit /etc/login.defs and set the ENCRYPT_METHOD option to SHA512: ENCRYPT_METHOD SHA512."
+    compliance:
+      - cis: ["5.5.4"]
+      - cis_csc_v8: ["3.11"]
+      - cis_csc_v7: ["16.4"]
+      - cmmc_v2.0:
+          [
+            "AC.L2-3.1.19",
+            "IA.L2-3.5.10",
+            "MP.L2-3.8.1",
+            "SC.L2-3.13.11",
+            "SC.L2-3.13.16",
+          ]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
+      - pci_dss_3.2.1: ["3.4", "3.4.1", "8.2.1"]
+      - pci_dss_4.0:
+          ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
+      - nist_sp_800-53: ["IA-5(1)"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'f:/etc/libuser.conf -> r:^\s*\t*crypt_style\s*\t*=\s*\t*sha512'
+      - 'f:/etc/login.defs -> r:^\s*\t*ENCRYPT_METHOD\s*\t*SHA512'
+      - "f:/etc/pam.d/password-auth-> r:^sha512"
+      - "f:/etc/pam.d/system-auth-> r:^sha512"
+
+  ####################################################
+  # 5.6 User Accounts and Environment
+  ####################################################
