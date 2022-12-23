@@ -46,27 +46,27 @@ base::Expression KVDBExtract(const std::any& definition,
         if (!kvdb)
         {
             throw std::runtime_error(fmt::format(
-                "Engine KVDB builder: Database \"{}\" is not available.", dbName));
+                "Engine KVDB builder: Database '{}' is not available.", dbName));
         }
     }
 
     // Trace messages
     std::string successTrace = fmt::format("[{}] -> Success", name);
     std::string failureTrace1 =
-        fmt::format("[{}] -> Failure: reference \"{}\" not found", name, key.m_value);
+        fmt::format("[{}] -> Failure: reference '{}' not found", name, key.m_value);
     std::string failureTrace2 =
-        fmt::format("[{}] -> Failure: key \"{}\" could not be found on database \"{}\"",
+        fmt::format("[{}] -> Failure: key '{}' could not be found on database '{}'",
                     name,
                     key.m_value,
                     dbName);
-    std::string failureTrace3 = fmt::format("[{}] -> Failure: target field \"{}\" not "
+    std::string failureTrace3 = fmt::format("[{}] -> Failure: target field '{}' not "
                                             "found",
                                             name,
                                             targetField);
     std::string failureTrace4 =
         fmt::format("[{}] -> Failure: fields type mismatch when merging", name);
     std::string failureTrace5 = fmt::format("[{}] -> Failure: malformed JSON for key "
-                                            "\"{}\"",
+                                            "'{}'",
                                             name,
                                             key.m_value);
 
@@ -96,41 +96,36 @@ base::Expression KVDBExtract(const std::any& definition,
             }
 
             // Get value from the DB
-            auto dbValue = kvdb->read(resolvedKey);
-            if (!dbValue.has_value())
+            auto result = kvdb->read(resolvedKey);
+            if (std::holds_alternative<base::Error>(result))
             {
                 return base::result::makeFailure(event, failureTrace2);
             }
-            // Create Json and add to event
-            else
+            try
             {
-                // TODO: Maybe add non throw version of this method
-                try
+                json::Json value {std::get<std::string>(result).c_str()};
+                if (merge)
                 {
-                    json::Json value {dbValue.value().c_str()};
-                    if (merge)
+                    // Failure cases on merge
+                    if (!event->exists(targetField))
                     {
-                        // Failure cases on merge
-                        if (!event->exists(targetField))
-                        {
-                            return base::result::makeFailure(event, failureTrace3);
-                        }
-                        else if (event->type(targetField) != value.type()
-                                 || (!value.isObject() && !value.isArray()))
-                        {
-                            return base::result::makeFailure(event, failureTrace4);
-                        }
-                        event->merge(value, targetField);
+                        return base::result::makeFailure(event, failureTrace3);
                     }
-                    else
+                    else if (event->type(targetField) != value.type()
+                             || (!value.isObject() && !value.isArray()))
                     {
-                        event->set(targetField, value);
+                        return base::result::makeFailure(event, failureTrace4);
                     }
+                    event->merge(value, targetField);
                 }
-                catch (const std::runtime_error& e)
+                else
                 {
-                    return base::result::makeFailure(event, failureTrace5);
+                    event->set(targetField, value);
                 }
+            }
+            catch (const std::runtime_error& e)
+            {
+                return base::result::makeFailure(event, failureTrace5);
             }
 
             return base::result::makeSuccess(event, successTrace);
@@ -178,7 +173,7 @@ base::Expression existanceCheck(const std::any& definition,
         if (!kvdb)
         {
             throw std::runtime_error(fmt::format(
-                "Engine KVDB builder: Database \"{}\" is not available.", dbName));
+                "Engine KVDB builder: Database '{}' is not available.", dbName));
         }
     }
 

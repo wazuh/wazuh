@@ -105,25 +105,21 @@ api::CommandFn kvdbDumpCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManage
                 json::Json {"{}"}, kvdb_manager::API_ERROR_CODE, KVDB_NAME_MISSING};
         }
 
-        const std::string kvdbNameValue {kvdbName.value()};
+        const auto kvdbNameValue {kvdbName.value()};
         if (kvdbNameValue.empty())
         {
             return api::WazuhResponse {
                 json::Json {"{}"}, kvdb_manager::API_ERROR_CODE, KVDB_NAME_EMPTY};
         }
 
-        json::Json data;
-        data.setArray("/data");
 
+        // Get KVDB's response
         auto jDump = kvdbManager->jDumpDB(kvdbNameValue);
-
         if (std::holds_alternative<base::Error>(jDump))
         {
             return api::WazuhResponse {
                 json::Json {"{}"}, kvdb_manager::API_ERROR_CODE, std::get<base::Error>(jDump).message};
         }
-
-
         return api::WazuhResponse {std::get<json::Json>(jDump), kvdb_manager::API_SUCCESS_CODE, "OK"};
     };
 }
@@ -173,21 +169,18 @@ api::CommandFn kvdbGetKeyCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbMana
                 json::Json {"{}"}, kvdb_manager::API_ERROR_CODE, KVDB_KEY_EMPTY};
         }
 
-        const auto retVal = kvdbManager->getKeyValue(kvdbNameValue, key);
-        if (!retVal.has_value())
+        const auto result = kvdbManager->getJValue(kvdbNameValue, key);
+        if (std::holds_alternative<base::Error>(result))
         {
             return api::WazuhResponse {
-                json::Json {"{}"},
-                kvdb_manager::API_ERROR_CODE,
-                fmt::format("Key \"{}\" could not be found on database \"{}\"",
-                            key,
-                            kvdbNameValue)};
+                json::Json {"{}"}, kvdb_manager::API_ERROR_CODE, std::get<base::Error>(result).message};
         }
+        const auto& value {std::get<json::Json>(result)};
 
         json::Json data {};
         data.setObject("/data");
         data.setString(key, "/key");
-        data.setString(retVal.value(), "/value");
+        data.set("/value", value);
         return api::WazuhResponse {std::move(data), kvdb_manager::API_SUCCESS_CODE, "OK"};
     };
 }
@@ -237,14 +230,17 @@ api::CommandFn kvdbInsertKeyCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbM
                 json::Json {"{}"}, kvdb_manager::API_ERROR_CODE, KVDB_KEY_EMPTY};
         }
 
-        const bool retVal {kvdbManager->writeKey(
-            kvdbNameValue, key, params.getString("/value").value_or(""))};
+        const auto optValue = params.getJson("/value");
+        const auto error = kvdbManager->writeKey(
+            kvdbNameValue, key, params.getJson("/value").value_or(json::Json("null")));
 
-        if (!retVal)
+        if (error)
         {
-            return api::WazuhResponse {json::Json {"{}"},
-                                       kvdb_manager::API_ERROR_CODE,
-                                       "Key-value could not be written to the database"};
+            return api::WazuhResponse {
+                json::Json {"{}"},
+                kvdb_manager::API_ERROR_CODE,
+                std::string {"Key-value could not be written to the database:"}
+                    + error.value().message};
         }
 
         return api::WazuhResponse {
