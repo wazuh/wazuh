@@ -8,9 +8,34 @@
   <order>service, application, time_access_denied</order>
 </decoder>
 
-
 <decoder name="macOS_tcc_process1">
   <parent>macOS_tcc_process</parent>
   <regex>[com.apple.TCC:access] Update Access Record: (\S+) for (\S+) to Allowed at \d+ \p\d+-\d+-\d+ (\d+:\d+:\d+) +\d+\p</regex>
   <order>service, application, time_access_granted</order>
+</decoder>
+
+<decoder name="macOS_loginwindow_process">
+  <program_name>loginwindow</program_name>
+</decoder>
+
+<decoder name="macOS_loginwindow_process1">
+  <parent>macOS_loginwindow_process</parent>
+  <regex>[com.apple.loginwindow.logging:Standard] -[.+] | \w+: \w+.\w+.\w+.(\w+), with userID:(\d+)||loginIsComplete</regex>
+  <order>data, userID</order>
+</decoder>
+
+<decoder name="macOS_screensharingd_process">
+  <program_name>screensharingd</program_name>
+</decoder>
+  
+<decoder name="screensharingd_process_1">
+  <parent>screensharingd_process</parent>
+  <regex>Authentication: SUCCEEDED :: User Name: (\S+) :: Viewer Address: (\d+.\d+.\d+.\d+) :: Type: (\S+)</regex>
+  <order>dstuser, ip_address, type</order>
+</decoder>
+
+<decoder name="macOS_screensharingd_process_2">
+  <parent>screensharingd_process</parent>
+  <regex>Authentication: FAILED :: User Name: (\S+) :: Viewer Address: (\d+.\d+.\d+.\d+) :: Type: (\S+)</regex>
+  <order>dstuser, ip_address, type</order>
 </decoder>
