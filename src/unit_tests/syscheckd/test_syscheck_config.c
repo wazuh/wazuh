@@ -854,75 +854,40 @@ void test_fim_copy_directory_return_dir_copied(void **state) {
 }
 
 void test_fim_adjust_path_no_changes (void **state) {
-    char *path = "C:\\a\\path\\not\\replaced";
+    char *path = strdup("c:\\a\\path\\not\\replaced");
 
     fim_adjust_path(&path);
 
-    assert_string_equal(path, "C:\\a\\path\\not\\replaced");
+    assert_string_equal(path, "c:\\a\\path\\not\\replaced");
 }
 
-void test_fim_adjust_path_convert_system32 (void **state) {
-    char *path = strdup("C:\\windows\\system32\\test");
-
-    expect_string(__wrap_wstr_replace, string, path);
-    expect_string(__wrap_wstr_replace, search, ":\\windows\\system32");
-    expect_string(__wrap_wstr_replace, replace, ":\\windows\\sysnative");
-    will_return(__wrap_wstr_replace, "C:\\windows\\sysnative\\test");
+void test_fim_adjust_path_convert_sysnative (void **state) {
+    char *path = strdup("C:\\windows\\sysnative\\test");
 
     expect_string(__wrap__mdebug2, formatted_msg,
-        "(6307): Convert 'C:\\windows\\system32\\test' to 'C:\\windows\\sysnative\\test' to process the whodata event.");
+        "(6307): Convert 'c:\\windows\\sysnative\\test' to 'c:\\windows\\system32\\test' to process the FIM events.");
 
     fim_adjust_path(&path);
 
-    assert_string_equal(path, "C:\\windows\\sysnative\\test");
+    assert_string_equal(path, "c:\\windows\\system32\\test");
 }
 
 void test_fim_adjust_path_convert_syswow64 (void **state) {
+
     char *path = strdup("C:\\windows\\syswow64\\test");
-
-    expect_string(__wrap_wstr_replace, string, path);
-    expect_string(__wrap_wstr_replace, search, ":\\windows\\syswow64");
-    expect_string(__wrap_wstr_replace, replace, ":\\windows\\system32");
-    will_return(__wrap_wstr_replace, "C:\\windows\\system32\\test");
-
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6307): Convert 'C:\\windows\\syswow64\\test' to 'C:\\windows\\system32\\test' to process the whodata event.");
 
     fim_adjust_path(&path);
 
-    assert_string_equal(path, "C:\\windows\\system32\\test");
+    assert_string_equal(path, "c:\\windows\\syswow64\\test");
 }
 
-void test_whodata_path_filter_file_discarded(void **state) {
-    char *path = "C:\\$recycle.bin\\test.file";
-    int ret;
+void test_fim_adjust_path_convert_system32 (void **state) {
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6289): File 'C:\\$recycle.bin\\test.file' is in the recycle bin. It will be discarded.");
+    char *path = strdup("c:\\windows\\system32\\test");
 
-    ret = whodata_path_filter(&path);
+    fim_adjust_path(&path);
 
-    assert_int_equal(ret, 1);
-}
-
-void test_whodata_path_filter_64_bit_system(void **state) {
-    char *path = strdup("C:\\windows\\system32\\test");
-    int ret;
-
-    sys_64 = 1;
-
-    expect_string(__wrap_wstr_replace, string, path);
-    expect_string(__wrap_wstr_replace, search, ":\\windows\\system32");
-    expect_string(__wrap_wstr_replace, replace, ":\\windows\\sysnative");
-    will_return(__wrap_wstr_replace, "C:\\windows\\sysnative\\test");
-
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6307): Convert 'C:\\windows\\system32\\test' to 'C:\\windows\\sysnative\\test' to process the whodata event.");
-
-    ret = whodata_path_filter(&path);
-
-    assert_int_equal(ret, 0);
-    assert_string_equal(path, "C:\\windows\\sysnative\\test");
+    assert_string_equal(path, "c:\\windows\\system32\\test");
 }
 
 int main(void) {
@@ -943,11 +908,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_insert_directory_insert_entry_last, setup_entry, teardown_entry),
         cmocka_unit_test(test_fim_copy_directory_null),
         cmocka_unit_test_setup_teardown(test_fim_copy_directory_return_dir_copied, setup_entry, teardown_entry),
-        cmocka_unit_test(test_fim_adjust_path_no_changes),
-        cmocka_unit_test(test_fim_adjust_path_convert_system32),
+	    cmocka_unit_test(test_fim_adjust_path_no_changes),
+        cmocka_unit_test(test_fim_adjust_path_convert_sysnative),
         cmocka_unit_test(test_fim_adjust_path_convert_syswow64),
-        cmocka_unit_test(test_whodata_path_filter_file_discarded),
-        cmocka_unit_test(test_whodata_path_filter_64_bit_system)
+        cmocka_unit_test(test_fim_adjust_path_convert_system32)
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
