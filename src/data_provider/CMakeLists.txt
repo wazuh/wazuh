@@ -111,12 +111,5 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(sysinfo wazuhext)
 
-if(APPLE)
-  add_custom_command(TARGET sysinfo
-    POST_BUILD COMMAND
-    ${CMAKE_INSTALL_NAME_TOOL} -id "@rpath/libsysinfo.dylib"
-    $<TARGET_FILE:sysinfo>)
-endif(APPLE)
-
 add_subdirectory(tests EXCLUDE_FROM_ALL) # The all target won't contain tests
 add_subdirectory(testtool)
