@@ -143,7 +143,6 @@ public:
      * @return true if key was found
      * @return false if key wasn't found
      */
-
     bool hasKey(const std::string& key, const std::string& columnName = DEFAULT_CF_NAME);
 
     /**
