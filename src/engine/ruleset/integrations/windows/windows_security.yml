@@ -41,7 +41,7 @@ normalize:
     - event.service.type: +kvdb_get_merge/win_security_service_types/$~event_channel.Event.EventData.ServiceType
     
     # Set Audit Information
-    # Event sub category - Need to clean guid
+    # Event sub category
     - event.Category: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid
     - event.SubCategory: +kvdb_get_merge/win_security_subcategory_guids/$~event_channel.Event.EventData.SubcategoryGuid
 
@@ -54,7 +54,7 @@ normalize:
     # Set Trust Attributes
     - event.trustAttribute: +kvdb_get/win_trust_attribute/$~event_channel.Event.EventData.TdoAttributes
 
-    - event.logon.id: $~event_channel.Event.EventData.SubjectLogonId
+    - winlog.logon.id: $~event_channel.Event.EventData.SubjectLogonId
 
     - event.PrivilegeList: +s_to_array/$~event_channel.Event.EventData.PrivilegeList/ /
 
@@ -148,41 +148,35 @@ normalize:
         - event.logon.id: ~event_channel.Event.EventData.LogonID
     
     # Copy Target User
-    
- - check:
-      - ~id_target_user_array: +a_contains/$event.code
-
-   map:
-      - ~is_copy_target_user: true
     # TargetUserSid to user.id or user.target.id  
- - check: +ef_not_exists/user.id AND +a_contains/~id_target_user_array/$event.code
+ - check: +ef_not_exists/$user.id AND +a_contains/~id_target_user_array/$event.code
    map:
         - user.id: $~event_channel.Event.EventData.TargetUserSid
         - user.id: $~event_channel.Event.EventData.TargetSid
- - check: +ef_exists/user.id AND +a_contains/~id_target_user_array/$event.code
+ - check: +ef_exists/$user.id AND +a_contains/~id_target_user_array/$event.code
    map:
         - user.target.id: $~event_channel.Event.EventData.TargetUserSid
         - user.target.id: $~event_channel.Event.EventData.TargetSid
 
  # TargetUserName to related.user and user.name or user.target.name
- - check: +ef_not_exists/user.name AND +a_contains/~id_target_user_array/$event.code
+ - check: +ef_not_exists/$user.name AND +a_contains/~id_target_user_array/$event.code
    map:
-        - user.name: ~event_channel.Event.EventData.TargetUserName
- - check: +ef_exists/user.name AND +a_contains/~id_target_user_array/$event.code
+        - user.name: $~event_channel.Event.EventData.TargetUserName
+ - check: +ef_exists/$user.name AND +a_contains/~id_target_user_array/$event.code
    map:
-        - user.target.name: ~event_channel.Event.EventData.TargetUserName
+        - user.target.name: $~event_channel.Event.EventData.TargetUserName
  
  - check: +s_ne/~event_channel.Event.EventData.TargetUserName/-/ AND +a_contains/~id_target_user_array/$event.code
    map:
         - related.user: +a_append/$~event_channel.Event.EventData.TargetUserName 
     
     # TargetUserDomain to user.domain or user.target.domain
- - check: +ef_not_exists/user.domain AND +a_contains/~id_target_user_array/$event.code
+ - check: +ef_not_exists/$user.domain AND +a_contains/~id_target_user_array/$event.code
    map:
-        - user.domain: ~event_channel.Event.EventData.TargetDomainName
- - check: +ef_exists/user.domain AND +a_contains/~id_target_user_array/$event.code
+        - user.domain: $~event_channel.Event.EventData.TargetDomainName
+ - check: +ef_exists/$user.domain AND +a_contains/~id_target_user_array/$event.code
    map:
-        - user.target.domain: ~event_channel.Event.EventData.TargetDomainName
+        - user.target.domain: $~event_channel.Event.EventData.TargetDomainName
 
     # Copy MemberName to User and User to Group
  - check:
@@ -274,8 +268,7 @@ normalize:
      - event.source.port: $~event_channel.Event.EventData.IpPort
      - event.source.domain: $~event_channel.Event.EventData.WorkstationName
      - event.related.ip: $~event_channel.Event.EventData.ClientAddress
-     # - ~process_name: +s_to_array/$event.process.executable/\
-     # - event.process.name: $~process_name.-1
+
 
 # Process Event 4688
  - check: event.code==4688 
