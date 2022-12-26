@@ -49,7 +49,7 @@ public:
     {
     }
 
-    ~RuntimeEnvironment() { stop(); }
+    ~RuntimeEnvironment() { stop(); m_environments.clear(); }
 
     /**
      * @brief Start the environment

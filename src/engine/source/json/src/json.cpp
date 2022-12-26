@@ -465,10 +465,6 @@ size_t Json::size(std::string_view path) const
 {
     const auto pp = rapidjson::Pointer(path.data());
 
-    WAZUH_LOG_DEBUG("Engine JSON: \"{}\" method: Field \"{}\" type: \"{}\".",
-                    __func__,
-                    path,
-                    typeName(path));
 
     if (pp.IsValid())
     {

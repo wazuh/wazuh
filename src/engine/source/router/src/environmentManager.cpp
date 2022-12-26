@@ -21,13 +21,13 @@ std::optional<base::Error> EnvironmentManager::addEnvironment(const std::string&
 
     if (envName.parts().size() != 3)
     {
-        return base::Error {fmt::format("Invalid environment name: \"{}\", the expected "
+        return base::Error {fmt::format("Invalid environment name: '{}', the expected "
                                         "format is: \"environment/<env-name>/<version>\"",
                                         name)};
     }
     if (envName.parts()[0] != "environment")
     {
-        return base::Error {fmt::format("Invalid environment name: \"{}\", it should "
+        return base::Error {fmt::format("Invalid environment name: '{}', it should "
                                         "start with the word \"environment\"",
                                         name)};
     }
@@ -35,7 +35,7 @@ std::optional<base::Error> EnvironmentManager::addEnvironment(const std::string&
     std::unique_lock<std::shared_mutex> lock(m_mutex);
     if (m_environments.find(name) != m_environments.end())
     {
-        return base::Error {fmt::format("Environment \"{}\" already exists", name)};
+        return base::Error {fmt::format("Environment '{}' already exists", name)};
     }
 
     auto env = std::make_shared<RuntimeEnvironment>(name, m_numThreads, m_queue);
@@ -55,11 +55,14 @@ std::optional<base::Error> EnvironmentManager::delEnvironment(const std::string&
     auto it = m_environments.find(name);
     if (it == m_environments.end())
     {
-        return base::Error {fmt::format("Environment \"{}\" does not exist", name)};
+        return base::Error {fmt::format("Environment '{}' does not exist", name)};
     }
 
     it->second->stop();
-    m_environments.erase(it);
+    if (m_environments.erase(name) != 1)
+    {
+        return base::Error {fmt::format("Environment '{}' could not be deleted", name)};
+    }
 
     return std::nullopt;
 }
@@ -87,7 +90,7 @@ std::optional<base::Error> EnvironmentManager::startEnvironment(const std::strin
         }
         return std::nullopt;
     }
-    return base::Error {fmt::format("Environment \"{}\" does not exist", name)};
+    return base::Error {fmt::format("Environment '{}' does not exist", name)};
 }
 
 std::vector<std::string> EnvironmentManager::getAllEnvironments()
@@ -131,7 +134,7 @@ api::CommandFn EnvironmentManager::apiCallback()
         }
         else
         {
-            response.message(fmt::format("Invalid action \"{}\"", action.value()));
+            response.message(fmt::format("Invalid action '{}'", action.value()));
         }
         return response;
     };
