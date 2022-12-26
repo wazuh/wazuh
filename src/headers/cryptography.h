@@ -56,5 +56,13 @@ DWORD get_file_hash(const wchar_t *path, BYTE **hash, DWORD *hash_size, char* er
  */
 w_err_t verify_hash_and_pe_signature(wchar_t *file_path);
 
+/**
+ * @brief Check if the CA is available.
+ *
+ * @param ca CA name.
+ * @return DWORD ERROR_SUCCESS if the CA is available, otherwise error code.
+ */
+DWORD check_ca_available(const char* ca);
+
 #endif // WIN32
 #endif // _CRYPTOGRAPHY_H

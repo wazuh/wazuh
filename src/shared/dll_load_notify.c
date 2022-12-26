@@ -25,11 +25,6 @@ PVOID cookie_dll_notification = NULL;
 static void loaded_modules_verification()
 {
 #if IMAGE_TRUST_CHECKS != 0
-    if(!IsWindowsVistaOrGreater()) {
-        mdebug1("Loaded modules signature verification is available on Windows Vista or greater.");
-        return;
-    }
-
     HMODULE handle_module[OS_SIZE_1024];
     HANDLE handle_process = GetCurrentProcess();
     DWORD handle_bytes_needed = 0;
@@ -60,9 +55,11 @@ static void loaded_modules_verification()
         }
     } else {
 #if IMAGE_TRUST_CHECKS == 2
-        merror_exit("The mechanism of signature validation for loaded modules at startup failed because the modules of the process couldn't be enumerated. Error: %lu", GetLastError());
+        merror_exit("The mechanism of signature validation for loaded modules at startup failed because the modules"
+                    " of the process couldn't be enumerated. Error: %lu", GetLastError());
 #else
-        mwarn("The mechanism of signature validation for loaded modules at startup failed because the modules of the process couldn't be enumerated. Error: %lu", GetLastError());
+        mwarn("The mechanism of signature validation for loaded modules at startup failed because the modules of the"
+              " process couldn't be enumerated. Error: %lu", GetLastError());
 #endif // IMAGE_TRUST_CHECKS == 2
 
     }
@@ -86,12 +83,15 @@ void CALLBACK dll_notification(ULONG reason,
 #if IMAGE_TRUST_CHECKS != 0
         if (verify_hash_and_pe_signature(notification_data->loaded.full_dll_name->Buffer) != OS_SUCCESS) {
 #if IMAGE_TRUST_CHECKS == 2
-            merror_exit("The file '%S' is not signed or its signature is invalid.", notification_data->loaded.full_dll_name->Buffer);
+            merror_exit("The file '%S' is not signed or its signature is invalid.",
+                        notification_data->loaded.full_dll_name->Buffer);
 #else
-            mwarn("The file '%S' is not signed or its signature is invalid.", notification_data->loaded.full_dll_name->Buffer);
+            mwarn("The file '%S' is not signed or its signature is invalid.",
+                  notification_data->loaded.full_dll_name->Buffer);
 #endif // IMAGE_TRUST_CHECKS == 2
         } else {
-            mdebug1("The file '%S' is signed and its signature is valid.", notification_data->loaded.full_dll_name->Buffer);
+            mdebug1("The file '%S' is signed and its signature is valid.",
+                    notification_data->loaded.full_dll_name->Buffer);
         }
 #endif // IMAGE_TRUST_CHECKS != 0
         break;
@@ -106,34 +106,42 @@ void CALLBACK dll_notification(ULONG reason,
  */
 void enable_dll_verification()
 {
-    loaded_modules_verification();
-
 #if IMAGE_TRUST_CHECKS != 0
-    if(!IsWindowsVistaOrGreater()) {
-        mdebug1("DLL signature verification is available on Windows Vista or greater because LdrRegisterDllNotification is not present.");
-        return;
-    }
+    // Check if all loaded DLLs are signed.
+    if (ERROR_SUCCESS != check_ca_available("DigiCert")) {
+        merror("The dynamic signature validation is not available because the CA name is not available.");
+    } else {
+        loaded_modules_verification();
 
-    HMODULE handle_ntdll = GetModuleHandle("ntdll.dll");
-    if (handle_ntdll) {
-        LdrRegisterDllNotification = (_LdrRegisterDllNotification)GetProcAddress(handle_ntdll, "LdrRegisterDllNotification");
-
-        if (LdrRegisterDllNotification)
-        {
-            LdrRegisterDllNotification(0, &dll_notification, NULL, &cookie_dll_notification);
+        // Register for DLL load notifications.
+        HMODULE handle_ntdll = GetModuleHandle("ntdll.dll");
+        if (handle_ntdll) {
+            LdrRegisterDllNotification = (_LdrRegisterDllNotification)GetProcAddress(handle_ntdll,
+                                                                                    "LdrRegisterDllNotification");
+            // If the function is available, the feature is available.
+            if (LdrRegisterDllNotification)
+            {
+                LdrRegisterDllNotification(0, &dll_notification, NULL, &cookie_dll_notification);
+            } else {
+#if IMAGE_TRUST_CHECKS == 2
+                merror_exit("The dynamic signature validation is not available for this system. Error"
+                            " %lu: %s", GetLastError(), win_strerror(GetLastError()));
+#else
+                mwarn("The dynamic signature validation is not available for this system. Error"
+                    " %lu: %s", GetLastError(), win_strerror(GetLastError()));
+#endif // IMAGE_TRUST_CHECKS == 2
+            }
         } else {
 #if IMAGE_TRUST_CHECKS == 2
-            merror_exit("The mechanism of dynamic signature validation for loaded modules wasn't initiated because the address of the native method LdrRegisterDllNotification wasn't found. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
+            merror_exit("The mechanism of dynamic signature validation for loaded modules wasn't initiated because it "
+                        "wasn't possible to get the handle of 'ntdll.dll'. Error %lu: %s",
+                        GetLastError(), win_strerror(GetLastError()));
 #else
-            mwarn("The mechanism of dynamic signature validation for loaded modules wasn't initiated because the address of the native method LdrRegisterDllNotification wasn't found. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
+            mwarn("The mechanism of dynamic signature validation for loaded modules wasn't initiated because it wasn't "
+                "possible to get the handle of 'ntdll.dll'. Error %lu: %s",
+                GetLastError(), win_strerror(GetLastError()));
 #endif // IMAGE_TRUST_CHECKS == 2
         }
-    } else {
-#if IMAGE_TRUST_CHECKS == 2
-        merror_exit("The mechanism of dynamic signature validation for loaded modules wasn't initiated because it wasn't possible to get the handle of 'ntdll.dll'. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
-#else
-        mwarn("The mechanism of dynamic signature validation for loaded modules wasn't initiated because it wasn't possible to get the handle of 'ntdll.dll'. Error %lu: %s", GetLastError(), win_strerror(GetLastError()));
-#endif // IMAGE_TRUST_CHECKS == 2
     }
 #endif // IMAGE_TRUST_CHECKS != 0
 }
