@@ -55,7 +55,6 @@
 typedef enum agent_disconnected_status_code_t {
         NOT_APPLY,          ///< Not apply to other status than disconnected
         INVALID_VERSION,    ///< Invalid anget version
-        INVALID_MSG_RECV,   ///< Invalid message received
         HC_SHUTDOWN_RECV,   ///< Shutdown message received
         NO_KEEPALIVE           ///< Disconnected because no keepalive received.
 } agent_disconnected_status_code_t;

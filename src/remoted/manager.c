@@ -508,7 +508,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             agent_data->id = atoi(key->id);
             os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
             os_strdup(logr.worker_node ? "syncreq" : "synced", agent_data->sync_status);
-            agent_data->status_code = NOT_APPLY;
 
             w_mutex_lock(&lastmsg_mutex);
 
