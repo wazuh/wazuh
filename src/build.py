@@ -10,12 +10,7 @@
 import argparse
 from ci import utils
 
-target_list = ['syscollector', 'dbsync', 'rsync','rsync_test_tool', 'sysinfo', 'sysinfo_test_tool', 'dbsync_test_tool', 'dbsync_example', 'all']
-unit_test_target_list = ['syscollector_unit_test', 'dbsync_unit_test', 'dbsync_integration_tests', 'rsync_unit_test',
-'data_provider_unit_test', 'utils_unit_test', 'all_unit_test']
-coverage_target_list = ['syscollector', 'dbsync', 'rsync', 'sysinfo', 'utils_unit_test']
-asan_target_list = ['syscollector', 'dbsync', 'rsync', 'data_provider']
-
+target_list = ['syscollector', 'dbsync', 'rsync','utils_unit_test', 'sysinfo']
 
 class CommandLineParser:
 
@@ -27,42 +22,6 @@ class CommandLineParser:
         :return True is 'arg' is a correct one, False otherwise.
         """
         return arg in target_list
-
-    def _argIsCmakeTestTargetValid(self, arg):
-        """
-        Checks if the argument being selected is a correct one.
-
-        :param arg: Argument being selected in the command line.
-        :return True is 'arg' is a correct one, False otherwise.
-        """
-        return arg in unit_test_target_list
-
-    def _argIsCmakeLibOrTestTargetValid(self, arg):
-        """
-        Checks if the argument being selected is a correct one.
-
-        :param arg: Argument being selected in the command line.
-        :return True is 'arg' is a correct one, False otherwise.
-        """
-        return (arg in target_list) or (arg in unit_test_target_list)
-
-    def _argIsCmakeCoverageTargetValid(self, arg):
-        """
-        Checks if the argument being selected is a correct one.
-
-        :param arg: Argument being selected in the command line.
-        :return True is 'arg' is a correct one, False otherwise.
-        """
-        return arg in coverage_target_list
-
-    def _argIsCmakeAsanTargetValid(self, arg):
-        """
-        Checks if the argument being selected is a correct one.
-
-        :param arg: Argument being selected in the command line.
-        :return True is 'arg' is a correct one, False otherwise.
-        """
-        return arg in asan_target_list
 
     def _targetIsValid(self, arg):
         """
@@ -82,16 +41,16 @@ class CommandLineParser:
         """
         action = False
         parser = argparse.ArgumentParser()
-        parser.add_argument("-r", "--readytoreview", help="Run all the quality checks needed to create a PR. Example: python3 build.py -r <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
-        parser.add_argument("-m", "--make", help="Compile the lib. Example: python3 build.py -m <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
-        parser.add_argument("-t", "--tests", help="Run tests (should be configured with TEST=on). Example: python3 build.py -t <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
-        parser.add_argument("-c", "--coverage", help="Collect tests coverage and generates report. Example: python3 build.py -c <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
-        parser.add_argument("-v", "--valgrind", help="Run valgrind on tests. Example: python3 build.py -v <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
-        parser.add_argument("--clean", help="Clean the lib. Example: python3 build.py --clean <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
-        parser.add_argument("--cppcheck", help="Run cppcheck on the code. Example: python3 build.py --cppcheck <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
-        parser.add_argument("--asan", help="Run ASAN on the code. Example: python3 build.py --asan <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
-        parser.add_argument("--scheck", help="Run AStyle on the code for checking purposes. Example: python3 build.py --scheck <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
-        parser.add_argument("--sformat", help="Run AStyle on the code formatting the needed files. Example: python3 build.py --sformat <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
+        parser.add_argument("-r", "--readytoreview", help="Run all the quality checks needed to create a PR. Example: python3 build.py -r <sysinfo|dbsync|rsync|utils_unit_test|syscollector>")
+        parser.add_argument("-m", "--make", help="Compile the lib. Example: python3 build.py -m  <sysinfo|dbsync|rsync|utils_unit_test|syscollector>")
+        parser.add_argument("-t", "--tests", help="Run tests (should be configured with TEST=on). Example: python3 build.py -t  <sysinfo|dbsync|rsync|utils_unit_test|syscollector>")
+        parser.add_argument("-c", "--coverage", help="Collect tests coverage and generates report. Example: python3 build.py -c  <sysinfo|dbsync|rsync|utils_unit_test|syscollector>")
+        parser.add_argument("-v", "--valgrind", help="Run valgrind on tests. Example: python3 build.py -v  <sysinfo|dbsync|rsync|utils_unit_test|syscollector>")
+        parser.add_argument("--clean", help="Clean the lib. Example: python3 build.py --clean  <sysinfo|dbsync|rsync|utils_unit_test|syscollector>")
+        parser.add_argument("--cppcheck", help="Run cppcheck on the code. Example: python3 build.py --cppcheck  <sysinfo|dbsync|rsync|utils_unit_test|syscollector>")
+        parser.add_argument("--asan", help="Run ASAN on the code. Example: python3 build.py --asan  <sysinfo|dbsync|rsync|utils_unit_test|syscollector>")
+        parser.add_argument("--scheck", help="Run AStyle on the code for checking purposes. Example: python3 build.py --scheck  <sysinfo|dbsync|rsync|utils_unit_test|syscollector>")
+        parser.add_argument("--sformat", help="Run AStyle on the code formatting the needed files. Example: python3 build.py --sformat  <sysinfo|dbsync|rsync|utils_unit_test|syscollector>")
         parser.add_argument("--scanbuild", help="Run scan-build on the code. Example: python3 build.py --scanbuild <agent|server|winagent>")
 
         args = parser.parse_args()
@@ -99,31 +58,31 @@ class CommandLineParser:
             utils.runReadyToReview(args.readytoreview)
             action = True
         else:
-            if self._argIsCmakeLibOrTestTargetValid(args.clean):
+            if self._argIsCmakeLibTargetValid(args.clean):
                 utils.cleanLib(args.clean)
                 action = True
-            if self._argIsCmakeLibOrTestTargetValid(args.make):
+            if self._argIsCmakeLibTargetValid(args.make):
                 utils.makeLib(args.make)
                 action = True
-            if self._argIsCmakeLibOrTestTargetValid(args.tests):
+            if self._argIsCmakeLibTargetValid(args.tests):
                 utils.runTests(args.tests)
                 action = True
-            if self._argIsCmakeCoverageTargetValid(args.coverage):
+            if self._argIsCmakeLibTargetValid(args.coverage):
                 utils.runCoverage(args.coverage)
                 action = True
-            if self._argIsCmakeTestTargetValid(args.valgrind):
+            if self._argIsCmakeLibTargetValid(args.valgrind):
                 utils.runValgrind(args.valgrind)
                 action = True
-            if self._argIsCmakeLibOrTestTargetValid(args.cppcheck):
+            if self._argIsCmakeLibTargetValid(args.cppcheck):
                 utils.runCppCheck(args.cppcheck)
                 action = True
-            if self._argIsCmakeAsanTargetValid(args.asan):
+            if self._argIsCmakeLibTargetValid(args.asan):
                 utils.runASAN(args.asan)
                 action = True
-            if self._argIsCmakeLibOrTestTargetValid(args.scheck):
+            if self._argIsCmakeLibTargetValid(args.scheck):
                 utils.runAStyleCheck(args.scheck)
                 action = True
-            if self._argIsCmakeLibOrTestTargetValid(args.sformat):
+            if self._argIsCmakeLibTargetValid(args.sformat):
                 utils.runAStyleFormat(args.sformat)
                 action = True
             if self._targetIsValid(args.scanbuild):
