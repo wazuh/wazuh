@@ -5406,6 +5406,7 @@ int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output
     const char *error = NULL;
     cJSON *j_id = NULL;
     cJSON *j_status_code = NULL;
+    cJSON *j_version = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
@@ -5416,13 +5417,15 @@ int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output
     } else {
         j_id = cJSON_GetObjectItem(agent_data, "id");
         j_status_code = cJSON_GetObjectItem(agent_data, "status_code");
+        j_version = cJSON_GetObjectItem(agent_data, "version");
 
-        if (cJSON_IsNumber(j_id) && cJSON_IsNumber(j_status_code)) {
+        if (cJSON_IsNumber(j_id) && cJSON_IsNumber(j_status_code) && cJSON_IsString(j_version)) {
             // Getting each field
             int id = j_id->valueint;
             int status_code = j_status_code->valueint;
+            char *version = j_version->valuestring;
 
-            if (OS_SUCCESS != wdb_global_update_agent_status_code(wdb, id, status_code)) {
+            if (OS_SUCCESS != wdb_global_update_agent_status_code(wdb, id, status_code, version)) {
                 mwarn("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);

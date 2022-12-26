@@ -447,7 +447,7 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char *co
     }
 }
 
-int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code) {
+int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, char *version) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -467,7 +467,12 @@ int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code) {
         return OS_INVALID;
     }
 
-    if (sqlite3_bind_int(stmt, 2, id) != SQLITE_OK) {
+    if (sqlite3_bind_text(stmt, 2, version) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    if (sqlite3_bind_int(stmt, 3, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }

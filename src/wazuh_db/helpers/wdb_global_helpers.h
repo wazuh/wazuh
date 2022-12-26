@@ -121,7 +121,7 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_status_code(int id, agent_disconnected_status_code_t status_code, int *sock);
+int wdb_update_agent_status_code(int id, agent_disconnected_status_code_t status_code, const char *version, int *sock);
 
 /**
  * @brief Returns an array containing the ID of every agent (except 0), ended with -1.

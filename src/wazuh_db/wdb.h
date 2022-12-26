@@ -53,8 +53,7 @@
 
 /// Enumeration of agents disconected status reasons.
 typedef enum agent_disconnected_status_code_t {
-        NOT_APPLY,          ///< Not apply to other status than disconnected
-        INVALID_VERSION,    ///< Invalid anget version
+        INVALID_VERSION = 1,    ///< Invalid anget version
         HC_SHUTDOWN_RECV,   ///< Shutdown message received
         NO_KEEPALIVE           ///< Disconnected because no keepalive received.
 } agent_disconnected_status_code_t;
@@ -1843,9 +1842,10 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* co
  * @param [in] wdb The Global struct database.
  * @param [in] id The agent ID.
  * @param [in] status_code The status code to be set.
+ * @param [in] version The agent version to be set.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code);
+int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, char *version);
 
 /**
  * @brief Function to delete an agent from the agent table.
