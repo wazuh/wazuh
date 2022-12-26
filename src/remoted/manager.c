@@ -298,15 +298,17 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                         char msg_err[OS_FLSIZE + 1] = "";
                         snprintf(msg_err, OS_FLSIZE, "%s%s%s", CONTROL_HEADER, HC_ERROR, error_msg_string);
                         send_msg(key->id, msg_err, -1);
-                        cJSON_Delete(agent_info);
-                        cJSON_Delete(error_msg);
-                        os_free(error_msg_string);
-                        os_free(clean);
+
                         result = wdb_update_agent_status_code(atoi(key->id), INVALID_VERSION, version->valuestring, wdb_sock);
 
                         if (OS_SUCCESS != result) {
                             mwarn("Unable to set status code for agent: %s", key->id);
                         }
+
+                        cJSON_Delete(agent_info);
+                        cJSON_Delete(error_msg);
+                        os_free(error_msg_string);
+                        os_free(clean);
 
                         return;
                     }

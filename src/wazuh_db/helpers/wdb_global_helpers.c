@@ -390,14 +390,13 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
     return result;
 }
 
-int wdb_update_agent_status_code(int id, agent_disconnected_status_code_t status_code, const char *version, int *sock) {
+int wdb_update_agent_status_code(int id, agent_disconnected_status_code_t status_code, char *version, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
     char *wdbquery = NULL;
     char *wdboutput = NULL;
     char *payload = NULL;
-    char *wazuh_version = NULL;
     int aux_sock = -1;
 
     data_in = cJSON_CreateObject();
@@ -407,7 +406,8 @@ int wdb_update_agent_status_code(int id, agent_disconnected_status_code_t status
         return OS_INVALID;
     }
 
-    snprintf(wazuh_version, 128, "%s %s", __ossec_name, version);
+    char wazuh_version[OS_SIZE_128 + 1] = "";
+    snprintf(wazuh_version, OS_SIZE_128, "%s %s", __ossec_name, version);
 
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddNumberToObject(data_in, "status_code", status_code);
