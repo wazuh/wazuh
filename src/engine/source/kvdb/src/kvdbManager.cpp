@@ -413,7 +413,7 @@ bool KVDBManager::deleteKey(const std::string& name, const std::string& key)
     auto& kvdb = std::get<KVDBHandle>(handle);
 
     result = kvdb->deleteKey(key); // TODO check if exist before delete
-    return result;
+    return result; // TODO Change to variant
 }
 
 bool KVDBManager::isDBOnPath(const std::string& name)
@@ -432,31 +432,39 @@ bool KVDBManager::isLoaded(const std::string& name)
 
 std::optional<std::string> KVDBManager::deleteDB(const std::string& name)
 {
-    std::shared_lock lk(m_mtx);
-    // TODO: Fix this. concurrency issues
-    if (isLoaded(name))
+    const auto MAX_USE_COUNT = 2; // 1 for the map and 1 for getHandler
+
+    auto res = getHandler(name);
+    if (std::holds_alternative<base::Error>(res))
     {
-        // TODO: double check instances because it could have been updated
-        auto preInstanceCount = m_loadedDBs[name].use_count();
-        const auto kvdbHandle = m_loadedDBs[name];
-        if (preInstanceCount > 1)
-        {
-            return fmt::format("Database \"{}\" is already in use", name);
-        }
-        else if (preInstanceCount == 1)
-        {
-            // When the only reference to the handle is in the map itself so clean it
-            unloadDB(name);
-        }
+        return std::get<base::Error>(res).message;
     }
 
-    KVDBHandle dbHandle;
-    if (!getDBFromPath(name, dbHandle))
+    // Check if the database is loaded
+    auto& handler = std::get<KVDBHandle>(res);
+    if (handler.use_count() > MAX_USE_COUNT)
     {
-        return fmt::format("Database \"{}\" could not be obtained", name);
+        return fmt::format(
+            "Database '{}' is already in use '{}' times", name, handler.use_count() - MAX_USE_COUNT);
     }
 
-    dbHandle->cleanupOnClose();
+    // Delete the reference of the database list
+    {
+        auto lock = std::unique_lock {m_mtx};
+        // Check again because it could have changed while waiting for the lock
+        // Its more efficient to check again than to lock the mutex before checking the
+        // first time
+        if (handler.use_count() == MAX_USE_COUNT)
+        {
+            m_loadedDBs.erase(name);
+        } else {
+            return fmt::format(
+                "Database '{}' is already in use '{}' times", name, handler.use_count() - MAX_USE_COUNT);
+        }
+    }
+    // Mark for deletion
+    handler->cleanupOnClose();
+
     return std::nullopt;
 }
 

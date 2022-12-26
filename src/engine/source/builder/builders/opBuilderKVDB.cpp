@@ -3,13 +3,15 @@
 #include <string>
 
 #include <fmt/format.h>
+
 #include <json/json.hpp>
 #include <kvdb/kvdbManager.hpp>
+#include <utils/stringUtils.hpp>
 
 #include "baseHelper.hpp"
 #include "baseTypes.hpp"
 #include "syntax.hpp"
-#include <utils/stringUtils.hpp>
+
 
 namespace builder::internals::builders
 {
@@ -38,16 +40,11 @@ base::Expression KVDBExtract(const std::any& definition,
 
     // Get DB
     // TODO: Fix once KVDB is refactored
-    auto kvdb = kvdbManager->getDB(dbName);
-    if (!kvdb)
+    auto result = kvdbManager->getHandler(dbName);
+    if (std::holds_alternative<base::Error>(result))
     {
-        kvdbManager->loadDB(dbName, false);
-        kvdb = kvdbManager->getDB(dbName);
-        if (!kvdb)
-        {
-            throw std::runtime_error(fmt::format(
-                "Engine KVDB builder: Database '{}' is not available.", dbName));
-        }
+        throw std::runtime_error(fmt::format("Engine KVDB builder: {}.",
+                                             std::get<base::Error>(result).message));
     }
 
     // Trace messages
@@ -73,8 +70,9 @@ base::Expression KVDBExtract(const std::any& definition,
     // Return Expression
     return base::Term<base::EngineOp>::create(
         name,
-        [=, kvdb = std::move(kvdb), targetField = std::move(targetField)](
-            base::Event event)
+        [=,
+         kvdb = std::get<kvdb_manager::KVDBHandle>(result),
+         targetField = std::move(targetField)](base::Event event)
         {
             // Get DB key
             std::string resolvedKey;
@@ -165,16 +163,11 @@ base::Expression existanceCheck(const std::any& definition,
 
     // Get DB
     // TODO: Fix once KVDB is refactored
-    auto kvdb = kvdbManager->getDB(dbName);
-    if (!kvdb)
+    auto result = kvdbManager->getHandler(dbName);
+    if (std::holds_alternative<base::Error>(result))
     {
-        kvdbManager->loadDB(dbName, false);
-        kvdb = kvdbManager->getDB(dbName);
-        if (!kvdb)
-        {
-            throw std::runtime_error(fmt::format(
-                "Engine KVDB builder: Database '{}' is not available.", dbName));
-        }
+        throw std::runtime_error(fmt::format("Engine KVDB builder: {}.",
+                                             std::get<base::Error>(result).message));
     }
 
     std::string successTrace = fmt::format("[{}] -> Success", name);
@@ -185,7 +178,7 @@ base::Expression existanceCheck(const std::any& definition,
 
     return base::Term<base::EngineOp>::create(
         name,
-        [=, kvdb = std::move(kvdb), targetField = std::move(targetField)](
+        [=, kvdb = std::get<kvdb_manager::KVDBHandle>(result), targetField = std::move(targetField)](
             base::Event event)
         {
             bool found = false;
