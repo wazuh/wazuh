@@ -47,9 +47,6 @@ class KVDBManager
      */
     bool isDBOnPath(const std::string& name);
 
-    // Move this to public and use in opbuilders
-    std::variant<KVDBHandle, base::Error> getHandler(const std::string& name);
-
 public:
     KVDBManager(const std::filesystem::path& dbStoragePath);
     ~KVDBManager() = default;
@@ -89,6 +86,8 @@ public:
      * @return KVDBHandle where to access KVDB functionality.
      */
     KVDBHandle getDB(const std::string& name); // I think this its wrong, bad implementation
+
+    std::variant<KVDBHandle, base::Error> getHandler(const std::string& name);
 
     /**
      * @brief Get the Available KVDB object
