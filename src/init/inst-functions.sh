@@ -743,7 +743,6 @@ InstallCommon()
         if [ -f build/lib/libdbsync.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 build/lib/libdbsync.dylib ${INSTALLDIR}/lib
-            install_name_tool -id @rpath/../lib/libdbsync.dylib ${INSTALLDIR}/lib/libdbsync.dylib
         fi
     elif [ -f build/lib/libdbsync.so ]
     then
@@ -759,8 +758,6 @@ InstallCommon()
         if [ -f build/lib/librsync.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 build/lib/librsync.dylib ${INSTALLDIR}/lib
-            install_name_tool -id @rpath/../lib/librsync.dylib ${INSTALLDIR}/lib/librsync.dylib
-            install_name_tool -change $(PWD)/build/lib/libdbsync.dylib @rpath/../lib/libdbsync.dylib ${INSTALLDIR}/lib/librsync.dylib
         fi
     elif [ -f build/lib/librsync.so ]
     then
@@ -776,7 +773,6 @@ InstallCommon()
         if [ -f build/lib/libsysinfo.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 build/lib/libsysinfo.dylib ${INSTALLDIR}/lib
-            install_name_tool -id @rpath/../lib/libsysinfo.dylib ${INSTALLDIR}/lib/libsysinfo.dylib
         fi
     elif [ -f build/lib/libsysinfo.so ]
     then
@@ -792,10 +788,6 @@ InstallCommon()
         if [ -f build/lib/libsyscollector.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 build/lib/libsyscollector.dylib ${INSTALLDIR}/lib
-            install_name_tool -id @rpath/../lib/libsyscollector.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
-            install_name_tool -change $(PWD)/build/lib/libsysinfo.dylib @rpath/../lib/libsysinfo.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
-            install_name_tool -change $(PWD)/build/lib/librsync.dylib @rpath/../lib/librsync.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
-            install_name_tool -change $(PWD)/build/lib/libdbsync.dylib @rpath/../lib/libdbsync.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
         fi
     elif [ -f build/lib/libsyscollector.so ]
     then
