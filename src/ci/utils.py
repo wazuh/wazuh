@@ -97,7 +97,7 @@ smokeTestsDic = {
             'args': []
         }
     ],
-    'data_provider': [
+    'sysinfo': [
         {
             'test_tool_name': 'sysinfo_test_tool',
             'is_smoke_with_configuration': False,
@@ -110,26 +110,15 @@ deleteFolderDic = {
     'syscollector':                 ['build', 'smokeTests/output'],
     'dbsync':                       ['build', 'smokeTests/output'],
     'rsync':                        ['build', 'smokeTests/output'],
-    'data_provider':                ['build', 'smokeTests/output'],
-    'utils_unit_test':              ['build'],
+    'sysinfo':                      ['build', 'smokeTests/output'],
     'all':                          ['build'],
 }
 
 targetsFolderDic = {
     'syscollector' : 'wazuh_modules/syscollector',
     'dbsync' : 'shared_modules/dbsync',
-    'dbsync_test_tool' : 'shared_modules/dbsync/testtool',
-    'dbsync_example' : 'shared_modules/dbsync/example',
     'rsync' : 'shared_modules/rsync',
-    'rsync_test_tool' : 'shared_modules/rsync/testtool',
     'sysinfo' : 'data_provider',
-    'data_provider' : 'data_provider',
-    'sysinfo_test_tool' : 'data_provider/testtool',
-    'syscollector_unit_test' : 'wazuh_modules/syscollector/tests',
-    'dbsync_unit_test' : 'shared_modules/dbsync/tests',
-    'dbsync_integration_tests' : 'shared_modules/dbsync/integrationTests',
-    'rsync_unit_test' : 'shared_modules/rsync/tests',
-    'data_provider_unit_test' : 'data_provider/tests',
     'utils_unit_test' : 'shared_modules/utils/tests',
     'utils_unit_test_coverage' : 'shared_modules/utils',
     'all' : '.',
@@ -140,36 +129,22 @@ currentBuildDir = Path(__file__).parent
 currentSrcDir = currentBuildDir.parent
 cmakeBuildDir = f'{currentSrcDir}/build/'
 
-def currentDirPath(moduleName):
+def getModuleBuildPath(moduleName='all'):
     """
-    Gets the current dir path based on 'moduleName'
+    Gets the current build path based on 'moduleName'
 
     :param moduleName: Lib to get the path of.
     :return Lib dir path
     """
-    currentDir = os.path.join(currentBuildDir.parent, str(moduleName))
-    if str(moduleName) == 'shared_modules/utils':
-        currentDir = os.path.join(currentDir, 'tests/')
-
-    return currentDir
-
-
-def currentDirPathBuild(moduleName):
-    """
-    Gets the current dir path build based on 'moduleName'
-
-    :param moduleName: Lib to get the path of.
-    :return Lib dir path build folder
-    """
-    currentDir = currentDirPath(moduleName)
-    return os.path.join(currentDir, 'build')
-
-def getModuleBuildPath(moduleName='all'):
-
     return os.path.join(cmakeBuildDir, targetsFolderDic[moduleName])
 
 def getModuleSourcePath(moduleName='all'):
+    """
+    Gets the current source path based on 'moduleName'
 
+    :param moduleName: Lib to get the path of.
+    :return Lib dir path
+    """
     return os.path.join(currentSrcDir, targetsFolderDic[moduleName])
 
 
@@ -289,7 +264,7 @@ def runCoverage(moduleName):
     :param moduleName: Lib to be analyzed using gcov and lcov tools.
     """
     moduleNameCoverage = moduleName if moduleName != 'utils_unit_test' else 'utils_unit_test_coverage'
-    currentDir = getModuleSourcePath(moduleName)
+    currentDir = getModuleSourcePath(moduleNameCoverage)
     reportFolder = os.path.join(currentDir, 'coverage_report')
     includeDir = Path(currentDir)
     moduleCMakeFiles = ""
