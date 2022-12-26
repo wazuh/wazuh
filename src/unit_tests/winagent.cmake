@@ -18,22 +18,24 @@ if(NOT WAZUHEXT)
 endif()
 
 # Find the wazuh sysinfo library
-find_library(SYSINFO NAMES sysinfo HINTS "${SRC_FOLDER}/data_provider/build/bin")
+find_library(SYSINFO NAMES sysinfo HINTS "${SRC_FOLDER}/build/bin")
 set(uname "Win32")
 
 if(NOT SYSINFO)
   message(FATAL_ERROR "SYSINFO is set to '${SYSINFO}', but did not find any file matching ${SRC_FOLDER}/${CMAKE_FIND_LIBRARY_PREFIXES}sysinfo${CMAKE_FIND_LIBRARY_SUFFIXES}")
-  message(FATAL_ERROR "libsysinfo not found in ${SRC_FOLDER}/data_provider/build/bin Aborting...")
+  message(FATAL_ERROR "libsysinfo not found in ${SRC_FOLDER}/build/bin Aborting...")
 endif()
 
 # Win32 pthread library
 find_library(PTHREAD NAMES libwinpthread-1.dll HINTS "${SRC_FOLDER}/win32")
+
 if(NOT PTHREAD)
   message(FATAL_ERROR "libwinpthread-1.dll not found in ${SRC_FOLDER}/win32 Aborting...")
 endif()
 
 # Static cmocka
 find_library(STATIC_CMOCKA NAMES libcmocka.a libcmocka-static.a HINTS "/usr/i686-w64-mingw32/sys-root/mingw/lib/" "/usr/i686-w64-mingw32/lib/")
+
 if(NOT STATIC_CMOCKA)
   message(FATAL_ERROR "libcmocka.a not found in /usr/i686-w64-mingw32/sys-root/mingw/lib/ Aborting...")
 endif()
@@ -71,7 +73,7 @@ set_source_files_properties(
   PROPERTIES
   EXTERNAL_OBJECT true
   GENERATED true
-  )
+)
 set_target_properties(
   DEPENDENCIES_O
   PROPERTIES
