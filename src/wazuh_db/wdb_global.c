@@ -463,11 +463,11 @@ int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, cha
     stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE];
 
     if (sqlite3_bind_int(stmt, 1, status_code) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 
-    if (sqlite3_bind_text(stmt, 2, version) != SQLITE_OK) {
+    if (sqlite3_bind_text(stmt, 2, version, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
