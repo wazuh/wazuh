@@ -469,18 +469,18 @@ struct KVDB::Impl
         return true;
     }
 
-    bool deleteKey(const std::string& key, const std::string& columnName)
+    std::optional<base::Error> deleteKey(const std::string& key, const std::string& columnName)
     {
         if (key.empty() || columnName.empty())
         {
-            return false;
+            return base::Error {"Empty key or column name"};
         }
 
         std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
         {
-            return false;
+            return base::Error {"Cannot get column family handle"};
         }
 
         // Sync to ensure that the proccess has instant effect
@@ -495,11 +495,10 @@ struct KVDB::Impl
                             key,
                             columnName,
                             s.ToString());
-            return false;
+            return base::Error {"Couldn't delete key: " + s.ToString()};
         }
 
-        WAZUH_LOG_INFO("Engine KVDB: Database '{}': Key '{}' deleted.", m_name, key);
-        return true;
+        return std::nullopt;
     }
 
     bool close()
@@ -690,7 +689,7 @@ std::variant<std::string, base::Error> KVDB::read(const std::string& key,
     return mImpl->read(key, columnName);
 }
 
-bool KVDB::deleteKey(const std::string& key, const std::string& columnName)
+std::optional<base::Error> KVDB::deleteKey(const std::string& key, const std::string& columnName)
 {
     return mImpl->deleteKey(key, columnName);
 }

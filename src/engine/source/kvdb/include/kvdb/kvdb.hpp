@@ -180,7 +180,7 @@ public:
      * @return true if the key was successfully deleted
      * @return false if the key wasn't successfully deleted
      */
-    bool deleteKey(const std::string& key,
+    std::optional<base::Error> deleteKey(const std::string& key,
                    const std::string& columnName = DEFAULT_CF_NAME);
 
     /**

@@ -402,18 +402,17 @@ std::variant<json::Json, base::Error> KVDBManager::getJValue(const std::string& 
     return jValue;
 }
 
-bool KVDBManager::deleteKey(const std::string& name, const std::string& key)
+std::optional<base::Error> KVDBManager::deleteKey(const std::string& name, const std::string& key)
 {
     bool result {false};
     auto handle = getHandler(name);
     if (std::holds_alternative<base::Error>(handle))
     {
-        return result;
+        return std::get<base::Error>(handle);
     }
     auto& kvdb = std::get<KVDBHandle>(handle);
 
-    result = kvdb->deleteKey(key); // TODO check if exist before delete
-    return result; // TODO Change to variant
+    return kvdb->deleteKey(key);
 }
 
 bool KVDBManager::isDBOnPath(const std::string& name)
