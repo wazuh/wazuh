@@ -25,9 +25,6 @@ constexpr bool NO_ERROR_IF_EXISTS {false};
 constexpr bool CREATE_IF_MISSING {true};
 constexpr bool DONT_CREATE_IF_MISSING {false};
 
-// TODO: Delete this
-constexpr const char* LEGACY_DIRECTORY {"legacy"};
-
 } // namespace
 
 KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath)
@@ -38,35 +35,23 @@ KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath)
     // TODO Remove this when Engine is integrated in Wazuh installation
     std::filesystem::create_directories(dbStoragePath);
     m_dbStoragePath = dbStoragePath;
-
-    auto legacyPath = m_dbStoragePath;
-    legacyPath.append(LEGACY_DIRECTORY);
-    if (std::filesystem::exists(legacyPath))
-    {
-        for (const auto& cdbfile : std::filesystem::directory_iterator(legacyPath))
-        {
-            // Read it from the config file?
-            if (cdbfile.is_regular_file())
-            {
-                // TODO: check this method result
-                createDBfromCDB(cdbfile.path());
-            }
-        }
-    }
 }
 
 KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)
 {
-    if (isLoaded(name))
+    std::unique_lock lkW(m_mtx);
+    const bool isLoaded = m_dbs.find(name) != m_dbs.end();
+
+    if (isLoaded)
     {
-        WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Database with name \"{}\" "
+        WAZUH_LOG_DEBUG("Engine KVDB manager: '{}' method: Database with name '{}' "
                         "already loaded.",
                         __func__,
                         name);
         return nullptr;
     }
 
-    WAZUH_LOG_DEBUG("Engine KVDB manager: \"{}\" method: Loading database \"{}\" to the "
+    WAZUH_LOG_DEBUG("Engine KVDB manager: '{}' method: Loading database '{}' to the "
                     "available databases list.",
                     __func__,
                     name);
@@ -75,79 +60,33 @@ KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)
     if (KVDB::CreationStatus::OkInitialized == result
         || KVDB::CreationStatus::OkCreated == result)
     {
-        std::unique_lock lk(m_mtx);
-        m_loadedDBs[name] = kvdb;
-        return m_loadedDBs[name];
+        m_dbs[name] = kvdb;
+        return kvdb;
     }
 
     return nullptr;
 }
 
-bool KVDBManager::createDBfromCDB(const std::filesystem::path& path)
+void KVDBManager::unloadDB(const std::string& name)
 {
-    std::ifstream CDBfile(path);
-    if (!CDBfile.is_open())
+    std::unique_lock lkW(m_mtx);
+    const bool isLoaded = m_dbs.find(name) != m_dbs.end();
+
+    if (isLoaded)
     {
-        WAZUH_LOG_ERROR(
-            "Engine KVDB manager: \"{}\" method: CDB file \"{}\" could not be opened.",
-            __func__,
-            path.string());
-        return false;
+        m_dbs.erase(name);
     }
-
-    const std::string name {path.stem().string()};
-    KVDBHandle kvdbHandle {loadDB(name, true)};
-    if (!kvdbHandle)
-    {
-        WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Failed to create database "
-                        "\"{}\" from CDB file \"{}\".",
-                        __func__,
-                        name,
-                        path.string());
-        return false;
-    }
-
-    for (std::string line; getline(CDBfile, line);)
-    {
-        line.erase(std::remove_if(line.begin(), line.end(), isspace), line.end());
-        auto kv = utils::string::split(line, ':');
-        if (kv.empty() || kv.size() > 2)
-        {
-            WAZUH_LOG_ERROR(
-                "Engine KVDB manager: \"{}\" method: CDB file \"{}\" could not be read.",
-                __func__,
-                path.string());
-            return false;
-        }
-
-        kvdbHandle->write(kv[0], kv.size() == 2 ? kv[1] : "");
-    }
-
-    return true;
-}
-
-bool KVDBManager::unloadDB(const std::string& name)
-{
-    if (!isLoaded(name))
-    {
-        WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Database \"{}\" is not "
-                        "present on the KVDB manager databases list.",
-                        __func__,
-                        name);
-        return false;
-    }
-
-    std::unique_lock lk(m_mtx);
-    m_loadedDBs.erase(name);
-
-    return true;
 }
 
 KVDBHandle KVDBManager::getDB(const std::string& name)
 {
-    if (isLoaded(name))
+    std::shared_lock lkReadDBs(m_mtx);
+
+    const bool isLoaded = m_dbs.find(name) != m_dbs.end();
+
+    if (isLoaded)
     {
-        auto db = m_loadedDBs[name];
+        auto db = m_dbs[name];
         if (!db->isReady())
         {
             // In general it should never happen so we should consider just
@@ -156,8 +95,8 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
             if (initResult != KVDB::CreationStatus::OkCreated
                 || initResult != KVDB::CreationStatus::OkInitialized)
             {
-                WAZUH_LOG_ERROR("Engine KVDB manager: \"{}\" method: Error initializing "
-                                "database \"{}\".",
+                WAZUH_LOG_ERROR("Engine KVDB manager: '{}' method: Error initializing "
+                                "database '{}'.",
                                 __func__,
                                 db->getName());
                 return nullptr;
@@ -173,32 +112,27 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
 
 std::vector<std::string> KVDBManager::listDBs(bool loaded)
 {
-    std::vector<std::string> list;
+    std::vector<std::string> list {};
 
     if (loaded)
     {
-        if (m_loadedDBs.size() > 0)
-        {
-            for (const auto& var : m_loadedDBs)
-            {
-                list.emplace_back(var.first);
-            }
-        }
+        std::shared_lock lkReadDBs(m_mtx);
+        // Copy the keys to the list
+        std::transform(m_dbs.begin(),
+                       m_dbs.end(),
+                       std::back_inserter(list),
+                       [](const auto& kv) { return kv.first; });
     }
     else
     {
-        for (const auto& path : std::filesystem::directory_iterator(m_dbStoragePath))
+        // Check the folders in the storage path
+        // Assuming that the folder name is the database name
+        auto dir = std::filesystem::directory_iterator(m_dbStoragePath);
+        for (const auto& entry : dir)
         {
-            if (path.is_directory())
+            if (entry.is_directory())
             {
-                std::string name {path.path().stem().string()};
-                if (name != LEGACY_DIRECTORY)
-                {
-                    if (isDBOnPath(name))
-                    {
-                        list.emplace_back(name);
-                    }
-                }
+                list.push_back(entry.path().filename().string());
             }
         }
     }
@@ -206,12 +140,13 @@ std::vector<std::string> KVDBManager::listDBs(bool loaded)
     return list;
 }
 
-std::variant<KVDBHandle, base::Error> KVDBManager::getHandler(const std::string& name)
+std::variant<KVDBHandle, base::Error> KVDBManager::getHandler(const std::string& name,
+                                                              bool createIfMissing)
 {
     auto kvdb = getDB(name);
     if (!kvdb)
     {
-        loadDB(name, false);
+        loadDB(name, createIfMissing);
         kvdb = getDB(name);
         if (!kvdb)
         {
@@ -222,31 +157,18 @@ std::variant<KVDBHandle, base::Error> KVDBManager::getHandler(const std::string&
     return kvdb;
 }
 
-std::string KVDBManager::CreateAndFillDBfromFile(const std::string& dbName,
-                                                 const std::filesystem::path& path)
+std::optional<base::Error> KVDBManager::CreateFromJFile(const std::string& dbName,
+                                                        const std::filesystem::path& path)
 {
-    auto dbHandle = std::make_shared<KVDB>(dbName, m_dbStoragePath);
+    std::vector<std::tuple<std::string, json::Json>> entries {};
 
-    // Initialize it only if it doesn't exist
-    auto initResult = dbHandle->init(CREATE_IF_MISSING, ERROR_IF_EXISTS);
-
-    if (initResult == KVDB::CreationStatus::ErrorDatabaseAlreadyExists)
-    {
-        return fmt::format("Database \"{}\" already exists", dbName);
-    }
-    else if (initResult == KVDB::CreationStatus::ErrorDatabaseBusy)
-    {
-        return fmt::format("Database \"{}\" is already in use", dbName);
-    }
-    else if (initResult != KVDB::CreationStatus::OkCreated)
-    {
-        return fmt::format("Database \"{}\" could not be created", dbName);
-    }
-
+    // Open file and read content
     if (!path.empty())
     {
         // Open file and read content
         std::string contents;
+        // TODO: No check the size, the location, the type of file, the permissions it's a
+        // security issue. The API should be changed to receive a stream instead of a path
         std::ifstream in(path, std::ios::in | std::ios::binary);
         if (in)
         {
@@ -258,9 +180,8 @@ std::string KVDBManager::CreateAndFillDBfromFile(const std::string& dbName,
         }
         else
         {
-            deleteDB(dbName);
-            return fmt::format("An error occurred while opening the file \"{}\"",
-                               path.c_str());
+            return base::Error {fmt::format(
+                "An error occurred while opening the file '{}'", path.c_str())};
         }
 
         json::Json jKv;
@@ -270,49 +191,47 @@ std::string KVDBManager::CreateAndFillDBfromFile(const std::string& dbName,
         }
         catch (const std::exception& e)
         {
-            deleteDB(dbName);
-            return fmt::format("An error occurred while parsing the JSON file \"{}\"",
-                               path.c_str());
+            return base::Error {fmt::format(
+                "An error occurred while parsing the JSON file '{}'", path.c_str())};
         }
 
         if (!jKv.isObject())
         {
-            deleteDB(dbName);
-            return fmt::format("An error occurred while parsing the JSON file \"{}\": "
-                               "JSON is not an object",
-                               path.c_str());
+            return base::Error {
+                fmt::format("An error occurred while parsing the JSON file '{}': "
+                            "JSON is not an object",
+                            path.c_str())};
         }
 
-        auto entries = jKv.getObject();
-        for (const auto& [key, value] : entries.value())
-        {
+        entries = jKv.getObject().value();
+    }
 
-            try
-            {
-                auto jsValue = value.str();
-                dbHandle->write(key, jsValue);
-            }
-            catch (const std::exception& e)
-            {
-                deleteDB(dbName);
-                return fmt::format("An error occurred while writing the key \"{}\" to "
-                                   "the database \"{}\"",
-                                   key.c_str(),
-                                   dbName.c_str());
-            }
+    // Check if the database exists
+    {
+        std::shared_lock lkReadDBs(m_mtx);
+        if (m_dbs.find(dbName) != m_dbs.end())
+        {
+            return base::Error {fmt::format("Database '{}' is loaded", dbName)};
+        }
+        else if (exist(dbName))
+        {
+            return base::Error {fmt::format("Database '{}' already exists", dbName)};
         }
     }
 
-    return "OK";
-}
+    // Create the database
+    auto kvdb = getHandler(dbName, true);
+    if (std::holds_alternative<base::Error>(kvdb))
+    {
+        return std::get<base::Error>(kvdb);
+    }
 
-bool KVDBManager::getDBFromPath(const std::string& name, KVDBHandle& dbHandle)
-{
-    dbHandle = std::make_shared<KVDB>(name, m_dbStoragePath);
-    // Initialize it only if it already exists
-    auto result = dbHandle->init(DONT_CREATE_IF_MISSING, NO_ERROR_IF_EXISTS);
-    return (KVDB::CreationStatus::OkInitialized == result
-            || KVDB::CreationStatus::OkCreated == result);
+    for (const auto& [key, value] : entries)
+    {
+        writeKey(dbName, key, value); // TODO check error
+    }
+
+    return std::nullopt;
 }
 
 std::variant<json::Json, base::Error> KVDBManager::jDumpDB(const std::string& name)
@@ -402,7 +321,8 @@ std::variant<json::Json, base::Error> KVDBManager::getJValue(const std::string& 
     return jValue;
 }
 
-std::optional<base::Error> KVDBManager::deleteKey(const std::string& name, const std::string& key)
+std::optional<base::Error> KVDBManager::deleteKey(const std::string& name,
+                                                  const std::string& key)
 {
     bool result {false};
     auto handle = getHandler(name);
@@ -415,18 +335,11 @@ std::optional<base::Error> KVDBManager::deleteKey(const std::string& name, const
     return kvdb->deleteKey(key);
 }
 
-bool KVDBManager::isDBOnPath(const std::string& name)
+bool KVDBManager::exist(const std::string& name)
 {
     auto dbHandle = std::make_shared<KVDB>(name, m_dbStoragePath);
     auto result = dbHandle->init(DONT_CREATE_IF_MISSING, NO_ERROR_IF_EXISTS);
     return (result != KVDB::CreationStatus::ErrorUnknown);
-}
-
-// TODO: Delete this method.
-bool KVDBManager::isLoaded(const std::string& name)
-{
-    auto it = m_loadedDBs.find(name);
-    return (it != m_loadedDBs.end());
 }
 
 std::optional<std::string> KVDBManager::deleteDB(const std::string& name)
@@ -443,22 +356,26 @@ std::optional<std::string> KVDBManager::deleteDB(const std::string& name)
     auto& handler = std::get<KVDBHandle>(res);
     if (handler.use_count() > MAX_USE_COUNT)
     {
-        return fmt::format(
-            "Database '{}' is already in use '{}' times", name, handler.use_count() - MAX_USE_COUNT);
+        return fmt::format("Database '{}' is already in use '{}' times",
+                           name,
+                           handler.use_count() - MAX_USE_COUNT);
     }
 
     // Delete the reference of the database list
     {
-        auto lock = std::unique_lock {m_mtx};
+        std::unique_lock lkW(m_mtx);
         // Check again because it could have changed while waiting for the lock
         // Its more efficient to check again than to lock the mutex before checking the
         // first time
         if (handler.use_count() == MAX_USE_COUNT)
         {
-            m_loadedDBs.erase(name);
-        } else {
-            return fmt::format(
-                "Database '{}' is already in use '{}' times", name, handler.use_count() - MAX_USE_COUNT);
+            m_dbs.erase(name);
+        }
+        else
+        {
+            return fmt::format("Database '{}' is already in use '{}' times",
+                               name,
+                               handler.use_count() - MAX_USE_COUNT);
         }
     }
     // Mark for deletion
