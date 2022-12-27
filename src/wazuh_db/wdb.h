@@ -1845,7 +1845,7 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* co
  * @param [in] version The agent version to be set.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, char *version);
+int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, const char *version, const char *sync_status);
 
 /**
  * @brief Function to delete an agent from the agent table.

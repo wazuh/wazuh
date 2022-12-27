@@ -390,7 +390,7 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
     return result;
 }
 
-int wdb_update_agent_status_code(int id, agent_disconnected_status_code_t status_code, char *version, int *sock) {
+int wdb_update_agent_status_code(int id, agent_disconnected_status_code_t status_code, const char *version, const char *sync_status, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -412,6 +412,7 @@ int wdb_update_agent_status_code(int id, agent_disconnected_status_code_t status
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddNumberToObject(data_in, "status_code", status_code);
     cJSON_AddStringToObject(data_in, "version", wazuh_version);
+    cJSON_AddStringToObject(data_in, "sync_status", sync_status);
     data_in_str = cJSON_PrintUnformatted(data_in);
 
     os_malloc(WDBQUERY_SIZE, wdbquery);

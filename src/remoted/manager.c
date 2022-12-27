@@ -299,7 +299,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                         snprintf(msg_err, OS_FLSIZE, "%s%s%s", CONTROL_HEADER, HC_ERROR, error_msg_string);
                         send_msg(key->id, msg_err, -1);
 
-                        result = wdb_update_agent_status_code(atoi(key->id), INVALID_VERSION, version->valuestring, wdb_sock);
+                        result = wdb_update_agent_status_code(atoi(key->id), INVALID_VERSION, version->valuestring, logr.worker_node ? "syncreq" : "synced", wdb_sock);
 
                         if (OS_SUCCESS != result) {
                             mwarn("Unable to set status code for agent: %s", key->id);
