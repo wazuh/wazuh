@@ -69,6 +69,10 @@ CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prere
 RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/considerations.html#Connection-configuration-for-retries'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
+GUARDDUTY_URL = 'https://documentation.wazuh.com/current/amazon/services/supported-services/guardduty.html'
+GUARDDUTY_DEPRECATED_MESSAGE = 'The functionality to process GuardDuty logs stored in S3 via Kinesis was deprecated ' \
+                               'in {release}. Consider configuring GuardDuty to store its findings directly in an S3 ' \
+                               'bucket instead. Check {url} for more information. '
 DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
 
 # Enable/disable debug mode
@@ -183,7 +187,6 @@ class WazuhIntegration:
                                       iam_role_duration=iam_role_duration
                                       )
 
-
         # db_name is an instance variable of subclass
         self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
         self.db_connector = sqlite3.connect(self.db_path)
@@ -238,9 +241,12 @@ class WazuhIntegration:
                     'mode': 'standard'
                 }
             )
-            debug(f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",2)
+            debug(
+                f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",
+                2)
         else:
-            debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',2)
+            debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',
+                  2)
 
         return args
 
@@ -249,7 +255,6 @@ class WazuhIntegration:
                    sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
 
         conn_args = {}
-
 
         if access_key is not None and secret_key is not None:
             print(DEPRECATED_MESSAGE.format(name="access_key and secret_key", release="4.4", url=CREDENTIALS_URL))
@@ -740,8 +745,9 @@ class AWSBucket(WazuhIntegration):
                 sys.exit(1)
 
         except KeyError:
-            print(f"ERROR: No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of the logs for the bucket "
-                  f"type '{get_script_arguments().type.lower()}'")
+            print(
+                f"ERROR: No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of the logs for the bucket "
+                f"type '{get_script_arguments().type.lower()}'")
             sys.exit(18)
 
     def find_regions(self, account_id):
@@ -899,8 +905,6 @@ class AWSBucket(WazuhIntegration):
         else:
             return io.TextIOWrapper(raw_object)
 
-
-
     def load_information_from_file(self, log_key):
         """
         AWS logs are stored in different formats depending on the service:
@@ -1000,7 +1004,6 @@ class AWSBucket(WazuhIntegration):
                 event_msg = self.get_alert_msg(aws_account_id, log_key, event)
 
                 self.send_event(event_msg)
-
 
     def iter_files_in_bucket(self, aws_account_id=None, aws_region=None):
         try:
@@ -2194,7 +2197,7 @@ class AWSCustomBucket(AWSBucket):
         query_count_custom = self.db_connector.execute(
             self.sql_count_custom.format(table_name=self.db_table_name), {
                 'bucket_path': self.bucket_path,
-                'aws_account_id':  aws_account_id if aws_account_id else self.aws_account_id,
+                'aws_account_id': aws_account_id if aws_account_id else self.aws_account_id,
                 'retain_db_records': self.retain_db_records})
 
         return query_count_custom.fetchone()[0]
@@ -2205,7 +2208,7 @@ class AWSCustomBucket(AWSBucket):
             if self.db_count_custom(aws_account_id) > self.retain_db_records:
                 self.db_connector.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
                     'bucket_path': self.bucket_path,
-                    'aws_account_id':  aws_account_id if aws_account_id else self.aws_account_id,
+                    'aws_account_id': aws_account_id if aws_account_id else self.aws_account_id,
                     'retain_db_records': self.retain_db_records})
         except Exception as e:
             print(f"ERROR: Failed to execute DB cleanup - Path: {self.bucket_path}: {e}")
@@ -2214,8 +2217,49 @@ class AWSCustomBucket(AWSBucket):
 class AWSGuardDutyBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
-        db_table_name = 'guardduty'
-        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+        self.db_table_name = 'guardduty'
+        AWSCustomBucket.__init__(self, self.db_table_name, **kwargs)
+        self.service = 'GuardDuty'
+        if self.check_guardduty_type():
+            self.type = "GuardDutyNative"
+        else:
+            self.type = "GuardDutyKinesis"
+
+    def check_guardduty_type(self):
+        try:
+            return \
+                'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=f'{self.prefix}AWSLogs',
+                                                                Delimiter='/', MaxKeys=1)
+        except Exception as err:
+            if hasattr(err, 'message'):
+                debug(f"+++ Unexpected error: {err.message}", 2)
+            else:
+                debug(f"+++ Unexpected error: {err}", 2)
+            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+            sys.exit(7)
+
+    def get_service_prefix(self, account_id):
+        return AWSLogsBucket.get_service_prefix(self, account_id)
+
+    def get_full_prefix(self, account_id, account_region):
+        if self.type == "GuardDutyNative":
+            return AWSLogsBucket.get_full_prefix(self, account_id, account_region)
+        else:
+            return self.prefix
+
+    def get_base_prefix(self):
+        if self.type == "GuardDutyNative":
+            return AWSLogsBucket.get_base_prefix(self)
+        else:
+            return self.prefix
+
+    def iter_regions_and_accounts(self, account_id, regions):
+        if self.type == "GuardDutyNative":
+            AWSBucket.iter_regions_and_accounts(self, account_id, regions)
+        else:
+            print(GUARDDUTY_DEPRECATED_MESSAGE.format(release="4.5", url=GUARDDUTY_URL))
+            self.check_prefix = True
+            AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)
 
     def send_event(self, event):
         # Send the message (splitted if it is necessary)
@@ -2237,6 +2281,18 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         else:
             AWSBucket.reformat_msg(self, event)
             yield event
+
+    def load_information_from_file(self, log_key):
+        if log_key.endswith('.jsonl.gz'):
+            with self.decompress_file(log_key=log_key) as f:
+                json_list = list(f)
+                result = []
+                for json_item in json_list:
+                    x = json.loads(json_item)
+                    result.append(dict(x, source=x['service']['serviceName']))
+                return result
+        else:
+            return AWSCustomBucket.load_information_from_file(self, log_key)
 
 
 class CiscoUmbrella(AWSCustomBucket):
@@ -2400,7 +2456,6 @@ class AWSALBBucket(AWSLBBucket):
                         debug(f"Log Entry: {log_entry}", msg_level=2)
 
             return tsv_file
-
 
 
 class AWSCLBBucket(AWSLBBucket):
@@ -3436,6 +3491,7 @@ def arg_valid_iam_role_duration(arg_string):
         raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
     return int(arg_string)
 
+
 def get_aws_config_params() -> configparser.RawConfigParser:
     """Read and retrieve parameters from aws config file
 
@@ -3448,6 +3504,7 @@ def get_aws_config_params() -> configparser.RawConfigParser:
     config.read(DEFAULT_AWS_CONFIG_PATH)
 
     return config
+
 
 def get_script_arguments():
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
