@@ -7,6 +7,7 @@ file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
 add_executable(syscollector_test_tool
     ${SYSCOLLECTOR_TESTTOOL_SRC}
 )
+add_definitions(-DWAZUH_UNIT_TESTING)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(syscollector_test_tool
