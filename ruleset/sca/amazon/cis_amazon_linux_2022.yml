@@ -116,7 +116,6 @@ checks:
       - https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/
       - https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html
     condition: any
-    # TODO test
     rules:
       - 'c:findmnt --kernel /tmp -> r:\s/tmp\s'
       - "c:systemctl is-enabled tmp.mount -> r:static|generated"
@@ -139,7 +138,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /tmp | grep nodev -> r:\s/tmp\s && r:nodev'
 
@@ -169,7 +167,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /tmp | grep noexec -> r:\s/tmp\s && r:noexec'
       # - 'c:mount -> r:\s/tmp\s && r:noexec'
@@ -200,7 +197,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /tmp | grep nosuid -> r:\s/tmp\s && r:nosuid'
       # - 'c:mount -> r:\s/tmp\s && r:nosuid'
@@ -233,7 +229,6 @@ checks:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      # TODO test
       - 'c:findmnt --kernel /var -> r:\s/var\s'
       # - 'c:mount -> r:\s/var\s'
 
@@ -263,7 +258,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /var | grep nodev -> r:\s/var\s && r:nodev'
 
@@ -293,7 +287,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /var | grep noexec -> r:\s/var\s && r:noexec'
       # - 'c:mount -> r:\s/var\s && r:noexec'
@@ -324,7 +317,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /var | grep nosuid -> r:\s/var\s && r:nosuid'
       # - 'c:mount -> r:\s/var\s && r:nosuid'
@@ -357,7 +349,6 @@ checks:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      # TODO test
       - 'c:findmnt --kernel /var/tmp -> r:\s/var/tmp\s'
       # - 'c:mount -> r:\s/var\s'
 
@@ -387,7 +378,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /var/tmp | grep noexec -> r:\s/var/tmp\s && r:noexec'
       # - 'c:mount -> r:\s/var/tmp\s && r:noexec'
@@ -418,7 +408,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /var/tmp | grep nosuid -> r:\s/var/tmp\s && r:nosuid'
       # - 'c:mount -> r:\s/var/tmp\s && r:nosuid'
@@ -449,7 +438,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /var/tmp | grep nodev -> r:\s/var/tmp\s && r:nodev'
 
@@ -470,7 +458,6 @@ checks:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      # TODO test
       - 'c:findmnt --kernel /var/log -> r:\s/var/log\s'
       # - 'c:mount -> r:\s/var\s'
 
@@ -500,7 +487,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /var/log | grep nodev -> r:\s/var/log\s && r:nodev'
 
@@ -530,7 +516,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /var/log | grep noexec -> r:\s/var/log\s && r:noexec'
       # - 'c:mount -> r:\s/var/log\s && r:noexec'
@@ -561,7 +546,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /var/log | grep nosuid -> r:\s/var/log\s && r:nosuid'
       # - 'c:mount -> r:\s/var/log\s && r:nosuid'
@@ -583,7 +567,6 @@ checks:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      # TODO test
       - 'c:findmnt --kernel /var/log/audit -> r:\s/var/log/audit\s'
       # - 'c:mount -> r:\s/var\s'
 
@@ -613,7 +596,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /var/log/audit | grep noexec -> r:\s/var/log/audit\s && r:noexec'
       # - 'c:mount -> r:\s/var/log/audit\s && r:noexec'
@@ -644,7 +626,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /var/log/audit | grep nodev -> r:\s/var/log/audit\s && r:nodev'
 
@@ -674,7 +655,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /var/log/audit | grep nosuid -> r:\s/var/log/audit\s && r:nosuid'
       # - 'c:mount -> r:\s/var/log/audit\s && r:nosuid'
@@ -707,7 +687,6 @@ checks:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      # TODO test
       - 'c:findmnt --kernel /home -> r:\s/home\s'
       # - 'c:mount -> r:\s/var\s'
 
@@ -737,7 +716,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /home | grep nodev -> r:\s/home\s && r:nodev'
 
@@ -767,7 +745,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /home | grep nosuid -> r:\s/home\s && r:nosuid'
       # - 'c:mount -> r:\s/home\s && r:nosuid'
@@ -798,7 +775,6 @@ checks:
     references:
       - See the fstab(5) and edquota(8) manual pages for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /home | grep usrquota -> r:\s/home\s && r:usrquota'
       # - 'c:mount -> r:\s/home\s && r:usrquota'
@@ -829,7 +805,6 @@ checks:
     references:
       - See the fstab(5) and edquota(8) manual pages for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /home | grep grpquota -> r:\s/home\s && r:grpquota'
       # - 'c:mount -> r:\s/home\s && r:grpquota'
@@ -860,7 +835,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:nodev'
 
@@ -890,7 +864,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /dev/shm | grep noexec -> r:\s/dev/shm\s && r:noexec'
       # - 'c:mount -> r:\s/dev/shm\s && r:noexec'
@@ -921,7 +894,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: all
-    # TODO test
     rules:
       - 'c:findmnt --kernel /dev/shm | grep nosuid -> r:\s/dev/shm\s && r:nosuid'
       # - 'c:mount -> r:\s/dev/shm\s && r:nosuid'
@@ -1073,7 +1045,6 @@ checks:
     references:
       - See the fstab(5) manual page for more information.
     condition: any
-    # TODO test
     rules:
       - 'f:/boot/grub2/user.cfg -> r:^\h*GRUB2_PASSWORD\h*=\h*.+$'
       - 'f:/boot/grub2/grub.cfg -> r:^\h*set\h+superusers\h*=\h*"?[^"\n\r]+"?(\h+.*)?$'
@@ -4664,3 +4635,482 @@ checks:
   ####################################################
   # 5.6 User Accounts and Environment
   ####################################################
+
+  ####################################################
+  # 5.6.1 Set Shadow Password Suite Parameters.
+  ####################################################
+
+  # 5.6.1.1 Ensure password expiration is 365 days or less.
+  - id: 31171
+    title: "Ensure password expiration is 365 days or less."
+    description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days."
+    rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity."
+    remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs: PASS_MAX_DAYS 365 and modify user parameters for all users with a password set to match: chage --maxdays 365 <user>"
+    compliance:
+      - cis: ["5.6.1.1"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
+
+  # 5.6.1.2 Ensure minimum days between password changes is 7 or more.
+  - id: 31172
+    title: "Ensure minimum days between password changes is 7 or more."
+    description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 7 or more days."
+    rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
+    remediation: "Set the PASS_MIN_DAYS parameter to 7 in /etc/login.defs: PASS_MIN_DAYS 7 and modify user parameters for all users with a password set to match: chage --mindays 7 <user>"
+    compliance:
+      - cis: ["5.6.1.2"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'f:/etc/login.defs -> n:^\s*PASS_MIN_DAYS\s*\t*(\d+) compare >= 7'
+
+  # 5.6.1.3 Ensure password expiration warning days is 7 or more.
+  - id: 31173
+    title: "Ensure password expiration warning days is 7 or more."
+    description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
+    rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
+    remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs: PASS_WARN_AGE 7 and modify user parameters for all users with a password set to match: chage --warndays 7 <user>"
+    compliance:
+      - cis: ["5.6.1.3"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
+
+  # 5.6.1.4 Ensure inactive password lock is 30 days or less.
+  - id: 31174
+    title: "Ensure inactive password lock is 30 days or less."
+    description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
+    rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
+    remediation: "Run the following command to set the default password inactivity period to 30 days: useradd -D -f 30 and modify user parameters for all users with a password set to match: chage --inactive 30 <user>"
+    compliance:
+      - cis: ["5.6.1.4"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+      - nist_sp_800-53: ["IA-5(1)"]
+    condition: all
+    rules:
+      - 'c:useradd -D -> n:^\s*INACTIVE\s*=\s*(\d+) compare <= 30'
+
+  # 5.6.1.5 Ensure all users last password change date is in the past - Not implemented, requires manual operation
+  # 5.6.2 Ensure system accounts are secured - Not implemented, requires manual operation
+  # 5.6.3 Ensure default user shell timeout is 900 seconds or less. - Not implemented
+
+  # 5.6.4 Ensure default group for the root account is GID 0.
+  - id: 31175
+    title: "Ensure default group for the root account is GID 0."
+    description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root account."
+    rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
+    remediation: "Run the following command to set the root user default group to GID 0: usermod -g 0 root"
+    compliance:
+      - cis: ["5.6.4"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'f:/etc/passwd -> r:^root:\w:\w:0'
+
+  # 5.6.5 Ensure default user umask is 027 or more restrictive. - Not implemented
+
+  ####################################################
+  # 6 System Maintenance
+  ####################################################
+
+  ####################################################
+  # 6.1 System File Permissions
+  ####################################################
+
+  # 6.1.1 Audit system file permissions - Not implemented, requires manual operation.
+
+  # 6.1.2 Ensure sticky bit is set on all world-writable directories
+  - id: 31176
+    title: "Ensure sticky bit is set on all world-writable directories."
+    description: "Setting the sticky bit on world writable directories prevents users from deleting or renaming files in that directory that are not owned by them."
+    rationale: "This feature prevents the ability to delete or rename files in world writable directories (such as /tmp ) that are owned by another user."
+    remediation: "Run the following command to set the sticky bit on all world writable directories: # df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type d \\( -perm -0002 -a ! -perm -1000 \\) 2>/dev/null | xargs -I '{}' chmod a+t '{}'"
+    compliance:
+      - cis: ["6.1.2"]
+      - cis_csc_v8: ["3.3", "4.1"]
+      - cis_csc_v7: ["14.6"]
+      - nist_sp_800-53: ["AC-3", "MP-2", "CM-7(1)", "CM-9", "SA-10"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["2.2", "11.5", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0:
+          [
+            "1.3.1",
+            "7.1",
+            "1.1.1",
+            "1.2.1",
+            "1.2.6",
+            "1.5.1",
+            "1.2.7",
+            "2.1.1",
+            "2.2.1",
+          ]
+      - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'not c:sh -c "df --local -P 2> /dev/null | awk ''{if (NR!=1) print $6}'' | xargs -I ''{}'' find ''{}'' -xdev -type d \\( -perm -0002 -a ! -perm -1000 \\) 2>/dev/null" -> r:^/'
+
+  # 6.1.3 Ensure permissions on /etc/passwd are configured (Automated)
+  - id: 31177
+    title: "Ensure permissions on /etc/passwd are configured."
+    description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
+    rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run the following command to set permissions on /etc/passwd: # chown root:root /etc/passwd # chmod 644 /etc/passwd"
+    compliance:
+      - cis: ["6.1.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 6.1.4 Ensure permissions on /etc/shadow are configured (Automated)
+  - id: 31178
+    title: "Ensure permissions on /etc/shadow are configured."
+    description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
+    rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
+    remediation: "Run one of the following commands to set owner, group, and permissions on /etc/shadow:: # chown root:root /etc/shadow # chmod 0000 /etc/shadow."
+    compliance:
+      - cis: ["6.1.4"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat /etc/shadow -> r:^Access:\s*\(0000/----------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 6.1.5 Ensure permissions on /etc/group are configured (Automated)
+  - id: 31179
+    title: "Ensure permissions on /etc/group are configured."
+    description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
+    rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
+    remediation: "Run the following command to set owner, group, and permissions on /etc/group: : # chown root:root /etc/group # chmod 644 /etc/group"
+    compliance:
+      - cis: ["6.1.5"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 6.1.6 Ensure permissions on /etc/gshadow are configured (Automated)
+  - id: 31180
+    title: "Ensure permissions on /etc/gshadow are configured."
+    description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
+    rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
+    remediation: "Run the following commands to set owner, group, and permissions on /etc/gshadow: # chown root:root /etc/gshadow # chmod 0000 /etc/gshadow."
+    compliance:
+      - cis: ["6.1.6"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0000/----------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 6.1.7 Ensure permissions on /etc/passwd- are configured (Automated)
+  - id: 31181
+    title: "Ensure permissions on /etc/passwd- are configured."
+    description: "The /etc/passwd- file contains backup user account information."
+    rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run the following command to set owner, group, and permissions on /etc/passwd-: # chown root:root /etc/passwd- # chmod 644 /etc/passwd-"
+    compliance:
+      - cis: ["6.1.7"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat /etc/passwd- -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 6.1.8 Ensure permissions on /etc/shadow- are configured (Automated)
+  - id: 31182
+    title: "Ensure permissions on /etc/shadow- are configured."
+    description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
+    rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run the following commands to set owner, group, and permissions on /etc/shadow-: # chown root:root /etc/shadow- # chmod 0000 /etc/shadow-"
+    compliance:
+      - cis: ["6.1.8"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0000/----------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 6.1.9 Ensure permissions on /etc/group-are configured.
+  - id: 31183
+    title: "Ensure permissions on /etc/group- are configured."
+    description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
+    rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run the following commands to set owner, group, and permissions on /etc/group-: # chown root:root /etc/group- # chmod 644 /etc/group-"
+    compliance:
+      - cis: ["6.1.9"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat /etc/group- -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 6.1.10 Ensure permissions on /etc/gshadow- are configured (Automated)
+  - id: 31184
+    title: "Ensure permissions on /etc/gshadow- are configured."
+    description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
+    rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run the following commands to set owner, group, and permissions on /etc/gshadow- : # chown root:root /etc/gshadow- # chmod 0000 /etc/gshadow-"
+    compliance:
+      - cis: ["6.1.10"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "AC.L2-3.1.5",
+            "AC.L2-3.1.3",
+            "MP.L2-3.8.2",
+          ]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0000/----------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 6.1.11 Ensure no world writable files exist - Not implemented, requires manual operation.
+  # 6.1.12 Ensure no unowned files or directories exist - Not implemented, requires manual operation.
+  # 6.1.13 Ensure no ungrouped files or directories exist - Not implemented, requires manual operation.
+  # 6.1.14 Audit SUID executables - Not implemented, requires manual operation.
+  # 6.1.15 Audit SGID executables - Not implemented, requires manual operation.
+
+  ####################################################
+  # 6.2 User and Group Settings
+  ####################################################
+
+  # 6.2.1 Ensure password fields are not empty
+  - id: 31185
+    title: "Ensure password fields are not empty."
+    description: "An account with an empty password field means that anybody may log in as that user without providing a password."
+    rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
+    remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: passwd -l <username> || Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
+    compliance:
+      - cis: ["6.2.1"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+      - nist_sp_800-53: ["IA-5(1)"]
+    condition: none
+    rules:
+      - 'f:/etc/shadow -> !r:^# && r:^\w+::'
+
+  # 6.2.2 Ensure all groups in /etc/passwd exist in /etc/group - Not implemented, requires manual operation.
+  # 6.2.3 Ensure no duplicate UIDs exist - Not implemented, requires manual operation.
+  # 6.2.4 Ensure no duplicate GIDs exist - Not implemented, requires manual operation.
+  # 6.2.5 Ensure no duplicate user names exist - Not implemented, requires manual operation.
+  # 6.2.6 Ensure no duplicate group names exist - Not implemented, requires manual operation.
+  # 6.2.7 Ensure root PATH Integrity (Automated) - Not implemented
+
+  # 6.2.8 Ensure root is the only UID 0 account (Automated)
+  - id: 31186
+    title: "Ensure root is the only UID 0 account."
+    description: "Any account with UID 0 has superuser privileges on the system."
+    rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
+    remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
+    compliance:
+      - cis: ["6.2.8"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0:
+          [
+            "AC.L1-3.1.1",
+            "AC.L1-3.1.2",
+            "CM.L2-3.4.1",
+            "CM.L2-3.4.6",
+            "CM.L2-3.4.2",
+            "CM.L2-3.4.7",
+          ]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0:
+          ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: none
+    rules:
+      - 'f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:'
+# 6.2.9 Ensure all users' home directories exist - Not implemented, requires manual operation.
+# 6.2.10 Ensure users own their home directories - Not implemented, requires manual operation.
+# 6.2.11 Ensure users' home directories permissions are 750 or more restrictive - Not implemented, requires manual operation.
+# 6.2.12 Ensure users' dot files are not group or world writable - Not implemented, requires manual operation.
+# 6.2.13 Ensure users' .netrc Files are not group or world accessible - Not implemented, requires manual operation.
+# 6.2.14 Ensure no users have .forward files - Not implemented, requires manual operation.
+# 6.2.15 Ensure no users have .netrc files - Not implemented, requires manual operation.
+# 6.2.16 Ensure no users have .rhosts files - Not implemented, requires manual operation.
