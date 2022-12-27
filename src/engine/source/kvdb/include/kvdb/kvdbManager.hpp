@@ -160,7 +160,7 @@ public:
      * @return true when it could deleted correctly
      * @return false otherwise
      */
-    bool deleteKey(const std::string& name, const std::string& key);
+    std::optional<base::Error> deleteKey(const std::string& name, const std::string& key);
 
     /**
      * @brief Checks if a DB is loaded on memory
