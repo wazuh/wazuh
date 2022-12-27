@@ -2,12 +2,12 @@
 #define _KVDBMANAGER_H
 
 #include <filesystem>
-#include <optional> // TODO Delete this
+#include <optional>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
-#include <vector>
 #include <variant>
+#include <vector>
 
 #include <json/json.hpp>
 #include <kvdb/kvdb.hpp>
@@ -17,26 +17,16 @@ namespace kvdb_manager
 
 using KVDBHandle = std::shared_ptr<KVDB>;
 
-constexpr int API_SUCCESS_CODE {0};
-constexpr int API_ERROR_CODE {-1};
+constexpr int API_SUCCESS_CODE {0}; // TODO DELETE THIS - API
+constexpr int API_ERROR_CODE {-1};  // TODO DELETE THIS - API
 
 class KVDBManager
 {
     WAZUH_DISABLE_COPY_ASSIGN(KVDBManager);
 
     std::filesystem::path m_dbStoragePath;
-    std::unordered_map<std::string, KVDBHandle> m_loadedDBs;
+    std::unordered_map<std::string, KVDBHandle> m_dbs;
     std::shared_mutex m_mtx;
-
-    /**
-     * @brief Loads in KVDBHandle the pointer to access KVDB functions
-     *
-     * @param name of the KVDB to be loaded
-     * @param dbHandle used to access KVDB functions
-     * @return true if it could be found and loaded
-     * @return false otherwise
-     */
-    bool getDBFromPath(const std::string& name, KVDBHandle& dbHandle); // this is wrong, bad implementation
 
     /**
      * @brief Checks wether a path contains a KVDB
@@ -45,7 +35,7 @@ class KVDBManager
      * @return true if there's a KVDB on that path
      * @return false otherwise
      */
-    bool isDBOnPath(const std::string& name);
+    bool exist(const std::string& name);
 
 public:
     KVDBManager(const std::filesystem::path& dbStoragePath);
@@ -58,26 +48,10 @@ public:
      * @param createIfMissing if true, creates the database when it does not exist
      * @return KVDBHandle to access KVDB functions
      */
-    KVDBHandle loadDB(const std::string& Name, bool createIfMissing = true);
+    KVDBHandle loadDB(const std::string& Name,
+                      bool createIfMissing = true); // TODO MOVE TO PRIVATE
 
-    /**
-     * @brief Creates a KVDB named as the CDB file from filepath and fills it with
-     * it's content.
-     *
-     * @param path where to look for the file to fill the KVDB
-     * @return true if it could be created
-     * @return false otherwise
-     */
-    bool createDBfromCDB(const std::filesystem::path& path);
-
-    /**
-     * @brief Unloads a KVDB from loaded list.
-     *
-     * @param name of the KVDB to be deleted
-     * @return true if it could be unloaded
-     * @return false otherwise
-     */
-    bool unloadDB(const std::string& name);
+    void unloadDB(const std::string& name);
 
     /**
      * @brief Obtains a KVDB from loaded list.
@@ -85,9 +59,10 @@ public:
      * @param name of the KVDB to be returned
      * @return KVDBHandle where to access KVDB functionality.
      */
-    KVDBHandle getDB(const std::string& name); // I think this its wrong, bad implementation
+    KVDBHandle getDB(const std::string& name); // TODO MOVE TO PRIVATE
 
-    std::variant<KVDBHandle, base::Error> getHandler(const std::string& name);
+    std::variant<KVDBHandle, base::Error> getHandler(const std::string& name,
+                                                     bool createIfMissing = false);
 
     /**
      * @brief Get the Available KVDB object
@@ -105,7 +80,7 @@ public:
      * @return true if it could be completed succesfully
      * @return false otherwise.
      */
-    std::string CreateAndFillDBfromFile(const std::string& dbName,
+    std::optional<base::Error> CreateFromJFile(const std::string& dbName,
                                         const std::filesystem::path& path = "");
 
     /**
@@ -130,8 +105,9 @@ public:
                                         const std::string& key,
                                         const std::string value = "null");
 
-    inline std::optional<base::Error>
-    writeKey(const std::string& name, const std::string& key, const std::string& value = "null");
+    inline std::optional<base::Error> writeKey(const std::string& name,
+                                               const std::string& key,
+                                               const std::string& value = "null");
 
     std::optional<base::Error>
     writeKey(const std::string& name, const std::string& key, const json::Json& value)
@@ -148,10 +124,10 @@ public:
      * @return std::optional<std::string> nullopt for not precense, value otherwise
      */
     std::variant<std::string, base::Error> getRawValue(const std::string& name,
-                                           const std::string& key);
+                                                       const std::string& key);
 
     std::variant<json::Json, base::Error> getJValue(const std::string& name,
-                                           const std::string& key);
+                                                    const std::string& key);
     /**
      * @brief Deletes key from KVDB
      *
@@ -161,15 +137,6 @@ public:
      * @return false otherwise
      */
     std::optional<base::Error> deleteKey(const std::string& name, const std::string& key);
-
-    /**
-     * @brief Checks if a DB is loaded on memory
-     *
-     * @param name DB name to be checked
-     * @return true if its loaded on memory
-     * @return false otherwise
-     */
-    bool isLoaded(const std::string& name);
 
     /**
      * @brief Deletes DB and it's content from filesystem
@@ -186,9 +153,9 @@ public:
      */
     void clear()
     {
-        if (m_loadedDBs.size() > 0)
+        if (m_dbs.size() > 0)
         {
-            m_loadedDBs.clear();
+            m_dbs.clear();
         }
     }
 };

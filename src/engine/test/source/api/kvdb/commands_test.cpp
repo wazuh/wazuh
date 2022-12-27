@@ -396,7 +396,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdSuccess)
 {
     // create unloaded DB
     auto resultString =
-        kvdbAPIDeleteCommand::kvdbManager->CreateAndFillDBfromFile(DB_NAME_2);
+        kvdbAPIDeleteCommand::kvdbManager->CreateFromJFile(DB_NAME_2);
     ASSERT_STREQ(resultString.c_str(), "OK");
 
     api::CommandFn cmd;
@@ -581,7 +581,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleExecution)
     createJsonTestFile();
 
     auto resultString =
-        kvdbAPIDumpCommand::kvdbManager->CreateAndFillDBfromFile(DB_NAME_2, FILE_PATH);
+        kvdbAPIDumpCommand::kvdbManager->CreateFromJFile(DB_NAME_2, FILE_PATH);
     ASSERT_STREQ(resultString.c_str(), "OK");
 
     api::CommandFn cmd;
@@ -716,7 +716,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdKVDBOnlyKeys)
     createJsonTestFile();
 
     const auto resultString =
-        kvdbAPIDumpCommand::kvdbManager->CreateAndFillDBfromFile(DB_NAME_2, FILE_PATH);
+        kvdbAPIDumpCommand::kvdbManager->CreateFromJFile(DB_NAME_2, FILE_PATH);
     ASSERT_STREQ(resultString.c_str(), "OK");
 
     api::CommandFn cmd;
@@ -847,7 +847,7 @@ protected:
             std::filesystem::remove_all(DB_DIR);
         }
         kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
-        kvdbManager->CreateAndFillDBfromFile(DB_NAME);
+        kvdbManager->CreateFromJFile(DB_NAME);
     }
 
     virtual void TearDown() {}
@@ -1015,7 +1015,7 @@ protected:
             std::filesystem::remove_all(DB_DIR);
         }
         kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
-        kvdbManager->CreateAndFillDBfromFile(DB_NAME);
+        kvdbManager->CreateFromJFile(DB_NAME);
     }
 
     virtual void TearDown() {}
@@ -1444,7 +1444,7 @@ protected:
             std::filesystem::remove_all(DB_DIR);
         }
         kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
-        kvdbManager->CreateAndFillDBfromFile(DB_NAME);
+        kvdbManager->CreateFromJFile(DB_NAME);
         kvdbManager->writeRaw(DB_NAME, KEY_A, VAL_A);
     }
 
