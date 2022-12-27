@@ -62,7 +62,7 @@ class CommandLineParser:
                 utils.cleanLib(args.clean)
                 action = True
             if self._argIsCmakeLibTargetValid(args.make):
-                utils.makeLib(args.make)
+                utils.makeAllLib(args.make)
                 action = True
             if self._argIsCmakeLibTargetValid(args.tests):
                 utils.runTests(args.tests)

@@ -270,7 +270,7 @@ def runCoverage(moduleName):
     moduleCMakeFiles = ""
 
     if moduleName == 'utils_unit_test':
-        moduleCMakeFiles = f'{getModuleBuildPath(moduleName)}/*/CMakeFiles/*.dir'
+        moduleCMakeFiles = f'{getModuleBuildPath(moduleName)}/CMakeFiles/*.dir'
         includeDir = includeDir.parent
     else:
         moduleCMakeFiles =  f'{getModuleBuildPath(moduleName)}/tests/*/CMakeFiles/*.dir'

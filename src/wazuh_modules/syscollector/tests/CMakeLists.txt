@@ -8,6 +8,7 @@ add_dependencies(${ALL_UNIT_TEST_TARGET} ${PROJECT_NAME})
 
 # Setting options for all the syscollector tests
 add_compile_options(-O0 -g --coverage)
+add_definitions(-DWAZUH_UNIT_TESTING)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     link_libraries(-fprofile-arcs)
