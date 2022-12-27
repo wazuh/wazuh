@@ -221,20 +221,20 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithFilling)
 
     // check value
     auto value = kvdbManager->getRawValue(DB_NAME_2, "keyA");
-    ASSERT_TRUE(value.has_value());
-    ASSERT_STREQ(valueKeyA.c_str(), value.value().c_str());
+    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
+    ASSERT_STREQ(valueKeyA.c_str(), std::get<std::string>(value).c_str());
 
     value = kvdbManager->getRawValue(DB_NAME_2, "keyB");
-    ASSERT_TRUE(value.has_value());
-    ASSERT_STREQ(valueKeyB.c_str(), value.value().c_str());
+    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
+    ASSERT_STREQ(valueKeyB.c_str(), std::get<std::string>(value).c_str());
 
     value = kvdbManager->getRawValue(DB_NAME_2, "keyC");
-    ASSERT_TRUE(value.has_value());
-    ASSERT_STREQ(valueKeyC.c_str(), value.value().c_str());
+    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
+    ASSERT_STREQ(valueKeyC.c_str(), std::get<std::string>(value).c_str());
 
     value = kvdbManager->getRawValue(DB_NAME_2, "keyD");
-    ASSERT_TRUE(value.has_value());
-    ASSERT_STREQ(valueKeyD.c_str(), value.value().c_str());
+    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
+    ASSERT_STREQ(valueKeyD.c_str(), std::get<std::string>(value).c_str());
 }
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithWrongFilling)
@@ -256,20 +256,20 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithWrongFilling)
 
     // check value
     auto value = kvdbManager->getRawValue(DB_NAME_2, "keyA");
-    ASSERT_TRUE(value.has_value());
-    ASSERT_STREQ(valueKeyA.c_str(), value.value().c_str());
+    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
+    ASSERT_STREQ(valueKeyA.c_str(), std::get<std::string>(value).c_str());
 
     value = kvdbManager->getRawValue(DB_NAME_2, "keyB");
-    ASSERT_TRUE(value.has_value());
-    ASSERT_STREQ(valueKeyB.c_str(), value.value().c_str());
+    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
+    ASSERT_STREQ(valueKeyB.c_str(), std::get<std::string>(value).c_str());
 
     value = kvdbManager->getRawValue(DB_NAME_2, "keyC");
-    ASSERT_TRUE(value.has_value());
-    ASSERT_STREQ(valueKeyC.c_str(), value.value().c_str());
+    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
+    ASSERT_STREQ(valueKeyC.c_str(), std::get<std::string>(value).c_str());
 
     value = kvdbManager->getRawValue(DB_NAME_2, "keyD");
-    ASSERT_TRUE(value.has_value());
-    ASSERT_STREQ(valueKeyD.c_str(), value.value().c_str());
+    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
+    ASSERT_STREQ(valueKeyD.c_str(), std::get<std::string>(value).c_str());
 }
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSingleValueFile)
@@ -291,20 +291,20 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSingleValueFile)
 
     // check value
     auto value = kvdbManager->getRawValue(DB_NAME_2, "keyA");
-    ASSERT_TRUE(value.has_value());
-    ASSERT_STREQ(valueKeyA.c_str(), value.value().c_str());
+    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
+    ASSERT_STREQ(valueKeyA.c_str(), std::get<std::string>(value).c_str());
 
     value = kvdbManager->getRawValue(DB_NAME_2, "keyB");
-    ASSERT_TRUE(value.has_value());
-    ASSERT_STREQ(valueKeyB.c_str(), value.value().c_str());
+    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
+    ASSERT_STREQ(valueKeyB.c_str(), std::get<std::string>(value).c_str());
 
     value = kvdbManager->getRawValue(DB_NAME_2, "keyC");
-    ASSERT_TRUE(value.has_value());
-    ASSERT_STREQ(valueKeyC.c_str(), value.value().c_str());
+    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
+    ASSERT_STREQ(valueKeyC.c_str(), std::get<std::string>(value).c_str());
 
     value = kvdbManager->getRawValue(DB_NAME_2, "keyD");
-    ASSERT_TRUE(value.has_value());
-    ASSERT_STREQ(valueKeyD.c_str(), value.value().c_str());
+    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
+    ASSERT_STREQ(valueKeyD.c_str(), std::get<std::string>(value).c_str());
 }
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNonExistingFile)
@@ -423,7 +423,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdDBDoesntExist)
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(
         response.message().value().c_str(),
-        fmt::format("Database \"{}\" could not be obtained", DB_NAME_NOT_AVAILABLE)
+        fmt::format("Database '{}' not found or could not be loaded.", DB_NAME_NOT_AVAILABLE)
             .c_str());
 
     // check remaining available DBs
@@ -707,7 +707,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleEmpty)
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
     auto dataArray = response.data().getArray();
-    ASSERT_FALSE(dataArray.has_value());
+    ASSERT_EQ(dataArray.value().size(),0);
 }
 
 TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdKVDBOnlyKeys)
@@ -848,7 +848,6 @@ protected:
         }
         kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
         kvdbManager->CreateAndFillDBfromFile(DB_NAME);
-        kvdbManager->writeRaw(DB_NAME, KEY_A, VAL_A);
     }
 
     virtual void TearDown() {}
@@ -975,10 +974,14 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdEmptyKey)
 
 TEST_F(kvdbAPIGetCommand, SimpleExecutionKeyOnly)
 {
+    //Insert key
+    json::Json VAL_JA {"\"valA\""};
+    kvdbAPIGetCommand::kvdbManager->writeKey(DB_NAME, KEY_A, VAL_JA);
+
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbGetKeyCmd(kvdbAPIGetCommand::kvdbManager));
     json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}", DB_NAME, KEY_A).c_str()};
+        fmt::format(R"({{"name": "{}", "key": "{}"}})", DB_NAME, KEY_A).c_str()};
     const auto response = cmd(params);
 
     // check response
@@ -1152,7 +1155,9 @@ TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyOnly)
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
     // get key and compare content
-    ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A).value(), "");
+    auto value = kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A);
+    ASSERT_TRUE(std::holds_alternative<std::string>(value));
+    ASSERT_EQ(std::get<std::string>(value), "null");
 }
 
 TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyValue)
@@ -1160,10 +1165,9 @@ TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyValue)
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\", \"value\": \"{}\"}}",
+        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\", \"value\": \"valA\"}}",
                     DB_NAME,
-                    KEY_A,
-                    VAL_A)
+                    KEY_A)
             .c_str()};
     const auto response = cmd(params);
 
@@ -1174,8 +1178,8 @@ TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyValue)
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
     // get key and compare content
-    ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A).value(),
-              VAL_A);
+    auto value = kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A);
+    ASSERT_STREQ(std::get<std::string>(value).c_str(), params.str("/value").value_or("error").c_str());
 }
 
 TEST_F(kvdbAPIInsertCommand, ExecutionEmptyValue)
@@ -1195,7 +1199,8 @@ TEST_F(kvdbAPIInsertCommand, ExecutionEmptyValue)
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
     // get key and compare content
-    ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A).value(), "");
+    auto value = kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A);
+    ASSERT_STREQ(std::get<std::string>(value).c_str(), params.str("/value").value_or("error").c_str());
 }
 
 TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralKeys)
@@ -1223,8 +1228,8 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralKeys)
         ASSERT_STREQ(response.message().value().c_str(), "OK");
 
         // get key and compare content
-        ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, key).value(),
-                  "");
+        auto value = kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, key);
+        ASSERT_EQ(std::get<std::string>(value), "null");
     }
 }
 
@@ -1237,7 +1242,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralValues)
                                               "0123456789",
                                               ":;<=>?@",
                                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-                                              "[^_`abcdefghijklmnopqrstuvwxyz{|}~"};
+                                              "[^_`\\\"bcdefghijklmnopqrstuvwxyz{|}~"};
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     for (const auto& value : severalValues)
@@ -1257,8 +1262,8 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralValues)
         ASSERT_STREQ(response.message().value().c_str(), "OK");
 
         // get key and compare content
-        ASSERT_EQ(kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A).value(),
-                  value);
+        auto rawValue = kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A);
+        ASSERT_STREQ(std::get<std::string>(rawValue).c_str(), params.str("/value").value_or("error").c_str());
     }
 }
 
@@ -1275,7 +1280,8 @@ TEST_F(kvdbAPIInsertCommand, ExecutionWrongDBName)
     ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),
-                 "Key-value could not be written to the database");
+                 "Key-value could not be written to the database:Database "
+                 "'ANOTHER_DB_NAME' not found or could not be loaded.");
 }
 
 // "kvdbListCmd" tests section
@@ -1578,11 +1584,11 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecution)
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
-    ASSERT_FALSE(
-        kvdbAPIRemoveCommand::kvdbManager->getRawValue(DB_NAME, KEY_A).has_value());
+    auto value = kvdbAPIRemoveCommand::kvdbManager->getRawValue(DB_NAME, KEY_A);
+    ASSERT_TRUE(std::holds_alternative<base::Error>(value));
 }
 
-TEST_F(kvdbAPIRemoveCommand, SimpleExecutionDoubleRemove)
+TEST_F(kvdbAPIRemoveCommand, SimpleExecutionDoubleRemoveNoError)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
@@ -1600,10 +1606,9 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecutionDoubleRemove)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("Key \"{}\" could not be deleted", KEY_A).c_str());
+    ASSERT_STREQ(response.message().value().c_str(),"OK");
 }
 
 TEST_F(kvdbAPIRemoveCommand, RemoveNonExistingDB)
@@ -1619,12 +1624,11 @@ TEST_F(kvdbAPIRemoveCommand, RemoveNonExistingDB)
     ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("Key \"{}\" could not be deleted", KEY_A).c_str());
+                 fmt::format("Database 'ANOTHER_DB_NAME' not found or could not be loaded.").c_str());
 }
 
-TEST_F(kvdbAPIRemoveCommand, RemoveWithWrongKeyName)
+TEST_F(kvdbAPIRemoveCommand, RemoveReturnsOkWithNonExistingKeyName)
 {
-    // TODO: there's an issue with KeyMayExist causing this test to fail
     constexpr auto keyName = "ANOTHER_KEY_NAME";
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
@@ -1634,10 +1638,9 @@ TEST_F(kvdbAPIRemoveCommand, RemoveWithWrongKeyName)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("Key \"{}\" could not be deleted", keyName).c_str());
+    ASSERT_STREQ(response.message().value().c_str(),"OK");
 }
 
 // registerAllCmds section
