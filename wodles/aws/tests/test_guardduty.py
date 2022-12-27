@@ -32,64 +32,57 @@ def test_AWSGuardDutyBucket_send_event(mock_custom_bucket, mock_reformat, mock_s
     mock_send.assert_called()
 
 
-@pytest.mark.parametrize('reformat_type', ['basic, inherited'])
+@pytest.mark.parametrize('fields', [{
+    'service':
+        {'action':
+            {
+                'portProbeAction':
+                    {
+                        'portProbeDetails': [
+                            {
+                                "localIpDetails": {
+                                    "ipAddressV4": "string"
+                                },
+                                "localPortDetails": {
+                                    "port": "number",
+                                    "portName": "string"
+                                }
+                            },
+                            {
+                                "localIpDetails": {
+                                    "ipAddressV4": "string"
+                                },
+                                "localPortDetails": {
+                                    "port": "number",
+                                    "portName": "string"
+                                }
+                            }]
+                    }}},
+    'additional_field': ['element']
+}, {'otherField': 'element'}])
 @patch('aws_bucket.AWSBucket.reformat_msg')
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_AWSGuardDutyBucket_reformat_msg(mock_custom_bucket, mock_reformat, reformat_type):
+def test_AWSGuardDutyBucket_reformat_msg(mock_custom_bucket, mock_reformat, fields):
     event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
-    event['aws'].update(
-        {
-            'source': 'guardduty',
-            'service':
-                {'action':
-                    {
-                        'portProbeAction':
-                            {
-                                'portProbeDetails': [
-                                    {
-                                        "localIpDetails": {
-                                            "ipAddressV4": "string"
-                                        },
-                                        "localPortDetails": {
-                                            "port": "number",
-                                            "portName": "string"
-                                        }
-                                    },
-                                    {
-                                        "localIpDetails": {
-                                            "ipAddressV4": "string"
-                                        },
-                                        "localPortDetails": {
-                                            "port": "number",
-                                            "portName": "string"
-                                        }
-                                    }
-                                ]
-                            }
-                    }
-                },
-            'additional_field': ['element']
-        }
-    )
+    event['aws'].update({'source': 'guardduty'})
+    event['aws'].update(fields)
     instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
     result = []
-    
+
     formatted_event = list(instance.reformat_msg(event))
 
-    if reformat_type == 'basic':
+    if 'service' in event['aws'] and \
+            'action' in event['aws']['service'] and \
+            'portProbeAction' in event['aws']['service']['action'] and \
+            'portProbeDetails' in event['aws']['service']['action']['portProbeAction'] and \
+            len(event['aws']['service']['action']['portProbeAction']['portProbeDetails']) > 1:
         port_probe_details = event['aws']['service']['action']['portProbeAction']['portProbeDetails']
         for detail in port_probe_details:
             event['aws']['service']['action']['portProbeAction']['portProbeDetails'] = detail
             result.append(event)
-
+        print(event)
         assert result == formatted_event
 
     else:
-        event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
-        event['aws'].update(
-            {
-                'source': 'guardduty'}
-        )
-        formatted_event = list(instance.reformat_msg(event))
         mock_reformat.assert_called_once()
         assert [event] == formatted_event
