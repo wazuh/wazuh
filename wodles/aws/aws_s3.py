@@ -631,23 +631,6 @@ class AWSBucket(WazuhIntegration):
             except Exception as e:
                 debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
 
-    def create_table(self):
-        try:
-            debug('+++ Table does not exist; create', 1)
-            self.db_connector.execute(self.sql_create_table.format(table_name=self.db_table_name))
-        except Exception as e:
-            print("ERROR: Unable to create SQLite DB: {}".format(e))
-            sys.exit(6)
-
-    def init_db(self):
-        try:
-            tables = set(map(operator.itemgetter(0), self.db_connector.execute(self.sql_find_table_names)))
-        except Exception as e:
-            print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
-            sys.exit(5)
-        # DB does exist yet
-        if self.db_table_name not in tables:
-            self.create_table()
 
     def db_count_region(self, aws_account_id, aws_region):
         """Counts the number of rows in DB for a region
@@ -955,7 +938,7 @@ class AWSBucket(WazuhIntegration):
             exception_handler("Unkown error reading/parsing file {}: {}".format(log_key, e), 1)
 
     def iter_bucket(self, account_id, regions):
-        self.init_db()
+        self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
         self.iter_regions_and_accounts(account_id, regions)
         self.db_connector.commit()
         self.db_connector.execute(self.sql_db_optimize)
