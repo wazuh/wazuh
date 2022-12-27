@@ -341,14 +341,14 @@ api::CommandFn kvdbRemoveKeyCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbM
                 json::Json {"{}"}, kvdb_manager::API_ERROR_CODE, KVDB_KEY_EMPTY};
         }
 
-        const bool retVal {kvdbManager->deleteKey(kvdbNameValue, key)};
+        const auto retVal = kvdbManager->deleteKey(kvdbNameValue, key);
 
-        if (!retVal)
+        if (retVal)
         {
             return api::WazuhResponse {
                 json::Json {"{}"},
                 kvdb_manager::API_ERROR_CODE,
-                fmt::format("Key \"{}\" could not be deleted", key)};
+                retVal.value().message };
         }
 
         return api::WazuhResponse {
@@ -359,7 +359,7 @@ api::CommandFn kvdbRemoveKeyCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbM
 void registerAllCmds(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager,
                      std::shared_ptr<api::Registry> registry)
 {
-    try
+    try // TODO: TRY ????
     {
         registry->registerCommand("create_kvdb", kvdbCreateCmd(kvdbManager));
         registry->registerCommand("delete_kvdb", kvdbDeleteCmd(kvdbManager));
