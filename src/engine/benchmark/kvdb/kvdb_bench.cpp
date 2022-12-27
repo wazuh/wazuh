@@ -27,7 +27,12 @@ static void dbTeardown(const benchmark::State& s)
 
 static void kvdbRead(benchmark::State& state)
 {
-    auto db = kvdbManager->getDB(kBenchDbName);
+    auto res = kvdbManager->getHandler(kBenchDbName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto db = std::get<kvdb_manager::KVDBHandle>(res);
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -49,7 +54,12 @@ BENCHMARK(kvdbRead)
 
 static void kvdbHasKey(benchmark::State& state)
 {
-    auto db = kvdbManager->getDB(kBenchDbName);
+    auto res = kvdbManager->getHandler(kBenchDbName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto db = std::get<kvdb_manager::KVDBHandle>(res);
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -96,7 +106,12 @@ BENCHMARK(kvdbWrite)->Setup(dbSetup)->Teardown(dbTeardown)->Range(8, 16 << 10);
 
 static void kvdbWriteTx(benchmark::State& state)
 {
-    auto db = kvdbManager->getDB(kBenchDbName);
+    auto res = kvdbManager->getHandler(kBenchDbName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto db = std::get<kvdb_manager::KVDBHandle>(res);
 
     std::vector<std::pair<std::string, std::string>> keysList;
     for (int i = 0; i < state.range(0); ++i)
