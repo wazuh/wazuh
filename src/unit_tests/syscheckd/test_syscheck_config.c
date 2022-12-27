@@ -859,6 +859,8 @@ void test_fim_adjust_path_no_changes (void **state) {
     fim_adjust_path(&path);
 
     assert_string_equal(path, "c:\\a\\path\\not\\replaced");
+
+    free(path);
 }
 
 void test_fim_adjust_path_convert_sysnative (void **state) {
@@ -870,6 +872,8 @@ void test_fim_adjust_path_convert_sysnative (void **state) {
     fim_adjust_path(&path);
 
     assert_string_equal(path, "c:\\windows\\system32\\test");
+
+    free(path);
 }
 
 void test_fim_adjust_path_convert_syswow64 (void **state) {
@@ -879,6 +883,8 @@ void test_fim_adjust_path_convert_syswow64 (void **state) {
     fim_adjust_path(&path);
 
     assert_string_equal(path, "c:\\windows\\syswow64\\test");
+
+    free(path);
 }
 
 void test_fim_adjust_path_convert_system32 (void **state) {
@@ -888,6 +894,8 @@ void test_fim_adjust_path_convert_system32 (void **state) {
     fim_adjust_path(&path);
 
     assert_string_equal(path, "c:\\windows\\system32\\test");
+
+    free(path);
 }
 
 int main(void) {
