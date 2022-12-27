@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cmocka.h>
+#include <unistd.h>
 
 #include "../headers/shared.h"
 
@@ -56,8 +57,8 @@ void test_start_mq_read_success(void ** state){
     expect_string(__wrap_OS_BindUnixDomainWithPerms, path, path);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_DGRAM);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR + 512);
-    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, 0);
-    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid() );
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, getgid() );
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, 0);
 
@@ -78,8 +79,8 @@ void test_start_mq_read_fail(void ** state){
     expect_string(__wrap_OS_BindUnixDomainWithPerms, path, path);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_DGRAM);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR + 512);
-    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, 0);
-    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, getgid());
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, -1);
 
