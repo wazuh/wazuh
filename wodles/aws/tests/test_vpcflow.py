@@ -1,8 +1,23 @@
 import pytest
+import os
+import sys
+from unittest.mock import patch
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSVPCFlowBucket__init__():
-    pass
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
+import aws_utils as utils
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
+import aws_bucket
+import vpcflow
+
+
+@patch('aws_bucket.AWSLogsBucket.__init__')
+def test_AWSVPCFlowBucket__init__(mock_logs_bucket):
+    """Test if the instances of CiscoUmbrella are created properly."""
+    instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
+    assert instance.service == 'vpcflowlogs'
+
+    mock_logs_bucket.assert_called_once()
 
 @pytest.mark.skip("Not implemented yet")
 def test_AWSVPCFlowBucket_load_information_from_file():

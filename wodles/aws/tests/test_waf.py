@@ -1,8 +1,20 @@
 import pytest
+import os
+import sys
+from unittest.mock import patch
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSWAFBucket__init__():
-    pass
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
+import aws_utils as utils
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
+import aws_bucket
+import waf
+
+@patch('aws_bucket.AWSCustomBucket.__init__')
+def test_AWSWAFBucket__init__(mock_custom_bucket):
+    """Test if the instances of AWSWAFBucket are created properly."""
+    utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
+    mock_custom_bucket.assert_called_once()
 
 # Extracted from the previous tests. To be reviewed/reworked
 # @pytest.mark.parametrize('log_file, skip_on_error', [
