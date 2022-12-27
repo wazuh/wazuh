@@ -552,9 +552,9 @@ def _getFoldersToAStyle(moduleName):
 
     foldersToScan = ""
     if str(moduleName) == 'utils_unit_test':
-        foldersToScan = f'{getModuleSourcePath(moduleName)}/../*.h {getModuleSourcePath(moduleName)}/*.cpp'
+        foldersToScan = f'"{getModuleSourcePath(moduleName)}/../*.h" "{getModuleSourcePath(moduleName)}/*.cpp"'
     else:
-        foldersToScan = f'{getModuleSourcePath(moduleName)}/*.h {getModuleSourcePath(moduleName)}/*.cpp'
+        foldersToScan = f'"{getModuleSourcePath(moduleName)}/*.h" "{getModuleSourcePath(moduleName)}/*.cpp"'
     return foldersToScan
 
 
