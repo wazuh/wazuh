@@ -313,11 +313,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return b'ok', b'Added request to API requests queue'
         elif command == b'dapi_res':
             return self.process_dapi_res(data)
-        elif command == b'dapi_err':
-            dapi_client, error_msg = data.split(b' ', 1)
-            asyncio.create_task(self.log_exceptions(
-                self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg)))
-            return b'ok', b'DAPI error forwarded to worker'
         elif command == b'get_nodes':
             cmd, res = self.get_nodes(json.loads(data))
             return cmd, json.dumps(res).encode()
