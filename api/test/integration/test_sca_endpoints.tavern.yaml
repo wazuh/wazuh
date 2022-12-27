@@ -539,7 +539,6 @@ stages:
               compliance: !anything
               rules: !anything
               condition: !anystr
-              status: !anystr
               reason: !anystr
           failed_items: []
           total_affected_items: !anyint
@@ -570,7 +569,6 @@ stages:
               compliance: !anything
               rules: !anything
               condition: !anystr
-              status: !anystr
               reason: !anystr
               command: !anystr
           failed_items: []
@@ -615,7 +613,6 @@ stages:
               compliance: !anything
               rules: !anything
               condition: !anystr
-              status: !anystr
               reason: !anystr
               file: !anystr
           failed_items: []
@@ -1079,7 +1076,6 @@ marks:
         - process
         - rules.type
         - file
-        - status
         - compliance.value
         - directory
         - result
