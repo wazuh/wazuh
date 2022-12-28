@@ -405,56 +405,62 @@ DWORD get_file_hash(const wchar_t *path, BYTE **hash, DWORD *hash_size, char* er
 
 
 
-DWORD check_ca_available(const char* ca) {
+DWORD check_ca_available() {
     // Check if the CA is available in the system.
     // If the CA is not available, the function returns some error code.
     // If the CA is available, the function returns ERROR_SUCCESS.
     DWORD result = ERROR_INVALID_DATA;
     HCERTSTORE cert_store = NULL;
     PCCERT_CONTEXT cert_context = NULL;
-    char ca_name[OS_MAXSTR];
+    char *ca_name = NULL;
 
-    // Check if the CA name is not NULL.
-    if (NULL != ca) {
-        const size_t ca_length = strlen(ca);
-        // Check if the CA name is not too long.
-        if (ca_length < OS_MAXSTR) {
-            // Open the certificate store.
-            cert_store = CertOpenSystemStore(0, "ROOT");
-            // Check if the certificate store was opened successfully.
-            if (cert_store) {
-                // Get the first certificate in the store.
-                cert_context = CertEnumCertificatesInStore(cert_store, NULL);
+    // Open the certificate store.
+    cert_store = CertOpenSystemStore(0, "ROOT");
+    // Check if the certificate store was opened successfully.
+    if (cert_store) {
+        // Get the first certificate in the store.
+        cert_context = CertEnumCertificatesInStore(cert_store, NULL);
 
-                while (cert_context) {
-                    // Get the certificate's CN friendly name.
-                    if (CertGetNameString(cert_context,
-                                        CERT_NAME_FRIENDLY_DISPLAY_TYPE,
-                                        0,
-                                        NULL,
-                                        ca_name,
-                                        OS_MAXSTR)) {
-                        // Check if the certificate's CN friendly name matches the CA name.
-                        if (strncmp(ca_name, ca, ca_length) == 0) {
-                            result = ERROR_SUCCESS;
-                            break;
-                        }
-                    }
-                    // Get the next certificate in the store.
-                    cert_context = CertEnumCertificatesInStore(cert_store, cert_context);
+        while (cert_context) {
+            // Get the certificate's CN name size.
+            int req_size = CertGetNameString(cert_context,
+                                             CERT_NAME_SIMPLE_DISPLAY_TYPE,
+                                             0,
+                                             NULL,
+                                             NULL,
+                                             0);
+
+            os_calloc(req_size, sizeof(char), ca_name);
+
+            // Get the certificate's CN name.
+            if (CertGetNameString(cert_context,
+                                  CERT_NAME_SIMPLE_DISPLAY_TYPE,
+                                  0,
+                                  NULL,
+                                  ca_name,
+                                  req_size)) {
+                // Check if the certificate's CN name matches the CA name.
+                if (strncmp(ca_name, CA_NAME, sizeof(CA_NAME) - 1) == 0) {
+                    result = ERROR_SUCCESS;
+                    os_free(ca_name);
+                    break;
                 }
-
-                // Close the certificate store.
-                if (!CertCloseStore(cert_store, 0)) {
-                    merror("CertCloseStore failed with error %lu: %s", GetLastError(), win_strerror(GetLastError()));
-                }
-            } else {
-                // Log error if the certificate store could not be opened.
-                result = GetLastError();
-                merror("CertOpenSystemStore failed with error %lu: %s", result, win_strerror(result));
             }
+            os_free(ca_name);
+            // Get the next certificate in the store.
+            cert_context = CertEnumCertificatesInStore(cert_store, cert_context);
         }
+
+        // Close the certificate store.
+        if (!CertCloseStore(cert_store, 0)) {
+            merror("CertCloseStore failed with error %lu: %s", GetLastError(), win_strerror(GetLastError()));
+        }
+    } else {
+        // Log error if the certificate store could not be opened.
+        result = GetLastError();
+        merror("CertOpenSystemStore failed with error %lu: %s", result, win_strerror(result));
     }
+
 
     return result;
 }
