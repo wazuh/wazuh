@@ -20,7 +20,9 @@ normalize:
 
     - rule.name: $~event_channel.Event.EventData.RuleName
     - event.Hashes: $~event_channel.Event.EventData.Hash
-    
+    - ~temp.hashes: +parse_kv/$~event_channel.Event.EventData.Hashes/=/,/'/'
+    - related.hash: $~temp.hashes
+
     
   ## Process fields
     - process.entity_id: $~event_channel.Event.EventData.ProcessGuid
@@ -38,17 +40,15 @@ normalize:
     - process.parent.pid: $~event_channel.Event.EventData.ParentProcessId
     - process.parent.executable: $~event_channel.Event.EventData.ParentImage
     - process.parent.command_line: $~event_channel.Event.EventData.ParentCommandLine
-    - ~temp.hashes: +parse_kv/$~event_channel.Event.EventData.Hashes/=/,/'/'
-    - related.hash: $~temp.hashes
-
-    # - process.args-> requires args parsing, perhaps can be done with logparse or regex
+        
+    - process.name: +r_ext/$process.executable/^.*\\(.*[\\.].*)$
+    - process.parent.name: +r_ext/$process.parent.executable/^.*\\(.*[\\.].*)$
+    #- process.args: +r_ext/$process.command_line/("[^"]+"|[^\s"]+) # ideally with a regex to array
+    - process.args: +s_to_array/$process.command_line/ /
     # - process.args_count
-    # - process.parent.args
-    # - process.parent.args_count
+    - process.parent.args: +s_to_array/$process.parent.command_line/ /
+    #- process.parent.args_count
 
-
-    #- process.name -> requires negative index on array
-    #- process.parent.name -> requires negative index on array
     
   ## File fields
     - file.path: $~event_channel.Event.EventData.TargetFilename
@@ -75,7 +75,7 @@ normalize:
     - dns.question.name: $~event_channel.Event.EventData.QueryName
   
   ## User fields
-    - user.id: ~event_channel.Event.System.Security.@UserID
+    - user.id: $~event_channel.Event.System.Security.@UserID
     - ~temp.user_parts: +s_to_array/$~event_channel.Event.EventData.User/\
     - user.domain: $~temp.user_parts.0
     - user.name: $~temp.user_parts.1
