@@ -9,15 +9,11 @@ metadata:
 check:
   - ~event_channel.Event.System.Provider.@Name: Microsoft-Windows-Sysmon
 
-#parse:
-  #logpar:
-  #  - ~event_channel.Event.EventData.Hashes: <~temp.hashes/kv/=/,>
 
 normalize:
  - map:
     - event.module: sysmon
     - event.kind: event
-    
     
     # Add categorization fields
     - event:  +kvdb_get_merge/win_sysmon_categories/$event.code 
@@ -42,7 +38,9 @@ normalize:
     - process.parent.pid: $~event_channel.Event.EventData.ParentProcessId
     - process.parent.executable: $~event_channel.Event.EventData.ParentImage
     - process.parent.command_line: $~event_channel.Event.EventData.ParentCommandLine
- 
+    - ~temp.hashes: +parse_kv/$~event_channel.Event.EventData.Hashes/=/,/'/'
+    - related.hash: $~temp.hashes
+
     # - process.args-> requires args parsing, perhaps can be done with logparse or regex
     # - process.args_count
     # - process.parent.args
@@ -60,7 +58,9 @@ normalize:
     - file.code_signature.subject_name: $~event_channel.Event.EventData.Signature
     - file.code_signature.status: $~event_channel.Event.EventData.SignatureStatus
     - file.code_signature.signed: $~event_channel.Event.EventData.Signed
-    # - file.path: requires negative index on array
+    - file.directory: +r_ext/$file.path/^(.*\\).*[\\.].*$
+    - file.extension: +r_ext/$file.path/^.*\\.*[\\.](.*)$
+    - file.name: +r_ext/$file.path/^.*\\(.*[\\.].*)$
 
   ## Network, Destination, and Source fields
     - network.transport: $~event_channel.Event.EventData.Protocol
@@ -75,7 +75,7 @@ normalize:
     - dns.question.name: $~event_channel.Event.EventData.QueryName
   
   ## User fields
-    #- user.id:
+    - user.id: ~event_channel.Event.System.Security.@UserID
     - ~temp.user_parts: +s_to_array/$~event_channel.Event.EventData.User/\
     - user.domain: $~temp.user_parts.0
     - user.name: $~temp.user_parts.1
@@ -137,3 +137,13 @@ normalize:
  - check: $~event_channel.Event.EventData.SourceIsIpv6==false
    map:
     - network.type: ipv4
+
+ - check: event.code==1 OR event.code==23  OR event.code==24 OR event.code==25 OR event.code==26
+   map:
+    - process.hash: $~temp.hashes
+    - process.pe.imphash: process.hash.imphash
+
+ - check: event.code==6 OR event.code==7  OR event.code==15
+   map:
+    - file.hash: $~temp.hashes
+    - file.pe.imphash: file.hash.imphash
