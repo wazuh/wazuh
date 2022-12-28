@@ -37,7 +37,7 @@ func main() {
 			for _, line := range lines {
 				sockQuery(conn, line, j);
 				j++;
-			}		
+			}
 		}
 	} else {
 		sockQuery(conn, logMessage, 000);
@@ -53,8 +53,9 @@ func sockQuery(conn net.Conn, message string, agentid int) {
 	var payload []byte
 
 	agentStr := strconv.Itoa(agentid)
-	ret := '\r'
-	payload = []byte( "1:[" + agentStr + "] (hostname" + agentStr + ") any->/var/cosas:" + message + string(ret))
+	//ret := '\r'
+	//payload = []byte( "1:[" + agentStr + "] (hostname" + agentStr + ") any->/var/cosas:" + message + string(ret))
+	payload = []byte( "1:[" + agentStr + "] (hostname" + agentStr + ") any->/var/cosas:" + message)
 
 	if _, err := conn.Write(payload); err != nil {
 		fmt.Printf("Error: %v\n", err)
