@@ -17,9 +17,6 @@ namespace kvdb_manager
 
 using KVDBHandle = std::shared_ptr<KVDB>;
 
-constexpr int API_SUCCESS_CODE {0}; // TODO DELETE THIS - API
-constexpr int API_ERROR_CODE {-1};  // TODO DELETE THIS - API
-
 class KVDBManager
 {
     WAZUH_DISABLE_COPY_ASSIGN(KVDBManager);
@@ -145,7 +142,7 @@ public:
      * @return nullopt if it could be deleted without problem
      * @return string error message otherwise
      */
-    std::optional<std::string> deleteDB(const std::string& name);
+    std::optional<base::Error> deleteDB(const std::string& name);
 
     /**
      * @brief Clear the entire map of available KVDBs

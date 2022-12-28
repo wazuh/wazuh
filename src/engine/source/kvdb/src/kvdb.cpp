@@ -102,11 +102,6 @@ struct KVDB::Impl
             dbOptions, m_path, m_CFDescriptors, &cfHandles, &txdb);
         if (!s.ok())
         {
-            WAZUH_LOG_WARN(
-                "Engine KVDB: Database '{}': File could not be created: '{}'",
-                m_name,
-                s.ToString());
-
             m_state = State::Error;
             const std::string errorString {s.getState()};
             // TODO: there's no flag or function that returns this error but the message
@@ -423,11 +418,7 @@ struct KVDB::Impl
         rocksdb::Status s = m_db->Get(kOptions.read, cf, key, &value);
         if (!s.ok())
         {
-            auto error = fmt::format("Database '{}': Value from CF '{}' could "
-                            "not be read: '{}'",
-                            m_name,
-                            columnName,
-                            s.ToString());
+            auto error = fmt::format("Cannot read value: '{}'", s.ToString());
             return base::Error {std::move(error)};
         }
 
