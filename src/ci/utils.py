@@ -631,3 +631,11 @@ def runReadyToReview(moduleName):
         runASAN(moduleName)
 
     printGreen(f'<{moduleName}>[RTR: PASSED]<{moduleName}>')
+
+def getTargetSrcFolder(moduleName):
+    """
+    Returns the target source folder for the given module name.
+    """
+    moduleNameCoverage = moduleName if moduleName != 'utils_unit_test' else 'utils_unit_test_coverage'
+
+    return targetsFolderDic[moduleNameCoverage]
