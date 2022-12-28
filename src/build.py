@@ -52,6 +52,7 @@ class CommandLineParser:
         parser.add_argument("--scheck", help="Run AStyle on the code for checking purposes. Example: python3 build.py --scheck  <sysinfo|dbsync|rsync|utils_unit_test|syscollector>")
         parser.add_argument("--sformat", help="Run AStyle on the code formatting the needed files. Example: python3 build.py --sformat  <sysinfo|dbsync|rsync|utils_unit_test|syscollector>")
         parser.add_argument("--scanbuild", help="Run scan-build on the code. Example: python3 build.py --scanbuild <agent|server|winagent>")
+        parser.add_argument("--gettargetsrcfolder", help="Returns the relative source code folder of a target. Example: python3 build.py --gettargetsrcfolder <sysinfo|dbsync|rsync|utils_unit_test|syscollector> ")
 
         args = parser.parse_args()
         if self._argIsCmakeLibTargetValid(args.readytoreview):
@@ -84,6 +85,9 @@ class CommandLineParser:
                 action = True
             if self._argIsCmakeLibTargetValid(args.sformat):
                 utils.runAStyleFormat(args.sformat)
+                action = True
+            if self._argIsCmakeLibTargetValid(args.gettargetsrcfolder):
+                print(utils.getTargetSrcFolder(args.gettargetsrcfolder))
                 action = True
             if self._targetIsValid(args.scanbuild):
                 utils.runScanBuild(args.scanbuild)
