@@ -59,10 +59,9 @@ w_err_t verify_hash_and_pe_signature(wchar_t *file_path);
 /**
  * @brief Check if the CA is available.
  *
- * @param ca CA name.
  * @return DWORD ERROR_SUCCESS if the CA is available, otherwise error code.
  */
-DWORD check_ca_available(const char* ca);
+DWORD check_ca_available();
 
 #endif // WIN32
 #endif // _CRYPTOGRAPHY_H

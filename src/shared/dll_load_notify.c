@@ -43,10 +43,11 @@ static void loaded_modules_verification()
                                      sizeof(module_name) / sizeof(wchar_t))) {
                 // Check if the images loaded are signed.
                 if (verify_hash_and_pe_signature(module_name) != OS_SUCCESS) {
+                    const char* ERROR_MESSAGE = "The file '%S' is not signed or its signature is invalid.";
 #if IMAGE_TRUST_CHECKS == 2
-                    merror_exit("The file '%S' is not signed or its signature is invalid.", module_name);
+                    merror_exit(ERROR_MESSAGE, module_name);
 #else
-                    mwarn("The file '%S' is not signed or its signature is invalid.", module_name);
+                    mwarn(ERROR_MESSAGE, module_name);
 #endif // IMAGE_TRUST_CHECKS == 2
                 } else {
                     mdebug1("The file '%S' is signed and its signature is valid.", module_name);
@@ -54,12 +55,12 @@ static void loaded_modules_verification()
             }
         }
     } else {
+        const char* ERROR_MESSAGE = "The mechanism of signature validation for loaded modules at startup failed because"
+                                    " the modules of the process couldn't be enumerated. Error: %lu";
 #if IMAGE_TRUST_CHECKS == 2
-        merror_exit("The mechanism of signature validation for loaded modules at startup failed because the modules"
-                    " of the process couldn't be enumerated. Error: %lu", GetLastError());
+        merror_exit(ERROR_MESSAGE, GetLastError());
 #else
-        mwarn("The mechanism of signature validation for loaded modules at startup failed because the modules of the"
-              " process couldn't be enumerated. Error: %lu", GetLastError());
+        mwarn(ERROR_MESSAGE, GetLastError());
 #endif // IMAGE_TRUST_CHECKS == 2
 
     }
@@ -76,6 +77,7 @@ void CALLBACK dll_notification(ULONG reason,
                                PLDR_DLL_NOTIFICATION_DATA notification_data,
                                __attribute__((unused)) PVOID context)
 {
+    const char* ERROR_MESSAGE = "The file '%S' is not signed or its signature is invalid.";
     //Check for the reason
     switch(reason)
     {
@@ -83,11 +85,9 @@ void CALLBACK dll_notification(ULONG reason,
 #if IMAGE_TRUST_CHECKS != 0
         if (verify_hash_and_pe_signature(notification_data->loaded.full_dll_name->Buffer) != OS_SUCCESS) {
 #if IMAGE_TRUST_CHECKS == 2
-            merror_exit("The file '%S' is not signed or its signature is invalid.",
-                        notification_data->loaded.full_dll_name->Buffer);
+            merror_exit(ERROR_MESSAGE, notification_data->loaded.full_dll_name->Buffer);
 #else
-            mwarn("The file '%S' is not signed or its signature is invalid.",
-                  notification_data->loaded.full_dll_name->Buffer);
+            mwarn(ERROR_MESSAGE, notification_data->loaded.full_dll_name->Buffer);
 #endif // IMAGE_TRUST_CHECKS == 2
         } else {
             mdebug1("The file '%S' is signed and its signature is valid.",
@@ -108,8 +108,14 @@ void enable_dll_verification()
 {
 #if IMAGE_TRUST_CHECKS != 0
     // Check if all loaded DLLs are signed.
-    if (ERROR_SUCCESS != check_ca_available("DigiCert")) {
-        merror("The dynamic signature validation is not available because the CA name is not available.");
+    if (ERROR_SUCCESS != check_ca_available()) {
+        const char* ERROR_MESSAGE = "The dynamic signature validation is not available because the CA name is not "
+                                    "available.";
+#if IMAGE_TRUST_CHECKS == 2
+        merror_exit(ERROR_MESSAGE);
+#else
+        mwarn(ERROR_MESSAGE);
+#endif
     } else {
         loaded_modules_verification();
 
@@ -123,23 +129,22 @@ void enable_dll_verification()
             {
                 LdrRegisterDllNotification(0, &dll_notification, NULL, &cookie_dll_notification);
             } else {
+                const char* ERROR_MESSAGE = "The dynamic signature validation is not available for this system. Error"
+                                            " %lu: %s";
 #if IMAGE_TRUST_CHECKS == 2
-                merror_exit("The dynamic signature validation is not available for this system. Error"
-                            " %lu: %s", GetLastError(), win_strerror(GetLastError()));
+                merror_exit(ERROR_MESSAGE, GetLastError(), win_strerror(GetLastError()));
 #else
-                mwarn("The dynamic signature validation is not available for this system. Error"
-                    " %lu: %s", GetLastError(), win_strerror(GetLastError()));
+                mwarn(ERROR_MESSAGE, GetLastError(), win_strerror(GetLastError()));
 #endif // IMAGE_TRUST_CHECKS == 2
             }
         } else {
+            const char* ERROR_MESSAGE = "The mechanism of dynamic signature validation for loaded modules wasn't "
+                                        "initiated because it wasn't possible to get the handle of 'ntdll.dll'. "
+                                        "Error %lu: %s";
 #if IMAGE_TRUST_CHECKS == 2
-            merror_exit("The mechanism of dynamic signature validation for loaded modules wasn't initiated because it "
-                        "wasn't possible to get the handle of 'ntdll.dll'. Error %lu: %s",
-                        GetLastError(), win_strerror(GetLastError()));
+            merror_exit(ERROR_MESSAGE, GetLastError(), win_strerror(GetLastError()));
 #else
-            mwarn("The mechanism of dynamic signature validation for loaded modules wasn't initiated because it wasn't "
-                "possible to get the handle of 'ntdll.dll'. Error %lu: %s",
-                GetLastError(), win_strerror(GetLastError()));
+            mwarn(ERROR_MESSAGE, GetLastError(), win_strerror(GetLastError()));
 #endif // IMAGE_TRUST_CHECKS == 2
         }
     }

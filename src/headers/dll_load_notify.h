@@ -24,12 +24,6 @@ enum LDR_DLL_NOTIFICATION_REASON
 	LDR_DLL_NOTIFICATION_REASON_UNLOADED = 2,
 };
 
-typedef struct tag_UNICODE_STRING {
-	USHORT length;
-	USHORT maximum_length;
-	PWSTR  buffer;
-} __UNICODE_STRING;
-
 typedef struct _LDR_DLL_LOADED_NOTIFICATION_DATA {
 	ULONG flags;                      //Reserved.
 	PCUNICODE_STRING full_dll_name;   //The full path name of the DLL module.

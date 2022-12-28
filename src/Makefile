@@ -99,6 +99,7 @@ DISABLE_JEMALLOC?=no
 DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 IMAGE_TRUST_CHECKS?=1
+CA_NAME?=DigiCert High Assurance EV Root CA
 
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
@@ -310,6 +311,8 @@ else ifeq (${IMAGE_TRUST_CHECKS}, 1)
 else ifeq (${IMAGE_TRUST_CHECKS}, 2)
 	DEFINES+=-DIMAGE_TRUST_CHECKS=2
 endif
+
+DEFINES+=-DCA_NAME='"${CA_NAME}"'
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 	DEFINES+=-DENABLE_SYSC
@@ -609,28 +612,29 @@ failtarget:
 help: failtarget
 	@echo
 	@echo "General options: "
-	@echo "   make V=yes                   	Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DEBUG=yes               	Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DEBUGAD=yes             	Enables extra debugging logging in wazuh-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make INSTALLDIR=/path        	Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE."
-	@echo "   make ONEWAY=yes              	Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make CLEANFULL=yes           	Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make RESOURCES_URL           	Set the Wazuh resources URL"
-	@echo "   make EXTERNAL_SRC_ONLY=yes   	Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
-	@echo "   make USE_ZEROMQ=yes          	Build with zeromq support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_PRELUDE=yes         	Build with prelude support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_INOTIFY=yes         	Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_BIG_ENDIAN=yes      	Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_SELINUX=yes         	Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_AUDIT=yes           	Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_MSGPACK_OPT=yes     	Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DISABLE_JEMALLOC=yes    	 Not to build the JEMalloc library. Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
-	@echo "   make OFLAGS=-Ox              	Overrides optimization level"
-	@echo "   make DISABLE_SYSC=yes        	Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DISABLE_CISCAT=yes      	Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make OPTIMIZE_CPYTHON=yes    	Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make PYTHON_SOURCE=yes       	Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make IMAGE_TRUST_CHECKS=1     This flag controls the dll and exe files signature verification mechanism. Allowed values are 0 (disabled), 1 (warning only) and 2 (full enforce). The default value is 1."
+	@echo "   make V=yes                   						Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DEBUG=yes               						Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DEBUGAD=yes             						Enables extra debugging logging in wazuh-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make INSTALLDIR=/path        						Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE."
+	@echo "   make ONEWAY=yes              						Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make CLEANFULL=yes           						Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make RESOURCES_URL           						Set the Wazuh resources URL"
+	@echo "   make EXTERNAL_SRC_ONLY=yes   						Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
+	@echo "   make USE_ZEROMQ=yes          						Build with zeromq support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_PRELUDE=yes         						Build with prelude support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_INOTIFY=yes         						Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_BIG_ENDIAN=yes      						Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_SELINUX=yes         						Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_AUDIT=yes           						Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_MSGPACK_OPT=yes     						Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_JEMALLOC=yes    						Not to build the JEMalloc library. Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
+	@echo "   make OFLAGS=-Ox              						Overrides optimization level"
+	@echo "   make DISABLE_SYSC=yes        						Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_CISCAT=yes      						Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make OPTIMIZE_CPYTHON=yes    						Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make PYTHON_SOURCE=yes       						Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make IMAGE_TRUST_CHECKS=1     					This flag controls the dll and exe files signature verification mechanism. Allowed values are 0 (disabled), 1 (warning only) and 2 (full enforce). The default value is 1."
+	@echo "   make CA_NAME="DigiCert High Assurance EV Root CA" This flag controls the CA name used to verify the dll and exe files signature. The default value is "DigiCert High Assurance EV Root CA"."
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql          Build with MYSQL Support"
@@ -676,6 +680,7 @@ settings:
 	@echo "    DISABLE_SYSC:       ${DISABLE_SYSC}"
 	@echo "    DISABLE_CISCAT:     ${DISABLE_CISCAT}"
 	@echo "    IMAGE_TRUST_CHECKS: ${IMAGE_TRUST_CHECKS}"
+	@echo "    CA_NAME:            ${CA_NAME}"
 	@echo "Mysql settings:"
 	@echo "    includes:           ${MI}"
 	@echo "    libs:               ${ML}"
