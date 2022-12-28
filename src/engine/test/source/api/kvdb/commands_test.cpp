@@ -185,7 +185,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdDuplicatedDatabase)
     ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("Database \"{}\" is already in use", DB_NAME).c_str());
+                 fmt::format("Database '{}' is loaded", DB_NAME).c_str());
 }
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameWithSpaces)
@@ -322,7 +322,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNonExistingFile)
     ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("An error occurred while opening the file \"{}\"", FILE_PATH)
+                 fmt::format("An error occurred while opening the file '{}'", FILE_PATH)
                      .c_str());
 }
 
@@ -397,7 +397,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdSuccess)
     // create unloaded DB
     auto resultString =
         kvdbAPIDeleteCommand::kvdbManager->CreateFromJFile(DB_NAME_2);
-    ASSERT_STREQ(resultString.c_str(), "OK");
+    ASSERT_FALSE(resultString.has_value());
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
@@ -582,7 +582,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleExecution)
 
     auto resultString =
         kvdbAPIDumpCommand::kvdbManager->CreateFromJFile(DB_NAME_2, FILE_PATH);
-    ASSERT_STREQ(resultString.c_str(), "OK");
+    ASSERT_FALSE(resultString.has_value());
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
@@ -717,7 +717,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdKVDBOnlyKeys)
 
     const auto resultString =
         kvdbAPIDumpCommand::kvdbManager->CreateFromJFile(DB_NAME_2, FILE_PATH);
-    ASSERT_STREQ(resultString.c_str(), "OK");
+    ASSERT_FALSE(resultString.has_value());
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
