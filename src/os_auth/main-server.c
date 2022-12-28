@@ -530,8 +530,10 @@ int main(int argc, char **argv)
 
             if (ftell(fp) <= 1) {
                 merror("Empty password provided.");
-                return OS_INVALID;
+                exit(1);
             }
+
+            fseek(fp, 0, SEEK_SET);
 
             /* Checking if there is a custom password file */
             if (fp) {
