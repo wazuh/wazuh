@@ -56,6 +56,9 @@ public:
      * @param data Data to be sent, it can be a json object or a string
      * @param error Error code (0 if no error)
      * @param message Optional message
+     *
+     * @note This constructor is only for server API use, if you want to send a response
+     * from a module use the other one with a error code of 0
      */
     explicit WazuhResponse(json::Json&& data,
                            int error,
@@ -65,6 +68,17 @@ public:
     {
         m_message = message.empty() ? std::nullopt : std::optional<std::string> {message};
     }
+
+
+    explicit WazuhResponse(std::string_view message) noexcept
+        : m_data(json::Json {R"({})"})
+        , m_error(static_cast<int>(RESPONSE_ERROR_CODES::OK))
+        , m_message(message) {};
+
+    explicit WazuhResponse(json::Json& data, std::string_view message) noexcept
+        : m_data(data)
+        , m_error(static_cast<int>(RESPONSE_ERROR_CODES::OK))
+        , m_message(message) {};
 
     explicit WazuhResponse() noexcept
         : m_data(json::Json {R"({})"})
@@ -140,6 +154,50 @@ public:
      * @return false
      */
     bool isValid() const { return !(!m_data.isObject() && !m_data.isArray()); }
+
+    /**
+     * @brief Create a WazuhResponse object from a string
+     *
+     * @param response
+     * @return WazuhResponse
+     * @throw std::runtime_error if the response is not valid
+     */
+    static WazuhResponse fromStr(std::string_view response) {
+        json::Json rawResponse;
+        try
+        {
+            rawResponse = json::Json {response.data()};
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(fmt::format("Invalid response: {}", e.what()));
+        }
+        const auto error = rawResponse.getInt("/error");
+        if (!error)
+        {
+            throw std::runtime_error("Error field not found or is not an integer");
+        }
+        auto data = rawResponse.getJson("/data");
+        if (!data)
+        {
+            throw std::runtime_error("Data field not found");
+        }
+        else if (!data->isObject() && !data->isArray())
+        {
+            throw std::runtime_error("Data field is not a json object or array");
+        }
+        if (rawResponse.exists("/message") && !rawResponse.isString("/message"))
+        {
+            throw std::runtime_error("Message field is not a string");
+        }
+
+        auto ret = WazuhResponse {std::move(data.value()), error.value()};
+        if (rawResponse.exists("/message"))
+        {
+            ret.message(rawResponse.getString("/message").value());
+        }
+        return ret;
+    }
 
     /************************************************************************
      *                     Predefined responses

@@ -207,16 +207,9 @@ std::optional<base::Error> KVDBManager::CreateFromJFile(const std::string& dbNam
     }
 
     // Check if the database exists
+    if (exist(dbName))
     {
-        std::shared_lock lkReadDBs(m_mtx);
-        if (m_dbs.find(dbName) != m_dbs.end())
-        {
-            return base::Error {fmt::format("Database '{}' is loaded", dbName)};
-        }
-        else if (exist(dbName))
-        {
-            return base::Error {fmt::format("Database '{}' already exists", dbName)};
-        }
+        return base::Error {fmt::format("Database '{}' already exists", dbName)};
     }
 
     // Create the database
@@ -337,28 +330,36 @@ std::optional<base::Error> KVDBManager::deleteKey(const std::string& name,
 
 bool KVDBManager::exist(const std::string& name)
 {
+    std::shared_lock lkReadDBs(m_mtx);
+
+    bool isLoaded = (m_dbs.find(name) != m_dbs.end());
+    if (isLoaded)
+    {
+        return true;
+    }
+
     auto dbHandle = std::make_shared<KVDB>(name, m_dbStoragePath);
     auto result = dbHandle->init(DONT_CREATE_IF_MISSING, NO_ERROR_IF_EXISTS);
     return (result != KVDB::CreationStatus::ErrorUnknown);
 }
 
-std::optional<std::string> KVDBManager::deleteDB(const std::string& name)
+std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
 {
     const auto MAX_USE_COUNT = 2; // 1 for the map and 1 for getHandler
 
     auto res = getHandler(name);
     if (std::holds_alternative<base::Error>(res))
     {
-        return std::get<base::Error>(res).message;
+        return std::get<base::Error>(res);
     }
 
     // Check if the database is loaded
     auto& handler = std::get<KVDBHandle>(res);
     if (handler.use_count() > MAX_USE_COUNT)
     {
-        return fmt::format("Database '{}' is already in use '{}' times",
-                           name,
-                           handler.use_count() - MAX_USE_COUNT);
+        return base::Error {fmt::format("Database '{}' is already in use '{}' times",
+                                        name,
+                                        handler.use_count() - MAX_USE_COUNT)};
     }
 
     // Delete the reference of the database list
@@ -373,9 +374,10 @@ std::optional<std::string> KVDBManager::deleteDB(const std::string& name)
         }
         else
         {
-            return fmt::format("Database '{}' is already in use '{}' times",
-                               name,
-                               handler.use_count() - MAX_USE_COUNT);
+
+            return base::Error {fmt::format("Database '{}' is already in use '{}' times",
+                                            name,
+                                            handler.use_count() - MAX_USE_COUNT)};
         }
     }
     // Mark for deletion
