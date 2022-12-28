@@ -325,7 +325,7 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
     // insert value
     insert_subcommand
         ->add_option("-v, --value", args::kvdb_key_value, "value to be inserted on key.")
-        ->default_val("");
+        ->default_val("null");
 
     // KVDB remove subcommand
     auto remove_subcommand =

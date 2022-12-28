@@ -98,7 +98,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameMissing)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_MISSING);
 }
@@ -112,7 +112,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameArrayNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
 }
@@ -126,7 +126,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameNumberNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
 }
@@ -140,7 +140,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSimpleAddition)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 }
@@ -154,7 +154,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdEmptyName)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_EMPTY);
 }
@@ -168,7 +168,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdEmptyParams)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_MISSING);
 }
@@ -182,7 +182,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdDuplicatedDatabase)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),
                  fmt::format("Database '{}' is loaded", DB_NAME).c_str());
@@ -197,7 +197,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameWithSpaces)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 }
@@ -215,7 +215,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithFilling)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -250,7 +250,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithWrongFilling)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -285,7 +285,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSingleValueFile)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -319,7 +319,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNonExistingFile)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),
                  fmt::format("An error occurred while opening the file '{}'", FILE_PATH)
@@ -368,7 +368,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdLoadedOnlyOnMap)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
 
     // check remaining available DBs
     ASSERT_EQ(kvdbAPIDeleteCommand::getNumberOfKVDBLoaded(), 0);
@@ -386,7 +386,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdBlockBecauseLoaded)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
 
     // check remaining available DBs
     ASSERT_EQ(kvdbAPIDeleteCommand::getNumberOfKVDBLoaded(), 1);
@@ -406,7 +406,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdSuccess)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
 }
 
 TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdDBDoesntExist)
@@ -419,7 +419,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdDBDoesntExist)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(
         response.message().value().c_str(),
@@ -439,7 +439,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdNameMissing)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_MISSING);
 }
@@ -453,7 +453,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdNameArrayNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
 }
@@ -467,7 +467,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdNameNumberNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
 }
@@ -481,7 +481,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdEmptyName)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_EMPTY);
 }
@@ -528,7 +528,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdNameMissing)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_MISSING);
 }
@@ -542,7 +542,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdNameArrayNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
 }
@@ -556,7 +556,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdNameNumberNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
 }
@@ -570,7 +570,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdEmptyName)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_EMPTY);
 }
@@ -591,7 +591,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleExecution)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -702,7 +702,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleEmpty)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -726,7 +726,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdKVDBOnlyKeys)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -867,7 +867,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdNameMissing)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_MISSING);
 }
@@ -881,7 +881,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdNameArrayNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
 }
@@ -895,7 +895,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdNameNumberNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
 }
@@ -909,7 +909,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdEmptyName)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_EMPTY);
 }
@@ -923,7 +923,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdKeyMissing)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_KEY_MISSING);
 }
@@ -938,7 +938,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdKeyArrayNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_KEY_NOT_A_STRING);
 }
@@ -952,7 +952,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdKeyNumberNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_KEY_NOT_A_STRING);
 }
@@ -967,7 +967,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdEmptyKey)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_KEY_EMPTY);
 }
@@ -986,7 +986,7 @@ TEST_F(kvdbAPIGetCommand, SimpleExecutionKeyOnly)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -1035,7 +1035,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdNameMissing)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_MISSING);
 }
@@ -1049,7 +1049,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdNameArrayNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
 }
@@ -1063,7 +1063,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdNameNumberNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
 }
@@ -1077,7 +1077,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdEmptyName)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_EMPTY);
 }
@@ -1091,7 +1091,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdKeyMissing)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_KEY_MISSING);
 }
@@ -1106,7 +1106,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdKeyArrayNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_KEY_NOT_A_STRING);
 }
@@ -1120,7 +1120,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdKeyNumberNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_KEY_NOT_A_STRING);
 }
@@ -1135,7 +1135,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdEmptyKey)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_KEY_EMPTY);
 }
@@ -1150,7 +1150,7 @@ TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyOnly)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -1173,7 +1173,7 @@ TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyValue)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -1194,7 +1194,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionEmptyValue)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -1223,7 +1223,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralKeys)
 
         // check response
         ASSERT_TRUE(response.isValid());
-        ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+        ASSERT_EQ(response.error(), 0);
         ASSERT_TRUE(response.message().has_value());
         ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -1257,7 +1257,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralValues)
 
         // check response
         ASSERT_TRUE(response.isValid());
-        ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+        ASSERT_EQ(response.error(), 0);
         ASSERT_TRUE(response.message().has_value());
         ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -1277,7 +1277,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionWrongDBName)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),
                  "Key-value could not be written to the database:Database "
@@ -1323,7 +1323,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdSingleDBLoaded)
     json::Json params {fmt::format("{{\"mustBeLoaded\": true}}").c_str()};
     const auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
 
     // check response
     const auto kvdbList = response.data().getArray();
@@ -1342,7 +1342,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdNoneLoaded)
     json::Json params {fmt::format("{{\"mustBeLoaded\": true}}").c_str()};
     const auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
 
     // check response
     const auto kvdbList = response.data().getArray();
@@ -1360,7 +1360,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdMultipleLoaded)
     json::Json params {fmt::format("{{\"mustBeLoaded\": true}}").c_str()};
     const auto response = cmd(params);
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
 
     // check response
     const auto kvdbList = response.data().getArray();
@@ -1383,7 +1383,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdWithFilteringLoaded)
         fmt::format("{{\"mustBeLoaded\": true, \"name\": \"NOT\"}}").c_str()};
     auto response = cmd(params_with_name_not);
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
 
     // check response with different name filtered
     auto kvdbList = response.data().getArray();
@@ -1396,7 +1396,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdWithFilteringLoaded)
         fmt::format("{{\"mustBeLoaded\": true, \"name\": \"TEST_\"}}").c_str()};
     response = cmd(params_with_name_test);
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
 
     kvdbList = response.data().getArray();
     ASSERT_TRUE(kvdbList.has_value());
@@ -1405,7 +1405,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdWithFilteringLoaded)
 
     // checks without filtering
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     json::Json params_with_empty_name {
         fmt::format("{{\"mustBeLoaded\": true, \"name\": \"\"}}").c_str()};
     response = cmd(params_with_empty_name);
@@ -1417,7 +1417,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdWithFilteringLoaded)
 
     // checks without filtering
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     json::Json params_with_wrong_name {
         fmt::format("{{\"mustBeLoaded\": true, \"name\": \"wrong_match\"}}").c_str()};
     response = cmd(params_with_wrong_name);
@@ -1465,7 +1465,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdNameMissing)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_MISSING);
 }
@@ -1479,7 +1479,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdNameArrayNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
 }
@@ -1493,7 +1493,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdNameNumberNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
 }
@@ -1507,7 +1507,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdEmptyName)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_EMPTY);
 }
@@ -1521,7 +1521,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdKeyMissing)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_KEY_MISSING);
 }
@@ -1536,7 +1536,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdKeyArrayNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_KEY_NOT_A_STRING);
 }
@@ -1550,7 +1550,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdKeyNumberNotString)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_KEY_NOT_A_STRING);
 }
@@ -1565,7 +1565,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdEmptyKey)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), KVDB_KEY_EMPTY);
 }
@@ -1580,7 +1580,7 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecution)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -1598,7 +1598,7 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecutionDoubleRemoveNoError)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(), "OK");
 
@@ -1606,7 +1606,7 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecutionDoubleRemoveNoError)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),"OK");
 }
@@ -1621,7 +1621,7 @@ TEST_F(kvdbAPIRemoveCommand, RemoveNonExistingDB)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_ERROR_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),
                  fmt::format("Database 'ANOTHER_DB_NAME' not found or could not be loaded.").c_str());
@@ -1638,7 +1638,7 @@ TEST_F(kvdbAPIRemoveCommand, RemoveReturnsOkWithNonExistingKeyName)
 
     // check response
     ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), kvdb_manager::API_SUCCESS_CODE);
+    ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),"OK");
 }
