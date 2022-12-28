@@ -263,7 +263,7 @@ normalize:
    map:
      - process.pid: $~event_channel.Event.EventData.ProcessId
      - process.executable: $~event_channel.Event.EventData.ProcessName
-     - process.name: +r_ext/$~event_channel.Event.EventData.ProcessName/\\\\(.+\\..+)$
+     - process.name: +r_ext/$~event_channel.Event.EventData.ProcessName/^.*\\(.*[\\.].*)$ 
      - event.source.ip: $~event_channel.Event.EventData.IpAddress
      - event.source.port: $~event_channel.Event.EventData.IpPort
      - event.source.domain: $~event_channel.Event.EventData.WorkstationName
@@ -276,10 +276,10 @@ normalize:
      - process.args: +s_to_array/$~event_channel.Event.EventData.CommandLine/ /
      - process.pid: +s_hex_to_num/$~event_channel.Event.EventData.NewProcessId
      - process.executable: $~event_channel.Event.EventData.NewProcessName
-     - process.name: +r_ext/$~event_channel.Event.EventData.NewProcessName/^.*[^\\](.*\\..*)$ 
+     - process.name: +r_ext/$~event_channel.Event.EventData.NewProcessName/^.*\\(.*[\\.].*)$  
      - process.parent.pid: +s_hex_to_num/$~event_channel.Event.EventData.ProcessId
      - process.parent.executable:  $~event_channel.Event.EventData.ParentProcessName
-     - process.parent.name: +r_ext/$~event_channel.Event.EventData.ParentProcessName/^.*[^\\](.*\\..*)$ 
+     - process.parent.name: +r_ext/$~event_channel.Event.EventData.ParentProcessName/^.*\\(.*[\\.].*)$ 
      - process.command_line: $~event_channel.Event.EventData.CommandLine
 
  - check: event.code==4624 OR event.code==4648
