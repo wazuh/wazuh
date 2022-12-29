@@ -87,7 +87,7 @@ normalize:
     - sysmon.file.is_executable: $~event_channel.Event.EventData.IsExecutable
 
   ## Related fields
-    - related.user: user.name
+    - related.user: $user.name
     - related.ip: +a_append/$~event_channel.Event.EventData.NewTargetUserName  
 
  - check: event.code==255 
@@ -151,3 +151,9 @@ normalize:
    map:
     - file.hash: $~temp.hashes
     - file.pe.imphash: file.hash.imphash
+
+# DNS event
+- check: event.code==22
+  map:
+   - network.protocol: dns
+   
