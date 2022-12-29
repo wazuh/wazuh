@@ -98,7 +98,11 @@ normalize:
    map:
     - event.message: $~event_channel.Event.EventData.Type
 
- - check: event.code!=7
+ - check: event.code
+   map:
+    - test: t
+
+ - check: +s_ne/event.code/7
    map:
    - process.pe.original_file_name: $~event_channel.Event.EventData.OriginalFileName
    - process.pe.company: $~event_channel.Event.EventData.Company
@@ -141,7 +145,7 @@ normalize:
  - check: event.code==1 OR event.code==23  OR event.code==24 OR event.code==25 OR event.code==26
    map:
     - process.hash: $~temp.hashes
-    - process.pe.imphash: process.hash.imphash
+    #- process.pe.imphash: process.hash.imphash
 
  - check: event.code==6 OR event.code==7  OR event.code==15
    map:
