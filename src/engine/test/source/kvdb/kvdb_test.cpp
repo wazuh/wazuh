@@ -43,7 +43,48 @@ const std::string VALUE {"dummy_value"};
 const std::string FILE_PATH {"/tmp/input_file"};
 const std::string KVDB_PATH {"/tmp/kvdbTestSuitePath/"};
 const std::string kTestDBName {"TEST_DB"};
-const std::string kTestUnloadedDBName {"UNLOADED_TEST_DB"};
+const std::string kTestDB1Name {"TEST_DB_1"};
+const std::string kTestAlternativeDBName {"ALTERNATIVE_TEST_DB"};
+const std::string rawValueKeyA {"valueA"};
+const std::string valueKeyA {fmt::format("\"{}\"", rawValueKeyA)};
+const int rawValueKeyB {69};
+const std::string valueKeyB {fmt::format("{}", rawValueKeyB)};
+const std::string rawValueKeyCA {"valueCA"};
+const std::string rawValueKeyCB {"valueCB"};
+const std::string rawValueKeyCC {"valueCC"};
+const std::string valueKeyC {
+    fmt::format("[\"{}\",\"{}\",\"{}\"]", rawValueKeyCA, rawValueKeyCB, rawValueKeyCC)};
+const std::string rawValueKeyDA {"valueDA"};
+const int rawValueKeyDB {666};
+const int rawValueKeyDC0 {10};
+const int rawValueKeyDC1 {7};
+const int rawValueKeyDC2 {1992};
+const std::string valueKeyD {
+    fmt::format("{{\"keyDA\":\"{}\",\"keyDB\":{},\"keyDC\":[{},{},{}]}}",
+                rawValueKeyDA,
+                rawValueKeyDB,
+                rawValueKeyDC0,
+                rawValueKeyDC1,
+                rawValueKeyDC2)};
+
+inline void createJsonTestFile(const std::string filePath = FILE_PATH)
+{
+    // File creation
+    if (!std::filesystem::exists(FILE_PATH))
+    {
+        std::ofstream exampleFile(FILE_PATH);
+        if (exampleFile.is_open())
+        {
+            exampleFile << fmt::format("{{\n\t\"keyA\": {},\n\t\"keyB\": {},\n"
+                                       "\t\"keyC\": {},\n\t\"keyD\": {}\n}}",
+                                       valueKeyA,
+                                       valueKeyB,
+                                       valueKeyC,
+                                       valueKeyD);
+            exampleFile.close();
+        }
+    }
+}
 
 class KVDBTest : public ::testing::Test
 {
@@ -59,13 +100,13 @@ protected:
             std::filesystem::remove_all(KVDB_PATH);
         }
         kvdbManager = {std::make_shared<kvdb_manager::KVDBManager>(KVDB_PATH)};
-        kvdbManager->loadDB(kTestDBName);
+        kvdbManager->getHandler(kTestDBName, true);
     };
 
     virtual void TearDown()
     {
         kvdbManager->unloadDB(kTestDBName);
-        kvdbManager->deleteDB(kTestUnloadedDBName);
+        kvdbManager->deleteDB(kTestAlternativeDBName);
 
         if (std::filesystem::exists(FILE_PATH))
         {
@@ -74,21 +115,44 @@ protected:
     };
 };
 
-TEST_F(KVDBTest, CreateGetDeleteKvdbFile)
+TEST_F(KVDBTest, CreateGetKvdbFile)
 {
-    auto kvdbAddHandle = kvdbManager->getHandler("TEST_DB_1", true);
+    auto kvdbAddHandle = kvdbManager->getHandler(kTestDB1Name, true);
     ASSERT_FALSE(std::holds_alternative<base::Error>(kvdbAddHandle));
 
     kvdb_manager::KVDBHandle kvdbGetHandle;
     ASSERT_NO_THROW(kvdbGetHandle = std::get<kvdb_manager::KVDBHandle>(kvdbAddHandle));
     ASSERT_TRUE(kvdbGetHandle);
-    ASSERT_STREQ(kvdbGetHandle->getName().data(), "TEST_DB_1");
+    ASSERT_STREQ(kvdbGetHandle->getName().data(), kTestDB1Name.c_str());
     ASSERT_TRUE(kvdbGetHandle->isReady());
 
-    kvdbManager->unloadDB("TEST_DB_1");
+    kvdbManager->unloadDB(kTestDB1Name);
     kvdb_manager::KVDBHandle kvdbDeleteHandle;
-    ASSERT_NO_THROW(kvdbDeleteHandle = kvdbManager->getDB("TEST_DB_1"));
+    ASSERT_NO_THROW(kvdbDeleteHandle = kvdbManager->getDB(kTestDB1Name));
     ASSERT_EQ(kvdbDeleteHandle, nullptr);
+}
+
+TEST_F(KVDBTest, DeleteLoadedKvdbFile)
+{
+    // load the DB a seccond time (emulating function helper)
+    auto handler = kvdbManager->getHandler(kTestDBName);
+    auto opError = kvdbManager->deleteDB(kTestDBName);
+    ASSERT_TRUE(opError.has_value());
+    ASSERT_STREQ(
+        opError.value().message.c_str(),
+        fmt::format("Database '{}' is already in use '1' times", kTestDBName).c_str());
+}
+
+TEST_F(KVDBTest, DeleteUnexistentKvdbFile)
+{
+    auto opError = kvdbManager->deleteDB("UnexistenKVDB");
+    ASSERT_TRUE(opError.has_value());
+}
+
+TEST_F(KVDBTest, OkDeleteSimple)
+{
+    auto opError = kvdbManager->deleteDB(kTestDBName);
+    ASSERT_FALSE(opError.has_value());
 }
 
 TEST_F(KVDBTest, CreateColumn)
@@ -111,15 +175,61 @@ TEST_F(KVDBTest, CreateDeleteColumns)
     ASSERT_FALSE(retval);
 }
 
-TEST_F(KVDBTest, write)
+TEST_F(KVDBTest, WriteSimple)
 {
     kvdb_manager::KVDBHandle kvdbHandle;
     ASSERT_NO_THROW(kvdbHandle = kvdbManager->getDB(kTestDBName));
     ASSERT_TRUE(kvdbHandle);
 
     bool retval;
-    ASSERT_NO_THROW(retval = kvdbHandle->write("dummy_key", "dummy_value"));
+    ASSERT_NO_THROW(retval = kvdbHandle->write(KEY, VALUE));
     ASSERT_TRUE(retval);
+}
+
+TEST_F(KVDBTest, WriteKeySeveralValueCases)
+{
+    std::optional<base::Error> writeResult;
+    // integer
+    json::Json jsonKeyValue {valueKeyB.c_str()};
+    ASSERT_NO_THROW(writeResult =
+                        kvdbManager->writeKey(kTestDBName, KEY, jsonKeyValue));
+    ASSERT_FALSE(writeResult.has_value());
+
+    // array
+    json::Json jsonArrayValue {valueKeyC.c_str()};
+    ASSERT_NO_THROW(writeResult =
+                        kvdbManager->writeKey(kTestDBName, KEY, jsonArrayValue));
+    ASSERT_FALSE(writeResult.has_value());
+
+    // object
+    json::Json jsonObjectValue {valueKeyD.c_str()};
+    ASSERT_NO_THROW(writeResult =
+                        kvdbManager->writeKey(kTestDBName, KEY, jsonObjectValue));
+    ASSERT_FALSE(writeResult.has_value());
+}
+
+TEST_F(KVDBTest, GetJValueSeveralCases)
+{
+    createJsonTestFile();
+
+    auto resultString = kvdbManager->CreateFromJFile(kTestDB1Name, FILE_PATH);
+    ASSERT_FALSE(resultString.has_value());
+
+    auto val = kvdbManager->getRawValue(kTestDB1Name, "keyA");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(val));
+    ASSERT_EQ(std::get<std::string>(val), valueKeyA);
+
+    val = kvdbManager->getRawValue(kTestDB1Name, "keyB");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(val));
+    ASSERT_EQ(std::get<std::string>(val), valueKeyB);
+
+    val = kvdbManager->getRawValue(kTestDB1Name, "keyC");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(val));
+    ASSERT_EQ(std::get<std::string>(val), valueKeyC);
+
+    val = kvdbManager->getRawValue(kTestDB1Name, "keyD");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(val));
+    ASSERT_EQ(std::get<std::string>(val), valueKeyD);
 }
 
 TEST_F(KVDBTest, ReadWrite)
@@ -164,7 +274,6 @@ TEST_F(KVDBTest, ReadWrite)
 // Key-only write
 TEST_F(KVDBTest, KeyOnlyWrite)
 {
-    // TODO Update FH tests too
     bool retval;
     auto kvdb = kvdbManager->getDB(kTestDBName);
 
@@ -178,7 +287,7 @@ TEST_F(KVDBTest, KeyOnlyWrite)
     ASSERT_TRUE(retval);
 
     auto valueRead = kvdb->read(KEY);
-    ASSERT_STREQ(std::get<std::string>(kvdb->read(KEY)).c_str(),"");
+    ASSERT_STREQ(std::get<std::string>(kvdb->read(KEY)).c_str(), "");
 
     auto deleteResult = kvdb->deleteKey(KEY);
     ASSERT_FALSE(deleteResult.has_value());
@@ -324,10 +433,6 @@ TEST_F(KVDBTest, ManagerConcurrency)
                             for (int i = 0; i < kMaxTestIterations; ++i)
                             {
                                 auto db = m->getDB(dbName);
-                                if (db && !db->isValid())
-                                {
-                                    m->loadDB(dbName);
-                                }
                             }
                         }};
 
@@ -376,7 +481,7 @@ TEST_F(KVDBTest, KVDBConcurrency)
     std::mt19937 gen(rd());
     std::uniform_int_distribution distrib(0, 100);
 
-    kvdbManager->loadDB(dbName);
+    kvdbManager->getHandler(dbName, true);
 
     std::thread create {[&]
                         {
@@ -436,45 +541,138 @@ TEST_F(KVDBTest, KVDBConcurrency)
     kvdbManager->unloadDB(dbName);
 }
 
-// TODO: fill test
-TEST_F(KVDBTest, dumpContent)
-{
-    // create a json
-    // save it in a file on a specific directory
-    // create a DB with this path
-    // dump it with method and compare
 
-    // json can have multiple formats, look in
-    //  /wazuh/src/engine/test/kvdb_input_files
+TEST_F(KVDBTest, FillDBWithFileCheckContentWithDump)
+{
+    createJsonTestFile();
+
+    auto resultString = kvdbManager->CreateFromJFile(kTestDB1Name, FILE_PATH);
+    ASSERT_FALSE(resultString.has_value());
+
+    auto kvdbDumpVariant = kvdbManager->jDumpDB(kTestDB1Name);
+    ASSERT_FALSE(std::holds_alternative<base::Error>(kvdbDumpVariant));
+    ASSERT_TRUE(std::holds_alternative<json::Json>(kvdbDumpVariant));
+
+    // check content
+    const auto kvdbContent = std::get<json::Json>(kvdbDumpVariant).getArray();
+    ASSERT_TRUE(kvdbContent.has_value());
+    ASSERT_EQ(kvdbContent.value().size(), 4);
+
+    ASSERT_TRUE(kvdbContent.value().at(0).getString("/key").has_value());
+    ASSERT_STREQ(kvdbContent.value().at(0).getString("/key").value().c_str(), "keyA");
+    ASSERT_TRUE(kvdbContent.value().at(1).getString("/key").has_value());
+    ASSERT_STREQ(kvdbContent.value().at(1).getString("/key").value().c_str(), "keyB");
+    ASSERT_TRUE(kvdbContent.value().at(2).getString("/key").has_value());
+    ASSERT_STREQ(kvdbContent.value().at(2).getString("/key").value().c_str(), "keyC");
+    ASSERT_TRUE(kvdbContent.value().at(3).getString("/key").has_value());
+    ASSERT_STREQ(kvdbContent.value().at(3).getString("/key").value().c_str(), "keyD");
+
+    ASSERT_TRUE(kvdbContent.value().at(0).getString("/value").has_value());
+    ASSERT_STREQ(kvdbContent.value().at(0).getString("/value").value().c_str(),
+                 rawValueKeyA.c_str());
+    ASSERT_TRUE(kvdbContent.value().at(1).getInt("/value").has_value());
+    ASSERT_EQ(kvdbContent.value().at(1).getInt("/value").value(), rawValueKeyB);
+    ASSERT_TRUE(kvdbContent.value().at(2).getArray("/value").has_value());
+    ASSERT_STREQ(kvdbContent.value()
+                     .at(2)
+                     .getArray("/value")
+                     .value()
+                     .at(0)
+                     .getString()
+                     .value_or("value_not_found")
+                     .c_str(),
+                 rawValueKeyCA.c_str());
+    ASSERT_STREQ(kvdbContent.value()
+                     .at(2)
+                     .getArray("/value")
+                     .value()
+                     .at(1)
+                     .getString()
+                     .value_or("value_not_found")
+                     .c_str(),
+                 rawValueKeyCB.c_str());
+    ASSERT_STREQ(kvdbContent.value()
+                     .at(2)
+                     .getArray("/value")
+                     .value()
+                     .at(2)
+                     .getString()
+                     .value_or("value_not_found")
+                     .c_str(),
+                 rawValueKeyCC.c_str());
+    ASSERT_TRUE(kvdbContent.value().at(3).getObject("/value").has_value());
+    ASSERT_STREQ(
+        std::get<0>(kvdbContent.value().at(3).getObject("/value").value()[0]).c_str(),
+        "keyDA");
+    ASSERT_STREQ(
+        std::get<0>(kvdbContent.value().at(3).getObject("/value").value()[1]).c_str(),
+        "keyDB");
+    ASSERT_STREQ(
+        std::get<0>(kvdbContent.value().at(3).getObject("/value").value()[2]).c_str(),
+        "keyDC");
+    ASSERT_TRUE(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[0])
+                    .getString()
+                    .has_value());
+    ASSERT_STREQ(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[0])
+                     .getString()
+                     .value()
+                     .c_str(),
+                 rawValueKeyDA.c_str());
+    ASSERT_TRUE(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[1])
+                    .getInt()
+                    .has_value());
+    ASSERT_EQ(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[1])
+                  .getInt()
+                  .value(),
+              rawValueKeyDB);
+    ASSERT_TRUE(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[2])
+                    .getArray()
+                    .has_value());
+    ASSERT_EQ(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[2])
+                  .getArray()
+                  .value()
+                  .at(0)
+                  .getInt()
+                  .value_or(-1),
+              rawValueKeyDC0);
+    ASSERT_EQ(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[2])
+                  .getArray()
+                  .value()
+                  .at(1)
+                  .getInt()
+                  .value_or(-1),
+              rawValueKeyDC1);
+    ASSERT_EQ(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[2])
+                  .getArray()
+                  .value()
+                  .at(2)
+                  .getInt()
+                  .value_or(-1),
+              rawValueKeyDC2);
 }
 
-TEST_F(KVDBTest, writeKeySingleKV)
+TEST_F(KVDBTest, WriteKeySingleKV)
 {
-    const std::string key {"dummy_key"};
-    const std::string value {"dummy_value"};
+    const std::string newTestDBName {"NEW_TEST_DB"};
 
-    auto errorOpt = kvdbManager->CreateFromJFile("NEW_TEST_DB");
+    auto errorOpt = kvdbManager->CreateFromJFile(newTestDBName);
     ASSERT_FALSE(errorOpt.has_value());
-    auto retval = kvdbManager->writeRaw("NEW_TEST_DB", key, value);
+    auto retval = kvdbManager->writeRaw(newTestDBName, KEY, VALUE);
     ASSERT_FALSE(retval.has_value());
 
-    // TODO: this replicates what the helper does and should be improved
+    auto kvdbHandleVariant = kvdbManager->getHandler(newTestDBName);
+
+    ASSERT_FALSE(std::holds_alternative<base::Error>(kvdbHandleVariant));
     kvdb_manager::KVDBHandle kvdbHandle;
-    kvdbHandle = kvdbManager->getDB("NEW_TEST_DB");
-    if (!kvdbHandle)
-    {
-        ASSERT_NO_THROW(kvdbManager->loadDB("NEW_TEST_DB", false));
-    }
-    kvdbHandle = kvdbManager->getDB("NEW_TEST_DB");
-    ASSERT_TRUE(kvdbHandle);
-    ASSERT_TRUE(kvdbHandle->hasKey(key));
+    ASSERT_NO_THROW(kvdbHandle = std::get<kvdb_manager::KVDBHandle>(kvdbHandleVariant));
+    ASSERT_TRUE(kvdbHandle->hasKey(KEY));
     std::optional<std::string> valueRead;
-    ASSERT_NO_THROW(valueRead = std::get<std::string>(kvdbHandle->read(key)));
+    ASSERT_NO_THROW(valueRead = std::get<std::string>(kvdbHandle->read(KEY)));
     ASSERT_TRUE(valueRead);
-    ASSERT_STREQ(valueRead.value().c_str(), value.c_str());
+    ASSERT_STREQ(valueRead.value().c_str(), VALUE.c_str());
 
     // clean to avoid error on rerun
-    kvdbManager->unloadDB("NEW_TEST_DB");
+    kvdbManager->unloadDB(newTestDBName);
 }
 
 TEST_F(KVDBTest, ListLoadedKVDBs)
@@ -482,13 +680,13 @@ TEST_F(KVDBTest, ListLoadedKVDBs)
     auto kvdbLists = kvdbManager->listDBs();
     ASSERT_EQ(kvdbLists.size(), 1);
 
-    auto retval = kvdbManager->loadDB("NEW_DB");
-    ASSERT_TRUE(retval);
+    auto retval = kvdbManager->getHandler("NEW_DB", true);
+    ASSERT_FALSE(std::holds_alternative<base::Error>(retval));
     kvdbLists = kvdbManager->listDBs();
     ASSERT_EQ(kvdbLists.size(), 2);
 
-    retval = kvdbManager->loadDB("NEW_DB_2");
-    ASSERT_TRUE(retval);
+    retval = kvdbManager->getHandler("NEW_DB_2", true);
+    ASSERT_FALSE(std::holds_alternative<base::Error>(retval));
     kvdbLists = kvdbManager->listDBs();
     ASSERT_EQ(kvdbLists.size(), 3);
 
@@ -507,9 +705,13 @@ TEST_F(KVDBTest, ListAllKVDBs)
     auto kvdbLists = kvdbManager->listDBs();
     ASSERT_EQ(kvdbLists.size(), 1);
 
-    auto errorOpt = kvdbManager->CreateFromJFile(kTestUnloadedDBName);
+    auto errorOpt = kvdbManager->CreateFromJFile(kTestAlternativeDBName);
     ASSERT_FALSE(errorOpt.has_value());
 
+    kvdbLists = kvdbManager->listDBs(false);
+    ASSERT_EQ(kvdbLists.size(), 2);
+
+    kvdbManager->unloadDB(kTestAlternativeDBName);
     kvdbLists = kvdbManager->listDBs(false);
     ASSERT_EQ(kvdbLists.size(), 2);
 }
@@ -518,29 +720,28 @@ TEST_F(KVDBTest, GetWriteDeleteKeyValueThroughManager)
 {
     std::string valueRead, resultValue;
 
-    // adding key value to db loaded causes error
     auto retval = kvdbManager->writeRaw(kTestDBName, KEY, VALUE);
     ASSERT_FALSE(retval.has_value());
 
-    // create unloaded DB
-    auto errorOpt = kvdbManager->CreateFromJFile(kTestUnloadedDBName);
+    auto errorOpt = kvdbManager->CreateFromJFile(kTestAlternativeDBName);
     ASSERT_FALSE(errorOpt.has_value());
 
-    retval = kvdbManager->writeRaw(kTestUnloadedDBName, KEY, VALUE);
-    ASSERT_FALSE(retval);
+    retval = kvdbManager->writeRaw(kTestAlternativeDBName, KEY, VALUE);
+    ASSERT_FALSE(retval.has_value());
 
-    auto val = kvdbManager->getRawValue(kTestUnloadedDBName, KEY);
+    auto val = kvdbManager->getRawValue(kTestAlternativeDBName, KEY);
     ASSERT_FALSE(std::holds_alternative<base::Error>(val));
     ASSERT_EQ(std::get<std::string>(val), VALUE);
 
-    auto deleteResult = kvdbManager->deleteKey(kTestUnloadedDBName, KEY);
+    auto deleteResult = kvdbManager->deleteKey(kTestAlternativeDBName, KEY);
     ASSERT_FALSE(deleteResult.has_value());
 
-    deleteResult = kvdbManager->deleteKey(kTestUnloadedDBName, KEY);
+    // double delete shouldn't cause error
+    deleteResult = kvdbManager->deleteKey(kTestAlternativeDBName, KEY);
     ASSERT_FALSE(deleteResult.has_value());
 
-    auto retOpt = kvdbManager->deleteDB(kTestUnloadedDBName);
-    ASSERT_TRUE(retOpt == std::nullopt);
+    auto retOpt = kvdbManager->deleteDB(kTestAlternativeDBName);
+    ASSERT_EQ(retOpt,std::nullopt);
 }
 
 TEST_F(KVDBTest, GetWriteDeleteSingleKeyThroughManager)
@@ -548,81 +749,32 @@ TEST_F(KVDBTest, GetWriteDeleteSingleKeyThroughManager)
     std::string valueRead, resultValue;
     bool retval;
 
-    auto errorOpt = kvdbManager->CreateFromJFile(kTestUnloadedDBName);
+    auto errorOpt = kvdbManager->CreateFromJFile(kTestAlternativeDBName);
     ASSERT_FALSE(errorOpt.has_value());
 
     // single key KVDB
-    auto retWriteVal = kvdbManager->writeRaw(kTestUnloadedDBName, KEY);
+    auto retWriteVal = kvdbManager->writeRaw(kTestAlternativeDBName, KEY);
     ASSERT_FALSE(retWriteVal.has_value());
 
-    auto val = kvdbManager->getRawValue(kTestUnloadedDBName, KEY);
+    auto val = kvdbManager->getRawValue(kTestAlternativeDBName, KEY);
     ASSERT_EQ(std::get<std::string>(val), "null");
 
-    auto deleteResult = kvdbManager->deleteKey(kTestUnloadedDBName, KEY);
+    auto deleteResult = kvdbManager->deleteKey(kTestAlternativeDBName, KEY);
     ASSERT_FALSE(deleteResult.has_value());
 
-    val = kvdbManager->getRawValue(kTestUnloadedDBName, KEY);
+    val = kvdbManager->getRawValue(kTestAlternativeDBName, KEY);
     ASSERT_TRUE(std::holds_alternative<base::Error>(val));
 }
 
-TEST_F(KVDBTest, DoubleDeleteThroughManager)
+TEST_F(KVDBTest, CreateAndFillKVDBfromFile)
 {
-    std::string valueRead, resultValue;
-    bool retval;
-
-    // create unloaded DB
-    auto errorOpt = kvdbManager->CreateFromJFile(kTestUnloadedDBName);
+    auto errorOpt = kvdbManager->CreateFromJFile(kTestAlternativeDBName);
     ASSERT_FALSE(errorOpt.has_value());
 
-    auto retWriteVal = kvdbManager->writeRaw(kTestUnloadedDBName, KEY, VALUE);
-    ASSERT_FALSE(retWriteVal.has_value());
-
-    auto val = kvdbManager->getRawValue(kTestUnloadedDBName, KEY);
-    ASSERT_TRUE(std::holds_alternative<std::string>(val));
-    ASSERT_EQ(std::get<std::string>(val), VALUE);
-
-    auto deleteResult = kvdbManager->deleteKey(kTestUnloadedDBName, KEY);
-    ASSERT_FALSE(deleteResult.has_value());
-
-    // double delete isn't an error
-    deleteResult = kvdbManager->deleteKey(kTestUnloadedDBName, KEY);
-    ASSERT_FALSE(deleteResult.has_value());
-}
-
-// TODO: fill test
-TEST_F(KVDBTest, CreateAndFillKVDBfromFileOkWithFile)
-{
-    // create a json
-    // save it in a file on a specific directory
-    // create a DB with this path
-    // dump it with method and compare
-
-    // json can have multiple formats, look in
-    //  /wazuh/src/engine/test/kvdb_input_files
-}
-
-TEST_F(KVDBTest, CreateAndFillKVDBfromFileCreatedEarlier)
-{
-    auto errorOpt = kvdbManager->CreateFromJFile(kTestUnloadedDBName);
-    ASSERT_FALSE(errorOpt.has_value());
-
-    errorOpt = kvdbManager->CreateFromJFile(kTestUnloadedDBName);
+    errorOpt = kvdbManager->CreateFromJFile(kTestAlternativeDBName);
     ASSERT_STREQ(
         errorOpt.value().message.c_str(),
-        fmt::format("Database '{}' is loaded", kTestUnloadedDBName).c_str());
+        fmt::format("Database '{}' already exists", kTestAlternativeDBName).c_str());
 }
-
-TEST_F(KVDBTest, CreateAndFillKVDBfromFileCreatedAndLoadedEarlier)
-{
-    std::string retval;
-    auto errorOpt = kvdbManager->CreateFromJFile(kTestUnloadedDBName);
-    ASSERT_FALSE(errorOpt.has_value());
-
-    errorOpt = kvdbManager->CreateFromJFile(kTestUnloadedDBName);
-    ASSERT_STREQ(
-        errorOpt.value().message.c_str(),
-        fmt::format("Database '{}' is loaded", kTestUnloadedDBName).c_str());
-}
-
 
 } // namespace
