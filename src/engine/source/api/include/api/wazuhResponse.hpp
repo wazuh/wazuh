@@ -54,10 +54,10 @@ public:
      * @brief  Construct a new Wazuh Response object
      *
      * @param data Data to be sent, it can be a json object or a array
-     * @param error Error code (0 if no error)
+     * @param error Error code (0 if no error).
      * @param message Optional message
      *
-     * @note This constructor is only for server API use, if you want to send a response
+     * @warning This constructor is only for server API use, if you want to send a response
      * from a module use the other one with a error code of 0
      */
     explicit WazuhResponse(json::Json&& data,
@@ -70,16 +70,34 @@ public:
     }
 
 
+    /**
+     * @brief Construct a new Wazuh Response object
+     * 
+     * The error code will be set to 0 and the data will be an empty json object.
+     * @param message Messsage to be sent as a response
+     */
     explicit WazuhResponse(std::string_view message) noexcept
         : m_data(json::Json {R"({})"})
         , m_error(static_cast<int>(RESPONSE_ERROR_CODES::OK))
         , m_message(message) {};
 
+    /**
+     * @brief Construct a new Wazuh Response object
+     *
+     * The error code will be set to 0. By protocol the data needs to be a json object or a array
+     * but is not checked.
+     * @param data Data to be sent. It should be a json object or a array
+     * @param message Messsage to be sent as a response
+     */
     explicit WazuhResponse(json::Json& data, std::string_view message) noexcept
         : m_data(data)
         , m_error(static_cast<int>(RESPONSE_ERROR_CODES::OK))
         , m_message(message) {};
 
+    /**
+     * @brief Construct a new Wazuh Response object
+     * Set the error code to 0 and the data to an empty json object
+     */
     explicit WazuhResponse() noexcept
         : m_data(json::Json {R"({})"})
         , m_error(static_cast<int>(RESPONSE_ERROR_CODES::OK))
@@ -158,9 +176,15 @@ public:
     /**
      * @brief Create a WazuhResponse object from a string
      *
-     * @param response
-     * @return WazuhResponse
-     * @throw std::runtime_error if the response is not valid
+     * @param response Response as a string.
+     * @return WazuhResponse object.
+     * @throw std::runtime_error if the response is not valid response.
+     * The protocol is:
+     * {
+     *  "data": <json object or array>,
+     *  "error": <integer>,
+     *  "message": <string> (optional)
+     * }
      */
     static WazuhResponse fromStr(std::string_view response) {
         json::Json rawResponse;

@@ -280,8 +280,10 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
         ->add_option(
             "-p, --path",
             args::kvdb_input_file_path,
-            "Path to the directory containing the input file. It must have a key "
-            "value pair (separated by \":\") or just single values per line.")
+            "Path to the file to be used as input to create the KVDB. If not provided, "
+            "the KVDB will be created empty.\n"
+            "The file must be a JSON file with the following format: {\"key\": VALUE} "
+            "where VALUE can be any JSON type.")
         ->check(CLI::ExistingFile);
 
     // KVDB dump subcommand
