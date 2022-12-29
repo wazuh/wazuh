@@ -3783,207 +3783,256 @@ checks:
   ###############################################
   # 6.1 System File Permissions
   ###############################################
-  # 6.1.1 Audit system file permissions (Manual) - Not implemented
-
-  # 6.1.2 Ensure sticky bit is set on all world-writable directories (Automated)
-  - id: 28200
-    title: "Ensure sticky bit is set on all world-writable directories."
-    description: "Setting the sticky bit on world writable directories prevents users from deleting or renaming files in that directory that are not owned by them."
-    rationale: "This feature prevents the ability to delete or rename files in world writable directories (such as /tmp ) that are owned by another user."
-    remediation: "Run the following command to set the sticky bit on all world writable directories: # df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type d \\( -perm -0002 -a ! -perm -1000 \\) 2>/dev/null | xargs -I '{}' chmod a+t '{}'."
-    compliance:
-      - cis: ["6.1.2"]
-      - cis_csc: ["3.3", "4.1", "5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'not c:sh -c "df --local -P 2> /dev/null | awk ''{if (NR!=1) print $6}'' | xargs -I ''{}'' find ''{}'' -xdev -type d \\( -perm -0002 -a ! -perm -1000 \\) 2>/dev/null" -> r:^/'
-
-  # 6.1.3 Ensure permissions on /etc/passwd are configured (Automated)
+  # 6.1.1 Ensure permissions on /etc/passwd are configured (Automated)
   - id: 28201
     title: "Ensure permissions on /etc/passwd are configured."
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following command to set permissions on /etc/passwd: # chown root:root /etc/passwd # chmod 644 /etc/passwd."
     compliance:
-      - cis: ["6.1.3"]
-      - cis_csc: ["3.3", "16.4"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cis: ["6.1.1"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_800_53: ["AC-3","MP-2"]
+      - mitre_techniques: ["T1003","T1003.008","T1222","T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
       - 'c:stat -L /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 6.1.4 Ensure permissions on /etc/shadow are configured  (Automated)
+  # 6.1.2 Ensure permissions on /etc/passwd- are configured (Automated)
   - id: 28202
-    title: "Ensure permissions on /etc/shadow are configured."
-    description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
-    rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
-    remediation: "Run the following commands to set owner, group, and permissions on /etc/shadow: # chown root:root /etc/shadow # chmod 0000 /etc/shadow."
+    title: "Ensure permissions on /etc/passwd- are configured."
+    description: "The /etc/passwd- file contains backup user account information."
+    rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run the following commands to set owner, group, and permissions on /etc/passwd-: # chown root:root /etc/passwd- # chmod u-x,go-wx /etc/passwd-."
     compliance:
-      - cis: ["6.1.4"]
-      - cis_csc: ["3.3", "16.4"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cis: ["6.1.2"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_800_53: ["AC-3","MP-2"]
+      - mitre_techniques: ["T1003","T1003.008","T1222","T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/shadow -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\) || r:Access:\s*\(06400/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
+      - 'c:stat -L /etc/passwd- -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 6.1.5 Ensure permissions on /etc/group are configured (Automated)
+   # 6.1.3 Ensure permissions on /etc/group are configured (Automated)
   - id: 28203
     title: "Ensure permissions on /etc/group are configured."
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
     remediation: "Run the following commands to set owner, group, and permissions on /etc/group: # chown root:root /etc/group # chmod u-x,g-wx,o-wx /etc/group."
     compliance:
-      - cis: ["6.1.5"]
-      - cis_csc: ["3.3", "16.4"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cis: ["6.1.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_800_53: ["AC-3","MP-2"]
+      - mitre_techniques: ["T1003","T1003.008","T1222","T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
       - 'c:stat -L /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 6.1.6 Ensure permissions on /etc/gshadow are configured (Automated)
+  # 6.1.4 Ensure permissions on /etc/group- are configured (Automated)
   - id: 28204
-    title: "Ensure permissions on /etc/gshadow are configured."
-    description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
-    rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
-    remediation: "Run the following commands to set owner, group, and permissions on /etc/gshadow: # chown root:root /etc/gshadow # chmod 0000 /etc/gshadow."
+    title: "Ensure permissions on /etc/group- are configured."
+    description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
+    rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run the following commands to set owner, group, and permissions on /etc/group-: # chown root:root /etc/group- # chmod u-x,go-wx /etc/group-."
     compliance:
-      - cis: ["6.1.6"]
-      - cis_csc: ["3.3", "16.14"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cis: ["6.1.4"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_800_53: ["AC-3","MP-2"]
+      - mitre_techniques: ["T1003","T1003.008","T1222","T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/gshadow -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\) || r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
+      - 'c:stat -L /etc/group- -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 6.1.7 Ensure permissions on /etc/passwd- are configured (Automated)
+  # 6.1.5 Ensure permissions on /etc/shadow are configured  (Automated)
   - id: 28205
-    title: "Ensure permissions on /etc/passwd- are configured."
-    description: "The /etc/passwd- file contains backup user account information."
-    rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
-    remediation: "Run the following commands to set owner, group, and permissions on /etc/passwd-: # chown root:root /etc/passwd- # chmod u-x,go-wx /etc/passwd-."
+    title: "Ensure permissions on /etc/shadow are configured."
+    description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
+    rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
+    remediation: "Run the following commands to set owner, group, and permissions on /etc/shadow: # chown root:root /etc/shadow # chmod 0000 /etc/shadow."
     compliance:
-      - cis: ["6.1.7"]
-      - cis_csc: ["3.3", "16.4"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cis: ["6.1.5"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_800_53: ["AC-3","MP-2"]
+      - mitre_techniques: ["T1003","T1003.008","T1222","T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/passwd- -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/shadow -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\) || r:Access:\s*\(06400/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
 
-  # 6.1.8 Ensure permissions on /etc/shadow- are configured (Automated)
+  # 6.1.6 Ensure permissions on /etc/shadow- are configured (Automated)
   - id: 28206
     title: "Ensure permissions on /etc/shadow- are configured."
     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to set owner, group, and permissions on /etc/shadow-: # chown root:root /etc/shadow- # chmod 0000 /etc/shadow-."
     compliance:
-      - cis: ["6.1.8"]
-      - cis_csc: ["3.3", "16.4"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cis: ["6.1.6"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_800_53: ["AC-3","MP-2"]
+      - mitre_techniques: ["T1003","T1003.008","T1222","T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
       - 'c:stat -L /etc/shadow- -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\) || r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
 
-  # 6.1.9 Ensure permissions on /etc/group- are configured (Automated)
+  # 6.1.7 Ensure permissions on /etc/gshadow are configured (Automated)
   - id: 28207
-    title: "Ensure permissions on /etc/group- are configured."
-    description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
-    rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
-    remediation: "Run the following commands to set owner, group, and permissions on /etc/group-: # chown root:root /etc/group- # chmod u-x,go-wx /etc/group-."
+    title: "Ensure permissions on /etc/gshadow are configured."
+    description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
+    rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
+    remediation: "Run the following commands to set owner, group, and permissions on /etc/gshadow: # chown root:root /etc/gshadow # chmod 0000 /etc/gshadow."
     compliance:
-      - cis: ["6.1.9"]
-      - cis_csc: ["3.3", "16.4"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cis: ["6.1.7"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - nist_800_53: ["AC-3","MP-2"]
+      - mitre_techniques: ["T1003","T1003.008","T1222","T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/group- -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/gshadow -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\) || r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
 
-  # 6.1.10 Ensure permissions on /etc/gshadow- are configured (Automated)
+  # 6.1.8 Ensure permissions on /etc/gshadow- are configured (Automated)
   - id: 28208
     title: "Ensure permissions on /etc/gshadow- are configured."
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to set owner, group, and permissions on /etc/gshadow- : # chown root:root /etc/gshadow- # chmod 0000 /etc/gshadow-."
     compliance:
-      - cis: ["6.1.10"]
-      - cis_csc: ["3.3", "16.4"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cis: ["6.1.8"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["16.4"]
+      - mitre_techniques: ["T1003","T1003.008","T1222","T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
       - 'c:stat -L /etc/gshadow- -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\) || r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
 
-  # 6.1.11 Ensure no world writable files exist - Not implemented, requires manual operation.
-  # 6.1.12 Ensure no unowned files or directories exist - Not implemented, requires manual operation.
-  # 6.1.13 Ensure no ungrouped files or directories exist - Not implemented, requires manual operation.
-  # 6.1.14 Audit SUID executables - Not implemented, requires manual operation.
-  # 6.1.15 Audit SGID executables - Not implemented, requires manual operation.
+  # 6.1.9 Ensure no world writable files exist (Automated) - Not implemented
+  # 6.1.10 Ensure no unowned files or directories exist (Automated) - Not implemented, requires manual operation.
+  # 6.1.11 Ensure no ungrouped files or directories exist (Automated) - Not implemented, requires manual operation.
+  # 6.1.12 Ensure sticky bit is set on all world-writable directories (Automated) - Not implemented, requires manual operation.
+  # 6.1.13 Audit SUID executables (Manual) - Not implemented, requires manual operation.
+  # 6.1.14 Audit SGID executables (Manual) - Not implemented, requires manual operation.
+  # 6.1.15 Audit system file permissions (Manual) - Not implemented, requires manual operation.
 
   ###############################################
-  # 6.2 Review User and Group Settings
+  # 6.2 Local User and Group Settings
   ###############################################
-  # 6.2.1 Ensure password fields are not empty  (Automated)
+  # 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords (Automated) - Not implemented, requires manual operation.
+  # 6.2.2 Ensure /etc/shadow password fields are not empty (Automated)
   - id: 28209
-    title: "Ensure password fields are not empty."
+    title: "Ensure /etc/shadow password fields are not empty."
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
     remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: passwd -l <username>. Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
     compliance:
-      - cis: ["6.2.1"]
-      - cis_csc: ["4.4", "5.2"]
-      - pci_dss: ["8.2"]
-      - tsc: ["CC6.1"]
+      - cis: ["6.2.2"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - mitre_techniques: ["T1078","T1078.001","T1078.003"]
+      - mitre_tactics: ["TA0003"]
+      - mitre_mitigations: ["M1027"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_4.0: ["2.2.2","8.3.5","8.3.6","8.6.3"]
+      - soc_2: ["CC6.1"]
+      - iso_27001-2013: ["A.9.4.3"]
     condition: none
     rules:
       - 'f:/etc/shadow -> !r:^# && r:^\w+::'
 
-  # 6.2.2 Ensure all groups in /etc/passwd exist in /etc/group - Not implemented, requires manual operation.
-  # 6.2.3 Ensure no duplicate UIDs exist - Not implemented, requires manual operation.
-  # 6.2.4 Ensure no duplicate GIDs exist - Not implemented, requires manual operation.
-  # 6.2.5 Ensure no duplicate user names exist - Not implemented, requires manual operation.
-  # 6.2.6 Ensure no duplicate group names exist - Not implemented, requires manual operation.
-  # 6.2.7 Ensure root PATH Integrity - Not implemented, requires manual operation.
+  # 6.2.3 Ensure all groups in /etc/passwd exist in /etc/group - Not implemented, requires manual operation.
+  # 6.2.4 Ensure no duplicate UIDs exist - Not implemented, requires manual operation.
+  # 6.2.5 Ensure no duplicate GIDs exist - Not implemented, requires manual operation.
+  # 6.2.6 Ensure no duplicate user names exist - Not implemented, requires manual operation.
+  # 6.2.7 Ensure no duplicate group names exist - Not implemented, requires manual operation.
+  # 6.2.8 Ensure root PATH Integrity - Not implemented, requires manual operation.
 
-  # 6.2.8 Ensure root is the only UID 0 account.
+  # 6.2.9 Ensure root is the only UID 0 account (Automated)
   - id: 28210
     title: "Ensure root is the only UID 0 account."
     description: "Any account with UID 0 has superuser privileges on the system."
     rationale: 'This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in recommendation "Ensure access to the su command is restricted".'
     remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
     compliance:
-      - cis: ["6.2.8"]
-      - cis_csc: ["4.1", "5.1"]
-      - pci_dss: ["10.2.5"]
-      - hipaa: ["164.312.b"]
-      - nist_800_53: ["AU.14", "AC.7"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7", "32.2"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cis: ["6.2.9"]
+      - mitre_techniques: ["T1548","T1548.000"]
+      - mitre_tactics: ["TA0001"]
+      - mitre_mitigations: ["M1026"]
     condition: none
     rules:
       - 'f:/etc/passwd -> !r:^\s*\t*root: && r:^\w+:\w+:0:'
 
-  # 6.2.9 Ensure all users' home directories exist - Not implemented, requires manual operation.
-  # 6.2.10 Ensure users own their home directories - Not implemented, requires manual operation.
-  # 6.2.11 Ensure users' home directories permissions are 750 or more restrictive - Not implemented, requires manual operation.
-  # 6.2.12 Ensure users' dot files are not group or world writable - Not implemented, requires manual operation.
-  # 6.2.13 Ensure users' .netrc Files are not group or world accessible (Automated)
-  # 6.2.14 Ensure no users have .forward files - Not implemented, requires manual operation.
-  # 6.2.15 Ensure no users have .netrc files - Not implemented, requires manual operation.
-  # 6.2.16 Ensure no users have .rhosts files - Not implemented, requires manual operation.
+  # 6.2.10 Ensure local interactive users home directories exist - Not implemented, requires manual operation.
+  # 6.2.11 Ensure local interactive users own their home directories - Not implemented, requires manual operation.
+  # 6.2.12 Ensure local interactive users home directories are mode 750 or more restrictive - Not implemented, requires manual operation.
+  # 6.2.13 Ensure no local interactive users have .netrc files - Not implemented, requires manual operation.
+  # 6.2.14 Ensure no local interactive users have .forward files - Not implemented, requires manual operation.
+  # 6.2.15 Ensure no local interactive users have .rhosts files - Not implemented, requires manual operation.
+  # 6.2.16 Ensure local interactive user dot files are not group or world writable - Not implemented, requires manual operation.
