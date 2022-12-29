@@ -18,6 +18,7 @@
 extern const wm_context WM_SYS_CONTEXT;     // Context
 
 #define WM_SYS_LOGTAG ARGV0 ":syscollector" // Tag for log messages
+#define WM_SYSCOLLECTOR_DEFAULT_INTERVAL W_HOUR_SECONDS
 
 typedef struct wm_sys_flags_t {
     unsigned int enabled:1;                 // Main switch
@@ -48,6 +49,6 @@ typedef struct wm_sys_t {
 } wm_sys_t;
 
 // Parse XML configuration
-int wm_sys_read(const OS_XML *xml, XML_NODE node, wmodule *module);
+int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module);
 
 #endif
