@@ -11,10 +11,15 @@ constexpr auto DB_NAME = "TEST_DB";
 constexpr auto DB_NAME_2 = "TEST_DB_2";
 constexpr auto DB_NAME_3 = "TEST_DB_3";
 constexpr auto DB_NAME_WITH_SPACES = "TEST_DB SEPARATE NAME";
+constexpr auto DB_NAME_ANOTHER = "ANOTHER_DB_NAME";
 constexpr auto DB_DIR = "/tmp/kvdbTestDir/";
 constexpr auto FILE_PATH = "/tmp/file";
+constexpr auto KEY_A = "keyA";
+constexpr auto KEY_B = "keyB";
+constexpr auto KEY_C = "keyC";
+constexpr auto KEY_D = "keyD";
+constexpr auto VAL_A = "valA";
 
-// Values should be as compact as possible (do not leave spaces nor newlines, etc)
 const std::string rawValueKeyA {"valueA"};
 const std::string valueKeyA {fmt::format("\"{}\"", rawValueKeyA)};
 const int rawValueKeyB {69};
@@ -56,6 +61,24 @@ inline void createJsonTestFile(const std::string filePath = FILE_PATH)
     }
 }
 
+inline void createKeyOnlyJsonTestFile(const std::string filePath = FILE_PATH)
+{
+    // File creation
+    if (!std::filesystem::exists(FILE_PATH))
+    {
+        std::ofstream exampleFile(FILE_PATH);
+        if (exampleFile.is_open())
+        {
+            exampleFile << R"({
+                                "keyA":"",
+                                "keyB":"",
+                                "keyC":""
+                              })";
+            exampleFile.close();
+        }
+    }
+}
+
 // "kvdbCreateCmd" tests section
 
 class kvdbAPICreateCommand : public ::testing::Test
@@ -72,7 +95,8 @@ protected:
             std::filesystem::remove_all(DB_DIR);
         }
         kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
-        kvdbManager->loadDB(DB_NAME);
+        auto varHandle = kvdbManager->getHandler(DB_NAME, true);
+        ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
     }
 
     virtual void TearDown()
@@ -81,6 +105,17 @@ protected:
         {
             std::filesystem::remove(FILE_PATH);
         }
+    }
+
+    json::Json getParametersInJson(const std::string& kvdbName,
+                                   const std::string& kvdbInputFilePath = "")
+    {
+        // create request
+        json::Json data {};
+        data.setObject();
+        data.setString(kvdbName, "/name");
+        data.setString(kvdbInputFilePath, "/path");
+        return data;
     }
 };
 
@@ -135,22 +170,21 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSimpleAddition)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME_2).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_2));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
+    ASSERT_STREQ(response.message().value().c_str(),
+                 fmt::format("KVDB '{}' successfully created", DB_NAME_2).c_str());
 }
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdEmptyName)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {"{\"name\": \"\"}"};
-    const auto response = cmd(params);
+    const auto response = cmd(kvdbAPICreateCommand::getParametersInJson(""));
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -177,29 +211,30 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdDuplicatedDatabase)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("Database '{}' is loaded", DB_NAME).c_str());
+                 fmt::format("Database '{}' already exists", DB_NAME).c_str());
 }
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameWithSpaces)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME_WITH_SPACES).c_str()};
-    const auto response = cmd(params);
+    const auto response =
+        cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_WITH_SPACES));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
+    ASSERT_STREQ(
+        response.message().value().c_str(),
+        fmt::format("KVDB '{}' successfully created", DB_NAME_WITH_SPACES).c_str());
 }
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithFilling)
@@ -208,103 +243,91 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithFilling)
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"path\":\"{}\"}}", DB_NAME_2, FILE_PATH)
-            .c_str()};
-    const auto response = cmd(params);
+    const auto response =
+        cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_2, FILE_PATH));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
+    ASSERT_STREQ(response.message().value().c_str(),
+                 fmt::format("KVDB '{}' successfully created", DB_NAME_2).c_str());
 
     // check value
-    auto value = kvdbManager->getRawValue(DB_NAME_2, "keyA");
+    auto value = kvdbManager->getRawValue(DB_NAME_2, KEY_A);
     ASSERT_FALSE(std::holds_alternative<base::Error>(value));
     ASSERT_STREQ(valueKeyA.c_str(), std::get<std::string>(value).c_str());
 
-    value = kvdbManager->getRawValue(DB_NAME_2, "keyB");
+    value = kvdbManager->getRawValue(DB_NAME_2, KEY_B);
     ASSERT_FALSE(std::holds_alternative<base::Error>(value));
     ASSERT_STREQ(valueKeyB.c_str(), std::get<std::string>(value).c_str());
 
-    value = kvdbManager->getRawValue(DB_NAME_2, "keyC");
+    value = kvdbManager->getRawValue(DB_NAME_2, KEY_C);
     ASSERT_FALSE(std::holds_alternative<base::Error>(value));
     ASSERT_STREQ(valueKeyC.c_str(), std::get<std::string>(value).c_str());
 
-    value = kvdbManager->getRawValue(DB_NAME_2, "keyD");
+    value = kvdbManager->getRawValue(DB_NAME_2, KEY_D);
     ASSERT_FALSE(std::holds_alternative<base::Error>(value));
     ASSERT_STREQ(valueKeyD.c_str(), std::get<std::string>(value).c_str());
 }
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithWrongFilling)
 {
-    createJsonTestFile();
+    // File creation
+    if (!std::filesystem::exists(FILE_PATH))
+    {
+        std::ofstream exampleFile(FILE_PATH);
+        if (exampleFile.is_open())
+        {
+            exampleFile << R"({{"keyA": [~] }})";
+            exampleFile.close();
+        }
+    }
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"path\":\"{}\"}}", DB_NAME_2, FILE_PATH)
-            .c_str()};
-    const auto response = cmd(params);
+    const auto response =
+        cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_2, FILE_PATH));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
-
-    // check value
-    auto value = kvdbManager->getRawValue(DB_NAME_2, "keyA");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
-    ASSERT_STREQ(valueKeyA.c_str(), std::get<std::string>(value).c_str());
-
-    value = kvdbManager->getRawValue(DB_NAME_2, "keyB");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
-    ASSERT_STREQ(valueKeyB.c_str(), std::get<std::string>(value).c_str());
-
-    value = kvdbManager->getRawValue(DB_NAME_2, "keyC");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
-    ASSERT_STREQ(valueKeyC.c_str(), std::get<std::string>(value).c_str());
-
-    value = kvdbManager->getRawValue(DB_NAME_2, "keyD");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
-    ASSERT_STREQ(valueKeyD.c_str(), std::get<std::string>(value).c_str());
+    // TODO: this should be wrong
+    ASSERT_STREQ(
+        response.message().value().c_str(),
+        fmt::format("An error occurred while parsing the JSON file '{}'", FILE_PATH)
+            .c_str());
 }
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSingleValueFile)
 {
-    createJsonTestFile();
+    createKeyOnlyJsonTestFile();
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"path\":\"{}\"}}", DB_NAME_2, FILE_PATH)
-            .c_str()};
-    const auto response = cmd(params);
+    const auto response =
+        cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_2, FILE_PATH));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
+    ASSERT_STREQ(response.message().value().c_str(),
+                 fmt::format("KVDB '{}' successfully created", DB_NAME_2).c_str());
 
     // check value
-    auto value = kvdbManager->getRawValue(DB_NAME_2, "keyA");
+    auto value = kvdbManager->getRawValue(DB_NAME_2, KEY_A);
     ASSERT_FALSE(std::holds_alternative<base::Error>(value));
-    ASSERT_STREQ(valueKeyA.c_str(), std::get<std::string>(value).c_str());
+    ASSERT_STREQ("\"\"", std::get<std::string>(value).c_str());
 
-    value = kvdbManager->getRawValue(DB_NAME_2, "keyB");
+    value = kvdbManager->getRawValue(DB_NAME_2, KEY_B);
     ASSERT_FALSE(std::holds_alternative<base::Error>(value));
-    ASSERT_STREQ(valueKeyB.c_str(), std::get<std::string>(value).c_str());
+    ASSERT_STREQ("\"\"", std::get<std::string>(value).c_str());
 
-    value = kvdbManager->getRawValue(DB_NAME_2, "keyC");
+    value = kvdbManager->getRawValue(DB_NAME_2, KEY_C);
     ASSERT_FALSE(std::holds_alternative<base::Error>(value));
-    ASSERT_STREQ(valueKeyC.c_str(), std::get<std::string>(value).c_str());
-
-    value = kvdbManager->getRawValue(DB_NAME_2, "keyD");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
-    ASSERT_STREQ(valueKeyD.c_str(), std::get<std::string>(value).c_str());
+    ASSERT_STREQ("\"\"", std::get<std::string>(value).c_str());
 }
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNonExistingFile)
@@ -321,9 +344,9 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNonExistingFile)
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("An error occurred while opening the file '{}'", FILE_PATH)
-                     .c_str());
+    ASSERT_STREQ(
+        response.message().value().c_str(),
+        fmt::format("An error occurred while opening the file '{}'", FILE_PATH).c_str());
 }
 
 // "kvdbDeleteCmd" tests section
@@ -344,12 +367,22 @@ protected:
             std::filesystem::remove_all(DB_DIR);
         }
         kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
-        kvdbManager->loadDB(DB_NAME);
+        auto varHandle = kvdbManager->getHandler(DB_NAME, true);
+        ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
     }
 
     size_t getNumberOfKVDBLoaded() { return kvdbManager->listDBs().size(); }
 
     virtual void TearDown() {}
+
+    json::Json getParametersInJson(const std::string& kvdbName)
+    {
+        // create request
+        json::Json data {};
+        data.setObject();
+        data.setString(kvdbName, "/name");
+        return data;
+    }
 };
 
 TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmd)
@@ -363,8 +396,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdLoadedOnlyOnMap)
     // DB_NAME is only loaded on map, it will be unloaded and deleted
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
-    auto response = cmd(params);
+    auto response = cmd(getParametersInJson(DB_NAME));
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -381,8 +413,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdBlockBecauseLoaded)
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
-    auto response = cmd(params);
+    auto response = cmd(getParametersInJson(DB_NAME));
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -395,14 +426,12 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdBlockBecauseLoaded)
 TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdSuccess)
 {
     // create unloaded DB
-    auto resultString =
-        kvdbAPIDeleteCommand::kvdbManager->CreateFromJFile(DB_NAME_2);
+    auto resultString = kvdbAPIDeleteCommand::kvdbManager->CreateFromJFile(DB_NAME_2);
     ASSERT_FALSE(resultString.has_value());
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME_2).c_str()};
-    auto response = cmd(params);
+    auto response = cmd(getParametersInJson(DB_NAME_2));
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -413,18 +442,16 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdDBDoesntExist)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\"}}", DB_NAME_NOT_AVAILABLE).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME_NOT_AVAILABLE));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(
-        response.message().value().c_str(),
-        fmt::format("Database '{}' not found or could not be loaded.", DB_NAME_NOT_AVAILABLE)
-            .c_str());
+    ASSERT_STREQ(response.message().value().c_str(),
+                 fmt::format("Database '{}' not found or could not be loaded.",
+                             DB_NAME_NOT_AVAILABLE)
+                     .c_str());
 
     // check remaining available DBs
     ASSERT_EQ(kvdbAPIDeleteCommand::getNumberOfKVDBLoaded(), 1);
@@ -476,8 +503,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdEmptyName)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
-    json::Json params {"{\"name\": \"\"}"};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(""));
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -508,10 +534,20 @@ protected:
         }
 
         kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
-        kvdbManager->loadDB(DB_NAME);
+        auto varHandle = kvdbManager->getHandler(DB_NAME, true);
+        ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
     }
 
     virtual void TearDown() {}
+
+    json::Json getParametersInJson(const std::string& kvdbName)
+    {
+        // create request
+        json::Json data {};
+        data.setObject();
+        data.setString(kvdbName, "/name");
+        return data;
+    }
 };
 
 TEST_F(kvdbAPIDumpCommand, kvdbDumpCmd)
@@ -565,8 +601,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdEmptyName)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
-    json::Json params {"{\"name\": \"\"}"};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(""));
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -586,36 +621,36 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleExecution)
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME_2).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME_2));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
+    ASSERT_STREQ(response.message().value().c_str(),
+                 fmt::format("KVDB '{}' successfully dumped", DB_NAME_2).c_str());
 
     // check content
-    const auto kvdbList = response.data().getArray();
-    ASSERT_TRUE(kvdbList.has_value());
-    ASSERT_EQ(kvdbList.value().size(), 4);
+    const auto kvdbContent = response.data().getArray();
+    ASSERT_TRUE(kvdbContent.has_value());
+    ASSERT_EQ(kvdbContent.value().size(), 4);
 
-    ASSERT_TRUE(kvdbList.value().at(0).getString("/key").has_value());
-    ASSERT_STREQ(kvdbList.value().at(0).getString("/key").value().c_str(), "keyA");
-    ASSERT_TRUE(kvdbList.value().at(1).getString("/key").has_value());
-    ASSERT_STREQ(kvdbList.value().at(1).getString("/key").value().c_str(), "keyB");
-    ASSERT_TRUE(kvdbList.value().at(2).getString("/key").has_value());
-    ASSERT_STREQ(kvdbList.value().at(2).getString("/key").value().c_str(), "keyC");
-    ASSERT_TRUE(kvdbList.value().at(3).getString("/key").has_value());
-    ASSERT_STREQ(kvdbList.value().at(3).getString("/key").value().c_str(), "keyD");
+    ASSERT_TRUE(kvdbContent.value().at(0).getString("/key").has_value());
+    ASSERT_STREQ(kvdbContent.value().at(0).getString("/key").value().c_str(), KEY_A);
+    ASSERT_TRUE(kvdbContent.value().at(1).getString("/key").has_value());
+    ASSERT_STREQ(kvdbContent.value().at(1).getString("/key").value().c_str(), KEY_B);
+    ASSERT_TRUE(kvdbContent.value().at(2).getString("/key").has_value());
+    ASSERT_STREQ(kvdbContent.value().at(2).getString("/key").value().c_str(), KEY_C);
+    ASSERT_TRUE(kvdbContent.value().at(3).getString("/key").has_value());
+    ASSERT_STREQ(kvdbContent.value().at(3).getString("/key").value().c_str(), KEY_D);
 
-    ASSERT_TRUE(kvdbList.value().at(0).getString("/value").has_value());
-    ASSERT_STREQ(kvdbList.value().at(0).getString("/value").value().c_str(),
+    ASSERT_TRUE(kvdbContent.value().at(0).getString("/value").has_value());
+    ASSERT_STREQ(kvdbContent.value().at(0).getString("/value").value().c_str(),
                  rawValueKeyA.c_str());
-    ASSERT_TRUE(kvdbList.value().at(1).getInt("/value").has_value());
-    ASSERT_EQ(kvdbList.value().at(1).getInt("/value").value(), rawValueKeyB);
-    ASSERT_TRUE(kvdbList.value().at(2).getArray("/value").has_value());
-    ASSERT_STREQ(kvdbList.value()
+    ASSERT_TRUE(kvdbContent.value().at(1).getInt("/value").has_value());
+    ASSERT_EQ(kvdbContent.value().at(1).getInt("/value").value(), rawValueKeyB);
+    ASSERT_TRUE(kvdbContent.value().at(2).getArray("/value").has_value());
+    ASSERT_STREQ(kvdbContent.value()
                      .at(2)
                      .getArray("/value")
                      .value()
@@ -624,7 +659,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleExecution)
                      .value_or("value_not_found")
                      .c_str(),
                  rawValueKeyCA.c_str());
-    ASSERT_STREQ(kvdbList.value()
+    ASSERT_STREQ(kvdbContent.value()
                      .at(2)
                      .getArray("/value")
                      .value()
@@ -633,7 +668,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleExecution)
                      .value_or("value_not_found")
                      .c_str(),
                  rawValueKeyCB.c_str());
-    ASSERT_STREQ(kvdbList.value()
+    ASSERT_STREQ(kvdbContent.value()
                      .at(2)
                      .getArray("/value")
                      .value()
@@ -642,49 +677,49 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleExecution)
                      .value_or("value_not_found")
                      .c_str(),
                  rawValueKeyCC.c_str());
-    ASSERT_TRUE(kvdbList.value().at(3).getObject("/value").has_value());
+    ASSERT_TRUE(kvdbContent.value().at(3).getObject("/value").has_value());
     ASSERT_STREQ(
-        std::get<0>(kvdbList.value().at(3).getObject("/value").value()[0]).c_str(),
+        std::get<0>(kvdbContent.value().at(3).getObject("/value").value()[0]).c_str(),
         "keyDA");
     ASSERT_STREQ(
-        std::get<0>(kvdbList.value().at(3).getObject("/value").value()[1]).c_str(),
+        std::get<0>(kvdbContent.value().at(3).getObject("/value").value()[1]).c_str(),
         "keyDB");
     ASSERT_STREQ(
-        std::get<0>(kvdbList.value().at(3).getObject("/value").value()[2]).c_str(),
+        std::get<0>(kvdbContent.value().at(3).getObject("/value").value()[2]).c_str(),
         "keyDC");
-    ASSERT_TRUE(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[0])
+    ASSERT_TRUE(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[0])
                     .getString()
                     .has_value());
-    ASSERT_STREQ(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[0])
+    ASSERT_STREQ(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[0])
                      .getString()
                      .value()
                      .c_str(),
                  rawValueKeyDA.c_str());
-    ASSERT_TRUE(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[1])
+    ASSERT_TRUE(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[1])
                     .getInt()
                     .has_value());
-    ASSERT_EQ(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[1])
+    ASSERT_EQ(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[1])
                   .getInt()
                   .value(),
               rawValueKeyDB);
-    ASSERT_TRUE(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[2])
+    ASSERT_TRUE(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[2])
                     .getArray()
                     .has_value());
-    ASSERT_EQ(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[2])
+    ASSERT_EQ(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[2])
                   .getArray()
                   .value()
                   .at(0)
                   .getInt()
                   .value_or(-1),
               rawValueKeyDC0);
-    ASSERT_EQ(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[2])
+    ASSERT_EQ(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[2])
                   .getArray()
                   .value()
                   .at(1)
                   .getInt()
                   .value_or(-1),
               rawValueKeyDC1);
-    ASSERT_EQ(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[2])
+    ASSERT_EQ(std::get<1>(kvdbContent.value().at(3).getObject("/value").value()[2])
                   .getArray()
                   .value()
                   .at(2)
@@ -697,23 +732,23 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleEmpty)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
+    ASSERT_STREQ(response.message().value().c_str(),
+                 fmt::format("KVDB '{}' successfully dumped", DB_NAME).c_str());
 
     auto dataArray = response.data().getArray();
-    ASSERT_EQ(dataArray.value().size(),0);
+    ASSERT_EQ(dataArray.value().size(), 0);
 }
 
 TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdKVDBOnlyKeys)
 {
     // create file with content
-    createJsonTestFile();
+    createKeyOnlyJsonTestFile();
 
     const auto resultString =
         kvdbAPIDumpCommand::kvdbManager->CreateFromJFile(DB_NAME_2, FILE_PATH);
@@ -721,111 +756,33 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdKVDBOnlyKeys)
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME_2).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME_2));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
+    ASSERT_STREQ(response.message().value().c_str(),
+                 fmt::format("KVDB '{}' successfully dumped", DB_NAME_2).c_str());
 
     // check content
     const auto kvdbList = response.data().getArray();
     ASSERT_TRUE(kvdbList.has_value());
-    ASSERT_EQ(kvdbList.value().size(), 4);
+    ASSERT_EQ(kvdbList.value().size(), 3);
 
     ASSERT_TRUE(kvdbList.value().at(0).getString("/key").has_value());
-    ASSERT_STREQ(kvdbList.value().at(0).getString("/key").value().c_str(), "keyA");
+    ASSERT_STREQ(kvdbList.value().at(0).getString("/key").value().c_str(), KEY_A);
     ASSERT_TRUE(kvdbList.value().at(1).getString("/key").has_value());
-    ASSERT_STREQ(kvdbList.value().at(1).getString("/key").value().c_str(), "keyB");
+    ASSERT_STREQ(kvdbList.value().at(1).getString("/key").value().c_str(), KEY_B);
     ASSERT_TRUE(kvdbList.value().at(2).getString("/key").has_value());
-    ASSERT_STREQ(kvdbList.value().at(2).getString("/key").value().c_str(), "keyC");
-    ASSERT_TRUE(kvdbList.value().at(3).getString("/key").has_value());
-    ASSERT_STREQ(kvdbList.value().at(3).getString("/key").value().c_str(), "keyD");
+    ASSERT_STREQ(kvdbList.value().at(2).getString("/key").value().c_str(), KEY_C);
 
     ASSERT_TRUE(kvdbList.value().at(0).getString("/value").has_value());
-    ASSERT_STREQ(kvdbList.value().at(0).getString("/value").value().c_str(),
-                 rawValueKeyA.c_str());
-    ASSERT_TRUE(kvdbList.value().at(1).getInt("/value").has_value());
-    ASSERT_EQ(kvdbList.value().at(1).getInt("/value").value(), rawValueKeyB);
-    ASSERT_TRUE(kvdbList.value().at(2).getArray("/value").has_value());
-    ASSERT_STREQ(kvdbList.value()
-                     .at(2)
-                     .getArray("/value")
-                     .value()
-                     .at(0)
-                     .getString()
-                     .value_or("value_not_found")
-                     .c_str(),
-                 rawValueKeyCA.c_str());
-    ASSERT_STREQ(kvdbList.value()
-                     .at(2)
-                     .getArray("/value")
-                     .value()
-                     .at(1)
-                     .getString()
-                     .value_or("value_not_found")
-                     .c_str(),
-                 rawValueKeyCB.c_str());
-    ASSERT_STREQ(kvdbList.value()
-                     .at(2)
-                     .getArray("/value")
-                     .value()
-                     .at(2)
-                     .getString()
-                     .value_or("value_not_found")
-                     .c_str(),
-                 rawValueKeyCC.c_str());
-    ASSERT_TRUE(kvdbList.value().at(3).getObject("/value").has_value());
-    ASSERT_STREQ(
-        std::get<0>(kvdbList.value().at(3).getObject("/value").value()[0]).c_str(),
-        "keyDA");
-    ASSERT_STREQ(
-        std::get<0>(kvdbList.value().at(3).getObject("/value").value()[1]).c_str(),
-        "keyDB");
-    ASSERT_STREQ(
-        std::get<0>(kvdbList.value().at(3).getObject("/value").value()[2]).c_str(),
-        "keyDC");
-    ASSERT_TRUE(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[0])
-                    .getString()
-                    .has_value());
-    ASSERT_STREQ(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[0])
-                     .getString()
-                     .value()
-                     .c_str(),
-                 rawValueKeyDA.c_str());
-    ASSERT_TRUE(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[1])
-                    .getInt()
-                    .has_value());
-    ASSERT_EQ(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[1])
-                  .getInt()
-                  .value(),
-              rawValueKeyDB);
-    ASSERT_TRUE(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[2])
-                    .getArray()
-                    .has_value());
-    ASSERT_EQ(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[2])
-                  .getArray()
-                  .value()
-                  .at(0)
-                  .getInt()
-                  .value_or(-1),
-              rawValueKeyDC0);
-    ASSERT_EQ(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[2])
-                  .getArray()
-                  .value()
-                  .at(1)
-                  .getInt()
-                  .value_or(-1),
-              rawValueKeyDC1);
-    ASSERT_EQ(std::get<1>(kvdbList.value().at(3).getObject("/value").value()[2])
-                  .getArray()
-                  .value()
-                  .at(2)
-                  .getInt()
-                  .value_or(-1),
-              rawValueKeyDC2);
+    ASSERT_STREQ(kvdbList.value().at(0).getString("/value").value().c_str(), "");
+    ASSERT_TRUE(kvdbList.value().at(1).getString("/value").has_value());
+    ASSERT_STREQ(kvdbList.value().at(1).getString("/value").value().c_str(), "");
+    ASSERT_TRUE(kvdbList.value().at(2).getString("/value").has_value());
+    ASSERT_STREQ(kvdbList.value().at(2).getString("/value").value().c_str(), "");
 }
 
 // "kvdbGetKeyCmd" tests section
@@ -834,9 +791,6 @@ class kvdbAPIGetCommand : public ::testing::Test
 {
 
 protected:
-    static constexpr auto KEY_A = "keyA";
-    static constexpr auto VAL_A = "valA";
-
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
 
     virtual void SetUp()
@@ -851,6 +805,17 @@ protected:
     }
 
     virtual void TearDown() {}
+
+    json::Json getParametersInJson(const std::string& kvdbName,
+                                   const std::string& keyName)
+    {
+        // create request
+        json::Json data {};
+        data.setObject();
+        data.setString(kvdbName, "/name");
+        data.setString(keyName, "/key");
+        return data;
+    }
 };
 
 TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmd)
@@ -904,8 +869,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdEmptyName)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbGetKeyCmd(kvdbAPIGetCommand::kvdbManager));
-    json::Json params {"{\"name\": \"\"}"};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson("", ""));
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -961,9 +925,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdEmptyKey)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbGetKeyCmd(kvdbAPIGetCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"\"}}", DB_NAME).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME, ""));
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -974,21 +936,17 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdEmptyKey)
 
 TEST_F(kvdbAPIGetCommand, SimpleExecutionKeyOnly)
 {
-    //Insert key
+    // Insert key
     json::Json VAL_JA {"\"valA\""};
     kvdbAPIGetCommand::kvdbManager->writeKey(DB_NAME, KEY_A, VAL_JA);
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbGetKeyCmd(kvdbAPIGetCommand::kvdbManager));
-    json::Json params {
-        fmt::format(R"({{"name": "{}", "key": "{}"}})", DB_NAME, KEY_A).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME, KEY_A));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
 
     // compare content
     auto data = response.data().getString("/value");
@@ -1002,9 +960,6 @@ class kvdbAPIInsertCommand : public ::testing::Test
 {
 
 protected:
-    static constexpr auto KEY_A = "keyA";
-    static constexpr auto VAL_A = "valA";
-
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
 
     virtual void SetUp()
@@ -1019,6 +974,22 @@ protected:
     }
 
     virtual void TearDown() {}
+
+    json::Json getParametersInJson(const std::string& kvdbName,
+                                   const std::string& keyName,
+                                   const std::string& keyValue = "")
+    {
+        // create request
+        json::Json data {};
+        data.setObject();
+        data.setString(kvdbName, "/name");
+        data.setString(keyName, "/key");
+        if (!keyValue.empty())
+        {
+            data.setString(keyValue, "/value");
+        }
+        return data;
+    }
 };
 
 TEST_F(kvdbAPIInsertCommand, kvdbAPIInsertCommand)
@@ -1072,8 +1043,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdEmptyName)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
-    json::Json params {"{\"name\": \"\"}"};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson("", ""));
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -1129,9 +1099,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdEmptyKey)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"\"}}", DB_NAME).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME, ""));
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -1144,15 +1112,14 @@ TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyOnly)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}", DB_NAME, KEY_A).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME, KEY_A));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
+    ASSERT_STREQ(response.message().value().c_str(),
+                 "Key-value successfully written to the database");
 
     // get key and compare content
     auto value = kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A);
@@ -1164,43 +1131,18 @@ TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyValue)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\", \"value\": \"valA\"}}",
-                    DB_NAME,
-                    KEY_A)
-            .c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME, KEY_A, rawValueKeyA));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
+    ASSERT_STREQ(response.message().value().c_str(),
+                 "Key-value successfully written to the database");
 
     // get key and compare content
     auto value = kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A);
-    ASSERT_STREQ(std::get<std::string>(value).c_str(), params.str("/value").value_or("error").c_str());
-}
-
-TEST_F(kvdbAPIInsertCommand, ExecutionEmptyValue)
-{
-    api::CommandFn cmd;
-    ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
-    json::Json params {
-        fmt::format(
-            "{{\"name\": \"{}\", \"key\": \"{}\", \"value\": \"\"}}", DB_NAME, KEY_A)
-            .c_str()};
-    const auto response = cmd(params);
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
-
-    // get key and compare content
-    auto value = kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A);
-    ASSERT_STREQ(std::get<std::string>(value).c_str(), params.str("/value").value_or("error").c_str());
+    ASSERT_STREQ(std::get<std::string>(value).c_str(), valueKeyA.c_str());
 }
 
 TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralKeys)
@@ -1217,15 +1159,14 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralKeys)
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     for (const auto& key : severalKeys)
     {
-        json::Json params {
-            fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}", DB_NAME, key).c_str()};
-        const auto response = cmd(params);
+        const auto response = cmd(getParametersInJson(DB_NAME, key));
 
         // check response
         ASSERT_TRUE(response.isValid());
         ASSERT_EQ(response.error(), 0);
         ASSERT_TRUE(response.message().has_value());
-        ASSERT_STREQ(response.message().value().c_str(), "OK");
+        ASSERT_STREQ(response.message().value().c_str(),
+                     "Key-value successfully written to the database");
 
         // get key and compare content
         auto value = kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, key);
@@ -1242,28 +1183,24 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralValues)
                                               "0123456789",
                                               ":;<=>?@",
                                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-                                              "[^_`\\\"bcdefghijklmnopqrstuvwxyz{|}~"};
+                                              "[^_`bcdefghijklmnopqrstuvwxyz{|}~"};
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     for (const auto& value : severalValues)
     {
-        json::Json params {
-            fmt::format("{{\"name\": \"{}\", \"key\": \"{}\", \"value\": \"{}\"}}",
-                        DB_NAME,
-                        KEY_A,
-                        value)
-                .c_str()};
-        const auto response = cmd(params);
+        const auto response = cmd(getParametersInJson(DB_NAME, KEY_A, value));
 
         // check response
         ASSERT_TRUE(response.isValid());
         ASSERT_EQ(response.error(), 0);
         ASSERT_TRUE(response.message().has_value());
-        ASSERT_STREQ(response.message().value().c_str(), "OK");
+        ASSERT_STREQ(response.message().value().c_str(),
+                     "Key-value successfully written to the database");
 
         // get key and compare content
         auto rawValue = kvdbAPIInsertCommand::kvdbManager->getRawValue(DB_NAME, KEY_A);
-        ASSERT_STREQ(std::get<std::string>(rawValue).c_str(), params.str("/value").value_or("error").c_str());
+        ASSERT_STREQ(std::get<std::string>(rawValue).c_str(),
+                     fmt::format("\"{}\"", value).c_str());
     }
 }
 
@@ -1271,17 +1208,17 @@ TEST_F(kvdbAPIInsertCommand, ExecutionWrongDBName)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"ANOTHER_DB_NAME\", \"key\": \"{}\"}}", KEY_A).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME_ANOTHER, KEY_A));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),
-                 "Key-value could not be written to the database:Database "
-                 "'ANOTHER_DB_NAME' not found or could not be loaded.");
+                 fmt::format("Key-value could not be written to the database: Database "
+                             "'{}' not found or could not be loaded.",
+                             DB_NAME_ANOTHER)
+                     .c_str());
 }
 
 // "kvdbListCmd" tests section
@@ -1302,10 +1239,22 @@ protected:
             std::filesystem::remove_all(DB_DIR);
         }
         kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
-        kvdbManager->loadDB(DB_NAME, false);
+        auto varHandle = kvdbManager->getHandler(DB_NAME, true);
+        ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
     }
 
     virtual void TearDown() {}
+
+    json::Json getParametersInJson(const bool& mustBeLoaded,
+                                   const std::string& kvdbName = "")
+    {
+        // create request
+        json::Json data {};
+        data.setObject();
+        data.setBool(mustBeLoaded, "/mustBeLoaded");
+        data.setString(kvdbName, "/name");
+        return data;
+    }
 };
 
 TEST_F(kvdbAPIListCommand, kvdbListCmd)
@@ -1315,13 +1264,9 @@ TEST_F(kvdbAPIListCommand, kvdbListCmd)
 
 TEST_F(kvdbAPIListCommand, kvdbListCmdSingleDBLoaded)
 {
-    // add DB to loaded list
-    kvdbManager->loadDB(DB_NAME);
-
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbListCmd(kvdbAPIListCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"mustBeLoaded\": true}}").c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(true));
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
 
@@ -1339,26 +1284,25 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdNoneLoaded)
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbListCmd(kvdbAPIListCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"mustBeLoaded\": true}}").c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(true));
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
 
     // check response
     const auto kvdbList = response.data().getArray();
-    ASSERT_FALSE(kvdbList.has_value());
+    ASSERT_TRUE(kvdbList.has_value());
+    ASSERT_EQ(kvdbList.value().size(), 0);
 }
 
 TEST_F(kvdbAPIListCommand, kvdbListCmdMultipleLoaded)
 {
     // Adds another DB to the list
-    kvdbAPIListCommand::kvdbManager->loadDB(DB_NAME);
-    kvdbAPIListCommand::kvdbManager->loadDB(DB_NAME_2);
+    auto varHandle = kvdbManager->getHandler(DB_NAME_2, true);
+    ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbListCmd(kvdbAPIListCommand::kvdbManager));
-    json::Json params {fmt::format("{{\"mustBeLoaded\": true}}").c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(true));
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
 
@@ -1372,16 +1316,13 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdMultipleLoaded)
 
 TEST_F(kvdbAPIListCommand, kvdbListCmdWithFilteringLoaded)
 {
-    // Adds DB to the list
-    kvdbAPIListCommand::kvdbManager->loadDB(DB_NAME);
-    // add a db wicha name starts different than the others
-    kvdbAPIListCommand::kvdbManager->loadDB(DB_NAME_DIFFERENT_START);
+    // add a db wich name starts different than the others
+    auto varHandle = kvdbManager->getHandler(DB_NAME_DIFFERENT_START, true);
+    ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbListCmd(kvdbAPIListCommand::kvdbManager));
-    json::Json params_with_name_not {
-        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"NOT\"}}").c_str()};
-    auto response = cmd(params_with_name_not);
+    auto response = cmd(getParametersInJson(true, "NOT"));
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
 
@@ -1392,9 +1333,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdWithFilteringLoaded)
     ASSERT_EQ(kvdbList.value().at(0).getString().value(), DB_NAME_DIFFERENT_START);
 
     // same procces filtering with previous name start
-    json::Json params_with_name_test {
-        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"TEST_\"}}").c_str()};
-    response = cmd(params_with_name_test);
+    response = cmd(getParametersInJson(true, "TEST_"));
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
 
@@ -1406,9 +1345,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdWithFilteringLoaded)
     // checks without filtering
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    json::Json params_with_empty_name {
-        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"\"}}").c_str()};
-    response = cmd(params_with_empty_name);
+    response = cmd(getParametersInJson(true));
     kvdbList = response.data().getArray();
     ASSERT_TRUE(kvdbList.has_value());
     ASSERT_EQ(kvdbList.value().size(), 2);
@@ -1418,11 +1355,10 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdWithFilteringLoaded)
     // checks without filtering
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    json::Json params_with_wrong_name {
-        fmt::format("{{\"mustBeLoaded\": true, \"name\": \"wrong_match\"}}").c_str()};
-    response = cmd(params_with_wrong_name);
+    response = cmd(getParametersInJson(true, "wrong_match"));
     kvdbList = response.data().getArray();
-    ASSERT_FALSE(kvdbList.has_value());
+    ASSERT_TRUE(kvdbList.has_value());
+    ASSERT_EQ(kvdbList.value().size(), 0);
 }
 
 // "kvdbRemoveKeyCmd" tests section
@@ -1431,9 +1367,6 @@ class kvdbAPIRemoveCommand : public ::testing::Test
 {
 
 protected:
-    static constexpr auto KEY_A = "keyA";
-    static constexpr auto VAL_A = "valA";
-
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
 
     virtual void SetUp()
@@ -1449,6 +1382,17 @@ protected:
     }
 
     virtual void TearDown() {}
+
+    json::Json getParametersInJson(const std::string& kvdbName,
+                                   const std::string& keyName)
+    {
+        // create request
+        json::Json data {};
+        data.setObject();
+        data.setString(kvdbName, "/name");
+        data.setString(keyName, "/key");
+        return data;
+    }
 };
 
 TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmd)
@@ -1559,9 +1503,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdEmptyKey)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"\"}}", DB_NAME).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME, ""));
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -1574,15 +1516,13 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecution)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}", DB_NAME, KEY_A).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME, KEY_A));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
+    ASSERT_STREQ(response.message().value().c_str(), "ok");
 
     auto value = kvdbAPIRemoveCommand::kvdbManager->getRawValue(DB_NAME, KEY_A);
     ASSERT_TRUE(std::holds_alternative<base::Error>(value));
@@ -1592,39 +1532,37 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecutionDoubleRemoveNoError)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}", DB_NAME, KEY_A).c_str()};
-    auto response = cmd(params);
+    auto response = cmd(getParametersInJson(DB_NAME, KEY_A));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), "OK");
+    ASSERT_STREQ(response.message().value().c_str(), "ok");
 
-    response = cmd(params);
+    response = cmd(getParametersInJson(DB_NAME, KEY_A));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),"OK");
+    ASSERT_STREQ(response.message().value().c_str(), "ok");
 }
 
 TEST_F(kvdbAPIRemoveCommand, RemoveNonExistingDB)
 {
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"ANOTHER_DB_NAME\", \"key\": \"{}\"}}", KEY_A).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME_ANOTHER, KEY_A));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("Database 'ANOTHER_DB_NAME' not found or could not be loaded.").c_str());
+    ASSERT_STREQ(
+        response.message().value().c_str(),
+        fmt::format("Database '{}' not found or could not be loaded.", DB_NAME_ANOTHER)
+            .c_str());
 }
 
 TEST_F(kvdbAPIRemoveCommand, RemoveReturnsOkWithNonExistingKeyName)
@@ -1632,15 +1570,13 @@ TEST_F(kvdbAPIRemoveCommand, RemoveReturnsOkWithNonExistingKeyName)
     constexpr auto keyName = "ANOTHER_KEY_NAME";
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"key\": \"{}\"}}", DB_NAME, keyName).c_str()};
-    const auto response = cmd(params);
+    const auto response = cmd(getParametersInJson(DB_NAME, keyName));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),"OK");
+    ASSERT_STREQ(response.message().value().c_str(), "ok");
 }
 
 // registerAllCmds section
