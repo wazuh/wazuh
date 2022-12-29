@@ -29,6 +29,14 @@ constexpr auto API_KVDB_INSERT_SUBCOMMAND {"insert"};
 constexpr auto API_KVDB_LIST_SUBCOMMAND {"list"};
 constexpr auto API_KVDB_REMOVE_SUBCOMMAND {"remove"};
 
+/**
+ * @brief Get the Response if is possible or return an empty optional
+ * 
+ * Print the error to the standard error if is not possible to get the response
+ * @param socketPath Path to the socket
+ * @param req The request to send
+ * @return std::optional<api::WazuhResponse> The response if is possible, an empty optional otherwise
+ */
 std::optional<api::WazuhResponse> getResponse(const std::string& socketPath,
                                               const api::WazuhRequest& req)
 {
@@ -48,6 +56,13 @@ std::optional<api::WazuhResponse> getResponse(const std::string& socketPath,
     }
 }
 
+/**
+ * @brief Send a request to create a KVDB and print the response
+ * 
+ * @param socketPath Path to the socket
+ * @param kvdbName Name of the KVDB
+ * @param kvdbInputFilePath Path to the file with the data to insert in the KVDB
+ */
 void kvdbCreate(const std::string& socketPath,
                 const std::string& kvdbName,
                 const std::string& kvdbInputFilePath)
@@ -79,7 +94,13 @@ void kvdbCreate(const std::string& socketPath,
     std::cout << response.value().message().value() << std::endl;
 }
 
-void kvdbDelete(const std::string& socketPath, const std::string& kvdbName, bool loaded)
+/**
+ * @brief Send a request to delete a KVDB and print the response
+ * 
+ * @param socketPath Path to the socket
+ * @param kvdbName Name of the KVDB
+ */
+void kvdbDelete(const std::string& socketPath, const std::string& kvdbName)
 {
     const auto command = std::string {API_KVDB_DELETE_SUBCOMMAND} + API_KVDB_CMD_SUFIX;
     // create request
@@ -107,6 +128,12 @@ void kvdbDelete(const std::string& socketPath, const std::string& kvdbName, bool
     std::cout << response.value().message().value() << std::endl;
 }
 
+/**
+ * @brief Send a request to dump a KVDB and print the dump or the error
+ * 
+ * @param socketPath Path to the socket
+ * @param kvdbName Name of the KVDB to dump
+ */
 void kvdbDump(const std::string& socketPath, const std::string& kvdbName)
 {
     const auto command = std::string {API_KVDB_DUMP_SUBCOMMAND} + API_KVDB_CMD_SUFIX;
@@ -138,6 +165,13 @@ void kvdbDump(const std::string& socketPath, const std::string& kvdbName)
     std::cout << response.value().data().str() << std::endl;
 }
 
+/**
+ * @brief Send a request to get a value from a KVDB and print the key and value or an error message
+ * 
+ * @param socketPath path to the socket
+ * @param kvdbName Name of the KVDB
+ * @param key Key to get the value
+ */
 void kvdbGetValue(const std::string& socketPath,
                   const std::string& kvdbName,
                   const std::string& key)
@@ -175,6 +209,14 @@ void kvdbGetValue(const std::string& socketPath,
     return;
 }
 
+/**
+ * @brief Send a request to insert a key and value into a KVDB and print the response
+ * 
+ * @param socketPath The path to the socket
+ * @param kvdbName The name of the KVDB to insert the key and value
+ * @param key The key to insert
+ * @param keyValue The value to insert
+ */
 void kvdbInsertKeyValue(const std::string& socketPath,
                         const std::string& kvdbName,
                         const std::string& key,
@@ -219,6 +261,13 @@ void kvdbInsertKeyValue(const std::string& socketPath,
     return;
 }
 
+/**
+ * @brief Send a request to get a list of KVDBs and print the list or an error message
+ * 
+ * @param socketPath The path to the socket
+ * @param kvdbName The filter to get a specific KVDB (start with the name)
+ * @param loaded If true, only loaded KVDBs will be returned
+ */
 void kvdbList(const std::string& socketPath, const std::string& kvdbName, bool loaded)
 {
     const auto command = std::string {API_KVDB_LIST_SUBCOMMAND} + API_KVDB_CMD_SUFIX;
@@ -269,6 +318,13 @@ void kvdbList(const std::string& socketPath, const std::string& kvdbName, bool l
     }
 }
 
+/**
+ * @brief This function sends a request to remove a key from a KVDB and print the response
+ * 
+ * @param socketPath the path to the socket
+ * @param kvdbName the name of the KVDB to remove the key
+ * @param key the key to remove
+ */
 void kvdbRemoveKV(const std::string& socketPath,
                   const std::string& kvdbName,
                   const std::string& key)
@@ -317,7 +373,7 @@ void kvdb(const std::string& kvdbName,
     }
     else if (action == API_KVDB_DELETE_SUBCOMMAND)
     {
-        kvdbDelete(socketPath, kvdbName, loaded);
+        kvdbDelete(socketPath, kvdbName);
     }
     else if (action == API_KVDB_DUMP_SUBCOMMAND)
     {
