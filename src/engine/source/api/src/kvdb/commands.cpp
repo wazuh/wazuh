@@ -12,6 +12,13 @@ namespace api::kvdb::cmds
 
 namespace
 {
+/**
+ * @brief Get the KVDB's name from the params or return an error
+ *
+ * @param params The json /data from the request
+ * @return [bool, std::string] True if the name is valid, false otherwise
+ *                             The name if it's valid, the error message otherwise.
+ */
 std::tuple<bool, std::string> getNameOrError(const json::Json& params)
 {
     const auto kvdbName = params.getString("/name");
@@ -32,6 +39,13 @@ std::tuple<bool, std::string> getNameOrError(const json::Json& params)
     return {true, kvdbName.value()};
 }
 
+/**
+ * @brief Get the KVDB's key from the params or return an error
+ * 
+ * @param params The json /data from the request
+ * @return [bool, std::string] True if the key is valid, false otherwise
+ *                            The key if it's valid, the error message otherwise.
+ */
 std::tuple<bool, std::string> getKeyOrError(const json::Json& params)
 {
     const auto key = params.getString("/key");
