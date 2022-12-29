@@ -53,7 +53,7 @@ public:
     /**
      * @brief  Construct a new Wazuh Response object
      *
-     * @param data Data to be sent, it can be a json object or a string
+     * @param data Data to be sent, it can be a json object or a array
      * @param error Error code (0 if no error)
      * @param message Optional message
      *
