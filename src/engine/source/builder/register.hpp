@@ -154,6 +154,8 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
     registry->registerBuilder(
         builders::getOpBuilderKVDBNotMatch(dependencies.kvdbManager),
         "helper.kvdb_not_match");
+    registry->registerBuilder(builders::getOpBuilderKVDBSet(dependencies.kvdbManager),
+                              "helper.kvdb_set");
 
     // SCA decoder
     registry->registerBuilder(builders::opBuilderSCAdecoder, "helper.sca_decoder");
