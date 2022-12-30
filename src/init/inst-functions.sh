@@ -760,7 +760,7 @@ InstallCommon()
         then
             ${INSTALL} -m 0750 -o root -g 0 build/lib/librsync.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/librsync.dylib ${INSTALLDIR}/lib/librsync.dylib
-            install_name_tool -change $(PWD)/shared_modules/dbsync/build/lib/libdbsync.dylib @rpath/libdbsync.dylib ${INSTALLDIR}/lib/librsync.dylib
+            install_name_tool -change $(PWD)/build/lib/libdbsync.dylib @rpath/libdbsync.dylib ${INSTALLDIR}/lib/librsync.dylib
         fi
     elif [ -f build/lib/librsync.so ]
     then
@@ -793,9 +793,9 @@ InstallCommon()
         then
             ${INSTALL} -m 0750 -o root -g 0 build/lib/libsyscollector.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/libsyscollector.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
-            install_name_tool -change $(PWD)/data_provider/build/lib/libsysinfo.dylib @rpath/libsysinfo.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
-            install_name_tool -change $(PWD)/shared_modules/rsync/build/lib/librsync.dylib @rpath/librsync.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
-            install_name_tool -change $(PWD)/shared_modules/dbsync/build/lib/libdbsync.dylib @rpath/libdbsync.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/build/lib/libsysinfo.dylib @rpath/libsysinfo.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/build/lib/librsync.dylib @rpath/librsync.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/build/lib/libdbsync.dylib @rpath/libdbsync.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
         fi
     elif [ -f build/lib/libsyscollector.so ]
     then
