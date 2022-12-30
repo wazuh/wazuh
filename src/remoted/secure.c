@@ -305,7 +305,7 @@ STATIC void handle_incoming_data_from_tcp_socket(int sock_client)
         default:
             merror("TCP peer [%d]: %s (%d)", sock_client, strerror(errno), errno);
         }
-        fallthrough;
+        W_FALLTHROUGH;
     case 0:
         mdebug1("handle incoming close socket [%d].", sock_client);
         _close_sock(&keys, sock_client);
