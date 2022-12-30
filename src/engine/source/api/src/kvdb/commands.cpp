@@ -82,7 +82,7 @@ api::CommandFn kvdbCreateCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbMana
         // Get KVDB's path
         const auto kvdbPath = params.getString("/path");
 
-        const auto error = kvdbManager->CreateFromJFile(kvdbName, kvdbPath.value_or(""));
+        const auto error = kvdbManager->createFromJFile(kvdbName, kvdbPath.value_or(""));
         if (error)
         {
             return api::WazuhResponse {error.value().message};

@@ -157,7 +157,7 @@ std::variant<KVDBHandle, base::Error> KVDBManager::getHandler(const std::string&
     return kvdb;
 }
 
-std::optional<base::Error> KVDBManager::CreateFromJFile(const std::string& dbName,
+std::optional<base::Error> KVDBManager::createFromJFile(const std::string& dbName,
                                                         const std::filesystem::path& path)
 {
     std::vector<std::tuple<std::string, json::Json>> entries {};
