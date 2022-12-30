@@ -72,7 +72,12 @@ TEST_F(opBuilderKVDBMatchTest, Builds_incorrect_invalid_db)
 // Single level
 TEST_F(opBuilderKVDBMatchTest, Single_level_target_ok)
 {
-    auto kvdb = kvdbManager.getDB("TEST_DB");
+    auto res = kvdbManager->getHandler("TEST_DB");
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
     kvdb->write("KEY", "DUMMY"); // TODO: Remove DUMMY Use non-value overload
 
     Document doc {R"({
@@ -105,7 +110,12 @@ TEST_F(opBuilderKVDBMatchTest, Single_level_target_ok)
 // Multi level
 TEST_F(opBuilderKVDBMatchTest, Multilevel_target_ok)
 {
-    auto kvdb = kvdbManager.getDB("TEST_DB");
+    auto res = kvdbManager->getHandler("TEST_DB");
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
     kvdb->write("KEY", "DUMMY"); // TODO: Remove DUMMY Use non-value overload
 
     Document doc {R"({

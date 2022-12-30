@@ -409,7 +409,12 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdLoadedOnlyOnMap)
 TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdBlockBecauseLoaded)
 {
     // DB_NAME is on the loaded map but it needs to be instanced in any helper:
-    auto kvdbHandleExample = kvdbAPIDeleteCommand::kvdbManager->getDB(DB_NAME);
+    auto res = kvdbAPIDeleteCommand::kvdbManager->getHandler(DB_NAME);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdbHandleExample = std::get<kvdb_manager::KVDBHandle>(res);
 
     api::CommandFn cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
@@ -426,7 +431,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdBlockBecauseLoaded)
 TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdSuccess)
 {
     // create unloaded DB
-    auto resultString = kvdbAPIDeleteCommand::kvdbManager->CreateFromJFile(DB_NAME_2);
+    auto resultString = kvdbAPIDeleteCommand::kvdbManager->createFromJFile(DB_NAME_2);
     ASSERT_FALSE(resultString.has_value());
 
     api::CommandFn cmd;
@@ -616,7 +621,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleExecution)
     createJsonTestFile();
 
     auto resultString =
-        kvdbAPIDumpCommand::kvdbManager->CreateFromJFile(DB_NAME_2, FILE_PATH);
+        kvdbAPIDumpCommand::kvdbManager->createFromJFile(DB_NAME_2, FILE_PATH);
     ASSERT_FALSE(resultString.has_value());
 
     api::CommandFn cmd;
@@ -751,7 +756,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdKVDBOnlyKeys)
     createKeyOnlyJsonTestFile();
 
     const auto resultString =
-        kvdbAPIDumpCommand::kvdbManager->CreateFromJFile(DB_NAME_2, FILE_PATH);
+        kvdbAPIDumpCommand::kvdbManager->createFromJFile(DB_NAME_2, FILE_PATH);
     ASSERT_FALSE(resultString.has_value());
 
     api::CommandFn cmd;
@@ -801,7 +806,7 @@ protected:
             std::filesystem::remove_all(DB_DIR);
         }
         kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
-        kvdbManager->CreateFromJFile(DB_NAME);
+        kvdbManager->createFromJFile(DB_NAME);
     }
 
     virtual void TearDown() {}
@@ -970,7 +975,7 @@ protected:
             std::filesystem::remove_all(DB_DIR);
         }
         kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
-        kvdbManager->CreateFromJFile(DB_NAME);
+        kvdbManager->createFromJFile(DB_NAME);
     }
 
     virtual void TearDown() {}
@@ -1377,7 +1382,7 @@ protected:
             std::filesystem::remove_all(DB_DIR);
         }
         kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
-        kvdbManager->CreateFromJFile(DB_NAME);
+        kvdbManager->createFromJFile(DB_NAME);
         kvdbManager->writeRaw(DB_NAME, KEY_A, VAL_A);
     }
 

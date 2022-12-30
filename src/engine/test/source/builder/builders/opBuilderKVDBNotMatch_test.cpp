@@ -73,7 +73,12 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_invalid_db)
 TEST_F(opBuilderKVDBNotMatchTest, Static_string_ok)
 {
     // Set Up KVDB
-    auto kvdb = kvdbManager.getDB("TEST_DB");
+    auto res = kvdbManager->getHandler("TEST_DB");
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
     kvdb->writeKeyOnly("KEY");
 
     Document doc {R"({
@@ -110,7 +115,12 @@ TEST_F(opBuilderKVDBNotMatchTest, Static_string_ok)
 
 TEST_F(opBuilderKVDBNotMatchTest, Multilevel_target)
 {
-    auto kvdb = kvdbManager.getDB("TEST_DB");
+    auto res = kvdbManager->getHandler("TEST_DB");
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
     kvdb->writeKeyOnly("KEY");
 
     Document doc {R"({

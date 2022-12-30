@@ -34,10 +34,12 @@ protected:
 
     virtual void SetUp()
     {
-        if (!kvdbManager->getDB(DB_NAME))
+        auto res = kvdbManager->getHandler(DB_NAME);
+        if (auto err = std::get_if<base::Error>(&res))
         {
-            kvdbManager->loadDB(DB_NAME);
+            throw std::runtime_error(err->message);
         }
+        auto db = std::get<kvdb_manager::KVDBHandle>(res);
     }
 
     virtual void TearDown() { kvdbManager->unloadDB(DB_NAME); }
@@ -79,7 +81,12 @@ TEST_F(opBuilderKVDBExtractTest, WrongParameterType)
 TEST_F(opBuilderKVDBExtractTest, ExtractSuccessCases)
 {
     // Insert data in DB
-    auto DBHandle = kvdbManager->getDB(DB_NAME);
+    auto res = kvdbManager->getHandler(DB_NAME);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto DBHandle = std::get<kvdb_manager::KVDBHandle>(res);
     DBHandle->write("keyString", R"("string_value")");
     DBHandle->write("keyNumber", R"(123)");
     DBHandle->write("keyObject", R"({"field1": "value1", "field2": "value2"})");
@@ -285,7 +292,12 @@ TEST_F(opBuilderKVDBExtractTest, ExtractFailKeyNotFound)
 TEST_F(opBuilderKVDBExtractTest, ExtractMergeSuccessCases)
 {
     // Insert data in DB
-    auto DBHandle = kvdbManager->getDB(DB_NAME);
+    auto res = kvdbManager->getHandler(DB_NAME);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto DBHandle = std::get<kvdb_manager::KVDBHandle>(res);
     DBHandle->write("keyObject",
                     R"({"field1": "value1", "field2": "value2", "field3": "value3"})");
     DBHandle->write("keyArray", R"(["value1", "value2", "value3"])");
@@ -372,7 +384,12 @@ TEST_F(opBuilderKVDBExtractTest, ExtractMergeFailKeyNotFound)
 TEST_F(opBuilderKVDBExtractTest, ExtractMergeFailTargetNotFound)
 {
     // Insert data in DB
-    auto DBHandle = kvdbManager->getDB(DB_NAME);
+    auto res = kvdbManager->getHandler(DB_NAME);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto DBHandle = std::get<kvdb_manager::KVDBHandle>(res);
     DBHandle->write("keyObject",
                     R"({"field1": "value1", "field2": "value2", "field3": "value3"})");
 
@@ -396,7 +413,12 @@ TEST_F(opBuilderKVDBExtractTest, ExtractMergeFailTargetNotFound)
 TEST_F(opBuilderKVDBExtractTest, ExtractMergeFailTypeErrors)
 {
     // Insert data in DB
-    auto DBHandle = kvdbManager->getDB(DB_NAME);
+    auto res = kvdbManager->getHandler(DB_NAME);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto DBHandle = std::get<kvdb_manager::KVDBHandle>(res);
     DBHandle->write("keyObject",
                     R"({"field1": "value1", "field2": "value2", "field3": "value3"})");
     DBHandle->write("keyArray", R"(["value1", "value2", "value3"])");
