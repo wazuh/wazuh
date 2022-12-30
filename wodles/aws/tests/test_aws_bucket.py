@@ -7,7 +7,7 @@ import zipfile
 import re
 import csv
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, mock_open
 
 import botocore
 import pytest
@@ -26,9 +26,11 @@ from config import AWSConfigBucket
 
 TEST_FULL_PREFIX = "base/account_id/service/region/"
 TEST_CLOUDTRAIL_SCHEMA = "schema_cloudtrail_test.sql"
+TEST_CUSTOM_SCHEMA = "schema_custom_test.sql"
 TEST_EMPTY_TABLE_SCHEMA = "schema_empty_table.sql"
 
 CLOUDTRAIL_SCHEMA_COUNT = 8
+CUSTOM_SCHEMA_COUNT = 8
 
 SQL_COUNT_ROWS = """SELECT count(*) FROM {table_name};"""
 SQL_GET_ROW = "SELECT bucket_path, aws_account_id, aws_region, log_key, created_date FROM {table_name};"
@@ -41,7 +43,16 @@ SAMPLE_EVENT_2 = {'key1': 'value1', 'key2': None}
 
 LIST_OBJECT_V2 = {'CommonPrefixes': [{'Prefix': f'AWSLogs/{utils.TEST_REGION}/'},
                                      {'Prefix': f'AWSLogs/prefix/{utils.TEST_REGION}/'}]}
-LIST_OBJECT_V2_NO_PREFIXES = {'Name': 'string'}
+LIST_OBJECT_V2_NO_PREFIXES = {'Contents': [{
+    'Key': utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1,
+    'OtherKey': 'value'}],
+    'IsTruncated': False
+}
+
+# TODO: REVIEW
+LIST_OBJECT_V2_TRUNCATED = copy.deepcopy(LIST_OBJECT_V2_NO_PREFIXES)
+LIST_OBJECT_V2_TRUNCATED['IsTruncated'] = True
+LIST_OBJECT_V2_TRUNCATED['NextContinuationToken'] = 'Token'
 
 
 @pytest.mark.parametrize('only_logs_after', [None, "20220101"])
@@ -105,11 +116,11 @@ def test_AWSBucket_same_prefix(match_start, expected_result):
 
 
 @pytest.mark.parametrize('log_file, bucket, account_id, region, expected_result', [
-    (utils.TEST_LOG_FULL_PATH_1, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
-    (utils.TEST_LOG_FULL_PATH_2, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
+    (utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
+    (utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_2, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
     ("", utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, False),
-    (utils.TEST_LOG_FULL_PATH_1, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, "", False),
-    (utils.TEST_LOG_FULL_PATH_1, utils.TEST_BUCKET, "", utils.TEST_REGION, False),
+    (utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, "", False),
+    (utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1, utils.TEST_BUCKET, "", utils.TEST_REGION, False),
 ])
 def test_AWSBucket_already_processed(custom_database, log_file, bucket, account_id, region, expected_result):
     """Test `_get_last_key_processed` find the required keys in the database as expected."""
@@ -122,6 +133,13 @@ def test_AWSBucket_already_processed(custom_database, log_file, bucket, account_
 
     assert bucket.already_processed(downloaded_file=log_file, aws_account_id=account_id,
                                     aws_region=region) == expected_result
+
+
+def test_AWSBucket_get_creation_date():
+    bucket = utils.get_mocked_AWSBucket()
+
+    with pytest.raises(NotImplementedError):
+        bucket.get_creation_date(utils.TEST_LOG_KEY)
 
 
 def test_AWSBucket_mark_complete(custom_database):
@@ -137,7 +155,7 @@ def test_AWSBucket_mark_complete(custom_database):
 
     with patch('aws_bucket.AWSBucket.get_creation_date', return_value=utils.TEST_CREATION_DATE):
         bucket.mark_complete(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION,
-                             log_file={'Key': utils.TEST_LOG_FULL_PATH_1})
+                             log_file={'Key': utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1})
 
     assert utils.database_execute_query(bucket.db_connector,
                                         SQL_COUNT_ROWS.format(table_name=bucket.db_table_name)) == 1
@@ -146,8 +164,22 @@ def test_AWSBucket_mark_complete(custom_database):
     assert row[0] == f"{utils.TEST_BUCKET}/"
     assert row[1] == utils.TEST_ACCOUNT_ID
     assert row[2] == utils.TEST_REGION
-    assert row[3] == utils.TEST_LOG_FULL_PATH_1
+    assert row[3] == utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1
     assert row[4] == utils.TEST_CREATION_DATE
+
+
+@patch('aws_bucket.aws_tools.debug')
+def test_AWSBucket_mark_complete_ko(mock_debug, custom_database):
+    bucket = utils.get_mocked_AWSBucket()
+
+    bucket.db_connector = custom_database
+    mocked_cursor = MagicMock()
+    mocked_cursor.execute.side_effect = Exception
+
+    bucket.mark_complete(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION,
+                         log_file={'Key': utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1})
+
+    mock_debug.assert_called_with(f'+++ Error marking log {utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1} as completed: ', 2)
 
 
 def test_AWSBucket_create_table(custom_database):
@@ -241,6 +273,19 @@ def test_AWSBucket_db_maintenance(custom_database, expected_db_count):
         table_name=bucket.db_table_name)) == expected_db_count
 
 
+@patch('builtins.print')
+def test_AWSBucket_db_maintenance_ko(mock_print, custom_database):
+    bucket = utils.get_mocked_AWSBucket()
+
+    bucket.db_connector = custom_database
+    mocked_cursor = MagicMock()
+    mocked_cursor.execute.side_effect = Exception
+
+    bucket.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION)
+
+    mock_print.assert_called_once()
+
+
 def test_AWSBucket_marker_custom_date():
     """Test 'marker_custom_date' function returns a valid AWS bucket marker when using a custom date."""
     bucket = utils.get_mocked_AWSBucket()
@@ -270,12 +315,11 @@ def test_AWSBucket_marker_only_logs_after():
 def test_AWSBucket_get_alert_msg(event):
     """Test 'get_alert_msg' function returns messages with valid format."""
     bucket = utils.get_mocked_AWSBucket(account_alias=utils.TEST_ACCOUNT_ALIAS)
-    log_key = "test_log_key"
     expected_error_message = "error message"
     expected_msg = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
     expected_msg['aws']['log_info'].update({
         'aws_account_alias': bucket.account_alias,
-        'log_file': log_key,
+        'log_file': utils.TEST_LOG_KEY,
         's3bucket': bucket.bucket
     })
     if event:
@@ -283,8 +327,29 @@ def test_AWSBucket_get_alert_msg(event):
         expected_msg['aws'].update({k: v for k, v in event.items() if v is not None})
     else:
         expected_msg['error_msg'] = expected_error_message
-    assert bucket.get_alert_msg(utils.TEST_ACCOUNT_ID, log_key, event,
+    assert bucket.get_alert_msg(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, event,
                                 error_msg=expected_error_message) == expected_msg
+
+
+def test_AWSBucket_get_full_prefix():
+    bucket = utils.get_mocked_AWSBucket()
+
+    with pytest.raises(NotImplementedError):
+        bucket.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+
+
+def test_AWSBucket_get_base_prefix():
+    bucket = utils.get_mocked_AWSBucket()
+
+    with pytest.raises(NotImplementedError):
+        bucket.get_base_prefix()
+
+
+def test_AWSBucket_get_service_prefix():
+    bucket = utils.get_mocked_AWSBucket()
+
+    with pytest.raises(NotImplementedError):
+        bucket.get_service_prefix(utils.TEST_ACCOUNT_ID)
 
 
 @patch('aws_bucket.AWSBucket.get_base_prefix', return_value=utils.TEST_PREFIX)
@@ -382,7 +447,7 @@ def test_AWSBucket_build_s3_filter_args(mock_get_full_prefix, custom_database, c
         'Prefix': mock_get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
     }
 
-    if reparse:
+    if bucket.reparse:
         if only_logs_after:
             filter_marker = bucket.marker_only_logs_after(utils.TEST_REGION, utils.TEST_ACCOUNT_ID)
         else:
@@ -500,31 +565,38 @@ def test_AWSBucket_decompress_file_ko(mock_io):
     assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
 
 
+def test_AWSBucket_load_information_from_file():
+    bucket = utils.get_mocked_AWSBucket()
+
+    with pytest.raises(NotImplementedError):
+        bucket.load_information_from_file(utils.TEST_LOG_KEY)
+
+
 @patch('aws_bucket.AWSBucket.load_information_from_file', return_value=[SAMPLE_EVENT_1, SAMPLE_EVENT_2])
 def test_AWSBucket_get_log_file(mock_load_from_file):
     bucket = utils.get_mocked_AWSBucket()
-    log_key = 'test.log'
-    bucket.get_log_file(utils.TEST_ACCOUNT_ID, log_key)
-    mock_load_from_file.assert_called_with(log_key=log_key)
+    bucket.get_log_file(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY)
+    mock_load_from_file.assert_called_with(log_key=utils.TEST_LOG_KEY)
 
 
 @pytest.mark.parametrize('exception, error_message, exit_code', [
-    (TypeError, 'Failed to decompress file test.log: TypeError()', utils.DECOMPRESS_FILE_ERROR_CODE),
-    (zipfile.BadZipfile, 'Failed to decompress file test.log: BadZipFile()', utils.DECOMPRESS_FILE_ERROR_CODE),
-    (zipfile.LargeZipFile, 'Failed to decompress file test.log: LargeZipFile()', utils.DECOMPRESS_FILE_ERROR_CODE),
-    (IOError, 'Failed to decompress file test.log: OSError()', utils.DECOMPRESS_FILE_ERROR_CODE),
-    (ValueError, 'Failed to parse file test.log: ValueError()', utils.PARSE_FILE_ERROR_CODE),
-    (csv.Error, 'Failed to parse file test.log: Error()', utils.PARSE_FILE_ERROR_CODE),
-    (Exception, 'Unknown error reading/parsing file test.log: Exception()', utils.UNKNOWN_ERROR_CODE)
+    (TypeError, f'Failed to decompress file {utils.TEST_LOG_KEY}: TypeError()', utils.DECOMPRESS_FILE_ERROR_CODE),
+    (zipfile.BadZipfile, f'Failed to decompress file {utils.TEST_LOG_KEY}: BadZipFile()',
+     utils.DECOMPRESS_FILE_ERROR_CODE),
+    (zipfile.LargeZipFile, f'Failed to decompress file {utils.TEST_LOG_KEY}: LargeZipFile()',
+     utils.DECOMPRESS_FILE_ERROR_CODE),
+    (IOError, f'Failed to decompress file {utils.TEST_LOG_KEY}: OSError()', utils.DECOMPRESS_FILE_ERROR_CODE),
+    (ValueError, f'Failed to parse file {utils.TEST_LOG_KEY}: ValueError()', utils.PARSE_FILE_ERROR_CODE),
+    (csv.Error, f'Failed to parse file {utils.TEST_LOG_KEY}: Error()', utils.PARSE_FILE_ERROR_CODE),
+    (Exception, f'Unknown error reading/parsing file {utils.TEST_LOG_KEY}: Exception()', utils.UNKNOWN_ERROR_CODE)
 ])
 @patch('aws_bucket.AWSBucket.load_information_from_file')
 @patch('aws_bucket.AWSBucket._exception_handler')
 def test_AWSBucket_get_log_file_ko(mock_exception_handler, mock_load_from_file, exception, error_message, exit_code):
     bucket = utils.get_mocked_AWSBucket()
-    log_key = 'test.log'
     mock_load_from_file.side_effect = exception
-    bucket.get_log_file(utils.TEST_ACCOUNT_ID, log_key)
-    mock_exception_handler.assert_called_once_with(utils.TEST_ACCOUNT_ID, log_key, error_message, exit_code)
+    bucket.get_log_file(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY)
+    mock_exception_handler.assert_called_once_with(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, error_message, exit_code)
 
 
 @patch('aws_bucket.aws_tools.debug')
@@ -532,7 +604,6 @@ def test_AWSBucket_get_log_file_ko(mock_exception_handler, mock_load_from_file, 
 def test_AWSBucket__exception_handler(mock_get_alert_msg, mock_debug):
     error_text_example = 'error text'
     error_code_example = 0
-    log_key = 'test.log'
 
     debug_message_example = "++ {}; skipping...".format(error_text_example)
 
@@ -540,26 +611,25 @@ def test_AWSBucket__exception_handler(mock_get_alert_msg, mock_debug):
     bucket.skip_on_error = True
 
     with patch('aws_bucket.AWSBucket.send_msg') as mock_send_msg:
-        bucket._exception_handler(utils.TEST_ACCOUNT_ID, log_key, error_text_example, error_code_example)
+        bucket._exception_handler(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, error_text_example, error_code_example)
         mock_debug.assert_called_with(debug_message_example, 1)
-        mock_get_alert_msg.assert_called_once_with(utils.TEST_ACCOUNT_ID, log_key, None, error_text_example)
+        mock_get_alert_msg.assert_called_once_with(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, None, error_text_example)
         mock_send_msg.assert_called_once_with('error_msg')
 
         mock_send_msg.side_effect = Exception
-        bucket._exception_handler(utils.TEST_ACCOUNT_ID, log_key, error_text_example, error_code_example)
+        bucket._exception_handler(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, error_text_example, error_code_example)
         mock_debug.assert_called_with("++ Failed to send message to Wazuh", 1)
 
 
 def test_AWSBucket__exception_handler_ko():
     error_text_example = 'error text'
     error_code_example = 0
-    log_key = 'test.log'
 
     bucket = utils.get_mocked_AWSBucket()
     bucket.skip_on_error = False
 
     with pytest.raises(SystemExit) as e:
-        bucket._exception_handler(utils.TEST_ACCOUNT_ID, log_key, error_text_example, error_code_example)
+        bucket._exception_handler(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, error_text_example, error_code_example)
     assert e.value.code == error_code_example
 
 
@@ -614,29 +684,105 @@ def test_AWSBucket_send_event(mock_reformat, mock_send):
     mock_send.assert_called_with("formatted event")
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSBucket_iter_events():
-    pass
+@pytest.mark.parametrize('discard_field', [None, 'eventVersion'])
+@pytest.mark.parametrize('discard_regex', [None, '^ver.ion$'])
+@patch('aws_bucket.AWSBucket.get_alert_msg')
+@patch('aws_bucket.AWSBucket.send_event')
+@patch('aws_bucket.aws_tools.debug')
+def test_AWSBucket_iter_events(mock_debug, mock_send_event, mock_get_alert, discard_regex, discard_field):
+    bucket = utils.get_mocked_AWSBucket(discard_field=discard_field, discard_regex=discard_regex)
+    event_list = [{'eventVersion': 'version', 'userIdentity': {'type': 'someType'}, 'eventTime': 'someTime', 'eventName': 'name', 'source': 'cloudtrail'}]
+
+    bucket.iter_events(event_list, utils.TEST_LOG_KEY, utils.TEST_ACCOUNT_ID)
+    for event in event_list:
+        if bucket.discard_field and discard_regex:
+            mock_debug.assert_any_call(
+                        f'+++ The "{bucket.discard_regex.pattern}" regex found a match in the "{bucket.discard_field}" '
+                        f'field. The event will be skipped.', 2)
+            continue
+        mock_get_alert.assert_called_with(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, event)
+        mock_send_event.assert_called()
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSBucket_check_recursive():
-    pass
+@pytest.mark.parametrize('object_list', [LIST_OBJECT_V2, LIST_OBJECT_V2_NO_PREFIXES, LIST_OBJECT_V2_TRUNCATED])
+@pytest.mark.parametrize('reparse', [True, False])
+@pytest.mark.parametrize('check_prefix', [True, False])
+@pytest.mark.parametrize('delete_file', [True, False])
+@pytest.mark.parametrize('same_prefix_result', [True, False])
+@patch('aws_bucket.aws_tools.debug')
+@patch('aws_bucket.AWSBucket.build_s3_filter_args')
+def test_AWSBucket_iter_files_in_bucket(mock_build_filter, mock_debug, same_prefix_result, delete_file, check_prefix,
+                                        reparse, object_list):
+    bucket = utils.get_mocked_AWSBucket(bucket=utils.TEST_BUCKET, delete_file=delete_file, reparse=reparse,
+                                        prefix=utils.TEST_PREFIX)
 
+    mock_build_filter.return_value = {
+        'Bucket': bucket.bucket,
+        'MaxKeys': 1000,
+        'Prefix': 'prefix'
+    }
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSBucket_check_regex():
-    pass
+    bucket.client.list_objects_v2.return_value = object_list
+    bucket.check_prefix = check_prefix
+    with patch('aws_bucket.AWSBucket._same_prefix', return_value=same_prefix_result) as mock_same_prefix, \
+            patch('aws_bucket.AWSBucket.already_processed') as mock_already_processed, \
+            patch('aws_bucket.AWSBucket.get_log_file') as mock_get_log_file, \
+            patch('aws_bucket.AWSBucket.iter_events') as mock_iter_events, \
+            patch('aws_bucket.AWSBucket.mark_complete') as mock_mark_complete:
 
+        if 'IsTruncated' in object_list and object_list['IsTruncated']:
+            bucket.client.list_objects_v2.side_effect = [object_list, LIST_OBJECT_V2_NO_PREFIXES]
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSBucket_event_should_be_skipped():
-    pass
+        bucket.iter_files_in_bucket(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
 
+        if bucket.reparse:
+            mock_debug.assert_any_call('++ Reparse mode enabled', 2)
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSBucket_iter_files_in_bucket():
-    pass
+        mock_build_filter.assert_any_call(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+        bucket.client.list_objects_v2.assert_called_with(**mock_build_filter(utils.TEST_ACCOUNT_ID, utils.TEST_REGION))
+
+        if 'Contents' not in object_list:
+            mock_debug.assert_any_call(f"+++ No logs to process in bucket: {utils.TEST_ACCOUNT_ID}/{utils.TEST_REGION}",
+                                       1)
+        else:
+            for bucket_file in object_list['Contents']:
+                if not bucket_file['Key']:
+                    continue
+
+                if bucket_file['Key'][-1] == '/':
+                    continue
+
+                if bucket.check_prefix:
+                    date_match = bucket.date_regex.search(bucket_file['Key'])
+                    match_start = date_match.span()[0] if date_match else None
+
+                    mock_same_prefix.assert_called_with(match_start, utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+
+                    if not bucket._same_prefix(match_start, utils.TEST_ACCOUNT_ID, utils.TEST_REGION):
+                        mock_debug.assert_any_call(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
+                        continue
+
+                mock_already_processed.assert_called_with(bucket_file['Key'], utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+                if bucket.already_processed(bucket_file['Key'], utils.TEST_ACCOUNT_ID, utils.TEST_REGION):
+                    if bucket.reparse:
+                        mock_debug.assert_any_call(
+                            f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",
+                            1)
+                    else:
+                        mock_debug.assert_any_call(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
+                        continue
+
+                mock_debug.assert_any_call(f"++ Found new log: {bucket_file['Key']}", 2)
+                mock_get_log_file.assert_called_with(utils.TEST_ACCOUNT_ID, bucket_file['Key'])
+                mock_iter_events.assert_called()
+
+                if bucket.delete_file:
+                    mock_debug.assert_any_call(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
+
+                mock_mark_complete.assert_called_with(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, bucket_file)
+
+            if object_list['IsTruncated']:
+                mock_build_filter.assert_any_call(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True)
 
 
 @pytest.mark.parametrize('error_code, exit_code', [
@@ -760,7 +906,7 @@ def test_AWSLogsBucket_get_full_prefix(mock_bucket, mock_service_prefix, mock_in
 @patch('wazuh_integration.WazuhIntegration.__init__')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
 def test_AWSLogsBucket_get_creation_date(mock_bucket, mock_integration):
-    log_file = {'Key': utils.TEST_LOG_FULL_PATH_1}
+    log_file = {'Key': utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1}
     expected_result = 20190401
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket)
     assert instance.get_creation_date(log_file) == expected_result
@@ -772,16 +918,15 @@ def test_AWSLogsBucket_get_alert_msg():
     with patch('wazuh_integration.WazuhIntegration.__init__'), \
             patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__):
         instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket)
-        log_key = "test_log_key"
         aws_account_id = utils.TEST_ACCOUNT_ID
         expected_msg = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
         expected_error_message = "error message"
 
-        expected_alert_msg = bucket.get_alert_msg(aws_account_id, log_key, expected_msg,
+        expected_alert_msg = bucket.get_alert_msg(aws_account_id, utils.TEST_LOG_KEY, expected_msg,
                                                   error_msg=expected_error_message)
         expected_alert_msg['aws']['aws_account_id'] = aws_account_id
 
-        assert expected_alert_msg == instance.get_alert_msg(aws_account_id, log_key, expected_msg,
+        assert expected_alert_msg == instance.get_alert_msg(aws_account_id, utils.TEST_LOG_KEY, expected_msg,
                                                             expected_error_message)
 
 
@@ -797,13 +942,12 @@ def test_AWSLogsBucket_get_alert_msg():
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
 def test_AWSLogsBucket_load_information_from_file(mock_bucket, mock_integration, mock_decompress, mock_json_load,
                                                   class_, json_file_content, result):
-    log_key = "test_log_key"
     instance = utils.get_mocked_bucket(class_=class_)
 
     mock_json_load.return_value = json_file_content
 
-    assert result == instance.load_information_from_file(log_key)
-    mock_decompress.assert_called_once_with(log_key=log_key)
+    assert result == instance.load_information_from_file(utils.TEST_LOG_KEY)
+    mock_decompress.assert_called_once_with(log_key=utils.TEST_LOG_KEY)
 
 
 @pytest.mark.parametrize('profile', [utils.TEST_AWS_PROFILE, None])
@@ -830,33 +974,20 @@ def test_AWSCustomBucket__init__(mock_bucket, mock_integration, mock_sts, access
     assert instance.macie_location_pattern == re.compile(r'"lat":(-?0+\d+\.\d+),"lon":(-?0+\d+\.\d+)')
     assert instance.check_prefix
 
-# TODO: FIX
-@pytest.mark.parametrize('first_char, data, result', [
-    # TODO: ('{', '{"source": "aws.custombucket", "detail": {"schemaVersion": "2.0"}}', [{"source": "custombucket", "schemaVersion": "2.0"}]),
-    ('', {"source": "aws.vpc"}, [{"source": "vpc", "version": "version"}])
+# TODO: Add test case for json_event_generator exception. Check if DictReader patch can be enhanced
+@pytest.mark.parametrize('data, result', [
+    ('{"source": "aws.custombucket", "detail": {"schemaVersion": "2.0"}}', [{"source": "custombucket", "schemaVersion": "2.0"}]),
+    ('version account_id\nversion account_id', [{"source": "vpc", "version": "version", "account_id": "account_id"}])
 ])
-@patch('csv.DictReader', return_value=[{"version": "version"}])
-@patch('aws_bucket.AWSBucket.decompress_file')
+@patch('csv.DictReader', return_value=[{"version": "version", "account_id": "account_id"}])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
-def test_AWSCustomBucket_load_information_from_file(mock_bucket, mock_integration, mock_sts, mock_decompress,
-                                                    mock_reader, first_char, data, result):
+def test_AWSCustomBucket_load_information_from_file(mock_bucket, mock_integration, mock_sts, mock_reader, data, result):
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
 
-    log_key = "test_log_key"
-
-    decompress_read = MagicMock()
-    mock_decompress.return_value = decompress_read
-
-    decompress_read(read_data=data)
-    # decompress_read.read(1).return_value = first_char
-    decompress_read.read.return_value = data
-
-    assert result == instance.load_information_from_file(log_key)
-    mock_decompress.assert_called_with(log_key=log_key)
-    mock_reader.assert_called_once()
-    # decompress_read.read.assert_called_once_with(1)
+    with patch('aws_bucket.AWSBucket.decompress_file', mock_open(read_data=data)) as mock_decompress:
+        assert result == instance.load_information_from_file(utils.TEST_LOG_KEY)
 
 
 @pytest.mark.parametrize('log_file, expected_date', [
@@ -904,44 +1035,97 @@ def test_AWSCustomBucket_get_full_prefix(mock_bucket, mock_integration, mock_sts
 
     assert instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION) == utils.TEST_PREFIX
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSCustomBucket_reformat_msg():
-    pass
+
+@pytest.mark.parametrize('event_field, event_field_name', [('count', ''), ('other_field', 'event_field_value')])
+@pytest.mark.parametrize('source', ['macie', 'custom'])
+@pytest.mark.parametrize('macie_field', ['Bucket', 'DLP risk', 'IP', 'Location', 'Object',
+                                         'Owner', 'Themes', 'Timestamps', 'recipientAccountId'])
+def test_AWSCustomBucket_reformat_msg(macie_field, source, event_field, event_field_name):
+    event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    event['aws'].update(
+        {
+            'source': source,
+            'trigger': 'test_value',
+            'service': {
+                'additionalInfo': {
+                    'unusual': 'unusual_value'
+                }
+            }
+        }
+    )
+    if event['aws']['source'] == 'macie':
+        event['aws'].update(
+            {
+                'trigger': 'test_value',
+                'summary': {
+                    macie_field: {
+                        'test_key': 'value'
+                    },
+                    'Events': {
+                        'event_name': {
+                            event_field: {
+                                event_field_name: 'value'
+                            }
+                        }
+                    }
+                }
+            }
+        )
+
+    with patch('wazuh_integration.WazuhIntegration.get_sts_client'), \
+            patch('wazuh_integration.WazuhIntegration.__init__'), \
+            patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__), \
+            patch('aws_bucket.AWSBucket.reformat_msg') as mock_reformat:
+        instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+
+        instance.reformat_msg(event)
+        mock_reformat.assert_called_once_with(instance, event)
+        assert event['aws']['service']['additionalInfo']['unusual'] == {'value': 'unusual_value'}
+
+        if source == 'macie':
+            assert 'trigger' not in event['aws']
+            assert event['aws']['summary'][macie_field] == ['test_key']
+            assert event['aws']['summary']['Events']['event_name'] == {event_field: [event_field_name]}
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSCustomBucket_list_paths_from_dict():
-    pass
+@patch('aws_bucket.AWSBucket.iter_files_in_bucket')
+@patch('aws_bucket.AWSCustomBucket.db_maintenance')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
+def test_AWSCustomBucket_iter_regions_and_accounts(mock_bucket, mock_integration, mock_sts, mock_maintenance,
+                                                   mock_iter_files_bucket):
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+
+    instance.iter_regions_and_accounts(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+
+    mock_maintenance.assert_called_once()
+    mock_iter_files_bucket.assert_called_once()
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSCustomBucket_iter_regions_and_accounts():
-    pass
+@pytest.mark.parametrize('log_file, bucket, account_id, region, expected_result', [
+    (utils.TEST_LOG_FULL_PATH_CUSTOM_1, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
+    (utils.TEST_LOG_FULL_PATH_CUSTOM_2, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
+    ("", utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, False),
+    (utils.TEST_LOG_FULL_PATH_CUSTOM_1, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, "", True),
+    (utils.TEST_LOG_FULL_PATH_CUSTOM_1, utils.TEST_BUCKET, "", utils.TEST_REGION, False),
+])
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
+def test_AWSCustomBucket_already_processed(mock_bucket, mock_integration, mock_sts,
+                                           custom_database, log_file, bucket, account_id, region, expected_result):
+    """Test `_get_last_key_processed` find the required keys in the database as expected."""
+    utils.database_execute_script(custom_database, TEST_CUSTOM_SCHEMA)
 
-# TODO
-# @pytest.mark.parametrize('log_file, bucket, account_id, region, expected_result', [
-#     (utils.TEST_LOG_FULL_PATH_1, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
-#     (utils.TEST_LOG_FULL_PATH_2, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
-#     ("", utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, False),
-#     (utils.TEST_LOG_FULL_PATH_1, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, "", False),
-#     (utils.TEST_LOG_FULL_PATH_1, utils.TEST_BUCKET, "", utils.TEST_REGION, False),
-# ])
-# @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-# @patch('wazuh_integration.WazuhIntegration.__init__')
-# @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
-# def test_AWSCustomBucket_already_processed(mock_bucket, mock_integration, mock_sts,
-#                                            custom_database, log_file, bucket, account_id, region, expected_result):
-#     """Test `_get_last_key_processed` find the required keys in the database as expected."""
-#     utils.database_execute_script(custom_database, TEST_CLOUDTRAIL_SCHEMA)
-#
-#     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket, bucket=bucket, region=region)
-#     instance.db_connector = custom_database
-#     instance.db_cursor = instance.db_connector.cursor()
-#     # instance.db_table_name = 'guardduty'
-#
-#     assert instance.already_processed(downloaded_file=log_file, aws_account_id=account_id,
-#                                     aws_region=region) == expected_result
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket, bucket=bucket, region=region)
+    instance.db_connector = custom_database
+    instance.db_cursor = instance.db_connector.cursor()
+    instance.db_table_name = 'custom'
+    instance.aws_account_id = account_id
 
+    assert instance.already_processed(downloaded_file=log_file, aws_account_id=account_id,
+                                      aws_region=region) == expected_result
 
 
 def test_AWSCustomBucket_mark_complete():
@@ -956,18 +1140,65 @@ def test_AWSCustomBucket_mark_complete():
         instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
 
         instance.mark_complete(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, test_log_file)
-        bucket.mark_complete.assert_called_once_with(instance, instance.aws_account_id, utils.TEST_REGION, test_log_file)
+        bucket.mark_complete.assert_called_once_with(instance, instance.aws_account_id, utils.TEST_REGION,
+                                                     test_log_file)
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSCustomBucket_db_count_custom():
-    pass
+@pytest.mark.parametrize('aws_account_id', [utils.TEST_ACCOUNT_ID, None])
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
+def test_AWSCustomBucket_db_count_custom(mock_bucket, mock_integration, mock_sts, custom_database, aws_account_id):
+    utils.database_execute_script(custom_database, TEST_CUSTOM_SCHEMA)
+
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+    instance.db_connector = custom_database
+    instance.db_cursor = instance.db_connector.cursor()
+    instance.db_table_name = "custom"
+    instance.aws_account_id = utils.TEST_ACCOUNT_ID
+
+    expected_count = CUSTOM_SCHEMA_COUNT
+    assert instance.db_count_custom(aws_account_id) == expected_count
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSCustomBucket_db_maintenance():
-    pass
+@pytest.mark.parametrize('expected_db_count', [CUSTOM_SCHEMA_COUNT, 0])
+@pytest.mark.parametrize('aws_account_id', [utils.TEST_ACCOUNT_ID, None])
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
+def test_AWSCustomBucket_db_maintenance(mock_bucket, mock_integration, mock_sts, aws_account_id, expected_db_count,
+                                        custom_database):
+    """Test 'db_maintenance' function deletes rows from a table until the count is equal to 'retain_db_records'."""
+    utils.database_execute_script(custom_database, TEST_CUSTOM_SCHEMA)
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSCustomBucket_db_maintenance_ko():
-    pass
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+    instance.db_connector = custom_database
+    instance.db_cursor = instance.db_connector.cursor()
+    instance.db_table_name = "custom"
+    instance.retain_db_records = expected_db_count
+    instance.aws_account_id = utils.TEST_ACCOUNT_ID
+
+    assert utils.database_execute_query(instance.db_connector, SQL_COUNT_ROWS.format(
+        table_name=instance.db_table_name)) == CUSTOM_SCHEMA_COUNT
+
+    with patch('aws_bucket.AWSCustomBucket.db_count_custom', return_value=CUSTOM_SCHEMA_COUNT):
+        instance.db_maintenance(aws_account_id=aws_account_id)
+
+    assert utils.database_execute_query(instance.db_connector, SQL_COUNT_ROWS.format(
+        table_name=instance.db_table_name)) == expected_db_count
+
+
+@patch('builtins.print')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
+def test_AWSCustomBucket_db_maintenance_ko(mock_bucket, mock_integration, mock_sts, mock_print, custom_database):
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+
+    instance.db_connector = custom_database
+    mocked_cursor = MagicMock()
+    mocked_cursor.execute.side_effect = Exception
+
+    instance.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID)
+
+    mock_print.assert_called_once()
