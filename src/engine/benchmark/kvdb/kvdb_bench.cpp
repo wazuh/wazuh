@@ -12,7 +12,12 @@ static auto kvdbManager = std::make_shared<kvdb_manager::KVDBManager>("/tmp/");
 
 static void dbSetup(const benchmark::State& s)
 {
-    auto db = kvdbManager->loadDB(kBenchDbName);
+    auto res = kvdbManager->getHandler(kBenchDbName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto db = std::get<kvdb_manager::KVDBHandle>(res);
 
     for (int i = 0; i < s.range(0); ++i)
     {
@@ -81,7 +86,12 @@ BENCHMARK(kvdbHasKey)
 
 static void kvdbWrite(benchmark::State& state)
 {
-    auto db = kvdbManager->getDB(kBenchDbName);
+    auto res = kvdbManager->getHandler(kBenchDbName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto db = std::get<kvdb_manager::KVDBHandle>(res);
 
     std::vector<std::string> keys;
     for (int i = 0; i < state.range(0); ++i)

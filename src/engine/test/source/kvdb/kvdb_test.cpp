@@ -127,9 +127,6 @@ TEST_F(KVDBTest, CreateGetKvdbFile)
     ASSERT_TRUE(kvdbGetHandle->isReady());
 
     kvdbManager->unloadDB(kTestDB1Name);
-    kvdb_manager::KVDBHandle kvdbDeleteHandle;
-    ASSERT_NO_THROW(kvdbDeleteHandle = kvdbManager->getDB(kTestDB1Name));
-    ASSERT_EQ(kvdbDeleteHandle, nullptr);
 }
 
 TEST_F(KVDBTest, DeleteLoadedKvdbFile)
@@ -158,7 +155,12 @@ TEST_F(KVDBTest, OkDeleteSimple)
 TEST_F(KVDBTest, CreateColumn)
 {
     const std::string COLUMN_NAME = "NEW_COLUMN";
-    auto kvdb = kvdbManager->getDB(kTestDBName);
+    auto res = kvdbManager->getHandler(kTestDBName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
     bool retval = kvdb->createColumn(COLUMN_NAME);
     ASSERT_TRUE(retval);
 }
@@ -166,7 +168,12 @@ TEST_F(KVDBTest, CreateColumn)
 TEST_F(KVDBTest, CreateDeleteColumns)
 {
     const std::string COLUMN_NAME = "NEW_COLUMN";
-    auto kvdb = kvdbManager->getDB(kTestDBName);
+    auto res = kvdbManager->getHandler(kTestDBName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
     bool retval = kvdb->createColumn(COLUMN_NAME);
     ASSERT_TRUE(retval);
     retval = kvdb->deleteColumn(COLUMN_NAME);
@@ -177,8 +184,12 @@ TEST_F(KVDBTest, CreateDeleteColumns)
 
 TEST_F(KVDBTest, WriteSimple)
 {
-    kvdb_manager::KVDBHandle kvdbHandle;
-    ASSERT_NO_THROW(kvdbHandle = kvdbManager->getDB(kTestDBName));
+    auto res = kvdbManager->getHandler(kTestDBName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdbHandle = std::get<kvdb_manager::KVDBHandle>(res);
     ASSERT_TRUE(kvdbHandle);
 
     bool retval;
@@ -191,8 +202,7 @@ TEST_F(KVDBTest, WriteKeySeveralValueCases)
     std::optional<base::Error> writeResult;
     // integer
     json::Json jsonKeyValue {valueKeyB.c_str()};
-    ASSERT_NO_THROW(writeResult =
-                        kvdbManager->writeKey(kTestDBName, KEY, jsonKeyValue));
+    ASSERT_NO_THROW(writeResult = kvdbManager->writeKey(kTestDBName, KEY, jsonKeyValue));
     ASSERT_FALSE(writeResult.has_value());
 
     // array
@@ -212,7 +222,7 @@ TEST_F(KVDBTest, GetJValueSeveralCases)
 {
     createJsonTestFile();
 
-    auto resultString = kvdbManager->CreateFromJFile(kTestDB1Name, FILE_PATH);
+    auto resultString = kvdbManager->createFromJFile(kTestDB1Name, FILE_PATH);
     ASSERT_FALSE(resultString.has_value());
 
     auto val = kvdbManager->getRawValue(kTestDB1Name, "keyA");
@@ -237,7 +247,12 @@ TEST_F(KVDBTest, ReadWrite)
     std::string valueRead;
     bool retval;
 
-    auto kvdb = kvdbManager->getDB(kTestDBName);
+    auto res = kvdbManager->getHandler(kTestDBName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
 
     retval = kvdb->write(KEY, VALUE);
     ASSERT_TRUE(retval);
@@ -275,7 +290,12 @@ TEST_F(KVDBTest, ReadWrite)
 TEST_F(KVDBTest, KeyOnlyWrite)
 {
     bool retval;
-    auto kvdb = kvdbManager->getDB(kTestDBName);
+    auto res = kvdbManager->getHandler(kTestDBName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
 
     retval = kvdb->hasKey(KEY);
     ASSERT_FALSE(retval);
@@ -301,7 +321,12 @@ TEST_F(KVDBTest, ReadWriteColumn)
     const std::string COLUMN_NAME = "NEW_COLUMN";
     bool retval;
 
-    auto kvdb = kvdbManager->getDB(kTestDBName);
+    auto res = kvdbManager->getHandler(kTestDBName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
 
     retval = kvdb->createColumn(COLUMN_NAME);
     ASSERT_TRUE(retval);
@@ -322,7 +347,12 @@ TEST_F(KVDBTest, Transaction_ok)
                                                                {"key5", "value5"}};
     bool retval;
 
-    auto kvdb = kvdbManager->getDB(kTestDBName);
+    auto res = kvdbManager->getHandler(kTestDBName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
     retval = kvdb->writeToTransaction(vInput);
     ASSERT_TRUE(retval);
     for (auto pair : vInput)
@@ -335,7 +365,12 @@ TEST_F(KVDBTest, Transaction_ok)
 TEST_F(KVDBTest, Transaction_invalid_input)
 {
     bool retval;
-    auto kvdb = kvdbManager->getDB(kTestDBName);
+    auto res = kvdbManager->getHandler(kTestDBName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
 
     // Empty input
     std::vector<std::pair<std::string, std::string>> vEmptyInput = {};
@@ -367,7 +402,12 @@ TEST_F(KVDBTest, CleanColumn)
     std::string valueRead;
     bool retval;
 
-    auto kvdb = kvdbManager->getDB(kTestDBName);
+    auto res = kvdbManager->getHandler(kTestDBName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
 
     // default column
     retval = kvdb->write(KEY, VALUE);
@@ -392,7 +432,12 @@ TEST_F(KVDBTest, CleanColumn)
 
 TEST_F(KVDBTest, ValueKeyLength)
 {
-    auto kvdb = kvdbManager->getDB(kTestDBName);
+    auto res = kvdbManager->getHandler(kTestDBName);
+    if (auto err = std::get_if<base::Error>(&res))
+    {
+        throw std::runtime_error(err->message);
+    }
+    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
     std::string valueRead;
     std::string valueWrite;
     bool retval;
@@ -432,7 +477,7 @@ TEST_F(KVDBTest, ManagerConcurrency)
                             auto m = kvdbManager;
                             for (int i = 0; i < kMaxTestIterations; ++i)
                             {
-                                auto db = m->getDB(dbName);
+                                auto res = m->getHandler(dbName, true);
                             }
                         }};
 
@@ -444,7 +489,7 @@ TEST_F(KVDBTest, ManagerConcurrency)
                           auto m = kvdbManager;
                           for (int i = 0; i < kMaxTestIterations; ++i)
                           {
-                              auto db = m->getDB(dbName);
+                              auto res = m->getHandler(dbName, false);
                           }
                       }};
 
@@ -456,10 +501,10 @@ TEST_F(KVDBTest, ManagerConcurrency)
                          auto m = kvdbManager;
                          for (int i = 0; i < kMaxTestIterations; ++i)
                          {
-                             auto db = m->getDB(dbName);
-                             if (db && db->isValid())
+                             auto res = m->getHandler(dbName);
+                             if (std::holds_alternative<kvdb_manager::KVDBHandle>(res))
                              {
-                                 m->unloadDB(dbName);
+                                m->deleteDB(dbName);
                              }
                          }
                      }};
@@ -488,7 +533,8 @@ TEST_F(KVDBTest, KVDBConcurrency)
                             auto retval = pthread_barrier_wait(&barrier);
                             EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == retval
                                         || 0 == retval);
-                            auto db = kvdbManager->getDB(dbName);
+                            auto res = kvdbManager->getHandler(dbName);
+                            auto& db = std::get<kvdb_manager::KVDBHandle>(res);
                             for (int i = 0; i < kMaxTestIterations; ++i)
                             {
                                 db->createColumn(fmt::format("colname.{}", distrib(gen)));
@@ -500,7 +546,8 @@ TEST_F(KVDBTest, KVDBConcurrency)
                            auto retval = pthread_barrier_wait(&barrier);
                            EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == retval
                                        || 0 == retval);
-                           auto db = kvdbManager->getDB(dbName);
+                           auto res = kvdbManager->getHandler(dbName);
+                           auto& db = std::get<kvdb_manager::KVDBHandle>(res);
                            for (int i = 0; i < kMaxTestIterations; ++i)
                            {
                                db->write(fmt::format("key{}", distrib(gen)),
@@ -514,7 +561,8 @@ TEST_F(KVDBTest, KVDBConcurrency)
                           auto retval = pthread_barrier_wait(&barrier);
                           EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == retval
                                       || 0 == retval);
-                          auto db = kvdbManager->getDB(dbName);
+                          auto res = kvdbManager->getHandler(dbName);
+                          auto& db = std::get<kvdb_manager::KVDBHandle>(res);
                           for (int i = 0; i < kMaxTestIterations; ++i)
                           {
                               db->read(fmt::format("key{}", distrib(gen)),
@@ -527,7 +575,8 @@ TEST_F(KVDBTest, KVDBConcurrency)
                          auto retval = pthread_barrier_wait(&barrier);
                          EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == retval
                                      || 0 == retval);
-                         auto db = kvdbManager->getDB(dbName);
+                         auto res = kvdbManager->getHandler(dbName);
+                         auto& db = std::get<kvdb_manager::KVDBHandle>(res);
                          for (int i = 0; i < kMaxTestIterations; ++i)
                          {
                              db->deleteColumn(fmt::format("colname.{}", distrib(gen)));
@@ -541,12 +590,11 @@ TEST_F(KVDBTest, KVDBConcurrency)
     kvdbManager->unloadDB(dbName);
 }
 
-
 TEST_F(KVDBTest, FillDBWithFileCheckContentWithDump)
 {
     createJsonTestFile();
 
-    auto resultString = kvdbManager->CreateFromJFile(kTestDB1Name, FILE_PATH);
+    auto resultString = kvdbManager->createFromJFile(kTestDB1Name, FILE_PATH);
     ASSERT_FALSE(resultString.has_value());
 
     auto kvdbDumpVariant = kvdbManager->jDumpDB(kTestDB1Name);
@@ -655,7 +703,7 @@ TEST_F(KVDBTest, WriteKeySingleKV)
 {
     const std::string newTestDBName {"NEW_TEST_DB"};
 
-    auto errorOpt = kvdbManager->CreateFromJFile(newTestDBName);
+    auto errorOpt = kvdbManager->createFromJFile(newTestDBName);
     ASSERT_FALSE(errorOpt.has_value());
     auto retval = kvdbManager->writeRaw(newTestDBName, KEY, VALUE);
     ASSERT_FALSE(retval.has_value());
@@ -705,7 +753,7 @@ TEST_F(KVDBTest, ListAllKVDBs)
     auto kvdbLists = kvdbManager->listDBs();
     ASSERT_EQ(kvdbLists.size(), 1);
 
-    auto errorOpt = kvdbManager->CreateFromJFile(kTestAlternativeDBName);
+    auto errorOpt = kvdbManager->createFromJFile(kTestAlternativeDBName);
     ASSERT_FALSE(errorOpt.has_value());
 
     kvdbLists = kvdbManager->listDBs(false);
@@ -723,7 +771,7 @@ TEST_F(KVDBTest, GetWriteDeleteKeyValueThroughManager)
     auto retval = kvdbManager->writeRaw(kTestDBName, KEY, VALUE);
     ASSERT_FALSE(retval.has_value());
 
-    auto errorOpt = kvdbManager->CreateFromJFile(kTestAlternativeDBName);
+    auto errorOpt = kvdbManager->createFromJFile(kTestAlternativeDBName);
     ASSERT_FALSE(errorOpt.has_value());
 
     retval = kvdbManager->writeRaw(kTestAlternativeDBName, KEY, VALUE);
@@ -741,7 +789,7 @@ TEST_F(KVDBTest, GetWriteDeleteKeyValueThroughManager)
     ASSERT_FALSE(deleteResult.has_value());
 
     auto retOpt = kvdbManager->deleteDB(kTestAlternativeDBName);
-    ASSERT_EQ(retOpt,std::nullopt);
+    ASSERT_EQ(retOpt, std::nullopt);
 }
 
 TEST_F(KVDBTest, GetWriteDeleteSingleKeyThroughManager)
@@ -749,7 +797,7 @@ TEST_F(KVDBTest, GetWriteDeleteSingleKeyThroughManager)
     std::string valueRead, resultValue;
     bool retval;
 
-    auto errorOpt = kvdbManager->CreateFromJFile(kTestAlternativeDBName);
+    auto errorOpt = kvdbManager->createFromJFile(kTestAlternativeDBName);
     ASSERT_FALSE(errorOpt.has_value());
 
     // single key KVDB
@@ -768,10 +816,10 @@ TEST_F(KVDBTest, GetWriteDeleteSingleKeyThroughManager)
 
 TEST_F(KVDBTest, CreateAndFillKVDBfromFile)
 {
-    auto errorOpt = kvdbManager->CreateFromJFile(kTestAlternativeDBName);
+    auto errorOpt = kvdbManager->createFromJFile(kTestAlternativeDBName);
     ASSERT_FALSE(errorOpt.has_value());
 
-    errorOpt = kvdbManager->CreateFromJFile(kTestAlternativeDBName);
+    errorOpt = kvdbManager->createFromJFile(kTestAlternativeDBName);
     ASSERT_STREQ(
         errorOpt.value().message.c_str(),
         fmt::format("Database '{}' already exists", kTestAlternativeDBName).c_str());
