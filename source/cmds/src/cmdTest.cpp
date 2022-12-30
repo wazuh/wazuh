@@ -83,7 +83,7 @@ void test(const std::string& kvdbPath,
     size_t logparDebugLvl = debugLevel > 2 ? 1 : 0;
     try
     {
-        builder::internals::registerBuilders(registry, {kvdb, logpar, logparDebugLvl});
+        builder::internals::registerBuilders(registry, {0, logpar, kvdb});
     }
     catch (const std::exception& e)
     {
