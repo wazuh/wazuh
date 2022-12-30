@@ -27,6 +27,18 @@ base::Expression KVDBExtract(const std::any& definition,
                              std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 /**
+ * @brief Builder for KVDB set operation
+ *
+ * This builder is not intended to be used directly, i.e. it is not registered.
+ * Exposed for testing purposes.
+ *
+ * @param definition
+ * @return base::Expression
+ */
+base::Expression KVDBSet(const std::any& definition,
+                         std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+
+/**
  * @brief Builds KVDB extract function helper
  *
  * @param kvdbManager KVDB manager
@@ -58,6 +70,14 @@ Builder getOpBuilderKVDBMatch(std::shared_ptr<kvdb_manager::KVDBManager> kvdbMan
  * @return Builder
  */
 Builder getOpBuilderKVDBNotMatch(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+
+/**
+ * @brief Get the KVDB Set function helper builder
+ *
+ * @param kvdbManager KVDB manager
+ * @return Builder
+ */
+Builder getOpBuilderKVDBSet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 } // namespace builder::internals::builders
 
