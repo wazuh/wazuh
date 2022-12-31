@@ -98,10 +98,6 @@ normalize:
    map:
     - event.message: $~event_channel.Event.EventData.Type
 
- - check: event.code
-   map:
-    - test: t
-
  - check: +s_ne/event.code/7
    map:
    - process.pe.original_file_name: $~event_channel.Event.EventData.OriginalFileName
@@ -118,9 +114,15 @@ normalize:
     - file.pe.file_version: $~event_channel.Event.EventData.FileVersion
     - file.pe.product: $~event_channel.Event.EventData.Product
 
+  # DNS event
  - check: event.code==22
    map:
     - network.protocol: dns
+  # Splits the QueryResults field that contains the DNS responses.
+ #- check: $~event_channel.Event.EventData.QueryResults
+ #  map:
+ #   - ~temp.QueryRresultsArray: $~event_channel.Event.EventData.QueryResults 
+    # needs parsing each element of the array
 
  - check: $~event_channel.Event.EventData.SignatureStatus==Valid
    map:
@@ -152,8 +154,5 @@ normalize:
     - file.hash: $~temp.hashes
     - file.pe.imphash: file.hash.imphash
 
-# DNS event
-- check: event.code==22
-  map:
-   - network.protocol: dns
+
    
