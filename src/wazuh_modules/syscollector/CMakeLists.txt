@@ -47,6 +47,13 @@ else()
   target_link_libraries(syscollector dbsync rsync sysinfo wazuhext -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
 endif()
 
+# Required because in some macOS environments the CMAKE_MACOSX_RPATH option isn't setting the rpath
+if(APPLE)
+  set_target_properties(syscollector PROPERTIES
+    LINK_FLAGS "-Wl,-install_name,@rpath/libsyscollector.dylib"
+  )
+endif(APPLE)
+
 add_subdirectory(testtool)
 
 add_subdirectory(tests EXCLUDE_FROM_ALL)

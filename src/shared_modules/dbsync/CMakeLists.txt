@@ -44,6 +44,13 @@ if($<CONFIG:RELEASE>)
   endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif()
 
+# Required because in some macOS environments the CMAKE_MACOSX_RPATH option isn't setting the rpath
+if(APPLE)
+  set_target_properties(dbsync PROPERTIES
+    LINK_FLAGS "-Wl,-install_name,@rpath/libdbsync.dylib"
+  )
+endif(APPLE)
+
 add_subdirectory(example)
 add_subdirectory(testtool)
 

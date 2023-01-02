@@ -109,6 +109,13 @@ elseif(APPLE)
   target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
+# Required because in some macOS environments the CMAKE_MACOSX_RPATH option isn't setting the rpath
+if(APPLE)
+  set_target_properties(sysinfo PROPERTIES
+    LINK_FLAGS "-Wl,-install_name,@rpath/libsysinfo.dylib"
+  )
+endif(APPLE)
+
 target_link_libraries(sysinfo wazuhext)
 
 add_subdirectory(tests EXCLUDE_FROM_ALL) # The all target won't contain tests
