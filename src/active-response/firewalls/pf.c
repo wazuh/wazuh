@@ -15,8 +15,20 @@
 #define PFCTL_RULES ("/etc/pf.conf")
 #define PFCTL_TABLE ("wazuh_fwtable")
 
+/**
+ * @brief check if firewall is configured
+ * @param path path to firewall configuration file
+ * @param table name of firewall table
+ * @return 0 if configured, -1 otherwise
+*/
 static int checking_if_its_configured(const char *path, const char *table);
-static int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2);
+
+/**
+ * @brief write to file path
+ * @param path path to file
+ * @param cmd command or text to write inside file
+ * @return 1 if successful, 0 otherwise
+*/
 static int write_cmd_to_file(const char *path, const char *cmd);
 
 int main (int argc, char **argv) {
@@ -226,50 +238,6 @@ static int checking_if_its_configured(const char *path, const char *table) {
     return OS_INVALID;
 }
 
-/**
- * @brief It looks for a string that matches pattern 1, if it finds it, it looks again for pattern 2, there should be spaces in the middle between the patterns.
- * @param output_buf buffer where search
- * @param str_pattern_1 pattern to match
- * @param str_pattern_2 pattern to match
- * @return 1 or 0
- * @example output_buf -> "... Status:    Disabled ..."
- *          isEnabledFromPattern(output_buf, "Status: ", "Enabled")
- *            if it matches pattern 1 look for pattern 2 and if found, it returns 1
- *          isEnabledFromPattern(output_buf, "Status: ", NULL)
- *            find only by "Status"
-*/
-static int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2) {
-    int retVal = 0;
-    const char *pos = NULL;
-    if (str_pattern_1 != NULL) {
-        pos = strstr(output_buf, str_pattern_1);
-    }
-
-    if (pos != NULL) {
-        char state[OS_MAXSTR];
-        char buffer[OS_MAXSTR];
-        if (str_pattern_2 != NULL) {
-            snprintf(buffer, OS_MAXSTR -1 , "%%*s %%%lds", strlen(str_pattern_2));
-            if (sscanf(pos, buffer /*"%*s %7s"*/, state) == 1) {
-                if (strcmp(state, str_pattern_2) == 0) {
-                    retVal = 1;
-                } else {
-                    retVal = 0;
-                }
-            }
-        } else {
-            retVal = 1;
-        }
-    }
-    return  retVal;
-}
-
-/**
- * @brief write to file path
- * @param path path to file
- * @param cmd command or text to write inside file
- * @return 1 or 0
-*/
 static int write_cmd_to_file(const char *path, const char *cmd) {
     int retVal = 0;
     if (path != NULL && cmd != NULL) {
