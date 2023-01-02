@@ -297,8 +297,9 @@ int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock
  *        if two agents have the same group assigned it is only included once
  *
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @param[in] last_group_hash Filter the query with group hash higer than this value.
  * @return Returns pointer to the array of groups/group_hash, on success. NULL on errors.
  */
-cJSON* wdb_get_distinct_agent_groups(int *sock);
+cJSON* wdb_get_distinct_agent_groups(int *sock, char *last_group_hash);
 
 #endif

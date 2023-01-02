@@ -873,27 +873,32 @@ STATIC void process_multi_groups() {
     OSHashNode *my_node;
     unsigned int i;
     cJSON *group_item = NULL;
+    cJSON *chunk_item = NULL;
 
-    cJSON *groups_array = wdb_get_distinct_agent_groups(NULL);
+    cJSON *groups_array = wdb_get_distinct_agent_groups(NULL, NULL);
 
-    cJSON_ArrayForEach(group_item, groups_array) {
-        char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(group_item, "group"));
+    if (groups_array != NULL) {
+        cJSON_ArrayForEach(chunk_item, groups_array) {
+            cJSON_ArrayForEach(group_item, chunk_item) {
+                char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(group_item, "group"));
 
-        // If we don't duplicate the group_hash, the cJSON_Delete() will remove the string pointer from m_hash
-        char* agent_groups_hash = NULL;
-        w_strdup(cJSON_GetStringValue(cJSON_GetObjectItem(group_item, "group_hash")), agent_groups_hash);
+                // If we don't duplicate the group_hash, the cJSON_Delete() will remove the string pointer from m_hash
+                char* agent_groups_hash = NULL;
+                w_strdup(cJSON_GetStringValue(cJSON_GetObjectItem(group_item, "group_hash")), agent_groups_hash);
 
-        // If it's not a multigroup, skip it
-        if(agent_groups && agent_groups_hash && strstr(agent_groups, ",")) {
-            if (OSHash_Add_ex(m_hash, agent_groups, agent_groups_hash) != 2) {
-                os_free(agent_groups_hash);
-                mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", agent_groups);
+                // If it's not a multigroup, skip it
+                if(agent_groups && agent_groups_hash && strstr(agent_groups, ",")) {
+                    if (OSHash_Add_ex(m_hash, agent_groups, agent_groups_hash) != 2) {
+                        os_free(agent_groups_hash);
+                        mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", agent_groups);
+                    }
+                } else {
+                    os_free(agent_groups_hash);
+                }
             }
-        } else {
-            os_free(agent_groups_hash);
         }
+        cJSON_Delete(groups_array);
     }
-    os_free(groups_array);
 
     for (my_node = OSHash_Begin(m_hash, &i); my_node; my_node = OSHash_Next(m_hash, &i, my_node)) {
         char *key = NULL;
