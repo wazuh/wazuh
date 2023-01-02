@@ -526,17 +526,17 @@ int main(int argc, char **argv)
             fp = fopen(AUTHD_PASS, "r");
             buf[0] = '\0';
 
-            fseek(fp, 0, SEEK_END);
-
-            if (ftell(fp) <= 1) {
-                merror("Empty password provided.");
-                exit(1);
-            }
-
-            fseek(fp, 0, SEEK_SET);
-
             /* Checking if there is a custom password file */
             if (fp) {
+                fseek(fp, 0, SEEK_END);
+
+                if (ftell(fp) <= 1) {
+                    merror("Empty password provided.");
+                    exit(1);
+                }
+
+                fseek(fp, 0, SEEK_SET);
+
                 buf[4096] = '\0';
                 char *ret = fgets(buf, 4095, fp);
 
