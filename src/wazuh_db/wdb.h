@@ -52,11 +52,13 @@
 #define AGENT_CS_DISCONNECTED    "disconnected"
 
 /// Enumeration of agents disconected status reasons.
-typedef enum agent_disconnected_status_code_t {
-        INVALID_VERSION = 1,    ///< Invalid anget version
-        HC_SHUTDOWN_RECV,   ///< Shutdown message received
-        NO_KEEPALIVE           ///< Disconnected because no keepalive received.
-} agent_disconnected_status_code_t;
+typedef enum agent_status_code_t {
+        INVALID_VERSION = 1,    ///< Invalid agent version
+        HC_SHUTDOWN_RECV,       ///< Shutdown message received
+        NO_KEEPALIVE,           ///< Disconnected because no keepalive received
+        RESET_BY_MANAGER,       ///< Connection reset by manager
+        ERR_VERSION_RECV        ///< Error retrieving version
+} agent_status_code_t;
 
 #define VULN_CVES_STATUS_VALID              "VALID"
 #define VULN_CVES_STATUS_PENDING            "PENDING"
@@ -463,7 +465,7 @@ typedef struct agent_info_data {
     char *connection_status;
     char *sync_status;
     char *group_config_status;
-    agent_disconnected_status_code_t status_code;
+    agent_status_code_t status_code;
 } agent_info_data;
 
 typedef enum {

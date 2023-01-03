@@ -111,7 +111,7 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
  * @param[in] status_code Enum with the status code to be set.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock, agent_disconnected_status_code_t status_code);
+int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock, agent_status_code_t status_code);
 
 /**
  * @brief Update agent's last keepalive and modifies the cluster synchronization status.
@@ -123,7 +123,7 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_status_code(int id, agent_disconnected_status_code_t status_code, const char *version, const char *sync_status, int *sock);
+int wdb_update_agent_status_code(int id, agent_status_code_t status_code, const char *version, const char *sync_status, int *sock);
 
 /**
  * @brief Returns an array containing the ID of every agent (except 0), ended with -1.

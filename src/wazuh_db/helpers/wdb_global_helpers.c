@@ -333,7 +333,7 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
     return result;
 }
 
-int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock, agent_disconnected_status_code_t status_code) {
+int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock, agent_status_code_t status_code) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -390,7 +390,7 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
     return result;
 }
 
-int wdb_update_agent_status_code(int id, agent_disconnected_status_code_t status_code, const char *version, const char *sync_status, int *sock) {
+int wdb_update_agent_status_code(int id, agent_status_code_t status_code, const char *version, const char *sync_status, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;

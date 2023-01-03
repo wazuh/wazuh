@@ -535,9 +535,9 @@ static void w_enrollment_concat_agent_version (char *buff, const char *agent_ver
     assert(agent_version != NULL);
 
     char * opt_buf = NULL;
-    os_calloc(OS_SIZE_65536, sizeof(char), opt_buf);
-    snprintf(opt_buf,OS_SIZE_65536," V:'%s'",agent_version);
-    strncat(buff,opt_buf,OS_SIZE_65536);
+    os_calloc(OS_SIZE_32, sizeof(char), opt_buf);
+    snprintf(opt_buf,OS_SIZE_32," V:'%s'",agent_version);
+    strncat(buff,opt_buf,OS_SIZE_32);
     free(opt_buf);
 }
 

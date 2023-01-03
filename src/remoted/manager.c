@@ -298,7 +298,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                         char msg_err[OS_FLSIZE + 1] = "";
                         snprintf(msg_err, OS_FLSIZE, "%s%s%s", CONTROL_HEADER, HC_ERROR, error_msg_string);
                         send_msg(key->id, msg_err, -1);
-
+                        mdebug2("Unable to connect agent: %s. %s", key->id, HC_INVALID_VERSION);
                         result = wdb_update_agent_status_code(atoi(key->id), INVALID_VERSION, version->valuestring, logr.worker_node ? "syncreq" : "synced", wdb_sock);
 
                         if (OS_SUCCESS != result) {
@@ -321,14 +321,21 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                     char msg_err[OS_FLSIZE + 1] = "";
                     snprintf(msg_err, OS_FLSIZE, "%s%s%s", CONTROL_HEADER, HC_ERROR, error_msg_string);
                     send_msg(key->id, msg_err, -1);
+
+                    result = wdb_update_agent_status_code(atoi(key->id), ERR_VERSION_RECV, version->valuestring, logr.worker_node ? "syncreq" : "synced", wdb_sock);
+
+                    if (OS_SUCCESS != result) {
+                        mwarn("Unable to set status code for agent: %s", key->id);
+                    }
+
                     cJSON_Delete(agent_info);
                     cJSON_Delete(error_msg);
                     os_free(error_msg_string);
                     os_free(clean);
                     return;
                 }
+                cJSON_Delete(agent_info);
             }
-            cJSON_Delete(agent_info);
             is_startup = 1;
             rem_inc_recv_ctrl_startup(key->id);
         } else {
@@ -360,10 +367,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             rem_inc_send_ack(key->id);
         }
     }
-
-    /* Reply to the agent */
-    snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
-    send_msg(key->id, msg_ack, -1);
 
     w_mutex_lock(&lastmsg_mutex);
 
