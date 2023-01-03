@@ -219,7 +219,6 @@ def test_AWSConfigBucket_build_s3_filter_args(mock_logs_bucket, mock_get_full_pr
     else:
         filter_marker = utils.database_execute_query(instance.db_connector, SQL_FIND_LAST_KEY_PROCESSED.format(
             table_name=instance.db_table_name))
-    print(filter_marker)
 
     config_prefix = instance.get_full_prefix(aws_account_id, aws_region) + TEST_DATE + '/'
 

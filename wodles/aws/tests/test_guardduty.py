@@ -80,7 +80,6 @@ def test_AWSGuardDutyBucket_reformat_msg(mock_custom_bucket, mock_reformat, fiel
         for detail in port_probe_details:
             event['aws']['service']['action']['portProbeAction']['portProbeDetails'] = detail
             result.append(event)
-        print(event)
         assert result == formatted_event
 
     else:
