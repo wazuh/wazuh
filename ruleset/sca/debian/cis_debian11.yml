@@ -37,7 +37,7 @@ checks:
   # 1.1.1.3 Ensure mounting of udf filesystems is disabled (Automated) - Not implemented
 
   # 1.1.2 Configure /tmp
-
+s
   # 1.1.2.1 Ensure /tmp is separate partition (Automated)
   - id: 3000
     title: "Ensure /tmp is separate partition (Automated)"
