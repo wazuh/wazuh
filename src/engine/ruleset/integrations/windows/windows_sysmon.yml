@@ -90,6 +90,7 @@ normalize:
     - related.user: $user.name
     - related.ip: +a_append/$~event_channel.Event.EventData.NewTargetUserName  
 
+
  - check: event.code==255 
    map:
     - error.code: $event.code
@@ -153,6 +154,20 @@ normalize:
    map:
     - file.hash: $~temp.hashes
     - file.pe.imphash: file.hash.imphash
+
+  ## Registry fields
+ - check: event.code==12 OR event.code==13  OR event.code==14
+   map:
+    - registry.path: $~event_channel.Event.EventData.TargetObject
+    - ~temp.registry.array: +s_to_array/$registry.path/\/
+    - registry.hive: $~temp.registry.array.0
+    - ~temp.registry.array.0: +ef_delete
+    - registry.key: +s_from_array/$~temp.registry.array/\\
+    - registry.value: +r_ext/$registry.path/^.*\\(.*)$
+    
+    - ~temp.registry_data: +r_ext/$~event_channel.Event.EventData.details/^QWORD(\((0x[0-9A-F]{8}-0x[0-9A-F]{8})\))
+    
+
 
 
    
