@@ -1,5 +1,6 @@
 import os
 import sys
+import copy
 from unittest.mock import patch
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
@@ -41,7 +42,19 @@ TEST_LOG_FULL_PATH_CLOUDTRAIL_1 = 'AWSLogs/123456789/CloudTrail/us-east-1/2019/0
 TEST_LOG_FULL_PATH_CLOUDTRAIL_2 = 'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T00015Z_aaaa.json.gz'
 TEST_LOG_FULL_PATH_CUSTOM_1 = 'custom/2019/04/15/07/firehose_custom-1-2019-04-15-09-16-03.zip'
 TEST_LOG_FULL_PATH_CUSTOM_2 = 'custom/2019/04/15/07/firehose_custom-1-2019-04-15-13-19-03.zip'
+TEST_LOG_FULL_PATH_CONFIG_1 = 'AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020500Z.json.gz'
 
+LIST_OBJECT_V2 = {'CommonPrefixes': [{'Prefix': f'AWSLogs/{TEST_REGION}/'},
+                                     {'Prefix': f'AWSLogs/prefix/{TEST_REGION}/'}]}
+
+LIST_OBJECT_V2_NO_PREFIXES = {'Contents': [{
+    'Key': '',
+    'OtherKey': 'value'}],
+    'IsTruncated': False
+}
+
+LIST_OBJECT_V2_TRUNCATED = copy.deepcopy(LIST_OBJECT_V2_NO_PREFIXES)
+LIST_OBJECT_V2_TRUNCATED.update({'IsTruncated': True, 'NextContinuationToken': 'Token'})
 
 WAZUH_VERSION = "4.5.0"
 
