@@ -43,4 +43,5 @@ char* __wrap_wdb_get_agent_name(int id, __attribute__((unused)) int *wdb_sock);
 int __wrap_wdb_remove_agent_db(int id, const char* name);
 
 cJSON* __wrap_wdb_get_distinct_agent_groups(__attribute__((unused)) int *sock);
+
 #endif
