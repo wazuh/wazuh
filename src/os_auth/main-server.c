@@ -71,7 +71,6 @@ extern struct keynode * volatile *remove_tail;
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
-
 /* Print help statement */
 static void help_authd(char * home_path)
 {
@@ -900,16 +899,14 @@ void* run_writer(__attribute__((unused)) void *arg) {
         }
 
         for (cur = copy_remove; cur; cur = next) {
-            char full_name[FILE_SIZE + 1];
             next = cur->next;
-            snprintf(full_name, sizeof(full_name), "%s-%s", cur->name, cur->ip);
 
             mdebug1("[Writer] Performing delete([%s] %s).", cur->id, cur->name);
 
             gettime(&t0);
-            delete_agentinfo(cur->id, full_name);
+            delete_diff(cur->name);
             gettime(&t1);
-            mdebug2("[Writer] delete_agentinfo(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+            mdebug2("[Writer] delete_diff(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             gettime(&t0);
             OS_RemoveCounter(cur->id);
