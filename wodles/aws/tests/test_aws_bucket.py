@@ -41,18 +41,7 @@ SQL_FIND_LAST_KEY_PROCESSED = """SELECT log_key FROM {table_name} ORDER BY log_k
 SAMPLE_EVENT_1 = {'key1': 'value1', 'key2': 'value2'}
 SAMPLE_EVENT_2 = {'key1': 'value1', 'key2': None}
 
-LIST_OBJECT_V2 = {'CommonPrefixes': [{'Prefix': f'AWSLogs/{utils.TEST_REGION}/'},
-                                     {'Prefix': f'AWSLogs/prefix/{utils.TEST_REGION}/'}]}
-LIST_OBJECT_V2_NO_PREFIXES = {'Contents': [{
-    'Key': utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1,
-    'OtherKey': 'value'}],
-    'IsTruncated': False
-}
-
-# TODO: REVIEW
-LIST_OBJECT_V2_TRUNCATED = copy.deepcopy(LIST_OBJECT_V2_NO_PREFIXES)
-LIST_OBJECT_V2_TRUNCATED['IsTruncated'] = True
-LIST_OBJECT_V2_TRUNCATED['NextContinuationToken'] = 'Token'
+utils.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1
 
 
 @pytest.mark.parametrize('only_logs_after', [None, "20220101"])
@@ -394,7 +383,7 @@ def test_AWSBucket_find_account_ids_ko_key_error(mock_prefix):
     assert e.value.code == utils.INVALID_PREFIX_ERROR_CODE
 
 
-@pytest.mark.parametrize('object_list', [LIST_OBJECT_V2, LIST_OBJECT_V2_NO_PREFIXES])
+@pytest.mark.parametrize('object_list', [utils.LIST_OBJECT_V2, utils.LIST_OBJECT_V2_NO_PREFIXES])
 @patch('aws_bucket.AWSBucket.get_service_prefix', return_value=utils.TEST_PREFIX)
 def test_AWSBucket_find_regions(mock_prefix, object_list):
     """Test 'find_regions' function returns a valid region list."""
@@ -704,7 +693,7 @@ def test_AWSBucket_iter_events(mock_debug, mock_send_event, mock_get_alert, disc
         mock_send_event.assert_called()
 
 
-@pytest.mark.parametrize('object_list', [LIST_OBJECT_V2, LIST_OBJECT_V2_NO_PREFIXES, LIST_OBJECT_V2_TRUNCATED])
+@pytest.mark.parametrize('object_list', [utils.LIST_OBJECT_V2, utils.LIST_OBJECT_V2_NO_PREFIXES, utils.LIST_OBJECT_V2_TRUNCATED])
 @pytest.mark.parametrize('reparse', [True, False])
 @pytest.mark.parametrize('check_prefix', [True, False])
 @pytest.mark.parametrize('delete_file', [True, False])
@@ -724,25 +713,29 @@ def test_AWSBucket_iter_files_in_bucket(mock_build_filter, mock_debug, same_pref
 
     bucket.client.list_objects_v2.return_value = object_list
     bucket.check_prefix = check_prefix
+
+    aws_account_id = utils.TEST_ACCOUNT_ID
+    aws_region = utils.TEST_REGION
+
     with patch('aws_bucket.AWSBucket._same_prefix', return_value=same_prefix_result) as mock_same_prefix, \
-            patch('aws_bucket.AWSBucket.already_processed') as mock_already_processed, \
+            patch('aws_bucket.AWSBucket.already_processed', return_value=True) as mock_already_processed, \
             patch('aws_bucket.AWSBucket.get_log_file') as mock_get_log_file, \
             patch('aws_bucket.AWSBucket.iter_events') as mock_iter_events, \
             patch('aws_bucket.AWSBucket.mark_complete') as mock_mark_complete:
 
         if 'IsTruncated' in object_list and object_list['IsTruncated']:
-            bucket.client.list_objects_v2.side_effect = [object_list, LIST_OBJECT_V2_NO_PREFIXES]
+            bucket.client.list_objects_v2.side_effect = [object_list, utils.LIST_OBJECT_V2_NO_PREFIXES]
 
-        bucket.iter_files_in_bucket(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+        bucket.iter_files_in_bucket(aws_account_id, aws_region)
 
         if bucket.reparse:
             mock_debug.assert_any_call('++ Reparse mode enabled', 2)
 
-        mock_build_filter.assert_any_call(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
-        bucket.client.list_objects_v2.assert_called_with(**mock_build_filter(utils.TEST_ACCOUNT_ID, utils.TEST_REGION))
+        mock_build_filter.assert_any_call(aws_account_id, aws_region)
+        bucket.client.list_objects_v2.assert_called_with(**mock_build_filter(aws_account_id, aws_region))
 
         if 'Contents' not in object_list:
-            mock_debug.assert_any_call(f"+++ No logs to process in bucket: {utils.TEST_ACCOUNT_ID}/{utils.TEST_REGION}",
+            mock_debug.assert_any_call(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}",
                                        1)
         else:
             for bucket_file in object_list['Contents']:
@@ -756,33 +749,32 @@ def test_AWSBucket_iter_files_in_bucket(mock_build_filter, mock_debug, same_pref
                     date_match = bucket.date_regex.search(bucket_file['Key'])
                     match_start = date_match.span()[0] if date_match else None
 
-                    mock_same_prefix.assert_called_with(match_start, utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+                    mock_same_prefix.assert_called_with(match_start, aws_account_id, aws_region)
 
-                    if not bucket._same_prefix(match_start, utils.TEST_ACCOUNT_ID, utils.TEST_REGION):
+                    if not bucket._same_prefix(match_start, aws_account_id, aws_region):
                         mock_debug.assert_any_call(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
                         continue
 
-                mock_already_processed.assert_called_with(bucket_file['Key'], utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
-                if bucket.already_processed(bucket_file['Key'], utils.TEST_ACCOUNT_ID, utils.TEST_REGION):
-                    if bucket.reparse:
-                        mock_debug.assert_any_call(
-                            f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",
-                            1)
-                    else:
-                        mock_debug.assert_any_call(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
-                        continue
+                mock_already_processed.assert_called_with(bucket_file['Key'], aws_account_id, aws_region)
+                if bucket.reparse:
+                    mock_debug.assert_any_call(
+                        f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",
+                        1)
+                else:
+                    mock_debug.assert_any_call(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
+                    continue
 
                 mock_debug.assert_any_call(f"++ Found new log: {bucket_file['Key']}", 2)
-                mock_get_log_file.assert_called_with(utils.TEST_ACCOUNT_ID, bucket_file['Key'])
+                mock_get_log_file.assert_called_with(aws_account_id, bucket_file['Key'])
                 mock_iter_events.assert_called()
 
                 if bucket.delete_file:
                     mock_debug.assert_any_call(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
 
-                mock_mark_complete.assert_called_with(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, bucket_file)
+                mock_mark_complete.assert_called_with(aws_account_id, aws_region, bucket_file)
 
             if object_list['IsTruncated']:
-                mock_build_filter.assert_any_call(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True)
+                mock_build_filter.assert_any_call(aws_account_id, aws_region, True)
 
 
 @pytest.mark.parametrize('error_code, exit_code', [
