@@ -502,9 +502,6 @@ wdb_t * wdb_open_global();
  */
 wdb_t * wdb_open_mitre();
 
-/* Open database for agent */
-sqlite3* wdb_open_agent(int id_agent, const char *name);
-
 // Open database for agent and store in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_agent2(int agent_id);
 
@@ -645,28 +642,10 @@ sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index);
 /**
  * @brief Create database for agent from profile.
  *
- * @param[in] id Id of the agent.
- * @param[in] name Name of the agent.
- * @return OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_create_agent_db(int id, const char *name);
-
-/**
- * @brief Create database for agent from profile.
- *
  * @param[in] agent_id Id of the agent.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_create_agent_db2(const char * agent_id);
-
-/**
- * @brief Remove an agent's database.
- *
- * @param[in] id Id of the agent for whom its database must be deleted.
- * @param[in] name Name of the agent for whom its database must be deleted.
- * @return OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_remove_agent_db(int id, const char * name);
 
 /* Remove agents databases from id's list. */
 cJSON *wdb_remove_multiple_agents(char *agent_list);
