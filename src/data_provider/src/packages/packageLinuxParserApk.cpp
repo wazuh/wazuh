@@ -11,13 +11,17 @@
 
 #include "json.hpp"
 #include <fstream>
+#include "packageLinuxApkParserHelper.h"
 
 void getApkInfo(const std::string& fileName, std::function<void(nlohmann::json&)> callback)
 {
     std::ifstream apkDb(fileName);
-    const size_t valuePos {2};
-    std::string line;
-    std::vector<std::string> data;
+    std::string line {};
+    std::vector<std::pair<char, std::string>> data;
+
+    // https://wiki.alpinelinux.org/wiki/Apk_spec#APKINDEX_Format
+    std::array<char, 5> keys{'P', 'V', 'A', 'I', 'T'};
+    std::string separator = ":";
 
     if (apkDb.is_open())
     {
@@ -25,39 +29,15 @@ void getApkInfo(const std::string& fileName, std::function<void(nlohmann::json&)
         {
             if (!line.empty())
             {
-                switch (line.front())
+                if (std::find(std::cbegin(keys), std::cend(keys), line.front()) != std::cend(keys))
                 {
-                    case 'P':
-                        data.push_back(line.substr(valuePos));
-                        break;
-
-                    case 'V':
-                        data.push_back(line.substr(valuePos));
-                        break;
-
-                    case 'A':
-                        data.push_back(line.substr(valuePos));
-                        break;
-
-                    case 'I':
-                        data.push_back(line.substr(valuePos));
-                        break;
-
-                    case 'T':
-                        data.push_back(line.substr(valuePos));
-                        break;
+                    data.push_back(std::pair<char, std::string>(line.front(),
+                                                                line.substr(line.find_first_of(separator) + 1)));
                 }
             }
             else
             {
-                nlohmann::json packageInfo;
-                packageInfo["name"] = data.at(0);
-                packageInfo["version"] = data.at(1);
-                packageInfo["architecture"] = data.at(2);
-                packageInfo["size"] = data.at(3);
-                packageInfo["description"] = data.at(4);
-                packageInfo["format"] = "apk";
-                packageInfo["vendor"] = "Alpine Linux";
+                auto packageInfo = PackageLinuxHelper::parseApk(data);
                 data.clear();
 
                 if (!packageInfo.empty())
