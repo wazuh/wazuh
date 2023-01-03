@@ -109,7 +109,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 	    (pieces[13] == ':') &&
 	    (pieces[16] == ':') &&
 	    (pieces[19] == ',') &&
-	    (lf->log += 23)
+	    (lf->log += 24)
 	)
 	||
         (

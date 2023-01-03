@@ -174,6 +174,126 @@ static void test_OS_CleanMSG_syslog_ipv6_msg(void **state) {
     os_free(msg);
 }
 
+static void test_OS_CleanMSG_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+    
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2015 Dec 29 10:00:01 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_string_equal(lf->program_name, "AUTH");
+    assert_string_equal(lf->agent_id, "000");
+    assert_string_equal(lf->location, "/var/log/syslog");
+    assert_string_equal(lf->full_log, "2015 Dec 29 10:00:01 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+    assert_string_equal(lf->dec_timestamp, "2015 Dec 29 10:00:01");
+       
+    os_free(msg);
+}
+
+static void test_OS_CleanMSG_macos_ULS_syslog_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+    
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2021-04-21 10:16:09.404756-0700 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_string_equal(lf->program_name, "AUTH");
+    assert_string_equal(lf->agent_id, "000");
+    assert_string_equal(lf->location, "/var/log/syslog");
+    assert_string_equal(lf->full_log, "2021-04-21 10:16:09.404756-0700 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+    assert_string_equal(lf->dec_timestamp, "2021-04-21 10:16:09.404756-0700");
+       
+    os_free(msg);
+}
+
+static void test_OS_CleanMSG_proftpd_1_3_5_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+    
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2015-04-16 21:51:02,805 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_string_equal(lf->program_name, "AUTH");
+    assert_string_equal(lf->agent_id, "000");
+    assert_string_equal(lf->location, "/var/log/syslog");
+    assert_string_equal(lf->full_log, "2015-04-16 21:51:02,805 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+    assert_string_equal(lf->dec_timestamp, "2015-04-16 21:51:02,805");
+
+    os_free(msg);
+}
+
+static void test_OS_CleanMSG_syslog_ng_isodate_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+    
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2007-06-14T15:48:55-04:00 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_string_equal(lf->program_name, "AUTH");
+    assert_string_equal(lf->agent_id, "000");
+    assert_string_equal(lf->location, "/var/log/syslog");
+    assert_string_equal(lf->full_log, "2007-06-14T15:48:55-04:00 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+    assert_string_equal(lf->dec_timestamp, "2007-06-14T15:48:55-04:00");
+       
+    os_free(msg);
+}
+
+static void test_OS_CleanMSG_rsyslog_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+    
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2009-05-22T09:36:46.214994-07:00 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_string_equal(lf->program_name, "AUTH");
+    assert_string_equal(lf->agent_id, "000");
+    assert_string_equal(lf->location, "/var/log/syslog");
+    assert_string_equal(lf->full_log, "2009-05-22T09:36:46.214994-07:00 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+    assert_string_equal(lf->dec_timestamp, "2009-05-22T09:36:46.214994-07:00");
+       
+    os_free(msg);
+}
+
+static void test_OS_CleanMSG_syslog_isodate_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+    
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2022-12-19T15:02:53.288+00:00 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_string_equal(lf->program_name, "AUTH");
+    assert_string_equal(lf->agent_id, "000");
+    assert_string_equal(lf->location, "/var/log/syslog");
+    assert_string_equal(lf->full_log, "2022-12-19T15:02:53.288+00:00 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+    assert_string_equal(lf->dec_timestamp, "2022-12-19T15:02:53.288+00:00");
+       
+    os_free(msg);
+}
+
 void test_extract_module_from_message(void ** state) {
     char message[32] = "1:/var/log/demo.log:Hello world";
 
@@ -237,6 +357,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_ossec_syslog_msg, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_syslog_ipv4_msg, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_syslog_ipv6_msg, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_syslog_isodate_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_rsyslog_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_syslog_ng_isodate_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_proftpd_1_3_5_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_macos_ULS_syslog_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_timestamp, test_setup, test_teardown),
+        
         // Test extract_module_from_message
         cmocka_unit_test(test_extract_module_from_message),
         cmocka_unit_test(test_extract_module_from_message_arrow),
