@@ -1103,6 +1103,8 @@ error:
 }
 
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
+    Wow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
+
     int exists;
     whodata_dir_status *d_status;
     int interval;
