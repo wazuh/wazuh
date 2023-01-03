@@ -24,7 +24,6 @@
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuh_db/wdb.h"
 
-
 #if defined(__hppa__)
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
 {
@@ -504,7 +503,6 @@ int remove_agent(int json_output)
         sock = -1;
     }
 
-
     do {
         if (!json_output) {
             printf(REMOVE_ID);
@@ -565,8 +563,8 @@ int remove_agent(int json_output)
         if (user_input[0] == 'y' || user_input[0] == 'Y') {
             if (!authd_running) {
                 /* Get full agent name */
-                char *full_name = getFullnameById(u_id);
-                if (!full_name) {
+                char *name = getNameById(u_id);
+                if (!name) {
                     if (json_output) {
                         char buffer[1024];
                         cJSON *json_root = cJSON_CreateObject();
@@ -582,7 +580,7 @@ int remove_agent(int json_output)
                 }
 
                 if (!OS_RemoveAgent(u_id)) {
-                    free(full_name);
+                    free(name);
 
                     if (json_output) {
                         char buffer[1024];
@@ -596,8 +594,8 @@ int remove_agent(int json_output)
                         merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
                 }
 
-                free(full_name);
-                full_name = NULL;
+                free(name);
+                name = NULL;
             } else {
                 if (sock = auth_connect(), sock < 0) {
                     if (json_output) {

@@ -75,7 +75,7 @@ int OS_RemoveAgent(const char *u_id) {
     FILE *fp;
     File file;
     int id_exist;
-    char *full_name;
+    char *name;
     long fp_seek;
     size_t fp_read;
     char *buffer;
@@ -154,21 +154,21 @@ int OS_RemoveAgent(const char *u_id) {
 
     fwrite(buffer, sizeof(char), fp_read, file.fp);
     fclose(file.fp);
-    full_name = getFullnameById(u_id);
+    name = getNameById(u_id);
 
     if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
         free(file.name);
         free(buffer);
-        free(full_name);
+        free(name);
         return 0;
     }
 
     free(file.name);
     free(buffer);
 
-    if (full_name) {
-        delete_agentinfo(u_id, full_name);
-        free(full_name);
+    if (name) {
+        delete_diff(name);
+        free(name);
     }
 
     // Remove DB from wazuh-db
@@ -198,7 +198,6 @@ int OS_RemoveAgent(const char *u_id) {
 
 #endif
 
-
 int OS_IsValidID(const char *id)
 {
     size_t id_len, i;
@@ -225,8 +224,8 @@ int OS_IsValidID(const char *id)
     return (1);
 }
 
-/* Get full agent name (name + IP) of ID */
-char *getFullnameById(const char *id)
+/* Get agent name of ID */
+char *getNameById(const char *id)
 {
     FILE *fp;
     char line_read[FILE_SIZE + 1];
@@ -244,7 +243,6 @@ char *getFullnameById(const char *id)
 
     while (fgets(line_read, FILE_SIZE - 1, fp) != NULL) {
         char *name;
-        char *ip;
         char *tmp_str;
 
         if (line_read[0] == '#') {
@@ -266,28 +264,18 @@ char *getFullnameById(const char *id)
                 continue;
             }
 
-            ip = strchr(name, ' ');
-            if (ip) {
-                *ip = '\0';
-                ip++;
+            /* Clean up name */
+            tmp_str = strchr(name, ' ');
+            if (tmp_str) {
+                char *final_str;
+                *tmp_str = '\0';
 
-                /* Clean up IP */
-                tmp_str = strchr(ip, ' ');
-                if (tmp_str) {
-                    char *final_str;
-                    *tmp_str = '\0';
-                    tmp_str = strchr(ip, '/');
-                    if (tmp_str) {
-                        *tmp_str = '\0';
-                    }
+                /* If we reached here, we found the name */
+                os_calloc(1, FILE_SIZE, final_str);
+                snprintf(final_str, FILE_SIZE - 1, "%s", name);
 
-                    /* If we reached here, we found the IP and name */
-                    os_calloc(1, FILE_SIZE, final_str);
-                    snprintf(final_str, FILE_SIZE - 1, "%s-%s", name, ip);
-
-                    fclose(fp);
-                    return (final_str);
-                }
+                fclose(fp);
+                return (final_str);
             }
         }
     }
