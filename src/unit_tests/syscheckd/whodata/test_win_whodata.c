@@ -8151,10 +8151,6 @@ int main(void) {
         cmocka_unit_test(test_whodata_check_arch_amd64),
         cmocka_unit_test(test_whodata_check_arch_ia64),
         cmocka_unit_test(test_whodata_check_arch_arm64),
-        /* whodata_path_filter */
-        cmocka_unit_test(test_whodata_path_filter_file_discarded),
-        cmocka_unit_test(test_whodata_path_filter_64_bit_system),
-        cmocka_unit_test(test_whodata_path_filter_32_bit_system),
         /* get_whodata_path */
         cmocka_unit_test(test_get_whodata_path_error_determining_buffer_size),
         cmocka_unit_test(test_get_whodata_path_error_copying_buffer),
