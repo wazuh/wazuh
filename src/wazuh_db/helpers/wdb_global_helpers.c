@@ -1186,17 +1186,24 @@ int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock
 wdbc_result wdb_parse_chunk_to_json(char* input, cJSON** output_json, char** last_group_hash) {
     char* payload = NULL;
 
+    if (output_json == NULL || !cJSON_IsArray(*output_json)) {
+        mdebug1("Invalid JSON array.");
+        return WDBC_ERROR;
+    }
+
     wdbc_result status = wdbc_parse_result(input, &payload);
     if (status == WDBC_OK || status == WDBC_DUE) {
         cJSON* response = cJSON_Parse(payload);
-        int array_size = cJSON_GetArraySize(response);
-        if (response && array_size > 0) {
-            if (output_json) {
+        if (response != NULL) {
+            int array_size = cJSON_GetArraySize(response);
+            if (array_size > 0) {
                 cJSON_AddItemToArray(*output_json, response);
                 cJSON *last_group_json = cJSON_GetObjectItem(cJSON_GetArrayItem(response, array_size - 1), "group_hash");
                 if (last_group_json && cJSON_GetStringValue(last_group_json)) {
                     os_strdup(cJSON_GetStringValue(last_group_json), *last_group_hash);
                 }
+            } else {
+                cJSON_Delete(response);
             }
         } else if (response == NULL) {
             status = WDBC_ERROR;
@@ -1206,7 +1213,7 @@ wdbc_result wdb_parse_chunk_to_json(char* input, cJSON** output_json, char** las
     return status;
 }
 
-cJSON* wdb_get_distinct_agent_groups(int *sock, char *last_group_hash) {
+cJSON* wdb_get_distinct_agent_groups(int *sock) {
     cJSON *root = NULL;
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -1220,12 +1227,7 @@ cJSON* wdb_get_distinct_agent_groups(int *sock, char *last_group_hash) {
         wdbc_close(&aux_sock);
     }
 
-    if (last_group_hash != NULL) {
-        os_strdup(last_group_hash, tmp_last_hash_group);
-    } else {
-        os_strdup("", tmp_last_hash_group);
-    }
-
+    os_strdup("", tmp_last_hash_group);
     while (status == WDBC_DUE) {
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_DISTINCT_AGENT_GROUP], tmp_last_hash_group);
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {

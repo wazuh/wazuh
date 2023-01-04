@@ -2216,7 +2216,7 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
 int wdb_global_check_manager_keepalive(wdb_t *wdb);
 
 /**
- * @brief Returns an array containing the group and group_hash assigned to all agents,
+ * @brief Returns a JSON array containing the group and group_hash assigned to all agents,
  *        if two agents have the same group assigned it is only included once
  *
  * @param [in] wdb The Global struct database.

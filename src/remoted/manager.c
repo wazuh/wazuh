@@ -875,7 +875,7 @@ STATIC void process_multi_groups() {
     cJSON *group_item = NULL;
     cJSON *chunk_item = NULL;
 
-    cJSON *groups_array = wdb_get_distinct_agent_groups(NULL, NULL);
+    cJSON *groups_array = wdb_get_distinct_agent_groups(NULL);
 
     if (groups_array != NULL) {
         cJSON_ArrayForEach(chunk_item, groups_array) {
