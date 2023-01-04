@@ -1223,10 +1223,6 @@ cJSON* wdb_get_distinct_agent_groups(int *sock) {
 
     root = cJSON_CreateArray();
 
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
     os_strdup("", tmp_last_hash_group);
     while (status == WDBC_DUE) {
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_DISTINCT_AGENT_GROUP], tmp_last_hash_group);
@@ -1244,6 +1240,10 @@ cJSON* wdb_get_distinct_agent_groups(int *sock) {
         merror("Error querying Wazuh DB to get agent's groups.");
         cJSON_Delete(root);
         root = NULL;
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
     }
 
     return root;
