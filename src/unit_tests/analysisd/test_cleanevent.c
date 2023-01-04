@@ -332,6 +332,46 @@ static void test_OS_CleanMSG_suricata_timestamp(void **state){
     os_free(msg);
 }
 
+static void test_OS_CleanMSG_osx_asl_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+    
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "[Time 2006.12.28 15:53:55 UTC] [Facility auth] [Sender sshd] [PID 483] [Message error: PAM: Authentication failure for username from 192.168.0.2] [Level 3] [UID -2] [GID -2] [Host Hostname]");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_string_equal(lf->program_name, "sshd");
+    assert_string_equal(lf->agent_id, "000");
+    assert_string_equal(lf->location, "/var/log/syslog");
+    assert_string_equal(lf->full_log, "[Time 2006.12.28 15:53:55 UTC] [Facility auth] [Sender sshd] [PID 483] [Message error: PAM: Authentication failure for username from 192.168.0.2] [Level 3] [UID -2] [GID -2] [Host Hostname]");
+    assert_null(lf->dec_timestamp);
+       
+    os_free(msg);
+}
+
+static void test_OS_CleanMSG_snort_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+    
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "01/28-09:13:16.240702  [Facility auth] [Sender sshd] [PID 483] [Message error: PAM: Authentication failure for username from 192.168.0.2] [Level 3] [UID -2] [GID -2] [Host Hostname]");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    
+    assert_string_equal(lf->agent_id, "000");
+    assert_string_equal(lf->location, "/var/log/syslog");
+    assert_string_equal(lf->full_log, "01/28-09:13:16.240702  [Facility auth] [Sender sshd] [PID 483] [Message error: PAM: Authentication failure for username from 192.168.0.2] [Level 3] [UID -2] [GID -2] [Host Hostname]");
+    assert_string_equal(lf->dec_timestamp, "01/28-09:13:16.240702");
+       
+    os_free(msg);
+}
+
 static void test_OS_CleanMSG_xferlog_timestamp(void **state){
 
     Eventinfo *lf = (Eventinfo *)*state;
@@ -420,8 +460,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_proftpd_1_3_5_timestamp, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_macos_ULS_syslog_timestamp, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_osx_asl_timestamp, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_apache_timestamp, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_suricata_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_snort_timestamp, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_xferlog_timestamp, test_setup, test_teardown),
         
         // Test extract_module_from_message
