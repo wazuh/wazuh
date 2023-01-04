@@ -700,7 +700,9 @@ void fim_checker(const char *path,
             callback_context_t callback_data;
             callback_data.callback = process_delete_event;
             callback_data.context = &ctx;
-            if (fim_db_get_path(path, callback_data) != FIMDB_OK && configuration->options & CHECK_SEECHANGES)
+            fim_db_get_path(path, callback_data);
+
+            if (configuration->options & CHECK_SEECHANGES)
             {
                 fim_diff_process_delete_file(path);
             }
