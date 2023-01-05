@@ -1,6 +1,7 @@
 #include "opBuilderKVDB.hpp"
 
 #include <string>
+#include <variant>
 
 #include <fmt/format.h>
 
@@ -254,7 +255,7 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: reference '{}' not found", name, value.m_value)};
     const std::string failureTrace4 {fmt::format("[{}] -> ", name) + "Failure: Database '{}' could not be loaded: {}"};
     const std::string failureTrace5 {fmt::format("[{}] -> ", name)
-                                     + "Failure: Key '{}' and value '{}' could not be written to database '{}'"};
+                                     + "Failure: Key '{}' and value '{}' could not be written to database '{}': {}"};
     const std::string failureTrace6 {fmt::format("[{}] -> ", name) + "Failure: Database '{}' could not be closed"};
 
     // Return Expression
@@ -302,7 +303,7 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
                 resolvedKey = key.m_value;
             }
 
-            // Get value
+            // Get value // TODO: FIX THIS
             std::string resolvedValue;
             if (Parameter::Type::REFERENCE == value.m_type)
             {
@@ -321,23 +322,21 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
                 resolvedValue = value.m_value;
             }
 
-            auto varKVDBHandle = kvdbManager->getHandler(resolvedDBName, true);
-            if (std::holds_alternative<base::Error>(varKVDBHandle))
             {
-                return base::result::makeFailure(
-                    event, fmt::format(failureTrace4, resolvedDBName, std::get<base::Error>(varKVDBHandle).message));
+                auto varKVDBHandle = kvdbManager->getHandler(resolvedDBName, true);
+                if (std::holds_alternative<base::Error>(varKVDBHandle))
+                {
+                    return base::result::makeFailure(
+                        event,
+                        fmt::format(failureTrace4, resolvedDBName, std::get<base::Error>(varKVDBHandle).message));
+                }
             }
 
-            auto kvdbHandle = std::get<kvdb_manager::KVDBHandle>(varKVDBHandle);
-
-            if (!kvdbHandle->write(resolvedKey, resolvedValue))
+            auto err = kvdbManager->writeKey(resolvedDBName, resolvedKey, resolvedValue);
+            if (err)
             {
                 return base::result::makeFailure(
-                    event, fmt::format(failureTrace5, resolvedKey, resolvedValue, resolvedDBName));
-            }
-            if (!kvdbHandle->close())
-            {
-                return base::result::makeFailure(event, fmt::format(failureTrace6, resolvedDBName));
+                    event, fmt::format(failureTrace5, resolvedKey, resolvedValue, resolvedDBName, err.value().message));
             }
 
             event->setBool(true, targetField);
