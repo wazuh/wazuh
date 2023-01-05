@@ -37,7 +37,7 @@ class AWSInspector(aws_service.AWSService):
     def __init__(self, reparse, access_key, secret_key, aws_profile,
                  iam_role_arn, only_logs_after, region, aws_log_groups=None,
                  remove_log_streams=None, discard_field=None, discard_regex=None,
-                 sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
+                 sts_endpoint=None, service_endpoint=None, iam_role_duration=None, **kwargs):
 
         aws_service.AWSService.__init__(self, db_table_name=aws_service.DEFAULT_TABLENAME, service_name='inspector',
                                         reparse=reparse, access_key=access_key, secret_key=secret_key,
