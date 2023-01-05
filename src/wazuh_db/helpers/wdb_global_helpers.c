@@ -1205,7 +1205,7 @@ wdbc_result wdb_parse_chunk_to_json(char* input, cJSON** output_json, char** las
             } else {
                 cJSON_Delete(response);
             }
-        } else if (response == NULL) {
+        } else {
             status = WDBC_ERROR;
         }
     }
