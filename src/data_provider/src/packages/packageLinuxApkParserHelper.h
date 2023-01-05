@@ -13,6 +13,7 @@
 #define _PACKAGE_LINUX_APK_PARSER_HELPER_H
 
 #include "json.hpp"
+#include "sharedDefs.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -27,24 +28,24 @@ namespace PackageLinuxHelper
         {
             switch (item.first)
             {
-                case 'P':
+                case 'P': // Package entry format: "P:musl"
                     packageInfo["name"] = item.second;
                     break;
 
-                case 'V':
+                case 'V': // Version entry format: "V:1.2.3-r4"
                     packageInfo["version"] = item.second;
                     break;
 
-                case 'A':
-                    packageInfo["architecture"] = !item.second.empty() ? item.second : " ";
+                case 'A': // Architecture entry format: "A:x86_64"
+                    packageInfo["architecture"] = !item.second.empty() ? item.second : UNKNOWN_VALUE;
                     break;
 
-                case 'I':
+                case 'I': // Size entry format: "I:634880"
                     packageInfo["size"] = !item.second.empty() ? stol(item.second) : 0;
                     break;
 
-                case 'T':
-                    packageInfo["description"] = !item.second.empty() ? item.second : " ";
+                case 'T': // Description entry format: "T:the musl c library (libc) implementation"
+                    packageInfo["description"] = !item.second.empty() ? item.second : UNKNOWN_VALUE;
                     break;
             }
         }
@@ -57,7 +58,7 @@ namespace PackageLinuxHelper
 
             if (!packageInfo.contains("architecture"))
             {
-                packageInfo["architecture"] = " ";
+                packageInfo["architecture"] = UNKNOWN_VALUE;
             }
 
             if (!packageInfo.contains("size"))
@@ -67,17 +68,17 @@ namespace PackageLinuxHelper
 
             if (!packageInfo.contains("description"))
             {
-                packageInfo["description"] = " ";
+                packageInfo["description"] = UNKNOWN_VALUE;
             }
 
             packageInfo["format"] = "apk";
             packageInfo["vendor"] = "Alpine Linux";
-            packageInfo["install_time"] = " ";
-            packageInfo["location"] = " ";
-            packageInfo["groups"] = " ";
-            packageInfo["priority"] = " ";
-            packageInfo["multiarch"] = " ";
-            packageInfo["source"] = " ";
+            packageInfo["install_time"] = UNKNOWN_VALUE;
+            packageInfo["location"] = UNKNOWN_VALUE;
+            packageInfo["groups"] = UNKNOWN_VALUE;
+            packageInfo["priority"] = UNKNOWN_VALUE;
+            packageInfo["multiarch"] = UNKNOWN_VALUE;
+            packageInfo["source"] = UNKNOWN_VALUE;
         }
         else
         {
