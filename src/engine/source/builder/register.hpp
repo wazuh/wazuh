@@ -144,18 +144,14 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
     registry->registerBuilder(builders::opBuilderWdbUpdate, "helper.wdb_update");
 
     // KVDB
-    registry->registerBuilder(builders::getOpBuilderKVDBExtract(dependencies.kvdbManager),
-                              "helper.kvdb_get");
-    registry->registerBuilder(
-        builders::getOpBuilderKVDBExtractMerge(dependencies.kvdbManager),
-        "helper.kvdb_get_merge");
+    registry->registerBuilder(builders::getOpBuilderKVDBGet(dependencies.kvdbManager), "helper.kvdb_get");
+    registry->registerBuilder(builders::getOpBuilderKVDBGetMerge(dependencies.kvdbManager), "helper.kvdb_get_merge");
     registry->registerBuilder(builders::getOpBuilderKVDBMatch(dependencies.kvdbManager),
                               "helper.kvdb_match");
     registry->registerBuilder(
         builders::getOpBuilderKVDBNotMatch(dependencies.kvdbManager),
         "helper.kvdb_not_match");
-    registry->registerBuilder(builders::getOpBuilderKVDBSet(dependencies.kvdbManager),
-                              "helper.kvdb_set");
+    registry->registerBuilder(builders::getOpBuilderKVDBSet(dependencies.kvdbManager), "helper.kvdb_set");
 
     // SCA decoder
     registry->registerBuilder(builders::opBuilderSCAdecoder, "helper.sca_decoder");
