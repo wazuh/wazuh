@@ -419,6 +419,40 @@ int* wdb_get_all_agents(bool include_manager, int *sock) {
     return array;
 }
 
+rb_tree* wdb_get_all_agents_rbtree(bool include_manager, int *sock) {
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int last_id = include_manager ? -1 : 0;
+    rb_tree *tree = NULL;
+    wdbc_result status = WDBC_DUE;
+    int aux_sock = -1;
+
+    tree = rbtree_init();
+
+    while (status == WDBC_DUE) {
+        // Query WazuhDB
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_ALL_AGENTS], last_id);
+        if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
+            status = wdb_parse_chunk_to_rbtree(wdboutput, &tree, "id", &last_id);
+        }
+        else {
+            status = WDBC_ERROR;
+        }
+    }
+
+    if (status == WDBC_ERROR) {
+        merror("Error querying Wazuh DB to get agent's IDs.");
+        rbtree_destroy(tree);
+        tree = NULL;
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    return tree;
+}
+
 int wdb_find_agent(const char *name, const char *ip, int *sock) {
     int output = OS_INVALID;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -927,6 +961,47 @@ wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, 
     }
 
     if (last_size) *last_size = len;
+    if (last_item) *last_item = _last_item;
+
+    return status;
+}
+
+wdbc_result wdb_parse_chunk_to_rbtree(char* input, rb_tree** output, const char* item, int* last_item) {
+    int _last_item = 0;
+    char* payload = NULL;
+
+    if (output == NULL || *output == NULL) {
+        mdebug1("Invalid RB tree.");
+        return WDBC_ERROR;
+    }
+
+    if (item == NULL) {
+        mdebug1("Invalid item.");
+        return WDBC_ERROR;
+    }
+
+    wdbc_result status = wdbc_parse_result(input, &payload);
+    if (status == WDBC_OK || status == WDBC_DUE) {
+        cJSON* response = cJSON_Parse(payload);
+        if (response != NULL) {
+            //Add items to RB tree
+            cJSON* agent = NULL;
+            cJSON_ArrayForEach(agent, response) {
+                cJSON* json_item = cJSON_GetObjectItem(agent, item);
+                if (cJSON_IsNumber(json_item)) {
+                    char c_agent_id[OS_SIZE_16];
+                    snprintf(c_agent_id, OS_SIZE_16, "%03d", json_item->valueint);
+                    rbtree_insert(*output, c_agent_id, &(json_item->valueint));
+                    _last_item = json_item->valueint;
+                }
+            }
+            cJSON_Delete(response);
+        }
+        else {
+            status = WDBC_ERROR;
+        }
+    }
+
     if (last_item) *last_item = _last_item;
 
     return status;
