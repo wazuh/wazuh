@@ -22,9 +22,8 @@ namespace builder::internals::builders
  * @param merge
  * @return base::Expression
  */
-base::Expression KVDBExtract(const std::any& definition,
-                             bool merge,
-                             std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+base::Expression
+KVDBGet(const std::any& definition, bool merge, std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 /**
  * @brief Builder for KVDB set operation
@@ -44,7 +43,7 @@ base::Expression KVDBSet(const std::any& definition,
  * @param kvdbManager KVDB manager
  * @return Builder
  */
-Builder getOpBuilderKVDBExtract(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+Builder getOpBuilderKVDBGet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 /**
  * @brief Builds KVDB extract and merge function helper
@@ -52,8 +51,7 @@ Builder getOpBuilderKVDBExtract(std::shared_ptr<kvdb_manager::KVDBManager> kvdbM
  * @param kvdbManager KVDB manager
  * @return Builder
  */
-Builder
-getOpBuilderKVDBExtractMerge(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+Builder getOpBuilderKVDBGetMerge(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 /**
  * @brief get the KVDB match function helper builder
