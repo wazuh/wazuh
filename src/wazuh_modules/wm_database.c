@@ -121,8 +121,8 @@ void* wm_database_main(wm_database *data) {
 
     // During the startup, both workers and master nodes should perform the
     // agents synchronization with the database using the keys. In advance,
-    // the master will only synchronize the artifacts and the agent addition
-    // and removal from the database will be held by authd.
+    // the agent addition and removal from the database will be held by authd
+    // in the master.
     wm_sync_agents();
     wm_sync_legacy_groups_files();
 
@@ -288,62 +288,64 @@ void wm_sync_agents() {
  * @param keys The keystore structure to be synchronized
  */
 void sync_keys_with_wdb(keystore *keys) {
-    keyentry *entry;
-    char cidr[IPSIZE + 1];
-    int *agents;
+    rb_tree *agents = NULL;
+    char **ids = NULL;
     unsigned int i;
+
+    agents = wdb_get_all_agents_rbtree(FALSE, &wdb_wmdb_sock);
+
+    if (agents == NULL) {
+        mterror(WM_DATABASE_LOGTAG, "Couldn't synchronize the keystore with the DB.");
+        return;
+    }
 
     // Add new agents to the database
     for (i = 0; i < keys->keysize; i++) {
-        entry = keys->keyentries[i];
-        int id;
+        keyentry *entry = keys->keyentries[i];
+        int agent_id = atoi(entry->id);
 
-        mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing agent %s '%s'.", entry->id, entry->name);
+        if (agent_id && (rbtree_get(agents, entry->id) == NULL)) {
+            char agent_cidr[IPSIZE + 1];
+            char *agent_group = wdb_get_agent_group(atoi(entry->id), &wdb_wmdb_sock);
 
-        if (!(id = atoi(entry->id))) {
-            merror("At sync_keys_with_wdb(): invalid ID number.");
-            continue;
+            mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing agent %s '%s'.", entry->id, entry->name);
+
+            if (wdb_insert_agent(agent_id, entry->name, NULL, OS_CIDRtoStr(entry->ip, agent_cidr, IPSIZE) ?
+                                entry->ip->ip : agent_cidr, entry->raw_key, agent_group, 1, &wdb_wmdb_sock)) {
+                mtdebug1(WM_DATABASE_LOGTAG, "Couldn't insert agent '%s' in the database.", entry->id);
+            }
+            os_free(agent_group);
         }
-
-        char* group = wdb_get_agent_group(atoi(entry->id), &wdb_wmdb_sock);
-
-        if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, IPSIZE) ?
-                             entry->ip->ip : cidr, entry->raw_key, group, 1, &wdb_wmdb_sock)) {
-            // The agent already exists
-            mtdebug2(WM_DATABASE_LOGTAG, "The agent %s '%s' already exist in the database.", entry->id, entry->name);
-        }
-        os_free(group);
     }
+
+    ids = rbtree_keys(agents);
 
     // Delete from the database all the agents without a key and all its artifacts
-    if ((agents = wdb_get_all_agents(FALSE, &wdb_wmdb_sock))) {
-        char id[9];
+    for (i = 0; ids[i] != NULL; i++) {
+        int agent_id = atoi(ids[i]);
 
-        for (i = 0; agents[i] != -1; i++) {
-            snprintf(id, 9, "%03d", agents[i]);
+        if (agent_id && (OS_IsAllowedID(keys, ids[i]) == -1)) {
+            char *agent_name = wdb_get_agent_name(agent_id, &wdb_wmdb_sock);
 
-            if (OS_IsAllowedID(keys, id) == -1) {
-                char *agent_name = wdb_get_agent_name(agents[i], &wdb_wmdb_sock);
-
-                if (wdb_remove_agent(agents[i], &wdb_wmdb_sock) < 0) {
-                    mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
-                    os_free(agent_name);
-                    continue;
-                }
-
-                // Agent not found. Removing agent artifacts
-                wm_clean_agent_artifacts(agents[i], agent_name);
-
-                // Remove agent-related files
-                OS_RemoveCounter(id);
-                OS_RemoveAgentTimestamp(id);
-
+            if (wdb_remove_agent(agent_id, &wdb_wmdb_sock) < 0) {
+                mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent '%s' from the database.", ids[i]);
                 os_free(agent_name);
+                continue;
             }
-        }
 
-        os_free(agents);
+            // Agent not found. Removing agent artifacts
+            wm_clean_agent_artifacts(agent_id, agent_name);
+
+            // Remove agent-related files
+            OS_RemoveCounter(ids[i]);
+            OS_RemoveAgentTimestamp(ids[i]);
+
+            os_free(agent_name);
+        }
     }
+
+    free_strarray(ids);
+    rbtree_destroy(agents);
 }
 
 /**

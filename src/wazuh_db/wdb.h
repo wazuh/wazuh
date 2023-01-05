@@ -614,7 +614,7 @@ void wdb_free_agent_info_data(agent_info_data *agent_data);
  * @param [in] item Json string to search elements on the chunks.
  * @param [out] last_item Value of the last parsed item. If NULL no value is written.
  * @param [out] last_size Size of the returned array. If NULL no value is written.
- * @return JSON array with the statement execution results. NULL On error.
+ * @return wdbc_result representing the status of the command.
  */
 wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, int* last_item, int* last_size);
 
@@ -629,6 +629,18 @@ wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, 
  * @return wdbc_result representing the status of the command.
  */
 wdbc_result wdb_parse_chunk_to_json_by_string_item(char* input, cJSON** output_json, const char* item, char** last_item_value);
+
+/**
+ * @brief Function to parse a chunk response that contains the status of the query and a json array.
+ *        This function will add the parsed response to the output RB tree.
+ *
+ * @param [in] input The chunk obtained from WazuhDB to be parsed.
+ * @param [out] output RB tree in which the new elements will be added.
+ * @param [in] item Json string to search elements on the chunks.
+ * @param [out] last_item Value of the last parsed item. If NULL no value is written.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_parse_chunk_to_rbtree(char* input, rb_tree** output, const char* item, int* last_item);
 
 /**
  * @brief Function to initialize a new transaction and cache the statement.
