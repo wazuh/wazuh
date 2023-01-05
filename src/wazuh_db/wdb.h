@@ -631,7 +631,7 @@ wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, 
  * @param [out] last_item_value Value of the last item. If NULL no value is written.
  * @return wdbc_result representing the status of the command.
  */
-wdbc_result wdb_parse_chunk_to_json_by_string_item(char* input, cJSON** output_json, const char* item, char** last_group_hash);
+wdbc_result wdb_parse_chunk_to_json_by_string_item(char* input, cJSON** output_json, const char* item, char** last_item_value);
 
 /**
  * @brief Function to initialize a new transaction and cache the statement.
