@@ -134,7 +134,7 @@ public:
      * value.
      * @return std::optional<base::Error> error message or std::nullopt if no error
      */
-    inline std::optional<base::Error> writeKey(const std::string& name,
+    std::optional<base::Error> writeKey(const std::string& name,
                                                const std::string& key,
                                                const std::string& value = "null");
 
