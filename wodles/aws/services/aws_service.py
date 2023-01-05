@@ -15,9 +15,10 @@ AWS_SERVICE_MSG_TEMPLATE = {'integration': 'aws', 'aws': ''}
 
 class AWSService(wazuh_integration.WazuhIntegration):
 
-    def __init__(self, db_table_name, service_name, reparse, access_key, secret_key, aws_profile, iam_role_arn,
-                 only_logs_after, region, discard_field=None, discard_regex=None, sts_endpoint=None,
-                 service_endpoint=None, iam_role_duration=None):
+    def __init__(self, reparse, access_key, secret_key, aws_profile, iam_role_arn,
+                 service_name, only_logs_after, region, db_table_name=DEFAULT_TABLENAME, aws_log_groups: str = None, remove_log_streams: bool =None,
+                 discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None,
+                 iam_role_duration=None):
         wazuh_integration.WazuhIntegration.__init__(self, db_name=DEFAULT_DATABASE_NAME, db_table_name=db_table_name,
                                                     service_name=service_name, access_key=access_key,
                                                     secret_key=secret_key, aws_profile=aws_profile,

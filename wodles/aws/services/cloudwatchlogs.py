@@ -59,7 +59,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
     def __init__(self, reparse, access_key, secret_key, aws_profile,
                  iam_role_arn, only_logs_after, region, aws_log_groups,
                  remove_log_streams, discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None,
-                 iam_role_duration=None):
+                 iam_role_duration=None, **kwargs):
 
         self.sql_cloudwatch_create_table = """
             CREATE TABLE {table_name} (
