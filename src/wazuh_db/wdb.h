@@ -627,10 +627,11 @@ wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, 
  *
  * @param [in] input The chunk obtained from WazuhDB to be parsed.
  * @param [out] output_json Json array in which the new elements will be added.
- * @param [out] last_group_hash Value of the last group_hash item. If NULL no value is written.
+ * @param [in] item Json string to search elements on the chunks.
+ * @param [out] last_item_value Value of the last item. If NULL no value is written.
  * @return wdbc_result representing the status of the command.
  */
-wdbc_result wdb_parse_chunk_to_json(char* input, cJSON** output_json, char** last_group_hash);
+wdbc_result wdb_parse_chunk_to_json_by_string_item(char* input, cJSON** output_json, const char* item, char** last_group_hash);
 
 /**
  * @brief Function to initialize a new transaction and cache the statement.

@@ -1183,11 +1183,16 @@ int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock
     return array;
 }
 
-wdbc_result wdb_parse_chunk_to_json(char* input, cJSON** output_json, char** last_group_hash) {
+wdbc_result wdb_parse_chunk_to_json_by_string_item(char* input, cJSON** output_json, const char *item, char **last_item_value) {
     char* payload = NULL;
 
     if (output_json == NULL || !cJSON_IsArray(*output_json)) {
         mdebug1("Invalid JSON array.");
+        return WDBC_ERROR;
+    }
+
+    if (item == NULL) {
+        mdebug1("Invalid item.");
         return WDBC_ERROR;
     }
 
@@ -1198,9 +1203,9 @@ wdbc_result wdb_parse_chunk_to_json(char* input, cJSON** output_json, char** las
             int array_size = cJSON_GetArraySize(response);
             if (array_size > 0) {
                 cJSON_AddItemToArray(*output_json, response);
-                cJSON *last_group_json = cJSON_GetObjectItem(cJSON_GetArrayItem(response, array_size - 1), "group_hash");
-                if (last_group_json && cJSON_GetStringValue(last_group_json)) {
-                    os_strdup(cJSON_GetStringValue(last_group_json), *last_group_hash);
+                cJSON *last_item_json = cJSON_GetObjectItem(cJSON_GetArrayItem(response, array_size - 1), item);
+                if (last_item_json && cJSON_GetStringValue(last_item_json) && last_item_value) {
+                    os_strdup(cJSON_GetStringValue(last_item_json), *last_item_value);
                 }
             } else {
                 cJSON_Delete(response);
@@ -1228,7 +1233,7 @@ cJSON* wdb_get_distinct_agent_groups(int *sock) {
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_DISTINCT_AGENT_GROUP], tmp_last_hash_group);
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
             os_free(tmp_last_hash_group);
-            status = wdb_parse_chunk_to_json(wdboutput, &root, &tmp_last_hash_group);
+            status = wdb_parse_chunk_to_json_by_string_item(wdboutput, &root, "group_hash", &tmp_last_hash_group);
         }
         else {
             status = WDBC_ERROR;
