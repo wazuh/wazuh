@@ -199,14 +199,16 @@ def test_AWSConfigBucket_marker_custom_date(mock_logs_bucket, mock_marker_custom
 @pytest.mark.parametrize('reparse', [True, False])
 @pytest.mark.parametrize('only_logs_after', ['20230201', None])
 @pytest.mark.parametrize('iterating', [True, False])
-@patch('aws_bucket.AWSBucket.get_full_prefix')
+@pytest.mark.parametrize('region', [utils.TEST_REGION, 'region_for_empty_db'])
 @patch('aws_bucket.AWSLogsBucket.__init__', side_effect=aws_bucket.AWSLogsBucket.__init__)
-def test_AWSConfigBucket_build_s3_filter_args(mock_logs_bucket, mock_get_full_prefix, custom_database, iterating,
+def test_AWSConfigBucket_build_s3_filter_args(mock_logs_bucket, custom_database,
+                                              region, iterating,
                                               only_logs_after, reparse):
     utils.database_execute_script(custom_database, TEST_CONFIG_SCHEMA)
 
     aws_account_id = utils.TEST_ACCOUNT_ID
-    aws_region = utils.TEST_REGION
+    aws_region = region
+    date = TEST_DATE
 
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, reparse=reparse, only_logs_after=only_logs_after)
 
@@ -215,12 +217,15 @@ def test_AWSConfigBucket_build_s3_filter_args(mock_logs_bucket, mock_get_full_pr
     instance.db_table_name = TEST_TABLE_NAME
 
     if instance.reparse:
-        filter_marker = instance.marker_custom_date(aws_region, aws_account_id, datetime.strptime(TEST_DATE, instance.date_format))
+        filter_marker = instance.marker_custom_date(aws_region, aws_account_id, datetime.strptime(date, instance.date_format))
     else:
         filter_marker = utils.database_execute_query(instance.db_connector, SQL_FIND_LAST_KEY_PROCESSED.format(
             table_name=instance.db_table_name))
 
-    config_prefix = instance.get_full_prefix(aws_account_id, aws_region) + TEST_DATE + '/'
+    if aws_region == 'region_for_empty_db':
+        filter_marker = instance.get_full_prefix(aws_account_id, aws_region) + date
+
+    config_prefix = instance.get_full_prefix(aws_account_id, aws_region) + date + '/'
 
     expected_filter_args = {
         'Bucket': instance.bucket,
@@ -237,7 +242,7 @@ def test_AWSConfigBucket_build_s3_filter_args(mock_logs_bucket, mock_get_full_pr
         else:
             expected_filter_args['StartAfter'] = instance.marker_only_logs_after(aws_region, aws_account_id)
 
-    assert expected_filter_args == instance.build_s3_filter_args(aws_account_id, aws_region, TEST_DATE, iterating)
+    assert expected_filter_args == instance.build_s3_filter_args(aws_account_id, aws_region, date, iterating)
 
 
 @patch('aws_bucket.AWSLogsBucket.__init__', side_effect=aws_bucket.AWSLogsBucket.__init__)
@@ -260,8 +265,7 @@ def test_AWSConfigBucket_build_s3_filter_args_ko(mock_logs_bucket):
 @patch('aws_bucket.aws_tools.debug')
 @patch('config.AWSConfigBucket.build_s3_filter_args')
 def test_AWSConfigBucket_iter_files_in_bucket(mock_build_filter, mock_debug, delete_file, reparse, object_list):
-    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, bucket=utils.TEST_BUCKET, delete_file=delete_file, reparse=reparse,
-                                        prefix=utils.TEST_PREFIX)
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, bucket=utils.TEST_BUCKET, delete_file=delete_file, reparse=reparse)
     mock_build_filter.return_value = {
         'Bucket': instance.bucket,
         'MaxKeys': 1000,
