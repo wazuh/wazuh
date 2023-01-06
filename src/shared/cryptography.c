@@ -439,6 +439,7 @@ DWORD check_ca_available() {
                                   NULL,
                                   ca_name,
                                   req_size)) {
+                minfo("Checking CA '%s'", ca_name);
                 // Check if the certificate's CN name matches the CA name.
                 if (strncmp(ca_name, CA_NAME, sizeof(CA_NAME) - 1) == 0) {
                     result = ERROR_SUCCESS;
