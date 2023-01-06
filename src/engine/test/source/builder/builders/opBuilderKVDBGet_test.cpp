@@ -102,10 +102,10 @@ TEST_F(opBuilderKVDBGetTest, GetSuccessCases)
     }
     auto DBHandle = std::get<kvdb_manager::KVDBHandle>(res);
     DBHandle->write("keyString", R"("string_value")");
-    DBHandle->write("keyNumber", R"(123)");
+    DBHandle->write("keyNumber", "123");
     DBHandle->write("keyObject", R"({"field1": "value1", "field2": "value2"})");
     DBHandle->write("keyArray", R"(["value1", "value2"])");
-    DBHandle->write("keyNull", R"(null)");
+    DBHandle->write("keyNull", "null");
 
     // Operations value key
     auto tuple1 = std::make_tuple<std::string, std::string, std::vector<std::string>>(
