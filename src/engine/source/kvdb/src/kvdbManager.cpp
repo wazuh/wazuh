@@ -150,8 +150,7 @@ std::variant<KVDBHandle, base::Error> KVDBManager::getHandler(const std::string&
         kvdb = getDB(name);
         if (!kvdb)
         {
-            return base::Error {
-                fmt::format("Database '{}' not found or could not be loaded.", name)};
+            return base::Error {fmt::format("Database '{}' not found or could not be loaded", name)};
         }
     }
     return kvdb;
