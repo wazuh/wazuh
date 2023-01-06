@@ -32,7 +32,7 @@ def test_CiscoUmbrella__init__(mock_custom_bucket):
        "identity_types": " \"Chat", "blocked_categories": "Photo Sharing",
        None: [
            "Social Networking",
-           "Allow List\""]}
+           "Allow List\""], 'source': 'cisco_umbrella'}
       ]),
     ('proxylogs',
      '"2017-10-02 23:52:53","TheComputerName","ActiveDirectoryUserName, ADSite,Network","0.0.0.0","0.0.0.0","",'
@@ -48,7 +48,8 @@ def test_CiscoUmbrella__init__(mock_custom_bucket):
        "status_code": " like Gecko) Chrome/61.0.3163.100 Safari/537.36\"", "requested_size": "200",
        "response_size": " \"562\"", "response_body_size": "1489", "sha": "", "categories": "", "av_detections": "",
        "puas": "",
-       "amp_disposition": "", "amp_malware_name": "", "amp_score": "", "identity_type": "Networks"}]),
+       "amp_disposition": "", "amp_malware_name": "", "amp_score": "", "identity_type": "Networks",
+       'source': 'cisco_umbrella'}]),
     ('iplogs',
      '"2017-10-02 19:58:12","TheComputerName","0.0.0.0", "55605","0.0.0.0","443","Unauthorized IP Tunnel Access"',
      [{"timestamp": "2017-10-02 19:58:12",
@@ -57,14 +58,13 @@ def test_CiscoUmbrella__init__(mock_custom_bucket):
        "source_port": " \"55605\"",
        "destination_ip": "0.0.0.0",
        "destination_port": "443",
-       "categories": "Unauthorized IP Tunnel Access"}])
+       "categories": "Unauthorized IP Tunnel Access",
+       'source': 'cisco_umbrella'}])
 ])
 @patch('aws_bucket.AWSCustomBucket.__init__')
 def test_CiscoUmbrella_load_information_from_file(mock_custom_bucket, prefix, data, expected_result):
     instance = utils.get_mocked_bucket(class_=umbrella.CiscoUmbrella)
     instance.prefix = prefix
-
-    expected_result[0].update({'source': 'cisco_umbrella'})
 
     with patch('aws_bucket.AWSBucket.decompress_file', mock_open(read_data=data)):
         assert instance.load_information_from_file(utils.TEST_LOG_KEY) == expected_result
@@ -83,7 +83,7 @@ def test_CiscoUmbrella_load_information_from_file_ko(mock_custom_bucket):
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__')
-@patch('aws_bucket.AWSCustomBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
+@patch('aws_bucket.AWSCustomBucket.__init__', side_effect=aws_bucket.AWSCustomBucket.__init__)
 def test_CiscoUmbrella_marker_only_logs_after(mock_custom_bucket, mock_integration, mock_sts):
     test_only_logs_after = utils.TEST_ONLY_LOGS_AFTER
 

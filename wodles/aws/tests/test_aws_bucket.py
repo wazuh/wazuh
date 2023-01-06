@@ -24,7 +24,6 @@ import aws_bucket
 from cloudtrail import AWSCloudTrailBucket
 from config import AWSConfigBucket
 
-TEST_FULL_PREFIX = "base/account_id/service/region/"
 TEST_CLOUDTRAIL_SCHEMA = "schema_cloudtrail_test.sql"
 TEST_CUSTOM_SCHEMA = "schema_custom_test.sql"
 TEST_EMPTY_TABLE_SCHEMA = "schema_empty_table.sql"
@@ -92,15 +91,15 @@ def test_AWSBucket__init__(mock_wazuh_integration, mock_version, mock_path, mock
 
 
 @pytest.mark.parametrize('match_start, expected_result', [
-    (len(TEST_FULL_PREFIX), True),
-    (len(TEST_FULL_PREFIX) - 1, False),
+    (len(utils.TEST_FULL_PREFIX), True),
+    (len(utils.TEST_FULL_PREFIX) - 1, False),
     (0, False),
     (None, False),
 ])
 def test_AWSBucket_same_prefix(match_start, expected_result):
     """Test `_same_prefixCheck` detects if the prefix of a file key is the same as the one expected."""
     bucket = utils.get_mocked_AWSBucket()
-    with patch('aws_bucket.AWSBucket.get_full_prefix', return_value=TEST_FULL_PREFIX):
+    with patch('aws_bucket.AWSBucket.get_full_prefix', return_value=utils.TEST_FULL_PREFIX):
         assert bucket._same_prefix(match_start=match_start, aws_account_id="", aws_region="") == expected_result
 
 
@@ -112,7 +111,6 @@ def test_AWSBucket_same_prefix(match_start, expected_result):
     (utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1, utils.TEST_BUCKET, "", utils.TEST_REGION, False),
 ])
 def test_AWSBucket_already_processed(custom_database, log_file, bucket, account_id, region, expected_result):
-    """Test `_get_last_key_processed` find the required keys in the database as expected."""
     utils.database_execute_script(custom_database, TEST_CLOUDTRAIL_SCHEMA)
 
     bucket = utils.get_mocked_AWSBucket(bucket=bucket, region=region)
@@ -164,6 +162,7 @@ def test_AWSBucket_mark_complete_ko(mock_debug, custom_database):
     bucket.db_connector = custom_database
     mocked_cursor = MagicMock()
     mocked_cursor.execute.side_effect = Exception
+    bucket.db_cursor = mocked_cursor
 
     bucket.mark_complete(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION,
                          log_file={'Key': utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1})
@@ -420,7 +419,7 @@ def test_AWSBucket_find_regions_ko(mock_prefix, error_code, exit_code):
 @pytest.mark.parametrize('only_logs_after', [utils.TEST_ONLY_LOGS_AFTER, None])
 @pytest.mark.parametrize('iterating', [True, False])
 @pytest.mark.parametrize('custom_delimiter', ['', '-'])
-@patch('aws_bucket.AWSBucket.get_full_prefix', return_value=TEST_FULL_PREFIX)
+@patch('aws_bucket.AWSBucket.get_full_prefix', return_value=utils.TEST_FULL_PREFIX)
 def test_AWSBucket_build_s3_filter_args(mock_get_full_prefix, custom_database, custom_delimiter, iterating,
                                         only_logs_after, reparse):
     utils.database_execute_script(custom_database, TEST_CLOUDTRAIL_SCHEMA)
@@ -708,7 +707,7 @@ def test_AWSBucket_iter_files_in_bucket(mock_build_filter, mock_debug, same_pref
     mock_build_filter.return_value = {
         'Bucket': bucket.bucket,
         'MaxKeys': 1000,
-        'Prefix': 'prefix'
+        'Prefix': utils.TEST_PREFIX
     }
 
     bucket.client.list_objects_v2.return_value = object_list
@@ -1107,7 +1106,6 @@ def test_AWSCustomBucket_iter_regions_and_accounts(mock_bucket, mock_integration
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
 def test_AWSCustomBucket_already_processed(mock_bucket, mock_integration, mock_sts,
                                            custom_database, log_file, bucket, account_id, region, expected_result):
-    """Test `_get_last_key_processed` find the required keys in the database as expected."""
     utils.database_execute_script(custom_database, TEST_CUSTOM_SCHEMA)
 
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket, bucket=bucket, region=region)
