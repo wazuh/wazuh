@@ -42,7 +42,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,w_copy_file -Wl,--wrap,OSHash_Begin -Wl,--wrap,req_save -Wl,--wrap,send_msg \
                             -Wl,--wrap,wdb_update_agent_keepalive -Wl,--wrap,parse_agent_update_msg \
                             -Wl,--wrap,wdb_update_agent_data -Wl,--wrap,linked_queue_push_ex \
-                            -Wl,--wrap,wdb_update_agent_connection_status -Wl,--wrap,SendMSG -Wl,--wrap,StartMQ \
+                            -Wl,--wrap,wdb_update_agent_connection_status -Wl,--wrap,wdb_update_agent_status_code -Wl,--wrap,SendMSG -Wl,--wrap,StartMQ \
                             -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
                             -Wl,--wrap,wdb_get_agent_group -Wl,--wrap,compare_wazuh_versions \
                             -Wl,--wrap,wdb_set_agent_groups_csv -Wl,--wrap,w_is_single_node \

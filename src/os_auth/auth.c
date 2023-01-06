@@ -137,6 +137,9 @@ w_err_t w_auth_parse_data(const char* buf,
         }
 
         buf+= 2+strlen(version)+2;
+
+    } else {
+        buf--;
     }
 
     /* Check for valid centralized group */

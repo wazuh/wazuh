@@ -119,9 +119,11 @@ int __wrap_wdb_global_update_agent_keepalive(__attribute__((unused)) wdb_t *wdb,
 int __wrap_wdb_global_update_agent_connection_status(__attribute__((unused)) wdb_t *wdb,
                                                      int id,
                                                      char* connection_status,
+                                                     char* sync_status,
                                                      int status_code) {
     check_expected(id);
     check_expected(connection_status);
+    check_expected(sync_status);
     check_expected(status_code);
     return mock();
 }

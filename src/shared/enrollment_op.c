@@ -530,7 +530,7 @@ static void w_enrollment_concat_key(char *buff, keyentry* key_entry) {
  * @param buff buffer where the agent version section will be concatenated
  * @param agent_version version of the agent that will be added
  */
-static void w_enrollment_concat_agent_version (char *buff, const char *agent_version) {
+static void w_enrollment_concat_agent_version(char *buff, const char *agent_version) {
     assert(buff != NULL);
     assert(agent_version != NULL);
 

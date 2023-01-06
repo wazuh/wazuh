@@ -18,13 +18,13 @@
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 #include "../wrappers/wazuh/remoted/shared_download_wrappers.h"
-#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/remoted/request_wrappers.h"
 #include "../wrappers/wazuh/remoted/remoted_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 
+#include "../wazuh_db/wdb.h"
 #include "../remoted/remoted.h"
 #include "../remoted/shared_download.h"
 #include "../../remoted/manager.c"
@@ -4593,7 +4593,7 @@ void test_save_controlmsg_agent_invalid_version(void **state)
 
     char r_msg[OS_SIZE_128] = {0};
     char s_msg[OS_FLSIZE + 1] = {0};
-    strcpy(r_msg, "agent startup {\"version\":\"v4.5.1\"}");
+    strcpy(r_msg, "agent startup {\"version\":\"v4.6.0\"}");
     snprintf(s_msg, OS_FLSIZE, "%s%s%s%s%s", CONTROL_HEADER, HC_ERROR, "{\"message\":\"", HC_INVALID_VERSION, "\"}");
 
     keyentry key;
@@ -4606,8 +4606,17 @@ void test_save_controlmsg_agent_invalid_version(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_STARTUP from ''");
 
     expect_string(__wrap_compare_wazuh_versions, version1, "v4.5.0");
-    expect_string(__wrap_compare_wazuh_versions, version2, "v4.5.1");
+    expect_string(__wrap_compare_wazuh_versions, version2, "v4.6.0");
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
     will_return(__wrap_compare_wazuh_versions, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to connect agent: 001. Incompatible version");
+
+    expect_value(__wrap_wdb_update_agent_status_code, id, 1);
+    expect_value(__wrap_wdb_update_agent_status_code, status_code, INVALID_VERSION);
+    expect_string(__wrap_wdb_update_agent_status_code, version, "v4.6.0");
+    expect_string(__wrap_wdb_update_agent_status_code, sync_status, "synced");
+    will_return(__wrap_wdb_update_agent_status_code, OS_SUCCESS);
 
     expect_string(__wrap_send_msg, agent_id, "001");
     expect_string(__wrap_send_msg, msg, s_msg);
@@ -4634,6 +4643,14 @@ void test_save_controlmsg_get_agent_version_fail(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_STARTUP from ''");
     expect_string(__wrap__merror, formatted_msg, "Error getting version from agent '001'");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to connect agent: 001. Couldn't retrieve version");
+
+    expect_value(__wrap_wdb_update_agent_status_code, id, 1);
+    expect_value(__wrap_wdb_update_agent_status_code, status_code, ERR_VERSION_RECV);
+    expect_string(__wrap_wdb_update_agent_status_code, version, "");
+    expect_string(__wrap_wdb_update_agent_status_code, sync_status, "synced");
+    will_return(__wrap_wdb_update_agent_status_code, OS_SUCCESS);
 
     expect_string(__wrap_send_msg, agent_id, "001");
     expect_string(__wrap_send_msg, msg, s_msg);
@@ -5048,14 +5065,13 @@ void test_save_controlmsg_shutdown(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_send_msg, agent_id, "001");
-    expect_string(__wrap_send_msg, msg, "#!-agent ack ");
-
     expect_any(__wrap_get_ipv4_string, address);
     expect_any(__wrap_get_ipv4_string, address_size);
     will_return(__wrap_get_ipv4_string, OS_INVALID);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_SHUTDOWN from ''");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_shutdown, agent_id, "001");
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
@@ -5117,14 +5133,13 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_send_msg, agent_id, "001");
-    expect_string(__wrap_send_msg, msg, "#!-agent ack ");
-
     expect_any(__wrap_get_ipv6_string, address);
     expect_any(__wrap_get_ipv6_string, address_size);
     will_return(__wrap_get_ipv6_string, OS_INVALID);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_SHUTDOWN from ''");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_shutdown, agent_id, "001");
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);

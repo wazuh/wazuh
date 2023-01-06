@@ -943,14 +943,16 @@ void test_wdb_parse_global_update_connection_status_query_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
+    char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"status_code\":0}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_value(__wrap_wdb_global_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, "active");
+    expect_string(__wrap_wdb_global_update_agent_connection_status, sync_status, "syncreq");
+    expect_value(__wrap_wdb_global_update_agent_connection_status, status_code, 0);
     will_return(__wrap_wdb_global_update_agent_connection_status, OS_INVALID);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"status_code\":0}");
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
@@ -971,14 +973,16 @@ void test_wdb_parse_global_update_connection_status_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
+    char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"status_code\":0}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_value(__wrap_wdb_global_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, "active");
+    expect_string(__wrap_wdb_global_update_agent_connection_status, sync_status, "syncreq");
+    expect_value(__wrap_wdb_global_update_agent_connection_status, status_code, 0);
     will_return(__wrap_wdb_global_update_agent_connection_status, OS_SUCCESS);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"status_code\":0}");
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);

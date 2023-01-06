@@ -407,7 +407,9 @@ int wdb_update_agent_status_code(int id, agent_status_code_t status_code, const 
     }
 
     char wazuh_version[OS_SIZE_128 + 1] = "";
-    snprintf(wazuh_version, OS_SIZE_128, "%s %s", __ossec_name, version);
+    if (strncmp(version, "", strlen(version)) != 0) {
+        snprintf(wazuh_version, OS_SIZE_128, "%s %s", __ossec_name, version);
+    }
 
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddNumberToObject(data_in, "status_code", status_code);

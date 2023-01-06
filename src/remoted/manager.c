@@ -187,6 +187,16 @@ STATIC int validate_shared_files(const char *src_path, FILE *finalfp, OSHash **_
  */
 STATIC void copy_directory(const char *src_path, const char *dst_path, char *group);
 
+/**
+ * @brief Create and send response to agent when exist any problem with agent version and set the status_code and agent version in db.
+ * @param agent_id Message to send.
+ * @param msg Message to send.
+ * @param status_code Status code to set.
+ * @param version Agent version to set.
+ * @param wdb_sock Wazuh-DB socket.
+ */
+STATIC void send_wrong_version_response(const char *agent_id, char *msg, agent_status_code_t status_code, char *version, int *wdb_sock);
+
 /* Groups structures */
 static OSHash *groups;
 static OSHash *multi_groups;
@@ -288,49 +298,19 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             cJSON *agent_info = NULL;
             cJSON *version = NULL;
             if (agent_info = cJSON_Parse(strchr(r_msg, '{')), agent_info) {
-                char *error_msg_string = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
                     if (compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
-                        /* Reply to the agent */
-                        cJSON *error_msg = cJSON_CreateObject();
-                        cJSON_AddStringToObject(error_msg, "message", HC_INVALID_VERSION);
-                        error_msg_string = cJSON_PrintUnformatted(error_msg);
-                        char msg_err[OS_FLSIZE + 1] = "";
-                        snprintf(msg_err, OS_FLSIZE, "%s%s%s", CONTROL_HEADER, HC_ERROR, error_msg_string);
-                        send_msg(key->id, msg_err, -1);
-                        mdebug2("Unable to connect agent: %s. %s", key->id, HC_INVALID_VERSION);
-                        result = wdb_update_agent_status_code(atoi(key->id), INVALID_VERSION, version->valuestring, logr.worker_node ? "syncreq" : "synced", wdb_sock);
 
-                        if (OS_SUCCESS != result) {
-                            mwarn("Unable to set status code for agent: %s", key->id);
-                        }
-
+                        send_wrong_version_response(key->id, HC_INVALID_VERSION, INVALID_VERSION, version->valuestring, wdb_sock);
                         cJSON_Delete(agent_info);
-                        cJSON_Delete(error_msg);
-                        os_free(error_msg_string);
                         os_free(clean);
-
                         return;
                     }
                 } else {
                     merror("Error getting version from agent '%s'", key->id);
 
-                    cJSON *error_msg = cJSON_CreateObject();
-                    cJSON_AddStringToObject(error_msg, "message", HC_RETRIEVE_VERSION);
-                    error_msg_string = cJSON_PrintUnformatted(error_msg);
-                    char msg_err[OS_FLSIZE + 1] = "";
-                    snprintf(msg_err, OS_FLSIZE, "%s%s%s", CONTROL_HEADER, HC_ERROR, error_msg_string);
-                    send_msg(key->id, msg_err, -1);
-
-                    result = wdb_update_agent_status_code(atoi(key->id), ERR_VERSION_RECV, version->valuestring, logr.worker_node ? "syncreq" : "synced", wdb_sock);
-
-                    if (OS_SUCCESS != result) {
-                        mwarn("Unable to set status code for agent: %s", key->id);
-                    }
-
+                    send_wrong_version_response(key->id, HC_RETRIEVE_VERSION, ERR_VERSION_RECV, "", wdb_sock);
                     cJSON_Delete(agent_info);
-                    cJSON_Delete(error_msg);
-                    os_free(error_msg_string);
                     os_free(clean);
                     return;
                 }
@@ -1464,6 +1444,29 @@ STATIC bool group_changed(const char *multi_group) {
 
     free_strarray(mgroups);
     return false;
+}
+
+STATIC void send_wrong_version_response (const char *agent_id, char *msg, agent_status_code_t status_code, char *version, int *wdb_sock) {
+    int result = 0;
+
+    cJSON *error_msg = cJSON_CreateObject();
+    char *error_msg_string = NULL;
+    cJSON_AddStringToObject(error_msg, "message", msg);
+    error_msg_string = cJSON_PrintUnformatted(error_msg);
+    char msg_err[OS_FLSIZE + 1] = "";
+    snprintf(msg_err, OS_FLSIZE, "%s%s%s", CONTROL_HEADER, HC_ERROR, error_msg_string);
+    send_msg(agent_id, msg_err, -1);
+    mdebug2("Unable to connect agent: %s. %s", agent_id, msg);
+
+    result = wdb_update_agent_status_code(atoi(agent_id), status_code, version, logr.worker_node ? "syncreq" : "synced", wdb_sock);
+
+    if (OS_SUCCESS != result) {
+        mwarn("Unable to set status code for agent: %s", agent_id);
+    }
+
+    cJSON_Delete(error_msg);
+    os_free(error_msg_string);
+    return;
 }
 
 /* look for agent group */

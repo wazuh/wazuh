@@ -660,7 +660,10 @@ void test_w_enrollment_send_message_fix_invalid_hostname(void **state) {
     // If gethostname returns an invalid string should be fixed by OS_ConvertToValidAgentName
     expect_string(__wrap__minfo, formatted_msg, "Using agent name as: InvalidHostname");
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
-    expect_string(__wrap_SSL_write, buf, "OSSEC A:'InvalidHostname'\n");
+    char buff[128];
+    snprintf(buff,128,"OSSEC A:'InvalidHostname' V:'%s'\n",__ossec_version);
+
+    expect_string(__wrap_SSL_write, buf, buff);
     will_return(__wrap_SSL_write, -1);
     expect_string(__wrap__merror, formatted_msg, "SSL write error (unable to send message.)");
     expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certificates are required!");
@@ -699,7 +702,11 @@ void test_w_enrollment_send_message_ssl_error(void **state) {
 #endif
     expect_string(__wrap__minfo, formatted_msg, "Using agent name as: host.name");
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
-    expect_string(__wrap_SSL_write, buf, "OSSEC A:'host.name'\n");
+
+    char buff[128];
+    snprintf(buff,128,"OSSEC A:'host.name' V:'%s'\n",__ossec_version);
+
+    expect_string(__wrap_SSL_write, buf, buff);
     will_return(__wrap_SSL_write, -1);
     expect_string(__wrap__merror, formatted_msg, "SSL write error (unable to send message.)");
     expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certificates are required!");
@@ -721,7 +728,11 @@ void test_w_enrollment_send_message_success(void **state) {
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
-    expect_string(__wrap_SSL_write, buf, "OSSEC PASS: test_password OSSEC A:'test_agent' G:'test_group' IP:'192.168.1.1' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n");
+
+    char buff[256];
+    snprintf(buff,256,"OSSEC PASS: test_password OSSEC A:'test_agent' V:'%s' G:'test_group' IP:'192.168.1.1' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n",__ossec_version);
+
+    expect_string(__wrap_SSL_write, buf, buff);
     will_return(__wrap_SSL_write, 0);
     expect_string(__wrap__mdebug1, formatted_msg,"Request sent to manager");
     int ret = w_enrollment_send_message(cfg);
@@ -755,7 +766,11 @@ void test_w_enrollment_send_message_success_different_hostname(void **state) {
 #endif
     expect_string(__wrap__minfo, formatted_msg, "Using agent name as: host.name");
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
-    expect_string(__wrap_SSL_write, buf, "OSSEC A:'host.name' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n");
+
+    char buff[128];
+    snprintf(buff,128,"OSSEC A:'host.name' V:'%s' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n",__ossec_version);
+
+    expect_string(__wrap_SSL_write, buf, buff);
     will_return(__wrap_SSL_write, 0);
     expect_string(__wrap__mdebug1, formatted_msg,"Request sent to manager");
     int ret = w_enrollment_send_message(cfg);
@@ -1024,6 +1039,7 @@ void test_w_enrollment_request_key_null_cfg(void **state) {
 void test_w_enrollment_request_key(void **state) {
     w_enrollment_ctx *cfg = *state;
     SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
+    char buff[128];
 
     expect_string(__wrap__minfo, formatted_msg, "Requesting a key from server: valid_hostname");
 
@@ -1072,7 +1088,9 @@ void test_w_enrollment_request_key(void **state) {
         expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
         will_return(__wrap_OS_IsValidIP, 1);
         expect_value(__wrap_SSL_write, ssl, cfg->ssl);
-        expect_string(__wrap_SSL_write, buf, "OSSEC PASS: test_password OSSEC A:'test_agent' G:'test_group' IP:'192.168.1.1'\n");
+
+        snprintf(buff,128,"OSSEC PASS: test_password OSSEC A:'test_agent' V:'%s' G:'test_group' IP:'192.168.1.1'\n",__ossec_version);
+        expect_string(__wrap_SSL_write, buf, buff);
         will_return(__wrap_SSL_write, 0);
         expect_string(__wrap__mdebug1, formatted_msg,"Request sent to manager");
     }

@@ -1390,6 +1390,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     // Open file
@@ -1556,6 +1557,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     // Open file
@@ -1720,6 +1722,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     // Open file
@@ -1883,6 +1886,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     // Open file
@@ -2049,6 +2053,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     // Open file
@@ -2214,6 +2219,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     // Open file
@@ -2365,6 +2371,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     // Open file
@@ -2498,6 +2505,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     // Open file
@@ -2612,6 +2620,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     // Open file
@@ -2762,6 +2771,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_lock_restart_err(void **sta
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     expect_string_count(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade", 2);
@@ -2972,6 +2982,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     // Open file
@@ -3203,6 +3214,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     // Open file
@@ -3304,6 +3316,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
 
     expect_string(__wrap_compare_wazuh_versions, version1, "v3.13.1");
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     // wm_agent_upgrade_parse_task_module_request
@@ -3434,6 +3447,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     // Open file
@@ -3664,6 +3678,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
 
     expect_string(__wrap_compare_wazuh_versions, version1, agent_task->agent_info->wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
     expect_string_count(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade", 2);

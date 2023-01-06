@@ -54,10 +54,10 @@
 /// Enumeration of agents disconected status reasons.
 typedef enum agent_status_code_t {
         INVALID_VERSION = 1,    ///< Invalid agent version
+        ERR_VERSION_RECV,       ///< Error retrieving version
         HC_SHUTDOWN_RECV,       ///< Shutdown message received
         NO_KEEPALIVE,           ///< Disconnected because no keepalive received
         RESET_BY_MANAGER,       ///< Connection reset by manager
-        ERR_VERSION_RECV        ///< Error retrieving version
 } agent_status_code_t;
 
 #define VULN_CVES_STATUS_VALID              "VALID"
