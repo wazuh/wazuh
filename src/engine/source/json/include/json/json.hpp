@@ -327,10 +327,8 @@ public:
 
     /**
      * @brief get the value of the object field.
-     * Overwrites previous value. If reference field is not found, sets base field to
-     * null.
      *
-     * @param basePointerPath The base pointer path to set.
+     * @param path The base pointer path to get.
      *
      * @return T The value of the field.
      *
@@ -338,6 +336,7 @@ public:
      */
     std::optional<std::vector<std::tuple<std::string, Json>>>
     getObject(std::string_view path = "") const;
+
     /**
      * @brief Get Json prettyfied string.
      *
