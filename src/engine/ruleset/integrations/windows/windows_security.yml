@@ -6,8 +6,7 @@ sources:
 metadata:
   description: Decoder for Windows Security events
 
-check:
-  - ~event_channel.Event.System.Provider.@Name: Microsoft-Windows-Security-Auditing
+check: ~event_channel.Event.System.Provider.@Name==Microsoft-Windows-Security-Auditing OR ~event_channel.Event.System.Provider.@Name==Microsoft-Windows-Eventlog
 
 
 normalize:
