@@ -116,10 +116,10 @@ struct deltas_fields_match_list {
 typedef bool (*mapping_t)(cJSON*,const char*);
 
 /**
- * @brief Struct to map a field name they custom value mapper function
+ * @brief Struct to map a field name their custom value mapper function
  * 
  */
-struct deltas_values_mapping {
+struct delta_values_mapping {
     char *key;
     mapping_t mapping;
 };
@@ -128,10 +128,9 @@ struct deltas_values_mapping {
  * @brief Linked list of deltas values mappers
  * 
  */
-
-struct deltas_values_mapping_list {
-    struct deltas_values_mapping current;
-    const struct deltas_values_mapping_list *next;
+struct delta_values_mapping_list {
+    struct delta_values_mapping current;
+    const struct delta_values_mapping_list *next;
 };
 
 /**

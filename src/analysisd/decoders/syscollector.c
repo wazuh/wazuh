@@ -184,7 +184,7 @@ static struct deltas_fields_match_list const NETWORK_ADDRESS_FIELDS[] = {
     { .current = { "item_id", NULL }, .next = NULL},
 };
 
-static struct deltas_values_mapping_list const NETWORK_ADDRESS_MAPPING[] = {
+static struct delta_values_mapping_list const NETWORK_ADDRESS_MAPPING[] = {
     {.current = {"proto", protocol_mapping}, .next = NULL}};
 
 static struct deltas_fields_match_list const HARDWARE_FIELDS[] = {
@@ -2040,8 +2040,8 @@ static void fill_event_alert(Eventinfo * lf,                                    
  * @param type Scan type
  * @return mapping list if exist. NULL otherwise
  */
-static const struct deltas_values_mapping_list * get_mapping_list(const char *type) {
-    const struct deltas_values_mapping_list * ret_val = NULL;
+static const struct delta_values_mapping_list * get_mapping_list(const char *type) {
+    const struct delta_values_mapping_list * ret_val = NULL;
     if (strcmp(type, "hotfixes") == 0) {
         ret_val = NULL;
     } else if(strcmp(type, "packages") == 0) {
@@ -2073,7 +2073,7 @@ static const struct deltas_values_mapping_list * get_mapping_list(const char *ty
  * @param data delta information
  */
 void delta_map_values(const char * type, cJSON * data) {
-    struct deltas_values_mapping_list const * head = get_mapping_list(type);
+    struct delta_values_mapping_list const * head = get_mapping_list(type);
     while (NULL != head) {
         if (NULL != head->current.mapping) {
             bool mapping_result = (head->current.mapping)(data, head->current.key);

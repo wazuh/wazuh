@@ -141,33 +141,7 @@ int test_setup_valid_msg_with_no_type(void **state)
     return 0;
 }
 
-int test_setup_hotfixes_valid_msg_with_separator_character(void **state)
-{
-    Eventinfo *lf;
-    os_calloc(1, sizeof(Eventinfo), lf);
-    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
-    Zero_Eventinfo(lf);
-    if (lf->log = strdup("\
-        {\
-            \"type\":\"dbsync_hotfixes\",\
-            \"operation\":\"MODIFIED\",\
-            \"data\":\
-            {\
-                \"scan_time\":\"2021/10/29 14:26:24\",\
-                \"hotfix\":\"KB12|3456\",\
-                \"checksum\":\"abcdef|0123456789\"\
-            }\
-        }"),
-        lf->log == NULL)
-        return -1;
-    os_strdup("(>syscollector", lf->location);
-    os_strdup("001", lf->agent_id);
-
-    *state = lf;
-    return 0;
-}
-
-int test_setup_hotfixes_valid_msg(void **state)
+int test_setup_hotfixes_valid_msg_modified(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -192,7 +166,7 @@ int test_setup_hotfixes_valid_msg(void **state)
     *state = lf;
     return 0;
 }
-int test_setup_packages_valid_msg(void **state)
+int test_setup_packages_valid_msg_modified(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -230,7 +204,7 @@ int test_setup_packages_valid_msg(void **state)
 }
 
 
-int test_setup_processes_valid_msg(void **state)
+int test_setup_processes_valid_msg_modified(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -282,7 +256,7 @@ int test_setup_processes_valid_msg(void **state)
     return 0;
 }
 
-int test_setup_ports_valid_msg(void **state)
+int test_setup_ports_valid_msg_modified(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -319,7 +293,7 @@ int test_setup_ports_valid_msg(void **state)
     return 0;
 }
 
-int test_setup_network_iface_valid_msg(void **state)
+int test_setup_network_iface_valid_msg_modified(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -358,7 +332,7 @@ int test_setup_network_iface_valid_msg(void **state)
     return 0;
 }
 
-int test_setup_network_protocol_valid_msg(void **state)
+int test_setup_network_protocol_valid_msg_modified(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -387,7 +361,7 @@ int test_setup_network_protocol_valid_msg(void **state)
     return 0;
 }
 
-int test_setup_network_address_invalid_msg(void **state)
+int test_setup_network_address_invalid_msg_modified(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -416,7 +390,7 @@ int test_setup_network_address_invalid_msg(void **state)
     return 0;
 }
 
-int test_setup_network_address_valid_msg(void **state)
+int test_setup_network_address_valid_msg_modified(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -445,7 +419,7 @@ int test_setup_network_address_valid_msg(void **state)
     return 0;
 }
 
-int test_setup_hardware_valid_msg(void **state)
+int test_setup_hardware_valid_msg_modified(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -476,7 +450,7 @@ int test_setup_hardware_valid_msg(void **state)
     return 0;
 }
 
-int test_setup_os_valid_msg(void **state)
+int test_setup_os_valid_msg_modified(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -1004,78 +978,6 @@ int test_setup_valid_msg_data_as_value(void **state)
     return 0;
 }
 
-int test_setup_valid_msg_no_data(void **state)
-{
-    Eventinfo *lf;
-    os_calloc(1, sizeof(Eventinfo), lf);
-    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
-    Zero_Eventinfo(lf);
-    if (lf->log = strdup("\
-        {\
-            \"type\":\"dbsync_hwinfo\",\
-            \"operation\":\"INSERTED\"\
-        }"),
-        lf->log == NULL)
-        return -1;
-    os_strdup("(>syscollector", lf->location);
-    os_strdup("001", lf->agent_id);
-
-    *state = lf;
-    return 0;
-}
-
-int test_setup_valid_msg_data_int(void **state)
-{
-    Eventinfo *lf;
-    os_calloc(1, sizeof(Eventinfo), lf);
-    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
-    Zero_Eventinfo(lf);
-    if (lf->log = strdup("\
-        {\
-            \"type\":\"dbsync_hwinfo\",\
-            \"operation\":\"INSERTED\",\
-            \"data\":1\
-        }"),
-        lf->log == NULL)
-        return -1;
-    os_strdup("(>syscollector", lf->location);
-    os_strdup("001", lf->agent_id);
-
-    *state = lf;
-    return 0;
-}
-
-int test_setup_valid_msg_operation_as_number(void **state)
-{
-    Eventinfo *lf;
-    os_calloc(1, sizeof(Eventinfo), lf);
-    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
-    Zero_Eventinfo(lf);
-    if (lf->log = strdup("\
-        {\
-            \"type\":\"dbsync_hwinfo\",\
-            \"operation\":1,\
-            \"data\":\
-            {\
-                \"board_serial\" : \"86\",\
-                \"cpu_name\" : \"87\",\
-                \"cpu_cores\" : \"88\",\
-                \"cpu_MHz\" : \"89\",\
-                \"ram_total\" : \"90\",\
-                \"ram_free\" : \"91\",\
-                \"ram_usage\" : \"92\",\
-                \"checksum\" : \"93\"\
-            }\
-        }"),
-        lf->log == NULL)
-        return -1;
-    os_strdup("(>syscollector", lf->location);
-    os_strdup("001", lf->agent_id);
-
-    *state = lf;
-    return 0;
-}
-
 int test_setup_insert_multiple_null_field_valid_msg(void ** state) {
     Eventinfo * lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -1207,7 +1109,7 @@ void test_syscollector_dbsync_valid_msg_invalid_field_list(void **state)
     assert_int_equal(ret, 0);
 }
 
-void test_syscollector_dbsync_hotfixes_valid_msg(void **state)
+void test_syscollector_dbsync_hotfixes_valid_msg_modified(void **state)
 {
     Eventinfo *lf = *state;
 
@@ -1229,7 +1131,7 @@ void test_syscollector_dbsync_hotfixes_valid_msg(void **state)
 
     assert_int_not_equal(ret, 0);
 }
-void test_syscollector_dbsync_packages_valid_msg(void **state)
+void test_syscollector_dbsync_packages_valid_msg_modified(void **state)
 {
     Eventinfo *lf = *state;
 
@@ -1265,7 +1167,7 @@ void test_syscollector_dbsync_packages_valid_msg(void **state)
 
     assert_int_not_equal(ret, 0);
 }
-void test_syscollector_dbsync_processes_valid_msg(void **state)
+void test_syscollector_dbsync_processes_valid_msg_modified(void **state)
 {
     Eventinfo *lf = *state;
 
@@ -1315,7 +1217,7 @@ void test_syscollector_dbsync_processes_valid_msg(void **state)
 
     assert_int_not_equal(ret, 0);
 }
-void test_syscollector_dbsync_ports_valid_msg(void **state)
+void test_syscollector_dbsync_ports_valid_msg_modified(void **state)
 {
     Eventinfo *lf = *state;
 
@@ -1349,7 +1251,7 @@ void test_syscollector_dbsync_ports_valid_msg(void **state)
 
     assert_int_not_equal(ret, 0);
 }
-void test_syscollector_dbsync_network_iface_valid_msg(void **state)
+void test_syscollector_dbsync_network_iface_valid_msg_modified(void **state)
 {
     Eventinfo *lf = *state;
 
@@ -1386,7 +1288,7 @@ void test_syscollector_dbsync_network_iface_valid_msg(void **state)
 
     assert_int_not_equal(ret, 0);
 }
-void test_syscollector_dbsync_network_protocol_valid_msg(void **state)
+void test_syscollector_dbsync_network_protocol_valid_msg_modified(void **state)
 {
     Eventinfo *lf = *state;
 
@@ -1413,7 +1315,7 @@ void test_syscollector_dbsync_network_protocol_valid_msg(void **state)
 
     assert_int_not_equal(ret, 0);
 }
-void test_syscollector_dbsync_network_address_invalid_msg(void **state)
+void test_syscollector_dbsync_network_address_invalid_msg_modified(void **state)
 {
     Eventinfo *lf = *state;
 
@@ -1442,7 +1344,7 @@ void test_syscollector_dbsync_network_address_invalid_msg(void **state)
 
     assert_int_not_equal(ret, 0);
 }
-void test_syscollector_dbsync_network_address_valid_msg(void **state)
+void test_syscollector_dbsync_network_address_valid_msg_modified(void **state)
 {
     Eventinfo *lf = *state;
 
@@ -1469,7 +1371,7 @@ void test_syscollector_dbsync_network_address_valid_msg(void **state)
 
     assert_int_not_equal(ret, 0);
 }
-void test_syscollector_dbsync_hardware_valid_msg(void **state)
+void test_syscollector_dbsync_hardware_valid_msg_modified(void **state)
 {
     Eventinfo *lf = *state;
 
@@ -1498,7 +1400,7 @@ void test_syscollector_dbsync_hardware_valid_msg(void **state)
 
     assert_int_not_equal(ret, 0);
 }
-void test_syscollector_dbsync_os_valid_msg(void **state)
+void test_syscollector_dbsync_os_valid_msg_modified(void **state)
 {
     Eventinfo *lf = *state;
 
@@ -2188,22 +2090,30 @@ void test_syscollector_dbsync_deleted_multiple_null_valid_msg(void ** state) {
 int main()
 {
     const struct CMUnitTest tests[] = {
+        /* Misc invalid tests*/
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_invalid_location, test_setup_invalid_location, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_invalid_json, test_setup_invalid_json, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_invalid_msgtype, test_setup_invalid_msgtype, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_unknown_operation, test_setup_valid_msg_unknown_operation, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_invalid_field_list, test_setup_valid_msg_invalid_field_list, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_query_error, test_setup_valid_msg_query_error, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg, test_setup_hotfixes_valid_msg, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_packages_valid_msg, test_setup_packages_valid_msg, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_processes_valid_msg, test_setup_processes_valid_msg, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_ports_valid_msg, test_setup_ports_valid_msg, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_iface_valid_msg, test_setup_network_iface_valid_msg, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_protocol_valid_msg, test_setup_network_protocol_valid_msg, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_address_invalid_msg, test_setup_network_address_invalid_msg, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_address_valid_msg, test_setup_network_address_valid_msg, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hardware_valid_msg, test_setup_hardware_valid_msg, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg, test_setup_os_valid_msg, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_with_no_type, test_setup_valid_msg_with_no_type, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_no_operation_or_data_no_object, test_setup_valid_msg_data_as_value, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_no_operation_or_data_no_object, test_setup_valid_msg_no_operation, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_empty_string, test_setup_valid_msg_empty_string, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_null_agentid, test_setup_valid_msg_null_agentid, test_cleanup),
+        /* MODIFIED delta tests*/
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg_modified, test_setup_hotfixes_valid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_packages_valid_msg_modified, test_setup_packages_valid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_processes_valid_msg_modified, test_setup_processes_valid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_ports_valid_msg_modified, test_setup_ports_valid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_iface_valid_msg_modified, test_setup_network_iface_valid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_protocol_valid_msg_modified, test_setup_network_protocol_valid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_address_invalid_msg_modified, test_setup_network_address_invalid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_address_valid_msg_modified, test_setup_network_address_valid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hardware_valid_msg_modified, test_setup_hardware_valid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_modified, test_setup_os_valid_msg_modified, test_cleanup),
+        /* INSERTED delta tests*/
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg_inserted, test_setup_hotfixes_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_packages_valid_msg_inserted, test_setup_packages_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_processes_valid_msg_inserted, test_setup_processes_valid_msg_inserted, test_cleanup),
@@ -2215,14 +2125,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hardware_valid_msg_inserted, test_setup_hardware_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_inserted, test_setup_os_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_with_number_pk, test_setup_os_valid_msg_with_number_pk, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_with_no_type, test_setup_valid_msg_with_no_type, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_no_result_payload, test_setup_os_valid_msg, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_no_operation_or_data_no_object, test_setup_valid_msg_no_operation, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_empty_string, test_setup_valid_msg_empty_string, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_null_agentid, test_setup_valid_msg_null_agentid, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_no_operation_or_data_no_object, test_setup_valid_msg_data_as_value, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_insert_multiple_null_valid_msg, test_setup_insert_multiple_null_field_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_deleted_multiple_null_valid_msg, test_setup_deleted_multiple_null_field_valid_msg, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_no_result_payload, test_setup_os_valid_msg_modified, test_cleanup)
     };
     return cmocka_run_group_tests(tests, test_setup_global, NULL);
 }
