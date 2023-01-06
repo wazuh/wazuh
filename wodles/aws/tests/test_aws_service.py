@@ -44,6 +44,7 @@ def test_AWSService__init__(mock_wazuh_integration, mock_sts):
                                               sts_endpoint=kwargs["sts_endpoint"],
                                               service_endpoint=kwargs["service_endpoint"],
                                               iam_role_duration=kwargs["iam_role_duration"])
+    assert instance.service_name == utils.TEST_SERVICE_NAME
     assert instance.reparse == True
     assert instance.region == utils.TEST_REGION
     assert instance.only_logs_after == utils.TEST_ONLY_LOGS_AFTER

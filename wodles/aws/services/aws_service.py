@@ -28,7 +28,7 @@ class AWSService(wazuh_integration.WazuhIntegration):
                                                     iam_role_duration=iam_role_duration)
         self.reparse = reparse
         self.region = region
-
+        self.service_name = service_name
         # get sts client (necessary for getting account ID)
         self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
         # get account ID
