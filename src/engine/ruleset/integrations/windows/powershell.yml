@@ -1,0 +1,40 @@
+name: decoder/powershell/0
+
+sources: 
+  - decoder/windows_event_channel/0
+
+metadata:
+  description: Decoder for Windows Powershell events
+
+check:
+  - ~event_channel.Event.System.Provider.@Name: Windows PowerShell
+
+normalize:
+ - map:
+  - event.module: powershell
+  - event.kind: event
+  - event.category: process
+  - event.type: info
+
+  ## Process fields.
+  - process.entity_id: $~event_channel.Event.EventData.HostId
+  - process.command_line: $~event_channel.Event.EventData.HostApplication
+  - process.title: $~event_channel.Event.EventData.HostName
+
+  ## User fields.
+  - ~temp.user_parts: +s_to_array/$~event_channel.Event.EventData.UserId/\
+  - user.domain: $~temp.user_parts.0
+  - user.name: $~temp.user_parts.1
+  - related.user: +a_append/user.name
+
+  ## PowerShell fields.
+  - powershell.engine.new_state: $~event_channel.Event.EventData.NewEngineState
+  - powershell.engine.previous_state: $~event_channel.Event.EventData.PreviousEngineState
+
+  - check: event.code==400
+   map:
+    - event.type: start
+
+- check: event.code==403
+   map:
+    - event.type: end
