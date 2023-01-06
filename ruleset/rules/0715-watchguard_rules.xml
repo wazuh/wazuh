@@ -1,0 +1,53 @@
+<!--
+Watchguard rules.
+Rules id range : 89101 - 89150
+Created by Simon. V
+-->
+
+
+<group name="watchguard">
+  <rule id="89101" level="3">
+    <decoded_as>Watchguard</decoded_as>
+    <description>WatchGuard - Login : $(dstuser)</description>
+    <extra_data>logged in</extra_data>
+  </rule>
+
+  <rule id="89102" level="3">
+    <decoded_as>Watchguard</decoded_as>
+    <description>WatchGuard - Logout : $(dstuser)</description>
+    <extra_data>logged out</extra_data>
+  </rule>
+
+  <rule id="89103" level="9">
+    <decoded_as>Watchguard</decoded_as>
+    <description>WatchGuard - Incorrect password : $(dstuser)</description>
+    <user>admin</user>
+    <extra_data>password is incorrect</extra_data>
+  </rule>
+
+  <rule id="89104" level="5">
+    <decoded_as>Watchguard</decoded_as>
+    <description>WatchGuard - Incorrect password : $(dstuser)</description>
+    <user>!admin</user>
+    <extra_data>password is incorrect</extra_data>
+  </rule>
+
+  <rule id="89105" level="5">
+    <decoded_as>Watchguard</decoded_as>
+    <description>WatchGuard - Invalid credentials : $(dstuser)</description>
+    <extra_data>invalid credentials</extra_data>
+  </rule>
+
+  <rule id="89106" level="3">
+    <decoded_as>Watchguard</decoded_as>
+    <description>WatchGuard - Traffic $(action) from $(in_if)</description>
+    <action>Allow</action>
+  </rule>
+  
+  <rule id="89107" level="5">
+    <decoded_as>Watchguard</decoded_as>
+    <description>WatchGuard - Traffic $(action) from $(in_if)</description>
+    <action>Deny</action>
+  </rule>
+
+</group>
