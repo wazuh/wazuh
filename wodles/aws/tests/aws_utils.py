@@ -11,6 +11,7 @@ import aws_bucket
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'services'))
 import aws_service
+import cloudwatchlogs
 
 TEST_TABLE_NAME = "cloudtrail"
 TEST_SERVICE_NAME = "s3"
@@ -34,6 +35,7 @@ TEST_DISCARD_REGEX = "test_regex"
 TEST_ONLY_LOGS_AFTER = "20220101"
 TEST_ONLY_LOGS_AFTER_WITH_FORMAT = "2022-01-01 00:00:00.0"
 TEST_LOG_KEY = "123456789_CloudTrail-us-east-1_20190401T00015Z_aaaa.json.gz"
+TEST_FULL_PREFIX = "base/account_id/service/region/"
 
 TEST_SERVICE_ENDPOINT = 'test_service_endpoint'
 TEST_STS_ENDPOINT = "test_sts_endpoint"
@@ -77,8 +79,10 @@ PARSE_FILE_ERROR_CODE = 9
 UNABLE_TO_CONNECT_SOCKET_ERROR_CODE = 11
 INVALID_TYPE_ERROR_CODE = 12
 SENDING_MESSAGE_SOCKET_ERROR_CODE = 13
+EMPTY_BUCKET_ERROR_CODE = 14
 INVALID_ENDPOINT_ERROR_CODE = 15
 THROTTLING_ERROR_CODE = 16
+INVALID_KEY_FORMAT_ERROR_CODE = 17
 INVALID_PREFIX_ERROR_CODE = 18
 INVALID_REQUEST_TIME_ERROR_CODE = 19
 
@@ -160,7 +164,8 @@ def get_AWSBucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str =
 def get_AWSService_parameters(db_table_name: str = TEST_TABLE_NAME, service_name: str = 'cloudwatchlogs',
                               reparse: bool = False, access_key: str = None, secret_key: str = None,
                               aws_profile: str = TEST_AWS_PROFILE, iam_role_arn: str = None,
-                              only_logs_after: str = None, region: str = None, discard_field: str = None,
+                              only_logs_after: str = None, region: str = None,  aws_log_groups:str = None, remove_log_streams: bool = None,
+                              discard_field: str = None,
                               discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
                               iam_role_duration: str = None):
 
@@ -178,7 +183,8 @@ def get_AWSService_parameters(db_table_name: str = TEST_TABLE_NAME, service_name
     """
     return {'db_table_name': db_table_name, 'service_name': service_name, 'reparse': reparse, 'access_key': access_key,
             'secret_key': secret_key, 'aws_profile': aws_profile, 'iam_role_arn': iam_role_arn,
-            'only_logs_after': only_logs_after, 'region': region, 'discard_field': discard_field,
+            'only_logs_after': only_logs_after, 'region': region, 'aws_log_groups': aws_log_groups,
+            'remove_log_streams': remove_log_streams, 'discard_field': discard_field,
             'discard_regex': discard_regex, 'sts_endpoint': sts_endpoint,
             'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
 

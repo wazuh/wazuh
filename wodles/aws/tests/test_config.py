@@ -265,7 +265,7 @@ def test_AWSConfigBucket_iter_files_in_bucket(mock_build_filter, mock_debug, del
     mock_build_filter.return_value = {
         'Bucket': instance.bucket,
         'MaxKeys': 1000,
-        'Prefix': 'prefix'
+        'Prefix': utils.TEST_PREFIX
     }
 
     instance.client.list_objects_v2.return_value = object_list
