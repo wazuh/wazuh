@@ -4160,6 +4160,36 @@ void test_wdb_global_update_agent_connection_status_bind4_fail(void **state)
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 4);
     expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status, sync_status, 0);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_update_agent_connection_status_bind5_fail(void **state)
+{
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char *connection_status = "active";
+    const char *sync_status = "synced";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 4);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 5);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
@@ -4235,6 +4265,221 @@ void test_wdb_global_update_agent_connection_status_success(void **state)
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
     result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status, sync_status, 0);
+
+    assert_int_equal(result, OS_SUCCESS);
+}
+
+/* Tests wdb_global_update_agent_status_code */
+
+void test_wdb_global_update_agent_status_code_transaction_fail(void **state) {
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    int status_code = 0;
+    const char *version = "v4.5.0";
+    const char *sync_status = "synced";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    result = wdb_global_update_agent_status_code(data->wdb, 1, status_code, version, sync_status);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_update_agent_status_code_cache_fail(void **state) {
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    int status_code = 0;
+    const char *version = "v4.5.0";
+    const char *sync_status = "synced";
+
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+
+    result = wdb_global_update_agent_status_code(data->wdb, 1, status_code, version, sync_status);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+
+void test_wdb_global_update_agent_status_code_bind1_fail(void **state) {
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    int status_code = 0;
+    const char *version = "v4.5.0";
+    const char *sync_status = "synced";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, status_code);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    result = wdb_global_update_agent_status_code(data->wdb, 1, status_code, version, sync_status);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+
+void test_wdb_global_update_agent_status_code_bind2_fail(void **state) {
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    int status_code = 0;
+    const char *version = "v4.5.0";
+    const char *sync_status = "synced";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, status_code);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, buffer, version);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+
+    result = wdb_global_update_agent_status_code(data->wdb, 1, status_code, version, sync_status);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+
+void test_wdb_global_update_agent_status_code_bind3_fail(void **state) {
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    int status_code = 0;
+    const char *version = "v4.5.0";
+    const char *sync_status = "synced";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, status_code);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, buffer, version);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+
+    result = wdb_global_update_agent_status_code(data->wdb, 1, status_code, version, sync_status);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+
+void test_wdb_global_update_agent_status_code_bind4_fail(void **state) {
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    int status_code = 0;
+    const char *version = "v4.5.0";
+    const char *sync_status = "synced";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, status_code);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, buffer, version);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 4);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    result = wdb_global_update_agent_status_code(data->wdb, 1, status_code, version, sync_status);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+
+void test_wdb_global_update_agent_status_code_step_fail(void **state) {
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    int status_code = 0;
+    const char *version = "v4.5.0";
+    const char *sync_status = "synced";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, status_code);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, buffer, version);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 4);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
+
+    result = wdb_global_update_agent_status_code(data->wdb, 1, status_code, version, sync_status);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+
+void test_wdb_global_update_agent_status_code_success(void **state) {
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    int status_code = 0;
+    const char *version = "v4.5.0";
+    const char *sync_status = "synced";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, status_code);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, buffer, version);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 4);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    result = wdb_global_update_agent_status_code(data->wdb, 1, status_code, version, sync_status);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -6342,7 +6587,27 @@ void test_wdb_global_reset_agents_connection_cache_fail(void **state)
     assert_int_equal(result, OS_INVALID);
 }
 
-void test_wdb_global_reset_agents_connection_bind_fail(void **state)
+void test_wdb_global_reset_agents_connection_bind1_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char *sync_status = "synced";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, RESET_BY_MANAGER);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+
+    int result = wdb_global_reset_agents_connection(data->wdb, sync_status);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_reset_agents_connection_bind2_fail(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
     const char *sync_status = "synced";
@@ -9044,10 +9309,38 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_connection_status_bind4_fail,
                                         test_setup,
                                         test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_connection_status_bind5_fail,
+                                        test_setup,
+                                        test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_connection_status_step_fail,
                                         test_setup,
                                         test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_connection_status_success,
+                                        test_setup,
+                                        test_teardown),
+        /* Tests wdb_global_update_agent_status_code */
+        cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_status_code_transaction_fail,
+                                        test_setup,
+                                        test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_status_code_cache_fail,
+                                        test_setup,
+                                        test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_status_code_bind1_fail,
+                                        test_setup,
+                                        test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_status_code_bind2_fail,
+                                        test_setup,
+                                        test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_status_code_bind3_fail,
+                                        test_setup,
+                                        test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_status_code_bind4_fail,
+                                        test_setup,
+                                        test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_status_code_step_fail,
+                                        test_setup,
+                                        test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_status_code_success,
                                         test_setup,
                                         test_teardown),
         /* Tests wdb_global_delete_agent */
@@ -9175,7 +9468,8 @@ int main()
                                         test_setup,
                                         test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_cache_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_bind_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_bind1_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_bind2_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_step_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_success, test_setup, test_teardown),
         /* Tests wdb_global_get_agents_by_connection_status */
