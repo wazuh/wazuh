@@ -154,6 +154,26 @@ static struct deltas_fields_match_list const NETWORK_PROTOCOL_FIELDS[] = {
     { .current = { "item_id", NULL }, .next = NULL},
 };
 
+/**
+ * @brief Allow to map 'protocol' numeric value into string representation
+ * @param data Delta information
+ * @param value Key to search for
+ * @return true value was mapped correctly
+ * @return false value cannot be mapped
+ */
+bool protocol_mapping(cJSON * data, const char * key) {
+    bool retval = false;
+    cJSON * protocol = cJSON_GetObjectItem(data, key);
+    if (protocol && cJSON_IsNumber(protocol)) {
+        const char * proto = WDB_NETADDR_IPV4 == protocol->valueint ? "ipv4" : "ipv6";
+        cJSON_ReplaceItemInObject(data, key, cJSON_CreateString(proto));
+        retval = true;
+    } else {
+        mdebug2("Field '%s' cannot be obtained.", key);
+    }
+    return retval;
+}
+
 static struct deltas_fields_match_list const NETWORK_ADDRESS_FIELDS[] = {
     { .current = { "iface", "netinfo.addr.iface" }, .next = &NETWORK_ADDRESS_FIELDS[1]},
     { .current = { "proto", "netinfo.addr.proto" }, .next = &NETWORK_ADDRESS_FIELDS[2]},
@@ -163,6 +183,9 @@ static struct deltas_fields_match_list const NETWORK_ADDRESS_FIELDS[] = {
     { .current = { "checksum", NULL }, .next = &NETWORK_ADDRESS_FIELDS[6]},
     { .current = { "item_id", NULL }, .next = NULL},
 };
+
+static struct deltas_values_mapping_list const NETWORK_ADDRESS_MAPPING[] = {
+    {.current = {"proto", protocol_mapping}, .next = NULL}};
 
 static struct deltas_fields_match_list const HARDWARE_FIELDS[] = {
     { .current = { "scan_time", NULL }, .next = &HARDWARE_FIELDS[1]},
@@ -2011,6 +2034,57 @@ static void fill_event_alert(Eventinfo * lf,                                    
     fillData(lf, "operation_type", operation);
 }
 
+/**
+ * @brief Get the mapping list object
+ * 
+ * @param type Scan type
+ * @return mapping list if exist. NULL otherwise
+ */
+static const struct deltas_values_mapping_list * get_mapping_list(const char *type) {
+    const struct deltas_values_mapping_list * ret_val = NULL;
+    if (strcmp(type, "hotfixes") == 0) {
+        ret_val = NULL;
+    } else if(strcmp(type, "packages") == 0) {
+        ret_val = NULL;
+    } else if(strcmp(type, "processes") == 0) {
+        ret_val = NULL;
+    } else if(strcmp(type, "ports") == 0) {
+        ret_val = NULL;
+    } else if(strcmp(type, "network_iface") == 0) {
+        ret_val = NULL;
+    } else if(strcmp(type, "network_protocol") == 0) {
+        ret_val = NULL;
+    } else if(strcmp(type, "network_address") == 0) {
+        ret_val = NETWORK_ADDRESS_MAPPING;
+    } else if(strcmp(type, "hwinfo") == 0) {
+        ret_val = NULL;
+    } else if(strcmp(type, "osinfo") == 0) {
+        ret_val = NULL;
+    } else {
+        merror(INVALID_TYPE, type);
+    }
+    return ret_val;
+}
+
+/**
+ * @brief Map delta values according to scan type 
+ * 
+ * @param type scan type
+ * @param data delta information
+ */
+void delta_map_values(const char * type, cJSON * data) {
+    struct deltas_values_mapping_list const * head = get_mapping_list(type);
+    while (NULL != head) {
+        if (NULL != head->current.mapping) {
+            bool mapping_result = (head->current.mapping)(data, head->current.key);
+            if (!mapping_result) {
+                mdebug2("Error while mapping '%s' field value.", head->current.key);
+            }
+        }
+        head = head->next;
+    }
+}
+
 static int decode_dbsync(Eventinfo * lf,   /* Event information */
                          char *msg_type,   /* Message type */
                          cJSON *logJSON,   /* JSON object with the message */
@@ -2033,8 +2107,9 @@ static int decode_dbsync(Eventinfo * lf,   /* Event information */
             if (NULL != field_list) {
                 if (cJSON_IsString(operation_object) && cJSON_IsObject(data_object)) {
 
+                    delta_map_values(type, data_object);                            /* Map field's values if applies */
                     char * operation = operation_object->valuestring;               /* Operation is the operation to be
-                                                                                       performed in the table. */
+                                                                                       performed in the table. */                    
                     char * data = cJSON_PrintUnformatted(data_object);              /* Data is the JSON object with the
                                                                                        values to be processed. */
                     if (NULL != data) {

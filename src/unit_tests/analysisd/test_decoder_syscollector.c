@@ -387,7 +387,7 @@ int test_setup_network_protocol_valid_msg(void **state)
     return 0;
 }
 
-int test_setup_network_address_valid_msg(void **state)
+int test_setup_network_address_invalid_msg(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -400,6 +400,35 @@ int test_setup_network_address_valid_msg(void **state)
             \"data\":{\
                 \"iface\" : \"80\",\
                 \"proto\" : \"81\",\
+                \"address\" : \"82\",\
+                \"netmask\" : \"83\",\
+                \"broadcast\" : \"84\",\
+                \"checksum\" : \"85\",\
+                \"item_id\" : \"86\"\
+            }\
+        }"),
+        lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
+int test_setup_network_address_valid_msg(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup("\
+        { \
+            \"type\":\"dbsync_network_address\",\
+            \"operation\":\"MODIFIED\",\
+            \"data\":{\
+                \"iface\" : \"80\",\
+                \"proto\" : 0,\
                 \"address\" : \"82\",\
                 \"netmask\" : \"83\",\
                 \"broadcast\" : \"84\",\
@@ -705,6 +734,35 @@ int test_setup_network_protocol_valid_msg_inserted(void **state)
 }
 
 int test_setup_network_address_valid_msg_inserted(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup("\
+        { \
+            \"type\":\"dbsync_network_address\",\
+            \"operation\":\"INSERTED\",\
+            \"data\":{\
+                \"iface\" : \"80\",\
+                \"proto\" : 1,\
+                \"address\" : \"82\",\
+                \"netmask\" : \"83\",\
+                \"broadcast\" : \"84\",\
+                \"checksum\" : \"85\",\
+                \"item_id\" : \"86\"\
+            }\
+        }"),
+        lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
+int test_setup_network_address_invalid_msg_inserted(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -1149,28 +1207,6 @@ void test_syscollector_dbsync_valid_msg_invalid_field_list(void **state)
     assert_int_equal(ret, 0);
 }
 
-void test_syscollector_dbsync_hotfixes_valid_msg_with_separator_character(void **state)
-{
-    Eventinfo *lf = *state;
-
-    const char *query = "agent 001 dbsync hotfixes MODIFIED "
-        "{"
-            "\"scan_time\":\"2021/10/29 14:26:24\","
-            "\"hotfix\":\"KB12|3456\","
-            "\"checksum\":\"abcdef|0123456789\""
-        "}";
-    const char *result = "ok ";
-    int sock = 1;
-
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query);
-    expect_any(__wrap_wdbc_query_ex, len);
-    will_return(__wrap_wdbc_query_ex, result);
-    will_return(__wrap_wdbc_query_ex, 0);
-    int ret = DecodeSyscollector(lf, &sock);
-
-    assert_int_not_equal(ret, 0);
-}
 void test_syscollector_dbsync_hotfixes_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
@@ -1377,7 +1413,7 @@ void test_syscollector_dbsync_network_protocol_valid_msg(void **state)
 
     assert_int_not_equal(ret, 0);
 }
-void test_syscollector_dbsync_network_address_valid_msg(void **state)
+void test_syscollector_dbsync_network_address_invalid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
@@ -1385,6 +1421,35 @@ void test_syscollector_dbsync_network_address_valid_msg(void **state)
         "{"
             "\"iface\":\"80\","
             "\"proto\":\"81\","
+            "\"address\":\"82\","
+            "\"netmask\":\"83\","
+            "\"broadcast\":\"84\","
+            "\"checksum\":\"85\","
+            "\"item_id\":\"86\""
+        "}";
+    const char *result = "ok ";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "Field 'proto' cannot be obtained.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Error while mapping 'proto' field value.");
+    
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+void test_syscollector_dbsync_network_address_valid_msg(void **state)
+{
+    Eventinfo *lf = *state;
+
+    const char *query = "agent 001 dbsync network_address MODIFIED "
+        "{"
+            "\"iface\":\"80\","
+            "\"proto\":\"ipv4\","
             "\"address\":\"82\","
             "\"netmask\":\"83\","
             "\"broadcast\":\"84\","
@@ -1677,7 +1742,7 @@ void test_syscollector_dbsync_network_protocol_valid_msg_inserted(void **state)
 
     assert_int_not_equal(ret, 0);
 }
-void test_syscollector_dbsync_network_address_valid_msg_inserted(void **state)
+void test_syscollector_dbsync_network_address_invalid_msg_inserted(void **state)
 {
     Eventinfo *lf = *state;
 
@@ -1685,6 +1750,35 @@ void test_syscollector_dbsync_network_address_valid_msg_inserted(void **state)
         "{"
             "\"iface\":\"80\","
             "\"proto\":\"81\","
+            "\"address\":\"82\","
+            "\"netmask\":\"83\","
+            "\"broadcast\":\"84\","
+            "\"checksum\":\"85\","
+            "\"item_id\":\"86\""
+        "}";
+    const char *result = "ok ";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "Field 'proto' cannot be obtained.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Error while mapping 'proto' field value.");
+
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+void test_syscollector_dbsync_network_address_valid_msg_inserted(void **state)
+{
+    Eventinfo *lf = *state;
+
+    const char *query = "agent 001 dbsync network_address INSERTED "
+        "{"
+            "\"iface\":\"80\","
+            "\"proto\":\"ipv6\","
             "\"address\":\"82\","
             "\"netmask\":\"83\","
             "\"broadcast\":\"84\","
@@ -2100,13 +2194,13 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_unknown_operation, test_setup_valid_msg_unknown_operation, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_invalid_field_list, test_setup_valid_msg_invalid_field_list, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_query_error, test_setup_valid_msg_query_error, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg_with_separator_character, test_setup_hotfixes_valid_msg_with_separator_character, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg, test_setup_hotfixes_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_packages_valid_msg, test_setup_packages_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_processes_valid_msg, test_setup_processes_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_ports_valid_msg, test_setup_ports_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_iface_valid_msg, test_setup_network_iface_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_protocol_valid_msg, test_setup_network_protocol_valid_msg, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_address_invalid_msg, test_setup_network_address_invalid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_address_valid_msg, test_setup_network_address_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hardware_valid_msg, test_setup_hardware_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg, test_setup_os_valid_msg, test_cleanup),
@@ -2117,6 +2211,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_iface_valid_msg_inserted, test_setup_network_iface_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_protocol_valid_msg_inserted, test_setup_network_protocol_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_address_valid_msg_inserted, test_setup_network_address_valid_msg_inserted, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_address_invalid_msg_inserted, test_setup_network_address_invalid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hardware_valid_msg_inserted, test_setup_hardware_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_inserted, test_setup_os_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_with_number_pk, test_setup_os_valid_msg_with_number_pk, test_cleanup),
