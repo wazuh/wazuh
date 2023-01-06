@@ -55,8 +55,7 @@ def test_AWSServerAccess_iter_files_in_bucket(mock_build_filter, mock_debug, sam
             patch('wazuh_integration.WazuhIntegration.__init__'):
 
         instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess, bucket=utils.TEST_BUCKET,
-                                           delete_file=delete_file, reparse=reparse,
-                                           prefix=utils.TEST_PREFIX)
+                                           delete_file=delete_file, reparse=reparse)
 
         mock_build_filter.return_value = {
             'Bucket': instance.bucket,

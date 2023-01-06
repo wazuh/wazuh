@@ -419,8 +419,9 @@ def test_AWSBucket_find_regions_ko(mock_prefix, error_code, exit_code):
 @pytest.mark.parametrize('only_logs_after', [utils.TEST_ONLY_LOGS_AFTER, None])
 @pytest.mark.parametrize('iterating', [True, False])
 @pytest.mark.parametrize('custom_delimiter', ['', '-'])
+@pytest.mark.parametrize('region', [utils.TEST_REGION, 'region_for_empty_db'])
 @patch('aws_bucket.AWSBucket.get_full_prefix', return_value=utils.TEST_FULL_PREFIX)
-def test_AWSBucket_build_s3_filter_args(mock_get_full_prefix, custom_database, custom_delimiter, iterating,
+def test_AWSBucket_build_s3_filter_args(mock_get_full_prefix, custom_database, region, custom_delimiter, iterating,
                                         only_logs_after, reparse):
     utils.database_execute_script(custom_database, TEST_CLOUDTRAIL_SCHEMA)
 
@@ -435,19 +436,26 @@ def test_AWSBucket_build_s3_filter_args(mock_get_full_prefix, custom_database, c
         'Prefix': mock_get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
     }
 
+    aws_account_id = utils.TEST_ACCOUNT_ID
+    aws_region = region
+
     if bucket.reparse:
         if only_logs_after:
-            filter_marker = bucket.marker_only_logs_after(utils.TEST_REGION, utils.TEST_ACCOUNT_ID)
+            filter_marker = bucket.marker_only_logs_after(aws_region, aws_account_id)
         else:
-            filter_marker = bucket.marker_custom_date(utils.TEST_REGION, utils.TEST_ACCOUNT_ID, bucket.default_date)
+            filter_marker = bucket.marker_custom_date(aws_region, aws_account_id, bucket.default_date)
     else:
         filter_marker = utils.database_execute_query(bucket.db_connector, SQL_FIND_LAST_KEY_PROCESSED.format(
             table_name=bucket.db_table_name))
 
+    if aws_region == 'region_for_empty_db':
+        filter_marker = bucket.marker_only_logs_after(aws_region, aws_account_id) if bucket.only_logs_after \
+                    else bucket.marker_custom_date(aws_region, aws_account_id, bucket.default_date)
+
     if not iterating:
         expected_filter_args['StartAfter'] = filter_marker
         if only_logs_after:
-            only_logs_marker = bucket.marker_only_logs_after(utils.TEST_REGION, utils.TEST_ACCOUNT_ID)
+            only_logs_marker = bucket.marker_only_logs_after(aws_region, aws_account_id)
             expected_filter_args['StartAfter'] = only_logs_marker if only_logs_marker > filter_marker else filter_marker
 
         if custom_delimiter:
@@ -456,7 +464,7 @@ def test_AWSBucket_build_s3_filter_args(mock_get_full_prefix, custom_database, c
                                                  expected_filter_args['StartAfter'][prefix_len:].replace('/',
                                                                                                          custom_delimiter)
 
-    assert expected_filter_args == bucket.build_s3_filter_args(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, iterating,
+    assert expected_filter_args == bucket.build_s3_filter_args(aws_account_id, aws_region, iterating,
                                                                custom_delimiter)
 
 
@@ -679,20 +687,23 @@ def test_AWSBucket_send_event(mock_reformat, mock_send):
 @patch('aws_bucket.aws_tools.debug')
 def test_AWSBucket_iter_events(mock_debug, mock_send_event, mock_get_alert, discard_regex, discard_field):
     bucket = utils.get_mocked_AWSBucket(discard_field=discard_field, discard_regex=discard_regex)
-    event_list = [{'eventVersion': 'version', 'userIdentity': {'type': 'someType'}, 'eventTime': 'someTime', 'eventName': 'name', 'source': 'cloudtrail'}]
+    event_list = [
+        {'eventVersion': 'version', 'userIdentity': {'type': 'someType'}, 'eventTime': 'someTime', 'eventName': 'name',
+         'source': 'cloudtrail'}]
 
     bucket.iter_events(event_list, utils.TEST_LOG_KEY, utils.TEST_ACCOUNT_ID)
     for event in event_list:
         if bucket.discard_field and discard_regex:
             mock_debug.assert_any_call(
-                        f'+++ The "{bucket.discard_regex.pattern}" regex found a match in the "{bucket.discard_field}" '
-                        f'field. The event will be skipped.', 2)
+                f'+++ The "{bucket.discard_regex.pattern}" regex found a match in the "{bucket.discard_field}" '
+                f'field. The event will be skipped.', 2)
             continue
         mock_get_alert.assert_called_with(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, event)
         mock_send_event.assert_called()
 
 
-@pytest.mark.parametrize('object_list', [utils.LIST_OBJECT_V2, utils.LIST_OBJECT_V2_NO_PREFIXES, utils.LIST_OBJECT_V2_TRUNCATED])
+@pytest.mark.parametrize('object_list',
+                         [utils.LIST_OBJECT_V2, utils.LIST_OBJECT_V2_NO_PREFIXES, utils.LIST_OBJECT_V2_TRUNCATED])
 @pytest.mark.parametrize('reparse', [True, False])
 @pytest.mark.parametrize('check_prefix', [True, False])
 @pytest.mark.parametrize('delete_file', [True, False])
@@ -965,9 +976,11 @@ def test_AWSCustomBucket__init__(mock_bucket, mock_integration, mock_sts, access
     assert instance.macie_location_pattern == re.compile(r'"lat":(-?0+\d+\.\d+),"lon":(-?0+\d+\.\d+)')
     assert instance.check_prefix
 
+
 # TODO: Add test case for json_event_generator exception. Check if DictReader patch can be enhanced
 @pytest.mark.parametrize('data, result', [
-    ('{"source": "aws.custombucket", "detail": {"schemaVersion": "2.0"}}', [{"source": "custombucket", "schemaVersion": "2.0"}]),
+    ('{"source": "aws.custombucket", "detail": {"schemaVersion": "2.0"}}',
+     [{"source": "custombucket", "schemaVersion": "2.0"}]),
     ('version account_id\nversion account_id', [{"source": "vpc", "version": "version", "account_id": "account_id"}])
 ])
 @patch('csv.DictReader', return_value=[{"version": "version", "account_id": "account_id"}])
