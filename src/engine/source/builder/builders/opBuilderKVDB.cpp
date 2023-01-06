@@ -24,7 +24,7 @@ base::Expression KVDBGet(const std::any& definition, bool merge, std::shared_ptr
     // Extract parameters from any
     auto [targetField, name, raw_parameters] = extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {processParameters(name, raw_parameters)};
+    const auto parameters {processParameters(name, raw_parameters)};
     // Assert expected number of parameters
     checkParametersSize(name, parameters, 2);
     // checkParameterType(name, parameters[0], Parameter::Type::VALUE);
@@ -56,7 +56,7 @@ base::Expression KVDBGet(const std::any& definition, bool merge, std::shared_ptr
             std::string resolvedDBName;
             if (Parameter::Type::REFERENCE == dbName.m_type)
             {
-                auto retval = event->getString(dbName.m_value);
+                const auto retval = event->getString(dbName.m_value);
                 if (retval)
                 {
                     resolvedDBName = retval.value();
@@ -75,7 +75,7 @@ base::Expression KVDBGet(const std::any& definition, bool merge, std::shared_ptr
             std::string resolvedKey;
             if (Parameter::Type::REFERENCE == key.m_type)
             {
-                auto value = event->getString(key.m_value);
+                const auto value = event->getString(key.m_value);
                 if (value)
                 {
                     resolvedKey = value.value();
@@ -154,12 +154,11 @@ Builder getOpBuilderKVDBGetMerge(std::shared_ptr<kvdb_manager::KVDBManager> kvdb
 }
 
 // TODO: documentation and tests of this method are missing
-base::Expression existanceCheck(const std::any& definition,
-                                bool checkExist,
-                                std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+base::Expression
+existanceCheck(const std::any& definition, bool checkExist, std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
     auto [targetField, name, arguments] = extractDefinition(definition);
-    auto parameters = processParameters(name, arguments);
+    const auto parameters = processParameters(name, arguments);
     checkParametersSize(name, parameters, 1);
     checkParameterType(name, parameters[0], Parameter::Type::VALUE);
     name = formatHelperName(targetField, name, parameters);
@@ -168,7 +167,7 @@ base::Expression existanceCheck(const std::any& definition,
 
     // Get DB
     // TODO: Fix once KVDB is refactored
-    auto result = kvdbManager->getHandler(dbName);
+    const auto result = kvdbManager->getHandler(dbName);
     if (std::holds_alternative<base::Error>(result))
     {
         throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(result).message));
@@ -187,7 +186,7 @@ base::Expression existanceCheck(const std::any& definition,
             try // TODO We are only using try for JSON::get. Is correct to
                 // wrap everything?
             {
-                auto value = event->getString(targetField);
+                const auto value = event->getString(targetField);
                 if (value.has_value())
                 {
                     if (kvdb->hasKey(value.value()))
@@ -239,7 +238,7 @@ Builder getOpBuilderKVDBNotMatch(std::shared_ptr<kvdb_manager::KVDBManager> kvdb
 base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
     auto [targetField, name, arguments] = extractDefinition(definition);
-    auto parameters = processParameters(name, arguments);
+    const auto parameters = processParameters(name, arguments);
     checkParametersSize(name, parameters, 3);
     name = formatHelperName(targetField, name, parameters);
 
@@ -256,7 +255,6 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
     const std::string failureTrace4 {fmt::format("[{}] -> ", name) + "Failure: Database '{}' could not be loaded: {}"};
     const std::string failureTrace5 {fmt::format("[{}] -> ", name)
                                      + "Failure: Key '{}' and value '{}' could not be written to database '{}': {}"};
-    const std::string failureTrace6 {fmt::format("[{}] -> ", name) + "Failure: Database '{}' could not be closed"};
 
     // Return Expression
     return base::Term<base::EngineOp>::create(
@@ -269,7 +267,7 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
             std::string resolvedDBName;
             if (Parameter::Type::REFERENCE == dbName.m_type)
             {
-                auto retval = event->getString(dbName.m_value);
+                const auto retval = event->getString(dbName.m_value);
                 if (retval)
                 {
                     resolvedDBName = retval.value();
@@ -288,7 +286,7 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
             std::string resolvedKey;
             if (Parameter::Type::REFERENCE == key.m_type)
             {
-                auto retval = event->getString(key.m_value);
+                const auto retval = event->getString(key.m_value);
                 if (retval)
                 {
                     resolvedKey = retval.value();
@@ -303,14 +301,22 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
                 resolvedKey = key.m_value;
             }
 
-            // Get value // TODO: FIX THIS
+            // Get value
             std::string resolvedValue;
             if (Parameter::Type::REFERENCE == value.m_type)
             {
-                auto retval = event->getString(value.m_value);
-                if (retval)
+                const auto refExists = event->exists(value.m_value);
+                if (refExists)
                 {
-                    resolvedValue = retval.value();
+                    const auto retvalObject = event->getJson(value.m_value);
+                    if (retvalObject)
+                    {
+                        resolvedValue = retvalObject.value().str();
+                    }
+                    else
+                    {
+                        return base::result::makeFailure(event, failureTrace3);
+                    }
                 }
                 else
                 {
@@ -323,16 +329,15 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
             }
 
             {
-                auto varKVDBHandle = kvdbManager->getHandler(resolvedDBName, true);
-                if (std::holds_alternative<base::Error>(varKVDBHandle))
+                const auto kvdbHandle = kvdbManager->getHandler(resolvedDBName, true);
+                if (std::holds_alternative<base::Error>(kvdbHandle))
                 {
                     return base::result::makeFailure(
-                        event,
-                        fmt::format(failureTrace4, resolvedDBName, std::get<base::Error>(varKVDBHandle).message));
+                        event, fmt::format(failureTrace4, resolvedDBName, std::get<base::Error>(kvdbHandle).message));
                 }
             }
 
-            auto err = kvdbManager->writeKey(resolvedDBName, resolvedKey, resolvedValue);
+            const auto err = kvdbManager->writeKey(resolvedDBName, resolvedKey, resolvedValue);
             if (err)
             {
                 return base::result::makeFailure(
