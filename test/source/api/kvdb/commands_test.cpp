@@ -454,9 +454,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdDBDoesntExist)
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("Database '{}' not found or could not be loaded.",
-                             DB_NAME_NOT_AVAILABLE)
-                     .c_str());
+                 fmt::format("Database '{}' not found or could not be loaded", DB_NAME_NOT_AVAILABLE).c_str());
 
     // check remaining available DBs
     ASSERT_EQ(kvdbAPIDeleteCommand::getNumberOfKVDBLoaded(), 1);
@@ -1221,7 +1219,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionWrongDBName)
     ASSERT_TRUE(response.message().has_value());
     ASSERT_STREQ(response.message().value().c_str(),
                  fmt::format("Key-value could not be written to the database: Database "
-                             "'{}' not found or could not be loaded.",
+                             "'{}' not found or could not be loaded",
                              DB_NAME_ANOTHER)
                      .c_str());
 }
@@ -1564,10 +1562,8 @@ TEST_F(kvdbAPIRemoveCommand, RemoveNonExistingDB)
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(
-        response.message().value().c_str(),
-        fmt::format("Database '{}' not found or could not be loaded.", DB_NAME_ANOTHER)
-            .c_str());
+    ASSERT_STREQ(response.message().value().c_str(),
+                 fmt::format("Database '{}' not found or could not be loaded", DB_NAME_ANOTHER).c_str());
 }
 
 TEST_F(kvdbAPIRemoveCommand, RemoveReturnsOkWithNonExistingKeyName)

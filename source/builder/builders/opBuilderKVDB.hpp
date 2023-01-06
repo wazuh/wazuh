@@ -13,10 +13,9 @@ namespace builder::internals::builders
 {
 
 /**
- * @brief Common builder for KVDB extract operations
+ * @brief Common builder for KVDB get operations
  *
- * This builder is not intended to be used directly, i.e. it is not registered.
- * Exposed for testing purposes.
+ * This builder is not intended to be used directly, i.e. it is not registered. It is exposed for testing purposes.
  *
  * @param definition
  * @param merge
@@ -28,14 +27,22 @@ KVDBGet(const std::any& definition, bool merge, std::shared_ptr<kvdb_manager::KV
 /**
  * @brief Builder for KVDB set operation
  *
- * This builder is not intended to be used directly, i.e. it is not registered.
- * Exposed for testing purposes.
+ * This builder is not intended to be used directly, i.e. it is not registered. It is exposed for testing purposes.
  *
  * @param definition
  * @return base::Expression
  */
-base::Expression KVDBSet(const std::any& definition,
-                         std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+
+/**
+ * @brief Builder for KVDB delete operation
+ *
+ * This builder is not intended to be used directly, i.e. it is not registered. It is exposed for testing purposes.
+ *
+ * @param definition
+ * @return base::Expression
+ */
+base::Expression KVDBDelete(const std::any& definition, std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 /**
  * @brief Builds KVDB extract function helper
@@ -76,6 +83,15 @@ Builder getOpBuilderKVDBNotMatch(std::shared_ptr<kvdb_manager::KVDBManager> kvdb
  * @return Builder
  */
 Builder getOpBuilderKVDBSet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+
+/**
+ * @brief Delete a KVDB function helper builder
+ *
+ * @param kvdbManager KVDB manager
+ * @return Builder
+ */
+Builder getOpBuilderKVDBDelete(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+
 
 } // namespace builder::internals::builders
 
