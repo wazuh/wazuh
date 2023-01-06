@@ -59,7 +59,11 @@ TEST_F(opBuilderKVDBSetTest, buildKVDBSetWithReferences)
 
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWrongAmountOfParametersError)
 {
-    auto tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_REF_NAME});
+    auto tuple = std::make_tuple<string, string, vector<string>>("/output", "", {});
+
+    ASSERT_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
+
+    tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_REF_NAME});
 
     ASSERT_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
 
