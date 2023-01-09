@@ -892,12 +892,18 @@ void init_fim_data_entry(fim_file_data *data) {
 void fim_get_checksum (fim_file_data * data) {
     int size;
     char *checksum = NULL;
-
+    char *perm_string = NULL;
+    if (data->perm) {
+        os_strdup(data->perm, perm_string);
+#ifdef WIN32
+        str_lowercase(perm_string);
+#endif
+    }
     size = snprintf(0,
             0,
             "%d:%s:%s:%s:%s:%s:%s:%u:%lu:%s:%s:%s",
             data->size,
-            data->perm ? data->perm : "",
+            perm_string ? perm_string : "",
             data->attributes ? data->attributes : "",
             data->uid ? data->uid : "",
             data->gid ? data->gid : "",
@@ -914,7 +920,7 @@ void fim_get_checksum (fim_file_data * data) {
             size + 1,
             "%d:%s:%s:%s:%s:%s:%s:%u:%lu:%s:%s:%s",
             data->size,
-            data->perm ? data->perm : "",
+            perm_string ? perm_string : "",
             data->attributes ? data->attributes : "",
             data->uid ? data->uid : "",
             data->gid ? data->gid : "",
@@ -927,6 +933,8 @@ void fim_get_checksum (fim_file_data * data) {
             data->hash_sha256);
 
     OS_SHA1_Str(checksum, -1, data->checksum);
+
+    os_free(perm_string);
     free(checksum);
 }
 
