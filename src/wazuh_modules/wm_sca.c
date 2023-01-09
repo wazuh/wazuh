@@ -1030,6 +1030,16 @@ static int wm_sca_do_scan(cJSON * checks,
         mdebug2("Initial rule-aggregator value por this type of rule is '%d'",  g_found);
         mdebug1("Beginning rules evaluation.");
 
+        const cJSON *const rules = cJSON_GetObjectItem(check, "rules");
+        if (!rules) {
+            merror("Skipping check %s '%s': No rules found.", _check_id_str, c_title->valuestring);
+            if (requirements_scan) {
+                ret_val = 1;
+                goto clean_return;
+            }
+            continue;
+        }
+
         w_expression_t * regex_engine = NULL;
         cJSON * engine = cJSON_GetObjectItem(check, "regex_type");
         if (engine) {
@@ -1047,16 +1057,6 @@ static int wm_sca_do_scan(cJSON * checks,
         }
         mdebug1("SCA will use '%s' engine to check the rules.", w_expression_get_regex_type(regex_engine));
 
-        const cJSON *const rules = cJSON_GetObjectItem(check, "rules");
-        if (!rules) {
-            merror("Skipping check %s '%s': No rules found.", _check_id_str, c_title->valuestring);
-            if (requirements_scan) {
-                ret_val = 1;
-                goto clean_return;
-            }
-            continue;
-        }
-
         char *rule_cp = NULL;
         const cJSON *rule_ref;
         cJSON_ArrayForEach(rule_ref, rules) {
@@ -1067,6 +1067,7 @@ static int wm_sca_do_scan(cJSON * checks,
             if(!rule_ref->valuestring) {
                 mdebug1("Field 'rule' must be a string.");
                 ret_val = 1;
+                w_free_expression_t(&regex_engine);
                 goto clean_return;
             }
 
@@ -1102,6 +1103,7 @@ static int wm_sca_do_scan(cJSON * checks,
                 merror("Invalid rule: '%s'. Skipping policy.", rule_ref->valuestring);
                 os_free(rule_cp);
                 ret_val = 1;
+                w_free_expression_t(&regex_engine);
                 goto clean_return;
             }
 
@@ -1318,6 +1320,7 @@ static int wm_sca_do_scan(cJSON * checks,
                 free(data->alert_msg[i]);
                 data->alert_msg[i] = NULL;
             }
+            w_free_expression_t(&regex_engine);
             goto clean_return;
         }
 
