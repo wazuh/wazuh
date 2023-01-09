@@ -7,34 +7,52 @@ metadata:
   description: Decoder for Windows Powershell events
 
 check:
-  - ~event_channel.Event.System.Provider.@Name: Windows PowerShell
+  - ~event_channel.Event.System.Channel.#text: +s_eq/Windows PowerShell
 
 normalize:
  - map:
-  - event.module: powershell
-  - event.kind: event
-  - event.category: process
-  - event.type: info
+   - event.module: powershell
+   - event.kind: event
+   - event.category: process
+   - event.type: info
 
   ## Process fields.
-  - process.entity_id: $~event_channel.Event.EventData.HostId
-  - process.command_line: $~event_channel.Event.EventData.HostApplication
-  - process.title: $~event_channel.Event.EventData.HostName
+   - process.entity_id: $~event_channel.Event.EventData.HostId
+   - process.command_line: $~event_channel.Event.EventData.HostApplication
+   - process.title: $~event_channel.Event.EventData.HostName
 
   ## User fields.
-  - ~temp.user_parts: +s_to_array/$~event_channel.Event.EventData.UserId/\
-  - user.domain: $~temp.user_parts.0
-  - user.name: $~temp.user_parts.1
-  - related.user: +a_append/user.name
+   - ~temp.user_parts: +s_to_array/$~event_channel.Event.EventData.UserId/\
+   - user.domain: $~temp.user_parts.0
+   - user.name: $~temp.user_parts.1
+   - related.user: +a_append/user.name
 
   ## PowerShell fields.
-  - powershell.engine.new_state: $~event_channel.Event.EventData.NewEngineState
-  - powershell.engine.previous_state: $~event_channel.Event.EventData.PreviousEngineState
+   - powershell.engine.new_state: $~event_channel.Event.EventData.NewEngineState
+   - powershell.engine.previous_state: $~event_channel.Event.EventData.PreviousEngineState
+   - powershell.provider.new_state: $~event_channel.Event.EventData.NewProviderState
+   - powershell.provider.name: $~event_channel.Event.EventData.ProviderName
+   - powershell.total: $~event_channel.Event.EventData.DetailTotal
+   - powershell.sequence: $~event_channel.Event.EventData.DetailSequence
+   - powershell.engine.version: $~event_channel.Event.EventData.EngineVersion
+   - powershell.pipeline_id: $~event_channel.Event.EventData.PipelineId
+   - powershell.runspace_id: $~event_channel.Event.EventData.RunspaceId
+   - powershell.process.executable_version: $~event_channel.Event.EventData.HostVersion
+   - powershell.command.value: $~event_channel.Event.EventData.CommandLine
+   - powershell.command.path: $~event_channel.Event.EventData.CommandPath
+   - powershell.command.name: $~event_channel.Event.EventData.CommandName
+   - powershell.command.type: $~event_channel.Event.EventData.CommandType
+  
+  # Add file information.
+   - file.path: $~event_channel.Event.EventData.ScriptName
+   - file.name: +r_ext/$file.path/^.*\\(.*[\\.].*)$
+   - file.directory: +r_ext/$file.path/^(.*\\).*[\\.].*$
+   - file.extension: +r_ext/$file.path/^.*\\.*[\\.](.*)$
 
-  - check: event.code==400
+ - check: event.code==400
    map:
     - event.type: start
 
-- check: event.code==403
+ - check: event.code==403
    map:
     - event.type: end
