@@ -371,6 +371,7 @@ settings:
 	@echo
 	@echo "General settings:"
 	@echo "    TARGET:           ${TARGET}"
+	@echo "    BUILD_REMOTED:    ${BUILD_REMOTED}"
 	@echo "    V:                ${V}"
 	@echo "    DEBUG:            ${DEBUG}"
 	@echo "    DEBUGAD           ${DEBUGAD}"
@@ -413,7 +414,7 @@ BUILD_SERVER+=ossec-csyslogd
 BUILD_SERVER+=ossec-agentlessd
 BUILD_SERVER+=ossec-execd
 BUILD_SERVER+=ossec-logcollector
-ifeq (,$(filter ${BUILD_REMOTED},auto yes y Y 1))
+ifeq (${BUILD_REMOTED},$(filter ${BUILD_REMOTED},auto yes y Y 1))
 	BUILD_SERVER+=ossec-remoted
 	BUILD_SERVER+=ossec-authd
 endif

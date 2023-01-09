@@ -454,11 +454,11 @@ WriteManager()
         # Writting auth configuration
         sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
-
-        # Writting cluster configuration
-        cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
     fi
+
+    # Writting cluster configuration
+    cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
     echo "</ossec_config>" >> $NEWCONFIG
 }
@@ -696,31 +696,36 @@ InstallServer(){
     InstallLocal
 
     ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/cluster.log
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared
 
-    TransferShared
+    if [ "X$BUILDREMOTED" = "Xyes" ]; then
+        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
+        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared
 
-    ${INSTALL} -m 0750 -o root -g 0 ossec-remoted ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-authd ${PREFIX}/bin
+        TransferShared
 
-    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-groups
 
-    if [ ! -f ${PREFIX}/queue/agents-timestamp ]; then
-        ${INSTALL} -m 0600 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/queue/agents-timestamp
+        ${INSTALL} -m 0750 -o root -g 0 ossec-remoted ${PREFIX}/bin
+        ${INSTALL} -m 0750 -o root -g 0 ossec-authd ${PREFIX}/bin
+
+
+        ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
+        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-groups
+
+        if [ ! -f ${PREFIX}/queue/agents-timestamp ]; then
+            ${INSTALL} -m 0600 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/queue/agents-timestamp
+        fi
+
+        ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
+        ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
+
+        ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/default
+
+        if [ ! -f ${PREFIX}/etc/shared/default/agent.conf ]; then
+            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
+        fi
+
+        GenerateAuthCert
     fi
-
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
-
-    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/default
-
-    if [ ! -f ${PREFIX}/etc/shared/default/agent.conf ]; then
-        ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
-    fi
-
-    GenerateAuthCert
 }
 
 InstallAgent(){

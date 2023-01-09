@@ -255,6 +255,7 @@ BuildRemotedAuthd()
     echo ""
     case $AS in
         $nomatch)
+            BUILDREMOTED="no"
             echo "   - ${nobuildremoted}."
             ;;
         *)
