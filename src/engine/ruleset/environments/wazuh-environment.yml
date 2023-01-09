@@ -59,13 +59,14 @@ decoders:
   - decoder/syscollector-program/0
   - decoder/syscollector-program-del/0
   - decoder/syscollector-program-save/0
+  - decoder/auditd/0
 
   # Service decoders
   - decoder/syslog/0
 
   # Postgresql decoders
-  - decoder/postgresql-csv/0
-  - decoder/postgresql-csv-msg-parse/0
+  #- decoder/postgresql-csv/0
+  #- decoder/postgresql-csv-msg-parse/0
 
 outputs:
   - output/file-output/0
