@@ -26,6 +26,8 @@ USE_GEOIP?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 
+BUILD_REMOTED=yes
+
 ONEWAY?=no
 CLEANFULL?=no
 
@@ -319,10 +321,6 @@ ifeq (${TARGET},agent)
 	DEFINES+=-DCLIENT
 endif
 
-ifeq (${TARGET},local)
-	DEFINES+=-DLOCAL
-endif
-
 
 .PHONY: build
 build: ${TARGET}
@@ -340,7 +338,6 @@ endif
 failtarget:
 	@echo "TARGET is required: "
 	@echo "   make TARGET=server   to build the server"
-	@echo "   make TARGET=local      - local version of server"
 	@echo "   make TARGET=hybrid     - hybrid version of server"
 	@echo "   make TARGET=agent    to build the unix agent"
 	@echo "   make TARGET=winagent to build the windows agent"
@@ -416,14 +413,16 @@ BUILD_SERVER+=ossec-csyslogd
 BUILD_SERVER+=ossec-agentlessd
 BUILD_SERVER+=ossec-execd
 BUILD_SERVER+=ossec-logcollector
-BUILD_SERVER+=ossec-remoted
+ifeq (,$(filter ${BUILD_REMOTED},auto yes y Y 1))
+	BUILD_SERVER+=ossec-remoted
+	BUILD_SERVER+=ossec-authd
+endif
 BUILD_SERVER+=ossec-agentd
 BUILD_SERVER+=manage_agents
 BUILD_SERVER+=utils
 BUILD_SERVER+=ossec-syscheckd
 BUILD_SERVER+=ossec-monitord
 BUILD_SERVER+=ossec-reportd
-BUILD_SERVER+=ossec-authd
 BUILD_SERVER+=ossec-analysisd
 BUILD_SERVER+=ossec-logtest
 BUILD_SERVER+=ossec-makelists
@@ -440,16 +439,11 @@ BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=wazuh-modulesd
 
-.PHONY: server local hybrid agent
+.PHONY: server hybrid agent
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
 server: | external ${BUILD_SERVER}
-
-ifeq (${MAKECMDGOALS},local)
-$(error Do not use 'local' directly, use 'TARGET=local')
-endif
-local: | external ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},hybrid)
 $(error Do not use 'hybrid' directly, use 'TARGET=hybrid')

@@ -4,7 +4,6 @@ no="n"
 yesmatch="y"
 nomatch="n"
 agent="agent"
-local="local"
 server="server"
 help="help"
 
@@ -21,10 +20,14 @@ system="System"
 user="User"
 host="Host"
 hitanyorabort="Press ENTER to continue or Ctrl-C to abort."
-whattoinstall="What kind of installation do you want (manager, agent, local, hybrid or help)?"
+whattoinstall="What kind of installation do you want (manager, agent, hybrid or help)?"
 serverchose="Manager (server) installation chosen"
 clientchose="Agent (client) installation chosen"
-localchose="Local installation chosen"
+
+# Part 1.2 Remoted and Authd compilation
+buildremoted="Do you want to install remote incoming connections?"
+nobuildremoted="Remote incoming connections will not be compiled"
+yesbuildremoted="Remote incoming connections will be compiled and installed"
 
 # Part 2
 settingupenv="Setting up the installation environment"

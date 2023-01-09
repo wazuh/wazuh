@@ -102,7 +102,7 @@ Install()
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} build
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} BUILD_REMOTED=${BUILDREMOTED} build
         if [ $? != 0 ]; then
             cd ../
             catError "0x5-build"
@@ -235,6 +235,31 @@ UseOpenSCAP()
         *)
             OPENSCAP="yes"
             echo "   - ${yesrunopenscap}."
+            ;;
+    esac
+}
+
+##########
+# BuildRemotedAuthd()
+##########
+BuildRemotedAuthd()
+{
+    # Compilation of remoted and authd
+    echo ""
+    $ECHO "  1.2- ${buildremoted} ($yes/$no) [$yes]: "
+    if [ "X${USER_BUILD_REMOTED}" = "X" ]; then
+        read AS
+    else
+        AS=${USER_BUILD_REMOTED}
+    fi
+    echo ""
+    case $AS in
+        $nomatch)
+            echo "   - ${nobuildremoted}."
+            ;;
+        *)
+            BUILDREMOTED="yes"
+            echo "   - ${yesbuildremoted}."
             ;;
     esac
 }
@@ -400,7 +425,6 @@ ConfigureServer()
     echo ""
     echo "3- ${configuring} $NAME."
 
-
     # Configuring e-mail notification
     echo ""
     $ECHO "  3.1- ${mailnotify} ($yes/$no) [$no]: "
@@ -507,41 +531,43 @@ ConfigureServer()
     AddWhite
 
     if [ "X$INSTYPE" = "Xserver" ]; then
-      # Configuring remote syslog
-      echo ""
-      $ECHO "  3.6- ${syslog} ($yes/$no) [$yes]: "
 
-      if [ "X${USER_ENABLE_SYSLOG}" = "X" ]; then
-        read ANSWER
-      else
-        ANSWER=${USER_ENABLE_SYSLOG}
-      fi
+        if [ "X$BUILDREMOTED" = "Xyes" ]; then
 
-      echo ""
-      case $ANSWER in
-        $nomatch)
-            echo "   --- ${nosyslog}."
-            ;;
-        *)
-            echo "   - ${yessyslog}."
-            RLOG="yes"
-            ;;
-      esac
+            # Configuring remote syslog
+            echo ""
+            $ECHO "  3.6- ${syslog} ($yes/$no) [$yes]: "
 
-      # Configuring remote connections
-      SLOG="yes"
-    fi
+            if [ "X${USER_ENABLE_SYSLOG}" = "X" ]; then
+                read ANSWER
+            else
+                ANSWER=${USER_ENABLE_SYSLOG}
+            fi
 
-    # Setting up the auth daemon & logs
-    if [ "X$INSTYPE" = "Xserver" ]; then
-        EnableAuthd "3.7"
-        ConfigureBoot "3.8"
-        SetupLogs "3.9"
-        WriteManager
-    else
-        ConfigureBoot "3.6"
-        SetupLogs "3.7"
-        WriteLocal
+            echo ""
+            case $ANSWER in
+                $nomatch)
+                    echo "   --- ${nosyslog}."
+                    ;;
+                *)
+                    echo "   - ${yessyslog}."
+                    RLOG="yes"
+                    ;;
+            esac
+
+            # Configuring remote connections
+            SLOG="yes"
+
+            # Setting up the auth daemon & logs
+            EnableAuthd "3.7"
+            ConfigureBoot "3.8"
+            SetupLogs "3.9"
+            WriteManager
+        else
+            ConfigureBoot "3.6"
+            SetupLogs "3.7"
+            WriteLocal
+        fi
     fi
 }
 
@@ -581,8 +607,6 @@ setEnv()
 
     if [ "X$INSTYPE" = "Xagent" ]; then
         CEXTRA="$CEXTRA -DCLIENT"
-    elif [ "X$INSTYPE" = "Xlocal" ]; then
-        CEXTRA="$CEXTRA -DLOCAL"
     fi
 
     if [ -d "$INSTALLDIR" ]; then
@@ -909,7 +933,6 @@ main()
     HYBID=""
     hybridm=`echo ${hybrid} | cut -b 1`
     serverm=`echo ${server} | cut -b 1`
-    localm=`echo ${local} | cut -b 1`
     agentm=`echo ${agent} | cut -b 1`
     helpm=`echo ${help} | cut -b 1`
 
@@ -950,12 +973,6 @@ main()
                     HYBID="go"
                     break;
                 ;;
-                ${local}|${localm})
-                    echo ""
-                    echo "  - ${localchose}."
-                    INSTYPE="local"
-                    break;
-                ;;
             esac
         done
 
@@ -963,6 +980,9 @@ main()
         INSTYPE=${USER_INSTALL_TYPE}
     fi
 
+    # Selecting components to build and install
+    # Checking to install Remoted and Authd
+    BuildRemotedAuthd
 
     # Setting up the environment
     setEnv
@@ -974,8 +994,6 @@ main()
             ConfigureServer
         elif [ "X$INSTYPE" = "Xagent" ]; then
             ConfigureClient
-        elif [ "X$INSTYPE" = "Xlocal" ]; then
-            ConfigureServer
         else
             catError "0x4-installtype"
         fi

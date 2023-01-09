@@ -371,16 +371,22 @@ WriteManager()
     cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    # Remote connection secure
-    if [ "X$RLOG" = "Xyes" ]; then
-      cat ${REMOTE_SYS_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
+    if [ "$BUILDREMOTED" = "yes"   ]; then
+        # Remote connection secure
+        if [ "X$RLOG" = "Xyes" ]; then
+          cat ${REMOTE_SYS_TEMPLATE} >> $NEWCONFIG
+          echo "" >> $NEWCONFIG
+        fi
 
-    # Remote connection syslog
-    if [ "X$SLOG" = "Xyes" ]; then
-      cat ${REMOTE_SEC_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
+        # Remote connection syslog
+        if [ "X$SLOG" = "Xyes" ]; then
+          cat ${REMOTE_SEC_TEMPLATE} >> $NEWCONFIG
+          echo "" >> $NEWCONFIG
+        fi
+
+        # CIS-CAT configuration
+        cat ${CISCAT_TEMPLATE} >> $NEWCONFIG
+        echo "" >> $NEWCONFIG
     fi
 
     # Write rootcheck
@@ -388,10 +394,6 @@ WriteManager()
 
     # Write OpenSCAP
     WriteOpenSCAP "manager"
-
-    # CIS-CAT configuration
-    cat ${CISCAT_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
 
     # Write syscheck
     WriteSyscheck "manager"
@@ -448,13 +450,15 @@ WriteManager()
     cat ${RULES_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    # Writting auth configuration
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    if [ "$BUILDREMOTED" = "yes"   ]; then
+        # Writting auth configuration
+        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
+        echo "" >> $NEWCONFIG
 
-    # Writting cluster configuration
-    cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+        # Writting cluster configuration
+        cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
+        echo "" >> $NEWCONFIG
+    fi
 
     echo "</ossec_config>" >> $NEWCONFIG
 }
@@ -833,7 +837,5 @@ InstallWazuh(){
         InstallAgent
     elif [ "X$INSTYPE" = "Xserver" ]; then
         InstallServer
-    elif [ "X$INSTYPE" = "Xlocal" ]; then
-        InstallLocal
     fi
 }
