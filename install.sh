@@ -566,7 +566,7 @@ ConfigureServer()
         else
             ConfigureBoot "3.6"
             SetupLogs "3.7"
-            WriteLocal
+            WriteManager
         fi
     fi
 }
