@@ -222,6 +222,8 @@ class SolarisWrapper final : public IPackageWrapper
                 while (file.good())
                 {
                     std::getline(file, line);
+                    // Convert 'line' to UTF-8
+                    Utils::ISO8859ToUTF8(line);
                     const auto fields { Utils::split(line, '=') };
 
                     if (fields.size() > 1)
