@@ -96,8 +96,8 @@ typedef struct dbsync_context_t {
  *  data fields and their corresponding table
  */
 struct deltas_fields_match {
-    char key[OS_SIZE_32];
-    char value[OS_SIZE_32];
+    char *key;
+    char *value;
 };
 
 /**
@@ -106,6 +106,31 @@ struct deltas_fields_match {
 struct deltas_fields_match_list {
     struct deltas_fields_match current;
     const struct deltas_fields_match_list *next;
+};
+
+
+/**
+ * @brief Generic function to handle value mapping
+ * 
+ */
+typedef bool (*mapping_t)(cJSON*,const char*);
+
+/**
+ * @brief Struct to map a field name their custom value mapper function
+ * 
+ */
+struct delta_values_mapping {
+    char *key;
+    mapping_t mapping;
+};
+
+/**
+ * @brief Linked list of deltas values mappers
+ * 
+ */
+struct delta_values_mapping_list {
+    struct delta_values_mapping current;
+    const struct delta_values_mapping_list *next;
 };
 
 /**

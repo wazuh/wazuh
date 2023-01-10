@@ -442,7 +442,7 @@ typedef struct agent_info_data {
 } agent_info_data;
 
 typedef enum {
-    FIELD_INTEGER,
+    FIELD_INTEGER = 0,
     FIELD_TEXT,
     FIELD_REAL,
     FIELD_INTEGER_LONG
@@ -451,9 +451,17 @@ typedef enum {
 struct field {
     field_type_t type;
     int index;
-    bool is_old_implementation;
+    bool is_aux_field;
     bool is_pk;
-    char name[OS_SIZE_256];
+    const char * source_name;
+    const char * target_name;
+    union {
+        const char * text;
+        int integer;
+        double real;
+        long long integer_long;
+    } default_value;
+    bool convert_empty_string_as_null;
 };
 
 struct column_list {
@@ -2185,40 +2193,16 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
 int wdb_global_check_manager_keepalive(wdb_t *wdb);
 
 /**
- * @brief Function to clean table and write new values, this is only
- * for single row tables. Its necessary to have the table PKs well.
- *
- * @param wdb The Global struct database.
- * @param kv_value Table metadata to build dynamic queries.
- * @param data Values separated with pipe character '|'.
- * @retval true when the database single row insertion is executed successfully.
- * @retval false on error.
- */
-bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
-
-/**
- * @brief Function to insert new rows with a dynamic query based on metadata.
+ * @brief Function to insert or update rows with a dynamic query based on metadata.
  * Its necessary to have the table PKs well.
  *
  * @param wdb The Global struct database.
  * @param kv_value Table metadata to build dynamic queries.
- * @param data Values separated with pipe character '|'.
+ * @param data JSON object containing delta information.
  * @retval true when the database insertion is executed successfully.
  * @retval false on error.
  */
-bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
-
-/**
- * @brief Function to modify existing rows with a dynamic query based on metadata.
- * Its necessary to have the table PKs well.
- *
- * @param wdb The Global struct database.
- * @param kv_value Table metadata to build dynamic queries.
- * @param data Values separated with pipe character '|'.
- * @retval true when the database update is executed successfully.
- * @retval false on error.
- */
-bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
+bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data);
 
 /**
  * @brief Function to delete rows with a dynamic query based on metadata.
@@ -2226,22 +2210,11 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
  *
  * @param wdb The Global struct database.
  * @param kv_value Table metadata to build dynamic queries.
- * @param data Values separated with pipe character '|'.
+ * @param data JSON object containing delta information.
  * @retval true when the database delete is executed successfully.
  * @retval false on error.
  */
-bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
-
-/**
- * @brief Function to select rows with a dynamic query based on metadata.
- * Its necessary to have the table PKs well.
- *
- * @param wdb The Global struct database.
- * @param kv_value Table metadata to build dynamic queries.
- * @param data Values separated with pipe character '|'.
- * @param output Output values separated with pipe character '|'.
- */
-void wdb_select_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data, char *output);
+bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, cJSON *data);
 
 /**
  * @brief Function to parse the insert upgrade request.
