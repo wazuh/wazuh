@@ -302,19 +302,25 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
             }
 
             // Get value
-            std::string resolvedValue;
+            std::string resolvedStrValue {value.m_value};
+            json::Json resolvedJsonValue {};
+            bool isValueRef {false};
             if (Parameter::Type::REFERENCE == value.m_type)
             {
                 const auto refExists = event->exists(value.m_value);
                 if (refExists)
                 {
                     const auto retvalObject = event->getJson(value.m_value);
+
                     if (retvalObject)
                     {
-                        resolvedValue = retvalObject.value().str();
+                        resolvedJsonValue = retvalObject.value();
+                        resolvedStrValue = resolvedJsonValue.str();
+                        isValueRef = true;
                     }
                     else
                     {
+                        // This should never happen, as the field existance was previously checked
                         return base::result::makeFailure(event, failureTrace3);
                     }
                 }
@@ -323,23 +329,31 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
                     return base::result::makeFailure(event, failureTrace3);
                 }
             }
+
+            {
+                const auto loadDB = kvdbManager->getHandler(resolvedDBName, true);
+                if (std::holds_alternative<base::Error>(loadDB))
+                {
+                    return base::result::makeFailure(
+                        event, fmt::format(failureTrace4, resolvedDBName, std::get<base::Error>(loadDB).message));
+                }
+            }
+
+            // TODO: use a secure kvdb handler method to write the K-V instead of writing it through the kvdb manager
+            std::optional<base::Error> err;
+            if (isValueRef)
+            {
+                err = kvdbManager->writeKey(resolvedDBName, resolvedKey, resolvedJsonValue);
+            }
             else
             {
-                resolvedValue = value.m_value;
+                err = kvdbManager->writeKey(resolvedDBName, resolvedKey, resolvedStrValue);
             }
-
-            const auto loadDB = kvdbManager->getHandler(resolvedDBName, true);
-            if (std::holds_alternative<base::Error>(loadDB))
-            {
-                return base::result::makeFailure(
-                    event, fmt::format(failureTrace4, resolvedDBName, std::get<base::Error>(loadDB).message));
-            }
-
-            const auto err = kvdbManager->writeKey(resolvedDBName, resolvedKey, resolvedValue);
             if (err)
             {
                 return base::result::makeFailure(
-                    event, fmt::format(failureTrace5, resolvedKey, resolvedValue, resolvedDBName, err.value().message));
+                    event,
+                    fmt::format(failureTrace5, resolvedKey, resolvedStrValue, resolvedDBName, err.value().message));
             }
 
             event->setBool(true, targetField);
