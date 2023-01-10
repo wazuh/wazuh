@@ -1,0 +1,30 @@
+---
+name: decoder/agent-event-enrichment/0
+
+sources:
+  - decoder/queue-syslog/0
+  - decoder/queue-localfile/0
+  - decoder/json/0
+
+metadata:
+  title: Wazuh agent events enrichment
+  description: It enriches events coming from a Wazuh agent with information related to it
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2022/01/09
+
+check:
+  - agent.id: +ef_exists
+
+normalize:
+  - map:
+      - host.id: $agent.id
+      - ~agents_kvdb_name: agents_host_data
+      - ~host.data: +kvdb_get/$~agents_kvdb_name/$agent.id
+
+  - check:
+      - ~host.data: +ef_exists
+    map:
+      - host: +parse_json/~host.data
