@@ -81,13 +81,14 @@ public:
     Environment() = default;
 
     // TODO: Remove injected catalog dependencies ?
+    // TODO: Update documentation
     /**
      * @brief Construct a new Environment object
      *
      * @tparam T Injected catalog type.
-     * @param name Name of the environment.
      * @param jsonDefinition Json definition of the environment.
-     * @param catalog Injected catalog.
+     * @param storeRead Store read interface.
+     * @param registry Registry interface.
      * @throws std::runtime_error if the environment cannot be built.
      */
     Environment(const json::Json& jsonDefinition,

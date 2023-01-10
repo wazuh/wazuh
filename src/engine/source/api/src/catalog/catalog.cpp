@@ -56,8 +56,7 @@ Catalog::Catalog(const Config& config)
         }
         catch (const std::exception& e)
         {
-            WAZUH_LOG_DEBUG(
-                "Engine catalog: \"{}\" method: Config: \"{}\".", __func__, str);
+            WAZUH_LOG_DEBUG("Engine catalog: '{}' method: Config: '{}'.", __func__, str);
             result = base::Error {e.what()};
         }
 
@@ -151,11 +150,10 @@ Catalog::Catalog(const Config& config)
 std::optional<base::Error> Catalog::postResource(const Resource& collection,
                                                  const std::string& content)
 {
-    WAZUH_LOG_DEBUG(
-        "Engine catalog: \"{}\" method: Collection name: \"{}\". Content: \"{}\".",
-        __func__,
-        collection.m_name.fullName(),
-        content);
+    WAZUH_LOG_DEBUG("Engine catalog: '{}' method: Collection name: '{}'. Content: '{}'.",
+                    __func__,
+                    collection.m_name.fullName(),
+                    content);
 
     // Specified resource must be a collection
     if (Resource::Type::COLLECTION != collection.m_type)
@@ -264,7 +262,7 @@ std::optional<base::Error> Catalog::putResource(const Resource& item,
     if (Resource::Type::ENVIRONMENT != item.m_type
         && Resource::Type::SCHEMA != item.m_type && Resource::Type::DECODER != item.m_type
         && Resource::Type::RULE != item.m_type && Resource::Type::FILTER != item.m_type
-        && Resource::Type::OUTPUT != item.m_type)
+        && Resource::Type::OUTPUT != item.m_type && Resource::Type::ROUTE != item.m_type)
     {
         return base::Error {fmt::format("Invalid resource type \"{}\" for PUT operation",
                                         Resource::typeToStr(item.m_type))};
@@ -421,6 +419,7 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
 
     // Builder validator
     std::optional<base::Error> validationError;
+    // TODO: Validate Router
     if (item.m_type == Resource::Type::DECODER || item.m_type == Resource::Type::RULE
         || item.m_type == Resource::Type::FILTER || item.m_type == Resource::Type::OUTPUT)
     {
