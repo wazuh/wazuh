@@ -77,11 +77,9 @@ def db_setup():
                     # Clear mappers
                     sqlalchemy_orm.clear_mappers()
                     # Invalidate in-memory database
-                    if orm.db_manager.engines:
-                        conn = orm.db_manager.engines[orm.DB_FILE].connect()
-                        conn.invalidate()
-                        orm.db_manager.engines[orm.DB_FILE].dispose()
-                    orm.db_manager.close_sessions()
+                    orm.db_manager.connect(orm.DB_FILE)
+                    orm.db_manager.sessions[orm.DB_FILE].close()
+                    orm.db_manager.engines[orm.DB_FILE].dispose()
 
                     reload(orm)
                     orm.db_manager.connect(orm.DB_FILE)
