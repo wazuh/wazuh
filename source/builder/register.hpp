@@ -20,6 +20,7 @@
 #include "builders/stageBuilderNormalize.hpp"
 #include "builders/stageBuilderOutputs.hpp"
 #include "builders/stageBuilderParse.hpp"
+#include "builders/stageDestination.hpp"
 #include "registry.hpp"
 
 namespace builder::internals
@@ -46,6 +47,10 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
     registry->registerBuilder(builders::getStageMapBuilder(registry), "stage.map");
     registry->registerBuilder(builders::getStageNormalizeBuilder(registry),
                               "stage.normalize");
+
+    // Stage destination (for route events)
+    registry->registerBuilder(builders::getStageDestinationBuilder(registry),
+                              "stage.destination");
 
     // Parsers
     registry->registerBuilder(builders::getStageBuilderParse(registry), "stage.parse");
