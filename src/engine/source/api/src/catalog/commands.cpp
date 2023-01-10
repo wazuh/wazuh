@@ -17,10 +17,10 @@ api::CommandFn postResourceCmd(std::shared_ptr<Catalog> catalog)
             if (params.exists("/format"))
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Parameter \"format\" is not a string"};
+                    json::Json {"{}"}, 400, "Parameter 'format' is not a string"};
             }
             return api::WazuhResponse {
-                json::Json {"{}"}, 400, "Missing \"format\" parameter"};
+                json::Json {"{}"}, 400, "Missing 'format' parameter"};
         }
         auto format = catalog::Resource::strToFormat(formatOpt.value().c_str());
         if (format == catalog::Resource::Format::ERROR_FORMAT)
@@ -34,10 +34,10 @@ api::CommandFn postResourceCmd(std::shared_ptr<Catalog> catalog)
             if (params.exists("/content"))
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Parameter \"content\" is not a string"};
+                    json::Json {"{}"}, 400, "Parameter 'content' is not a string"};
             }
             return api::WazuhResponse {
-                json::Json {"{}"}, 400, "Missing \"content\" string parameter"};
+                json::Json {"{}"}, 400, "Missing 'content' string parameter"};
         }
 
         const auto nameOpt = params.getString("/name");
@@ -46,10 +46,10 @@ api::CommandFn postResourceCmd(std::shared_ptr<Catalog> catalog)
             if (params.exists("/name"))
             {
                 return api::WazuhResponse {
-                    json::Json {"{}"}, 400, "Parameter \"name\" is not a string"};
+                    json::Json {"{}"}, 400, "Parameter 'name' is not a string"};
             }
             return api::WazuhResponse {
-                json::Json {"{}"}, 400, "Missing \"name\" parameter"};
+                json::Json {"{}"}, 400, "Missing 'name' parameter"};
         }
         base::Name name;
         try
@@ -61,7 +61,7 @@ api::CommandFn postResourceCmd(std::shared_ptr<Catalog> catalog)
             return api::WazuhResponse {
                 json::Json {"{}"},
                 400,
-                fmt::format("Invalid \"name\" parameter: {}", e.what())};
+                fmt::format("Invalid 'name' parameter: {}", e.what())};
         }
 
         // Build target resource
