@@ -562,26 +562,7 @@ int remove_agent(int json_output)
         /* If user confirms */
         if (user_input[0] == 'y' || user_input[0] == 'Y') {
             if (!authd_running) {
-                /* Get full agent name */
-                char *name = getNameById(u_id);
-                if (!name) {
-                    if (json_output) {
-                        char buffer[1024];
-                        cJSON *json_root = cJSON_CreateObject();
-                        snprintf(buffer, 1023, "Invalid ID '%s' given. ID is not present", u_id);
-                        cJSON_AddNumberToObject(json_root, "error", 78);
-                        cJSON_AddStringToObject(json_root, "message", buffer);
-                        printf("%s", cJSON_PrintUnformatted(json_root));
-                        exit(1);
-                    } else
-                        printf(NO_ID, u_id);
-
-                    goto cleanup;
-                }
-
                 if (!OS_RemoveAgent(u_id)) {
-                    free(name);
-
                     if (json_output) {
                         char buffer[1024];
                         cJSON *json_root = cJSON_CreateObject();
@@ -593,9 +574,6 @@ int remove_agent(int json_output)
                     } else
                         merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
                 }
-
-                free(name);
-                name = NULL;
             } else {
                 if (sock = auth_connect(), sock < 0) {
                     if (json_output) {
