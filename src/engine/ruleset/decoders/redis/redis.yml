@@ -1,0 +1,75 @@
+---
+name: decoder/redis/0
+
+metadata:
+  description: Decoder for Linux redis logs
+  references:
+    - https://docs.elastic.co/en/integrations/redis
+  module: redis
+
+definitions:
+  LOG_PID_ROLE: <~log.process.pid>:<~log.role>
+
+# Example redis logs:
+
+# 4961:M 30 May 12:50:13.457 * Increased maximum number of open files to 10032 (it was originally set to 4864).
+#                 _._                                                  
+#            _.-``__ ''-._                                             
+#       _.-``    `.  `_.  ''-._           Redis 3.0.2 (00000000/0) 64 bit
+#   .-`` .-```.  ```\/    _.,_ ''-._                                   
+#  (    '      ,       .-`  | `,    )     Running in standalone mode
+#  |`-._`-...-` __...-.``-._|'` _.-'|     Port: 6379
+#  |    `-._   `._    /     _.-'    |     PID: 4961
+#   `-._    `-._  `-./  _.-'    _.-'                                   
+#  |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+#  |    `-._`-._        _.-'_.-'    |           http://redis.io        
+#   `-._    `-._`-.__.-'_.-'    _.-'                                   
+#  |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+#  |    `-._`-._        _.-'_.-'    |                                  
+#   `-._    `-._`-.__.-'_.-'    _.-'                                   
+#       `-._    `-.__.-'    _.-'                                       
+#           `-._        _.-'                                           
+#               `-.__.-'                                               
+# 4961:M 30 May 12:50:13.463 # Server started, Redis version 3.0.2
+
+# 30 May 10:04:45 . 0 clients connected (0 slaves), 618932 bytes in use, 0 shared objects
+
+# [2932] 31 May 04:32:08 - 0 clients connected (0 slaves), 1179968 bytes in use
+
+parse:
+  logpar:
+    # 26571:M 27 Dec 2018 11:19:18.874 * Synchronization with replica 10.114.208.18:6023 succeeded
+    - event.original: $LOG_PID_ROLE <~log.timestamp_test/date/%d %b %Y %T> * <~log.msg>
+
+    #  |    `-._   `._    /     _.-'    |     PID: 4961
+
+    - event.original: $LOG_PID_ROLE <~log.timestamp_test/date/%d %b %Y %T> * <~log.msg>
+
+    # Debian
+    # 30 May 10:04:45 . 0 clients connected (0 slaves), 618932 bytes in use, 0 shared objects
+    - event.original: <~log.timestamp_debian/date/%d %b %T> . <~log.msg>
+    - event.original: <~log.timestamp_debian/date/%d %b %T> - <~log.msg>
+    - event.original: <~log.timestamp_debian/date/%d %b %T> * <~log.msg>
+
+    # Windows
+    # [2932] 31 May 04:32:08 # Open data file dump.rdb: No such file or directory
+    - event.original: <~/ignore/[><~log.pid>] <~log.timestamp_window/date/%d %b %T> <~/ignore/#> <~log.msg>
+
+normalize:
+  - map:
+      - event.kind: event
+      - event.module: redis
+      - event.message: $~log.msg
+      - event.process.pid: $~log.process.pid
+  - check:
+      - ~log.role: +ef_exists
+      - ~log.role: +s_eq/M
+    map:
+      - event.role: master
+  - check:
+      - ~log.role: +ef_exists
+      - ~log.role: +s_eq/S
+    map:
+      - event.role: slave
+  - map:
+      - ~log: +ef_delete
