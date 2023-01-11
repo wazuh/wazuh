@@ -1,0 +1,66 @@
+---
+name: decoder/fortinet-client_endpoint/0
+
+metadata:
+  title: Decoder for Fortinet FortiClient Endpoint Security
+  description: Decoder for Fortinet FortiClient Endpoint Security
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/09
+  references:
+    - https://docs.fortinet.com/document/forticlient/7.0.2/log-message-reference/327109
+
+sources:
+  - decoder/queue-syslog/0
+  - decoder/queue-localfile/0
+
+parse:
+  logpar:
+    # January 29 06:09:59 boNemoe4402.www.invalid proto=udp service=http status=deny src=10.150.92.220 dst=10.102.123.34 src_port=7178 dst_port=3994 server_app=reeufugi pid=7880 app_name=enderitq traff_direct=external block_count=5286 logon_user=sumdo@litesse6379.api.domain msg=failure
+    - event.original: <event.created/%B %d %T> <host.name> proto=<network.protocol> service=<service.type> status=<event.action> src=<source.ip> dst=<destination.ip> src_port=<source.port> dst_port=<destination.port> server_app=<~tmp.server_app> pid=<process.pid> app_name=<~tmp.app_name> traff_direct=<network.direction> block_count=<~tmp.block_count> logon_user=<user.name>@<~tmp.domain/fqdn> msg=<message>
+
+normalize:
+  - map:
+      - destination.ip: $destination.ip
+      - destination.port: $destination.port
+      - event.action: $event.action
+      - event.code: $service.type
+      - event.dataset: fortinet.clientendpoint
+      - event.module: fortinet
+      - event.original: $event.original
+      - event.outcome: $message
+      - event.created: $event.created
+      - fileset.name: clientendpoint
+      - host.name: $host.name
+      - input.type: log
+      - log.offset: 0
+      - network.direction: $network.direction
+      - network.protocol: $network.protocol
+      - observer.product: FortiClient
+      - observer.type: Anti-Virus
+      - observer.vendor: Fortinet
+      - process.pid: $process.pid
+      - related.hosts: +a_append/$host.name/$~tmp.domain
+      - related.ip: +a_append/$source.ip/$destination.ip
+      - related.user: +a_append/$user.name
+      - rsa.counters.dclass_c1: $~tmp.block_count
+      - rsa.counters.dclass_c1_str: block_count
+      - rsa.internal.messageid: $service.type
+      - rsa.investigations.ec_outcome: $message
+      - rsa.investigations.ec_subject: NetworkComm
+      - rsa.investigations.ec_theme: ALM
+      - rsa.misc.action: +a_append/$event.action
+      - rsa.misc.result: $message
+      - rsa.network.alias_host: +a_append/$host.name
+      - rsa.network.domain: $~tmp.domain
+      - rsa.network.network_service: $service.type
+      - server.domain: $~tmp.domain
+      - service.type: fortinet
+      - source.ip: $source.ip
+      - source.port: $source.port
+      - tags: +a_append/fortinet.clientendpoint/forwarded
+      - user.name: $user.name
+      - wazuh: +ef_delete
+      - ~tmp: +ef_delete
