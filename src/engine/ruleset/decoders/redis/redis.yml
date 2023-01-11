@@ -39,21 +39,19 @@ definitions:
 parse:
   logpar:
     # 26571:M 27 Dec 2018 11:19:18.874 * Synchronization with replica 10.114.208.18:6023 succeeded
-    - event.original: $LOG_PID_ROLE <~log.timestamp_test/date/%d %b %Y %T> * <~log.msg>
+    - event.original: $LOG_PID_ROLE <~log.timestamp_test/date/%d %b %Y %T> <~log.level> <~log.msg>
 
-    #  |    `-._   `._    /     _.-'    |     PID: 4961
-
-    - event.original: $LOG_PID_ROLE <~log.timestamp_test/date/%d %b %Y %T> * <~log.msg>
+    # Darwin
+    # 4961:M 30 May 12:50:13.457 * Increased maximum number of open files to 10032 (it was originally set to 4864).
+    - event.original: $LOG_PID_ROLE <~log.timestamp_test/date/%d %b %T> <~log.level> <~log.msg>
 
     # Debian
     # 30 May 10:04:45 . 0 clients connected (0 slaves), 618932 bytes in use, 0 shared objects
-    - event.original: <~log.timestamp_debian/date/%d %b %T> . <~log.msg>
-    - event.original: <~log.timestamp_debian/date/%d %b %T> - <~log.msg>
-    - event.original: <~log.timestamp_debian/date/%d %b %T> * <~log.msg>
+    - event.original: <~log.timestamp_debian/date/%d %b %T> <~log.level> <~log.msg>
 
     # Windows
     # [2932] 31 May 04:32:08 # Open data file dump.rdb: No such file or directory
-    - event.original: <~/ignore/[><~log.pid>] <~log.timestamp_window/date/%d %b %T> <~/ignore/#> <~log.msg>
+    - event.original: <~/ignore/[><~log.pid>] <~log.timestamp_window/date/%d %b %T> <~log.level> <~log.msg>
 
 normalize:
   - map:
@@ -61,6 +59,32 @@ normalize:
       - event.module: redis
       - event.message: $~log.msg
       - event.process.pid: $~log.process.pid
+      - event.type: +a_append/info
+      - event.category: +a_append/database
+      - event.dataset: redis.log
+      - file.name: log
+      - input.type: log
+      - service.type: redis
+  - check:
+      - ~log.level: +ef_exists
+      - ~log.level: +s_eq/.
+    map:
+      - log.level: debug
+  - check:
+      - ~log.level: +ef_exists
+      - ~log.level: +s_eq/-
+    map:
+      - log.level: verbose
+  - check:
+      - ~log.level: +ef_exists
+      - ~log.level: +s_eq/*
+    map:
+      - log.level: notice
+  - check:
+      - ~log.level: +ef_exists
+      - ~log.level: +s_eq/#
+    map:
+      - log.level: warning
   - check:
       - ~log.role: +ef_exists
       - ~log.role: +s_eq/M
@@ -71,5 +95,15 @@ normalize:
       - ~log.role: +s_eq/S
     map:
       - event.role: slave
+  - check:
+      - ~log.role: +ef_exists
+      - ~log.role: +s_eq/C
+    map:
+      - event.role: child
+  - check:
+      - ~log.role: +ef_exists
+      - ~log.role: +s_eq/X
+    map:
+      - event.role: sentinel
   - map:
       - ~log: +ef_delete
