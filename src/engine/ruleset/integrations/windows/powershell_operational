@@ -1,0 +1,64 @@
+name: decoder/powershell_operational/0
+
+sources: 
+  - decoder/windows_event_channel/0
+
+metadata:
+  description: Decoder for Windows Powershell Operational events
+
+check:
+ - ~event_channel.Event.System.Channel.#text: +s_eq/Microsoft-Windows-PowerShell/Operational
+
+normalize:
+ - map:
+  - event.module: powershell
+  - event.category: process
+  - event.type: info
+  - event.sequence: $~event_channel.Event.EventData.SequenceNumber
+  
+  # Process fields
+  - process.entity_id: $~event_channel.Event.EventData.HostID
+  - process.command_line: $~event_channel.Event.EventData.HostApplication
+  - process.title: $~event_channel.Event.EventData.HostName
+
+  # User fields
+   - ~temp.user_parts: +s_to_array/$~event_channel.Event.EventData.User/\
+   - destination.user.domain: $~temp.user_parts.0
+   - destination.user.name: $~temp.user_parts.1
+   - related.user: +a_append/destination.user.name
+   - ~temp.connected_user_parts: +s_to_array/$~event_channel.Event.EventData.ConnectedUser/\
+   - source.user.domain: ~temp.connected_user_parts.0
+   - source.user.name: ~temp.connected_user_parts.1
+   - user.name: $source.user.name
+   - user.domain: $source.user.domain
+   - related.user: +a_append/source.user.name
+
+   # PowerShell fields
+   - powershell.sequence: $~event_channel.Event.EventData.MessageNumber
+   - powershell.total: $~event_channel.Event.EventData.MessageTotal
+   - powershell.id: $~event_channel.Event.EventData.ShellID
+   - powershell.engine.version: $~event_channel.Event.EventData.EngineVersion
+   - powershell.pipeline_id: $~event_channel.Event.EventData.PipelineID
+   - powershell.runspace_id: $~event_channel.Event.EventData.RunspaceID
+   - powershell.runspace_id: $~event_channel.Event.EventData.RunspaceId
+   - powershell.process.executable_version: $~event_channel.Event.EventData.HostVersion
+   - powershell.command.value: $~event_channel.Event.EventData.CommandLine
+   - powershell.command.path: $~event_channel.Event.EventData.CommandPath
+   - powershell.command.name: $~event_channel.Event.EventData.CommandName
+   - powershell.command.type: $~event_channel.Event.EventData.CommandType
+   - powershell.file.script_block_id: $~event_channel.Event.EventData.ScriptBlockId
+   - powershell.file.script_block_text: $~event_channel.Event.EventData.ScriptBlockText
+   - file.path: $~event_channel.Event.EventData.Path
+   - file.path: $~event_channel.Event.EventData.ScriptName
+   - file.name: +r_ext/$file.path/^.*\\(.*[\\.].*)$
+   - file.directory: +r_ext/$file.path/^(.*\\).*[\\.].*$
+   - file.extension: +r_ext/$file.path/^.*\\.*[\\.](.*)$
+
+
+ - check: event.code==4105
+   map:
+    - event.type: start
+
+ - check: event.code==4106
+   map:
+    - event.type: end
