@@ -1,0 +1,49 @@
+---
+name: decoder/fortinet-firewal/0
+
+metadata:
+  title: Decoder for parsing fortinet firewall logs
+  description: Decoder for parsing fortinet firewall logs
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/10
+  references:
+    - https://docs.fortinet.com/document/forticlient/7.0.2/log-message-reference/327109
+
+sources:
+  - decoder/queue-syslog/0
+  - decoder/queue-localfile/0
+
+parse:
+  logpar:
+    # <189>date=2020-04-23 time=12:32:48 devname="testswitch3" devid="someotherrouteridagain" logid="0102043014" type="event" subtype="user" level="notice" vd="root" eventtime=1587231168439640874 tz="-0500" logdesc="FSSO logon authentication status" srcip=10.10.10.10 user="elasticouser" server="elasticserver" action="FSSO-logon" msg="FSSO-logon event from FSSO_elasticserver: user elasticouser logged on 10.10.10.10"
+    - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" srcip=<source.ip> user="<source.user.name>" server="<~tmp.server>" action="<event.action>" msg="<message>"
+
+normalize:
+  - map:
+    - ~tmp.timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000/$~tmp.tz
+    - \@timestamp: $~tmp.timestamp
+    - event.dataset: fortinet.firewall
+    - event.module: fortinet
+    - event.outcome: sucess
+    - event.start: $~tmp.timestamp
+    - event.timezone: $~tmp.tz
+    - ~tmp.event_type: start|user
+    - event.type: +s_to_array/$~tmp.event_type/|
+  - check:
+    - ~tmp.subtype: +s_eq/user
+    map:
+      - event.category: authentication
+  - check:
+    - ~tmp.subtype: +s_eq/system
+    map:
+      - event.category: host
+  - check:
+    - ~tmp.subtype: +s_eq/vpn
+    map:
+      - event.category: network
+  - map:
+    - wazuh: +ef_delete
+    - ~tmp: +ef_delete
