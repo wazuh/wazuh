@@ -12,6 +12,7 @@ definitions:
 
 # Example redis logs:
 
+# Darwin
 # 4961:M 30 May 12:50:13.457 * Increased maximum number of open files to 10032 (it was originally set to 4864).
 #                 _._                                                  
 #            _.-``__ ''-._                                             
@@ -32,8 +33,10 @@ definitions:
 #               `-.__.-'                                               
 # 4961:M 30 May 12:50:13.463 # Server started, Redis version 3.0.2
 
+# Debian
 # 30 May 10:04:45 . 0 clients connected (0 slaves), 618932 bytes in use, 0 shared objects
 
+# Windows
 # [2932] 31 May 04:32:08 - 0 clients connected (0 slaves), 1179968 bytes in use
 
 parse:
@@ -42,15 +45,12 @@ parse:
     - event.original: $LOG_PID_ROLE <~log.timestamp_test/date/%d %b %Y %T> <~log.level> <~log.msg>
 
     # Darwin
-    # 4961:M 30 May 12:50:13.457 * Increased maximum number of open files to 10032 (it was originally set to 4864).
     - event.original: $LOG_PID_ROLE <~log.timestamp_test/date/%d %b %T> <~log.level> <~log.msg>
 
     # Debian
-    # 30 May 10:04:45 . 0 clients connected (0 slaves), 618932 bytes in use, 0 shared objects
     - event.original: <~log.timestamp_debian/date/%d %b %T> <~log.level> <~log.msg>
 
     # Windows
-    # [2932] 31 May 04:32:08 # Open data file dump.rdb: No such file or directory
     - event.original: <~/ignore/[><~log.pid>] <~log.timestamp_window/date/%d %b %T> <~log.level> <~log.msg>
 
 normalize:
@@ -107,3 +107,4 @@ normalize:
       - event.role: sentinel
   - map:
       - ~log: +ef_delete
+
