@@ -38,7 +38,9 @@ DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-a
 
 if ! is_rhel_le_5
 then
+if [ "X$BUILDCLUSTERD" = "Xyes"   ]; then
     DAEMONS="$DAEMONS wazuh-clusterd"
+fi
 fi
 
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"

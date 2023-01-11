@@ -27,6 +27,7 @@ USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 
 BUILD_REMOTED=yes
+BUILD_CLUSTERD=yes
 
 ONEWAY?=no
 CLEANFULL?=no
@@ -372,6 +373,7 @@ settings:
 	@echo "General settings:"
 	@echo "    TARGET:           ${TARGET}"
 	@echo "    BUILD_REMOTED:    ${BUILD_REMOTED}"
+	@echo "    BUILD_CLUSTERD:   ${BUILD_CLUSTERD}"
 	@echo "    V:                ${V}"
 	@echo "    DEBUG:            ${DEBUG}"
 	@echo "    DEBUGAD           ${DEBUGAD}"
@@ -1064,7 +1066,7 @@ wazuh-modulesd: ${wmodulesd_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 ### wazuh-framework ##
 
 wazuh-framework: ${sqlite_o} ${shared_o} ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
-	${MAKE} -C ../framework build PREFIX=${PREFIX}
+	${MAKE} -C ../framework build PREFIX=${PREFIX} BUILD_CLUSTERD=${BUILD_CLUSTERD}
 
 
 ####################

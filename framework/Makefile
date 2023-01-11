@@ -9,6 +9,8 @@ uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 OSSEC_GROUP  = ossec
 PREFIX       = /var/ossec
 
+BUILD_CLUSTERD   = yes
+
 OPENSSL_DIR      = ../src/external/openssl
 
 CC           = gcc
@@ -48,7 +50,9 @@ MD5_DEPS         = $(MD5_OP)
 BUILD_TARGET     = libsqlite3.so.0
 
 ifeq (${uname_S},Linux)
-BUILD_TARGET     += wazuh-clusterd-internal
+ifeq (${BUILD_CLUSTERD},$(filter ${BUILD_CLUSTERD},auto yes y Y 1))
+	BUILD_TARGET     += wazuh-clusterd-internal
+endif
 endif
 
 ifdef DEBUG
@@ -72,7 +76,9 @@ install:
 	$(INSTALL_FILE) wazuh/*.json ${PREFIX}/framework/wazuh
 	$(INSTALL_FILE) libsqlite3.so.0 ${PREFIX}/framework/lib/
 ifeq (${uname_S},Linux)
+ifeq (${BUILD_CLUSTERD},$(filter ${BUILD_CLUSTERD},auto yes y Y 1))
 	$(INSTALL_EXEC) wazuh-clusterd-internal ${PREFIX}/bin
+endif
 endif
 
 #	Install scripts/%.py on $(PREFIX)/bin/%

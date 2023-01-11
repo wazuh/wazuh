@@ -102,7 +102,7 @@ Install()
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} BUILD_REMOTED=${BUILDREMOTED} build
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} BUILD_REMOTED=${BUILDREMOTED} BUILD_CLUSTERD=${BUILDCLUSTERD} build
         if [ $? != 0 ]; then
             cd ../
             catError "0x5-build"
@@ -261,6 +261,32 @@ BuildRemotedAuthd()
         *)
             BUILDREMOTED="yes"
             echo "   - ${yesbuildremoted}."
+            ;;
+    esac
+}
+
+##########
+# BuildClusterd()
+##########
+BuildClusterd()
+{
+    # Compilation of the cluster
+    echo ""
+    $ECHO "  1.3- ${buildclusterd} ($yes/$no) [$yes]: "
+    if [ "X${USER_BUILD_CLUSTERD}" = "X" ]; then
+        read AS
+    else
+        AS=${USER_BUILD_CLUSTERD}
+    fi
+    echo ""
+    case $AS in
+        $nomatch)
+            BUILDCLUSTERD="no"
+            echo "   - ${nobuildclusterd}."
+            ;;
+        *)
+            BUILDCLUSTERD="yes"
+            echo "   - ${yesbuildclusterd}."
             ;;
     esac
 }
@@ -984,6 +1010,9 @@ main()
     # Selecting components to build and install
     # Checking to install Remoted and Authd
     BuildRemotedAuthd
+
+    # Checking to install Clusterd
+    BuildClusterd
 
     # Setting up the environment
     setEnv

@@ -29,6 +29,11 @@ buildremoted="Do you want to install remote incoming connections?"
 nobuildremoted="Remote incoming connections will not be compiled"
 yesbuildremoted="Remote incoming connections will be compiled and installed"
 
+# Part 1.2 Clusterd compilation
+buildclusterd="Do you want to install the cluster?"
+nobuildclusterd="Cluster will not be compiled"
+yesbuildclusterd="Cluster will be compiled and installed"
+
 # Part 2
 settingupenv="Setting up the installation environment"
 wheretoinstall="Choose where to install Wazuh"

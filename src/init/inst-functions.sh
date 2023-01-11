@@ -371,7 +371,7 @@ WriteManager()
     cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    if [ "$BUILDREMOTED" = "yes"   ]; then
+    if [ "X$BUILDREMOTED" = "Xyes"   ]; then
         # Remote connection secure
         if [ "X$RLOG" = "Xyes" ]; then
           cat ${REMOTE_SYS_TEMPLATE} >> $NEWCONFIG
@@ -450,15 +450,17 @@ WriteManager()
     cat ${RULES_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    if [ "$BUILDREMOTED" = "yes"   ]; then
+    if [ "X$BUILDREMOTED" = "Xyes"   ]; then
         # Writting auth configuration
         sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
     fi
 
-    # Writting cluster configuration
-    cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    if [ "X$BUILDCLUSTERD" = "Xyes"   ]; then
+      # Writting cluster configuration
+      cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
 
     echo "</ossec_config>" >> $NEWCONFIG
 }
@@ -652,7 +654,7 @@ InstallLocal(){
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/rootcheck
 
-    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX}
+    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} BUILD_CLUSTERD=${BUILDCLUSTERD}
 
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
@@ -695,7 +697,9 @@ InstallServer(){
 
     InstallLocal
 
-    ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/cluster.log
+    if [ "X$BUILDCLUSTERD" = "Xyes"   ]; then
+        ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/cluster.log
+    fi
 
     if [ "X$BUILDREMOTED" = "Xyes" ]; then
         ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
