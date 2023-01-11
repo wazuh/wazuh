@@ -783,10 +783,10 @@ void test_set_whodata_mode_changes(void **state) {
     // Mark directories to be added in realtime
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status |= WD_CHECK_REALTIME;
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_CHECK_WHODATA;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 7))->dirs_status.status |= WD_CHECK_REALTIME;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 7))->dirs_status.status &= ~WD_CHECK_WHODATA;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 8))->dirs_status.status |= WD_CHECK_REALTIME;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 8))->dirs_status.status &= ~WD_CHECK_WHODATA;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 4))->dirs_status.status |= WD_CHECK_REALTIME;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 4))->dirs_status.status &= ~WD_CHECK_WHODATA;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5))->dirs_status.status |= WD_CHECK_REALTIME;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5))->dirs_status.status &= ~WD_CHECK_WHODATA;
 
     // Expand directories
     for(i = 0; dirs[i]; i++) {
@@ -1213,7 +1213,7 @@ int main(void) {
 #else  // WIN_WHODATA
     const struct CMUnitTest eventchannel_tests[] = {
         cmocka_unit_test(test_fim_whodata_initialize),
-        //cmocka_unit_test(test_set_whodata_mode_changes), Test fail. To check with PM.
+        cmocka_unit_test(test_set_whodata_mode_changes),
         cmocka_unit_test(test_fim_whodata_initialize_eventchannel),
         cmocka_unit_test(test_fim_whodata_initialize_fail_set_policies),
     };
