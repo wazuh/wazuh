@@ -74,9 +74,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX" AND NOT CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
-  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX" AND NOT CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(rsync dbsync wazuhext)
