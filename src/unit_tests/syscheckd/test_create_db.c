@@ -2543,7 +2543,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_checker(expanded_path, &evt_data, NULL);
 
     errno = 0;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 7))->options &= ~CHECK_SEECHANGES;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5))->options &= ~CHECK_SEECHANGES;
 }
 
 static void test_fim_checker_fim_regular(void **state) {
