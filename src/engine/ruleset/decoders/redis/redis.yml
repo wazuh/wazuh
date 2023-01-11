@@ -53,6 +53,8 @@ parse:
     # Windows
     - event.original: <~/ignore/[><~log.pid>] <~log.timestamp_window/date/%d %b %T> <~log.level> <~log.msg>
 
+# TODO: Could not map field 'log.offset' due to inability to persist values into yml variables. 
+# Also, there is no helper that allows obtaining the size of an event.
 normalize:
   - map:
       - event.kind: event
