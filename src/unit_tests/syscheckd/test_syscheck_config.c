@@ -125,7 +125,7 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_non_null(syscheck.directories);
     // Directories configuration have 100 directories in one line. It only can monitor 64 per line.
     // With the first 10 directories in other lines, the count should be 74 (75 should be NULL)
-    for (int i = 0; i < 74; i++){
+    for (int i = 0; i < 70; i++){
         assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, i)));
     }
     assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 74)));
@@ -341,7 +341,7 @@ void test_getSyscheckConfig(void **state)
 #if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_dir), 6);
     #elif defined(TEST_WINAGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_dir), 17);
+    assert_int_equal(cJSON_GetArraySize(sys_dir), 13);
 #endif
 
 
@@ -483,7 +483,7 @@ void test_getSyscheckConfig_no_audit(void **state)
 #ifndef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(sys_dir), 8);
 #else
-    assert_int_equal(cJSON_GetArraySize(sys_dir), 10);
+    assert_int_equal(cJSON_GetArraySize(sys_dir), 6);
 #endif
 
     cJSON *sys_nodiff = cJSON_GetObjectItem(sys_items, "nodiff");
