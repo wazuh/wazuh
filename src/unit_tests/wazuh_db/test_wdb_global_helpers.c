@@ -22,6 +22,7 @@
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/rbtree_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/libc/string_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
@@ -2040,6 +2041,90 @@ void test_wdb_get_all_agents_success(void **state) {
     memset(test_payload, '\0', OS_MAXSTR);
 }
 
+/* Tests wdb_get_all_agents_rbtree */
+
+void test_wdb_get_all_agents_rbtree_wdbc_query_error(void **state) {
+    const char *query_str = "global get-all-agents last_id 0";
+    const char *response = "err";
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get agent's IDs.");
+
+    rb_tree *tree = wdb_get_all_agents_rbtree(false, NULL);
+
+    assert_null(tree);
+}
+
+void test_wdb_get_all_agents_rbtree_wdbc_parse_error(void **state) {
+    const char *query_str = "global get-all-agents last_id 0";
+    const char *response = "err";
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get agent's IDs.");
+
+    rb_tree *tree = wdb_get_all_agents_rbtree(false, NULL);
+
+    assert_null(tree);
+}
+
+void test_wdb_get_all_agents_rbtree_success(void **state) {
+    const char *query_str = "global get-all-agents last_id 0";
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1},{\"id\":2},{\"id\":3}]");
+    cJSON* test_json = __real_cJSON_Parse(test_payload+3);
+    cJSON* id1 = cJSON_CreateNumber(1);
+    cJSON* id2 = cJSON_CreateNumber(2);
+    cJSON* id3 = cJSON_CreateNumber(3);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, test_payload);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    will_return(__wrap_cJSON_GetObjectItem, id2);
+    will_return(__wrap_cJSON_GetObjectItem, id3);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    rb_tree *tree = wdb_get_all_agents_rbtree(false, NULL);
+
+    assert_non_null(tree);
+
+    rbtree_destroy(tree);
+    __real_cJSON_Delete(test_json);
+    __real_cJSON_Delete(id1);
+    __real_cJSON_Delete(id2);
+    __real_cJSON_Delete(id3);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
 /* Tests wdb_find_group */
 
 void test_wdb_find_group_error_no_json_response(void **state) {
@@ -3068,6 +3153,141 @@ void test_wdb_parse_chunk_to_int_err(void **state) {
     memset(test_payload, '\0', OS_MAXSTR);
 }
 
+/* Tests wdb_parse_chunk_to_rbtree */
+
+void test_wdb_parse_chunk_to_rbtree_ok(void **state) {
+    rb_tree* tree = (rb_tree*)1;
+    int last_item = 0;
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1}]");
+    cJSON* test_json = __real_cJSON_Parse(test_payload+3);
+    cJSON* id1 = cJSON_CreateNumber(1);
+
+    // Parsing result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    wdbc_result status = wdb_parse_chunk_to_rbtree(test_payload, &tree, "id", &last_item);
+
+    assert_int_equal(WDBC_OK, status);
+
+    __real_cJSON_Delete(test_json);
+    __real_cJSON_Delete(id1);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+void test_wdb_parse_chunk_to_rbtree_due(void **state) {
+    rb_tree* tree = (rb_tree*)1;
+    int last_item = 0;
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "due [{\"id\":1}]");
+    cJSON* test_json1 = __real_cJSON_Parse(test_payload+4);
+    cJSON* id1 = cJSON_CreateNumber(1);
+
+    // Parsing result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_DUE);
+    will_return(__wrap_cJSON_Parse, test_json1);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    wdbc_result status = wdb_parse_chunk_to_rbtree(test_payload, &tree, "id", &last_item);
+    assert_int_equal(WDBC_DUE, status);
+
+    // Setting second payload
+    strcpy(test_payload, "ok [{\"id\":2}]");
+    cJSON* test_json2 = __real_cJSON_Parse(test_payload+3);
+    cJSON* id2 = cJSON_CreateNumber(2);
+    // Parsing result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json2);
+    will_return(__wrap_cJSON_GetObjectItem, id2);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    status = wdb_parse_chunk_to_rbtree(test_payload, &tree, "id", &last_item);
+    assert_int_equal(WDBC_OK, status);
+
+    __real_cJSON_Delete(test_json1);
+    __real_cJSON_Delete(id1);
+    __real_cJSON_Delete(test_json2);
+    __real_cJSON_Delete(id2);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+void test_wdb_parse_chunk_to_rbtree_err(void **state) {
+    rb_tree* tree = (rb_tree*)1;
+    int last_item = 0;
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1}]");
+
+    // Parsing result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, NULL);
+
+    wdbc_result status = wdb_parse_chunk_to_rbtree(test_payload, &tree, "id", &last_item);
+
+    assert_int_equal(WDBC_ERROR, status);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+void test_wdb_parse_chunk_to_rbtree_err_no_item(void **state) {
+    rb_tree* tree = (rb_tree*)1;
+    int last_item = 0;
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1}]");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid item.");
+
+    wdbc_result status = wdb_parse_chunk_to_rbtree(test_payload, &tree, NULL, &last_item);
+
+    assert_int_equal(WDBC_ERROR, status);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+void test_wdb_parse_chunk_to_rbtree_err_no_output(void **state) {
+    rb_tree* tree = NULL;
+    int last_item = 0;
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1}]");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid RB tree.");
+
+    wdbc_result status = wdb_parse_chunk_to_rbtree(test_payload, &tree, "id", &last_item);
+
+    assert_int_equal(WDBC_ERROR, status);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
 void test_wdb_set_agent_groups_csv_success(void **state) {
     int res;
 
@@ -3739,6 +3959,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        /* Tests wdb_get_all_agents_rbtree */
+        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_find_group */
         cmocka_unit_test_setup_teardown(test_wdb_find_group_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_find_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
@@ -3787,6 +4011,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_ok, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_due, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_err, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        /* Tests wdb_parse_chunk_to_rbtree */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_rbtree_ok, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_rbtree_due, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_rbtree_err, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_rbtree_err_no_item, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_rbtree_err_no_output, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_set_agent_groups */
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_csv_success, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_success, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
