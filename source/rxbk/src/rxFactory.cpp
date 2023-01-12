@@ -251,4 +251,14 @@ Controller buildRxPipeline(const builder::Environment& environment)
     return controller;
 }
 
+Controller buildRxPipeline(base::Expression expression, const std::unordered_set<std::string>& assetNames)
+{
+    Controller controller;
+
+    auto output = rxFactory(controller.getInternalInput(), assetNames, expression, controller);
+    controller.setOutput(std::move(output));
+
+    return controller;
+}
+
 } // namespace rxbk
