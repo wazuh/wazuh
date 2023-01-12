@@ -2,9 +2,10 @@
 name: decoder/agent-event-enrichment/0
 
 sources:
-  - decoder/queue-syslog/0
-  - decoder/queue-localfile/0
   - decoder/json/0
+  - decoder/queue-localfile/0
+  - decoder/queue-syslog/0
+  - decoder/syslog/0
 
 metadata:
   title: Wazuh agent events enrichment
@@ -21,7 +22,7 @@ check:
 normalize:
   - map:
       - host.id: $agent.id
-      - ~agents_kvdb_name: agents_host_data
+      - ~agents_kvdb_name: agents_host_data # KVDB name of the cached agents data
       - ~host.data: +kvdb_get/$~agents_kvdb_name/$agent.id
 
   - check:
