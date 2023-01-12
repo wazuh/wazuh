@@ -85,6 +85,9 @@ parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent"}, {"Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL} },
     { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: "},          {"Invalid agent name:  from 192.0.0.1", NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
     { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent"}, {"Invalid agent name: inv;agent from 192.0.0.1", NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent3' G:'Group1,Group2", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated group field"}, {"Unterminated group field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3 K:'ABC123'", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated IP field"}, {"Unterminated IP field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated key field"}, {"Unterminated key field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
 
     {0}
 };
@@ -129,7 +132,7 @@ static void test_w_auth_parse_data(void **state) {
     char *key_hash = NULL;
     w_err_t err;
 
-    unsigned int max = config.flags.use_source_ip == 1 ? 4 : 1;
+    unsigned int max = config.flags.use_source_ip == 1 ? 5 : 1;
     for (unsigned int a = 0; a < max; a++) {
         expect_any(__wrap_OS_IsValidIP, ip_address);
         expect_any(__wrap_OS_IsValidIP, final_ip);
