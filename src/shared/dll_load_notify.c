@@ -109,8 +109,9 @@ void enable_dll_verification()
 #if IMAGE_TRUST_CHECKS != 0
     // Check if all loaded DLLs are signed.
     if (ERROR_SUCCESS != check_ca_available()) {
-        const char* ERROR_MESSAGE = "The dynamic signature validation is not available because the CA name is not "
-                                    "available.";
+        const char* ERROR_MESSAGE = "The dynamic signature validation is not available because the CA name('"
+                                    CA_NAME
+                                    "') is not available.";
 #if IMAGE_TRUST_CHECKS == 2
         merror_exit(ERROR_MESSAGE);
 #else
