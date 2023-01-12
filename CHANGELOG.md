@@ -233,7 +233,7 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- Update ruleset according to new API log changes when user logged in with authorization context. ([#15072](https://github.com/wazuh/wazuh/pull/15072))
+- Updated ruleset according to new API log changes when the user is logged in with authorization context. ([#15072](https://github.com/wazuh/wazuh/pull/15072))
 - Update 0580-win-security_rules.xml rules. ([#13579](https://github.com/wazuh/wazuh/pull/13579))
 - Update Wazuh MITRE ATT&CK database to version 11.3. ([#13622](https://github.com/wazuh/wazuh/pull/13622))
 - Updating detection rules in 0840-win_event_channel.xml. ([#13633](https://github.com/wazuh/wazuh/pull/13633))
