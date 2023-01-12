@@ -1,5 +1,5 @@
-#ifndef _RUNTIME_Environment_HPP
-#define _RUNTIME_Environment_HPP
+#ifndef _ROUTER_RUNTIME_ENVIRONMENT_HPP
+#define _ROUTER_RUNTIME_ENVIRONMENT_HPP
 
 #include <atomic>
 #include <optional>
@@ -75,4 +75,4 @@ public:
 
 } // namespace router
 
-#endif // _RUNTIME_Environment_HPP
+#endif // _ROUTER_RUNTIME_ENVIRONMENT_HPP

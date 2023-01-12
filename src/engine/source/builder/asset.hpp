@@ -39,6 +39,7 @@ public:
         DECODER,
         RULE,
         OUTPUT,
+        ROUTE,
         FILTER
     };
 

@@ -206,6 +206,8 @@ Observable rxFactory(
 
 Controller buildRxPipeline(const builder::Environment& environment);
 
+Controller buildRxPipeline(base::Expression expression, const std::unordered_set<std::string>& assetNames);
+
 } // namespace rxbk
 
 #endif // _RX_FACTORY_H

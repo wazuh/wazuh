@@ -16,6 +16,7 @@ std::string Asset::typeToString(Asset::Type type)
         case Asset::Type::RULE: return "rule";
         case Asset::Type::OUTPUT: return "output";
         case Asset::Type::FILTER: return "filter";
+        case Asset::Type::ROUTE: return "route";
         default:
             throw std::runtime_error(
                 fmt::format("Asset type (\"{}\") unknown", static_cast<int>(type)));
@@ -184,6 +185,7 @@ base::Expression Asset::getExpression() const
     {
         case Asset::Type::OUTPUT:
         case Asset::Type::RULE:
+        case Asset::Type::ROUTE:
         case Asset::Type::DECODER:
             if (m_check)
             {

@@ -25,17 +25,6 @@ private:
     std::shared_ptr<store::IStoreRead> m_storeRead;
     std::shared_ptr<internals::Registry> m_registry;
 
-    // TODO: Fix catalog to include asset type as a member of Catalog object
-    enum class AssetType
-    {
-        Decoder,
-        Rule,
-        Output,
-        Filter,
-        Schema,
-        Environment
-    };
-
 public:
     Builder(std::shared_ptr<store::IStoreRead> storeRead,
             std::shared_ptr<internals::Registry> registry)
