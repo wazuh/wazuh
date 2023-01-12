@@ -2,10 +2,14 @@
 name: decoder/redis/0
 
 metadata:
-  description: Decoder for Linux redis logs
-  references:
-    - https://docs.elastic.co/en/integrations/redis
   module: redis
+  title: Redis logs decoder
+  description: Decoder for Linux redis logs
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-12
+  references:
+    - https://docs.rs/redis-module/latest/redis_module/logging/index.html
 
 # Example redis logs:
 
