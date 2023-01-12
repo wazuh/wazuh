@@ -6,6 +6,8 @@
 #include <expression.hpp>
 #include <json/json.hpp>
 
+#include <iostream>
+#include <logging/logging.hpp>
 
 namespace builder::internals::builders
 {
@@ -16,11 +18,14 @@ Builder getStageDestinationBuilder(std::shared_ptr<Registry> registry)
         json::Json jsonDefinition;
 
         // Check definition
-        try {
+        try
+        {
             jsonDefinition = std::any_cast<json::Json>(definition);
-        } catch (std::exception& e) {
-            throw std::runtime_error(fmt::format(
-                "Destination stage: Definition could not be converted to json: {}", e.what()));
+        }
+        catch (std::exception& e)
+        {
+            throw std::runtime_error(
+                fmt::format("Destination stage: Definition could not be converted to json: {}", e.what()));
         }
 
         if (!jsonDefinition.isString())
@@ -33,19 +38,19 @@ Builder getStageDestinationBuilder(std::shared_ptr<Registry> registry)
         // Build
         auto destination = jsonDefinition.getString().value();
 
-        auto op =  base::Term<base::EngineOp>::create(
-        "traceName",[=](base::Event event) -> base::result::Result<base::Event>
-        {
-            // Dummy implentation
-            const auto hasTestRoute = event->getBool(json::Json::formatJsonPath("~test_route"));
-            if (!hasTestRoute.has_value()  || hasTestRoute.value())
+        auto op = base::Term<base::EngineOp>::create(
+            "traceName",
+            [=](base::Event event) -> base::result::Result<base::Event>
             {
-                return base::result::makeFailure(
-                    event,
-                    "Destination stage: Could not get test route from event");
-            }
-            return base::result::makeSuccess(event, "exito! /~test_route");
-        });
+                std::cout << fmt::format("Destination stage: '{}' event '{}'\n", destination, event->prettyStr());
+                // Dummy implentation
+                const auto hasTestRoute = event->getBool(json::Json::formatJsonPath("~test_route"));
+                if (!hasTestRoute.has_value() || hasTestRoute.value())
+                {
+                    return base::result::makeFailure(event, "Destination stage: Could not get test route from event");
+                }
+                return base::result::makeSuccess(event, "exito! /~test_route");
+            });
         return base::Chain::create("stage.destination", {op});
     };
 }
