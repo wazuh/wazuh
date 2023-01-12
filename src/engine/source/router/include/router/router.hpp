@@ -1,11 +1,15 @@
 #ifndef _ROUTER_ROUTER_HPP
 #define _ROUTER_ROUTER_HPP
 
+#include <atomic>
 #include <memory>
-#include <mutex>
 #include <optional>
+#include <shared_mutex>
 #include <string>
+#include <thread>
 #include <unordered_map>
+
+#include <blockingconcurrentqueue.h>
 
 #include <baseTypes.hpp>
 #include <expression.hpp>
@@ -18,8 +22,13 @@ class Router
 {
 
 private:
-    std::size_t m_threads; // Todo const?
-    std::mutex m_mutexRoutes;
+    using concurrentQueue = moodycamel::BlockingConcurrentQueue<base::Event>;
+
+    std::size_t m_numThreads; // Todo const?
+    std::shared_mutex m_mutexRoutes;
+    std::atomic_bool m_isRunning;
+    std::vector<std::thread> m_threads;
+
     std::unordered_map<std::string, std::vector<base::Expression>> m_routes;
     std::shared_ptr<builder::internals::Registry> m_registry;
 
@@ -27,8 +36,10 @@ public:
     Router(std::shared_ptr<builder::internals::Registry> registry, std::size_t threads = 1)
         : m_mutexRoutes()
         , m_routes()
+        , m_isRunning(false)
         , m_registry(registry)
-        , m_threads(threads)
+        , m_numThreads(threads)
+        , m_threads {}
     {
         if (threads == 0)
         {
@@ -42,7 +53,7 @@ public:
      *
      * @return const std::vector<base::Expression>
      */
-    std::vector<base::Expression> getExpression();
+    std::vector<base::Expression> getExpression(); // TODO: Move to private
 
     /**
      * @brief Get the list of route names
@@ -60,22 +71,17 @@ public:
     std::optional<base::Error> addRoute(const json::Json& jsonDefinition);
 
     /**
-     * @brief remove a route from the router
+     * @brief Launch in a new threads the router to ingest data from the queue
      *
-     * @param name name of the route
-     * @return A error with description if the route can't be removed
-     * #TODO: implement
      */
-    std::optional<base::Error> removeRoute(const std::string& name);
+    std::optional<base::Error> run(std::shared_ptr<concurrentQueue> queue);
 
     /**
-     * @brief List all the routes
+     * @brief Stop the router
      *
-     * @return A json with the list of routes
-     * #TODO: Format of the json
-     * #TODO: implement
+     * Returns when all threads are stopped
      */
-    json::Json jListRoutes();
+    void stop();
 };
 } // namespace router
 #endif // _ROUTER_ROUTER_HPP
