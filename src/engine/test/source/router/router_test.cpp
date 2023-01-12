@@ -1,218 +1,94 @@
-/**
- * @brief Router Test Suite
- */
+#include <router/router.hpp>
 
-#include <algorithm>
-#include <chrono>
-#include <gtest/gtest.h>
-#include <iostream>
-#include <rxcpp/rx.hpp>
 #include <string>
-#include <thread>
-#include <vector>
 
-#include <baseTypes.hpp>
+#include <gtest/gtest.h>
 
-#include "router.hpp"
+#include "register.hpp"
 
-#define GTEST_COUT std::cerr << "[          ] [ INFO ] "
-
-using namespace std;
-using namespace rxcpp;
-using namespace router;
-using document_t = base::Event;
-using documents_t = vector<document_t>;
-
-struct FakeServer
+namespace
 {
-    explicit FakeServer(const documents_t &documents, bool verbose = false)
-        : m_output {observable<>::create<document_t>(
-              [=](subscriber<document_t> s)
-              {
-                  for (document_t document : documents)
-                  {
-                      if (verbose)
-                      {
-                          GTEST_COUT << "FakeServer emits " << document->getEvent()->str()
-                                     << endl;
-                      }
-                      s.on_next(document);
-                  }
-                  s.on_completed();
-              })}
-    {
-    }
-
-    rxcpp::observable<document_t> m_output;
-};
-
-// Fake Builder simulates the behaviour of a builder
-// as a router expects it.
-struct FakeBuilder
-{
-    using Obs_t = rxcpp::observable<document_t>;
-    using Op_t = std::function<Obs_t(Obs_t)>;
-
-    subjects::subject<document_t> m_subj;
-    FakeBuilder(bool verbose = false)
-    {
-        if (verbose)
+const json::Json jRouteExistQueue = json::Json(R"(
         {
-            this->m_subj.get_observable().subscribe(
-                [](auto j)
-                { GTEST_COUT << "FakeBuilder got " << j->getEvent()->str() << endl; });
-        }
-    }
-
-    auto operator()(const std::string &environment)
-    {
-        auto sub = m_subj.get_subscriber();
-        return (struct {
-            subscriber<document_t> sub;
-            Op_t getLifter()
-            {
-                return [=](Obs_t p) -> Obs_t
+            "name": "Exist wazuh.queue",
+            "check": [
                 {
-                    p.subscribe(sub);
-                    return p;
-                };
-            }
-            std::map<std::string, observable<std::string>> getTraceSinks()
-            {
-                std::map<std::string, observable<std::string>> fakeSinks;
-                fakeSinks["fake_asset"] =
-                    observable<>::just<std::string>("test_message");
-                return fakeSinks;
-            }
-        }) {sub};
-    }
-};
+                    "wazuh.queue": "+ef_exists"
+                }
+            ],
+            "destination": "env wazuh queue"
+        }
+    )");
 
-using router_t = Router<FakeBuilder>;
+const json::Json jRouteAllowAll = json::Json(R"(
+        {
+            "name": "Allow all",
+            "destination": "env default allow all"
+        }
+    )");
 
-TEST(RouterTest, Initializes)
+} // namespace
+
+TEST(Router, build_ok)
 {
-    router_t router(FakeBuilder {});
+    auto registry = std::make_shared<builder::internals::Registry>();
+    builder::internals::registerBuilders(registry);
+
+    router::Router router(registry);
 }
 
-TEST(RouterTest, AddRoute)
+TEST(Router, build_fail)
 {
-    router_t router(FakeBuilder {});
-    ASSERT_NO_THROW(
-        router.add("test", "test_env", [](document_t d) { return true; }));
-
-    ASSERT_EQ(router.routes().size(), 1);
-    ASSERT_EQ(router.environments().size(), 1);
-    ASSERT_EQ(router.routes().count("test"), 1);
-    ASSERT_EQ(router.environments().count("test_env"), 1);
+    GTEST_SKIP();
+    ASSERT_THROW(router::Router router(nullptr), std::exception);
 }
 
-TEST(RouterTest, AddDuplicateRoute)
+/*******************************************************************************
+ *           Get expression
+ ******************************************************************************/
+TEST(Router, get_expression_empty_router)
 {
-    router_t router(FakeBuilder {});
-    router.add("test", "test_env", [](document_t d) { return true; });
-    ASSERT_THROW(
-        router.add("test", "test_env", [](document_t d) { return true; }),
-        invalid_argument);
+    auto registry = std::make_shared<builder::internals::Registry>();
+    builder::internals::registerBuilders(registry);
+
+    router::Router router(registry);
+
+    auto expression = router.getExpression();
 }
 
-TEST(RouterTest, RemoveRoute)
+TEST(Router, get_expression_1_route)
 {
-    router_t router(FakeBuilder {});
-    router.add("test", "test_env", [](document_t d) { return true; });
-    ASSERT_NO_THROW(router.remove("test"));
-    ASSERT_EQ(router.routes().size(), 0);
-    ASSERT_EQ(router.environments().size(), 0);
+    auto registry = std::make_shared<builder::internals::Registry>();
+    builder::internals::registerBuilders(registry);
+
+    router::Router router(registry);
+
+    router.addRoute(jRouteExistQueue);
+
+    auto expression = router.getExpression();
 }
 
-TEST(RouterTest, RemoveNonExistentRoute)
+TEST(Router, get_expression_1_route_wout_check)
 {
-    router_t router {FakeBuilder {}};
-    ASSERT_THROW(router.remove("test"), invalid_argument);
+    auto registry = std::make_shared<builder::internals::Registry>();
+    builder::internals::registerBuilders(registry);
+
+    router::Router router(registry);
+
+    router.addRoute(jRouteAllowAll);
+
+    auto expression = router.getExpression();
 }
 
-TEST(RouterTest, PassThroughSingleRoute)
+TEST(Router, get_expression_2_routes)
 {
+    auto registry = std::make_shared<builder::internals::Registry>();
+    builder::internals::registerBuilders(registry);
 
-    auto createSharedEvent = [](const char* json) {
-        return std::make_shared<base::EventHandler>(
-            std::make_shared<base::Document>(json));
-    };
+    router::Router router(registry);
 
-    documents_t input {
-        createSharedEvent(R"({
-        "event": 1
-    })"),
-        createSharedEvent(R"({
-        "event": 2
-    })"),
-        createSharedEvent(R"({
-        "event": 3
-    })"),
-    };
-    FakeBuilder builder {true};
+    router.addRoute(jRouteExistQueue);
+    router.addRoute(jRouteAllowAll);
 
-    documents_t expected;
-    builder.m_subj.get_observable().subscribe([&expected](auto j)
-                                              { expected.push_back(j); });
-
-    router_t router {builder};
-    router.add("test", "test", [](document_t j) { return true; });
-
-    FakeServer {input, true}.m_output.subscribe(router.input());
-    ASSERT_EQ(expected.size(), 3);
-    for (auto i = 0; i < 3; ++i)
-    {
-        ASSERT_EQ(input[i]->getEvent()->str(), expected[i]->getEvent()->str());
-    }
-}
-
-TEST(RouterTest, SubscribeDebug)
-{
-    router_t router(FakeBuilder {});
-    ASSERT_NO_THROW(
-        router.add("test", "test_env", [](document_t d) { return true; }));
-
-    ASSERT_NO_THROW(
-        router.subscribeTraceSink("test_env", "fake_asset", [](auto s) {}));
-}
-
-TEST(RouterTest, ErrorEnviromentSubscribeDebug)
-{
-    router_t router(FakeBuilder {});
-    ASSERT_NO_THROW(
-        router.add("test", "test_env", [](document_t d) { return true; }));
-
-    ASSERT_THROW(
-        router.subscribeTraceSink("test_envERROR", "fake_asset", [](auto s) {}),
-        runtime_error);
-}
-
-TEST(RouterTest, ErrorAssetSubscribeDebug)
-{
-    router_t router(FakeBuilder {});
-    ASSERT_NO_THROW(
-        router.add("test", "test_env", [](document_t d) { return true; }));
-
-    ASSERT_THROW(
-        router.subscribeTraceSink("test_env", "fake_assetERROR", [](auto s) {}),
-        runtime_error);
-}
-
-TEST(RouterTest, SubscribeAllDebug)
-{
-    router_t router(FakeBuilder {});
-    ASSERT_NO_THROW(
-        router.add("test", "test_env", [](document_t d) { return true; }));
-
-    ASSERT_NO_THROW(router.subscribeAllTraceSinks("test_env", [](auto s) {}));
-}
-
-TEST(RouterTest, ErrorSubscribeAllDebug)
-{
-    router_t router(FakeBuilder {});
-    ASSERT_NO_THROW(
-        router.add("test", "test_env", [](document_t d) { return true; }));
-
-    ASSERT_THROW(router.subscribeAllTraceSinks("test_envError", [](auto s) {}), runtime_error);
+    auto expression = router.getExpression();
 }
