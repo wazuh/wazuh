@@ -125,7 +125,6 @@ extern w_err_t w_auth_parse_data(const char* buf,
 
 static void test_w_auth_parse_data(void **state) {
     char response[2048] = {0};
-    char buffer[OS_SIZE_20480] = {0};
     char ip[IPSIZE + 1];
     char *agentname = NULL;
     char *groups = NULL;
@@ -143,8 +142,7 @@ static void test_w_auth_parse_data(void **state) {
         set_expected_log(&parse_values[i].expected_log);
         response[0] = '\0';
         strncpy(ip, parse_values[i].src_ip, IPSIZE);
-        strncpy(buffer, parse_values[i].buffer, strlen(parse_values[i].buffer) + 1);
-        err = w_auth_parse_data(buffer, response, parse_values[i].pass, ip, &agentname, &groups, &key_hash);
+        err = w_auth_parse_data(parse_values[i].buffer, response, parse_values[i].pass, ip, &agentname, &groups, &key_hash);
 
         assert_int_equal(err, parse_values[i].expected_response.err);
         if (err == OS_SUCCESS) {
