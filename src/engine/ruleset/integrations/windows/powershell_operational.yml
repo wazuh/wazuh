@@ -6,20 +6,19 @@ sources:
 metadata:
   description: Decoder for Windows Powershell Operational events
 
-check:
- - ~event_channel.Event.System.Channel.#text: +s_eq/Microsoft-Windows-PowerShell/Operational
+check: ~event_channel.Event.System.Channel.#text==Microsoft-Windows-PowerShell/Operational
 
 normalize:
  - map:
-  - event.module: powershell
-  - event.category: process
-  - event.type: info
-  - event.sequence: $~event_channel.Event.EventData.SequenceNumber
+   - event.module: powershell
+   - event.category: process
+   - event.type: info
+   - event.sequence: $~event_channel.Event.EventData.SequenceNumber
   
   # Process fields
-  - process.entity_id: $~event_channel.Event.EventData.HostID
-  - process.command_line: $~event_channel.Event.EventData.HostApplication
-  - process.title: $~event_channel.Event.EventData.HostName
+   - process.entity_id: $~event_channel.Event.EventData.HostID
+   - process.command_line: $~event_channel.Event.EventData.HostApplication
+   - process.title: $~event_channel.Event.EventData.HostName
 
   # User fields
    - ~temp.user_parts: +s_to_array/$~event_channel.Event.EventData.User/\
