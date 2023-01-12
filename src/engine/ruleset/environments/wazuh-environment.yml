@@ -19,6 +19,8 @@ decoders:
   - decoder/fim-event/0
   - decoder/fim-scan/0
   - decoder/redis/0
+  - decoder/firewall-general/0
+  - decoder/firewall-generated/0
   - decoder/rootcheck/0
   - decoder/sca/0
   - decoder/syscollector-base/0
