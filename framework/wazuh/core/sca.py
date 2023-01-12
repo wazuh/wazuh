@@ -14,7 +14,7 @@ SCA_CHECK_DB_FIELDS = MappingProxyType(
     {'policy_id': 'policy_id', 'id': 'id', 'title': 'title', 'description': 'description', 'rationale': 'rationale',
      'remediation': 'remediation', 'file': 'file', 'process': 'process', 'directory': 'directory',
      'registry': 'registry', 'command': 'command', 'references': '`references`', 'result': 'result',
-     'status': '`status`', 'reason': 'reason', 'condition': 'condition'})
+     'reason': 'reason', 'condition': 'condition'})
 
 SCA_CHECK_COMPLIANCE_DB_FIELDS = MappingProxyType(
     {'compliance.key': 'key', 'compliance.value': 'value', 'id_check': 'id_check'})

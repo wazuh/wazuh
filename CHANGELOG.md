@@ -42,6 +42,8 @@ All notable changes to this project will be documented in this file.
 - Changed wazuh-clusterd tasks to wait asynchronously for responses coming from wazuh-db. ([#14791](https://github.com/wazuh/wazuh/pull/14843))
 - Use zlib for zip compression in cluster synchronization. ([#11190](https://github.com/wazuh/wazuh/pull/11190))
 - Added mechanism to dynamically adjust zip size limit in Integrity sync. ([#12241](https://github.com/wazuh/wazuh/pull/12241))
+- Deprecate status field in SCA database and alerts. ([#15745](https://github.com/wazuh/wazuh/pull/15745))
+
 
 #### Fixed
 
