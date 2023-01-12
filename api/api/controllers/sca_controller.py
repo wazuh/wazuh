@@ -87,7 +87,7 @@ async def get_sca_agent(request, agent_id: str = None, pretty: bool = False, wai
 
 async def get_sca_checks(request, agent_id: str = None, pretty: bool = False, wait_for_complete: bool = False,
                          policy_id: str = None, title: str = None, description: str = None, rationale: str = None,
-                         remediation: str = None, command: str = None, status: str = None, reason: str = None,
+                         remediation: str = None, command: str = None, reason: str = None,
                          file: str = None, process: str = None, directory: str = None, registry: str = None,
                          references: str = None, result: str = None, condition: str = None, offset: int = 0,
                          limit: int = DATABASE_LIMIT, sort: str = None, search: str = None, select: str = None,
@@ -115,8 +115,6 @@ async def get_sca_checks(request, agent_id: str = None, pretty: bool = False, wa
         Filters by remediation.
     command : str
         Filters by command.
-    status : str
-        Filters by status.
     reason : str
         Filters by reason.
     file : str
@@ -160,7 +158,6 @@ async def get_sca_checks(request, agent_id: str = None, pretty: bool = False, wa
                'rationale': rationale,
                'remediation': remediation,
                'command': command,
-               'status': status,
                'reason': reason,
                'file': file,
                'process': process,

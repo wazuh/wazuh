@@ -5,6 +5,7 @@ SET PATH=%PATH%;C:\Program Files (x86)\WiX Toolset v3.11\bin
 REM Fix all .exe and .dll files
 signtool.exe sign /a /tr http://rfc3161timestamp.globalsign.com/advanced /td SHA256 "*.exe"
 signtool.exe sign /a /tr http://rfc3161timestamp.globalsign.com/advanced /td SHA256 "..\*.dll"
+signtool.exe sign /a /tr http://rfc3161timestamp.globalsign.com/advanced /td SHA256 "*.dll"
 signtool.exe sign /a /tr http://rfc3161timestamp.globalsign.com/advanced /td SHA256 "..\data_provider\build\bin\sysinfo.dll"
 signtool.exe sign /a /tr http://rfc3161timestamp.globalsign.com/advanced /td SHA256 "..\shared_modules\dbsync\build\bin\dbsync.dll"
 signtool.exe sign /a /tr http://rfc3161timestamp.globalsign.com/advanced /td SHA256 "..\shared_modules\rsync\build\bin\rsync.dll"
