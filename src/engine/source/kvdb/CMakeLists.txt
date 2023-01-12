@@ -34,5 +34,5 @@ target_link_libraries(kvdb PRIVATE rocksdb base)
 
 target_include_directories(kvdb PUBLIC
     ${ENGINE_KVDB_INCLUDE_DIR}
-    ${CMAKE_BINARY_DIR}/_deps/rocksdb-src/include
+    ${rocksdb_SOURCE_DIR}/include
 )
