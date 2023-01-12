@@ -1,14 +1,13 @@
-# TODO: Update router and router tests
-# add_executable(routerTest
-#   ${TEST_SOURCE_DIR}/router/router_test.cpp
-# )
+# Router test
+add_executable(router_test
+  ${TEST_SOURCE_DIR}/router/router_test.cpp
+)
+target_link_libraries(router_test engine_test_main base router builders)
+gtest_discover_tests(router_test)
 
-# target_include_directories(routerTest PUBLIC
-#   ${ENGINE_SOURCE_DIR}/json
-#   ${ENGINE_SOURCE_DIR}/router
-#   ${RxCpp_SOURCE_DIR}/Rx/v2/src
-# )
-
-# # TODO is it ok to link to base here only for json?
-# target_link_libraries(routerTest gtest_main base)
-# gtest_discover_tests(routerTest)
+# Router + rxkb test
+add_executable(rxbk_router_test
+  ${TEST_SOURCE_DIR}/router/rxbk_router_test.cpp
+)
+target_link_libraries(rxbk_router_test engine_test_main base router builders rxbk)
+gtest_discover_tests(rxbk_router_test)

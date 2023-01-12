@@ -1,5 +1,5 @@
-#ifndef _Environment_RUNTIME_MANAGER_HPP
-#define _Environment_RUNTIME_MANAGER_HPP
+#ifndef _ROUTER_ENVIRONMENT_MANAGER_HPP
+#define _ROUTER_ENVIRONMENT_MANAGER_HPP
 
 #include <router/runtimeEnvironment.hpp>
 
@@ -119,4 +119,4 @@ public:
 };
 } // namespace router
 
-#endif // _Environment_RUNTIME_MANAGER_HPP
+#endif // _ROUTER_ENVIRONMENT_MANAGER_HPP
