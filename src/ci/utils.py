@@ -575,7 +575,7 @@ def runAStyleCheck(moduleName):
 
         if (stdoutString.find("Formatted") != -1):
             printFail('One or more files do not follow the Coding Style convention.')
-            printFail(f'Execute astyle --options=ci/input/astyle.config {moduleName}/*.h {moduleName}/*.cpp for further'
+            printFail(f'Execute astyle --options=ci/input/astyle.config {getModuleSourcePath(moduleName)}/*.h {getModuleSourcePath(moduleName)}/*.cpp for further'
                       f'information.')
 
             printFail('[AStyle: FAILED]')

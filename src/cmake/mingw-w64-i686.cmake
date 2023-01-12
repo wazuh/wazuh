@@ -1,5 +1,4 @@
-#mingw
-
+# mingw
 set(CMAKE_SYSTEM_NAME Windows)
 set(TOOLCHAIN_PREFIX i686-w64-mingw32)
 
