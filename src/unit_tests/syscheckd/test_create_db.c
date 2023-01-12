@@ -3534,10 +3534,8 @@ static void test_fim_process_wildcard_removed_failure(void **state) {
     directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
 
     char buff[OS_SIZE_128] = {0};
-    char error_msg[OS_SIZE_256] = {0};
 
     snprintf(buff, OS_SIZE_128, "%s%c%%", directory0->path, PATH_SEP);
-    snprintf(error_msg, OS_SIZE_256, FIM_DB_ERROR_RM_PATTERN, buff);
     expect_string(__wrap_fim_db_file_pattern_search, pattern, buff);
     will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
     expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
