@@ -20,6 +20,7 @@ cJSON* __wrap_wdb_get_agent_info(int id, __attribute__((unused)) int *sock);
 int* __wrap_wdb_get_agents_by_connection_status(const char* status, __attribute__((unused)) int *sock);
 int* __wrap_wdb_get_agents_ids_of_current_node(const char* status, __attribute__((unused)) int *sock, int last_id, int limit);
 int* __wrap_wdb_get_all_agents(bool include_manager, int *sock);
+rb_tree* __wrap_wdb_get_all_agents_rbtree(bool include_manager, int *sock);
 int __wrap_wdb_update_agent_keepalive(int id, const char *connection_status, const char *sync_status, __attribute__((unused)) int *sock);
 int __wrap_wdb_update_agent_data(agent_info_data *agent_data, __attribute__((unused)) int *sock);
 int __wrap_wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, __attribute__((unused)) int *sock);
@@ -43,5 +44,10 @@ char* __wrap_wdb_get_agent_name(int id, __attribute__((unused)) int *wdb_sock);
 int __wrap_wdb_remove_agent_db(int id, const char* name);
 
 cJSON* __wrap_wdb_get_distinct_agent_groups(__attribute__((unused)) int *sock);
+
+int __wrap_wdb_insert_agent(int id, const char *name, __attribute__((unused)) const char *ip, const char *register_ip,
+                            const char *internal_key, const char *group, int keep_date, __attribute__((unused)) int *sock);
+
+int __wrap_wdb_remove_agent(int id, __attribute__((unused)) int *sock);
 
 #endif
