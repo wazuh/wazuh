@@ -106,7 +106,6 @@ namespace {
     )");
 }
 
-// IP parsing
 static void routeEvent_dummy(benchmark::State& state)
 {
 
