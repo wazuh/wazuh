@@ -219,36 +219,36 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Adding support for new sysmon events ([#13594](https://github.com/wazuh/wazuh/pull/13594))
-- Adding new detection rules using Sysmon ID 1 events ([#13595](https://github.com/wazuh/wazuh/pull/13595))
-- Adding new detection rules using Sysmon ID 3 events ([#13596](https://github.com/wazuh/wazuh/pull/13596))
-- Adding new detection rules using Sysmon ID 7 events ([#13630](https://github.com/wazuh/wazuh/pull/13630))
-- Adding new detection rules using Sysmon ID 8 events ([#13637](https://github.com/wazuh/wazuh/pull/13637))
-- Adding new detection rules using Sysmon ID 10 events ([#13639](https://github.com/wazuh/wazuh/pull/13639))
-- Adding new detection rules using Sysmon ID 11 events ([#13631](https://github.com/wazuh/wazuh/pull/13631))
-- Adding new detection rules using Sysmon ID 13 events ([#13636](https://github.com/wazuh/wazuh/pull/13636))
-- Adding rules for Sysmon ID 20 events ([#13673](https://github.com/wazuh/wazuh/pull/13673))
-- Adding new PowerShell ScriptBlock detection rules ([#13638](https://github.com/wazuh/wazuh/pull/13638))
+- Adding support for new sysmon events. ([#13594](https://github.com/wazuh/wazuh/pull/13594))
+- Adding new detection rules using Sysmon ID 1 events. ([#13595](https://github.com/wazuh/wazuh/pull/13595))
+- Adding new detection rules using Sysmon ID 3 events. ([#13596](https://github.com/wazuh/wazuh/pull/13596))
+- Adding new detection rules using Sysmon ID 7 events. ([#13630](https://github.com/wazuh/wazuh/pull/13630))
+- Adding new detection rules using Sysmon ID 8 events. ([#13637](https://github.com/wazuh/wazuh/pull/13637))
+- Adding new detection rules using Sysmon ID 10 events. ([#13639](https://github.com/wazuh/wazuh/pull/13639))
+- Adding new detection rules using Sysmon ID 11 events. ([#13631](https://github.com/wazuh/wazuh/pull/13631))
+- Adding new detection rules using Sysmon ID 13 events. ([#13636](https://github.com/wazuh/wazuh/pull/13636))
+- Adding rules for Sysmon ID 20 events. ([#13673](https://github.com/wazuh/wazuh/pull/13673))
+- Adding new PowerShell ScriptBlock detection rules. ([#13638](https://github.com/wazuh/wazuh/pull/13638))
 - Added HPUX 11i SCA policies using bastille and without bastille. ([#15157](https://github.com/wazuh/wazuh/pull/15157))
 
 #### Changed
 
-- Update ruleset according to new API log changes when user logged in with authorization context ([#15072](https://github.com/wazuh/wazuh/pull/15072)) 
-- Update 0580-win-security_rules.xml rules ([#13579](https://github.com/wazuh/wazuh/pull/13579))
-- Update Wazuh MITRE ATT&CK database to version 11.3 ([#13622](https://github.com/wazuh/wazuh/pull/13622))
-- Updating detection rules in 0840-win_event_channel.xml ([#13633](https://github.com/wazuh/wazuh/pull/13633))
-- SCA policy for Ubuntu Linux 20.04 rework ([#15070](https://github.com/wazuh/wazuh/pull/15070)) 
-- Update Ubuntu Linux 22.04 SCA Policy with CIS Ubuntu Linux 22.04 LTS Benchmark v1.0.0 ([#150514](https://github.com/wazuh/wazuh/pull/15051))
+- Update ruleset according to new API log changes when user logged in with authorization context. ([#15072](https://github.com/wazuh/wazuh/pull/15072))
+- Update 0580-win-security_rules.xml rules. ([#13579](https://github.com/wazuh/wazuh/pull/13579))
+- Update Wazuh MITRE ATT&CK database to version 11.3. ([#13622](https://github.com/wazuh/wazuh/pull/13622))
+- Updating detection rules in 0840-win_event_channel.xml. ([#13633](https://github.com/wazuh/wazuh/pull/13633))
+- SCA policy for Ubuntu Linux 20.04 rework. ([#15070](https://github.com/wazuh/wazuh/pull/15070)) 
+- Update Ubuntu Linux 22.04 SCA Policy with CIS Ubuntu Linux 22.04 LTS Benchmark v1.0.0. ([#150514](https://github.com/wazuh/wazuh/pull/15051))
 
 #### Fixed
 
 - Fixed OpenWRT decoder fixed to parse UFW logs. ([#11613](https://github.com/wazuh/wazuh/pull/11613))
 - Bug fix in wazuh-api-fields decoder. ([#14807](https://github.com/wazuh/wazuh/pull/14807)) 
-- Fixing deprecated MITRE tags in rules ([#13567](https://github.com/wazuh/wazuh/pull/13567))
+- Fixing deprecated MITRE tags in rules. ([#13567](https://github.com/wazuh/wazuh/pull/13567))
 - SCA checks IDs are not unique. ([#15241](https://github.com/wazuh/wazuh/pull/15241))
 - Fixing regex in check 5.1.1 of Ubuntu 20.04 SCA. ([#14513](https://github.com/wazuh/wazuh/pull/14513))
 - Remove wrong Fedora Linux SCA default policies. ([#15251](https://github.com/wazuh/wazuh/pull/15251))
-- SUSE Linux Enterprise 15 SCA Policy duplicated check ids 7521 and 7522. ([#15156](https://github.com/wazuh/wazuh/pull/15156)) 
+- SUSE Linux Enterprise 15 SCA Policy duplicated check ids 7521 and 7522. ([#15156](https://github.com/wazuh/wazuh/pull/15156))
 
 ### Other
 
