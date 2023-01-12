@@ -45,7 +45,7 @@ parse:
     - event.original: <process.pid>:<~log.role> <@timestamp/%d %b %T> <log.level> <message>
 
     # Debian
-    - event.original: <@timestamp/%d %b %T> <~log.level> <message>
+    - event.original: <@timestamp/%d %b %T> <log.level> <message>
 
     # Windows
     - event.original: <~/ignore/[><~log.pid>] <@timestamp/%d %b %T> <log.level> <message>
