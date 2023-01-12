@@ -1,0 +1,78 @@
+
+---
+name: decoder/dbsync-host-data/0
+
+sources:
+  - decoder/dbsync/0
+
+metadata:
+    module: wazuh-agent/enrichment/dbsync-host-data
+    title: Host data from DBSync events
+    description: >
+        Extracts host data from DBSync events
+    compatibility: >
+        This decoder has been tested on Wazuh version 4.3
+    author:
+        name: Wazuh, Inc.
+        url: https://wazuh.com
+        date: 2022/01/11
+
+check:
+  - ~json.type: +s_eq/state
+
+normalize:
+  - check: +ef_exists/~json.data.attributes.hostname OR +ef_exists/~json.data.attributes.architecture
+    map:
+      - ~do_update_kvdb: true
+      - host.hostname: $~json.data.attributes.hostname
+      - host.name: $~json.data.attributes.hostname
+      - host.architecture: $~json.data.attributes.architecture
+
+  - check: +ef_exists/~json.data.attributes.mac AND +ef_exists/~json.data.attributes.name
+    map:
+      - ~do_update_kvdb: true
+      - ~host: +s_concat/{"network":{"/$~json.data.attributes.name/":{"mac":"/$~json.data.attributes.mac/"/}}}
+      - ~host: +parse_json/$~host
+      - host.network: +ef_merge/$~host.network
+
+  - check: +ef_exists/~json.data.attributes.tx_bytes AND +ef_exists/~json.data.attributes.name
+    map:
+      - ~do_update_kvdb: true
+      - ~host: +s_concat/{"network":{"/$~json.data.attributes.name/":{"tx_bytes":"/$~json.data.attributes.tx_bytes/"/}}}
+      - ~host: +parse_json/$~host
+      - host.network: +ef_merge/$~host.network
+
+  - check: +ef_exists/~json.data.attributes.rx_bytes AND +ef_exists/~json.data.attributes.name
+    map:
+      - ~do_update_kvdb: true
+      - ~host: +s_concat/{"network":{"/$~json.data.attributes.name/":{"rx_bytes":"/$~json.data.attributes.rx_bytes/"/}}}
+      - ~host: +parse_json/$~host
+      - host.network: +ef_merge/$~host.network
+
+  - check: +ef_exists/~json.data.attributes.tx_packets AND +ef_exists/~json.data.attributes.name
+    map:
+      - ~do_update_kvdb: true
+      - ~host: +s_concat/{"network":{"/$~json.data.attributes.name/":{"tx_packets":"/$~json.data.attributes.tx_packets/"/}}}
+      - ~host: +parse_json/$~host
+      - host.network: +ef_merge/$~host.network
+
+  - check: +ef_exists/~json.data.attributes.rx_packets AND +ef_exists/~json.data.attributes.name
+    map:
+      - ~do_update_kvdb: true
+      - ~host: +s_concat/{"network":{"/$~json.data.attributes.name/":{"rx_packets":"/$~json.data.attributes.rx_packets/"/}}}
+      - ~host: +parse_json/$~host
+      - host.network: +ef_merge/$~host.network
+
+  - check: +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface AND ~json.data.attributes.proto==0
+    map:
+      - ~do_update_kvdb: true
+      - ~host: +s_concat/{"network":{"/$~json.data.attributes.name/":{"ipv4":"/$~json.data.attributes.address/"/}}}
+      - ~host: +parse_json/$~host
+      - host.network: +ef_merge/$~host.network
+
+  - check: +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface AND ~json.data.attributes.proto==1
+    map:
+      - ~do_update_kvdb: true
+      - ~host: +s_concat/{"network":{"/$~json.data.attributes.name/":{"ipv6":"/$~json.data.attributes.address/"/}}}
+      - ~host: +parse_json/$~host
+      - host.network: +ef_merge/$~host.network
