@@ -17,7 +17,7 @@ with patch('wazuh.common.getgrnam'):
                 from wazuh import WazuhInternalError, WazuhError
 
 
-async def async_local_client(command, data, wait_for_complete):
+async def async_local_client(command, data):
     return None
 
 
@@ -147,7 +147,7 @@ async def test_get_node_ruleset_integrity():
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client) as execute_mock:
         with patch('json.loads'):
             await control.get_node_ruleset_integrity(lc=local_client)
-        execute_mock.assert_called_once_with(command=b'get_hash', data=b'', wait_for_complete=False)
+        execute_mock.assert_called_once_with(command=b'get_hash', data=b'')
 
         with patch('json.loads', return_value=KeyError(1)):
             with pytest.raises(KeyError):

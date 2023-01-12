@@ -46,7 +46,7 @@ static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node
 }
 
 // Parse XML configuration
-int wm_sys_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
+int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
     wm_sys_t *syscollector;
     int i;
 
@@ -54,6 +54,7 @@ int wm_sys_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
         os_calloc(1, sizeof(wm_sys_t), syscollector);
         // System provider config values
         syscollector->flags.enabled = 1;
+        syscollector->interval = WM_SYSCOLLECTOR_DEFAULT_INTERVAL;
         syscollector->flags.scan_on_start = 1;
         syscollector->flags.netinfo = 1;
         syscollector->flags.osinfo = 1;
@@ -96,13 +97,13 @@ int wm_sys_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
 
             switch (*endptr) {
             case 'd':
-                syscollector->interval *= 86400;
+                syscollector->interval *= W_DAY_SECONDS;
                 break;
             case 'h':
-                syscollector->interval *= 3600;
+                syscollector->interval *= W_HOUR_SECONDS;
                 break;
             case 'm':
-                syscollector->interval *= 60;
+                syscollector->interval *= W_MINUTE_SECONDS;
                 break;
             case 's':
             case '\0':

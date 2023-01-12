@@ -198,8 +198,13 @@ def runCoverage(moduleName):
         - ValueError: Raises an exception when fails for some reason.
     """
     currentDir = utils.moduleDirPath(moduleName=moduleName)
-    reportFolder = os.path.join(currentDir,
-                                "coverage_report")
+    if moduleName == "shared_modules/utils":
+        reportFolder = os.path.join(moduleName,
+                                    "coverage_report")
+    else:
+        reportFolder = os.path.join(currentDir,
+                                    "coverage_report")
+
     includeDir = Path(currentDir)
     moduleCMakeFiles = ""
     if moduleName == "shared_modules/utils":

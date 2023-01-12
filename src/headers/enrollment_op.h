@@ -34,6 +34,7 @@
 typedef struct _enrollment_target_cfg {
     char *manager_name;       /**< Manager's direction or ip address */
     int port;                 /**< Manager's port */
+    uint32_t network_interface;  /**< (optional) Interface name to use in IPv6(link-local) connections */
     char *agent_name;         /**< (optional) Name of the agent. In case of NULL enrollment message will send local hostname */
     char *centralized_group;  /**< (optional) In case the agent belong to a group */
     char *sender_ip;          /**< (optional) IP adress or CIDR of the agent. In case of null the manager will use the source ip */
@@ -112,8 +113,9 @@ void w_enrollment_destroy(w_enrollment_ctx *cfg);
  *
  * @param cfg configuration @see w_enrollment_ctx
  * @param server_adress (optional) If null server_adress will be obtained from cfg
+ * @param network_interface (not necesary for IPv4) Host network interface to use in an IPv6 connection.
  * @return 0 if successfull, -1 on error
  * */
-int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address);
+int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address, uint32_t network_interface);
 
 #endif

@@ -88,7 +88,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 #ifdef ENABLE_SYSC
     else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
-        if (wm_sys_read(xml, children, cur_wmodule) < 0) {
+        if (wm_syscollector_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }

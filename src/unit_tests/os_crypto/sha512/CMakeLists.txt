@@ -7,16 +7,17 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-list(APPEND md5_sha1_tests_names "test_md5_sha1_sha256_op")
-list(APPEND md5_sha1_tests_flags "-Wl,--wrap,wpopenv,--wrap,wpclose,--wrap,fread,--wrap,fclose,--wrap,fflush,--wrap,fgets,--wrap,fgetpos,--wrap,fopen,--wrap,fseek,--wrap,fwrite,--wrap,remove,--wrap,fgetc,--wrap,wfopen")
+list(APPEND sha512_tests_names "test_sha512_op")
+list(APPEND sha512_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
+                                -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf \
+                                -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc")
 
 # Compiling tests
-list(LENGTH md5_sha1_tests_names count)
+list(LENGTH sha512_tests_names count)
 math(EXPR count "${count} - 1")
-include_directories(${SRC_FOLDER})
 foreach(counter RANGE ${count})
-    list(GET md5_sha1_tests_names ${counter} test_name)
-    list(GET md5_sha1_tests_flags ${counter} test_flags)
+    list(GET sha512_tests_names ${counter} test_name)
+    list(GET sha512_tests_flags ${counter} test_flags)
     add_executable(${test_name} ${test_name}.c)
     if(${TARGET} STREQUAL "server")
         target_link_libraries(

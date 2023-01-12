@@ -80,6 +80,8 @@ void RSyncTest::SetUp()
 
 void RSyncTest::TearDown()
 {
+    dbsync_teardown();
+    std::remove(DATABASE_TEMP);
     EXPECT_NO_THROW(rsync_teardown());
 };
 
@@ -347,9 +349,9 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
 
     ASSERT_EQ(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), callbackData));
 
-    dbsync_teardown();
     EXPECT_EQ(messageCounter.load(), TOTAL_EXPECTED_MESSAGES);
 }
+
 TEST_F(RSyncTest, registerIncorrectSyncId)
 {
     const auto handle { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
@@ -490,8 +492,6 @@ TEST_F(RSyncTest, RegisterAndPush)
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
     EXPECT_EQ(0, rsync_close(handle_rsync));
-
-    dbsync_teardown();
 }
 
 TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
@@ -565,8 +565,6 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
     EXPECT_EQ(0, rsync_close(handle_rsync));
-
-    dbsync_teardown();
 }
 
 TEST_F(RSyncTest, RegisterAndPushCPP)

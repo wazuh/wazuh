@@ -27,7 +27,7 @@ unix_sed() {
     target_file="$2"
     special_args="$3"
 
-    sed "${special_args}" "${sed_expression}" "${target_file}" > "${target_file}.tmp"
+    sed ${special_args} "${sed_expression}" "${target_file}" > "${target_file}.tmp"
     cat "${target_file}.tmp" > "${target_file}"
     rm "${target_file}.tmp"
 
