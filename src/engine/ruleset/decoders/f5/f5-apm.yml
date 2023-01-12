@@ -1,0 +1,40 @@
+---
+name: decoder/f5-apm/0
+
+metadata:
+  module: f5
+  title: f5 APM Decoder
+  description: Decodes F5 BIG-IP Access Policy Manager logs
+  compatibility: >
+    This decoder is under development.
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/10
+  references:
+    - https://techdocs.f5.com/kb/en-us/products/big-ip_apm/manuals/product/apm-network-access-12-1-0/10.html
+
+sources:
+  - decoder/queue-syslog/0
+  - decoder/queue-localfile/0
+
+parse:
+  logpar:
+  - event.original: <~> <@timestamp/%Y\/%m\/%d %T> <~> <log.level> <~>[<process.pid>]<~/ignore/:> <event.code> <~/ignore/:><~> <~log_session_id>:<~/ignore/:> <~>:<~/ignore/:> <~>'<~tmp_user>' <~>:<~/ignore/:> <~>, <~>. <~tmp_result> <~>
+normalize:
+  - map:
+    - event.dataset : f5.bigipam
+    - event.module : f5
+    - rsa.internal.messageid : $event.code
+    - rsa.misc.log_session_id : +ef_rename/$~log_session_id
+    - rsa.misc.result : +ef_rename/$~tmp_result
+    - rsa.misc.severity : $log.level
+    - rsa.time.event_time : $@timestamp
+    - fileset.name : bigipam
+    - observer.product : Big-IP
+    - observer.type : Access
+    - observer.vendor : F5
+    - related.user : +ef_rename/$~tmp_user
+    - service.type : f5
+    - tags : +a_append/$event.dataset
+    - tags : +a_append/forwarded
+    - user.name : $related.user
