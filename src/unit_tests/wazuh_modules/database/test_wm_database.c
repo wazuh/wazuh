@@ -20,8 +20,11 @@
 #include "../../../wazuh_modules/wm_database.h"
 
 #include "../../wrappers/common.h"
+#include "../../wrappers/wazuh/os_crypto/keys_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/rbtree_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
@@ -40,6 +43,41 @@ int setup_wmdb(void **state) {
 }
 
 int teardown_wmdb(void **state) {
+    test_mode = 0;
+    return OS_SUCCESS;
+}
+
+int setup_keys_to_db(void **state) {
+    keystore keys = KEYSTORE_INITIALIZER;
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry *key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+    keys.keyentries[0] = key;
+
+    key->id = strdup("001");
+    key->name = strdup("agent1");
+    key->ip = (os_ip *)1;
+    key->raw_key = strdup("1234567890abcdef");
+
+    *state = &keys;
+
+    test_mode = 1;
+    return OS_SUCCESS;
+}
+
+int teardown_keys_to_db(void **state) {
+    keystore keys = *((keystore *)*state);
+
+    os_free(keys.keyentries[0]->id);
+    os_free(keys.keyentries[0]->name);
+    os_free(keys.keyentries[0]->raw_key);
+    os_free(keys.keyentries[0]);
+    os_free(keys.keyentries);
+
     test_mode = 0;
     return OS_SUCCESS;
 }
@@ -322,6 +360,179 @@ void test_wm_sync_legacy_groups_files_error_files(void **state) {
     os_free(dir_ent);
 }
 
+/* Tests sync_keys_with_wdb */
+
+void test_sync_keys_with_wdb_insert(void **state) {
+    keystore keys = *((keystore *)*state);
+    keys.keysize = 1;
+
+    rb_tree *tree = NULL;
+    os_calloc(1, sizeof(rb_tree), tree);
+
+    char *test_group = strdup("TESTGROUP");
+    char *test_ip = "1.1.1.1";
+
+    char **ids = NULL;
+    ids = os_AddStrArray("001", ids);
+
+    expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
+    will_return(__wrap_wdb_get_all_agents_rbtree, tree);
+
+    expect_value(__wrap_rbtree_get, tree, tree);
+    expect_string(__wrap_rbtree_get, key, keys.keyentries[0]->id);
+    will_return(__wrap_rbtree_get, NULL);
+
+    expect_value(__wrap_wdb_get_agent_group, id, 1);
+    will_return(__wrap_wdb_get_agent_group, test_group);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Synchronizing agent 001 'agent1'.");
+
+    expect_any(__wrap_OS_CIDRtoStr, ip);
+    expect_value(__wrap_OS_CIDRtoStr, size, IPSIZE);
+    will_return(__wrap_OS_CIDRtoStr, test_ip);
+    will_return(__wrap_OS_CIDRtoStr, 0);
+
+    expect_value(__wrap_wdb_insert_agent, id, 1);
+    expect_string(__wrap_wdb_insert_agent, name, keys.keyentries[0]->name);
+    expect_string(__wrap_wdb_insert_agent, register_ip, test_ip);
+    expect_string(__wrap_wdb_insert_agent, internal_key, keys.keyentries[0]->raw_key);
+    expect_string(__wrap_wdb_insert_agent, group, test_group);
+    expect_value(__wrap_wdb_insert_agent, keep_date, 1);
+    will_return(__wrap_wdb_insert_agent, 1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Couldn't insert agent '001' in the database.");
+
+    will_return(__wrap_rbtree_keys, ids);
+
+    expect_string(__wrap_OS_IsAllowedID, id, keys.keyentries[0]->id);
+    will_return(__wrap_OS_IsAllowedID, 0);
+
+    sync_keys_with_wdb(&keys);
+}
+
+void test_sync_keys_with_wdb_delete(void **state) {
+    keystore keys = *((keystore *)*state);
+    keys.keysize = 1;
+
+    rb_tree *tree = NULL;
+    os_calloc(1, sizeof(rb_tree), tree);
+
+    char **ids = NULL;
+    ids = os_AddStrArray("001", ids);
+
+    char *test_name = strdup("TESTNAME");
+
+    expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
+    will_return(__wrap_wdb_get_all_agents_rbtree, tree);
+
+    expect_value(__wrap_rbtree_get, tree, tree);
+    expect_string(__wrap_rbtree_get, key, keys.keyentries[0]->id);
+    will_return(__wrap_rbtree_get, 1);
+
+    will_return(__wrap_rbtree_keys, ids);
+
+    expect_string(__wrap_OS_IsAllowedID, id, keys.keyentries[0]->id);
+    will_return(__wrap_OS_IsAllowedID, -1);
+
+    expect_value(__wrap_wdb_get_agent_name, id, 1);
+    will_return(__wrap_wdb_get_agent_name, test_name);
+
+    expect_value(__wrap_wdb_remove_agent, id, 1);
+    will_return(__wrap_wdb_remove_agent, -1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Couldn't remove agent '001' from the database.");
+
+    sync_keys_with_wdb(&keys);
+}
+
+void test_sync_keys_with_wdb_insert_delete(void **state) {
+    keystore keys = *((keystore *)*state);
+    keys.keysize = 1;
+
+    rb_tree *tree = NULL;
+    os_calloc(1, sizeof(rb_tree), tree);
+
+    char *test_group = strdup("TESTGROUP");
+    char *test_ip = "1.1.1.1";
+    char *test_name = strdup("TESTNAME");
+
+    char **ids = NULL;
+    ids = os_AddStrArray("001", ids);
+
+    expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
+    will_return(__wrap_wdb_get_all_agents_rbtree, tree);
+
+    expect_value(__wrap_rbtree_get, tree, tree);
+    expect_string(__wrap_rbtree_get, key, keys.keyentries[0]->id);
+    will_return(__wrap_rbtree_get, NULL);
+
+    expect_value(__wrap_wdb_get_agent_group, id, 1);
+    will_return(__wrap_wdb_get_agent_group, test_group);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Synchronizing agent 001 'agent1'.");
+
+    expect_any(__wrap_OS_CIDRtoStr, ip);
+    expect_value(__wrap_OS_CIDRtoStr, size, IPSIZE);
+    will_return(__wrap_OS_CIDRtoStr, test_ip);
+    will_return(__wrap_OS_CIDRtoStr, 0);
+
+    expect_value(__wrap_wdb_insert_agent, id, 1);
+    expect_string(__wrap_wdb_insert_agent, name, keys.keyentries[0]->name);
+    expect_string(__wrap_wdb_insert_agent, register_ip, test_ip);
+    expect_string(__wrap_wdb_insert_agent, internal_key, keys.keyentries[0]->raw_key);
+    expect_string(__wrap_wdb_insert_agent, group, test_group);
+    expect_value(__wrap_wdb_insert_agent, keep_date, 1);
+    will_return(__wrap_wdb_insert_agent, 0);
+
+    will_return(__wrap_rbtree_keys, ids);
+
+    expect_string(__wrap_OS_IsAllowedID, id, keys.keyentries[0]->id);
+    will_return(__wrap_OS_IsAllowedID, -1);
+
+    expect_value(__wrap_wdb_get_agent_name, id, 1);
+    will_return(__wrap_wdb_get_agent_name, test_name);
+
+    expect_value(__wrap_wdb_remove_agent, id, 1);
+    will_return(__wrap_wdb_remove_agent, 0);
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "wazuhdb remove 1");
+    expect_value(__wrap_wdbc_query_ex, len, OS_SIZE_1024);
+    will_return(__wrap_wdbc_query_ex, "ok");
+    will_return(__wrap_wdbc_query_ex, -1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Could not remove the wazuh-db DB of the agent 1.");
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/TESTNAME");
+    will_return(__wrap_rmdir_ex, 0);
+
+    expect_string(__wrap_unlink, file, "queue/rids/001");
+    will_return(__wrap_unlink, 0);
+
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, NULL);
+
+    sync_keys_with_wdb(&keys);
+}
+
+void test_sync_keys_with_wdb_null(void **state) {
+    keystore keys = *((keystore *)*state);
+    keys.keysize = 1;
+
+    expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
+    will_return(__wrap_wdb_get_all_agents_rbtree, NULL);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mterror, formatted_msg, "Couldn't synchronize the keystore with the DB.");
+
+    sync_keys_with_wdb(&keys);
+}
 
 int main()
 {
@@ -337,6 +548,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wm_sync_legacy_groups_files_success_files_worker_error_dir, setup_wmdb, teardown_wmdb),
         cmocka_unit_test_setup_teardown(test_wm_sync_legacy_groups_files_success_files_success_dir, setup_wmdb, teardown_wmdb),
         cmocka_unit_test_setup_teardown(test_wm_sync_legacy_groups_files_error_files, setup_wmdb, teardown_wmdb),
+        // sync_keys_with_wdb
+        cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_insert, setup_keys_to_db, teardown_keys_to_db),
+        cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_delete, setup_keys_to_db, teardown_keys_to_db),
+        cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_insert_delete, setup_keys_to_db, teardown_keys_to_db),
+        cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_null, setup_keys_to_db, teardown_keys_to_db),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
