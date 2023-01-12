@@ -2,6 +2,8 @@
 name: decoder/kvdb-agent-update/0
 
 sources:
+  - decoder/dbsync/0
+  - decoder/dbsync-host-data/0
   - decoder/syscollector-dbsync-network-address-inserted/0
   - decoder/syscollector-dbsync-network-address/0
   - decoder/syscollector-dbsync-network-iface-inserted/0
