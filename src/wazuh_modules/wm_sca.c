@@ -1809,6 +1809,10 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
         return RETURN_INVALID;
     }
 
+    if(regex_match->d_size.prts_str_size){
+        os_free(regex_match->d_size.prts_str_size);
+    }
+
     if (!regex_match->sub_strings || !regex_match->sub_strings[0]) {
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
@@ -1916,9 +1920,14 @@ static int wm_sca_regex_numeric_comparison (const char * const pattern,
 
     if (!w_expression_match(regex_engine, str, NULL, regex_match)) {
         mdebug2("No match found for regex '%s'", pattern_copy_ref);
+        OSRegex_FreePattern(regex_engine->regex);
         os_free(pattern_copy);
         os_free(regex_match);
         return RETURN_NOT_FOUND;
+    }
+
+    if(regex_match->d_size.prts_str_size){
+        os_free(regex_match->d_size.prts_str_size);
     }
 
     if (!regex_match->sub_strings || !regex_match->sub_strings[0]) {
@@ -1927,6 +1936,7 @@ static int wm_sca_regex_numeric_comparison (const char * const pattern,
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Regex '%s' matched, but no string was captured by it. Did you forget specifying a capture group?", pattern_copy_ref);
         }
+        OSRegex_FreePattern(regex_engine->regex);
         os_free(pattern_copy);
         os_free(regex_match);
         return RETURN_INVALID;
@@ -1944,6 +1954,7 @@ static int wm_sca_regex_numeric_comparison (const char * const pattern,
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Conversion error. Cannot convert '%s' to integer.", regex_match->sub_strings[0]);
         }
+        OSRegex_FreePattern(regex_engine->regex);
         os_free(pattern_copy);
         os_free(regex_match);
         return RETURN_INVALID;
@@ -1964,6 +1975,8 @@ static int wm_sca_regex_numeric_comparison (const char * const pattern,
         }
         os_free(regex_match);
     }
+
+    OSRegex_FreePattern(regex_engine->regex);
 
     return result;
 }
@@ -2014,7 +2027,10 @@ int wm_sca_pattern_matches(const char * const str,
             minterm++;
             negated = 1;
         }
+        OSRegex_FreePattern(regex_engine->regex);
+
         const int minterm_result = negated ^ wm_sca_test_positive_minterm (minterm, str, reason, regex_engine);
+        OSMatch_FreePattern(regex_engine->match);
         test_result *= minterm_result;
         mdebug2("Testing minterm (%s%s)(%s) -> %d", negated ? "!" : "", minterm, *str != '\0' ? str : "EMPTY_LINE", minterm_result);
     }
