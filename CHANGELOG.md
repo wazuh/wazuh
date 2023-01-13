@@ -16,12 +16,12 @@ All notable changes to this project will be documented in this file.
 - Added a new wazuh-clusterd task for agent-groups info synchronization. ([#11753](https://github.com/wazuh/wazuh/pull/11753))
 - Added unit tests for functions in charge of getting ruleset sync status. ([#14950](https://github.com/wazuh/wazuh/pull/14950))
 - Added auto-vacuum mechanism in wazuh-db. ([#14950](https://github.com/wazuh/wazuh/pull/14950))
- 
+- Delta events in Syscollector when data gets changed may now produce alerts. ([#10843](https://github.com/wazuh/wazuh/pull/10843)) 
+
 #### Changed
 
 - wazuh-logtest now shows warnings about ruleset issues. ([#10822](https://github.com/wazuh/wazuh/pull/10822))
 - Modulesd memory is now managed by jemalloc, this helps reduce memory fragmentation. ([#12206](https://github.com/wazuh/wazuh/pull/12206))
-- The manager now refuses multiple connections from the same agent. ([#11702](https://github.com/wazuh/wazuh/pull/11702))
 - Updated the Vulnerability Detector configuration reporting to include MSU and skip JSON Red Hat feed. ([#12117](https://github.com/wazuh/wazuh/pull/12117))
 - Improved the shared configuration file handling performance. ([#12352](https://github.com/wazuh/wazuh/pull/12352))
 - The agent group data is now natively handled by Wazuh DB. ([#11753](https://github.com/wazuh/wazuh/pull/11753))
@@ -63,13 +63,13 @@ All notable changes to this project will be documented in this file.
 - Fixed unhandled cluster error when reading a malformed configuration. ([#13419](https://github.com/wazuh/wazuh/pull/13419))
 - Fixed framework unit test failures when they are run by the root user. ([#13368](https://github.com/wazuh/wazuh/pull/13368))
 - Fixed a memory leak in analysisd when parsing a disabled Active Response. ([#13405](https://github.com/wazuh/wazuh/pull/13405))
-- Fixed Syscollector delta message handling. ([#13590](https://github.com/wazuh/wazuh/pull/13590))
 - Prevented wazuh-db from deleting queue/diff when cleaning databases. ([#13892](https://github.com/wazuh/wazuh/pull/13892))
 - Fixed multiple data race conditions in Remoted reported by ThreadSanitizer. ([#14981](https://github.com/wazuh/wazuh/pull/14981))
 - Fixed aarch64 OS collection in Remoted to allow WPK upgrades. ([#15151](https://github.com/wazuh/wazuh/pull/15151))
 - Fixed a race condition in Remoted that was blocking agent connections. ([#15165](https://github.com/wazuh/wazuh/pull/15165))
 - Fixed Virustotal integration to support non UTF-8 characters. ([#13531](https://github.com/wazuh/wazuh/pull/13531))
 - Fixed a bug masking as Timeout any error that might occur while waiting to receive files in the cluster. ([#14922](https://github.com/wazuh/wazuh/pull/14922))
+- Fixed a read buffer overflow in wazuh-authd when parsing requests. ([#15876](https://github.com/wazuh/wazuh/pull/15876))
 
 #### Removed
 
@@ -108,7 +108,7 @@ All notable changes to this project will be documented in this file.
 - Some parts of Agentd and Execd have got refactored. ([#12750](https://github.com/wazuh/wazuh/pull/12750))
 - Handled new exception in the external integration modules. ([#10478](https://github.com/wazuh/wazuh/pull/10478))
 - Optimized the number of calls to DB maintenance tasks performed by the AWS integration. ([#11828](https://github.com/wazuh/wazuh/pull/11828))
-- Improved the reparse performance by removing unnecessary queries from external integrations. ([#12404](https://github.com/wazuh/wazuh/pull/12404))
+- Improved the reparse setting performance by removing unnecessary queries from external integrations. ([#12404](https://github.com/wazuh/wazuh/pull/12404))
 - Updated and expanded Azure module logging functionality to use the ossec.log file. ([#12478](https://github.com/wazuh/wazuh/pull/12478))
 - Improved the error management of the Google Cloud integration. ([#12647](https://github.com/wazuh/wazuh/pull/12647))
 - Deprecated `logging` tag in GCloud integration. It now uses `wazuh_modules` debug value to set the verbosity level. ([#12769](https://github.com/wazuh/wazuh/pull/12769))
@@ -120,6 +120,7 @@ All notable changes to this project will be documented in this file.
 - Agents on macOS now report the OS name as "macOS" instead of "Mac OS X". ([#14822](https://github.com/wazuh/wazuh/pull/14822))
 - The Systemd service stopping policy has been updated. ([#14816](https://github.com/wazuh/wazuh/pull/14816))
 - Changed how the AWS module handles `ThrottlingException` adding default values for connection retries in case no config file is set.([#14793](https://github.com/wazuh/wazuh/pull/14793))
+- The agent for Windows now verifies its libraries to prevent side loading. ([#15404](https://github.com/wazuh/wazuh/pull/15404))
 
 #### Fixed
 
@@ -191,6 +192,7 @@ All notable changes to this project will be documented in this file.
 - Improved `GET /sca/{agent_id}/checks/{policy_id}` API endpoint performance. ([#15017](https://github.com/wazuh/wazuh/pull/15017))
 - Improved exception handling when trying to connect to Wazuh sockets. ([#15334](https://github.com/wazuh/wazuh/pull/15334))
 - Modified _group_names and _group_names_or_all regexes to avoid invalid group names. ([#15671](https://github.com/wazuh/wazuh/pull/15671))
+- Changed `GET /sca/{agent_id}/checks/{policy_id}` endpoint filters and response to remove `status` field. ([#15747](https://github.com/wazuh/wazuh/pull/15747))
 
 #### Fixed
 
@@ -221,32 +223,32 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Added support for new sysmon events. ([#13594](https://github.com/wazuh/wazuh/pull/13594))
-- Added new detection rules using Sysmon ID 1 events. ([#13595](https://github.com/wazuh/wazuh/pull/13595))
-- Added new detection rules using Sysmon ID 3 events. ([#13596](https://github.com/wazuh/wazuh/pull/13596))
-- Added new detection rules using Sysmon ID 7 events. ([#13630](https://github.com/wazuh/wazuh/pull/13630))
-- Added new detection rules using Sysmon ID 8 events. ([#13637](https://github.com/wazuh/wazuh/pull/13637))
-- Added new detection rules using Sysmon ID 10 events. ([#13639](https://github.com/wazuh/wazuh/pull/13639))
-- Added new detection rules using Sysmon ID 11 events. ([#13631](https://github.com/wazuh/wazuh/pull/13631))
-- Added new detection rules using Sysmon ID 13 events. ([#13636](https://github.com/wazuh/wazuh/pull/13636))
-- Added new detection rules using Sysmon ID 20 events. ([#13673](https://github.com/wazuh/wazuh/pull/13673))
-- Added new PowerShell ScriptBlock detection rules. ([#13638](https://github.com/wazuh/wazuh/pull/13638))
+- Added support for new sysmon events. ([#13594](https://github.com/wazuh/wazuh/pull/13594))
+- Added new detection rules using Sysmon ID 1 events. ([#13595](https://github.com/wazuh/wazuh/pull/13595))
+- Added new detection rules using Sysmon ID 3 events. ([#13596](https://github.com/wazuh/wazuh/pull/13596))
+- Added new detection rules using Sysmon ID 7 events. ([#13630](https://github.com/wazuh/wazuh/pull/13630))
+- Added new detection rules using Sysmon ID 8 events. ([#13637](https://github.com/wazuh/wazuh/pull/13637))
+- Added new detection rules using Sysmon ID 10 events. ([#13639](https://github.com/wazuh/wazuh/pull/13639))
+- Added new detection rules using Sysmon ID 11 events. ([#13631](https://github.com/wazuh/wazuh/pull/13631))
+- Added new detection rules using Sysmon ID 13 events. ([#13636](https://github.com/wazuh/wazuh/pull/13636))
+- Added new detection rules using Sysmon ID 20 events. ([#13673](https://github.com/wazuh/wazuh/pull/13673))
+- Added new PowerShell ScriptBlock detection rules. ([#13638](https://github.com/wazuh/wazuh/pull/13638))
 - Added HPUX 11i SCA policies using bastille and without bastille. ([#15157](https://github.com/wazuh/wazuh/pull/15157))
 
 #### Changed
 
 - Updated ruleset according to new API log changes when the user is logged in with authorization context. ([#15072](https://github.com/wazuh/wazuh/pull/15072))
-- Updated 0580-win-security_rules.xml rules. ([#13579](https://github.com/wazuh/wazuh/pull/13579))
-- Updated Wazuh MITRE ATT&CK database to version 11.3. ([#13622](https://github.com/wazuh/wazuh/pull/13622))
-- Updated detection rules in 0840-win_event_channel.xml. ([#13633](https://github.com/wazuh/wazuh/pull/13633))
+- Updated 0580-win-security_rules.xml rules. ([#13579](https://github.com/wazuh/wazuh/pull/13579))
+- Updated Wazuh MITRE ATT&CK database to version 11.3. ([#13622](https://github.com/wazuh/wazuh/pull/13622))
+- Updated detection rules in 0840-win_event_channel.xml. ([#13633](https://github.com/wazuh/wazuh/pull/13633))
 - SCA policy for Ubuntu Linux 20.04 rework. ([#15070](https://github.com/wazuh/wazuh/pull/15070)) 
-- Updated Ubuntu Linux 22.04 SCA Policy with CIS Ubuntu Linux 22.04 LTS Benchmark v1.0.0. ([#150514](https://github.com/wazuh/wazuh/pull/15051))
+- Updated Ubuntu Linux 22.04 SCA Policy with CIS Ubuntu Linux 22.04 LTS Benchmark v1.0.0. ([#15051](https://github.com/wazuh/wazuh/pull/15051))
 
 #### Fixed
 
 - Fixed OpenWRT decoder fixed to parse UFW logs. ([#11613](https://github.com/wazuh/wazuh/pull/11613))
 - Bug fix in wazuh-api-fields decoder. ([#14807](https://github.com/wazuh/wazuh/pull/14807)) 
-- Fixed deprecated MITRE tags in rules. ([#13567](https://github.com/wazuh/wazuh/pull/13567))
+- Fixed deprecated MITRE tags in rules. ([#13567](https://github.com/wazuh/wazuh/pull/13567))
 - SCA checks IDs are not unique. ([#15241](https://github.com/wazuh/wazuh/pull/15241))
 - Fixed regex in check 5.1.1 of Ubuntu 20.04 SCA. ([#14513](https://github.com/wazuh/wazuh/pull/14513))
 - Removed wrong Fedora Linux SCA default policies. ([#15251](https://github.com/wazuh/wazuh/pull/15251))
@@ -263,6 +265,7 @@ All notable changes to this project will be documented in this file.
 
 - Prevented the Ruleset test suite from restarting the manager. ([#10773](https://github.com/wazuh/wazuh/pull/10773))
 - The pthread's rwlock has been replaced with a FIFO-queueing read-write lock. ([#14839](https://github.com/wazuh/wazuh/pull/14839))
+- Updated python dependency certifi to 2022.12.7. ([#15809](https://github.com/wazuh/wazuh/pull/15809))
 
 #### Fixed
 
