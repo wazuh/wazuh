@@ -4,7 +4,6 @@ no="h"
 yesmatch="e"
 nomatch="h"
 agent="aracı"
-local="yerel"
 server="sunucu"
 help="yardım"
 
@@ -21,10 +20,19 @@ system="Sistem"
 user="Kullanıcı"
 host="Bilgisayar"
 hitanyorabort="Devam etmek için ENTER veya çıkmak için Ctrl-C ye basın"
-whattoinstall="Ne tür kurulum yapmak istiyorsunuz (sunucu,aracı,yerel veya yardım)?"
+whattoinstall="Ne tür kurulum yapmak istiyorsunuz (sunucu,aracı veya yardım)?"
 serverchose="Sunucu kurulumu seçildi"
 clientchose="Aracı(istemci) kurulumu seçildi"
-localchose="Yerel kurulum seçildi"
+
+# Part 1.2
+buildremoted="Remote ve Auth modüllerini derlemek ve yüklemek istiyor musunuz?"
+nobuildremoted="Remote ve Auth modülleri derlenmeyecek"
+yesbuildremoted="Remote ve Auth modülleri derlenecek ve yüklenecektir"
+
+# Part 1.3
+buildclusterd="Kümeyi derlemek ve kurmak istiyor musunuz?"
+nobuildclusterd="Küme derlenmeyecek"
+yesbuildclusterd="Küme derlenecek ve kurulacak"
 
 # Part 2
 settingupenv="Kurulum ortamı hazırlanıyor"

@@ -4,7 +4,6 @@ no="n"
 yesmatch="s"
 nomatch="n"
 agent="agente"
-local="local"
 server="servidor"
 help="ayuda"
 
@@ -21,10 +20,19 @@ system="Sistema"
 user="Usuario"
 host="Host"
 hitanyorabort="Presione ENTER para continuar o Ctrl-C para abortar."
-whattoinstall="¿Qué tipo de instalación desea (manager, agente, local o ayuda)?"
+whattoinstall="¿Qué tipo de instalación desea (manager, agente o ayuda)?"
 serverchose="Seleccionada instalación de Manager (servidor)"
 clientchose="Seleccionada instalación de Agente (cliente)"
-localchose="Seleccionada instalación Local"
+
+# Part 1.2
+buildremoted="¿Desea compilar e instalar los módulos Remote y Auth?"
+nobuildremoted="Los módulos Remote y Auth no se compilarán"
+yesbuildremoted="Los módulos Remote y Auth serán compilados e instalados"
+
+# Part 1.3
+buildclusterd="¿Desea compilar e instalar el clúster?"
+nobuildclusterd="No se compilará el clúster"
+yesbuildclusterd="El cluster será compilado e instalado"
 
 # Part 2
 settingupenv="Configurando las variables de entorno de la instalación"

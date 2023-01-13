@@ -25,12 +25,12 @@ serverchose="Manager (server) installation chosen"
 clientchose="Agent (client) installation chosen"
 
 # Part 1.2 Remoted and Authd compilation
-buildremoted="Do you want to install remote incoming connections?"
-nobuildremoted="Remote incoming connections will not be compiled"
-yesbuildremoted="Remote incoming connections will be compiled and installed"
+buildremoted="Do you want to compile and install the Remote and Auth modules?"
+nobuildremoted="The Remote and Auth modules will not be compiled"
+yesbuildremoted="The Remote and Auth modules will be compiled and installed"
 
-# Part 1.2 Clusterd compilation
-buildclusterd="Do you want to install the cluster?"
+# Part 1.3 Clusterd compilation
+buildclusterd="Do you want to compile and install the cluster?"
 nobuildclusterd="Cluster will not be compiled"
 yesbuildclusterd="Cluster will be compiled and installed"
 

@@ -4,7 +4,6 @@ no="n"
 yesmatch="y"
 nomatch="n"
 agent="agent"
-local="lokalnie"
 server="serwer"
 help="pomoc"
 
@@ -21,10 +20,19 @@ system="System"
 user="Użytkownik"
 host="Host"
 hitanyorabort="Wciśnij ENTER aby kontynuować lub Ctrl-C aby przerwać."
-whattoinstall="Wybierz rodzaj instalacji (manager, agent, lokalnie or pomoc)?"
+whattoinstall="Wybierz rodzaj instalacji (manager, agent or pomoc)?"
 serverchose="Wybrana instalacja: manager (serwer)"
 clientchose="Wybrana instalacja: agent (klient)"
-localchose="Wybrana instalacja: lokalnie"
+
+# Część 1.2
+buildremoted="Czy chcesz skompilować i zainstalować moduły Remote i Auth?"
+nobuildremoted="Moduły Remote i Auth nie zostaną skompilowane"
+yesbuildremoted="Moduły Remote i Auth zostaną skompilowane i zainstalowane"
+
+# Część 1.3
+buildclusterd="Czy chcesz skompilować i zainstalować klaster?"
+nobuildclusterd="Klaster nie będzie kompilowany"
+yesbuildclusterd="Klaster zostanie skompilowany i zainstalowany"
 
 # Część 2
 settingupenv="Ustawianie środowiska instalacyjnego"

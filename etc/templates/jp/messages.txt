@@ -4,7 +4,6 @@ no="n"
 yesmatch="y"
 nomatch="n"
 agent="agent"
-local="local"
 server="server"
 help="help"
 
@@ -23,10 +22,19 @@ system="システム"
 user="ユーザ"
 host="ホスト"
 hitanyorabort="続けるには ENTER を押してください．また，Ctrl-C で中止します．"
-whattoinstall="どの種類のインストールを選択しますか (manager，agent，local または help)?"
+whattoinstall="どの種類のインストールを選択しますか (manager，agent または help)?"
 serverchose="Manager (server) インストールを選択しました"
 clientchose="Agent (client) インストールを選択しました"
-localchose="Local インストールを選択しました"
+
+# Part 1.2
+buildremoted="RemoteモジュールとAuthモジュールをコンパイルしてインストールしますか？"
+nobuildremoted="RemoteモジュールとAuthモジュールはコンパイルされません"
+yesbuildremoted="RemoteとAuthのモジュールがコンパイルされ、インストールされます"
+
+# Part 1.3
+buildclusterd="クラスターをコンパイルしてインストールしますか？"
+nobuildclusterd="クラスターはコンパイルされません"
+yesbuildclusterd="クラスタがコンパイルされインストールされます"
 
 # Part 2
 settingupenv="インストール環境を設定しています"
