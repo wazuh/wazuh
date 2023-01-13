@@ -16,7 +16,7 @@ check:
 
 parse:
   logpar:
-    # Quoted 3 IPs at beginning
+    # 3 IPs quoted at beginning
     # "10.5.102.222, 175.16.199.1, 204.246.1.1" 10.2.1.185 - - [22/Jan/2016:13:18:29 +0000] "GET /assets/xxxx?q=100 HTTP/1.1" 200 25507 "-" "Amazon CloudFront"
     - ~destination_address: >-
          "<destination.ip>(?:<destination.port>), <~ip1/ip>(?,) <~ip2/ip>" <~ip3/ip>
@@ -27,14 +27,13 @@ parse:
          <destination.ip>(?:<destination.port>) <~ip1/ip>(?,) <~ip2/ip>(?,) <~ip3/ip>
 
     # More than 3 Ips
-    # TODO: almost duplicated from the previous one, double optional doesn't work when option doesnt' result
+    # TODO: almost duplicated from the previous one, double optional doesn't work when option doesn't result
     # 1.128.3.4, 2a02:cf40:10ff:f00f:0000:0000:0:8000, 10.225.192.17 10.2.2.121 - - [30/Dec/2016:06:47:09 +0000] "GET /test.html HTTP/1.1" 404 8571 "-" "Mozilla/5.0 (compatible; Facebot 1.0; https://developers.facebook.com/docs/sharing/webmasters/crawler)"
     - ~destination_address: >-
          <destination.ip>(?:<destination.port>), <~ip1/ip>(?,) <~ip2/ip>(?,) <~ip3/ip>
 
     # 3 Ips
     # 10.0.0.2, 10.0.0.1, 127.0.0.1 - - [07/Dec/2016:11:05:07 +0100] "GET /ocelot HTTP/1.1" 200 571 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:49.0) Gecko/20100101 Firefox/49.0"
-    # 10.0.0.2, 10.0.0.1, 81.2.69.143 - - [07/Dec/2016:11:05:07 +0100] "GET /ocelot HTTP/1.1" 200 571 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:49.0) Gecko/20100101 Firefox/49.0"
     # 2a02:cf40:10ff:f00f:0000:0000:0:8000, 10.225.192.17 10.2.2.121 - - [30/Dec/2016:06:47:09 +0000] "GET /test.html HTTP/1.1" 404 8571 "-" "Mozilla/5.0 (compatible; Facebot 1.0; https://developers.facebook.com/docs/sharing/webmasters/crawler)"
     - ~destination_address: >-
          <destination.ip>(?:<destination.port>), <~ip1/ip>(?,) <~ip2/ip>
@@ -43,75 +42,114 @@ parse:
     # example.com 10.0.0.2, 10.0.0.1, 81.2.69.143 - - [07/Dec/2016:11:05:07 +0100] "GET /ocelot HTTP/1.1" 200 571 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:49.0) Gecko/20100101 Firefox/49.0"
     # TODO: can be duplicated due to not being able to add comma separator after first domain
     - ~destination_address: >-
-        <~domain1/fqdn>(?:<destination.port>) <~ip1/ip>(?,) <~ip2/ip>(?,) <~ip3/ip>
+        <~destination_domain/fqdn>(?:<destination.port>) <~ip1/ip>(?,) <~ip2/ip>(?,) <~ip3/ip>
 
     # 3 domains
     # example.com localhost, localhost - - [29/May/2017:19:02:48 +0000] "GET /test2 HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
     - ~destination_address: >-
-        <~domain1/fqdn>(?:<destination.port>) <~domain2/fqdn>(?,) <~domain3/fqdn>
+        <~destination_domain/fqdn>(?:<destination.port>) <~domain1/fqdn>(?,) <~domain2/fqdn>
 
     # 2 Ips
     # 1.128.3.4:80 127.0.0.1 - - [12/Apr/2018:09:48:40 +0200] "" 400 0 "-" "-"
-    - ~destination_address: <?destination.ip>(?:<destination.port>) <~ip1/ip>
+    - ~destination_address: <?destination.ip>(?:<destination.port>) <~source_address/ip>
 
     # Domain + IP
     # lessons.example.com 192.168.0.1 - - [09/Jun/2020:12:10:39 -0700] "GET /A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20elephants.mp4 HTTP/1.1" 206 7648063 "http://lessons.example.com/A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20elephants.mp4" "Mozilla/5.0 (Linux; Android 5.1.1; KFFOWI) AppleWebKit/537.36 (KHTML, like Gecko) Silk/81.2.16 like Chrome/81.0.4044.138 Safari/537.36"
-    # example.com:80 81.2.69.143 - - [07/Dec/2016:11:05:07 +0100] "GET /ocelot HTTP/1.1" 200 571 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36"
-    - ~destination_address: <~domain1/fqdn>(?:<destination.port>) <~ip1/ip>
+    - ~destination_address: <~destination_domain/fqdn>(?:<destination.port>) <~source_address/ip>
 
     # IP + domain
     # 1.128.3.4 localhost - - [29/May/2017:19:02:48 +0000] "GET /test2 HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
     - ~destination_address: <destination.ip>(?:<destination.port>) <~domain1/fqdn>
 
-    # domain + domain
+    # Domain + domain
     # example.com:80 unix: - - [26/Feb/2019:15:39:42 +0100] "hello" 400 173 "-" "-"
-    - ~destination_address: <~domain1/fqdn>(?:<destination.port>) <~domain2/fqdn>(?:)
+    - ~destination_address: <~destination_domain/fqdn>(?:<destination.port>) <~domain1/fqdn>(?:)
     # localhost, localhost - - [29/May/2017:19:02:48 +0000] "GET /test2 HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
     # TODO: almost duplicated from the previous one, double optional doesn't work when option doesnt' result
-    - ~destination_address: <~domain1/fqdn>(?:<destination.port>), <~domain2/fqdn>
+    - ~destination_address: <~destination_domain/fqdn>(?:<destination.port>), <~domain1/fqdn>
 
     # Single IP
     # 172.17.0.1 - - [29/May/2017:19:02:48 +0000] "GET /stringpatch HTTP/1.1" 404 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
-    # 81.2.69.143 - - [07/Dec/2016:11:05:07 +0100] "GET /ocelot HTTP/1.1" 200 571 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36"
     # 127.0.0.1 - - [12/Apr/2018:09:48:40 +0200] "" 400 0 "-" "-"
-    # 127.0.0.1 - - [07/Dec/2016:11:04:37 +0100] "GET /test1 HTTP/1.1" 404 571 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36"
-    # 127.0.0.1 - - [07/Dec/2016:11:05:07 +0100] "GET /taga HTTP/1.1" 404 169 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:49.0) Gecko/20100101 Firefox/49.0"
     - ~destination_address: <destination.ip>(?:<destination.port>)
 
     # Single domain
     # localhost - - [29/May/2017:19:02:48 +0000] "GET /test2 HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
     # unix: - - [26/Feb/2019:15:39:42 +0100] "hello" 400 173 "-" "-"
-    - ~destination_address: <~domain1/fqdn>(?:<?destination.port>)
+    - ~destination_address: <~destination_domain/fqdn>(?:<?destination.port>)
 
 normalize:
   - map:
-      - $~domain1: +s_replace/"//
-      - $~domain1: +s_replace/,//
-      - $~domain2: +s_replace/"//
-      - $~domain2: +s_replace/,//
-      - destination.domain: $~domain1
+      - destination.domain: $~destination_domain
       - url.domain: $~domain
-      - source.address: $~ip1
+      - source.address: +a_append/$~source_address
       # TODO: a_append should try best case scenario (if not succeded then continue with the next?)
-      # TODO: pending procedure
-      # nginx.access.remote_ip_list will append if not private:
-      # is private when firstByte 192 && seccondByte 168
-      # ----------------firstByte 172 && seccondByte [16;31]
-      # ----------------firstByte 172
-      # if none of them is private > append first of the list
-      - nginx.access.remote_ip_list: +a_append/$~domain1/~domain2
-      - nginx.access.remote_ip_list: +a_append/$destination.ip/$~ip2/$~ip3/$~ip4
-
+      - nginx.access.remote_ip_list: +a_append/$~domain1/$~domain2/$~domain3
+      - nginx.access.remote_ip_list: +a_append/$~ip1/$~ip2/$~ip3
       - related.ip: +a_append/$destination.ip
       - related.ip: +a_append/$source.ip
-
       - event.kind: event
       - event.category: +a_append/web
       - event.type: +a_append/access
+      - ~ip1_private: false
+      - ~ip2_private: false
+      - ~ip3_private: false
 
-      - $~ip2: +ef_delete
-      - $~ip3: +ef_delete
-      - $~ip4: +ef_delete
-      - $~domain1: +ef_delete
-      - $~domain2: +ef_delete
-      - $~domain3: +ef_delete
+  # TODO: This procedure is in the pipeline but I don't see any result on the final JSON
+  # source.address will append if not private:
+  - check:
+      # is private when firstByte 192 && seccondByte 168
+      - ~ip1: +ip_cidr/192.168.0.0/16
+    map:
+      - ~ip1_private: true
+
+  # firstByte 172 && seccondByte [16;31]
+  - check:
+      - ~ip1: +ip_cidr/172.16.0.0/13
+    map:
+      - ~ip1_private: true
+  - check:
+      - ~ip1: +ip_cidr/172.24.0.0/14
+    map:
+      - ~ip1_private: true
+  - check:
+      - ~ip1: +ip_cidr/172.28.0.0/15
+    map:
+      - ~ip1_private: true
+  - check:
+      - ~ip1: +ip_cidr/172.30.0.0/16
+    map:
+      - ~ip1_private: true
+  - check:
+      - ~ip1: +ip_cidr/172.31.0.0/32
+    map:
+      - ~ip1_private: true
+
+  # if firstByte is 127
+  - check:
+      - ~ip1: +ip_cidr/127.0.0.0/8
+    map:
+      - ~ip1_private: true
+
+  # if ip1 is not private then append
+  - check:
+      - ~ip1_private: +t_is_false
+    map:
+      - source.address: +a_append/$~ip1
+
+  # if all of them are private > append first of the list
+  - check:
+      - ~ip1_private: +t_is_true
+      - ~ip2_private: +t_is_true
+      - ~ip3_private: +t_is_true
+    map:
+      - source.address: +a_append/$~ip1
+
+  - map:
+      - ~source_address: +ef_delete
+      - ~ip1: +ef_delete
+      - ~ip2: +ef_delete
+      - ~ip3: +ef_delete
+      - ~destination_domain: +ef_delete
+      - ~domain1: +ef_delete
+      - ~domain2: +ef_delete
