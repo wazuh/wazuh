@@ -1,5 +1,5 @@
 ---
-name: decoder/fortinet-client_endpoint/0
+name: decoder/fortinet-client-endpoint/0
 
 metadata:
   title: Decoder for Fortinet FortiClient Endpoint Security

@@ -61,7 +61,7 @@ decoders:
   - decoder/syslog/0
 
   # Fortinet
-  - decoder/fortinet-client_endpoint/0
+  - decoder/fortinet-client-endpoint/0
 
 outputs:
   - output/file-output/0
