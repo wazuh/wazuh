@@ -130,7 +130,7 @@ typedef void((*log_fnc_t)(const char* msg));
  * @param func     Function name where the log is generated.
  * @param msg      Message to be logged.
  */
-typedef void ((*full_log_fnc_t)(const char *log_type, const char *tag, const char * file, int line, const char * func, const char *msg, ...));
+typedef void ((*full_log_fnc_t)(const char* log_type, const char* tag, const char* file, int line, const char* func, const char* msg, ...));
 
 /**
 * @brief Definition to indicate the unlimited queue.
