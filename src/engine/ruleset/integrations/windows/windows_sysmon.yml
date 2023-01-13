@@ -165,9 +165,17 @@ normalize:
     - registry.key: +s_from_array/$~temp.registry.array/\\
     - registry.value: +r_ext/$registry.path/^.*\\(.*)$
     
-    - ~temp.registry_data: +r_ext/$~event_channel.Event.EventData.details/^QWORD(\((0x[0-9A-F]{8}-0x[0-9A-F]{8})\))
-    
+ - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~event_channel.Event.EventData.Details/QWORD/
+   map:  
+    - registry.data.type: SZ_QWORD
+    - registry.data.strings: +r_ext/$~event_channel.Event.EventData.Details/^QWORD\s*\((0x[0-9A-F]+-0x[0-9A-F]+)\)
+    #- ~temp.registry_data: +r_ext/$~event_channel.Event.EventData.Details/^QWORD\s*(\((0x[0-9A-F]+-0x[0-9A-F]+)\))
+    #- ~temp.hex_test: "0x0000000100000000"
+    #- ~temp.hex_test2: +s_hex_to_num/$~temp.hex_test
 
-
-
+ - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~event_channel.Event.EventData.Details/DWORD/
+   map:  
+    - registry.data.type: SZ_DWORD
+    - ~temp.value: +r_ext/$~event_channel.Event.EventData.Details/DWORD \((0x[0-9A-F]{8})\)
+    - registry.data.strings: +s_hex_to_num/$~temp.value
    
