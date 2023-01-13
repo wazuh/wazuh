@@ -626,7 +626,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /dev/shm -> r:^/dev/shm\s"
+      - 'c:findmnt --kernel /dev/shm -> r:^/dev/shm\s'
 
   # 1.1.8.2 Ensure nodev option set on /dev/shm partition (Automated)
   - id: 28023 
@@ -1048,7 +1048,7 @@ checks:
   # 1.7.1 Ensure message of the day is configured properly (Automated)
   - id: 28039 
     title: "Ensure message of the day is configured properly."
-    description: "The contents of the /etc/motd file are displayed to users after login and function as a  message of the day for authenticated users.  Unix-based systems have typically displayed information about the OS release and  patch level upon logging in to the system. This information can be useful to developers  who are developing software for a particular OS platform. If mingetty(8) supports the  following options, they display operating system information: \m - machine architecture  \r - operating system release \s - operating system name \v - operating system version."
+    description: "The contents of the /etc/motd file are displayed to users after login and function as a  message of the day for authenticated users.  Unix-based systems have typically displayed information about the OS release and  patch level upon logging in to the system. This information can be useful to developers  who are developing software for a particular OS platform. If mingetty(8) supports the  following options, they display operating system information: \\m - machine architecture  \\r - operating system release \\s - operating system name \\v - operating system version."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal  status regarding the system and must include the name of the organization that owns  the system and any monitoring policies that are in place. Displaying OS and patch level  information in login banners also has the side effect of providing detailed system  information to attackers attempting to target specific exploits of a system. Authorized  users can easily get this information by running the " uname -a " command once they  have logged in.'
     remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\n , \\s , \\v or references to the OS platform OR If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd."
     compliance:
