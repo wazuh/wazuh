@@ -32,13 +32,6 @@ metadata:
 #       `-._    `-.__.-'    _.-'
 #           `-._        _.-'
 #               `-.__.-'
-# 4961:M 30 May 12:50:13.463 # Server started, Redis version 3.0.2
-
-# Debian
-# 30 May 10:04:45 . 0 clients connected (0 slaves), 618932 bytes in use, 0 shared objects
-
-# Windows
-# [2932] 31 May 04:32:08 - 0 clients connected (0 slaves), 1179968 bytes in use
 
 parse:
   logpar:
@@ -46,12 +39,15 @@ parse:
     - event.original: <process.pid>:<~log.role> <@timestamp/%d %b %Y %T> <log.level> <message>
 
     # Darwin
+    # 4961:M 30 May 12:50:13.457 * Increased maximum number of open files to 10032 (it was originally set to 4864).
     - event.original: <process.pid>:<~log.role> <@timestamp/%d %b %T> <log.level> <message>
 
     # Debian
+    # 30 May 10:04:45 . 0 clients connected (0 slaves), 618932 bytes in use, 0 shared objects
     - event.original: <@timestamp/%d %b %T> <log.level> <message>
 
     # Windows
+    # [2932] 31 May 04:32:08 - 0 clients connected (0 slaves), 1179968 bytes in use
     - event.original: <~/ignore/[><~log.pid>] <@timestamp/%d %b %T> <log.level> <message>
 
 # TODO: Could not map field 'log.offset' due to inability to persist values into yml variables.
@@ -67,42 +63,34 @@ normalize:
       - input.type: log
       - service.type: redis
   - check:
-      - log.level: +ef_exists
       - log.level: +s_eq/.
     map:
       - log.level: debug
   - check:
-      - log.level: +ef_exists
       - log.level: +s_eq/-
     map:
       - log.level: verbose
   - check:
-      - log.level: +ef_exists
       - log.level: +s_eq/*
     map:
       - log.level: notice
   - check:
-      - log.level: +ef_exists
       - log.level: +s_eq/#
     map:
       - log.level: warning
   - check:
-      - ~log.role: +ef_exists
       - ~log.role: +s_eq/M
     map:
       - redis.log.role: master
   - check:
-      - ~log.role: +ef_exists
       - ~log.role: +s_eq/S
     map:
       - redis.log.role: slave
   - check:
-      - ~log.role: +ef_exists
       - ~log.role: +s_eq/C
     map:
       - redis.log.role: child
   - check:
-      - ~log.role: +ef_exists
       - ~log.role: +s_eq/X
     map:
       - redis.log.role: sentinel
