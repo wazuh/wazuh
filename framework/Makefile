@@ -55,12 +55,14 @@ ifeq (${BUILD_CLUSTERD},$(filter ${BUILD_CLUSTERD},auto yes y Y 1))
 endif
 endif
 
+ifneq (${uname_S},AIX)
 ifdef DEBUG
 	CFLAGS+=-g
 	LFLAGS+=-Wl,-g
 else
 	CFLAGS+=-O2
 	LFLAGS+=-Wl,-O2
+endif
 endif
 
 .PHONY: all build install examples clean
@@ -91,7 +93,7 @@ examples: install
 build: $(BUILD_TARGET)
 
 libsqlite3.so.0: $(SQLITE_DIR)/sqlite3.o
-	$(CC) $(LFLAGS) -shared -o $@ $^
+	$(CC) $(THREAD_FLAGS) $(LFLAGS) -shared -o $@ $^
 
 ifeq (${uname_S},Linux)
 wazuh-clusterd-internal: wazuh-clusterd-internal.o $(SQLITE_DIR)/sqlite3.o $(DEBUG_OP_DEPS) $(HASH_OP_DEPS) $(QUEUE_OP) $(MD5_DEPS)
