@@ -65,8 +65,14 @@ decoders:
   - decoder/syslog/0
 
   # Postgresql decoders
-  #- decoder/postgresql-csv/0
-  #- decoder/postgresql-csv-msg-parse/0
+  - decoder/postgresql-csv/0
+  - decoder/postgresql-csv-msg-parse/0
+
+  # nginx decoder
+  - decoder/nginx-access-base/0
+  - decoder/nginx-access/0
+  - decoder/nginx-error/0
+
 
 outputs:
   - output/file-output/0

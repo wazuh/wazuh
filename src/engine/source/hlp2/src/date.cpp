@@ -38,8 +38,8 @@ static const std::vector<std::tuple<std::string, std::string>> TimeFormat {
     {"ISO8601Z", "%FT%TZ"},             // 2018-08-14T14:30:02.203151Z
     {"HTTPDATE", "%d/%b/%Y:%T %z"},     // 26/Dec/2016:16:22:14 +0000
     // HTTP-date = rfc1123-date |rfc850-date | asctime-date
-    {"NGINX_ERROR", "%D %T"},                  // 10/25/2006 14:49:34
-    {"POSTGRES", "%F %H:%M:%6S %Z"},           // 2021-02-14 10:45:33 UTC
+    {"NGINX_ERROR", "%Y/%m/%d %T"},     // 2019/10/30 23:26:34
+    {"POSTGRES", "%F %H:%M:%6S %Z"},    // 2021-02-14 10:45:33 UTC
 };
 
 /**
