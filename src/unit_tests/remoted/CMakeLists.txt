@@ -47,7 +47,8 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,wdb_set_agent_groups_csv -Wl,--wrap,w_is_single_node \
                             -Wl,--wrap,wdb_remove_group_db -Wl,--wrap,wdb_get_all_agents -Wl,--wrap,wdb_get_agent_info \
                             -Wl,--wrap,rem_inc_send_ack -Wl,--wrap,rem_inc_recv_ctrl_request -Wl,--wrap,rem_inc_recv_ctrl_keepalive \
-                            -Wl,--wrap,rem_inc_recv_ctrl_startup -Wl,--wrap,rem_inc_recv_ctrl_shutdown")
+                            -Wl,--wrap,rem_inc_recv_ctrl_startup -Wl,--wrap,rem_inc_recv_ctrl_shutdown -Wl,--wrap,pthread_mutex_lock \
+                            -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,wdb_get_distinct_agent_groups")
 
 list(APPEND remoted_names "test_secure")
 list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
@@ -81,7 +82,7 @@ list(APPEND remoted_flags "-W")
 list(APPEND remoted_names "test_remote-state")
 list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize \
                             -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Begin \
-                            -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get \
+                            -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Clean \
                             -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
                             -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
                             -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,_merror")

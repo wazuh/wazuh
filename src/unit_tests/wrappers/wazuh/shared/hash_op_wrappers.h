@@ -22,7 +22,7 @@ int __wrap_OSHash_Add(OSHash *self, const char *key, void *data);
 int __real_OSHash_Add(OSHash *hash, const char *key, void *data);
 
 int __real_OSHash_Add_ex(OSHash *self, const char *key, void *data);
-int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data);
+int __wrap_OSHash_Add_ex(__attribute__((unused)) OSHash *self, const char *key, void *data);
 
 void *__real_OSHash_Begin(const OSHash *self, unsigned int *i);
 void *__wrap_OSHash_Begin(const OSHash *self, unsigned int *i);

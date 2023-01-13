@@ -113,3 +113,7 @@ int __wrap_wdb_remove_agent_db(int id, const char* name) {
     }
     return mock();
 }
+
+cJSON* __wrap_wdb_get_distinct_agent_groups(__attribute__((unused)) int *sock) {
+    return mock_ptr_type(cJSON*);
+}
