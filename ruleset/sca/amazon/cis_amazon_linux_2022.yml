@@ -4380,7 +4380,7 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: none
     rules:
-      - 'f:/etc/sudoers -> r:NOPASSWD'
+      - "f:/etc/sudoers -> r:NOPASSWD"
       - 'd:/etc/sudoers.d -> r:\.* -> r:NOPASSWD'
 
   # 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally
@@ -4487,9 +4487,6 @@ checks:
     rules:
       - 'f:/etc/pam.d/password-auth -> r:^required\.+pam_faillock.so'
       - 'f:/etc/pam.d/system-auth -> r:^required\.+pam_faillock.so'
-      
-      # - "f:/etc/pam.d/password-auth -> r=^required"
-      # - "f:/etc/pam.d/system-auth -> r=^required"
 
   ####################################################
   # 5.5 Configure PAM
