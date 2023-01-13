@@ -479,10 +479,15 @@ void parseProcFS(nlohmann::json& portsInfo)
                         for (const auto& fdFile : std::filesystem::directory_iterator(pidFile.path()))
                         {
                             // Only symlinks that represent a socket are read.
-                            if (std::filesystem::is_socket(fdFile.status()))
+                            try
                             {
-                                findInodeMatch(fdFile.path(), inodes, matchInode, portsInfo);
+                                if (std::filesystem::is_socket(fdFile.status()))
+                                {
+                                    findInodeMatch(fdFile.path(), inodes, matchInode, portsInfo);
+                                }
                             }
+                            catch (const std::filesystem::filesystem_error& e)
+                            {}
                         }
                     }
                 }
