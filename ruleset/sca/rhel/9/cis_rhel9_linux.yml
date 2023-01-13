@@ -3440,7 +3440,6 @@ checks:
     title: "Ensure SSH AllowTcpForwarding is disabled."
     description: "SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines."
     rationale: "Leaving port forwarding enabled can expose the organization to security risks and backdoors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
-    impact: "SSH tunnels are widely used in many corporate environments that employ mainframe systems as their application backends. In those environments the applications themselves may have very limited native support for security. By utilizing tunneling, compliance with SOX, HIPAA, PCI-DSS, and other standards can be achieved without having to modify the applications."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: AllowTcpForwarding no."
     compliance:
       - cis: ["5.2.13"]
@@ -3607,7 +3606,6 @@ checks:
     title: "Ensure sudo commands use pty."
     description: "sudo can be configured to run only from a pseudo terminal (pseudo-pty)."
     rationale: "Attackers can run a malicious program using sudo which would fork a background process that remains even when the main program has finished executing."
-    impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
     remediation: "Edit the file /etc/sudoers with visudo or a file in /etc/sudoers.d/ with visudo -f <PATH TO FILE> and add the following line: Defaults use_pty."
     compliance:
       - cis: ["5.3.2"]
@@ -3631,7 +3629,6 @@ checks:
     title: "Ensure sudo log file exists."
     description: "sudo can use a custom log file."
     rationale: "A sudo log file simplifies auditing of sudo commands."
-    impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files. Creation of additional log files can cause disk space exhaustion if not correctly managed. You should configure logrotate to manage the sudo log in accordance with your local policy."
     remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f and add the following line: Defaults logfile="<PATH TO CUSTOM LOG FILE>" Example: Defaults logfile="/var/log/sudo.log".'
     compliance:
       - cis: ["5.3.3"]
@@ -3656,7 +3653,6 @@ checks:
     title: "Ensure users must provide password for escalation."
     description: "The operating system must be configured so that users must provide a password for privilege escalation."
     rationale: "Without re-authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical the user re-authenticate."
-    impact: "This will prevent automated processes from being able to elevate privileges. To include Ansible and AWS builds."
     remediation: "Based on the outcome of the audit procedure, use visudo -f <PATH TO FILE> to edit the relevant sudoers file. Remove any line with occurrences of NOPASSWD tags in the file."
     compliance:
       - cis: ["5.3.4"]
@@ -3790,7 +3786,6 @@ checks:
     title: "Ensure lockout for failed password attempts is configured."
     description: "Lock out users after n unsuccessful consecutive login attempts. - deny=<n> - Number of attempts before the account is locked. - unlock_time=<n> - Time in seconds before the account is unlocked. Note: The maximum configurable value for unlock_time is 604800."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
-    impact: "Use of unlock_time=0 may allow an attacker to cause denial of service to legitimate users."
     remediation: 'Set password lockouts and unlock times to conform to site policy. deny should be not greater than 5 and unlock_time should be 0 (never), or 900 seconds or greater. Depending on the version you are running, follow one of the two methods bellow. Versions 8.2 and later: Edit /etc/security/faillock.conf and update or add the following lines: deny = 5 unlock_time = 900 Versions 8.0 and 8.1: Run the following script to update the system-auth and password-auth files. This script will update/add the deny=5 and unlock_time=900 options. This script should be modified as needed to follow local site policy. #!/usr/bin/env bash for fn in system-auth password-auth; do file="/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep ''custom/'')/$fn" if grep -Pq -- ''^\h*auth\h+required\h+pam_faillock\.so(\h+[^#\n\r]+)?\h+deny=(0|[6-9]|[1- 9][0-9]+)\b.*$'' "$file"; then sed -ri ''/pam_faillock.so/s/deny=\S+/deny=5/g'' "$file" elif ! grep -Pq -- ''^\h*auth\h+required\h+pam_faillock\.so(\h+[^#\n\r]+)?\h+deny=\d*\b.*$'' "$file"; then sed -r ''s/^\s*(auth\s+required\s+pam_faillock\.so\s+)([^{}#\n\r]+)?\s*(\{.*\})?(.*)$ /\1\2\3 deny=5 \4/'' $file fi if grep -P -- ''^\h*(auth\h+required\h+pam_faillock\.so\h+)([^#\n\r]+)?\h+unlock_time=([1- 9]|[1-9][0-9]|[1-8][0-9][0-9])\b.*$'' "$file"; then sed -ri ''/pam_faillock.so/s/unlock_time=\S+/unlock_time=900/g'' "$file" elif ! grep -Pq -- ''^\h*auth\h+required\h+pam_faillock\.so(\h+[^#\n\r]+)?\h+unlock_time=\d*\b.*$ '' "$file"; then sed -ri ''s/^\s*(auth\s+required\s+pam_faillock\.so\s+)([^{}#\n\r]+)?\s*(\{.*\})?(.*)$ /\1\2\3 unlock_time=900 \4/'' "$file" fi done authselect apply-changes.'
     compliance:
       - cis: ["5.5.2"]
@@ -4032,7 +4027,6 @@ checks:
     title: "Ensure root password is set."
     description: "There are a number of methods to access the root account directly. Without a password set any user would be able to gain access and thus control over the entire system."
     rationale: "Access to root should be secured at all times."
-    impact: "If there are any automated processes that relies on access to the root account without authentication, they will fail after remediation."
     remediation: "Set the root password with: # passwd root."
     compliance:
       - cis: ["5.6.5"]
