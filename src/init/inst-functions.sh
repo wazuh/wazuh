@@ -476,11 +476,7 @@ InstallCommon(){
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
-        if [ "X$BUILDREMOTED" = "Xyes" ]; then
-            OSSEC_CONTROL_SRC='./init/ossec-server.sh'
-        else
-            OSSEC_CONTROL_SRC='./init/ossec-local.sh'
-        fi
+        OSSEC_CONTROL_SRC='./init/ossec-server.sh'
         OSSEC_CONF_SRC='../etc/ossec-server.conf'
     elif [ ${INSTYPE} = 'agent' ]; then
         OSSEC_CONTROL_SRC='./init/ossec-client.sh'
