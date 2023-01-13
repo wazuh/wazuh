@@ -176,7 +176,6 @@ checks:
   - id: 28007
     title: "Ensure separate partition exists for /var."
     description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
-    rationale: "The reasoning for mounting /var on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard- link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.3.1"]
@@ -246,7 +245,6 @@ checks:
   - id: 28011
     title: "Ensure separate partition exists for /var/tmp."
     description: "The /var/tmp directory is a world-writable directory used for temporary storage by all users and some applications. Temporary file residing in /var/tmp is to be preserved between reboots."
-    rationale: "The reasoning for mounting /var/tmp on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.4.1"]
@@ -316,7 +314,6 @@ checks:
   - id: 28015
     title: "Ensure separate partition exists for /var/log."
     description: "The /var/log directory is used by system services to store log data ."
-    rationale: "The reasoning for mounting /var/log on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.5.1"]
@@ -386,7 +383,6 @@ checks:
   - id: 28019
     title: "Ensure separate partition exists for /var/log/audit."
     description: "The auditing daemon, auditd, stores log data in the /var/log/audit directory."
-    rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.6.1"]
@@ -456,7 +452,6 @@ checks:
   - id: 28023
     title: "Ensure separate partition exists for /home."
     description: "The /home directory is used to support disk storage needs of local users."
-    rationale: "The reasoning for mounting /home on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.7.1"]
@@ -506,7 +501,6 @@ checks:
   - id: 28026
     title: "Ensure usrquota option set on /home partition."
     description: "The usrquota mount option allows for the filesystem to have disk quotas configured."
-    rationale: "To ensure the availability of disk space on /home, it is important to limit the impact a single user or group can cause for other users (or the wider system) by accidentally filling up the partition. Quotas can also be applied to inodes for filesystems where inode exhaustion is a concern."
     remediation: "Edit the /etc/fstab file and add usrquota to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,usrquota,grpquota,nodev,relatime 00 Run the following command to remount /home with the configured options: # mount -o remount /home Create the quota database. This example will ignore any existing quota files. # quotacheck -cugv /home quotacheck: Your kernel probably supports journaled quota but you are not using it. Consider switching to journaled quota to avoid running quotacheck after an unclean shutdown. quotacheck: Scanning /dev/sdb [/home] done quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Checked 8 directories and 0 files quotacheck: Old file not found. quotacheck: Old file not found. Restore SELinux context on the quota database files. Order of operations is important as quotaon will set the immutable attribute on the files and thus restorecon will fail. # restorecon /home/aquota.user Enable quotas on the partition: # quotaon -vug /home /dev/sdb [/home]: group quotas turned on /dev/sdb [/home]: user quotas turned on."
     compliance:
       - cis: ["1.1.7.4"]
@@ -523,7 +517,6 @@ checks:
   - id: 28027
     title: "Ensure grpquota option set on /home partition."
     description: "The grpquota mount option allows for the filesystem to have disk quotas configured."
-    rationale: "To ensure the availability of disk space on /home, it is important to limit the impact a single user or group can cause for other users (or the wider system) by accidentally filling up the partition. Quotas can also be applied to inodes for filesystems where inode exhaustion is a concern."
     remediation: "Edit the /etc/fstab file and add grpquota to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,usrquota,grpquota,nodev,relatime 00 Run the following command to remount /home with the configured options: # mount -o remount /home Create the quota database. This example will ignore any existing quota files. # quotacheck -cugv /home quotacheck: Your kernel probably supports journaled quota but you are not using it. Consider switching to journaled quota to avoid running quotacheck after an unclean shutdown. quotacheck: Scanning /dev/sdb [/home] done quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Checked 8 directories and 0 files quotacheck: Old file not found. quotacheck: Old file not found. Restore SELinux context on the quota database files. Order of operations is important as quotaon will set the immutable attribute on the files and thus restorecon will fail. # restorecon /home/aquota.group Enable quotas on the partition: # quotaon -vug /home /dev/sdb [/home]: group quotas turned on /dev/sdb [/home]: user quotas turned on."
     compliance:
       - cis: ["1.1.7.5"]
@@ -1246,7 +1239,6 @@ checks:
     description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
     rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
     remediation: "Run the following command to remove the X Windows Server packages: # dnf remove xorg-x11-server-common."
-    impact: "Many Linux systems run applications which require a Java runtime. Some Linux Java packages have a dependency on specific X Windows xorg-x11-fonts. One workaround to avoid this dependency is to use the "headless" Java packages for your specific Java runtime."
     compliance:
       - cis: ["2.2.1"]
       - cis_csc_v7: ["9.2"]
@@ -1290,7 +1282,6 @@ checks:
     title: "Ensure CUPS is not installed."
     description: "The Common Unix Print System (CUPS) provides the ability to print to both local and network printers. A system running CUPS can also accept print jobs from remote systems and print them to local printers. It also provides a web based remote administration capability."
     rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be removed to reduce the potential attack surface. Note: Removing CUPS will prevent printing from the system."
-    impact: "Disabling CUPS will prevent printing from the system, a common task for workstation systems."
     remediation: "Run the following command to remove cups: # dnf remove cups."
     compliance:
       - cis: ["2.2.3"]
@@ -1387,7 +1378,6 @@ checks:
     title: "Ensure TFTP Server is not installed."
     description: "Trivial File Transfer Protocol (TFTP) is a simple protocol for exchanging files between two TCP/IP machines. TFTP servers allow connections from a TFTP Client for sending and receiving files."
     rationale: "TFTP does not have built-in encryption, access control or authentication. This makes it very easy for an attacker to exploit TFTP to gain access to files."
-    impact: "TFTP is often used to provide files for network booting such as for PXE based installation of servers."
     remediation: "Run the following command to remove tftp-server: # dnf remove tftp-server."
     compliance:
       - cis: ["2.2.7"]
@@ -1589,7 +1579,6 @@ checks:
     title: "Ensure nfs-utils is not installed or the nfs-server service is masked."
     description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
     rationale: "If the system does not require network shares, it is recommended that the nfs-utils package be removed to reduce the attack surface of the system."
-    impact: "Many of the libvirt packages used by Enterprise Linux virtualization are dependent on the nfs-utils package. If the nfs-utils package is required as a dependency, the nfsserver service should be disabled and masked to reduce the attack surface of the system."
     remediation: "Run the following command to remove nfs-utils: # dnf remove nfs-utils OR If the nfs-package is required as a dependency, run the following command to stop and mask the nfs-server service: # systemctl --now mask nfs-server. Additional Information: Many of the libvirt packages used by Enterprise Linux virtualization are dependent on the nfs-utils package. If the nfs-utils package is required as a dependency, the nfsserver service should be disabled and masked to reduce the attack surface of the system."
     compliance:
       - cis: ["2.2.16"]
@@ -1613,7 +1602,6 @@ checks:
     title: "Ensure rpcbind is not installed or the rpcbind services are masked."
     description: "The rpcbind utility maps RPC services to the ports on which they listen. RPC processes notify rpcbind when they start, registering the ports they are listening on and the RPC program numbers they expect to serve. The client system then contacts rpcbind on the server with a particular RPC program number. The rpcbind service redirects the client to the proper port number so it can communicate with the requested service. Portmapper is an RPC service, which always listens on tcp and udp 111, and is used to map other RPC services (such as nfs, nlockmgr, quotad, mountd, etc.) to their corresponding port number on the server. When a remote host makes an RPC call to that server, it first consults with portmap to determine where the RPC server is listening."
     rationale: "A small request (~82 bytes via UDP) sent to the Portmapper generates a large response (7x to 28x amplification), which makes it a suitable tool for DDoS attacks. If rpcbind is not required, it is recommended that the rpcbind package be removed to reduce the attack surface of the system."
-    impact: "Many of the libvirt packages used by Enterprise Linux virtualization, and the nfs-utils package used for The Network File System (NFS), are dependent on the rpcbind package. If the rpcbind package is required as a dependency, the services rpcbind.service and rpcbind.socket should be stopped and masked to reduce the attack surface of the system."
     remediation: "Run the following command to remove rpcbind: # dnf remove rpcbind OR If the rpcbind package is required as a dependency, run the following commands to stop and mask the rpcbind.service and rpcbind.socket services: # systemctl --now mask rpcbind.service # systemctl --now mask rpcbind.socket."
     compliance:
       - cis: ["2.2.17"]
@@ -1638,7 +1626,6 @@ checks:
     title: "Ensure rsync-daemon is not installed or the rsyncd service is masked."
     description: "The rsyncd service can be used to synchronize files between systems over network links."
     rationale: "Unless required, the rsync-daemon package should be removed to reduce the attack surface area of the system. The rsyncd service presents a security risk as it uses unencrypted protocols for communication. Note: If a required dependency exists for the rsync-daemon package, but the rsyncd service is not required, the service should be masked."
-    impact: "There are packages that are dependent on the rsync package. If the rsync package is removed, these packages will be removed as well. Before removing the rsync-daemon package, review any dependent packages to determine if they are required on the system. If a dependent package is required, mask the rsyncd service and leave the rsync-daemon package installed."
     remediation: "Run the following command to remove the rsync package: # dnf remove rsync-daemon OR Run the following command to mask the rsyncd service: # systemctl --now mask rsyncd."
     compliance:
       - cis: ["2.2.18"]
@@ -1666,7 +1653,6 @@ checks:
     title: "Ensure telnet client is not installed."
     description: "The telnet package contains the telnet client, which allows users to start connections to other systems via the telnet protocol."
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow an unauthorized user to steal credentials. The ssh package provides an encrypted session and stronger security and is included in most Linux distributions."
-    impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
     remediation: "Run the following command to remove the telnet package: # dnf remove telnet."
     compliance:
       - cis: ["2.3.1"]
@@ -1690,7 +1676,6 @@ checks:
     title: "Ensure LDAP client is not installed."
     description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
     rationale: "If the system will not need to act as an LDAP client, it is recommended that the software be removed to reduce the potential attack surface."
-    impact: "Removing the LDAP client will prevent or inhibit using LDAP for authentication in your environment."
     remediation: "Run the following command to remove the openldap-clients package: # dnf remove openldap-clients."
     compliance:
       - cis: ["2.3.2"]
@@ -2482,7 +2467,6 @@ checks:
   - id: 28126
     title: "Ensure audit log storage size is configured."
     description: "Configure the maximum size of the audit log file. Once the log reaches the maximum size, it will be rotated and a new log file will be started."
-    rationale: "It is important that an appropriate size is determined for log files so that they do not impact the system and audit data is not lost."
     remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB>."
     compliance:
       - cis: ["4.1.2.1"]
@@ -2995,7 +2979,6 @@ checks:
   - id: 28151
     title: "Ensure journald is configured to compress large log files."
     description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large."
-    rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes, Restart the service: # systemctl restart systemd-journal-upload."
     compliance:
       - cis: ["4.2.2.3"]
@@ -3010,7 +2993,6 @@ checks:
   - id: 28152
     title: "Ensure journald is configured to write logfiles to persistent disk."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss due to a reboot."
-    rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent, Restart the service: # systemctl restart systemd-journal-upload."
     compliance:
       - cis: ["4.2.2.4"]
