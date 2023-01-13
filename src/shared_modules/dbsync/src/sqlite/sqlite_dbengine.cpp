@@ -154,6 +154,7 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
 
             if (inTransactionParam)
             {
+                // No changes detected, only update the status field to avoid row deletion during the txn close.
                 if (result.empty())
                 {
                     std::for_each(primaryKeyList.begin(),
@@ -166,7 +167,7 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
                         }
                     });
                 }
-                else
+                else // Changes detected, update the row with the new values.
                 {
                     ret = result;
                 }
@@ -348,13 +349,6 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
         if (0 != loadTableData(table))
         {
             auto tableFields { m_tableFields[table] };
-            // Remove uneeded fields before looking for the expected ones.
-            tableFields.erase(std::remove_if(tableFields.begin(), tableFields.end(), [](const ColumnData & column)
-            {
-                const auto isNotTxnStatusField { !std::get<TableHeader::TXNStatusField>(column) };
-                const auto isNotPK             { !std::get<TableHeader::PK>(column) };
-                return isNotTxnStatusField && isNotPK;
-            }), tableFields.end());
             const auto& stmt { getStatement(getSelectAllQuery(table, tableFields)) };
 
             while (SQLITE_ROW == stmt->step())
@@ -1268,13 +1262,15 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
                     {
                         // Diff found
                         isModified = true;
-                        jsResult[value.first] = *it;
                     }
+
+                    jsResult[value.first] = *it;
                 }
             }
         }
     }
 
+    // If the row is not modified, we clear the result to update the status field value only.
     if (!isModified)
     {
         jsResult.clear();

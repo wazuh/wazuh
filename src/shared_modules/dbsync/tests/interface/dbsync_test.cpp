@@ -600,8 +600,8 @@ TEST_F(DBSyncTest, syncRowInsertAndModified)
                                       nlohmann::json::parse(R"([{"pid":4,"name":"System", "tid":100},
                                           {"pid":5,"name":"System", "tid":101},
                                           {"pid":6,"name":"System", "tid":102}])"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"([{"pid":4, "tid":101}])"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"([{"pid":4, "name":"Systemmm", "tid":105}])"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"([{"pid":4,"name":"System","tid":101}])"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"([{"pid":4,"name":"Systemmm","tid":105}])"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"pid":7,"name":"Guake"}])"))).Times(1);
 
     const auto insertionSqlStmt1{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100},
@@ -1520,7 +1520,7 @@ TEST_F(DBSyncTest, createTxnCPP)
     CallbackMock wrapper;
     EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"name":"System","pid":4}])"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"name":"Guake","pid":7}])"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(DELETED, nlohmann::json::parse(R"({"pid":4})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(DELETED, nlohmann::json::parse(R"({"name":"System","pid":4})"))).Times(1);
 
     ResultCallbackData callbackData
     {
@@ -1634,7 +1634,7 @@ TEST_F(DBSyncTest, createTxnCPP2)
     CallbackMock wrapper;
     EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"name":"System","pid":4, "time":100100}])"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"name":"Guake","pid":7,"time":100101}])"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(DELETED, nlohmann::json::parse(R"({"pid":4,"time":100100})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(DELETED, nlohmann::json::parse(R"({"name":"System","pid":4,"time":100100})"))).Times(1);
 
     ResultCallbackData callbackData
     {
