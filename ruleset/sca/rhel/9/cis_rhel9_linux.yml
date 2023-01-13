@@ -176,7 +176,6 @@ checks:
   - id: 28007
     title: "Ensure separate partition exists for /var."
     description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
-    rationale: "The reasoning for mounting /var on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard- link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.3.1"]
@@ -246,7 +245,6 @@ checks:
   - id: 28011
     title: "Ensure separate partition exists for /var/tmp."
     description: "The /var/tmp directory is a world-writable directory used for temporary storage by all users and some applications. Temporary file residing in /var/tmp is to be preserved between reboots."
-    rationale: "The reasoning for mounting /var/tmp on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.4.1"]
@@ -316,7 +314,6 @@ checks:
   - id: 28015
     title: "Ensure separate partition exists for /var/log."
     description: "The /var/log directory is used by system services to store log data ."
-    rationale: "The reasoning for mounting /var/log on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.5.1"]
@@ -386,7 +383,6 @@ checks:
   - id: 28019
     title: "Ensure separate partition exists for /var/log/audit."
     description: "The auditing daemon, auditd, stores log data in the /var/log/audit directory."
-    rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.6.1"]
@@ -456,7 +452,6 @@ checks:
   - id: 28023
     title: "Ensure separate partition exists for /home."
     description: "The /home directory is used to support disk storage needs of local users."
-    rationale: "The reasoning for mounting /home on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.7.1"]
@@ -506,7 +501,6 @@ checks:
   - id: 28026
     title: "Ensure usrquota option set on /home partition."
     description: "The usrquota mount option allows for the filesystem to have disk quotas configured."
-    rationale: "To ensure the availability of disk space on /home, it is important to limit the impact a single user or group can cause for other users (or the wider system) by accidentally filling up the partition. Quotas can also be applied to inodes for filesystems where inode exhaustion is a concern."
     remediation: "Edit the /etc/fstab file and add usrquota to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,usrquota,grpquota,nodev,relatime 00 Run the following command to remount /home with the configured options: # mount -o remount /home Create the quota database. This example will ignore any existing quota files. # quotacheck -cugv /home quotacheck: Your kernel probably supports journaled quota but you are not using it. Consider switching to journaled quota to avoid running quotacheck after an unclean shutdown. quotacheck: Scanning /dev/sdb [/home] done quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Checked 8 directories and 0 files quotacheck: Old file not found. quotacheck: Old file not found. Restore SELinux context on the quota database files. Order of operations is important as quotaon will set the immutable attribute on the files and thus restorecon will fail. # restorecon /home/aquota.user Enable quotas on the partition: # quotaon -vug /home /dev/sdb [/home]: group quotas turned on /dev/sdb [/home]: user quotas turned on."
     compliance:
       - cis: ["1.1.7.4"]
@@ -523,7 +517,6 @@ checks:
   - id: 28027
     title: "Ensure grpquota option set on /home partition."
     description: "The grpquota mount option allows for the filesystem to have disk quotas configured."
-    rationale: "To ensure the availability of disk space on /home, it is important to limit the impact a single user or group can cause for other users (or the wider system) by accidentally filling up the partition. Quotas can also be applied to inodes for filesystems where inode exhaustion is a concern."
     remediation: "Edit the /etc/fstab file and add grpquota to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,usrquota,grpquota,nodev,relatime 00 Run the following command to remount /home with the configured options: # mount -o remount /home Create the quota database. This example will ignore any existing quota files. # quotacheck -cugv /home quotacheck: Your kernel probably supports journaled quota but you are not using it. Consider switching to journaled quota to avoid running quotacheck after an unclean shutdown. quotacheck: Scanning /dev/sdb [/home] done quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Checked 8 directories and 0 files quotacheck: Old file not found. quotacheck: Old file not found. Restore SELinux context on the quota database files. Order of operations is important as quotaon will set the immutable attribute on the files and thus restorecon will fail. # restorecon /home/aquota.group Enable quotas on the partition: # quotaon -vug /home /dev/sdb [/home]: group quotas turned on /dev/sdb [/home]: user quotas turned on."
     compliance:
       - cis: ["1.1.7.5"]
@@ -1690,487 +1683,124 @@ checks:
 
   # 2.4 Ensure nonessential services are removed or masked (Manual) - Not implemented
 
-  ###############################################
+ ###############################################
   # 3 Network Configuration
   ###############################################
   ###############################################
   # 3.1 Disable unused network protocols and devices
   ###############################################
 
-  # 3.1.1 Verify if IPv6 is enabled on the system (Manual) - Not implemented
+  # 3.1.1 Ensure IPv6 status is identified (Manual) - Not implemented
 
-  # 3.1.2 Ensure SCTP is disabled (Automated)
-  - id: 28090
-    title: "Ensure SCTP is disabled."
-    description: "The Stream Control Transmission Protocol (SCTP) is a transport layer protocol used to support message oriented communication, with several streams of messages in one connection. It serves a similar function as TCP and UDP, incorporating features of both. It is message-oriented like UDP, and ensures reliable in-sequence transport of messages with congestion control like TCP."
-    rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
-    remediation: 'Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: printf " install sctp /bin/true " >> /etc/modprobe.d/sctp.conf'
-    compliance:
-      - cis: ["3.1.2"]
-      - cis_csc: ["4.8", "9.2"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:modprobe -n -v sctp -> r:^\s*install\s*/bin/true|Module sctp not found'
-      - "not c:lsmod -> r:sctp"
+  # 3.1.2 Ensure wireless interfaces are disabled (Automated) - Not implemented
 
-  # 3.1.3 Ensure DCCP is disabled (Automated)
-  - id: 28091
-    title: "Ensure DCCP is disabled."
-    description: "The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that supports streaming media and telephony. DCCP provides a way to gain access to congestion control, without having to do it at the application layer, but does not provide in-sequence delivery."
-    rationale: "If the protocol is not required, it is recommended that the drivers not be installed to reduce the potential attack surface."
-    remediation: 'Edit or create a file in the /etc/modprobe.d/ directory ending in .conf. Example:printf " install dccp /bin/true " >> /etc/modprobe.d/dccp.conf'
-    compliance:
-      - cis: ["3.1.3"]
-      - cis_csc: ["4.8", "9.2"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:modprobe -n -v dccp -> r:^\s*install\s*/bin/true|Module dccp not found'
-      - "not c:lsmod -> r:dccp"
-
-  # 3.1.4 Ensure wireless interfaces are disabled (Automated)
-  - id: 28092
-    title: "Ensure wireless interfaces are disabled."
-    description: "Wireless networking is used when wired networks are unavailable."
-    rationale: "If wireless is not to be used, wireless devices should be disabled to reduce the potential attack surface."
-    remediation: 'Run the following script to disable any wireless interfaces: #!/usr/bin/env bash { if command -v nmcli >/dev/null 2>&1 ; then nmcli radio all off else if [ -n "$(find /sys/class/net/*/ -type d -name wireless)" ]; then mname=$(for driverdir in $(find /sys/class/net/*/ -type d -name wireless | xargs -0 dirname); do basename "$(readlink -f "$driverdir"/device/driver/module)";done | sort -u) for dm in $mname; do echo "install $dm /bin/true" >> /etc/modprobe.d/disable_wireless.conf done fi fi }.'
-    compliance:
-      - cis: ["3.1.4"]
-      - cis_csc: ["4.8", "15.4", "15.5"]
-      - pci_dss: ["1.2.3"]
-      - tsc: ["CC6.6"]
-    references:
-      - nmcli(1) - Linux man page
-    condition: all
-    rules:
-      - "c:nmcli radio wifi -> r:^disabled"
-      - "c:nmcli radio wwan -> r:^disabled"
+  # 3.1.3 Ensure TIPC is disabled (Automated) - Not implemented
 
   ###############################################
   # 3.2 Network Parameters (Host Only)
   ###############################################
 
-  # 3.2.1 Ensure IP forwarding is disabled (Automated)
-  - id: 28093
-    title: "Ensure IP forwarding is disabled."
-    description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
-    rationale: "Setting the flags to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
-    remediation: 'Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.ip_forward = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.ip_forward=0 sysctl -w net.ipv4.route.flush=1 } IF IPv6 is enabled on the system: Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv6.conf.all.forwarding = 0 " >> /etc/sysctl.d/60-netipv6_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv6.conf.all.forwarding=0 sysctl -w net.ipv6.route.flush=1 }'
-    compliance:
-      - cis: ["3.2.1"]
-      - cis_csc: ["4.1", "5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'not c:grep -Rh net.ipv4.ip_forward /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.ip_forward\s*=\s*1'
-      - 'not c:grep -Rh net.ipv6.conf.all.forwarding /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv6.conf.all.forwarding\s*=\s*1'
-      - 'not c:sysctl net.ipv4.ip_forward -> r:^\s*net.ipv4.ip_forward\s*=\s*1'
-      - 'not c:sysctl net.ipv6.conf.all.forwarding -> r:^\s*net.ipv6.conf.all.forwarding\s*=\s*1'
+  # 3.2.1 Ensure IP forwarding is disabled (Automated) - Not implemented
 
-  # 3.2.2 Ensure packet redirect sending is disabled (Automated)
-  - id: 28094
-    title: "Ensure packet redirect sending is disabled."
-    description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
-    rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example:# printf " net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf . Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0; # sysctl -w net.ipv4.conf.default.send_redirects=0; # sysctl -w net.ipv4.route.flush=1'
-    compliance:
-      - cis: ["3.2.2"]
-      - cis_csc: ["4.1", "5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:grep -Rh net.ipv4.conf.all.send_redirects /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.all.send_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.default.send_redirects /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.default.send_redirects\s*=\s*0'
-      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^\s*net.ipv4.conf.all.send_redirects\s*=\s*0'
-      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:^\s*net.ipv4.conf.defau t.send_redirects\s*=\s*0'
+  # 3.2.2 Ensure packet redirect sending is disabled (Automated) - Not implemented
 
   ###############################################
   # 3.3 Network Parameters (Host and Router)
   ###############################################
 
-  # 3.3.1 Ensure source routed packets are not accepted (Automated)
-  - id: 28095
-    title: "Ensure source routed packets are not accepted."
-    description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
-    rationale: "Setting net.ipv4.conf.all.accept_source_route, net.ipv4.conf.default.accept_source_route, net.ipv6.conf.all.accept_source_route and net.ipv6.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.accept_source_route = 0 net.ipv4.conf.default.accept_source_route = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf. Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.conf.all.accept_source_route=0 sysctl -w net.ipv4.conf.default.accept_source_route=0 sysctl -w net.ipv4.route.flush=1 } IF IPv6 is enabled on the system: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv6.conf.all.accept_source_route = 0 net.ipv6.conf.default.accept_source_route = 0 " >> /etc/sysctl.d/60-netipv6_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv6.conf.all.accept_source_route=0 sysctl -w net.ipv6.conf.default.accept_source_route=0 sysctl -w net.ipv6.route.flush=1 }'
-    compliance:
-      - cis: ["3.3.1"]
-      - cis_csc: ["4.1", "5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^\s*net.ipv4.conf.all.accept_source_route\s*=\s*0'
-      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:^\s*net.ipv4.conf.default.accept_source_route\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.all.accept_source_route /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.all.accept_source_route\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.default.accept_source_route /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.default.accept_source_route\s*=\s*0'
-      - 'c:sysctl net.ipv6.conf.all.accept_source_route -> r:^\s*net.ipv6.conf.all.accept_source_route\s*=\s*0|No such file or directory'
-      - 'c:sysctl net.ipv6.conf.default.accept_source_route -> r:^\s*net.ipv6.conf.default.accept_source_route\s*=\s*0|No such file or directory'
-      - 'c:grep -Rh net.ipv6.conf.all.accept_source_route /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv6.conf.all.accept_source_route\s*=\s*0'
-      - 'c:grep -Rh net.ipv6.conf.default.accept_source_route /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv6.conf.default.accept_source_route\s*=\s*0'
+  # 3.3.1 Ensure source routed packets are not accepted (Automated) - Not implemented
 
-  # 3.3.2 Ensure ICMP redirects are not accepted (Automated)
-  - id: 28096
-    title: "Ensure ICMP redirects are not accepted."
-    description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects and net.ipv6.conf.all.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
-    rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.accept_redirects = 0 net.ipv4.conf.default.accept_redirects = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.conf.all.accept_redirects=0 sysctl -w net.ipv4.conf.default.accept_redirects=0 sysctl -w net.ipv4.route.flush=1 } IF IPv6 is enabled on the system: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv6.conf.all.accept_redirects = 0 net.ipv6.conf.default.accept_redirects = 0 " >> /etc/sysctl.d/60-netipv6_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv6.conf.all.accept_redirects=0 sysctl -w net.ipv6.conf.default.accept_redirects=0 sysctl -w net.ipv6.route.flush=1 }'
-    compliance:
-      - cis: ["3.3.2"]
-      - cis_csc: ["4.1", "5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^\s*net.ipv4.conf.all.accept_redirects\s*=\s*0'
-      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:^\s*net.ipv4.conf.default.accept_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.all.accept_redirects /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.all.accept_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.default.accept_redirects /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.default.accept_redirects\s*=\s*0'
-      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:^\s*net.ipv6.conf.all.accept_redirects\s*=\s*0'
-      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:^\s*net.ipv6.conf.default.accept_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv6.conf.all.accept_redirects /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv6.conf.all.accept_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv6.conf.default.accept_redirects /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv6.conf.default.accept_redirects\s*=\s*0'
+  # 3.3.2 Ensure ICMP redirects are not accepted (Automated) - Not implemented
 
-  # 3.3.3 Ensure secure ICMP redirects are not accepted (Automated)
-  - id: 28097
-    title: "Ensure secure ICMP redirects are not accepted."
-    description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
-    rationale: "It is still possible for even known gateways to be compromised. Setting net.ipv4.conf.all.secure_redirects and net.ipv4.conf.default.secure_redirects to 0 protects the system from routing table updates by possibly compromised known gateways."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.secure_redirects = 0 net.ipv4.conf.default.secure_redirects = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following commands to set the active kernel parameters: #{ sysctl -w net.ipv4.conf.all.secure_redirects=0 sysctl -w net.ipv4.conf.default.secure_redirects=0 sysctl -w net.ipv4.route.flush=1 } '
-    compliance:
-      - cis: ["3.3.3"]
-      - cis_csc: ["4.1", "5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:^\s*net.ipv4.conf.all.secure_redirects\s*=\s*0'
-      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:^\s*net.ipv4.conf.default.secure_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.all.secure_redirects /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.all.secure_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.default.secure_redirects /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.default.secure_redirects\s*=\s*0'
+  # 3.3.3 Ensure secure ICMP redirects are not accepted (Automated) - Not implemented
 
-  # 3.3.4 Ensure suspicious packets are logged (Automated)
-  - id: 28098
-    title: "Ensure suspicious packets are logged."
-    description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
-    rationale: "Enabling this feature and logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example:# printf " net.ipv4.conf.all.log_martians = 1 net.ipv4.conf.default.log_martians = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.conf.all.log_martians=1 sysctl -w net.ipv4.conf.default.log_martians=1 sysctl -w net.ipv4.route.flush=1 } '
-    compliance:
-      - cis: ["3.3.4"]
-      - cis_csc: ["6.2", "6.3", "8.5"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^\s*net.ipv4.conf.all.log_martians\s*=\s*1'
-      - 'c:sysctl net.ipv4.conf.default.log_martians -> r:^\s*net.ipv4.conf.default.log_martians\s*=\s*1'
-      - 'c:grep -Rh net.ipv4.conf.all.log_martians /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.all.log_martians\s*=\s*1'
-      - 'c:grep -Rh net.ipv4.conf.default.log_martians /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.default.log_martians\s*=\s*1'
+  # 3.3.4 Ensure suspicious packets are logged (Automated) - Not implemented
 
-  # 3.3.5 Ensure broadcast ICMP requests are ignored (Automated)
+  # 3.3.5 Ensure broadcast ICMP requests are ignored (Automated) - Not implemented
+
+  # 3.3.6 Ensure bogus ICMP responses are ignored (Automated) - Not implemented
+
+  # 3.3.7 Ensure Reverse Path Filtering is enabled (Automated) - Not implemented
+
+  # 3.3.8 Ensure TCP SYN Cookies is enabled (Automated) - Not implemented
+
+  # 3.3.9 Ensure IPv6 router advertisements are not accepted (Automated) - Not implemented
+
+  ###############################################
+  # 3.4 Configure Host Based Firewall
+  ###############################################
+  ###############################################
+  # 3.4.1 Configure a firewall utility
+  ###############################################
+
+  # 3.4.1.1 Ensure nftables is installed (Automated) 
   - id: 28099
-    title: "Ensure broadcast ICMP requests are ignored."
-    description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
-    rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.icmp_echo_ignore_broadcasts = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 sysctl -w net.ipv4.route.flush=1 } '
-    compliance:
-      - cis: ["3.3.5"]
-      - cis_csc: ["4.1", "5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^\s*net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1'
-      - 'not c:grep -Rh net.ipv4.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*0'
-
-  # 3.3.6 Ensure bogus ICMP responses are ignored (Automated)
-  - id: 28100
-    title: "Ensure bogus ICMP responses are ignored."
-    description: "Setting icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
-    rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
-    remediation: 'Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.icmp_ignore_bogus_error_responses = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 sysctl -w net.ipv4.route.flush=1 }'
-    compliance:
-      - cis: ["3.3.6"]
-      - cis_csc: ["4.1", "5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^\s*net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1'
-      - 'not c:grep -Rh net.ipv4.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*0'
-
-  # 3.3.7 Ensure Reverse Path Filtering is enabled (Automated)
-  - id: 28101
-    title: "Ensure Reverse Path Filtering is enabled."
-    description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
-    rationale: "Setting these flags is a good way to deter attackers from sending your system bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system. If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.rp_filter = 1 net.ipv4.conf.default.rp_filter = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following commands to set the active kernel parameters: #{ sysctl -w net.ipv4.conf.all.rp_filter=1 sysctl -w net.ipv4.conf.default.rp_filter=1 sysctl -w net.ipv4.route.flush=1 }'
-    compliance:
-      - cis: ["3.3.7"]
-      - cis_csc: ["4.1", "5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^\s*net.ipv4.conf.all.rp_filter\s*=\s*1'
-      - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:^\s*net.ipv4.conf.default.rp_filter\s*=\s*1'
-      - 'not c:grep -Rh net.ipv4.conf.all.rp_filter /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.all.rp_filter\s*=\s*0'
-      - 'not c:grep -Rh net.ipv4.conf.default.rp_filter /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.default.rp_filter\s*=\s*0'
-
-  # 3.3.8 Ensure TCP SYN Cookies is enabled (Automated)
-  - id: 28102
-    title: "Ensure TCP SYN Cookies is enabled."
-    description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN|ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent. A legitimate connection would send the ACK packet of the three way handshake with the specially crafted sequence number. This allows the system to verify that it has received a valid response to a SYN cookie and allow the connection, even though there is no corresponding SYN in the queue."
-    rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. SYN cookies allow the system to keep accepting valid connections, even if under a denial of service attack."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.tcp_syncookies = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.tcp_syncookies=1 sysctl -w net.ipv4.route.flush=1 }'
-    compliance:
-      - cis: ["3.3.8"]
-      - cis_csc: ["4.1", "5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.tcp_syncookies -> r:^\s*net.ipv4.tcp_syncookies\s*=\s*1'
-      - 'not c:grep -Rh net.ipv4.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.tcp_syncookies\s*=\s*0'
-      - 'not c:grep -Rh net.ipv4.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.tcp_syncookies\s*=\s*2'
-
-  # 3.3.9 Ensure IPv6 router advertisements are not accepted (Automated)
-  - id: 28103
-    title: "Ensure IPv6 router advertisements are not accepted."
-    description: "This setting disables the system's ability to accept IPv6 router advertisements."
-    rationale: "It is recommended that systems do not accept router advertisements as they could be tricked into routing traffic to compromised machines. Setting hard routes within the system (usually a single default route to a trusted router) protects the system from bad routes."
-    remediation: 'IF IPv6 is enabled on the system: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv6.conf.all.accept_ra = 0 net.ipv6.conf.default.accept_ra = 0 " >> /etc/sysctl.d/60-netipv6_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv6.conf.all.accept_ra=0 sysctl -w net.ipv6.conf.default.accept_ra=0 sysctl -w net.ipv6.route.flush=1 } '
-    compliance:
-      - cis: ["3.3.9"]
-      - cis_csc: ["4.1", "5.1"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:^\s*net.ipv6.conf.all.accept_ra\s*=\s*0'
-      - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:^\s*net.ipv6.conf.default.accept_ra\s*=\s*0'
-      - 'c:grep -Rh net.ipv6.conf.all.accept_ra /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv6.conf.all.accept_ra\s*=\s*0'
-      - 'c:grep -Rh net.ipv6.conf.default.accept_ra /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv6.conf.default.accept_ra\s*=\s*0'
-
-  ###############################################
-  # 3.4 Firewall Configuration
-  ###############################################
-  ###############################################
-  # 3.4.1 Configure firewalld
-  ###############################################
-
-  # 3.4.1.1 Ensure firewalld is installed (Automated)
-  - id: 28104
-    title: "Ensure firewalld is installed."
-    description: "firewalld is a firewall management tool for Linux operating systems. It provides firewall features by acting as a front-end for the Linux kernel's netfilter framework via the iptables backend or provides firewall features by acting as a front-end for the Linux kernel's netfilter framework via the nftables utility. firewalld replaces iptables as the default firewall management tool. Use the firewalld utility to configure a firewall for less complex firewalls. The utility is easy to use and covers the typical use cases scenario. FirewallD supports both IPv4 and IPv6 networks and can administer separate firewall zones with varying degrees of trust as defined in zone profiles. Note: Starting in v0.6.0, FirewallD added support for acting as a front-end for the Linux kernel's netfilter framework via the nftables userspace utility, acting as an alternative to the nft command line program."
-    rationale: "A firewall utility is required to configure the Linux kernel's netfilter framework via the iptables or nftables back-end. The Linux kernel's netfilter framework host-based firewall can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host. Note: Only one firewall utility should be installed and configured. FirewallD is dependent on the iptables package."
-    remediation: "Run the following command to install FirewallD and iptables: # dnf install firewalld iptables."
-    compliance:
-      - cis: ["3.4.1.1"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.2"]
-      - tsc: ["CC6.6"]
-    condition: all
-    rules:
-      - "c:rpm -q firewalld -> r:^firewalld-"
-      - "c:rpm -q iptables -> r:^iptables-"
-
-  # 3.4.1.2 Ensure iptables-services not installed with firewalld (Automated)
-  - id: 28105
-    title: "Ensure iptables-services not installed with firewalld."
-    description: "The iptables-services package contains the iptables.service and ip6tables.service. These services allow for management of the Host Based Firewall provided by the iptables package."
-    rationale: "iptables.service and ip6tables.service are still supported and can be installed with the iptables-services package. Running both firewalld and the services included in the iptables-services package may lead to conflict."
-    remediation: "Run the following commands to stop the services included in the iptables-services package and remove the iptables-services package # systemctl stop iptables # systemctl stop ip6tables # dnf remove iptables-services."
-    compliance:
-      - cis: ["3.4.1.2"]
-      - cis_csc: ["4.4", "4.8", "9.4"]
-      - pci_dss: ["1.2"]
-      - tsc: ["CC6.6"]
-    condition: all
-    rules:
-      - "c:rpm -q firewalld -> r:^firewalld-"
-      - "c:rpm -q iptables-services -> r:^package iptables-services is not installed"
-
-  # 3.4.1.3 Ensure nftables either not installed or masked with firewalld (Automated)
-  - id: 28106
-    title: "Ensure nftables either not installed or masked with firewalld."
-    description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames and is the successor to iptables. Note: Support for using nftables as the back-end for firewalld was added in release v0.6.0. In Fedora 19 Linux derivatives, firewalld utilizes iptables as its back-end by default."
-    rationale: "Running both firewalld and nftables may lead to conflict. Note: firewalld may configured as the front-end to nftables. If this case, nftables should be stopped and masked instead of removed."
-    remediation: "Run the following command to remove nftables: # dnf remove nftables OR Run the following command to stop and mask nftables systemctl --now mask nftables."
-    compliance:
-      - cis: ["3.4.1.3"]
-      - cis_csc: ["4.4", "4.8", "9.4"]
-      - pci_dss: ["1.2"]
-      - tsc: ["CC6.6"]
-    condition: all
-    rules:
-      - "c:rpm -q firewalld -> r:^firewalld-"
-      - "c:rpm -q nftables -> r:^package nftables is not installed"
-
-  # 3.4.1.4 Ensure firewalld service enabled and running (Automated)
-  - id: 28107
-    title: "Ensure firewalld service enabled and running."
-    description: "firewalld.service enables the enforcement of firewall rules configured through firewalld."
-    rationale: "Ensure that the firewalld.service is enabled and running to enforce firewall rules configured through firewalld."
-    remediation: "Run the following command to unmask firewalld # systemctl unmask firewalld Run the following command to enable and start firewalld # systemctl --now enable firewalld."
-    compliance:
-      - cis: ["3.4.1.4"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.2"]
-      - tsc: ["CC6.6"]
-    condition: all
-    rules:
-      - "c:rpm -q firewalld -> r:^firewalld-"
-      - "c:systemctl is-enabled firewalld -> r:^enabled"
-      - "c:firewall-cmd --state -> r:^running"
-
-  # 3.4.1.5 Ensure firewalld default zone is set (Automated)
-  - id: 28108
-    title: "Ensure firewalld default zone is set."
-    description: "A firewall zone defines the trust level for a connection, interface or source address binding. This is a one to many relation, which means that a connection, interface or source can only be part of one zone, but a zone can be used for many network connections, interfaces and sources. - The default zone is the zone that is used for everything that is not explicitly bound/assigned to another zone. - If no zone assigned to a connection, interface or source, only the default zone is used. - The default zone is not always listed as being used for an interface or source as it will be used for it either way. This depends on the manager of the interfaces. Connections handled by NetworkManager are listed as NetworkManager requests to add the zone binding for the interface used by the connection. Also interfaces under control of the network service are listed also because the service requests it. Note: - A firewalld zone configuration file contains the information for a zone. o These are the zone description, services, ports, protocols, icmp-blocks, masquerade, forward-ports and rich language rules in an XML file format. o The file name has to be zone_name.xml where length of zone_name is currently limited to 17 chars. - NetworkManager binds interfaces to zones automatically."
-    rationale: "Because the default zone is the zone that is used for everything that is not explicitly bound/assigned to another zone, it is important for the default zone to set."
-    remediation: "Run the following command to set the default zone: # firewall-cmd --set-default-zone=<NAME_OF_ZONE> Example: # firewall-cmd --set-default-zone=public."
-    compliance:
-      - cis: ["3.4.1.5"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.2"]
-      - tsc: ["CC6.6"]
-    references:
-      - "https://firewalld.org/documentation"
-      - "https://firewalld.org/documentation/man-pages/firewalld.zone"
-    condition: all
-    rules:
-      - "c:rpm -q firewalld -> r:^firewalld-"
-      - 'c:firewall-cmd --get-default-zone -> r:^\w'
-
-  # 3.4.1.6 Ensure network interfaces are assigned to appropriate zone (Manual) - Not implemented
-  # 3.4.1.7 Ensure firewalld drops unnecessary services and ports (Manual) - Not implemented
-
-  ###############################################
-  # 3.4.2 Configure nftables
-  ###############################################
-  # 3.4.2.1 Ensure nftables is installed (Automated)
-  - id: 28109
     title: "Ensure nftables is installed."
-    description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem. Note: - nftables is available in Linux kernel 3.13 and newer. - Only one firewall utility should be installed and configured."
+    description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem."
     rationale: "nftables is a subsystem of the Linux kernel that can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host."
     remediation: "Run the following command to install nftables # dnf install nftables."
     compliance:
-      - cis: ["3.4.2.1"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.2"]
-      - tsc: ["CC6.6"]
+      - cis: ["3.4.1.1"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - nist_800_53: ["CA-9"]
+      - mitre_techniques: ["T1562","T1562.004"]
+      - mitre_tactics: ["TA0011"]
+      - mitre_mitigations: ["M1031","M1037"]
+      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4","1.3.1"]
+      - pci_dss_4.0: ["1.2.1","1.4.1"]
+      - soc_2: ["CC6.6"]
+      - iso_27001-2013: ["A.13.1.1"]
     condition: all
     rules:
       - "c:rpm -q firewalld -> r:^package firewalld is not installed"
       - "c:rpm -q iptables -> r:^package iptables is not installed"
       - "c:rpm -q nftables -> r:^nftables-"
 
-  #  3.4.2.2 Ensure firewalld is either not installed or masked with nftables (Automated)
-  - id: 28110
-    title: "Ensure firewalld is either not installed or masked with nftables."
-    description: "firewalld (Dynamic Firewall Manager) provides a dynamically managed firewall with support for network/firewall “zones” to assign a level of trust to a network and its associated connections, interfaces or sources. It has support for IPv4, IPv6, Ethernet bridges and also for IPSet firewall settings. There is a separation of the runtime and permanent configuration options."
-    rationale: "Running both nftables.service and firewalld.service may lead to conflict and unexpected results."
-    remediation: "Run the following command to remove firewalld: # dnf remove firewalld OR Run the following command to stop and mask firewalld: # systemctl --now mask firewalld."
-    compliance:
-      - cis: ["3.4.2.2"]
-      - cis_csc: ["4.4", "4.8", "9.4"]
-      - pci_dss: ["1.2"]
-      - tsc: ["CC6.6"]
-    condition: all
-    rules:
-      - "c:rpm -q firewalld -> r:^package firewalld is not installed"
-      - "c:rpm -q nftables -> r:^nftables-"
+  # 3.4.1.2 Ensure a single firewall configuration utility is in use (Automatic) - Not implemented
+  ###############################################
+  # 3.4.2 Configure firewall rules
+  ###############################################
+  # 3.4.2.1 Ensure firewalld default zone is set (Automated) - Not implemented
 
-  # 3.4.2.3 Ensure iptables-services not installed with nftables (Automated)
-  - id: 28111
-    title: "Ensure iptables-services not installed with nftables."
-    description: "The iptables-services package contains the iptables.service and ip6tables.service. These services allow for management of the Host Based Firewall provided by the iptables package."
-    rationale: "iptables.service and ip6tables.service are still supported and can be installed with the iptables-services package. Running both nftables and the services included in the iptables-services package may lead to conflict."
-    remediation: "Run the following commands to stop the services included in the iptables-services package and remove the iptables-services package: # systemctl stop iptables # systemctl stop ip6tables # dnf remove iptables-services."
-    compliance:
-      - cis: ["3.4.2.3"]
-      - cis_csc: ["4.4", "4.8", "9.4"]
-      - pci_dss: ["1.2"]
-      - tsc: ["CC6.6"]
-    condition: all
-    rules:
-      - "c:rpm -q iptables-services -> r:^package iptables-services is not installed"
-      - "c:rpm -q nftables -> r:^nftables-"
-
-  # 3.4.2.4 Ensure iptables are flushed with nftables.
-  - id: 28112
-    title: "Ensure iptables are flushed with nftables."
-    description: "nftables is a replacement for iptables, ip6tables, ebtables and arptables."
-    rationale: "It is possible to mix iptables and nftables. However, this increases complexity and also the chance to introduce errors. For simplicity flush out all iptables rules, and ensure it is not loaded."
-    remediation: "Run the following commands to flush iptables: For iptables: # iptables -F For ip6tables: # ip6tables -F."
-    compliance:
-      - cis: ["3.4.2.4"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.1"]
-      - tsc: ["CC8.1"]
-    condition: all
-    rules:
-      - 'not c:sh -c "iptables -L | egrep -v \"^target|^Chain\"" -> r:^\w+'
-      - 'not c:sh -c "ip6tables -L | egrep -v \"^target|^Chain\"" -> r:^\w+'
-      - "c:rpm -q nftables -> r:^nftables-"
-
-  # 3.4.2.5 Ensure an nftables table exists.
-  - id: 28113
-    title: "Ensure an nftables table exists."
+  # 3.4.2.2 Ensure at least one nftables table exists (Automated) 
+  - id: 28102
+    title: "Ensure at least one nftables table exists."
     description: "Tables hold chains. Each table only has one address family and only applies to packets of this family. Tables can have one of five families."
     rationale: "nftables doesn't have any default tables. Without a table being build, nftables will not filter network traffic."
-    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter."
+    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter. Note: FirewallD uses the table inet firewalld NFTables table that is created when FirewallD is installed."
     compliance:
-      - cis: ["3.4.2.5"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.1"]
-      - tsc: ["CC8.1"]
+      - cis: ["3.4.2.2"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - nist_800_53: ["CA-9"]
+      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4","1.3.1"]
+      - pci_dss_4.0: ["1.2.1","1.4.1"]
+      - soc_2: ["CC6.6"]
+      - iso_27001-2013: ["A.13.1.1"]
     condition: all
     rules:
       - "c:nft list tables -> r:^table"
       - "c:rpm -q nftables -> r:^nftables-"
 
-  # 3.4.2.6 Ensure nftables base chains exist.
-  # 3.4.2.9 Ensure nftables default deny firewall policy.
-  - id: 28114
+   # 3.4.2.3 Ensure nftables base chains exist (Automated) 
+  - id: 28103
     title: "Ensure nftables base chains exist."
     description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
     rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
     remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \\; }. Example: # nft create chain inet filter input { type filter hook input priority 0 \\; } # nft create chain inet filter forward { type filter hook forward priority 0 \\; } # nft create chain inet filter output { type filter hook output priority 0 \\; }."
     compliance:
-      - cis: ["3.4.2.6"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.1"]
-      - tsc: ["CC8.1"]
+      - cis: ["3.4.2.3"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - nist_800_53: ["CA-9"]
+      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4","1.3.1"]
+      - pci_dss_4.0: ["1.2.1","1.4.1"]
+      - soc_2: ["CC6.6"]
+      - iso_27001-2013: ["A.13.1.1"]
     condition: all
     rules:
       - "c:rpm -q nftables -> r:nftables-"
@@ -2178,175 +1808,33 @@ checks:
       - "c:nft list ruleset -> r:forward"
       - "c:nft list ruleset -> r:output"
 
-  # 3.4.2.7 Ensure nftables loopback traffic is configured - Not implemented, SCA limitation.
-  # 3.4.2.8 Ensure nftables outbound and established connections are configured - Not implemented, SCA limitation.
-  # 3.4.2.9 Ensure nftables default deny firewall policy.
-  - id: 28115
+  # 3.4.2.4 Ensure host based firewall loopback traffic is configured (Automated) - Not implemented
+  
+  # 3.4.2.5 Ensure firewalld drops unnecessary services and ports (Manual)
+  # 3.4.2.6 Ensure nftables established connections are configured (Manual)
+  
+  # 3.4.2.7 Ensure nftables default deny firewall policy (Automated) 
+  - id: 28105
     title: "Ensure nftables default deny firewall policy."
     description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
     rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue traversing the network stack. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over the network can result in being locked out of the system."
     remediation: 'Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \; } Example: # nft chain inet filter input { policy drop \; } # nft chain inet filter forward { policy drop \; } # nft chain inet filter output { policy drop \; }'
     compliance:
-      - cis: ["3.4.2.9"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.1"]
-      - tsc: ["CC8.1"]
+      - cis: ["3.4.2.7"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - nist_800_53: ["CA-9"]
+      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4","1.3.1"]
+      - pci_dss_4.0: ["1.2.1","1.4.1"]
+      - soc_2: ["CC6.6"]
+      - iso_27001-2013: ["A.13.1.1"]
     condition: all
     rules:
       - "c:rpm -q nftables -> r:nftables-"
       - "c:nft list ruleset -> r:hook input && r:policy drop"
       - "c:nft list ruleset -> r:hook forward && r:policy drop"
       - "c:nft list ruleset -> r:hook output && r:policy drop"
-
-  # 3.4.2.10 Ensure nftables service is enabled.
-  - id: 28116
-    title: "Ensure nftables service is enabled."
-    description: "The nftables service allows for the loading of nftables rulesets during boot, or starting on the nftables service."
-    rationale: "The nftables service restores the nftables rules from the rules files referenced in the /etc/sysconfig/nftables.conf file during boot or the starting of the nftables service."
-    remediation: "Run the following command to enable the nftables service: # systemctl enable nftables."
-    compliance:
-      - cis: ["3.4.2.10"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.1"]
-      - tsc: ["CC8.1"]
-    condition: any
-    rules:
-      - "c:rpm -q nftables -> r:^package nftables is not installed"
-      - "c:systemctl is-enabled nftables -> r:enabled"
-
-  # 3.4.2.11 Ensure nftables rules are permanent - Not implemented, requires manual operation.
-
-  ############################################################
-  # 3.4.3 Configure iptables.
-  ############################################################
-  ############################################################
-  # 3.4.3.1 Configure iptables software.
-  ############################################################
-
-  # 3.4.3.1.1 Ensure iptables packages are installed.
-  # 3.4.3.1.2 Ensure nftables is not installed with iptables.
-  # 3.4.3.1.3 Ensure firewalld is either not installed or masked with iptables.
-  - id: 28117
-    title: "Ensure iptables packages are installed."
-    description: "iptables is a utility program that allows a system administrator to configure the tables provided by the Linux kernel firewall, implemented as different Netfilter modules, and the chains and rules it stores. Different kernel modules and programs are used for different protocols; iptables applies to IPv4, ip6tables to IPv6, arptables to ARP, and ebtables to Ethernet frames."
-    rationale: "A method of configuring and maintaining firewall rules is necessary to configure a Host Based Firewall."
-    remediation: "Run the following command to install iptables and iptables-services # yum install iptables iptables-services."
-    compliance:
-      - cis: ["3.4.3.1.1", "3.4.3.1.2", "3.4.3.1.3"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.1"]
-      - tsc: ["CC8.1"]
-    condition: all
-    rules:
-      - "c:rpm -q firewalld -> r:^package firewalld is not installed"
-      - "c:rpm -q nftables -> r:^package nftables is not installed"
-      - "c:rpm -q iptables -> r:iptables-"
-      - "c:rpm -q iptables-services -> r:iptables-services-"
-
-  ############################################################
-  # 3.4.3.2 Configure IPv4 iptables.
-  ############################################################
-
-  # 3.4.3.2.1 Ensure iptables loopback traffic is configured - Not implemented, requires manual operation.
-  # 3.4.3.2.2 Ensure iptables outbound and established connections are configured - Not implemented, requires manual operation.
-  # 3.4.3.2.3 Ensure iptables rules exist for all open ports - Not implemented, SCA limitation.
-
-  # 3.4.3.2.4 Ensure iptables default deny firewall policy.
-  - id: 28118
-    title: "Ensure iptables default deny firewall policy."
-    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
-    rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP # iptables -P OUTPUT DROP # iptables -P FORWARD DROP."
-    compliance:
-      - cis: ["3.4.3.2.4"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.2.1"]
-      - tsc: ["CC8.1"]
-    condition: all
-    rules:
-      - "c:rpm -q iptables -> r:iptables-"
-      - "c:iptables -L INPUT -> r:policy DROP|policy REJECT"
-      - "c:iptables -L FORWARD -> r:policy DROP|policy REJECT"
-      - "c:iptables -L OUTPUT -> r:policy DROP|policy REJECT"
-
-  # 3.4.3.2.5 Ensure iptables rules are saved - Not implemented, requires manual operation.
-
-  # 3.4.3.2.6 Ensure iptables is enabled and active.
-  - id: 28119
-    title: "Ensure iptables is enabled and active."
-    description: "iptables.service is a utility for configuring and maintaining iptables."
-    rationale: "iptables.service will load the iptables rules saved in the file /etc/sysconfig/iptables at boot, otherwise the iptables rules will be cleared during a re-boot of the system."
-    remediation: "Run the following command to enable and start iptables: # systemctl --now enable iptables."
-    compliance:
-      - cis: ["3.4.3.2.6"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.2.1"]
-      - tsc: ["CC8.1"]
-    condition: all
-    rules:
-      - "c:systemctl is-enabled iptables -> r:enabled"
-      - "c:systemctl status iptables -> r:active && r:running|exited"
-
-  ############################################################
-  # 3.4.3.3 Configure IPv6 iptables.
-  ############################################################
-
-  # 3.4.3.3.1 Ensure ip6tables loopback traffic is configured (Automated)
-  - id: 28120
-    title: " Ensure ip6tables loopback traffic is configured."
-    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (::1)."
-    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (::1) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Run the following commands to implement the loopback rules:# ip6tables -A INPUT -i lo -j ACCEPT# ip6tables -A OUTPUT -o lo -j ACCEPT# ip6tables -A INPUT -s::1 -j DROP."
-    compliance:
-      - cis: ["3.4.3.3.1"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.2.1"]
-      - tsc: ["CC8.1"]
-    condition: all
-    rules:
-      - "c:rpm -q iptables -> r:iptables-"
-      - "c:ip6tables -L INPUT -v -n -> r:ACCEPT && r:lo"
-      - "c:ip6tables -L INPUT -v -n -> r:DROP"
-      - "c:ip6tables -L OUTPUT -v -n -> r:ACCEPT && r:lo"
-
-  # 3.4.3.3.2 Ensure ip6tables outbound and established connections are configured - Not implemented, requires manual operation.
-  # 3.4.3.3.3 Ensure ip6tables firewall rules exist for all open ports - Not implemented, requires manual operation.
-
-  # 3.4.3.3.4 Ensure ip6tables default deny firewall policy.
-  - id: 28121
-    title: "Ensure ip6tables default deny firewall policy."
-    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
-    rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP; # ip6tables -P OUTPUT DROP; # ip6tables -P FORWARD DROP."
-    compliance:
-      - cis: ["3.4.3.3.4"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.2.1"]
-      - tsc: ["CC8.1"]
-    condition: all
-    rules:
-      - "c:rpm -q iptables -> r:iptables-"
-      - "c:ip6tables -L INPUT -> r:policy DROP|policy REJECT"
-      - "c:ip6tables -L FORWARD -> r:policy DROP|policy REJECT"
-      - "c:ip6tables -L OUTPUT -> r:policy DROP|policy REJECT"
-
-  # 3.4.3.3.5 Ensure ip6tables rules are saved - Not implemented, requires manual operation.
-
-  # 3.4.3.3.6 Ensure ip6tables is enabled and active
-  - id: 28122
-    title: "Ensure ip6tables is enabled and active."
-    description: "ip6tables.service is a utility for configuring and maintaining ip6tables."
-    rationale: "ip6tables.service will load the iptables rules saved in the file /etc/sysconfig/ip6tables at boot, otherwise the ip6tables rules will be cleared during a re-boot of the system."
-    remediation: "Run the following command to enable and start ip6tables: # systemctl --now start ip6tables."
-    compliance:
-      - cis: ["3.4.3.3.6"]
-      - cis_csc: ["4.4", "9.4"]
-      - pci_dss: ["1.2.1"]
-      - tsc: ["CC8.1"]
-    condition: all
-    rules:
-      - "c:systemctl is-enabled ip6tables -> r:enabled"
-      - "c:systemctl status ip6tables -> r:active && r:running|exited"
 
   ############################################################
   # 4 Logging and Auditing.
@@ -2415,7 +1903,6 @@ checks:
   - id: 28126
     title: "Ensure audit log storage size is configured."
     description: "Configure the maximum size of the audit log file. Once the log reaches the maximum size, it will be rotated and a new log file will be started."
-    rationale: "It is important that an appropriate size is determined for log files so that they do not impact the system and audit data is not lost."
     remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB>."
     compliance:
       - cis: ["4.1.2.1"]
@@ -2928,7 +2415,6 @@ checks:
   - id: 28151
     title: "Ensure journald is configured to compress large log files."
     description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large."
-    rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes, Restart the service: # systemctl restart systemd-journal-upload."
     compliance:
       - cis: ["4.2.2.3"]
@@ -2943,7 +2429,6 @@ checks:
   - id: 28152
     title: "Ensure journald is configured to write logfiles to persistent disk."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss due to a reboot."
-    rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent, Restart the service: # systemctl restart systemd-journal-upload."
     compliance:
       - cis: ["4.2.2.4"]
