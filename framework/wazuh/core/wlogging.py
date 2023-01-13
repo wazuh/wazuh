@@ -9,38 +9,31 @@ import logging.handlers
 import os
 import re
 import shutil
-from typing import Union
+from datetime import date
 
 from wazuh.core import common, utils
 
 
-class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
+class TimeBasedFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
     """
-    Wazuh log rotation. It rotates the log at midnight and sets the appropiate permissions to the new log file.
-    Also, rotated logs are stored in /logs/wazuh.
+    Wazuh log rotation. It rotates the log at midnight and sets the appropriate permissions to the new log file.
     """
 
     def doRollover(self):
-        """
-        Override base class method to make the set the appropiate permissions to the new log file.
-        """
+        """Override base class method to make the set the appropriate permissions to the new log file."""
         # Rotate the file first
         logging.handlers.TimedRotatingFileHandler.doRollover(self)
 
-        # Set appropiate permissions
-        # os.chown(self.baseFilename, common.wazuh_uid(), common.wazuh_gid())
-        # os.chmod(self.baseFilename, 0o660)
-
-        # Save rotated file in /logs/wazuh directory
+        # Save rotated file in {WAZUH_PATH}/logs/api directory
         rotated_file = glob.glob("{}.*".format(self.baseFilename))[0]
 
-        new_rotated_file = self.computeArchivesDirectory(rotated_file)
+        new_rotated_file = self.compute_log_directory(rotated_file)
         with open(rotated_file, 'rb') as f_in, gzip.open(new_rotated_file, 'wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
         os.chmod(new_rotated_file, 0o640)
         os.unlink(rotated_file)
 
-    def computeArchivesDirectory(self, rotated_filepath: str) -> str:
+    def compute_log_directory(self, rotated_filepath: str):
         """Based on the name of the rotated file, compute in which directory it should be stored.
 
         Parameters
@@ -54,16 +47,55 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
             New directory path.
         """
         rotated_file = os.path.basename(rotated_filepath)
-        year, month, day = re.match(r'[\w\.]+\.(\d+)-(\d+)-(\d+)', rotated_file).groups()
+        year, month, day = re.match(r'[\w.]+\.(\d+)-(\d+)-(\d+)', rotated_file).groups()
         month = calendar.month_abbr[int(month)]
         log_path = os.path.join(os.path.splitext(self.baseFilename)[0], year, month)
         if not os.path.exists(log_path):
             utils.mkdir_with_mode(log_path, 0o750)
 
-        return f'{log_path}/{os.path.basename(self.baseFilename)}-{day}.gz'
+        return os.path.join(log_path, f"{os.path.basename(self.baseFilename)}-{day}.gz")
 
 
-class CustomFilter():
+class SizeBasedFileRotatingHandler(logging.handlers.RotatingFileHandler):
+    """Wazuh log rotation. It rotates when the logging file size exceeds the maximum number of bytes configured."""
+
+    def doRollover(self):
+        """Override base class method to make the set the appropriate permissions to the new log file.'"""
+        # Rotate the file first
+        logging.handlers.RotatingFileHandler.doRollover(self)
+
+        # Save rotated file in {WAZUH_PATH}/logs/api directory
+        rotated_file = glob.glob("{}.*".format(self.baseFilename))[0]
+
+        new_rotated_file = self.compute_log_directory()
+        with open(rotated_file, 'rb') as f_in, gzip.open(new_rotated_file, 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+        os.chmod(new_rotated_file, 0o640)
+        os.unlink(rotated_file)
+
+    def compute_log_directory(self):
+        """Based on the current date and iteration of the rotated file, compute in which directory it should be stored.
+
+        Returns
+        -------
+        New directory path.
+        """
+        today = date.today()
+        year, month, day = today.year, today.month, f"{today.day:02d}"
+        month = calendar.month_abbr[int(month)]
+        iteration = 1
+
+        log_path = os.path.join(os.path.splitext(self.baseFilename)[0], str(year), month)
+        if not os.path.exists(log_path):
+            utils.mkdir_with_mode(log_path, 0o750)
+
+        while os.path.exists(os.path.join(log_path, f"{os.path.basename(self.baseFilename)}-{day}_{iteration}.gz")):
+            iteration += 1
+
+        return os.path.join(log_path, f"{os.path.basename(self.baseFilename)}-{day}_{iteration}.gz")
+
+
+class CustomFilter:
     """
     Define a custom filter to differentiate between log types.
     """
@@ -97,11 +129,11 @@ class CustomFilter():
 
 class WazuhLogger:
     """
-    Define attributes of a Python wazuh daemon's logger.
+    Define attributes of a Python Wazuh daemon's logger.
     """
-
-    def __init__(self, foreground_mode: bool, log_path: str, debug_level: Union[int, str], logger_name: str = 'wazuh',
-                 custom_formatter: logging.Formatter = None, tag: str = '%(asctime)s %(levelname)s: %(message)s'):
+    def __init__(self, foreground_mode: bool, log_path: str, debug_level: [int, str], logger_name: str = 'wazuh',
+                 custom_formatter: callable = None, tag: str = '%(asctime)s %(levelname)s: %(message)s',
+                 max_size: int = 0):
         """Constructor.
 
         Parameters
@@ -109,15 +141,17 @@ class WazuhLogger:
         foreground_mode : bool
             Enable stream handler on sys.stderr.
         log_path : str
-            Filepath of the file to send logs to. Relative to the wazuh installation path.
-        tag : str
-            Tag defining logging format.
+            Filepath of the file to send logs to. Relative to the Wazuh installation path.
         debug_level : int or str
             Log level.
         logger_name : str
-            Sets logger name to register in logging module.
-        custom_formatter : logging.Formatter
+            Name of the logger.
+        custom_formatter : callable
             Subclass of logging.Formatter. Allows formatting messages depending on their contents.
+        tag : str
+            Tag defining logging format.
+        max_size : int
+            Number of bytes the log can store at max. Once reached, the log will be rotated.
         """
         self.log_path = os.path.join(common.WAZUH_PATH, log_path)
         self.logger = None
@@ -129,21 +163,31 @@ class WazuhLogger:
             self.custom_formatter = self.default_formatter
         else:
             self.custom_formatter = custom_formatter(style='%', datefmt="%Y/%m/%d %H:%M:%S")
+        self.max_size = max_size
 
     def setup_logger(self):
-        """Prepare a logger with:
-            * A rotating file handler
-            * A stream handler (if foreground_mode is enabled)
+        """
+        Prepare a logger with:
+            * Two rotating file handlers (time | size).
+            * A stream handler (if foreground_mode is enabled).
             * An additional debug level.
         """
         logger = logging.getLogger(self.logger_name)
         cf = CustomFilter('log') if self.log_path.endswith('.log') else CustomFilter('json')
         logger.propagate = False
-        # configure logger
-        fh = CustomFileRotatingHandler(filename=self.log_path, when='midnight')
-        fh.setFormatter(self.custom_formatter)
-        fh.addFilter(cf)
-        logger.addHandler(fh)
+
+        # Configure handler
+        custom_handler = TimeBasedFileRotatingHandler(filename=self.log_path, when='midnight') if self.max_size == 0 \
+            else SizeBasedFileRotatingHandler(filename=self.log_path, maxBytes=self.max_size, backupCount=1)
+
+        # Set formatter
+        custom_handler.setFormatter(self.custom_formatter)
+
+        # Add logging filters (logging mode)
+        custom_handler.addFilter(cf)
+
+        # Add handler to logger
+        logger.addHandler(custom_handler)
 
         if self.foreground_mode:
             ch = logging.StreamHandler()

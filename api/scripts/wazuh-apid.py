@@ -180,13 +180,22 @@ if __name__ == '__main__':
     import logging
     from api.api_exception import APIError
     from wazuh.core import common
+    from api import alogging, configuration
+    from api.api_exception import APIError
+    from api.util import APILoggerSize, to_relative_path
+
+    from wazuh.core import common, utils
+
 
     def set_logging(log_path=f'{API_LOG_PATH}.log', foreground_mode=False, debug_mode='info'):
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
             api_logger = alogging.APILogger(
                 log_path=log_path, foreground_mode=foreground_mode, logger_name=logger_name,
-                debug_level='info' if logger_name != 'wazuh-api' and debug_mode != 'debug2' else debug_mode
+                debug_level='info' if logger_name != 'wazuh-api' and debug_mode != 'debug2' else debug_mode,
+                max_size=APILoggerSize(api_conf['logs']['max_size']['size']).size
+                if api_conf['logs']['max_size']['enabled'] else 0
             )
+
             api_logger.setup_logger()
         if os.path.exists(log_path):
             os.chown(log_path, common.wazuh_uid(), common.wazuh_gid())
@@ -205,14 +214,18 @@ if __name__ == '__main__':
         sys.exit(1)
 
     # Set up logger
-    plain_log = 'plain' in api_conf['logs']['format']
-    json_log = 'json' in api_conf['logs']['format']
-    if plain_log:
-        set_logging(log_path=f'{API_LOG_PATH}.log', debug_mode=api_conf['logs']['level'],
-                    foreground_mode=args.foreground)
-    if json_log:
-        set_logging(log_path=f'{API_LOG_PATH}.json', debug_mode=api_conf['logs']['level'],
-                    foreground_mode=args.foreground and not plain_log)
+    try:
+        plain_log = 'plain' in api_conf['logs']['format']
+        json_log = 'json' in api_conf['logs']['format']
+        if plain_log:
+            set_logging(log_path=f'{API_LOG_PATH}.log', debug_mode=api_conf['logs']['level'],
+                        foreground_mode=args.foreground)
+        if json_log:
+            set_logging(log_path=f'{API_LOG_PATH}.json', debug_mode=api_conf['logs']['level'],
+                        foreground_mode=args.foreground and not plain_log)
+    except APIError as api_log_error:
+        print(f"Error when trying to start the Wazuh API. {api_log_error}")
+        sys.exit(1)
 
     logger = logging.getLogger('wazuh-api')
 
@@ -228,7 +241,6 @@ if __name__ == '__main__':
     from api.middlewares import security_middleware, response_postprocessing, request_logging, set_secure_headers
     from api.signals import modify_response_headers
     from api.uri_parser import APIUriParser
-    from api.util import to_relative_path
     from wazuh.rbac.orm import create_rbac_db
 
     # Check deprecated options. To delete after expected versions

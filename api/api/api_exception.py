@@ -43,7 +43,8 @@ class APIException(Exception):
                   'It can be changed in the API configuration',
             2009: 'Semicolon (;) is a reserved character and must '
                   'be percent-encoded (%3B) to use it.',
-            2010: 'Error while attempting to bind on address: address already in use'
+            2010: 'Error while attempting to bind on address: address already in use',
+            2011: 'Error setting up API logger'
         }
 
     def __str__(self) -> str:
