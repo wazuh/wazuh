@@ -184,8 +184,8 @@ bool w_expression_match(w_expression_t * expression, const char * str_test, cons
                 retval = true;
             }
 
-            if (status_match.sub_strings != NULL) {
-                OSRegex_free_regex_matching(&status_match);
+            if (regex_match->sub_strings != NULL) {
+                OSRegex_free_regex_matching(regex_match);
             }
             break;
 

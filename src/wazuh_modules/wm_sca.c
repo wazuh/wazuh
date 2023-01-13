@@ -1926,10 +1926,6 @@ static int wm_sca_regex_numeric_comparison (const char * const pattern,
         return RETURN_NOT_FOUND;
     }
 
-    if(regex_match->d_size.prts_str_size){
-        os_free(regex_match->d_size.prts_str_size);
-    }
-
     if (!regex_match->sub_strings || !regex_match->sub_strings[0]) {
         mdebug2("Regex '%s' matched, but no string was captured by it. Did you forget specifying a capture group?", pattern_copy_ref);
         if (*reason == NULL) {
