@@ -21,6 +21,8 @@ parse:
     # January 29 06:09:59 boNemoe4402.www.invalid proto=udp service=http status=deny src=10.150.92.220 dst=10.102.123.34 src_port=7178 dst_port=3994 server_app=reeufugi pid=7880 app_name=enderitq traff_direct=external block_count=5286 logon_user=sumdo@litesse6379.api.domain msg=failure
     - event.original: <event.created/%B %d %T> <host.name> proto=<network.protocol> service=<service.type> status=<event.action> src=<source.ip> dst=<destination.ip> src_port=<source.port> dst_port=<destination.port> server_app=<~tmp.server_app> pid=<process.pid> app_name=<~tmp.app_name> traff_direct=<network.direction> block_count=<~tmp.block_count> logon_user=<user.name>@<~tmp.domain/fqdn> msg=<message>
 
+# TODO: Could not map field 'log.offset' due to inability to persist values into yml variables.
+# Also, there is no helper that allows obtaining the size of an event.
 normalize:
   - map:
       - destination.ip: $destination.ip
@@ -35,7 +37,6 @@ normalize:
       - fileset.name: clientendpoint
       - host.name: $host.name
       - input.type: log
-      - log.offset: 0
       - network.direction: $network.direction
       - network.protocol: $network.protocol
       - observer.product: FortiClient
