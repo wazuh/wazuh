@@ -1,5 +1,5 @@
 ---
-name: decoder/fortinet-firewal/0
+name: decoder/fortinet-firewall/0
 
 metadata:
   title: Decoder for parsing fortinet firewall logs
@@ -20,6 +20,8 @@ parse:
   logpar:
     # <189>date=2020-04-23 time=12:32:48 devname="testswitch3" devid="someotherrouteridagain" logid="0102043014" type="event" subtype="user" level="notice" vd="root" eventtime=1587231168439640874 tz="-0500" logdesc="FSSO logon authentication status" srcip=10.10.10.10 user="elasticouser" server="elasticserver" action="FSSO-logon" msg="FSSO-logon event from FSSO_elasticserver: user elasticouser logged on 10.10.10.10"
     - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" srcip=<source.ip> user="<source.user.name>" server="<~tmp.server>" action="<event.action>" msg="<message>"
+    # <189>date=2020-04-23 time=12:32:09 devname="testswitch3" devid="someotherrouteridagain" logid="0102043039" type="event" subtype="user" level="notice" vd="root" eventtime=1587231130109462858 tz="-0500" logdesc="Authentication logon" srcip=10.10.10.10 user="elastiiiuser" authserver="FSSO_elastiauth" action="auth-logon" status="logon" msg="User elastiiiuser added to auth logon"
+    - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" srcip=<source.ip> user="<source.user.name>" authserver="<~tmp.authserver>" action="<event.action>" status="<~tmp.status>" msg="<message>"
 
 normalize:
   - map:
@@ -27,23 +29,56 @@ normalize:
     - \@timestamp: $~tmp.timestamp
     - event.dataset: fortinet.firewall
     - event.module: fortinet
+    # TODO: se debe validar con distintos parsers
     - event.outcome: sucess
     - event.start: $~tmp.timestamp
     - event.timezone: $~tmp.tz
-    - ~tmp.event_type: start|user
-    - event.type: +s_to_array/$~tmp.event_type/|
   - check:
     - ~tmp.subtype: +s_eq/user
-    map:
-      - event.category: authentication
+    - event.action: +r_match/^logon(.+)
+    - map:
+      - ~tmp.event_type: +s_concat/start/\|/user
+      - event.type: +s_to_array/$~tmp.event_type/|
+  - check:
+    - ~tmp.subtype: +s_eq/user
+    - event.action: +r_match/^logoff(.+)
+    - map:
+      - ~tmp.event_type: +s_concat/end/\|/user
+      - event.type: +s_to_array/$~tmp.event_type/|
+  - check:
+    - ~tmp.subtype: +s_eq/user
+    - map:
+      - ~tmp.category: authentication|
   - check:
     - ~tmp.subtype: +s_eq/system
-    map:
-      - event.category: host
+    - map:
+      - ~tmp.category: host|
   - check:
     - ~tmp.subtype: +s_eq/vpn
-    map:
-      - event.category: network
+    - map:
+      - ~tmp.category: network|
   - map:
-    - wazuh: +ef_delete
-    - ~tmp: +ef_delete
+      - event.category: +s_to_array/$~tmp.category/|
+      - fileset.name: firewall
+      - fortinet.firewall.action: $event.action
+      - fortinet.firewall.authserver: $~tmp.authserver
+      - fortinet.firewall.status: $~tmp.status
+      - fortinet.firewall.server: $~tmp.server
+      - fortinet.firewall.subtype: $~tmp.subtype
+      - fortinet.firewall.type: $event.kind
+      - fortinet.firewall.vd: $~tmp.vd
+      - input.type: log
+      # TODO: Could not map field 'log.offset' due to inability to persist values into yml variables.
+      # Also, there is no helper that allows obtaining the size of an event.
+      - log.offset: 0
+      - ~tmp.ip: +s_ip_version/$source.ip
+      - network.type: +s_lo/$~tmp.ip
+      - observer.product: Fortigate
+      - observer.type: firewall
+      - observer.vendor: Fortinet
+      - related.ip: +s_to_array/$source.ip/|
+      - related.user: +s_to_array/$source.user.name/|
+      - service.type: fortinet
+      - ~tmp.tags: fortinet-firewall|forwarded
+      - tags: +s_to_array/$~tmp.tags/|
+      - ~tmp: +ef_delete

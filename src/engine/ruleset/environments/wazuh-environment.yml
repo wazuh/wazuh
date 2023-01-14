@@ -62,6 +62,7 @@ decoders:
 
   # Fortinet
   - decoder/fortinet-client-endpoint/0
+  - decoder/fortinet-firewall/0
 
 outputs:
   - output/file-output/0
