@@ -123,7 +123,7 @@ normalize:
  #- check: $~event_channel.Event.EventData.QueryResults
  #  map:
  #   - ~temp.QueryRresultsArray: $~event_channel.Event.EventData.QueryResults 
-    # needs parsing each element of the array
+    # Needs parsing each element of the array
 
  - check: $~event_channel.Event.EventData.SignatureStatus==Valid
    map:
@@ -164,6 +164,7 @@ normalize:
     - ~temp.registry.array.0: +ef_delete
     - registry.key: +s_from_array/$~temp.registry.array/\\
     - registry.value: +r_ext/$registry.path/^.*\\(.*)$
+    #- ~temp.is_binary_data: +r_match/~event_channel.Event.EventData.Details/^Binary Data/
     
  - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~event_channel.Event.EventData.Details/QWORD/
    map:  
@@ -178,4 +179,13 @@ normalize:
     - registry.data.type: SZ_DWORD
     - ~temp.value: +r_ext/$~event_channel.Event.EventData.Details/DWORD \((0x[0-9A-F]{8})\)
     - registry.data.strings: +s_hex_to_num/$~temp.value
-   
+
+ - check: 
+    - ~event_channel.Event.EventData.Details: +r_match/^Binary Data/
+   map:
+    - ~temp.is_binary_data: True
+
+ - check:  (event.code==12 OR event.code==13  OR event.code==14) AND +t_is_true/~temp.is_binary_data
+   map:  
+    - registry.data.type: REG_BINARY
+    - registry.data.strings: $~event_channel.Event.EventData.Details
