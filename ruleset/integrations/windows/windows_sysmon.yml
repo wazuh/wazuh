@@ -14,6 +14,12 @@ normalize:
  - map:
     - event.module: sysmon
     - event.kind: event
+    - log.channel: $~event_channel.Event.System.Channel.#text
+    - log.computer_name: $~event_channel.Event.System.Computer.#text
+    - log.event_id:  $~event_channel.Event.System.EventID.#text
+    - log.opcode: info
+    - log.process.pid: $~event_channel.Event.System.Execution.@ProcessID
+    - log.process.thread.id: $~event_channel.Event.System.Execution.@ThreadID
     
     # Add categorization fields
     - event:  +kvdb_get_merge/win_sysmon_categories/$event.code 
@@ -164,15 +170,13 @@ normalize:
     - ~temp.registry.array.0: +ef_delete
     - registry.key: +s_from_array/$~temp.registry.array/\\
     - registry.value: +r_ext/$registry.path/^.*\\(.*)$
+    # This could be better than what is done in line 181:
     #- ~temp.is_binary_data: +r_match/~event_channel.Event.EventData.Details/^Binary Data/
     
  - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~event_channel.Event.EventData.Details/QWORD/
    map:  
     - registry.data.type: SZ_QWORD
     - registry.data.strings: +r_ext/$~event_channel.Event.EventData.Details/^QWORD\s*\((0x[0-9A-F]+-0x[0-9A-F]+)\)
-    #- ~temp.registry_data: +r_ext/$~event_channel.Event.EventData.Details/^QWORD\s*(\((0x[0-9A-F]+-0x[0-9A-F]+)\))
-    #- ~temp.hex_test: "0x0000000100000000"
-    #- ~temp.hex_test2: +s_hex_to_num/$~temp.hex_test
 
  - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~event_channel.Event.EventData.Details/DWORD/
    map:  
@@ -189,3 +193,8 @@ normalize:
    map:  
     - registry.data.type: REG_BINARY
     - registry.data.strings: $~event_channel.Event.EventData.Details
+
+# Cleanup
+ - map:
+   - ~temp: +ef_delete
+   - ~event_channel: +ef_delete

@@ -15,9 +15,14 @@ parse:
 
 normalize:
  - map:
+   - timestamp: $~event_channel.Event.System.TimeCreated.@SystemTime
    - event.code: $~event_channel.Event.System.EventID.#text
-   - event.@timestamp: $~event_channel.Event.System.TimeCreated.@SystemTime
+   - event.message: $~json.Message
    - event.kind: event
    - event.provider: $~event_channel.Event.System.Provider.@Name
    - event.host.name: $~event_channel.Event.System.Computer.#text
    - log.level: +kvdb_get/win_log_level/$~event_channel.Event.System.Level.#text
+
+# Cleanup
+ - map:
+   - ~json: +ef_delete
