@@ -6,7 +6,7 @@ metadata:
   references: "https://docs.nginx.com/nginx/admin-guide/monitoring/logging/#access_log"
   product.name: nginx
   product.versions:
-    - nginx-1.23.2 #TODO: Check! for now only the latest version
+    - nginx-1.23.2  #latest version when developing
 
 sources:
   - decoder/nginx-access-base/0
@@ -27,7 +27,6 @@ parse:
          <destination.ip>(?:<destination.port>) <~ip1/ip>(?,) <~ip2/ip>(?,) <~ip3/ip>
 
     # More than 3 Ips
-    # TODO: almost duplicated from the previous one, double optional doesn't work when option doesn't result
     # 1.128.3.4, 2a02:cf40:10ff:f00f:0000:0000:0:8000, 10.225.192.17 10.2.2.121 - - [30/Dec/2016:06:47:09 +0000] "GET /test.html HTTP/1.1" 404 8571 "-" "Mozilla/5.0 (compatible; Facebot 1.0; https://developers.facebook.com/docs/sharing/webmasters/crawler)"
     - ~destination_address: >-
          <destination.ip>(?:<destination.port>), <~ip1/ip>(?,) <~ip2/ip>(?,) <~ip3/ip>
@@ -40,7 +39,6 @@ parse:
 
     # Domain + 3 IPs
     # example.com 10.0.0.2, 10.0.0.1, 81.2.69.143 - - [07/Dec/2016:11:05:07 +0100] "GET /ocelot HTTP/1.1" 200 571 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:49.0) Gecko/20100101 Firefox/49.0"
-    # TODO: can be duplicated due to not being able to add comma separator after first domain
     - ~destination_address: >-
         <~destination_domain/fqdn>(?:<destination.port>) <~ip1/ip>(?,) <~ip2/ip>(?,) <~ip3/ip>
 
@@ -65,7 +63,6 @@ parse:
     # example.com:80 unix: - - [26/Feb/2019:15:39:42 +0100] "hello" 400 173 "-" "-"
     - ~destination_address: <~destination_domain/fqdn>(?:<destination.port>) <~domain1/fqdn>(?:)
     # localhost, localhost - - [29/May/2017:19:02:48 +0000] "GET /test2 HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
-    # TODO: almost duplicated from the previous one, double optional doesn't work when option doesnt' result
     - ~destination_address: <~destination_domain/fqdn>(?:<destination.port>), <~domain1/fqdn>
 
     # Single IP
@@ -82,8 +79,6 @@ normalize:
   - map:
       - destination.domain: $~destination_domain
       - url.domain: $~domain
-      - source.address: +a_append/$~source_address
-      # TODO: a_append should try best case scenario (if not succeded then continue with the next?)
       - nginx.access.remote_ip_list: +a_append/$~domain1/$~domain2/$~domain3
       - nginx.access.remote_ip_list: +a_append/$~ip1/$~ip2/$~ip3
       - related.ip: +a_append/$destination.ip
@@ -92,64 +87,83 @@ normalize:
       - event.category: +a_append/web
       - event.type: +a_append/access
       - ~ip1_private: false
+      - ~ip1_version: +s_ip_version/$~ip1
       - ~ip2_private: false
+      - ~ip2_version: +s_ip_version/$~ip2
       - ~ip3_private: false
+      - ~ip3_version: +s_ip_version/$~ip3
 
-  # TODO: This procedure is in the pipeline but I don't see any result on the final JSON
-  # source.address will append if not private:
-  - check:
-      # is private when firstByte 192 && seccondByte 168
-      - ~ip1: +ip_cidr/192.168.0.0/16
-    map:
-      - ~ip1_private: true
-
-  # firstByte 172 && seccondByte [16;31]
-  - check:
-      - ~ip1: +ip_cidr/172.16.0.0/13
+  # source.address will get assigne firs IPv4 not private:
+  # IP1
+  # if first byte is 10 -> private
+  # if first byte 192 && seccondByte 168 -> private
+  # if first byte 172 && seccondByte [16;31] -> private
+  # if first byte is 127 -> private
+  - check: +ip_cidr/~ip1/10.0.0.0/8 OR +ip_cidr/~ip1/192.168.0.0/16 OR +ip_cidr/~ip1/172.16.0.0/13 OR +ip_cidr/~ip1/172.24.0.0/14 OR +ip_cidr/~ip1/172.28.0.0/15 OR +ip_cidr/~ip1/172.30.0.0/16 OR +ip_cidr/~ip1/172.31.0.0/32 OR +ip_cidr/~ip1/127.0.0.0/8
     map:
       - ~ip1_private: true
   - check:
-      - ~ip1: +ip_cidr/172.24.0.0/14
+      - ~ip1_version: +s_ne/IPv4
     map:
-      - ~ip1_private: true
-  - check:
-      - ~ip1: +ip_cidr/172.28.0.0/15
-    map:
-      - ~ip1_private: true
-  - check:
-      - ~ip1: +ip_cidr/172.30.0.0/16
-    map:
-      - ~ip1_private: true
-  - check:
-      - ~ip1: +ip_cidr/172.31.0.0/32
-    map:
-      - ~ip1_private: true
-
-  # if firstByte is 127
-  - check:
-      - ~ip1: +ip_cidr/127.0.0.0/8
-    map:
-      - ~ip1_private: true
-
-  # if ip1 is not private then append
+      - ~ip1_private: false
   - check:
       - ~ip1_private: +t_is_false
     map:
-      - source.address: +a_append/$~ip1
+      - source.address: $~ip1
+
+  # IP2
+  - check: +ip_cidr/~ip2/10.0.0.0/8 OR +ip_cidr/~ip2/192.168.0.0/16 OR +ip_cidr/~ip2/172.16.0.0/13 OR +ip_cidr/~ip2/172.24.0.0/14 OR +ip_cidr/~ip2/172.28.0.0/15 OR +ip_cidr/~ip2/172.30.0.0/16 OR +ip_cidr/~ip2/172.31.0.0/32 OR +ip_cidr/~ip2/127.0.0.0/8
+    map:
+      - ~ip2_private: true
+  - check:
+      - ~ip2_private: +s_ne/IPv4
+    map:
+      - ~ip2_private: false
+  - check:
+      - source.address: +ef_not_exists
+      - ~ip2_private: +t_is_false
+    map:
+      - source.address: $~ip2
+
+  # IP3
+  - check: +ip_cidr/~ip3/10.0.0.0/8 OR +ip_cidr/~ip3/192.168.0.0/16 OR +ip_cidr/~ip3/172.16.0.0/13 OR +ip_cidr/~ip3/172.24.0.0/14 OR +ip_cidr/~ip3/172.28.0.0/15 OR +ip_cidr/~ip3/172.30.0.0/16 OR +ip_cidr/~ip3/172.31.0.0/32 OR +ip_cidr/~ip3/127.0.0.0/8
+    map:
+      - ~ip3_private: true
+  - check:
+      - ~ip3_version: +s_ne/IPv4
+    map:
+      - ~ip3_private: false
+  - check:
+      - source.address: +ef_not_exists
+      - ~ip3_private: +t_is_false
+    map:
+      - source.address: $~ip3
 
   # if all of them are private > append first of the list
   - check:
+      - source.address: +ef_not_exists
       - ~ip1_private: +t_is_true
       - ~ip2_private: +t_is_true
       - ~ip3_private: +t_is_true
     map:
-      - source.address: +a_append/$~ip1
+      - source.address: $~ip1
+
+  - check:
+      - source.address: +ef_not_exists
+    map:
+      - source.address: $~source_address
 
   - map:
       - ~source_address: +ef_delete
       - ~ip1: +ef_delete
       - ~ip2: +ef_delete
       - ~ip3: +ef_delete
+      - ~ip1_version: +ef_delete
+      - ~ip2_version: +ef_delete
+      - ~ip3_version: +ef_delete
+      - ~ip1_private: +ef_delete
+      - ~ip2_private: +ef_delete
+      - ~ip3_private: +ef_delete
       - ~destination_domain: +ef_delete
       - ~domain1: +ef_delete
       - ~domain2: +ef_delete
