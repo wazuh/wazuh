@@ -60,36 +60,28 @@ normalize:
       - fileset.name: log
       - input.type: log
       - service.type: redis
-  - check:
-      - log.level: +s_eq/.
+  - check: log.level==.
     map:
       - log.level: debug
-  - check:
-      - log.level: +s_eq/-
+  - check: log.level==-
     map:
       - log.level: verbose
-  - check:
-      - log.level: +s_eq/*
+  - check: log.level==*
     map:
       - log.level: notice
-  - check:
-      - log.level: +s_eq/#
+  - check: log.level==#
     map:
       - log.level: warning
-  - check:
-      - ~log.role: +s_eq/M
+  - check: ~log.role==M
     map:
       - redis.log.role: master
-  - check:
-      - ~log.role: +s_eq/S
+  - check: ~log.role==S
     map:
       - redis.log.role: slave
-  - check:
-      - ~log.role: +s_eq/C
+  - check: ~log.role==C
     map:
       - redis.log.role: child
-  - check:
-      - ~log.role: +s_eq/X
+  - check:  ~log.role==X
     map:
       - redis.log.role: sentinel
   - map:
