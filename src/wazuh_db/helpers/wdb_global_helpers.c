@@ -406,14 +406,13 @@ int wdb_update_agent_status_code(int id, agent_status_code_t status_code, const 
         return OS_INVALID;
     }
 
-    char wazuh_version[OS_SIZE_128 + 1] = "";
-    if (strncmp(version, "", strlen(version)) != 0) {
-        snprintf(wazuh_version, OS_SIZE_128, "%s %s", __ossec_name, version);
-    }
-
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddNumberToObject(data_in, "status_code", status_code);
-    cJSON_AddStringToObject(data_in, "version", wazuh_version);
+    if (version != NULL) {
+        char wazuh_version[OS_SIZE_128 + 1] = "";
+        snprintf(wazuh_version, OS_SIZE_128, "%s %s", __ossec_name, version);
+        cJSON_AddStringToObject(data_in, "version", wazuh_version);
+    }
     cJSON_AddStringToObject(data_in, "sync_status", sync_status);
     data_in_str = cJSON_PrintUnformatted(data_in);
 

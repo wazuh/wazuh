@@ -80,7 +80,9 @@ int __wrap_wdb_update_agent_connection_status(int id, const char *connection_sta
 int __wrap_wdb_update_agent_status_code(int id, agent_status_code_t status_code, const char *version, const char *sync_status, __attribute__((unused)) int *sock) {
     check_expected(id);
     check_expected(status_code);
-    check_expected(version);
+    if (version) {
+        check_expected(version);
+    }
     check_expected(sync_status);
     return mock();
 }

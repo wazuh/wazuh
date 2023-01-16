@@ -5421,11 +5421,14 @@ int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output
         j_version = cJSON_GetObjectItem(agent_data, "version");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
 
-        if (cJSON_IsNumber(j_id) && cJSON_IsNumber(j_status_code) && cJSON_IsString(j_version) && cJSON_IsString(j_sync_status)) {
+        if (cJSON_IsNumber(j_id) && cJSON_IsNumber(j_status_code) && (j_version == NULL || cJSON_IsString(j_version)) && cJSON_IsString(j_sync_status)) {
             // Getting each field
             int id = j_id->valueint;
             int status_code = j_status_code->valueint;
-            char *version = j_version->valuestring;
+            char *version = NULL;
+            if (j_version != NULL) {
+                version = j_version->valuestring;
+            }
             char *sync_status = j_sync_status->valuestring;
 
             if (OS_SUCCESS != wdb_global_update_agent_status_code(wdb, id, status_code, version, sync_status)) {
