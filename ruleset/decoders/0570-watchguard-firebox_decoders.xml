@@ -2,13 +2,14 @@
 <!--
   -  Decoders for watchguard-firebox
   -  Created by FMI Groupe (ph3nix, Orsiris de Jong) for Wazuh, Inc.
-  -  Copyright (C) 2021, FMI Groupe, Wazuh Inc.
+  -  Copyright (C) 2021-2023, NetInvent, FMI Groupe, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 
    Changelog
+   2023/01/17 - AllexBR         - Improve decoder to include non standard names
    2021/07/08 - Orsiris de Jong - Added IGMP protocol to protocol list
                                 - Added generic traffic decoder as last resort
-								- Added security event (SIGD) decoder
+				- Added security event (SIGD) decoder
    2021/07/06 - Orsiris de Jong - Added Link Monitor external interface detection
                                 - Fix firewall / proxy rules (missing srcport and dstport, bogus protocol detection)
                                 - Fix SSL VPN authentication via wgcgi has no msg_id
@@ -27,7 +28,6 @@
                                 - Added packet filter and proxy traffic decoders
                                 - Added unhandled traffic decoders
                                 - Switched to sibling decoders usage
-                                
    2021/04/21 - ph3nix          - Initial release
                                 - Authentication detection, VPN authentication, VPN traffic and generic traffic
 
@@ -50,7 +50,7 @@ Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="XXXX-XXXX"
 -->
 <decoder name="watchguard-firebox-firewall-info">
   <parent>watchguard-firebox-firewall</parent>
-  <regex type="pcre2" offset="after_parent">msg_id="([0-9a-fA-F]{4}-[0-9a-fA-F]{4})"</regex>
+  <regex type="pcre2" offset="after_parent">msg_id=\\?"([0-9a-fA-F]{4}-[0-9a-fA-F]{4})\\?"</regex>
   <order>id</order>
 </decoder>
 
