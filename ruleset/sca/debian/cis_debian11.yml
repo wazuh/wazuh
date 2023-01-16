@@ -184,19 +184,24 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
 
   # 3.2.2 Ensure IP forwarding is disabled (Automated)
-   - id: 3086
+  - id: 3086
     title: "Ensure IP forwarding is disabled (Automated)"
     description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
     rationale: "Setting: net.ipv4.ip_forward = 0 net.ipv6.conf.all.forwarding = 0 Ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
     remediation: "Run the following command to restore the default parameter and set the active kernel parameter: # grep -Els \"^\\s*net\\.ipv4\\.ip_forward\\s*=\\s*1\" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf | while read filename; do sed -ri \"s/^\\s*(net\\.ipv4\\.ip_forward\\s*)(=)(\\s*\\S+\\b).*$/# *REMOVED* \\1/\" $filename; done; sysctl -w net.ipv4.ip_forward=0; sysctl -w net.ipv4.route.flush=1 IF IPv6 is enabled: Run the following command to restore the default parameter and set the active kernel parameter: # grep -Els \"^\\s*net\\.ipv6\\.conf\\.all\\.forwarding\\s*=\\s*1\" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf | while read filename; do sed -ri \"s/^\\s*(net\\.ipv6\\.conf\\.all\\.forwarding\\s*)(=)(\\s*\\S+\\b).*$/# *REMOVED* \\1/\" $filename; done; sysctl -w net.ipv6.conf.all.forwarding=0; sysctl -w net.ipv6.route.flush=1" 
     compliance:
       - cis: ["3.2.2"]
-      - cis_csc_v8: [""]
-      - cis_csc_v7: [""]
-
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
+      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
+      - soc_2: ["CC6.3","CC6.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - NIST SP 800-53 Rev. 5: ["CM-1 CM-2, CM-6, CM-7, IA-5"]
+      - mitre_techniques: ["T1557, T1557.000"]
+      - mitre_tactics: ["TA0006, TA0009"]
+      - mitre_mitigations: ["M1030, M1042"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.ip_forward -> r:=\s*\t*0$'
@@ -204,9 +209,6 @@ checks:
       - 'c:sysctl net.ipv6.conf.all.forwarding -> r:=\s*\t*0$'
       - 'c:grep -Rh net\.ipv6\.conf\.all\.forwarding /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
 
-  ############################################################
-  # 3.3 Network Parameters (Host and Router)
-  ############################################################      
 
   # 3.3.1 Ensure source routed packets are not accepted (Automated)
   - id: 3087
@@ -418,7 +420,6 @@ checks:
       - 'c:sysctl net.ipv4.tcp_syncookies -> r:=\s*\t*1$'
       - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
 
-
   # 3.3.9 Ensure IPv6 router advertisements are not accepted (Automated)
   - id: 3095
     title: "Ensure IPv6 router advertisements are not accepted (Automated)"
@@ -497,7 +498,7 @@ checks:
       - mitre_mitigations: [""]
     condition: all
     rules:
-      - "c:dpkg-query -s iptables-persistent -> r:not installed"
+      - "c:dpkg-query -s iptables-persistent -> r:package 'iptables-persistent' is not installed"
 
   # 3.5.1.3 Ensure ufw service is enabled (Automated)
   - id: 3098
@@ -521,8 +522,8 @@ checks:
     condition: all
     rules:
       - "c:systemctl is-enabled ufw.service -> r:enabled"
-      - "c:systemctl is-active ufw -> r:active"
-      - "c:ufw status -> r:active"
+      - "c:systemctl is-active ufw -> r:^active"
+      - "c:ufw status -> Status: active"
 
   # 3.5.1.4 Ensure ufw loopback traffic is configured (Automated)
   - id: 3099
@@ -606,7 +607,7 @@ checks:
       - mitre_mitigations: ["M1031, M1037"]
     condition: all
     rules:
-      - "c:dpkg-query -s nftables | grep 'Status: install ok installed' -> r:install ok installed"
+      - "c:dpkg-query -s nftables -> r:install ok installed"
 
   # 3.5.2.2 Ensure ufw is uninstalled or disabled with nftables (Automated)
   - id: 3102
@@ -629,7 +630,7 @@ checks:
       - mitre_mitigations: [""]
     condition: any
     rules:
-      - "c:dpkg-query -s ufw | grep 'Status: install ok installed' -> r: not installed"
+      - "c:dpkg-query -s ufw -> r:package 'ufw' is not installed"
       - "c:ufw status -> r:inactive"
 
   # 3.5.2.3 Ensure iptables are flushed with nftables (Manual) - Not Implemented
@@ -658,29 +659,29 @@ checks:
       - 'c:nft list tables -> r:\w+'
 
   # 3.5.2.5 Ensure nftables base chains exist (Automated)
-  - id: 3104
-    title: "Ensure nftables base chains exist (Automated)"
-    description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
-    rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
-    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \; } Example: # nft create chain inet filter input { type filter hook input priority 0 \; } # nft create chain inet filter forward { type filter hook forward priority 0 \; } # nft create chain inet filter output { type filter hook output priority 0 \; }" 
-    compliance:
-      - cis: ["3.5.2.5"]
-      - cis_csc_v8: ["4.4, 4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
-      - pci_dss_4.0: ["1.2.1","1.4.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - soc_2: ["CC6.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - "c:nft list ruleset -> r:hook input"
-      - "c:nft list ruleset -> r:hook forward"
-      - "c:nft list ruleset -> r:hook output"
+#  - id: 3104
+#    title: "Ensure nftables base chains exist (Automated)"
+#    description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
+#    rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
+#    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \; } Example: # nft create chain inet filter input { type filter hook input priority 0 \; } # nft create chain inet filter forward { type filter hook forward priority 0 \; } # nft create chain inet filter output { type filter hook output priority 0 \; }"
+#    compliance:
+#      - cis: ["3.5.2.5"]
+#      - cis_csc_v8: ["4.4, 4.5"]
+#      - cis_csc_v7: ["9.4"]
+#      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
+#      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
+#      - pci_dss_4.0: ["1.2.1","1.4.1"]
+#      - nist_sp_800-53: ["SC-7(5)"]
+#      - soc_2: ["CC6.6"]
+#      - iso_27001-2013: ["A.13.1.1"]
+#      - mitre_techniques: ["T1562, T1562.004"]
+#      - mitre_tactics: ["TA0005"]
+#      - mitre_mitigations: [""]
+#    condition: all
+#    rules:
+#      - "c:nft list ruleset -> r:hook input"
+#      - "c:nft list ruleset -> r:hook forward"
+#      - "c:nft list ruleset -> r:hook output"
 
   # 3.5.2.6 Ensure nftables loopback traffic is configured (Automated)
   - id: 3105
@@ -736,29 +737,29 @@ checks:
       - "c:nft list ruleset | awk '/hook output/,/}/' | grep -E 'ip protocol(tcp|udp|icmp) ct state' ->r:icmp"
 
   # 3.5.2.8 Ensure nftables default deny firewall policy (Automated)
-  - id: 3107
-    title: "Ensure nftables default deny firewall policy (Automated)"
-    description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
-    rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue transversing the network stack. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \; } Example: # nft chain inet filter input { policy drop \; } # nft chain inet filter forward { policy drop \; } # nft chain inet filter output { policy drop \; }" 
-    compliance:
-      - cis: ["3.5.2.8"]
-      - cis_csc_v8: ["4.4, 4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
-      - pci_dss_4.0: ["1.2.1","1.4.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - soc_2: ["CC6.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
-      - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
-    condition: all
-    rules:
-      - "c:nft list ruleset -> r:hook input && r:policy drop"
-      - "c:nft list ruleset -> r:hook forward && r:policy drop"
-      - "c:nft list ruleset -> r:hook output && r:policy drop"
+#  - id: 3107
+#    title: "Ensure nftables default deny firewall policy (Automated)"
+#    description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
+#    rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue transversing the network stack. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
+#    remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \; } Example: # nft chain inet filter input { policy drop \; } # nft chain inet filter forward { policy drop \; } # nft chain inet filter output { policy drop \; }" 
+#    compliance:
+#      - cis: ["3.5.2.8"]
+#      - cis_csc_v8: ["4.4, 4.5"]
+#      - cis_csc_v7: ["9.4"]
+#      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
+#      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
+#      - pci_dss_4.0: ["1.2.1","1.4.1"]
+#      - nist_sp_800-53: ["SC-7(5)"]
+#      - soc_2: ["CC6.6"]
+#      - iso_27001-2013: ["A.13.1.1"]
+#      - mitre_techniques: ["T1562, T1562.004"]
+#      - mitre_tactics: ["TA0011"]
+#      - mitre_mitigations: ["M1031, M1037"]
+#    condition: all
+#    rules:
+#      - "c:nft list ruleset -> r:hook input && r:policy drop"
+#      - "c:nft list ruleset -> r:hook forward && r:policy drop"
+#      - "c:nft list ruleset -> r:hook output && r:policy drop"
 
   # 3.5.2.9 Ensure nftables service is enabled (Automated)
   - id: 3108
@@ -784,29 +785,29 @@ checks:
       - "c:systemctl is-enabled nftables ->r:enabled"
 
   # 3.5.2.10 Ensure nftables rules are permanent (Automated)
-  - id: 3109
-    title: "Ensure nftables rules are permanent (Automated)"
-    description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames. The nftables service reads the /etc/nftables.conf file for a nftables file or files to include in the nftables ruleset. A nftables ruleset containing the input, forward, and output base chains allow network traffic to be filtered."
-    rationale: "Changes made to nftables ruleset only affect the live system, you will also need to configure the nftables ruleset to apply on boot"
-    remediation: "Edit the /etc/nftables.conf file and un-comment or add a line with include <Absolute path to nftables rules file> for each nftables file you want included in the nftables ruleset on boot .Example: # vi /etc/nftables.conf .Add the line: include "/etc/nftables.rules"" 
-    compliance:
-      - cis: ["3.5.2.10"]
-      - cis_csc_v8: ["4.4, 4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
-      - pci_dss_4.0: ["1.2.1","1.4.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - soc_2: ["CC6.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
-      - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031"]
-    condition: all
-    rules:
-      - "c:[ -n "$(grep -E '^\s*include' /etc/nftables.conf)" ] && awk '/hook input/,/}/' $(awk '$1 ~ /^\s*include/ { gsub("\"","",$2);print $2 }' /etc/nftables.conf) ->r:"
-      - "c:[ -n "$(grep -E '^\s*include' /etc/nftables.conf)" ] && awk '/hook forward/,/}/' $(awk '$1 ~ /^\s*include/ { gsub("\"","",$2);print $2 }' /etc/nftables.conf)"
-      - "c:[ -n "$(grep -E '^\s*include' /etc/nftables.conf)" ] && awk '/hook output/,/}/' $(awk '$1 ~ /^\s*include/ { gsub("\"","",$2);print $2 }' /etc/nftables.conf)"
+#  - id: 3109
+#    title: "Ensure nftables rules are permanent (Automated)"
+#    description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames. The nftables service reads the /etc/nftables.conf file for a nftables file or files to include in the nftables ruleset. A nftables ruleset containing the input, forward, and output base chains allow network traffic to be filtered."
+#    rationale: "Changes made to nftables ruleset only affect the live system, you will also need to configure the nftables ruleset to apply on boot"
+#    remediation: "Edit the /etc/nftables.conf file and un-comment or add a line with include <Absolute path to nftables rules file> for each nftables file you want included in the nftables ruleset on boot .Example: # vi /etc/nftables.conf .Add the line: include "/etc/nftables.rules"" 
+#    compliance:
+#      - cis: ["3.5.2.10"]
+#      - cis_csc_v8: ["4.4, 4.5"]
+#      - cis_csc_v7: ["9.4"]
+#      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
+#      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
+#      - pci_dss_4.0: ["1.2.1","1.4.1"]
+#      - nist_sp_800-53: ["SC-7(5)"]
+#      - soc_2: ["CC6.6"]
+#      - iso_27001-2013: ["A.13.1.1"]
+#      - mitre_techniques: ["T1562, T1562.004"]
+#      - mitre_tactics: ["TA0011"]
+#      - mitre_mitigations: ["M1031"]
+#    condition: all
+#    rules:
+#      - "c:[ -n "$(grep -E '^\s*include' /etc/nftables.conf)" ] && awk '/hook input/,/}/' $(awk '$1 ~ /^\s*include/ { gsub("\"","",$2);print $2 }' /etc/nftables.conf)"
+#      - "c:[ -n "$(grep -E '^\s*include' /etc/nftables.conf)" ] && awk '/hook forward/,/}/' $(awk '$1 ~ /^\s*include/ { gsub("\"","",$2);print $2 }' /etc/nftables.conf)"
+#      - "c:[ -n "$(grep -E '^\s*include' /etc/nftables.conf)" ] && awk '/hook output/,/}/' $(awk '$1 ~ /^\s*include/ { gsub("\"","",$2);print $2 }' /etc/nftables.conf)"
 
   ############################################################
   # 3.5.3 Configure iptables
@@ -837,7 +838,7 @@ checks:
       - mitre_mitigations: ["M1031, M1037"]
     condition: all
     rules:
-      - "c:apt list iptables iptables-persistent | grep installed ->r:installed,automatic"
+      - "c:apt list iptables iptables-persistent ->r:installed,automatic"
 
   # 3.5.3.1.2 Ensure nftables is not installed with iptables (Automated)
   - id: 3111
@@ -941,31 +942,29 @@ checks:
       - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
       - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
 
-  # 3.5.3.2.3 Ensure iptables outbound and established connections are configured (Manual) - Not Implemented
-
-  # 3.5.3.2.4 nsure iptables firewall rules exist for all open ports (Automated)
-  - id: 3115
-    title: "Ensure iptables firewall rules exist for all open ports (Automated)"
-    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic. Note: Changing firewall settings while connected over network can result in being locked out of the system .Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well .The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
-    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports."
-    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # iptables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT" 
-    compliance:
-      - cis: ["3.5.3.2.4"]
-      - cis_csc_v8: ["4.4, 4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
-      - pci_dss_4.0: ["1.2.1","1.4.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - soc_2: ["CC6.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
-      - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
-    condition: all
-    rules:
-      - "c:ss -4tuln"
-      - "c:iptables -L INPUT -v -n ->r:tcp"
+  # 3.5.3.2.4 Ensure iptables firewall rules exist for all open ports (Automated)
+#  - id: 3115
+#    title: "Ensure iptables firewall rules exist for all open ports (Automated)"
+#    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic. Note: Changing firewall settings while connected over network can result in being locked out of the system .Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well .The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
+#    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports."
+#    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # iptables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT" 
+#    compliance:
+#      - cis: ["3.5.3.2.4"]
+#      - cis_csc_v8: ["4.4, 4.5"]
+#      - cis_csc_v7: ["9.4"]
+#      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
+#      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
+#      - pci_dss_4.0: ["1.2.1","1.4.1"]
+#      - nist_sp_800-53: ["SC-7(5)"]
+#      - soc_2: ["CC6.6"]
+#      - iso_27001-2013: ["A.13.1.1"]
+#      - mitre_techniques: ["T1562, T1562.004"]
+#      - mitre_tactics: ["TA0011"]
+#      - mitre_mitigations: ["M1031, M1037"]
+#    condition: all
+#    rules:
+#      - "c:ss -4tuln"
+#      - "c:iptables -L INPUT -v -n ->r:tcp"
 
   ############################################################
   # 3.5.3.3 Configure IPv6 ip6tables
@@ -1024,25 +1023,25 @@ checks:
   # 3.5.3.3.3 Ensure ip6tables outbound and established connections are configured (Manual)
 
   # 3.5.3.3.4 Ensure ip6tables firewall rules exist for all open ports (Automated)
-  - id: 3118
-    title: "Ensure ip6tables firewall rules exist for all open ports (Automated)"
-    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic. Note: Changing firewall settings while connected over network can result in being locked out of the system Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well. The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
-    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports."
-    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # ip6tables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT" 
-    compliance:
-      - cis: ["3.5.3.3.4"]
-      - cis_csc_v8: ["4.4, 4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
-      - pci_dss_4.0: ["1.2.1","1.4.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - soc_2: ["CC6.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
-      - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
-    condition: all
-    rules:
-      - "c:ss -6tuln"
-      - "c:ip6tables -L INPUT -v -n -> r:tcp"
+#  - id: 3118
+#    title: "Ensure ip6tables firewall rules exist for all open ports (Automated)"
+#    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic. Note: Changing firewall settings while connected over network can result in being locked out of the system Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well. The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
+#    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports."
+#    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # ip6tables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT" 
+#    compliance:
+#      - cis: ["3.5.3.3.4"]
+#      - cis_csc_v8: ["4.4, 4.5"]
+#      - cis_csc_v7: ["9.4"]
+#      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
+#      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
+#      - pci_dss_4.0: ["1.2.1","1.4.1"]
+#      - nist_sp_800-53: ["SC-7(5)"]
+#      - soc_2: ["CC6.6"]
+#      - iso_27001-2013: ["A.13.1.1"]
+#      - mitre_techniques: ["T1562, T1562.004"]
+#      - mitre_tactics: ["TA0011"]
+#      - mitre_mitigations: ["M1031, M1037"]
+#    condition: all
+#    rules:
+#      - "c:ss -6tuln"
+#      - "c:ip6tables -L INPUT -v -n -> r:tcp"
