@@ -78,8 +78,6 @@ else
 
     if [ "X$INSTYPE" = "Xserver" ]; then
         NEWUSERS="${USER} ${USER_MAIL} ${USER_REM}"
-    elif [ "X$INSTYPE" = "Xlocal" ]; then
-        NEWUSERS="${USER} ${USER_MAIL}"
     else
         NEWUSERS=${USER}
     fi

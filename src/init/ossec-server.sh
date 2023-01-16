@@ -27,7 +27,7 @@ is_rhel_le_5() {
     DIST_NAME=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\1/p' /etc/redhat-release)
     DIST_VER=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\2/p' /etc/redhat-release)
 
-    [[ "$DIST_NAME" =~ ^CentOS ]] || [[ "$DIST_NAME" =~ ^"Red Hat" ]] && [ -n "$DIST_VER" ] && [ $DIST_VER -le 5 ]
+    [[ "$DIST_NAME" == *"CentOS"* ]] || [[ "$DIST_NAME" == *"Red Hat"* ]] && [ -n "$DIST_VER" ] && [ $DIST_VER -le 5 ]
 }
 
 
