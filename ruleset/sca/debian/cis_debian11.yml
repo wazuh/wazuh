@@ -1,4 +1,4 @@
-# Security Configuration Assessment
+# Security/ Configuration Assessment
 # CIS Checks for Debian Linux 10
 # Copyright (C) 2015, Wazuh Inc.
 #
@@ -27,7 +27,6 @@ requirements:
     - "f:/proc/sys/kernel/ostype -> Linux"
 
 checks:
-
 
   ############################################################
   # 5 Access, Authentication and Authorization
@@ -249,7 +248,6 @@ checks:
       - "not f:/etc/at.deny"
       - 'c:stat -L /etc/at.allow -> r:^Access: \(0\d\d0/\w\w\w\w\w-----\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
-
   ############################################################
   # 5.2 Configure SSH Server
   ############################################################
@@ -308,7 +306,7 @@ checks:
     title: "Ensure permissions on SSH public host key files are configured (Automated)"
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: "Run the following commands to set permissions and ownership on the SSH host public key files # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,go-wx {} \; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \;" 
+    remediation: "Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,go-wx {} \\; #find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;" 
     compliance:
       - cis: ["5.2.3"]
       - cis_csc_v8: ["3.3"]
@@ -403,7 +401,7 @@ checks:
       - SSHD_CONFIG(5)
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:^\s*usepam\s+yes"
+      - 'c:sshd -T -> r:^\s*usepam\s+yes'
 
   # 5.2.7 Ensure SSH root login is disabled (Automated)
   - id: 3184
@@ -427,7 +425,7 @@ checks:
       - SSHD_CONFIG(5)
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:PermitRootLogin\s+no"
+      - 'c:sshd -T -> r:PermitRootLogin\s+no'
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled (Automated)
   - id: 3185
@@ -451,7 +449,7 @@ checks:
       - SSHD_CONFIG(5)
     condition: all
     rules:
-      - "c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:HostbasedAuthentication\s+no"
+      - 'c:sshd -T -> r:HostbasedAuthentication\s+no'
 
   # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled (Automated)
   - id: 3186
@@ -475,7 +473,7 @@ checks:
       - SSHD_CONFIG(5)
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:PermitEmptyPasswords\s+no'
+      - 'c:sshd -T -> r:PermitEmptyPasswords\s+no'
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled (Automated)
   - id: 3187
@@ -499,7 +497,7 @@ checks:
       - SSHD_CONFIG(5)
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:PermitUserEnvironment\s+no'
+      - 'c:sshd -T -> r:PermitUserEnvironment\s+no'
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled (Automated)
   - id: 3188
@@ -524,7 +522,7 @@ checks:
       - SSHD_CONFIG(5)
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:IgnoreRhosts\s+yes'
+      - 'c:sshd -T -> r:IgnoreRhosts\s+yes'
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 3189
@@ -546,13 +544,13 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:X11Forwarding\s+no'
+      - 'c:sshd -T -> r:X11Forwarding\s+no'
 
   # 5.2.13 Ensure only strong Ciphers are used (Automated)
   - id: 3190
     title: "Ensure only strong Ciphers are used (Automated)"
-    description: "This variable limits the ciphers that SSH can use during communication. Note:Some organizations may have stricter requirements for approved ciphers. Ensure that ciphers used are in compliance with site policy.The only "strong" ciphers currently FIPS 140-2 compliant are:aes256-ctr, aes192-ctr, aes128-ctr .Supported ciphers in openSSH 8.2:3des-cbc .aes128-cbc .aes192-cbc .aes256-cbc .aes128-ctr .aes192-ctr .aes256-ctr .aes128-gcm@openssh.com .aes256-gcm@openssh.com .chacha20-poly1305@openssh.com"
-    rationale: "Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. The Triple DES ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain clear text data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack. Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plain text data from an arbitrary block of cipher text in an SSH session via unknown vectors."
+    description: 'This variable limits the ciphers that SSH can use during communication. Note:Some organizations may have stricter requirements for approved ciphers. Ensure that ciphers used are in compliance with site policy.The only "strong" ciphers currently FIPS 140-2 compliant are:aes256-ctr, aes192-ctr, aes128-ctr .Supported ciphers in openSSH 8.2:3des-cbc .aes128-cbc .aes192-cbc .aes256-cbc .aes128-ctr .aes192-ctr .aes256-ctr .aes128-gcm@openssh.com .aes256-gcm@openssh.com .chacha20-poly1305@openssh.com'
+    rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. The Triple DES ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain clear text data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack. Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plain text data from an arbitrary block of cipher text in an SSH session via unknown vectors.'
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the Ciphers line to contain a comma separated list of the site approved ciphers. Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" 
     compliance:
       - cis: ["5.2.13"]
@@ -575,12 +573,12 @@ checks:
       - SSHD_CONFIG(5)
     condition: none
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se'
+      - 'c:sshd -T -> r:ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se'
 
   # 5.2.14 Ensure only strong MAC algorithms are used (Automated)
   - id: 3191
     title: "Ensure only strong MAC algorithms are used (Automated)"
-    description: "This variable limits the types of MAC algorithms that SSH can use during communication.Notes:Some organizations may have stricter requirements for approved MACs. Ensure that MACs used are in compliance with site policy. The only "strong" MACs currently FIPS 140-2 approved are:hmac-sha2-256 .hmac-sha2-512 .The Supported MACs are:hmac-md5 .hmac-md5-96 .hmac-sha1 .hmac-sha1-96 .hmac-sha2-256 .hmac-sha2-512 .umac-64@openssh.com .umac-128@openssh.com .hmac-md5-etm@openssh.com .hmac-md5-96-etm@openssh.com .hmac-sha1-etm@openssh.com .hmac-sha1-96-etm@openssh.com .hmac-sha2-256-etm@openssh.com .hmac-sha2-512-etm@openssh.com .umac-64-etm@openssh.com .umac-128-etm@openssh.com"
+    description: 'This variable limits the types of MAC algorithms that SSH can use during communication.Notes:Some organizations may have stricter requirements for approved MACs. Ensure that MACs used are in compliance with site policy. The only "strong" MACs currently FIPS 140-2 approved are:hmac-sha2-256 .hmac-sha2-512 .The Supported MACs are:hmac-md5 .hmac-md5-96 .hmac-sha1 .hmac-sha1-96 .hmac-sha2-256 .hmac-sha2-512 .umac-64@openssh.com .umac-128@openssh.com .hmac-md5-etm@openssh.com .hmac-md5-96-etm@openssh.com .hmac-sha1-etm@openssh.com .hmac-sha1-96-etm@openssh.com .hmac-sha2-256-etm@openssh.com .hmac-sha2-512-etm@openssh.com .umac-64-etm@openssh.com .umac-128-etm@openssh.com'
     rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information."
     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site approved MACs.Example:MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256" 
     compliance:
@@ -601,7 +599,7 @@ checks:
       - SSHD_CONFIG(5)
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com'
+      - 'c:sshd -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com'
 
   # 5.2.15 Ensure only strong Key Exchange algorithms are used (Automated)
   - id: 3192
@@ -624,7 +622,7 @@ checks:
       - mitre_mitigations: ["M1041"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1'
+      - 'c:sshd -T -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1'
 
   # 5.2.16 Ensure SSH AllowTcpForwarding is disabled (Automated)
   - id: 3193
@@ -647,7 +645,7 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:^\s*AllowTcpForwarding\s+no'
+      - 'c:sshd -T -> r:^\s*AllowTcpForwarding\s+no'
 
   # 5.2.17 Ensure SSH warning banner is configured (Automated)
   - id: 3194
@@ -670,7 +668,7 @@ checks:
       - mitre_mitigations: ["M1035"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:Banner\s*\t*/etc/issue.net'
+      - 'c:sshd -T -> r:Banner\s*\t*/etc/issue.net'
 
   # 5.2.18 Ensure SSH MaxAuthTries is set to 4 or less (Automated)
   - id: 3195
@@ -694,7 +692,7 @@ checks:
       - SSHD_CONFIG(5)
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'c:sshd -T -> n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
 
   # 5.2.19 Ensure SSH MaxStartups is configured (Automated)
   - id: 3196
@@ -719,7 +717,7 @@ checks:
       - SSHD_CONFIG(5)
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:^\s*maxstartups\s+10:30:60'
+      - 'c:sshd -T -> r:^\s*maxstartups\s+10:30:60'
 
   # 5.2.20 Ensure SSH MaxSessions is set to 10 or less (Automated)
   - id: 3197
@@ -736,7 +734,7 @@ checks:
       - SSHD_CONFIG(5)
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:^\s*maxsessions\s+10'
+      - 'c:sshd -T -> n:^maxsessions\s+(\d+) compare <= 10'
 
   # 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 3198
@@ -761,7 +759,7 @@ checks:
       - SSHD_CONFIG(5)
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:^\s*logingracetime\s+60'
+      - 'c:sshd -T -> n:logingracetime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
 
   # 5.2.22 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 3199
@@ -778,7 +776,8 @@ checks:
       - https://man.openbsd.org/sshd_config
     condition: all
     rules:
-      - 'c:shd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" -> r:^\s*clientaliveinterval\s+15'
+      - 'c:sshd -T -> n:clientaliveinterval\s*\t*(\d+) compare <= 300 && n:ClientAliveInterval\s*\t*(\d+) compare != 0'
+      - 'c:sshd -T -> n:clientalivecountmax\s*\t*(\d+) compare <= 3'
 
   ############################################################
   # 5.3 Configure privilege escalation
@@ -788,7 +787,7 @@ checks:
   - id: 3200
     title: "Ensure sudo is installed (Automated)"
     description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
-    rationale: "sudo supports a plug-in architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plug-ins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers and any entries in /etc/sudoers.d. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
+    rationale: "sudo supports a plug-in architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plug-ins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers and any entries in /etc/sudoers.d. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the users password is not entered within a configurable time limit. This limit is policy-specific."
     remediation: "First determine is LDAP functionality is required. If so, then install sudo-ldap, else install sudo. Example: # apt install sudo"
     compliance:
       - cis: ["5.3.1"]
@@ -804,9 +803,10 @@ checks:
       - mitre_mitigations: [""]
     references:
       - SUDO(8)
-    condition: all
+    condition: any
     rules:
-      - 'c:dpkg-query -W sudo sudo-ldap > /dev/null 2>&1 && dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' sudo sudo-ldap | awk '($4=="installed" && $NF=="installed") {print "\n""PASS:""\n""Package""\""$1"\""" is installed""\n"}' || echo -e "\nFAIL:\nneither \"sudo\" or \"sudo-ldap\" package is installed\n" -> PASS'
+      - "c:dpkg -s sudo -> r:install ok installed"
+      - "c:dpkg -s sudo-ldap -> r:install ok installed"
 
   # 5.3.2 Ensure sudo commands use pty (Automated)
   - id: 3201
@@ -839,7 +839,7 @@ checks:
     title: "Ensure sudo log file exists (Automated)"
     description: "sudo can use a custom log file"
     rationale: "A sudo log file simplifies auditing of sudo commands"
-    remediation: "Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Example: Defaults logfile="/var/log/sudo.log"" 
+    remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Example: Defaults logfile="/var/log/sudo.log"' 
     compliance:
       - cis: ["5.3.3"]
       - cis_csc_v8: ["8.5"]
@@ -861,6 +861,7 @@ checks:
       - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile='
       - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
 
+
   # 5.3.4 Ensure users must provide password for privilege escalation (Automated)
   - id: 3203
     title: "Ensure users must provide password for privilege escalation (Automated)"
@@ -878,7 +879,7 @@ checks:
       - iso_27001-2013: ["A.9.2.3"]
     condition: none
     rules:
-      - "c:grep -r "^[^#].*NOPASSWD" /etc/sudoers*"
+      - 'd:/etc/sudoers.d -> r:^[^#].*NOPASSWD"'
 
   # 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally (Automated)
   - id: 3204
@@ -897,7 +898,7 @@ checks:
       - iso_27001-2013: ["A.9.2.3"]
     condition: none
     rules:
-      - "c:grep -r "^[^#].*\!authenticate" /etc/sudoers*"
+      - 'd:/etc/sudoers.d -> r:^[^#].*\!authenticate"'
 
   # 5.3.6 Ensure sudo authentication timeout is configured correctly (Automated)
   - id: 3205
@@ -918,7 +919,7 @@ checks:
       - https://www.sudo.ws/man/1.9.0/sudoers.man.html
     condition: none
     rules:
-      - "c:grep -roP "timestamp_timeout=\K[0-9]*" /etc/sudoers*"
+      - 'd:/etc/sudoers.d -> r:"timestamp_timeout=\K[0-9]*"'
 
   # 5.3.7 Ensure access to the su command is restricted (Automated)
   - id: 3206
@@ -975,7 +976,7 @@ checks:
     title: "Ensure lockout for failed password attempts is configured (Automated)"
     description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. deny - Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries.fail_interval - The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out unlock_time - The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be re- enabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
-    remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file.# here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth# Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail# Added to enable faillock auth sufficient pam_faillock.so authsucc# Added to enable faillock# here's the fallback if no module succeeds auth requisite pam_deny.so# prime the stack with a positive return value if there isn't one already;# this avoids us returning an error just because nothing sets a success code# since the modules above will each just jump around auth required pam_permit.so# and here are more per-package modules (the "Additional" block) auth optional pam_cap.so# end of pam-auth-update config Common account .Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. account required .pam_faillock.so .Fail lock configuration .Edit /etc/security/faillock.conf and configure it per your site policy. Example:Page 703deny = 4 .fail_interval = 900 unlock time = 600" 
+    remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file.# here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth# Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail# Added to enable faillock auth sufficient pam_faillock.so authsucc# Added to enable faillock# here is the fallback if no module succeeds auth requisite pam_deny.so# prime the stack with a positive return value if there is not one already;# this avoids us returning an error just because nothing sets a success code# since the modules above will each just jump around auth required pam_permit.so# and here are more per-package modules (the "Additional" block) auth optional pam_cap.so# end of pam-auth-update config Common account .Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. account required .pam_faillock.so .Fail lock configuration .Edit /etc/security/faillock.conf and configure it per your site policy. Example:Page 703deny = 4 .fail_interval = 900 unlock time = 600' 
     compliance:
       - cis: ["5.4.2"]
       - cis_csc_v8: ["6.2"]
@@ -999,7 +1000,7 @@ checks:
   # 5.4.3 Ensure password reuse is limited (Automated)
   - id: 3209
     title: "Ensure password reuse is limited (Automated)"
-    description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords."
+    description: "The /etc/security/opasswd file stores the users old passwords and can be checked to ensure that users are not recycling recent passwords."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password."
     remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Edit the /etc/pam.d/common-password file to include the remember= option of 5 or more. If this line doesn't exist, add the line directly above the line: password [success=1 default=ignore] pam_unix.so obscure yescrypt: Example: password required pam_pwhistory.so use_authtok remember=5" 
     compliance:
@@ -1040,7 +1041,7 @@ checks:
       - mitre_mitigations: ["M1041"]
     condition: none
     rules:
-      - "c:grep -v ^# /etc/pam.d/common-password | grep -E "(yescrypt|md5|bigcrypt|sha256|sha512|blowfish)""
+      - 'f:/etc/pam.d/common-password -> r:"(yescrypt|md5|bigcrypt|sha256|sha512|blowfish)"'
 
   # 5.4.5 Ensure all current passwords uses the configured hashing algorithm (Manual) - Not Implemented
 
@@ -1139,31 +1140,12 @@ checks:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 30'
       - 'not c:useradd -D -> n:^INACTIVE=(\d+) compare < 0'
 
-  # 5.5.1.5 Ensure all users last password change date is in the past (Automated)
-  - id: 3215
-    title: "Ensure all users last password change date is in the past (Automated)"
-    description: "All users should have a password change date in the past."
-    rationale: "If a users recorded password change date is in the future then they could bypass any set password expiration."
-    remediation: "Investigate any users with a password change date in the future and correct them. Locking the account, expiring the password, or resetting the password manually may be appropriate." 
-    compliance:
-      - cis: ["5.5.1.5"]
-      - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - pci_dss_4.0: ["2.2.2","8.3.5","8.3.6","8.6.3"]
-      - soc_2: ["CC6.1"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - mitre_techniques: ["T1078, T1078.001, T1078.002, T1078.003, T1078.004, T1110, T1110.001, T1110.002, T1110.003, T1110.004"]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - "c:sudo awk -F: '/^[^:]+:[^!*]/{print $1}' /etc/shadow | while read -r usr; do change=$(date -d "$(chage --list $usr | grep '^Last password change' | cut -d: -f2 | grep -v 'never$')" +%s); if [[ "$change" -gt "$(date +%s)" ]]; then echo "User: \"$usr\" last password change was \"$(chage --list $usr | grep '^Last password change' | cut -d: -f2)\""; fi; done"
+  # 5.5.1.5 Ensure all users last password change date is in the past (Automated) - Not Implemented
 
   # 5.5.2 Ensure system accounts are secured (Automated) - Not Implemented
 
   # 5.5.3 Ensure default group for the root account is GID 0 (Automated)
-  - id: 3216
+  - id: 3215
     title: "Ensure default group for the root account is GID 0 (Automated)"
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
