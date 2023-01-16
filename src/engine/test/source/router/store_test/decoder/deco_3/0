@@ -1,0 +1,16 @@
+{
+    "name": "decoder/deco_3/0",
+    "metadata": {
+        "description": "Queue 45/50"
+    },
+    "check": "+ef_exists/wazuh.queue AND (+i_lt/wazuh.queue/49 OR +i_gt/wazuh.queue/52)",
+    "normalize": [
+        {
+            "map": [
+                {
+                    "~decoder": "deco_3"
+                }
+            ]
+        }
+    ]
+}
