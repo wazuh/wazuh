@@ -22,45 +22,56 @@ parse:
     - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" srcip=<source.ip> user="<source.user.name>" server="<~tmp.server>" action="<event.action>" msg="<message>"
     # <189>date=2020-04-23 time=12:32:09 devname="testswitch3" devid="someotherrouteridagain" logid="0102043039" type="event" subtype="user" level="notice" vd="root" eventtime=1587231130109462858 tz="-0500" logdesc="Authentication logon" srcip=10.10.10.10 user="elastiiiuser" authserver="FSSO_elastiauth" action="auth-logon" status="logon" msg="User elastiiiuser added to auth logon"
     - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" srcip=<source.ip> user="<source.user.name>" authserver="<~tmp.authserver>" action="<event.action>" status="<~tmp.status>" msg="<message>"
+    # <190>date=2019-05-13 time=15:55:56 logid="0102043008" type="event" subtype="user" level="notice" vd="root" eventtime=1557788156913809277 logdesc="Authentication success" srcip=10.1.100.11 dstip=172.16.200.55 policyid=1 interface="port10" user="bob" group="local-group1" authproto="TELNET(10.1.100.11)" action="authentication" status="success" reason="N/A" msg="User bob succeeded in authentication"
+    - event.original: <~/literal/<190>>date=<~tmp.date> time=<~tmp.time> logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> logdesc="<rule.description>" srcip=<source.ip> dstip=<destination.ip> policyid=<rule.id> interface="<~tmp.interface>" user="<source.user.name>" group="<source.user.group.name>" authproto="<~tmp.authproto>" action="<event.action>" status="<~tmp.status>" reason="<~>" msg="<message>"
 
 normalize:
   - map:
-    - ~tmp.timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000/$~tmp.tz
-    - \@timestamp: $~tmp.timestamp
     - event.dataset: fortinet.firewall
     - event.module: fortinet
     # TODO: se debe validar con distintos parsers
     - event.outcome: sucess
-    - event.start: $~tmp.timestamp
+  - check:
+    - ~tmp.tz: +ef_exists
+    map:
     - event.timezone: $~tmp.tz
   - check:
     - ~tmp.subtype: +s_eq/user
-    - event.action: +r_match/^logon(.+)
-    - map:
-      - ~tmp.event_type: +s_concat/start/\|/user
-      - event.type: +s_to_array/$~tmp.event_type/|
+    - event.action: +r_match/(?i)logon
+    map:
+      - event.type: ["start", "user"]
   - check:
     - ~tmp.subtype: +s_eq/user
-    - event.action: +r_match/^logoff(.+)
-    - map:
-      - ~tmp.event_type: +s_concat/end/\|/user
-      - event.type: +s_to_array/$~tmp.event_type/|
+    - event.action: +r_match/(?i)logoff
+    map:
+      - event.type: ["end", "user"]
   - check:
     - ~tmp.subtype: +s_eq/user
-    - map:
-      - ~tmp.category: authentication|
+    map:
+      - event.category: ["authentication"]
   - check:
     - ~tmp.subtype: +s_eq/system
-    - map:
-      - ~tmp.category: host|
+    map:
+      - event.category: ["host"]
   - check:
     - ~tmp.subtype: +s_eq/vpn
-    - map:
-      - ~tmp.category: network|
+    map:
+      - event.category: ["network"]
+  - check:
+    - ~tmp.tz: +ef_exists
+    map:
+      - ~tmp.timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000/$~tmp.tz
+  - check:
+    - ~tmp.tz: +ef_not_exists
+    map:
+      - ~tmp.timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000
   - map:
-      - event.category: +s_to_array/$~tmp.category/|
+      - \@timestamp: $~tmp.timestamp
+      - event.start: $~tmp.timestamp
       - fileset.name: firewall
       - fortinet.firewall.action: $event.action
+      - fortinet.firewall.authproto: $~tmp.authproto
+      - fortinet.firewall.interface: $~tmp.interface
       - fortinet.firewall.authserver: $~tmp.authserver
       - fortinet.firewall.status: $~tmp.status
       - fortinet.firewall.server: $~tmp.server
@@ -76,9 +87,12 @@ normalize:
       - observer.product: Fortigate
       - observer.type: firewall
       - observer.vendor: Fortinet
-      - related.ip: +s_to_array/$source.ip/|
-      - related.user: +s_to_array/$source.user.name/|
+      - related.ip: [$source.ip]
+      - related.user: [$source.user.name]
       - service.type: fortinet
-      - ~tmp.tags: fortinet-firewall|forwarded
-      - tags: +s_to_array/$~tmp.tags/|
+      - tags: ["fortinet-firewall", "forwarded"]
       - ~tmp: +ef_delete
+  - check:
+    - destination.ip: +ef_exists
+    map:
+      - related.ip: +a_append/$destination.ip
