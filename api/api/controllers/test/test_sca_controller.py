@@ -66,7 +66,6 @@ async def test_get_sca_checks(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
                'rationale': None,
                'remediation': None,
                'command': None,
-               'status': None,
                'reason': None,
                'file': None,
                'process': None,

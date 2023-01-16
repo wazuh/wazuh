@@ -1029,7 +1029,7 @@ class AWSBucket(WazuhIntegration):
                         match_start = date_match.span()[0] if date_match else None
 
                         if not self._same_prefix(match_start, aws_account_id, aws_region):
-                            debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
+                            debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
                             continue
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
@@ -2568,7 +2568,7 @@ class AWSServerAccess(AWSCustomBucket):
                             sys.exit(17)
 
                     if not self._same_prefix(match_start, aws_account_id, aws_region):
-                        debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
+                        debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
                         continue
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
