@@ -188,17 +188,12 @@ EXPORTED int dbsync_delete_rows(const DBSYNC_HANDLE handle,
  * @param txn             Database transaction to be used.
  * @param callback_data   This struct contain the result callback will be called for each result
  *                        and user data space returned in each callback call.
- * @param js_options      JSON object that allows different options.
- *                          "all_columns".Type: boolean. Default: false.
- *                              if `true`, retrieve all columns.
- *                              if `false`, retrieve only primary key(s).
  *
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
 EXPORTED int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
-                                     callback_data_t   callback_data,
-                                     const cJSON*      js_options);
+                                     callback_data_t   callback_data);
 
 /**
  * @brief Updates data table with \p js_snapshot information. \p js_result value will

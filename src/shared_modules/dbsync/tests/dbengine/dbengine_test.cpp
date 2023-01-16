@@ -505,7 +505,7 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusFieldNoMetadata)
 
     std::shared_timed_mutex mutex;
     std::unique_lock<std::shared_timed_mutex> lock(mutex);
-    EXPECT_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, nullptr, {}, lock), dbengine_error);
+    EXPECT_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, nullptr, lock), dbengine_error);
 }
 
 TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
@@ -608,7 +608,7 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
 
     std::shared_timed_mutex mutex;
     std::unique_lock<std::shared_timed_mutex> lock(mutex);
-    EXPECT_NO_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, [](ReturnTypeCallback, const nlohmann::json&) {}, {}, lock));
+    EXPECT_NO_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, [](ReturnTypeCallback, const nlohmann::json&) {}, lock));
 }
 
 TEST_F(DBEngineTest, syncTableRowDataWithoutMetadataShouldThrow)

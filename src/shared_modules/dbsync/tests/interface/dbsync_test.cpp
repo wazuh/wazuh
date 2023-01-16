@@ -360,7 +360,7 @@ TEST_F(DBSyncTest, GetDeletedRowsInvalidInput)
 {
     CallbackMock wrapper;
     callback_data_t callbackData { callback, &wrapper };
-    EXPECT_NE(0, dbsync_get_deleted_rows(nullptr, callbackData, nullptr));
+    EXPECT_NE(0, dbsync_get_deleted_rows(nullptr, callbackData));
 }
 
 TEST_F(DBSyncTest, GetDeletedRowsOnlyPKs)
@@ -395,7 +395,7 @@ TEST_F(DBSyncTest, GetDeletedRowsOnlyPKs)
 
     EXPECT_EQ(0, dbsync_sync_txn_row(dummyCtx->txnContext, jsSync2.get()));
 
-    EXPECT_EQ(0, dbsync_get_deleted_rows(dummyCtx->txnContext, callbackData, nullptr));
+    EXPECT_EQ(0, dbsync_get_deleted_rows(dummyCtx->txnContext, callbackData));
 }
 
 TEST_F(DBSyncTest, GetDeletedRowsAllAttributes)
@@ -408,8 +408,6 @@ TEST_F(DBSyncTest, GetDeletedRowsAllAttributes)
     auto syncSqlStmt2 = SyncRowQuery::builder().table("processes")
                         .data(nlohmann::json::parse(R"({"pid":7,"name":"Guake","euser":"wazuh"})"))
                         .query();
-    const auto deletedOptions = GetDeletedQuery::builder().allColumns().query();
-    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsonDeletedOptions { cJSON_Parse(deletedOptions.dump().c_str()) };
     const std::unique_ptr<cJSON, CJsonSmartDeleter> jsonTables { cJSON_Parse(table) };
     const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSync1 { cJSON_Parse(syncSqlStmt1.dump().c_str()) };
     const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSync2{ cJSON_Parse(syncSqlStmt2.dump().c_str()) };
@@ -432,7 +430,7 @@ TEST_F(DBSyncTest, GetDeletedRowsAllAttributes)
 
     EXPECT_EQ(0, dbsync_sync_txn_row(dummyCtx->txnContext, jsSync2.get()));
 
-    EXPECT_EQ(0, dbsync_get_deleted_rows(dummyCtx->txnContext, callbackData, jsonDeletedOptions.get()));
+    EXPECT_EQ(0, dbsync_get_deleted_rows(dummyCtx->txnContext, callbackData));
 }
 
 TEST_F(DBSyncTest, UpdateData)
@@ -1879,7 +1877,7 @@ TEST_F(DBSyncTest, createTxnCPP3)
 
     EXPECT_NO_THROW(dbSyncTxn->syncTxnRow(syncSqlStmt2));
 
-    EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData, GetDeletedQuery::builder().allColumns().query()));
+    EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData));
 }
 
 TEST_F(DBSyncTest, teardownCPP)

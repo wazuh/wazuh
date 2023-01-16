@@ -365,7 +365,6 @@ void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames)
 
 void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                                                const DbSync::ResultCallback callback,
-                                               const nlohmann::json& options,
                                                std::unique_lock<std::shared_timed_mutex>& lock)
 {
     m_transaction->commit();
@@ -1341,6 +1340,7 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
                         // Diff found
                         isModified = true;
                     }
+
                     updatedData[value.first] = *it;
                     oldData[value.first] = object[value.first];
                 }

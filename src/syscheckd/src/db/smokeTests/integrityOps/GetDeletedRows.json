@@ -1,7 +1,4 @@
 {
     "action": "GetDeletedRows",
-    "body": {},
-    "options": {
-        "all_columns": true
-    }
+    "body": {}
 }

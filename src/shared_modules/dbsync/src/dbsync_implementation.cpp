@@ -156,14 +156,13 @@ void DBSyncImplementation::closeTransaction(const DBSYNC_HANDLE handle,
 
 void DBSyncImplementation::getDeleted(const DBSYNC_HANDLE   handle,
                                       const TXN_HANDLE      txnHandle,
-                                      const ResultCallback  callback,
-                                      const nlohmann::json& options)
+                                      const ResultCallback  callback)
 {
     const auto& ctx{ dbEngineContext(handle) };
     const auto& tnxCtx { ctx->transactionContext(txnHandle) };
 
     std::unique_lock<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
-    ctx->m_dbEngine->returnRowsMarkedForDelete(tnxCtx->m_tables, callback, options, lock);
+    ctx->m_dbEngine->returnRowsMarkedForDelete(tnxCtx->m_tables, callback, lock);
 }
 
 void DBSyncImplementation::selectData(const DBSYNC_HANDLE   handle,
