@@ -39,3 +39,27 @@
   <regex>Authentication: FAILED :: User Name: (\S+) :: Viewer Address: (\d+.\d+.\d+.\d+) :: Type: (\S+)</regex>
   <order>dstuser, ip_address, type</order>
 </decoder>
+
+<decoder name="macOS_securityd_process1">
+  <parent>macOS_securityd_process</parent>
+  <regex>[com.apple.securityd:SecServer] \S+ Session \d+ created, uid:-(\d+) sessionId:(\d+)</regex>
+  <order>uid, sessionId</order>
+</decoder>
+
+<decoder name="macOS_securityd_process1">
+  <parent>macOS_securityd_process</parent>
+  <regex>[com.apple.securityd:SecServer] \S+ Session (\d+) destroyed</regex>
+  <order>sessionId</order>
+</decoder>
+
+<decoder name="macOS_securityd_process1">
+  <parent>macOS_securityd_process</parent>
+  <regex>[com.apple.securityd:SecServer] \S+ killing session (\d+)</regex>
+  <order>sessionId</order>
+</decoder>
+
+<decoder name="macOS_securityd_process1">
+  <parent>macOS_securityd_process</parent>
+  <regex>Killing auth hosts for session (\d+)</regex>
+  <order>sessionId</order>
+</decoder>
