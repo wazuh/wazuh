@@ -1,0 +1,17 @@
+---
+name: decoder/aws/0
+
+metadata:
+  description: Decoder for AWS Logs
+  product.name: AWS
+
+sources:
+  - decoder/json/0
+
+check:
+  - ~json.integration: +s_starts/aws
+
+normalize:
+  - map:
+      - wazuh.integration: $~json.integration
+      - wazuh.modules.aws.source: $~json.aws.source

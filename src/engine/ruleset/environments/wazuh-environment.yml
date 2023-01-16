@@ -73,6 +73,11 @@ decoders:
   - decoder/nginx-access/0
   - decoder/nginx-error/0
 
+  # nginx decoder
+  - decoder/aws/0
+  - decoder/aws-s3/0
+  - decoder/aws-s3-parse-region/0
+  - decoder/aws-s3-parse-tls/0
 
 outputs:
   - output/file-output/0
