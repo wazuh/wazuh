@@ -8,7 +8,7 @@ metadata:
     - https://docs.aws.amazon.com/AmazonS3/latest/userguide/LogFormat.html
   product.name: Amazon S3 server access
 
-parents:
+sources:
   - decoder/aws-s3/0
 
 check:
@@ -16,4 +16,4 @@ check:
 
 parse:
   logpar:
-    - _json.aws.host_header: <_>.<cloud.region>.<_>.<_>
+    - ~json.aws.host_header: <?~>s3.<cloud.region>.<~>
