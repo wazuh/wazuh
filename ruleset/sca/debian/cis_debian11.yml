@@ -68,8 +68,8 @@ checks:
       - https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html
     condition: any
     rules:
-      - "c:findmnt --kernel /tmp -> r:\s/tmp\s"
-      - "c:systemctl is-enabled tmp.mount -> enabled"
+      - 'c:findmnt --kernel /tmp -> r:\s/tmp\s'
+      - 'c:systemctl is-enabled tmp.mount -> enabled'
 
   # 1.1.2.2 Ensure nodev option set on /tmp partition (Automated)
   - id: 3001
@@ -546,7 +546,7 @@ checks:
       - See the fstab(5) manual page for more information.
     condition: all
     rules:
-      - 'c:findmnt --kernel /var/log/audit -> r:\s/var/log/audit\s && r:nosuid'  
+      - 'c:findmnt --kernel /var/log/audit -> r:\s/var/log/audit\s && r:nosuid' 
 
   ############################################################
   # 1.1.7 Configure /home
@@ -731,6 +731,8 @@ checks:
 
   # 1.1.10 Disable USB Storage (Automated) - Not implemented
 
+  # 1.1.10 Disable USB Storage (Automated) - Not implemented
+
   ############################################################
   # 1.2 Configure Software Updates
   ############################################################
@@ -791,7 +793,7 @@ checks:
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
     condition: any
     rules:
-      - 'c:grep -Prs '^([^#\n\r]+\h+)?(\/usr\/s?bin\/|^\h*)aide(\.wrapper)?\h+(-- check|([^#\n\r]+\h+)?\$AIDEARGS)\b' /etc/cron.* /etc/crontab /var/spool/cron/ -> r:\.+'
+      - 'c:grep -Rh aide /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly /etc/crontab /var/spool/cron/ -> r:\.+'
       - "c:systemctl is-enabled aidecheck.service -> enabled"
       - "c:systemctl is-enabled aidecheck.timer -> enabled"
       - "c:systemctl status aidecheck.timer -> enabled"
@@ -921,7 +923,7 @@ checks:
       - mitre_mitigations: ["M1050"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' prelink -> r:ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' prelink -> dpkg-query: no packages found matching prelink"
 
   # 1.5.3 Ensure Automatic Error Reporting is not enabled (Automated)
   - id: 3033
@@ -942,10 +944,9 @@ checks:
       - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
       - mitre_tactics: [""]
       - mitre_mitigations: [""]
-    condition: all
+    condition: none
     rules:
-      - "c:dpkg-query -s apport > /dev/null 2>&1 && grep -Psi --'^\h*enabled\h*=\h*[^0]\b' /etc/default/apport"
-      - "c:systemctl is-active apport.service | grep '^active -> disabled"
+      - "c:systemctl is-active apport.service | grep '^active' -> inactive"
 
   # 1.5.4 Ensure core dumps are restricted (Automated)
   - id: 3034
@@ -994,7 +995,7 @@ checks:
       - SUSE AppArmor Documentation: https://www.suse.com/documentation/apparmor/
     condition: all
     rules:
-      - 'c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' apparmor apparmor-utils -> r:install ok installed'
+      - "not c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' apparmor apparmor-utils -> r:unknown ok not-installed"
 
   # 1.6.1.2 Ensure AppArmor is enabled in the bootloader configuration (Automated)
   - id: 3036
@@ -1020,7 +1021,7 @@ checks:
       - AppArmor Documentation: http://wiki.apparmor.net/index.php/Documentation
       - Ubuntu AppArmor Documentation: https://help.ubuntu.com/community/AppArmor
       - SUSE AppArmor Documentation: https://www.suse.com/documentation/apparmor/
-    condition: all
+    condition: none
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1'
       - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor'
@@ -1079,7 +1080,9 @@ checks:
       - SUSE AppArmor Documentation: https://www.suse.com/documentation/apparmor/
     condition: all
     rules:
-      - "c:apparmor_status -> r:0 processes are unconfined"
+      - 'c:apparmor_status -> n:^(\d+)\s*profiles are loaded compare > 0'
+      - 'c:apparmor_status -> r:^0\s*profiles are in complain mode'
+      - 'c:apparmor_status -> r:^0\s*processes are unconfined'
 
   ############################################################
   # 1.7 Command Line Warning Banners
@@ -1087,10 +1090,11 @@ checks:
 
   # 1.7.1 Ensure message of the day is configured properly (Automated)
   - id: 3039
-    title: "Ensure message of the day is configured properly (Automated)"
-    description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \m - machine architecture \r - operating system release \s - operating system name \v - operating system version"
-    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in."
-    remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \m , \r , \s , \v or references to the OS platform OR if the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd"
+    title: "Ensure message of the day is configured properly"
+    description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
+    remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd"
+    compliance:
     compliance:
       - cis: ["1.7.1"]
       - mitre_techniques: ["T1082, T1082.000, T1592, T1592.004"]
@@ -1098,16 +1102,17 @@ checks:
       - mitre_mitigations: [""]
     references:
       - http://www.justice.gov/criminal/cybercrime/
-    condition: all
+    condition: any
     rules:
       - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
+      - "not f:/etc/motd"
 
   # 1.7.2 Ensure local login warning banner is configured properly (Automated)
   - id: 3040
-    title: "Ensure local login warning banner is configured properly (Automated)"
-    description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \m - machine architecture \r - operating system release \s - operating system name \v - operating system version - or the operating system's name"
-    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in."
-    remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \m , \r , \s , \v or references to the OS platform # echo "Authorized uses only. All activity may be monitored and reported." > /etc/issue"
+    title: "Ensure local login warning banner is configured properly"
+    description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
+    remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v , or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue"
     compliance:
       - cis: ["1.7.2"]
       - mitre_techniques: ["T1082, T1082.000, T1592, T1592.004"]
@@ -1115,16 +1120,16 @@ checks:
       - mitre_mitigations: [""]
     references:
       - http://www.justice.gov/criminal/cybercrime/
-    condition: all
+    condition: none
     rules:
       - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
   # 1.7.3 Ensure remote login warning banner is configured properly (Automated)
   - id: 3041
-    title: "Ensure remote login warning banner is configured properly (Automated)"
-    description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \m - machine architecture \r - operating system release \s - operating system name \v - operating system version"
-    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in."
-    remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \m , \r , \s , \v or references to the OS platform # echo "Authorized uses only. All activity may be monitored and reported." > /etc/issue.net"
+    title: "Ensure remote login warning banner is configured properly"
+    description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
+    remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net"
     compliance:
       - cis: ["1.7.3"]
       - mitre_techniques: ["T1018, T1018.000, T1082, T1082.000, T1592, T1592.004"]
@@ -1132,7 +1137,7 @@ checks:
       - mitre_mitigations: [""]
     references:
       - http://www.justice.gov/criminal/cybercrime/
-    condition: all
+    condition: none
     rules:
       - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
@@ -1276,9 +1281,9 @@ checks:
       - mitre_techniques: ["T1040, T1040.000, T1056, T1056.001, T1557"]
       - mitre_tactics: ["TA0002"]
       - mitre_mitigations: ["M1050"]
-    condition: all
+    condition: none
     rules:
-      - 'c:grep -Eis '^\s*Enable\s*=\s*true' /etc/gdm3/custom.conf'
+      - 'f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
 
   # 1.9 Ensure updates, patches, and additional security software are installed (Automated)
   - id: 3047
