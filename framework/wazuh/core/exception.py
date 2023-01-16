@@ -208,12 +208,6 @@ class WazuhException(Exception):
                },
 
         # Syscheck/AR: 1600 - 1699
-        1600: {'message': 'There is no database for selected agent with id',
-               'remediation': 'Please, upgrade wazuh to v3.7.0 or newer. Visit '
-                              f'https://documentation.wazuh.com/{DOCU_VERSION}/upgrade-guide/index.html'
-                              ' to obtain more information on upgrading wazuh'
-               },
-
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1650: 'Active response - Command not specified',
 
