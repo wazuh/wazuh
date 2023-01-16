@@ -1,4 +1,4 @@
-/* Copyright (C) 2022, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
