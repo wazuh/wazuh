@@ -24,6 +24,8 @@ parse:
     - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" srcip=<source.ip> user="<source.user.name>" authserver="<~tmp.authserver>" action="<event.action>" status="<~tmp.status>" msg="<message>"
     # <190>date=2019-05-13 time=15:55:56 logid="0102043008" type="event" subtype="user" level="notice" vd="root" eventtime=1557788156913809277 logdesc="Authentication success" srcip=10.1.100.11 dstip=172.16.200.55 policyid=1 interface="port10" user="bob" group="local-group1" authproto="TELNET(10.1.100.11)" action="authentication" status="success" reason="N/A" msg="User bob succeeded in authentication"
     - event.original: <~/literal/<190>>date=<~tmp.date> time=<~tmp.time> logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> logdesc="<rule.description>" srcip=<source.ip> dstip=<destination.ip> policyid=<rule.id> interface="<~tmp.interface>" user="<source.user.name>" group="<source.user.group.name>" authproto="<~tmp.authproto>" action="<event.action>" status="<~tmp.status>" reason="<~>" msg="<message>"
+    # <189>date=2020-04-23 time=14:32:09 devname="testswitch3" devid="someotherrouteridagain" logid="0100040704" type="event" subtype="system" level="notice" vd="root" eventtime=1587231129938795255 tz="-0300" logdesc="System performance statistics" action="perf-stats" cpu=0 mem=10 totalsession=23 disk=0 bandwidth="23/4" setuprate=0 disklograte=0 fazlograte=0 freediskstorage=331 sysuptime=25170 msg="Performance statistics: average CPU: 0, memory:  23, concurrent sessions:  20, setup-rate: 0"
+    - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" action="<event.action>" cpu=<~tmp.cpu> mem=<~tmp.mem> totalsession=<~tmp.totalsession> disk=<~tmp.disk> bandwidth="<~tmp.bandwidth>" setuprate=<~tmp.setuprate> disklograte=<~tmp.disklograte> fazlograte=<~tmp.fazlograte> freediskstorage=<~tmp.freediskstorage> sysuptime=<~tmp.sysuptime> msg="<message>"
 
 normalize:
   - map:
@@ -36,25 +38,26 @@ normalize:
     map:
     - event.timezone: $~tmp.tz
   - check:
-    - ~tmp.subtype: +s_eq/user
+    - ~tmp.subtype: "user"
     - event.action: +r_match/(?i)logon
     map:
       - event.type: ["start", "user"]
   - check:
-    - ~tmp.subtype: +s_eq/user
+    - ~tmp.subtype: "user"
     - event.action: +r_match/(?i)logoff
     map:
       - event.type: ["end", "user"]
   - check:
-    - ~tmp.subtype: +s_eq/user
+    - ~tmp.subtype: "user"
     map:
       - event.category: ["authentication"]
   - check:
-    - ~tmp.subtype: +s_eq/system
+    - ~tmp.subtype: "system"
     map:
       - event.category: ["host"]
+      - event.type: ["info"]
   - check:
-    - ~tmp.subtype: +s_eq/vpn
+    - ~tmp.subtype: "vpn"
     map:
       - event.category: ["network"]
   - check:
@@ -70,6 +73,16 @@ normalize:
       - event.start: $~tmp.timestamp
       - fileset.name: firewall
       - fortinet.firewall.action: $event.action
+      - fortinet.firewall.bandwidth: $~tmp.bandwidth
+      - fortinet.firewall.cpu: $~tmp.cpu
+      - fortinet.firewall.disk: $~tmp.disk
+      - fortinet.firewall.disklograte: $~tmp.disklograte
+      - fortinet.firewall.fazlograte: $~tmp.fazlograte
+      - fortinet.firewall.freediskstorage: $~tmp.freediskstorage
+      - fortinet.firewall.mem: $~tmp.mem
+      - fortinet.firewall.setuprate: $~tmp.setuprate
+      - fortinet.firewall.sysuptime: $~tmp.sysuptime
+      - fortinet.firewall.totalsession: $~tmp.totalsession
       - fortinet.firewall.authproto: $~tmp.authproto
       - fortinet.firewall.interface: $~tmp.interface
       - fortinet.firewall.authserver: $~tmp.authserver
