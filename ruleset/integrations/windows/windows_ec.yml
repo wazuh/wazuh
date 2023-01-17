@@ -20,8 +20,12 @@ normalize:
    - event.message: $~json.Message
    - event.kind: event
    - event.provider: $~event_channel.Event.System.Provider.@Name
-   - event.host.name: $~event_channel.Event.System.Computer.#text
+   - host.name: $~event_channel.Event.System.Computer.#text
    - log.level: +kvdb_get/win_log_level/$~event_channel.Event.System.Level.#text
+   - log.channel: $~event_channel.Event.System.Channel.#text
+   - log.process.pid: $~event_channel.Event.System.Execution.@ProcessID
+   - log.process.thread.id: $~event_channel.Event.System.Execution.@ThreadID
+   - log.record_id: $~event_channel.Event.System.EventRecordID.#text
 
 # Cleanup
  - map:

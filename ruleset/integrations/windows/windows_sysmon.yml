@@ -18,8 +18,6 @@ normalize:
     - log.computer_name: $~event_channel.Event.System.Computer.#text
     - log.event_id:  $~event_channel.Event.System.EventID.#text
     - log.opcode: info
-    - log.process.pid: $~event_channel.Event.System.Execution.@ProcessID
-    - log.process.thread.id: $~event_channel.Event.System.Execution.@ThreadID
     
     # Add categorization fields
     - event:  +kvdb_get_merge/win_sysmon_categories/$event.code 
@@ -185,7 +183,7 @@ normalize:
     - registry.data.strings: +s_hex_to_num/$~temp.value
 
  - check: 
-    - ~event_channel.Event.EventData.Details: +r_match/^Binary Data/
+    - ~event_channel.Event.EventData.Details: +s_starts/Binary Data/
    map:
     - ~temp.is_binary_data: True
 
