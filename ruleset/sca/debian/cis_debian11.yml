@@ -28,7 +28,6 @@ requirements:
 
 checks:
 
-
   ############################################################
   # 6 System Maintenance
   ############################################################
@@ -39,7 +38,7 @@ checks:
 
 
   # 6.1.1 Ensure permissions on /etc/passwd are configured (Automated)
-  - id: 3217
+  - id: 3216
     title: "Ensure permissions on /etc/passwd are configured (Automated)"
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -60,10 +59,10 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/passwd  -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.2 Ensure permissions on /etc/passwd- are configured (Automated)
-  - id: 3218
+  - id: 3217
     title: "Ensure permissions on /etc/passwd- are configured (Automated)"
     description: "The /etc/passwd- file contains backup user account information."
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -84,10 +83,10 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/passwd- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/passwd- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.3 Ensure permissions on /etc/group are configured (Automated)
-  - id: 3219
+  - id: 3218
     title: "Ensure permissions on /etc/group are configured (Automated)"
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
@@ -108,10 +107,10 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.4 Ensure permissions on /etc/group- are configured (Automated)
-  - id: 3220
+  - id: 3219
     title: "Ensure permissions on /etc/group- are configured (Automated)"
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -132,10 +131,10 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/group- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/group- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.5 Ensure permissions on /etc/shadow are configured (Automated)
-  - id: 3221
+  - id: 3220
     title: "Ensure permissions on /etc/shadow are configured (Automated)"
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
@@ -156,10 +155,10 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
+      - 'c:stat -L /etc/shadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 6.1.6 Ensure permissions on /etc/shadow- are configured (Automated)
-  - id: 3222
+  - id: 3221
     title: "Ensure permissions on /etc/shadow- are configured (Automated)"
     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -180,10 +179,10 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow- -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/shadow- -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.7 Ensure permissions on /etc/gshadow are configured (Automated)
-  - id: 3223
+  - id: 3222
     title: "Ensure permissions on /etc/gshadow are configured (Automated)"
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
@@ -204,10 +203,10 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
+      - 'c:stat -L /etc/gshadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 6.1.8 Ensure permissions on /etc/gshadow- are configured (Automated)
-  - id: 3224
+  - id: 3223
     title: "Ensure permissions on /etc/gshadow- are configured (Automated)"
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -228,158 +227,115 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow- -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/gshadow- -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.9 Ensure no world writable files exist (Automated)
-  - id: 3225
-    title: "Ensure no world writable files exist (Automated)"
-    description: "Unix-based systems support variable settings to control access to files. World writable files are the least secure. See the chmod(2) man page for more information."
-    rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity."
-    remediation: "Removing write access for the "other" category ( chmod o-w <filename> ) is advisable, but always consult relevant vendor documentation to avoid breaking any application dependencies on a given file." 
-    compliance:
-      - cis: ["6.1.9"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
-      - nist_sp_800-53: ["AC-5","AC-6"]
-      - soc_2: ["CC5.2","CC6.1"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1222, T1222.002"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: ["M1022"]
-    condition: none
-    rules:
-      - "c:df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type f -perm -0002"
-
+#  - id: 3224
+#    title: "Ensure no world writable files exist (Automated)"
+#    description: "Unix-based systems support variable settings to control access to files. World writable files are the least secure. See the chmod(2) man page for more information."
+#    rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity."
+#    remediation: "Removing write access for the "other" category ( chmod o-w <filename> ) is advisable, but always consult relevant vendor documentation to avoid breaking any application dependencies on a given file." 
+#    compliance:
+#      - cis: ["6.1.9"]
+#      - cis_csc_v8: ["3.3"]
+#      - cis_csc_v7: ["14.6"]
+#      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+#      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+#      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+#      - pci_dss_4.0: ["1.3.1","7.1"]
+#      - nist_sp_800-53: ["AC-5","AC-6"]
+#      - soc_2: ["CC5.2","CC6.1"]
+#      - iso_27001-2013: ["A.9.1.1"]
+#      - mitre_techniques: ["T1222, T1222.002"]
+#      - mitre_tactics: ["TA0005"]
+#      - mitre_mitigations: ["M1022"]
+#    condition: none
+#    rules:
+#      - "c:df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type f -perm -0002"
+#
   # 6.1.10 Ensure no unowned files or directories exist (Automated)
-  - id: 3226
-    title: "Ensure no unowned files or directories exist (Automated)"
-    description: "Sometimes when administrators delete users from the password file they neglect to remove all files owned by those users from the system."
-    rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up "owning" these files, and thus have more access on the system than was intended."
-    remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate." 
-    compliance:
-      - cis: ["6.1.10"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["13.2,14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
-      - nist_sp_800-53: ["AC-5","AC-6"]
-      - soc_2: ["CC5.2","CC6.1"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1222, T1222.002"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_mitigations: [""]
-    condition: none
-    rules:
-      - "c:df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nouser"
-
+#  - id: 3225
+#    title: "Ensure no unowned files or directories exist (Automated)"
+#    description: "Sometimes when administrators delete users from the password file they neglect to remove all files owned by those users from the system."
+#    rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up "owning" these files, and thus have more access on the system than was intended."
+#    remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate." 
+#    compliance:
+#      - cis: ["6.1.10"]
+#      - cis_csc_v8: ["3.3"]
+#      - cis_csc_v7: ["13.2,14.6"]
+#      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+#      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+#      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+#      - pci_dss_4.0: ["1.3.1","7.1"]
+#      - nist_sp_800-53: ["AC-5","AC-6"]
+#      - soc_2: ["CC5.2","CC6.1"]
+#      - iso_27001-2013: ["A.9.1.1"]
+#      - mitre_techniques: ["T1222, T1222.002"]
+#      - mitre_tactics: ["TA0007"]
+#      - mitre_mitigations: [""]
+#    condition: none
+#    rules:
+#      - "c:df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nouser"
+#
   # 6.1.11 Ensure no ungrouped files or directories exist (Automated)
-  - id: 3227
-    title: "Ensure no ungrouped files or directories exist (Automated)"
-    description: "Sometimes when administrators delete users or groups from the system they neglect to remove all files owned by those users or groups."
-    rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up "owning" these files, and thus have more access on the system than was intended."
-    remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate." 
-    compliance:
-      - cis: ["6.1.11"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["13.2,14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
-      - nist_sp_800-53: ["AC-5","AC-6"]
-      - soc_2: ["CC5.2","CC6.1"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1222, T1222.002"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_mitigations: [""]
-    condition: none
-    rules:
-      - "c:df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -nogroup"
+#  - id: 3226
+#    title: "Ensure no ungrouped files or directories exist (Automated)"
+#    description: "Sometimes when administrators delete users or groups from the system they neglect to remove all files owned by those users or groups."
+#    rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up "owning" these files, and thus have more access on the system than was intended."
+#    remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate." 
+#    compliance:
+#      - cis: ["6.1.11"]
+#      - cis_csc_v8: ["3.3"]
+#      - cis_csc_v7: ["13.2,14.6"]
+#      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+#      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+#      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+#      - pci_dss_4.0: ["1.3.1","7.1"]
+#      - nist_sp_800-53: ["AC-5","AC-6"]
+#      - soc_2: ["CC5.2","CC6.1"]
+#      - iso_27001-2013: ["A.9.1.1"]
+#      - mitre_techniques: ["T1222, T1222.002"]
+#      - mitre_tactics: ["TA0007"]
+#      - mitre_mitigations: [""]
+#    condition: none
+#    rules:
+#      - "c:df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -nogroup"
+#
+  # 6.1.12 Audit SUID executables (Manual) - Not Implemented
 
-  # 6.1.12 Audit SUID executables (Manual)
-  - id: 3228
-    title: "Audit SUID executables (Manual)"
-    description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SUID program is to enable users to perform functions (such as changing their password) that require root privileges."
-    rationale: "There are valid reasons for SUID programs, but it is important to identify and review such programs to ensure they are legitimate."
-    remediation: "Ensure that no rogue SUID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries." 
-    compliance:
-      - cis: ["6.1.12"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
-      - nist_sp_800-53: ["AC-5","AC-6"]
-      - soc_2: ["CC5.2","CC6.1"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1548, T1548.001"]
-      - mitre_tactics: ["TA0004"]
-      - mitre_mitigations: ["M1028"]
-    condition: none
-    rules:
-      - "c:df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type f -perm -4000"
-
-  # 6.1.13 Audit SGID executables (Manual)
-  - id: 3229
-    title: "Audit SGID executables (Manual)"
-    description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SGID program is to enable users to perform functions (such as changing their password) that require root privileges."
-    rationale: "There are valid reasons for SGID programs, but it is important to identify and review such programs to ensure they are legitimate. Review the files returned by the action in the audit section and check to see if system binaries have a different md5 checksum than what from the package. This is an indication that the binary may have been replaced."
-    remediation: "Ensure that no rogue SGID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries." 
-    compliance:
-      - cis: ["6.1.13"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
-      - nist_sp_800-53: ["AC-5","AC-6"]
-      - soc_2: ["CC5.2","CC6.1"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1548, T1548.001"]
-      - mitre_tactics: ["TA0004"]
-      - mitre_mitigations: ["M1028"]
-    condition: none
-    rules:
-      - "c:df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type f -perm -2000"
+  # 6.1.13 Audit SGID executables (Manual) - Not Implemented
 
   ############################################################
   # 6.2 Local User and Group Settings
   ############################################################
 
   # 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords (Automated)
-  - id: 3230
-    title: "Ensure accounts in /etc/passwd use shadowed passwords (Automated)"
-    description: "Local accounts can uses shadowed passwords. With shadowed passwords, The passwords are saved in shadow password file, /etc/shadow, encrypted by a salted one- way hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
-    rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack. Note: All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user. A user account with an empty second field in /etc/passwd allows the account to be logged into by providing only the username."
-    remediation: "Run the following command to set accounts to use shadowed passwords: # sed -e 's/^\([a-zA-Z0-9_]*\):[^:]*:/\1:x:/' -i /etc/passwd Investigate to determine if the account is logged in and what it is being used for, to determine if it needs to be forced off." 
-    compliance:
-      - cis: ["6.2.1"]
-      - cis_csc_v8: ["3.11"]
-      - cis_csc_v7: ["16.4"]
-      - cmmc_v2.0: ["AC.L2-3.1.19","IA.L2-3.5.10","MP.L2-3.8.1","SC.L2-3.13.11","SC.L2-3.13.16"]
-      - hipaa: ["164.312(a)(2)(iv)","164.312(e)(2)(ii)"]
-      - pci_dss_3.2.1: ["3.4","3.4.1","8.2.1"]
-      - pci_dss_4.0: ["3.1.1","3.3.2","3.3.3","3.5.1","3.5.1.2","3.5.1.3","8.3.2"]
-      - nist_sp_800-53: ["SC-28","SC-28(1)"]
-      - soc_2: ["CC6.1"]
-      - iso_27001-2013: ["A.10.1.1"]
-      - mitre_techniques: ["T1003, T1003.008"]
-      - mitre_tactics: ["TA0003"]
-      - mitre_mitigations: ["M1027"]
-    condition: none
-    rules:
-      - "c:awk -F: '($2 != "x" ) { print $1 " is not set to shadowed passwords "}' /etc/passwd"
+#  - id: 3227
+#    title: "Ensure accounts in /etc/passwd use shadowed passwords (Automated)"
+#    description: "Local accounts can uses shadowed passwords. With shadowed passwords, The passwords are saved in shadow password file, /etc/shadow, encrypted by a salted one- way hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
+#    rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack. Note: All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user. A user account with an empty second field in /etc/passwd allows the account to be logged into by providing only the username."
+#    remediation: "Run the following command to set accounts to use shadowed passwords: # sed -e 's/^\([a-zA-Z0-9_]*\):[^:]*:/\1:x:/' -i /etc/passwd Investigate to determine if the account is logged in and what it is being used for, to determine if it needs to be forced off." 
+#    compliance:
+#      - cis: ["6.2.1"]
+#      - cis_csc_v8: ["3.11"]
+#      - cis_csc_v7: ["16.4"]
+#      - cmmc_v2.0: ["AC.L2-3.1.19","IA.L2-3.5.10","MP.L2-3.8.1","SC.L2-3.13.11","SC.L2-3.13.16"]
+#      - hipaa: ["164.312(a)(2)(iv)","164.312(e)(2)(ii)"]
+#      - pci_dss_3.2.1: ["3.4","3.4.1","8.2.1"]
+#      - pci_dss_4.0: ["3.1.1","3.3.2","3.3.3","3.5.1","3.5.1.2","3.5.1.3","8.3.2"]
+#      - nist_sp_800-53: ["SC-28","SC-28(1)"]
+#      - soc_2: ["CC6.1"]
+#      - iso_27001-2013: ["A.10.1.1"]
+#      - mitre_techniques: ["T1003, T1003.008"]
+#      - mitre_tactics: ["TA0003"]
+#      - mitre_mitigations: ["M1027"]
+#    condition: none
+#    rules:
+#      - "c:awk -F: '($2 != "x" ) { print $1 " is not set to shadowed passwords "}' /etc/passwd"
+#
 
   # 6.2.2 Ensure /etc/shadow password fields are not empty (Automated)
-  - id: 3231
+  - id: 3228
     title: "Ensure /etc/shadow password fields are not empty (Automated)"
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
@@ -398,16 +354,16 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: none
     rules:
-      - "c:awk -F: '($2 == "" ) { print $1 " does not have a password "}' /etc/shadow"
+      - 'f:/etc/shadow -> !r:^# && r:\.+'
 
   # 6.2.3 Ensure all groups in /etc/passwd exist in /etc/group (Automated) - Not Implemented
 
   # 6.2.4 Ensure shadow group is empty (Automated)
-  - id: 3232
+  - id: 3229
     title: "Ensure shadow group is empty (Automated)"
     description: "The shadow group allows system programs which require access the ability to read the /etc/shadow file. No users should be assigned to the shadow group."
     rationale: "Any users assigned to the shadow group would be granted read access to the /etc/shadow file. If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed passwords to break them. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert additional user accounts."
-    remediation: "Run the following command to remove all users from the shadow group # sed -ri 's/(^shadow:[^:]*:[^:]*:)([^:]+$)/\1/' /etc/group Change the primary group of any users with shadow as their primary group. # usermod -g <primary group> <user>" 
+    remediation: 'Run the following command to remove all users from the shadow group #sed -ri "s/(^shadow:[^:]*:[^:]*:)([^:]+$)/\1/" /etc/group Change the primary group of any users with shadow as their primary group. #usermod -g <primary group> <user>'
     compliance:
       - cis: ["6.2.4"]
       - cis_csc_v8: ["3.3"]
@@ -424,8 +380,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:awk -F: '($1=="shadow") {print $NF}' /etc/group"
-      - 'c:awk -F: -v GID="$(awk -F: '($1=="shadow") {print $3}' /etc/group)" '($4==GID) {print $1}' /etc/passwd'
+      - 'f:/etc/group -> !r:^# && r:shadow:\w*:\w*:\S+'
 
   # 6.2.5 Ensure no duplicate UIDs exist (Automated)" - Not Implemented
 
@@ -436,9 +391,9 @@ checks:
   # 6.2.8 Ensure no duplicate group names exist (Automated) - Not Implemented
 
   # 6.2.9 Ensure root PATH Integrity (Automated) - Not Implemented
-
+#
   # 6.2.10 Ensure root is the only UID 0 account (Automated)
-  - id: 3233
+  - id: 3230
     title: "Ensure root is the only UID 0 account (Automated)"
     description: "Any account with UID 0 has superuser privileges on the system."
     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
@@ -450,7 +405,7 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - "c:awk -F: '($3 == 0) { print $1 }' /etc/passwd -> r:root"
+      - 'f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:'
 
 # Ensure local interactive user home directories exist (Automated) - Not Implemented
 # Ensure local interactive users own their home directories (Automated) - Not Implemented
