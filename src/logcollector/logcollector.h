@@ -18,7 +18,7 @@
 #define N_MIN_INPUT_THREADS 1
 #define N_OUPUT_THREADS 1
 #define OUTPUT_MIN_QUEUE_SIZE 128
-#define WIN32_MAX_FILES 200
+#define WIN32_MAX_FILES 100000
 
 ///< Size of hash table to save the status file
 #define LOCALFILES_TABLE_SIZE 40

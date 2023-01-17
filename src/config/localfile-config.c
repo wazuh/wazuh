@@ -23,6 +23,15 @@ int maximum_files;
 int current_files;
 int total_files;
 
+#ifdef WIN32
+bool file_exist(const char *file)
+{
+    WIN32_FIND_DATA ffd;
+    return (INVALID_HANDLE_VALUE != FindFirstFile(file, &ffd))?true:false;
+}
+#endif
+
+
 /**
  * @brief gets the type filter from the type attribute
  * @param content type attribute string
@@ -634,51 +643,82 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     /* Deploy glob entries */
     if (!logf[pl].command) {
 #ifdef WIN32
+
         if (strchr(logf[pl].file, '*') ||
             strchr(logf[pl].file, '?')) {
 
-            WIN32_FIND_DATA ffd;
-            HANDLE hFind = INVALID_HANDLE_VALUE;
+            int totalFiles = 0;
+            int file = 0;
 
-            hFind = FindFirstFile(logf[pl].file, &ffd);
+            char** result = expand_win32_wildcards(logf[pl].file);
+            char** expand_files;
 
-            if (INVALID_HANDLE_VALUE == hFind) {
-                minfo(GLOB_ERROR_WIN, logf[pl].file);
+            while (NULL != result[totalFiles++])
+                ;
+
+            totalFiles %= maximum_files;
+
+            os_calloc(totalFiles, sizeof(char*), expand_files);
+            totalFiles = 0;
+            
+            while (NULL != result[file]) {
+                if (file_exist(result[file]))
+                    os_strdup(result[file], expand_files[totalFiles++]);
+
+                file++;
             }
 
-            os_realloc(log_config->globs, (gl + 2)*sizeof(logreader_glob), log_config->globs);
-            os_strdup(logf[pl].file, log_config->globs[gl].gpath);
-            memset(&log_config->globs[gl + 1], 0, sizeof(logreader_glob));
-            os_calloc(1, sizeof(logreader), log_config->globs[gl].gfiles);
-            memcpy(log_config->globs[gl].gfiles, &logf[pl], sizeof(logreader));
-            log_config->globs[gl].gfiles->file = NULL;
+            file = 0;
+            
+            while(file < totalFiles) {
 
-            /* Wildcard exclusion, check for date */
-            if (logf[pl].exclude && strchr(logf[pl].exclude, '%')) {
+                os_free(logf[pl].file);
+                os_strdup(expand_files[file], logf[pl].file);
 
-                time_t l_time = time(0);
-                char excluded_path_date[PATH_MAX] = {0};
-                size_t ret;
-                struct tm tm_result = { .tm_sec = 0 };
+                os_realloc(log_config->globs, (gl + 2)*sizeof(logreader_glob), log_config->globs);
+                os_strdup(logf[pl].file, log_config->globs[gl].gpath);
 
-                localtime_r(&l_time, &tm_result);
-                ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, &tm_result);
-                if (ret != 0) {
-                    os_strdup(excluded_path_date, log_config->globs[gl].exclude_path);
+
+                memset(&log_config->globs[gl + 1], 0, sizeof(logreader_glob));
+                os_calloc(1, sizeof(logreader), log_config->globs[gl].gfiles);
+
+                memcpy(log_config->globs[gl].gfiles, &logf[pl], sizeof(logreader));
+                log_config->globs[gl].gfiles->file = NULL;
+
+                /* Wildcard exclusion, check for date */
+                if (logf[pl].exclude && strchr(logf[pl].exclude, '%')) {
+
+                    time_t l_time = time(0);
+                    char excluded_path_date[PATH_MAX] = {0};
+                    size_t ret;
+                    struct tm tm_result = { .tm_sec = 0 };
+
+                    localtime_r(&l_time, &tm_result);
+                    ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, &tm_result);
+                    if (ret != 0) {
+                        os_strdup(excluded_path_date, log_config->globs[gl].exclude_path);
+                    }
                 }
-            }
-            else if (logf[pl].exclude) {
-                os_strdup(logf[pl].exclude, log_config->globs[gl].exclude_path);
+                else if (logf[pl].exclude) {
+                    os_strdup(logf[pl].exclude, log_config->globs[gl].exclude_path);
+                }
+
+                gl++;
+                file++;
+
             }
 
             if (Remove_Localfile(&logf, pl, 0, 0,NULL)) {
                 merror(REM_ERROR, logf[pl].file);
-                FindClose(hFind);
                 return (OS_INVALID);
-            }
-            log_config->config = logf;
-            FindClose(hFind);
+            } 
+
+             log_config->config = logf;
+
+            os_free(expand_files);
+            os_free(result);
             return 0;
+
 #else
         if (strchr(logf[pl].file, '*') ||
             strchr(logf[pl].file, '?') ||

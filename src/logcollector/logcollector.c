@@ -1511,92 +1511,118 @@ int check_pattern_expand(int do_seek) {
     int i, j;
     int retval = 0;
 
+    const char *szTag = "***** CHECK_PATTERN_EXPAND  ****";
+    minfo("%s globs :%p", szTag, globs);
+
+
     if (globs) {
+
+        //minfo("%s globs[j].gpath :%s", szTag, globs[j].gpath);
+
         for (j = 0; globs[j].gpath; j++) {
+
+
+            minfo("%s globs[j].gpath: %s ", szTag, globs[j].gpath);
 
             if (current_files >= maximum_files) {
                 break;
             }
 
+            char full_path[PATH_MAX] = {0};
             char *global_path = NULL;
-            char *wildcard = NULL;
+//            char *wildcard = NULL;
 
             os_strdup(globs[j].gpath,global_path);
 
-            wildcard = strrchr(global_path,'\\');
 
-            if ( wildcard ) {
+  //          wildcard = strrchr(global_path,'\\');
 
-                DIR *dir = NULL;
-                struct dirent *dirent = NULL;
 
-                *wildcard = '\0';
-                wildcard++;
 
-                if (dir = opendir(global_path), !dir) {
-                    merror("Couldn't open directory '%s' due to: %s", global_path, win_strerror(WSAGetLastError()));
-                    os_free(global_path);
-                    continue;
-                }
+//              if ( wildcard ) {
 
-                while (dirent = readdir(dir), dirent) {
+//                 DIR *dir = NULL;
+//                 struct dirent *dirent = NULL;
 
-                    // Skip "." and ".."
-                    if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
-                        continue;
-                    }
+//                 //minfo("%s wildcard: %s ", szTag, wildcard);
 
-                    if (current_files >= maximum_files) {
-                        mwarn(FILE_LIMIT, maximum_files);
-                        break;
-                    }
+//                 *wildcard = '\0';
+//                 wildcard++;
 
-                    char full_path[PATH_MAX] = {0};
-                    snprintf(full_path,PATH_MAX,"%s\\%s",global_path,dirent->d_name);
+//                 if (dir = opendir(global_path), !dir) {
+//                     merror("Couldn't open directory '%s' due to: %s", global_path, win_strerror(WSAGetLastError()));
 
-                    /* Skip file if it is a directory */
-                    DIR *is_dir = NULL;
 
-                    if (is_dir = opendir(full_path), is_dir) {
-                        mdebug1("File %s is a directory. Skipping it.", full_path);
-                        closedir(is_dir);
-                        continue;
-                    }
+//                     os_free(global_path);
+//                     continue;
+//                 }
 
-                    /* Match wildcard */
-                    char *regex = NULL;
-                    regex = wstr_replace(wildcard,".","\\p");
-                    os_free(regex);
-                    regex = wstr_replace(wildcard,"*","\\.*");
+//                 while (dirent = readdir(dir), dirent) {
 
-                    /* Add the starting ^ regex */
-                    {
-                        char p[PATH_MAX] = {0};
-                        snprintf(p,PATH_MAX,"^%s",regex);
-                        os_free(regex);
-                        os_strdup(p,regex);
-                    }
+//                     //minfo("%s dirent->name: %s ", szTag, dirent->d_name);
 
-                    /* If wildcard is only ^\.* add another \.* */
-                    if (strlen(regex) == 4) {
-                        char *rgx = NULL;
-                        rgx = wstr_replace(regex,"\\.*","\\.*\\.*");
-                        os_free(regex);
-                        regex = rgx;
-                    }
+//                     // Skip "." and ".."
+//                     if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+//                         continue;
+//                     }
 
-                    /* Add $ at the end of the regex */
-                    wm_strcat(&regex, "$", 0);
+//                     if (current_files >= maximum_files) {
+//                         mwarn(FILE_LIMIT, maximum_files);
+//                         break;
+//                     }
 
-                    if (!OS_Regex(regex,dirent->d_name)) {
-                        mdebug2("Regex %s doesn't match with file '%s'",regex,dirent->d_name);
-                        os_free(regex);
-                        continue;
-                    }
+//                     char full_path[PATH_MAX] = {0};
+//                     snprintf(full_path,PATH_MAX,"%s\\%s",global_path,dirent->d_name);
 
-                    os_free(regex);
+//                     //minfo("%s full_path: %s ", szTag, full_path);
 
-                    found = 0;
+//                     /* Skip file if it is a directory */
+//                     DIR *is_dir = NULL;
+
+
+//                     if (is_dir = opendir(full_path), is_dir) {
+//                         mdebug1("File %s is a directory. Skipping it.", full_path);
+//                         closedir(is_dir);
+//                         continue;
+//                     }
+
+//                     /* Match wildcard */
+//                     char *regex = NULL;
+//                     regex = wstr_replace(wildcard,".","\\p");
+//                     os_free(regex);
+//                     regex = wstr_replace(wildcard,"*","\\.*");
+
+
+//                     /* Add the starting ^ regex */
+//                     {
+//                         char p[PATH_MAX] = {0};
+//                         snprintf(p,PATH_MAX,"^%s",regex);
+//                         os_free(regex);
+//                         os_strdup(p,regex);
+//                     }
+
+//                     /* If wildcard is only ^\.* add another \.* */
+//                     if (strlen(regex) == 4) {
+//                         char *rgx = NULL;
+//                         rgx = wstr_replace(regex,"\\.*","\\.*\\.*");
+//                         os_free(regex);
+//                         regex = rgx;
+
+//                         //minfo("%s (strlen==4) regex: %s ", szTag, regex);
+//                     }
+
+//                     /* Add $ at the end of the regex */
+//                     wm_strcat(&regex, "$", 0);
+
+
+//                     if (!OS_Regex(regex,dirent->d_name)) {
+//                         mdebug2("Regex %s doesn't match with file '%s'",regex,dirent->d_name);
+//                         os_free(regex);
+//                         continue;
+//                     }
+
+//                     os_free(regex);
+                     found = 0;
                     for (i = 0; globs[j].gfiles[i].file; i++) {
                         if (!strcmp(globs[j].gfiles[i].file, full_path)) {
                             found = 1;
@@ -1604,11 +1630,15 @@ int check_pattern_expand(int do_seek) {
                         }
                     }
 
+
                     if (!found) {
                         retval = 1;
                         int added = 0;
 
                         char *ex_file = OSHash_Get(excluded_files,full_path);
+
+
+minfo("%s ex_file: %s  found ", szTag, ex_file);
 
                         if(!ex_file) {
 
@@ -1676,15 +1706,21 @@ int check_pattern_expand(int do_seek) {
                             }
                         }
                     }
-                }
-                closedir(dir);
-            }
+
+//                }
+//                closedir(dir);
+//            }
             os_free(global_path);
         }
     }
 
+    minfo("%s end retval :%d", szTag, retval);
+    
     return retval;
 }
+
+
+
 #endif
 
 
