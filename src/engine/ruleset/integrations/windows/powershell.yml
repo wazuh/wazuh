@@ -56,3 +56,8 @@ normalize:
  - check: event.code==403
    map:
     - event.type: end
+
+# Cleanup
+ - map:
+   - ~temp: +ef_delete
+   - ~event_channel: +ef_delete

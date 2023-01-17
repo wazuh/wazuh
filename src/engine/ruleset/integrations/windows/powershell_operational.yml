@@ -61,3 +61,8 @@ normalize:
  - check: event.code==4106
    map:
     - event.type: end
+
+# Cleanup
+ - map:
+   - ~temp: +ef_delete
+   - ~event_channel: +ef_delete
