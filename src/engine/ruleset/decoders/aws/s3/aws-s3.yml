@@ -11,37 +11,6 @@ sources:
   - decoder/aws/0
 
 # Example of Wazuh's integration with AWS S3 server access log:
-# {
-#   "aws": {
-#     "authentication_type": "AuthHeader",
-#     "bucket_owner": "fac45794b871afb34180f310f0c33732a6d1471a59da4832ba68fbabade1f277",
-#     "bucket": "awsexamplebucket1",
-#     "bytes_sent": 3334567,
-#     "cipher_suite": "ECDHE-RSA-AES128-GCM-SHA256",
-#     "error_code": "NoSuchBucket",
-#     "host_header": "s3.us-west-2.amazonaws.com",
-#     "host_id": "XUbDuBMraSiljG+cPksjMSSiwGWriDlVsSURFQw+JQnDTUXAbKvcsm/eTPFvsiP/XV/VLi31234=",
-#     "http_status": 200,
-#     "key": "/photos/2019/08/perri.jpg",
-#     "object_sent": 1234567,
-#     "operation": "REST.GET.VERSIONING",
-#     "referer": "http://www.amazon.com/webservices",
-#     "remote_ip": "192.10.20.30",
-#     "request_id": "3E57427F3EXAMPLE",
-#     "request_uri": "GET /awsexamplebucket1/photos/2019/08/perri.jpg?x-foo=bar HTTP/1.1",
-#     "requester": "fac45794b871afb34180f310f0c33732a6d1471a59da4832ba68fbabade1f277",
-#     "signature_version": "SigV2",
-#     "source": "s3_server_access",
-#     "time": "10/Jul/1992:00:00:38 +0000",
-#     "tls_version": "TLSv1.2",
-#     "total_time": 70,
-#     "turn_around_time": 10,
-#     "user_agent": "curl/7.15.1",
-#     "version_id": "3HO6la5C0M0V440Ptjfkd"
-#   },
-#   "integration": "aws"
-# }
-
 # {"aws":{"authentication_type":"AuthHeader","bucket_owner":"fac45794b871afb34180f310f0c33732a6d1471a59da4832ba68fbabade1f277","bucket":"awsexamplebucket1","bytes_sent":3334567,"cipher_suite":"ECDHE-RSA-AES128-GCM-SHA256","error_code":"NoSuchBucket","host_header":"s3.us-west-2.amazonaws.com","host_id":"XUbDuBMraSiljG+cPksjMSSiwGWriDlVsSURFQw+JQnDTUXAbKvcsm/eTPFvsiP/XV/VLi31234=","http_status":200,"key":"/photos/2019/08/perri.jpg","object_sent":1234567,"operation":"REST.GET.VERSIONING","referer":"http://www.amazon.com/webservices","remote_ip":"192.10.20.30","request_id":"3E57427F3EXAMPLE","request_uri":"GET /awsexamplebucket1/photos/2019/08/perri.jpg?x-foo=bar HTTP/1.1","requester":"fac45794b871afb34180f310f0c33732a6d1471a59da4832ba68fbabade1f277","signature_version":"SigV2","source":"s3_server_access","time":"10/Jul/1992:00:00:38 +0000","tls_version":"TLSv1.2","total_time":70,"turn_around_time":10,"user_agent":"curl/7.15.1","version_id":"3HO6la5C0M0V440Ptjfkd"},"integration":"aws"}
 # {"integration": "aws", "aws": {"log_info": {"aws_account_alias": "", "log_file": "access_logs/2021-04-29-09-49-06-51F541DE27C2AC50", "s3bucket": "wazuh-aws-wodle"}, "bucket_owner": "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101", "bucket": "wazuh-cloudtrail", "time": "29/Apr/2021:08:47:53 +0000", "remote_ip": "92.57.74.50", "requester": "arn:aws:iam::166157441623:user/david.iglesias", "request_id": "T3BW07JM2HMSJH17", "operation": "REST.HEAD.BUCKET", "key": "-", "request_uri": "HEAD /wazuh-cloudtrail HTTP/1.1", "http_status": "200", "error_code": "-", "bytes_sent": "-", "object_sent": "-", "total_time": "29", "turn_around_time": "28", "referer": "-", "user_agent": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy", "version_id": "-", "host_id": "YnKG5o0K4Z3Lh0WD0QTJVXOBjiUwi1wcz2nnrCZa7BMu6xyX++sLbA43jEXTSRd2eoNwZty30g4=", "signature_version": "SigV4", "cipher_suite": "ECDHE-RSA-AES128-GCM-SHA256", "authentication_type": "AuthHeader", "host_header": "s3.amazonaws.com", "tls_version": "TLSv1.2", "source": "s3_server_access"}}
 # {"integration": "aws", "aws": {"log_info": {"aws_account_alias": "", "log_file": "access_logs/2021-04-29-09-41-37-6CFDED3B1BCCDEB1", "s3bucket": "wazuh-aws-wodle"}, "bucket_owner": "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101", "bucket": "wazuh-cloudtrail", "time": "29/Apr/2021:08:57:58 +0000", "remote_ip": "213.194.148.169", "requester": "arn:aws:iam::166157441623:user/carlos.ridao", "request_id": "M5XS2MGJ6FEA5VTJ", "operation": "REST.GET.BUCKETVERSIONS", "key": "-", "request_uri": "GET /?versions&max-keys=1&encoding-type=url HTTP/1.1", "http_status": "200", "error_code": "-", "bytes_sent": "839", "object_sent": "-", "total_time": "54", "turn_around_time": "53", "referer": "-", "user_agent": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy", "version_id": "-", "host_id": "JyPaquNlVOP38Ap/6E0zqnh5Zj75+9KAv0weFdQChcLd6oaNZZxWyJUPhQgahDu4EHWDy7zQOsA=", "signature_version": "SigV4", "cipher_suite": "ECDHE-RSA-AES128-GCM-SHA256", "authentication_type": "AuthHeader", "host_header": "wazuh-cloudtrail.s3.us-east-1.amazonaws.com", "tls_version": "TLSv1.2", "source": "s3_server_access"}}
@@ -54,9 +23,6 @@ sources:
 check:
   - wazuh.modules.aws.source: +s_eq/s3_server_access
 
-# TODO: improve the multiple parsing (instead of using multiple files)
-# cambios:
-# http url original not used
 parse:
   logpar:
     - ~json.aws.request_uri: <http.request.method> <~http_url_original> HTTP/<http.version>
@@ -122,4 +88,11 @@ normalize:
 
       - tls.cipher: $~json.aws.cipher_suite
 
-      # - ~json: +ef_delete
+  - logpar:
+    - ~json.aws.host_header: <?~>s3.<cloud.region>.<~>
+
+  - logpar:
+    - ~json.aws.tls_version: <tls.version_protocol>v<tls.version>
+
+  - map:
+      - ~json: +ef_delete
