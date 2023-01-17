@@ -17,13 +17,13 @@ normalize:
     - event: +kvdb_get_merge/win_security_categories/$~event_channel.Event.System.EventID.#text
     
     # Set Logon Type
-    - winlog.logon.type: +kvdb_get/win_logon_types/$~event_channel.Event.EventData.LogonType
+    - log.logon.type: +kvdb_get/win_logon_types/$~event_channel.Event.EventData.LogonType
     
     # Set User Account Control
     # NewUacValue 
     # Correct implementation needs bitwise operations - Opting to use raw value
     #- event.UserAccountControl: $~event_channel.Event.EventData.NewUacValue
-    - winlog.event_data.UserAccountControl: +s_to_array/$~event_channel.Event.EventData.UserAccountControl/%
+    - log.event_data.UserAccountControl: +s_to_array/$~event_channel.Event.EventData.UserAccountControl/%
     
     # Set Kerberos Ticket Options
     # TicketOptionsDescription - Needs bitwise operations
@@ -36,24 +36,24 @@ normalize:
     
     # Set Service Type and Name
     # Service related fields
-    - event.service.name: $~event_channel.Event.EventData.ServiceName
-    - event.service.type: +kvdb_get_merge/win_security_service_types/$~event_channel.Event.EventData.ServiceType
+    - service.name: $~event_channel.Event.EventData.ServiceName
+    - service.type: +kvdb_get_merge/win_security_service_types/$~event_channel.Event.EventData.ServiceType
     
     # Set Audit Information
     # Event sub category
-    - event.Category: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid
-    - event.SubCategory: +kvdb_get_merge/win_security_subcategory_guids/$~event_channel.Event.EventData.SubcategoryGuid
+    - log.Category: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid
+    - log.SubCategory: +kvdb_get_merge/win_security_subcategory_guids/$~event_channel.Event.EventData.SubcategoryGuid
 
     # Set trust type
-    - event.trustType: +kvdb_get/win_trust_types/$~event_channel.Event.EventData.TdoType
+    - log.trustType: +kvdb_get/win_trust_types/$~event_channel.Event.EventData.TdoType
 
     # Set Trust Direction
-    - event.trustDirection: +kvdb_get/win_trust_direction/$~event_channel.Event.EventData.TdoDirection
+    - log.trustDirection: +kvdb_get/win_trust_direction/$~event_channel.Event.EventData.TdoDirection
 
     # Set Trust Attributes
-    - event.trustAttribute: +kvdb_get/win_trust_attribute/$~event_channel.Event.EventData.TdoAttributes
+    - log.trustAttribute: +kvdb_get/win_trust_attribute/$~event_channel.Event.EventData.TdoAttributes
 
-    - winlog.logon.id: $~event_channel.Event.EventData.SubjectLogonId
+    - log.logon.id: $~event_channel.Event.EventData.SubjectLogonId
 
     - event.PrivilegeList: +s_to_array/$~event_channel.Event.EventData.PrivilegeList/ /
 
@@ -62,16 +62,13 @@ normalize:
     - event.related.user: +a_append/$~event_channel.Event.EventData.NewTargetUserName
     - event.related.user: +a_append/$~event_channel.Event.EventData.OldTargetUserName 
 
-    - event.time_created: $~event_channel.Event.System.TimeCreated.@SystemTime
-
-    #- user.id: test  
     # map helper arrays
-    - ~id_target_user_array: ["4624","4625","4634","4647","4648","4768","4769","4770","4771","4776","4964"]
-    - ~id_memberName_array: ["4727", "4728", "4729", "4730", "4731", "4732", "4733", "4734", "4735",
+    - ~temp.id_target_user_array: ["4624","4625","4634","4647","4648","4768","4769","4770","4771","4776","4964"]
+    - ~temp.id_memberName_array: ["4727", "4728", "4729", "4730", "4731", "4732", "4733", "4734", "4735",
                               "4737", "4744", "4745", "4746", "4747", "4748", "4749", "4750", "4751",
                               "4752", "4753", "4754", "4755", "4756", "4757", "4758", "4759", "4760",
                               "4761", "4762", "4763", "4764", "4799"]
-    - ~id_copy_subject_user_array: ["4657", "4670", "4672", "4673", "4674", "4688", "4689", "4697",
+    - ~temp.id_copy_subject_user_array: ["4657", "4670", "4672", "4673", "4674", "4688", "4689", "4697",
               "4698", "4699", "4700", "4701", "4702", "4706", "4707", "4713",
               "4716", "4717", "4718", "4719", "4720", "4722", "4723", "4724",
               "4725", "4726", "4727", "4728", "4729", "4730", "4731", "4732",
@@ -81,9 +78,9 @@ normalize:
               "4758", "4759", "4760", "4761", "4762", "4763", "4764", "4767",
               "4781", "4798", "4799", "4817", "4904", "4905", "4907", "4912",
               "4648"]
-    - ~id_copy_target_user_array: ["4670", "4720", "4722", "4723", "4724", "4725",
+    - ~temp.id_copy_target_user_array: ["4670", "4720", "4722", "4723", "4724", "4725",
               "4726", "4738", "4740", "4767", "4798", "4817", "4907"]
-    - ~id_rename_common_auth_fields: ["1100", "1102", "1104", "1105", "1108", "4624", "4648", "4625",
+    - ~temp.id_rename_common_auth_fields: ["1100", "1102", "1104", "1105", "1108", "4624", "4648", "4625",
               "4670", "4673", "4674", "4689", "4697", "4719", "4720", "4722",
               "4723", "4724", "4725", "4726", "4727", "4728", "4729", "4730",
               "4731", "4732", "4733", "4734", "4735", "4737", "4738", "4740",
@@ -92,7 +89,7 @@ normalize:
               "4757", "4758", "4759", "4760", "4761", "4762", "4763", "4764",
               "4767", "4768", "4769", "4770", "4771", "4798", "4799", "4817",
               "4904", "4905", "4907", "4912"]
-    - ~id_related_user:  ["4688", "4720", "4722", "4723", "4724", "4725", "4726", "4738",
+    - ~temp.id_related_user:  ["4688", "4720", "4722", "4723", "4724", "4725", "4726", "4738",
          "4740", "4767", "4798"]
 
     # Decode message table
@@ -148,38 +145,38 @@ normalize:
     
     # Copy Target User
     # TargetUserSid to user.id or user.target.id  
- - check: +ef_not_exists/$user.id AND +a_contains/~id_target_user_array/$event.code
+ - check: +ef_not_exists/$user.id AND +a_contains/~temp.id_target_user_array/$event.code
    map:
         - user.id: $~event_channel.Event.EventData.TargetUserSid
         - user.id: $~event_channel.Event.EventData.TargetSid
- - check: +ef_exists/$user.id AND +a_contains/~id_target_user_array/$event.code
+ - check: +ef_exists/$user.id AND +a_contains/~temp.id_target_user_array/$event.code
    map:
         - user.target.id: $~event_channel.Event.EventData.TargetUserSid
         - user.target.id: $~event_channel.Event.EventData.TargetSid
 
  # TargetUserName to related.user and user.name or user.target.name
- - check: +ef_not_exists/$user.name AND +a_contains/~id_target_user_array/$event.code
+ - check: +ef_not_exists/$user.name AND +a_contains/~temp.id_target_user_array/$event.code
    map:
         - user.name: $~event_channel.Event.EventData.TargetUserName
  - check: +ef_exists/$user.name AND +a_contains/~id_target_user_array/$event.code
    map:
         - user.target.name: $~event_channel.Event.EventData.TargetUserName
  
- - check: +s_ne/~event_channel.Event.EventData.TargetUserName/-/ AND +a_contains/~id_target_user_array/$event.code
+ - check: +s_ne/~event_channel.Event.EventData.TargetUserName/-/ AND +a_contains/~temp.id_target_user_array/$event.code
    map:
         - related.user: +a_append/$~event_channel.Event.EventData.TargetUserName 
     
     # TargetUserDomain to user.domain or user.target.domain
- - check: +ef_not_exists/$user.domain AND +a_contains/~id_target_user_array/$event.code
+ - check: +ef_not_exists/$user.domain AND +a_contains/~temp.id_target_user_array/$event.code
    map:
         - user.domain: $~event_channel.Event.EventData.TargetDomainName
- - check: +ef_exists/$user.domain AND +a_contains/~id_target_user_array/$event.code
+ - check: +ef_exists/$user.domain AND +a_contains/~temp.id_target_user_array/$event.code
    map:
         - user.target.domain: $~event_channel.Event.EventData.TargetDomainName
 
     # Copy MemberName to User and User to Group
  - check:
-        - ~id_memberName_array: +a_contains/$event.code
+        - ~temp.id_memberName_array: +a_contains/$event.code
    map:
         - is_copy_MemberName: true
         - ~split_memberName: +s_to_array/$~event_channel.Event.EventData.MemberName/,
@@ -214,7 +211,7 @@ normalize:
  
  # Copy Subject User from Event Data
  - check: 
-     - ~id_copy_subject_user_array: +a_contains/$event.code
+     - ~temp.id_copy_subject_user_array: +a_contains/$event.code
    map:
      - user.id: $~event_channel.Event.EventData.SubjectUserSid
      - user.name: $~event_channel.Event.EventData.SubjectUserName
@@ -223,7 +220,7 @@ normalize:
 
  # Copy Target User to Target
  - check: 
-    - ~id_copy_target_user_array: +a_contains/$event.code
+    - ~temp.id_copy_target_user_array: +a_contains/$event.code
    map:
      - event.user.target.id: $~event_channel.Event.EventData.TargetSid
      - ~name_part: +s_to_array/$~event_channel.Event.EventData.TargetUserName/@
@@ -251,10 +248,12 @@ normalize:
 # Copy Subject User from user_data
  - check: event.code==1102
    map:
-     - event.user.id: $~event_channel.Event.EventData.SubjectUserSid
-     - event.user.name: $~event_channel.Event.EventData.SubjectUserName
-     - event.user.related.user: +a_append/$~event_channel.Event.EventData.SubjectUserName
-     - event.user.domain: $~event_channel.Event.EventData.SubjectDomainName
+     - user.id: $~event_channel.Event.UserData.LogFileCleared.SubjectUserSid.#text
+     - user.name: $~event_channel.Event.UserData.LogFileCleared.SubjectUserName.#text
+     - related.user: +a_append/$~event_channel.Event.UserData.LogFileCleared.SubjectUserName.#text
+     - user.domain: $~event_channel.Event.UserData.LogFileCleared.SubjectDomainName.#text
+     - log.logon.id: $~event_channel.Event.UserData.LogFileCleared.SubjectLogonId.#text
+     - log.task: Log clear
 
 # Rename Common Auth Fields
  - check:
@@ -286,7 +285,7 @@ normalize:
      - related.user: $~event_channel.Event.EventData.SubjectUserName
 
  - check: 
-      - ~id_related_user: +a_contains/$event.code
+      - ~temp.id_related_user: +a_contains/$event.code
    map:
       - related.user: +a_append/$~event_channel.Event.EventData.TargetUserName
 
@@ -296,3 +295,7 @@ normalize:
  # Object Policy Change and SidListDesc
  # - check: event.code==4670 OR event.code==4817 OR event.code==4907 OR event.code==4808
 
+# Cleanup
+ - map:
+   - ~temp: +ef_delete
+  # - ~event_channel: +ef_delete
