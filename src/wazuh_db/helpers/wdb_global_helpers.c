@@ -402,7 +402,7 @@ int wdb_update_agent_status_code(int id, agent_status_code_t status_code, const 
     data_in = cJSON_CreateObject();
 
     if (!data_in) {
-        mwarn("Error creating data JSON for Wazuh DB.");
+        mdebug1("Error creating data JSON for Wazuh DB.");
         return OS_INVALID;
     }
 
@@ -425,17 +425,17 @@ int wdb_update_agent_status_code(int id, agent_status_code_t status_code, const 
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mwarn("Global DB Error reported in the result of the query");
+                mdebug1("Global DB Error reported in the result of the query");
                 result = OS_INVALID;
             }
             break;
         case OS_INVALID:
-            mwarn("Global DB Error in the response from socket");
-            mwarn("Global DB SQL query: %s", wdbquery);
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
             break;
         default:
-            mwarn("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mwarn("Global DB SQL query: %s", wdbquery);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }
 

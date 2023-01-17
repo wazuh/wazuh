@@ -128,6 +128,18 @@ int __wrap_wdb_global_update_agent_connection_status(__attribute__((unused)) wdb
     return mock();
 }
 
+int __wrap_wdb_global_update_agent_status_code(__attribute__((unused)) wdb_t *wdb,
+                                                   int id,
+                                                   int status_code,
+                                                   const char *version,
+                                                   const char *sync_status) {
+    check_expected(id);
+    check_expected(status_code);
+    check_expected(version);
+    check_expected(sync_status);
+    return mock();
+}
+
 int __wrap_wdb_global_delete_agent(__attribute__((unused)) wdb_t *wdb,
                                    int id) {
     check_expected(id);

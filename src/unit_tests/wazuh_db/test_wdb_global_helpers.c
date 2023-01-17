@@ -1611,6 +1611,205 @@ void test_wdb_update_agent_connection_status_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_update_agent_status_code */
+
+void test_wdb_update_agent_status_code_error_json(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    const char *version = "v4.5.0";
+    const char *sync_status = "synced";
+
+    will_return(__wrap_cJSON_CreateObject, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
+
+    ret = wdb_update_agent_status_code(id, 0, version, sync_status, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_update_agent_status_code_error_socket(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    const char *version = "v4.5.0";
+    const char *sync_status = "synced";
+
+    const char *json_str = strdup("{\"id\":1,\"status_code\":-1,\"version\":\"Wazuh v4.5.0\",\"sync_status\":\"synced\"}");
+    const char *query_str = "global update-status-code {\"id\":1,\"status_code\":-1,\"version\":\"Wazuh v4.5.0\",\"sync_status\":\"synced\"}";
+    const char *response = "err";
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "status_code");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, INVALID_VERSION);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "version");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "Wazuh v4.5.0");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    // Handling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-status-code {\"id\":1,\"status_code\":-1,\"version\":\"Wazuh v4.5.0\",\"sync_status\":\"synced\"}");
+
+    ret = wdb_update_agent_status_code(id, INVALID_VERSION, version, sync_status, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_update_agent_status_code_error_sql_execution(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    const char *version = "v4.5.0";
+    const char *sync_status = "synced";
+
+    const char *json_str = strdup("{\"id\":1,\"status_code\":-1,\"version\":\"Wazuh v4.5.0\",\"sync_status\":\"synced\"}");
+    const char *query_str = "global update-status-code {\"id\":1,\"status_code\":-1,\"version\":\"Wazuh v4.5.0\",\"sync_status\":\"synced\"}";
+    const char *response = "err";
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "status_code");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, INVALID_VERSION);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "version");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "Wazuh v4.5.0");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
+
+    // Handling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-status-code {\"id\":1,\"status_code\":-1,\"version\":\"Wazuh v4.5.0\",\"sync_status\":\"synced\"}");
+
+    ret = wdb_update_agent_status_code(id, INVALID_VERSION, version, sync_status, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_update_agent_status_code_error_result(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    const char *version = "v4.5.0";
+    const char *sync_status = "synced";
+
+    const char *json_str = strdup("{\"id\":1,\"status_code\":-1,\"version\":\"Wazuh v4.5.0\",\"sync_status\":\"synced\"}");
+    const char *query_str = "global update-status-code {\"id\":1,\"status_code\":-1,\"version\":\"Wazuh v4.5.0\",\"sync_status\":\"synced\"}";
+    const char *response = "err";
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "status_code");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, INVALID_VERSION);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "version");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "Wazuh v4.5.0");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
+
+    ret = wdb_update_agent_status_code(id, INVALID_VERSION, version, sync_status, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_update_agent_status_code_success(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    const char *version = "v4.5.0";
+    const char *sync_status = "synced";
+
+    const char *json_str = strdup("{\"id\":1,\"status_code\":-1,\"version\":\"Wazuh v4.5.0\",\"sync_status\":\"synced\"}");
+    const char *query_str = "global update-status-code {\"id\":1,\"status_code\":-1,\"version\":\"Wazuh v4.5.0\",\"sync_status\":\"synced\"}";
+    const char *response = "err";
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "status_code");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, INVALID_VERSION);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "version");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "Wazuh v4.5.0");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_update_agent_status_code(id, INVALID_VERSION, version, sync_status, NULL);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
 /* Tests wdb_get_agent_name */
 
 void test_wdb_get_agent_name_error_no_json_response(void **state) {
@@ -3945,6 +4144,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        /* Tests wdb_update_agent_status_code */
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_status_code_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_status_code_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_status_code_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_status_code_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_status_code_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agent_name */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),

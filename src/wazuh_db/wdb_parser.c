@@ -5411,8 +5411,8 @@ int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
-        mwarn("Global DB Invalid JSON syntax when updating agent status code.");
-        mwarn("Global DB JSON error near: %s", error);
+        mdebug1("Global DB Invalid JSON syntax when updating agent status code.");
+        mdebug2("Global DB JSON error near: %s", error);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
         return OS_INVALID;
     } else {
@@ -5432,13 +5432,13 @@ int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output
             char *sync_status = j_sync_status->valuestring;
 
             if (OS_SUCCESS != wdb_global_update_agent_status_code(wdb, id, status_code, version, sync_status)) {
-                mwarn("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
                 return OS_INVALID;
             }
         } else {
-            mwarn("Global DB Invalid JSON data when updating agent status code.");
+            mdebug1("Global DB Invalid JSON data when updating agent status code.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
             cJSON_Delete(agent_data);
             return OS_INVALID;
