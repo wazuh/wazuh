@@ -315,7 +315,11 @@ else ifeq (${IMAGE_TRUST_CHECKS}, 2)
 	DEFINES+=-DIMAGE_TRUST_CHECKS=2
 endif
 
-DEFINES+=-DCA_NAME='${CA_NAME}'
+ifeq (${TARGET}, winagent)
+	DEFINES+=-DCA_NAME='"${CA_NAME}"'
+else
+	DEFINES+=-DCA_NAME='${CA_NAME}'
+endif
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 	DEFINES+=-DENABLE_SYSC
