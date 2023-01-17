@@ -1799,6 +1799,17 @@ void test_compare_wazuh_versions_greater_patch(void **state)
     assert_int_equal(ret, 1);
 }
 
+void test_compare_wazuh_versions_greater_patch_no_patch(void **state)
+{
+    (void) state;
+    char *v1 = "4.0.1";
+    char *v2 = "v4.0.0";
+
+    int ret = compare_wazuh_versions(v1, v2, false);
+
+    assert_int_equal(ret, 0);
+}
+
 void test_compare_wazuh_versions_greater_minor(void **state)
 {
     (void) state;
@@ -1899,6 +1910,7 @@ int main(void) {
             cmocka_unit_test(test_compare_wazuh_versions_equal_minor),
             cmocka_unit_test(test_compare_wazuh_versions_equal_major),
             cmocka_unit_test(test_compare_wazuh_versions_greater_patch),
+            cmocka_unit_test(test_compare_wazuh_versions_greater_patch_no_patch),
             cmocka_unit_test(test_compare_wazuh_versions_greater_minor),
             cmocka_unit_test(test_compare_wazuh_versions_greater_major),
             cmocka_unit_test(test_compare_wazuh_versions_lower_patch),

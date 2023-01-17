@@ -20,6 +20,10 @@
             #define CloseSocket wrap_closesocket
             #define recv wrap_recv
     #endif
+
+    // Redefine ossec_version
+    #undef __ossec_version
+    #define __ossec_version "v4.5.0"
 #endif
 
 #define ENROLLMENT_RETRY_TIME_MAX   60

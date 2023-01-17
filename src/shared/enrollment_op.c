@@ -18,6 +18,10 @@
     /* Remove static qualifier when unit testing */
     #define static
 
+    // Redefine ossec_version
+    #undef __ossec_version
+    #define __ossec_version "v4.5.0"
+
     /* Replace assert with mock_assert */
     extern void mock_assert(const int result, const char* const expression,
                             const char * const file, const int line);

@@ -4646,7 +4646,9 @@ void test_save_controlmsg_get_agent_version_fail(void **state)
     expect_value(__wrap_wdb_update_agent_status_code, id, 1);
     expect_value(__wrap_wdb_update_agent_status_code, status_code, ERR_VERSION_RECV);
     expect_string(__wrap_wdb_update_agent_status_code, sync_status, "synced");
-    will_return(__wrap_wdb_update_agent_status_code, OS_SUCCESS);
+    will_return(__wrap_wdb_update_agent_status_code, OS_INVALID);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to set status code for agent: '001'");
 
     expect_string(__wrap_send_msg, agent_id, "001");
     expect_string(__wrap_send_msg, msg, s_msg);
@@ -5004,7 +5006,7 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
 void test_save_controlmsg_startup(void **state)
 {
     char r_msg[OS_SIZE_128] = {0};
-    strcpy(r_msg, HC_STARTUP);
+    strcpy(r_msg, "agent startup {\"version\":\"v4.5.0\"}");
     keyentry key;
     keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
     key.peer_info.ss_family = 0;
@@ -5019,6 +5021,11 @@ void test_save_controlmsg_startup(void **state)
     expect_string(__wrap_rem_inc_recv_ctrl_startup, agent_id, "001");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_STARTUP from ''");
+
+    expect_string(__wrap_compare_wazuh_versions, version1, "v4.5.0");
+    expect_string(__wrap_compare_wazuh_versions, version2, "v4.5.0");
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
+    will_return(__wrap_compare_wazuh_versions, 0);
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);

@@ -19,6 +19,10 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
+
+// Redefine ossec_version
+#undef __ossec_version
+#define __ossec_version "v4.5.0"
 #endif
 
 keystore keys;

@@ -661,7 +661,7 @@ void test_w_enrollment_send_message_fix_invalid_hostname(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "Using agent name as: InvalidHostname");
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
     char buff[128];
-    snprintf(buff,128,"OSSEC A:'InvalidHostname' V:'%s'\n",__ossec_version);
+    snprintf(buff,128,"OSSEC A:'InvalidHostname' V:'v4.5.0'\n");
 
     expect_string(__wrap_SSL_write, buf, buff);
     will_return(__wrap_SSL_write, -1);
@@ -704,7 +704,7 @@ void test_w_enrollment_send_message_ssl_error(void **state) {
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
 
     char buff[128];
-    snprintf(buff,128,"OSSEC A:'host.name' V:'%s'\n",__ossec_version);
+    snprintf(buff,128,"OSSEC A:'host.name' V:'v4.5.0'\n");
 
     expect_string(__wrap_SSL_write, buf, buff);
     will_return(__wrap_SSL_write, -1);
@@ -730,7 +730,7 @@ void test_w_enrollment_send_message_success(void **state) {
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
 
     char buff[256];
-    snprintf(buff,256,"OSSEC PASS: test_password OSSEC A:'test_agent' V:'%s' G:'test_group' IP:'192.168.1.1' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n",__ossec_version);
+    snprintf(buff,256,"OSSEC PASS: test_password OSSEC A:'test_agent' V:'v4.5.0' G:'test_group' IP:'192.168.1.1' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n");
 
     expect_string(__wrap_SSL_write, buf, buff);
     will_return(__wrap_SSL_write, 0);
@@ -768,7 +768,7 @@ void test_w_enrollment_send_message_success_different_hostname(void **state) {
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
 
     char buff[128];
-    snprintf(buff,128,"OSSEC A:'host.name' V:'%s' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n",__ossec_version);
+    snprintf(buff,128,"OSSEC A:'host.name' V:'v4.5.0' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n");
 
     expect_string(__wrap_SSL_write, buf, buff);
     will_return(__wrap_SSL_write, 0);
@@ -1089,7 +1089,7 @@ void test_w_enrollment_request_key(void **state) {
         will_return(__wrap_OS_IsValidIP, 1);
         expect_value(__wrap_SSL_write, ssl, cfg->ssl);
 
-        snprintf(buff,128,"OSSEC PASS: test_password OSSEC A:'test_agent' V:'%s' G:'test_group' IP:'192.168.1.1'\n",__ossec_version);
+        snprintf(buff,128,"OSSEC PASS: test_password OSSEC A:'test_agent' V:'v4.5.0' G:'test_group' IP:'192.168.1.1'\n");
         expect_string(__wrap_SSL_write, buf, buff);
         will_return(__wrap_SSL_write, 0);
         expect_string(__wrap__mdebug1, formatted_msg,"Request sent to manager");

@@ -79,6 +79,7 @@ parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC A:'agent8' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", NULL,                            {"192.0.0.3", "agent8", NULL, "ABC123"},                      {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent8) from: 192.0.0.1", NULL} },
     { "OSSEC PASS: pass123 OSSEC A:'agent9' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", "pass123",   {"192.0.0.3", "agent9", NULL, "ABC123"},                      {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent9) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent10' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", NULL,         {"192.0.0.3", "agent10", "Group1,Group2", "ABC123"},          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent10) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC A:'agent11' V:'v4.5.0'", "192.0.0.1", NULL,                                          {"192.0.0.1", "agent11", NULL, NULL},                         {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent11) from: 192.0.0.1", NULL} },
 
     { "OSSEC A:'agent0'", "192.0.0.1", "pass123",                       {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
     { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", "pass123",   {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
@@ -89,6 +90,7 @@ parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3 K:'ABC123'", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated IP field"}, {"Unterminated IP field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
     { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated key field"}, {"Unterminated key field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
     { "OSSEC A:'agent3' V:'v4.5.0", "192.0.0.1", NULL,                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated version field"},    {"Unterminated version field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent4' V:'v4.6.0'", "192.0.0.1", NULL,                 {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Incompatible version"},          {"Incompatible version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent4) from: 192.0.0.1", NULL} },
 
     {0}
 };

@@ -25,6 +25,10 @@
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
   #define STATIC
+
+// Redefine ossec_version
+#undef __ossec_version
+#define __ossec_version "v4.5.0"
 #else
   #define STATIC static
 #endif
