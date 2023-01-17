@@ -118,14 +118,14 @@ runInit()
     fi
 
     # Darwin init script (by Lorenzo Costanzia di Costigliole <mummie@tin.it>)
-    if [ "X${NUNAME}" = "XDarwin" ]; then
-        # Generating darwin init script.
+    # if [ "X${NUNAME}" = "XDarwin" ]; then
+    #     # Generating darwin init script.
 
-        echo " - ${systemis} Darwin."
-        echo " - ${modifiedinit}"
-        sh ./src/init/darwin-init.sh ${INSTALLDIR}
-        return 0;
-    fi
+    #     echo " - ${systemis} Darwin."
+    #     echo " - ${modifiedinit}"
+    #     sh ./src/init/darwin-init.sh ${INSTALLDIR}
+    #     return 0;
+    # fi
 
     if [ "X${UN}" = "XSunOS" ]; then
         echo " - ${systemis} Solaris (SunOS)."
