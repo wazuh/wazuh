@@ -18,7 +18,10 @@
 /* Send MS SQL message and check the return code */
 static void __send_mssql_msg(logreader *lf, int drop_it, char *buffer) {
     mdebug2("Reading MSSQL message: '%s'", buffer);
-    if (drop_it == 0) {
+
+    /* Check ignore and restrict log regex, if configured. */
+    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, buffer)) {
+        /* Send message to queue */
         w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
     }
 }

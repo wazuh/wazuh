@@ -133,6 +133,35 @@ STATIC w_macos_log_procceses_t * macos_processes = NULL;
 
 #endif
 
+int check_ignore_and_restrict(OSList * ignore_exp_list, OSList * restrict_exp_list, const char *log_line) {
+    OSListNode *node_it;
+    w_expression_t *exp_it;
+
+    if (ignore_exp_list) {
+        OSList_foreach(node_it, ignore_exp_list) {
+            exp_it = node_it->data;
+            /* Check ignore regex, if it matches, do not process the log */
+            if (w_expression_match(exp_it, log_line, NULL, NULL)) {
+                mdebug2(LF_MATCH_REGEX, log_line, "ignore", w_expression_get_regex_pattern(exp_it));
+                return true;
+            }
+        }
+    }
+
+    if (restrict_exp_list) {
+        OSList_foreach(node_it, restrict_exp_list) {
+            exp_it = node_it->data;
+            /* Check restrict regex, only if match every log is processed */
+            if (!w_expression_match(exp_it, log_line, NULL, NULL)) {
+                mdebug2(LF_MATCH_REGEX, log_line, "restrict", w_expression_get_regex_pattern(exp_it));
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 /* Handle file management */
 void LogCollectorStart()
 {
