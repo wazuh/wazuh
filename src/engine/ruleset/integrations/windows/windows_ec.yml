@@ -26,6 +26,7 @@ normalize:
    - log.process.pid: $~event_channel.Event.System.Execution.@ProcessID
    - log.process.thread.id: $~event_channel.Event.System.Execution.@ThreadID
    - log.record_id: $~event_channel.Event.System.EventRecordID.#text
+   - log.event_data: $~event_channel.Event.EventData
 
 # Cleanup
  - map:
