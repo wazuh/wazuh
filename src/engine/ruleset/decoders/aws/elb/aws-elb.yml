@@ -1,7 +1,20 @@
+---
 name: decoder/aws-elb/0
 
+metadata:
+  description: Decoder for Amazon ELB logs
+  references:
+    - htttp.
+  product.name: AWS ELB (Load Balancers)
+
+sources:
+  - decoder/queue-localfile/0
+
+check:
+  - event.original: +ef_exists
+
 definitions:
-  ELBTIMESTAMP: <timestamp/ISO8601_Z>
+  ELBTIMESTAMP: <@timestamp/2018-08-14T14:30:02.203151Z> #TODO: whats better, example or format?
   ELBNAME: <aws.elb.name>
   ELBSOURCE: <source.ip>:<source.port>
   # Or -
@@ -20,8 +33,8 @@ definitions:
     <aws.elb.backend.http.response.status_code>
     <http.request.body.bytes>
     <http.response.body.bytes>
-    \"<http.request.method> <_tmp.uri_orig> <http.version>\"
-    <_tmp.user_agent/quoted>
+    \"<http.request.method> <~tmp.uri_orig> <http.version>\"
+    <~tmp.user_agent/quoted>
     $ELBSSL
   ELBTCPLOG: >-
     $ELBCOMMON
@@ -29,15 +42,11 @@ definitions:
     -
     <source.bytes>
     <destination.bytes>
-    \"- - -<_/ >\"
+    \"- - -<~>\"
     \"-\"
     $ELBSSL
   ELBV2TYPE: <aws.elb.type>
-  ELBV2LOGVERSION: <_/ignore/ > # ignore spaces
-
-check:
-  - wazuh.queue: 49
-  - event.original: +ef_exists
+  ELBV2LOGVERSION: <~/ignore/ > # ignore spaces
 
 parse:
   logpar:
@@ -54,11 +63,11 @@ parse:
         "<destination.domain>"
         "<aws.elb.chosen_cert.arn>"
         <aws.elb.matched_rule_priority>
-        <event.start/ISO8601_Z>
-        <_tmp.actions_executed/quoted>
+        <event.start/2018-08-14T14:30:02.203151Z>
+        <~tmp.actions_executed/quoted>
         "<aws.elb.redirect_url>"
-        "<aws.elb.error.reason>"<?_tmp.http_v2_optional>
-    # TODO: process _tmp.http_v2_optional
+        "<aws.elb.error.reason>"<?~tmp.http_v2_optional>
+    # TODO: process ~tmp.http_v2_optional
     # TCP from Network Load Balancers (v2 Load Balancers)
     - event.original: >-
         $ELBV2TYPE
@@ -72,12 +81,12 @@ parse:
         <aws.elb.tls_handshake_time.ms>
         <source.bytes>
         <destination.bytes>
-        <NUMBER:aws.elb.incoming_tls_alert>
+        <aws.elb.incoming_tls_alert>
         <aws.elb.chosen_cert.arn>
         <aws.elb.chosen_cert.serial>
         $ELBSSL
-        <aws.elb.ssl_named_group>
-        <NOTSPACE:destination.domain>
+        <aws.elb.tls_named_group>
+        <destination.domain>
 
 normalize:
   - map:
@@ -87,10 +96,10 @@ normalize:
       - cloud.provider: aws
       - service.type: aws
       - trace.id: $aws.elb.trace_id
-      - aws.elb.action_executed: +s_to_array/$_tmp.actions_executed/,
-      - aws.elb.target_port: "+s_to_array/$_tmp.target_port/ "
-      - aws.elb.target_status_code: "+s_to_array/$_tmp.target_status_code/ "
-      - event.end: $timestamp
+      - aws.elb.action_executed: +s_to_array/$~tmp.actions_executed/,
+      - aws.elb.target_port: "+s_to_array/$~tmp.target_port/ "
+      - aws.elb.target_status_code: "+s_to_array/$~tmp.target_status_code/ "
+      - event.end: $@timestamp
       - tls.cipher: $aws.elb.ssl_cipher
       # TODO: process ssl_protocol once parse is avaliable on normalize
 
@@ -98,7 +107,7 @@ normalize:
       - http: +ef_exists
     map:
       - aws.elb.protocol: http
-      - event.category: +s_append/web
+      - event.category: +a_append/web
 
   - check:
       - http.response.status_code: +i_lt/400
@@ -114,6 +123,6 @@ normalize:
       - http: +ef_not_exists
     map:
       - aws.elb.protocol: tcp
-      - event.category: +s_append/network
+      - event.category: +a_append/network
 
   #TODO: add uri and user_agent once parsers are fixed
