@@ -2,16 +2,10 @@
  <program_name>tccd</program_name>
 </decoder>
 
-<decoder name="macOS_tccd_denied">
+<decoder name="macOS_tccd_updated">
   <parent>macOS_tccd</parent>
-  <regex>[com.apple.TCC:access] Update Access Record: (\S+) for (\S+) to Denied at \d+ \p\d+-\d+-\d+ (\d+:\d+:\d+) +\d+\p</regex>
-  <order>service, application, time_access_denied</order>
-</decoder>
-
-<decoder name="macOS_tccd_granted">
-  <parent>macOS_tccd</parent>
-  <regex>[com.apple.TCC:access] Update Access Record: (\S+) for (\S+) to Allowed at \d+ \p\d+-\d+-\d+ (\d+:\d+:\d+) +\d+\p</regex>
-  <order>service, application, time_access_granted</order>
+  <regex>[com.apple.TCC:access] Update Access Record: (\S+) for (\S+) to (\S+) at \d+ \p\d+-\d+-\d+ (\d+:\d+:\d+) +\d+\p</regex>
+  <order>service, application, status, time_access_granted</order>
 </decoder>
 
 <decoder name="macOS_loginwindow">
