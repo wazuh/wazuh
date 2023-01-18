@@ -257,9 +257,9 @@ normalize:
 
 # Rename Common Auth Fields
  - check:
-     - ~id_rename_common_auth_fields: +a_contains/$event.code
+     - ~temp.id_rename_common_auth_fields: +a_contains/$event.code
    map:
-     - process.pid: $~event_channel.Event.EventData.ProcessId
+     - process.pid: +s_hex_to_num/$~event_channel.Event.EventData.ProcessId
      - process.executable: $~event_channel.Event.EventData.ProcessName
      - process.name: +r_ext/$~event_channel.Event.EventData.ProcessName/^.*\\(.*[\\.].*)$ 
      - event.source.ip: $~event_channel.Event.EventData.IpAddress
@@ -284,6 +284,12 @@ normalize:
    map:
      - related.user: $~event_channel.Event.EventData.SubjectUserName
 
+ - check: event.code==1105
+   map:
+     - log.task: Log automatic backup
+     - log.user_data.BackupPath: $~event_channel.Event.UserData.AutoBackup.BackupPath.#text
+     - log.user_data.Channel: $~event_channel.Event.UserData.AutoBackup.Channel.#text
+
  - check: 
       - ~temp.id_related_user: +a_contains/$event.code
    map:
@@ -293,7 +299,15 @@ normalize:
      - event.related.ip: $event.source.ip
 
  # Object Policy Change and SidListDesc
- # - check: event.code==4670 OR event.code==4817 OR event.code==4907 OR event.code==4808
+ # Cant be correctly parsed, at least keep recors from original log
+  - check: event.code==4670 OR event.code==4817 OR event.code==4907 OR event.code==4808
+    map:
+     - log.NewSd: $~event_channel.Event.EventData.NewSd
+     - log.OldSd: $~event_channel.Event.EventData.OldSd
+     - log.ObjectType: $~event_channel.Event.EventData.ObjectType
+     - log.ObjectServer: $~event_channel.Event.EventData.ObjectServer
+     - log.ObjectName: $~event_channel.Event.EventData.ObjectName
+
 
 # Cleanup
  - map:
