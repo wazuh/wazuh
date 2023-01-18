@@ -12,8 +12,10 @@ metadata:
     - v12
     - v11
 
+sources:
+  - decoder/queue-localfile/0
+
 check:
-  - wazuh.queue: 49
   - event.original: +ef_exists
 
 parse:
@@ -42,10 +44,6 @@ normalize:
       - input.type: log                   #assumed fixed value
       - postgresql.log.timestamp: $~timestamp
       - service.type: postgresql
-
-      #Getting timezone from timestamp (third position after spliting it)
-      - ~tmp.timestamp_array: "+s_to_array/$~timestamp/ "
-      - event.timezone: $_tmp.timestamp_array/2
 
       - log.level: +ef_rename/$~csv.log_level
       - postgresql.internal_query: +ef_rename/$~csv.internal_query
