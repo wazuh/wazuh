@@ -138,7 +138,7 @@
 <decoder name="ms-dhcp-ipv4">
   <prematch>^\d\d,\d+/\d+/\d\d\d\d,\d+:\d+:\d+,|</prematch>
   <prematch>^\d\d,\d+/\d+/\d\d,\d+:\d+:\d+,</prematch>
-  <regex>^(\d\d),\d+/\d+/\d\d\d*,\d+:\d+:\d+,(\w+),(\S+)</regex>
+  <regex>^(\d\d),\d+/\d+/\d\d\d*,\d+:\d+:\d+,(\w+),(\d+.\d+.\d+.\d+),</regex>
   <order>id,extra_data,srcip</order>
 </decoder>
 
