@@ -14,12 +14,14 @@ metadata:
     - https://techdocs.f5.com/kb/en-us/products/big-ip_apm/manuals/product/apm-network-access-12-1-0/10.html
 
 sources:
-  - decoder/queue-syslog/0
-  - decoder/queue-localfile/0
+  - decoder/f5-apm-base/0
 
 parse:
+
   logpar:
-  - event.original: <~> <@timestamp/%Y\/%m\/%d %T> <~> <log.level> <~>[<process.pid>]<~/ignore/:> <event.code> <~/ignore/:><~> <~log_session_id>:<~/ignore/:> <~>:<~/ignore/:> <~>'<~tmp_user>' <~>:<~/ignore/:> <~>, <~>. <~tmp_result> <~>
+  # https://support.f5.com/csp/article/K11473
+   - event.outcome: <event.code> <~/ignore/:><~> <~log_session_id>:<~/ignore/:> <~>:<~/ignore/:> <~>'<~tmp_user>' <~>:<~/ignore/:> <~>, <~>. <~tmp_result> <~>
+
 normalize:
   - map:
     - event.dataset : f5.bigipam

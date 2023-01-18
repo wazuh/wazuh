@@ -2,8 +2,6 @@ name: environment/wazuh/0
 
 decoders:
   # First level decoders by queue
-
-  - decoder/f5-apm/0
   - decoder/queue-syscollector/0
   - decoder/queue-sca/0
   - decoder/queue-fim/0
@@ -61,6 +59,9 @@ decoders:
 
   # Service decoders
   - decoder/syslog/0
+
+  - decoder/f5-apm-base/0
+  - decoder/f5-apm/0
 
 outputs:
   - output/file-output/0

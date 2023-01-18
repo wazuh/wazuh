@@ -1,0 +1,132 @@
+---
+name: decoder/f5-apm-base/0
+
+metadata:
+  module: f5
+  title: f5 APM Decoder Base
+  description: Decodes HEADER F5 BIG-IP Access Policy Manager logs
+  compatibility: >
+    This decoder is under development.
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/10
+  references:
+    - TBD
+
+sources:
+  - decoder/queue-syslog/0
+  - decoder/queue-localfile/0
+
+parse:
+  logpar:
+    - event.original: <~> <@timestamp/%Y\/%m\/%d %T> <~> <log.level> <~payload>
+
+normalize:
+  - map:
+      - event.dataset : f5.bigipam
+      - event.module : f5
+      - event.type : log
+      - rsa.misc.severity : $log.level
+      - rsa.time.event_time : $@timestamp
+      - fileset.name : bigipam
+      - observer.product : Big-IP
+      - observer.type : Access
+      - observer.vendor : F5
+      - service.type : f5
+      - tags : +a_append/$event.dataset
+      - tags : +a_append/forwarded
+
+
+parse:
+  logpar:
+    # ------------------------------
+    # crond 
+    # ------------------------------
+    # March 2016/03/12 03:17:42 seq high crond[5738]: (ccaecat) veleumi
+    # July 2016/07/18 18:40:50 lum high CROND[1675]: (sitvolup) CMD (cancel)
+    # January 2019/01/19 13:25:23 volup very-high crond[4071]: (iconsequ) CMD (block)
+    # April 2019/04/29 14:43:23 Nequepo high CROND[2977]: (emac) CMD (cancel)
+    - ~payload: <event.provider>[<process.pid>]:<~/ignore/ >\(<~tmp.user_name>\) (?CMD \(<~tmp.user_command>\))<?~tmp.rsa_index>
+
+    # ------------------------------
+    # 011f0005
+    # ------------------------------
+    # March 2017/03/04 11:21:59 unte very-high ueipsa[748]: 011f0005: :cti: failure (Client side: vip=https://www5.example.com/olli/rever.html?rsp=oluptat#metco profile=ipv6-icmp pool=edolorin client_ip=10.104.110.134)
+    - ~payload: <~>[<process.pid>]<~/ignore/:> <event.provider>:<~/ignore/ ><~/ignore/:><~>:<~/ignore/ ><~tmp.rsa_misc_result> <~/literal/(Client side:><~/ignore/ >vip=<~url/uri> profile=<network.protocol> pool=<~> client_ip=<source.ip>\)
+
+    # ------------------------------
+    # 01490107
+    # ------------------------------
+    # mip[5899]: 01490107: :lamc: mvolupta: AD module: authentication with 'Utenima' failed: Clients credentials have been revoked, principal name: iqua@luptat2979.internal.local. unknown cididu
+    # laudan[7589]: 01490107: :oconse: mag: AD module: authentication with 'tob' failed: Client 'dolores2519.mail.host' not found in Kerberos database, principal name:deF itempo
+    - ~payload: <~>[<process.pid>]<~/ignore/:> <event.provider>:<~/ignore/:> :<~> <~tmp.log_session_id>:<~/ignore/:> <~>'<~tmp.user>' <~>Client '<~tmp.rsa_web_fqdn>' <~>name:<~> <~tmp.rsa_db_index>
+    - ~payload: <~>[<process.pid>]<~/ignore/:> <event.provider>:<~/ignore/:> :<~> <~tmp.log_session_id>:<~/ignore/:> <~>Clients <~> name:<~tmp.user>@<~tmp.rsa_web_fqdn> <~tmp.rsa_misc_result> <~>
+    
+    # ------------------------------
+    # 01490106
+    # ------------------------------
+    # December 2019/12/14 07:24:31 olupta medium oremagn[2121]: 01490106: :itseddo: uptatev: AD module: authentication with 'oditem' failed in allow: Preauthentication failed, principal name: inimaven. failure olor
+    - ~payload: <~>[<process.pid>]<~/ignore/:> <event.provider>:<~>:<~/ignore/ ><~tmp.log_session_id>:<~/ignore/:> <~>:<~/ignore/:> <~>'<~tmp.user>' <~>:<~/ignore/:> <~>, <~>. <~tmp.rsa_misc_result> <~>
+
+
+
+    # ------------------------------
+    # syslog-ng 
+    # ------------------------------
+    # November 2019/11/01 10:16:48 erc low tasnu: [syslog-ng]
+    - ~payload: <~tmp.rsa_misc_client>:<~/ignore/:> [<event.provider>]
+    # June 2018/06/04 20:44:15 lorumw high tdolo[3872]: syslog-ng: 
+    - ~payload: <~tmp.rsa_misc_client>[<process.pid>]:<~/ignore/ ><event.provider>:<~/ignore/ >
+    # April 2018/04/08 16:33:58 liq low mvolupta: syslog-ng: 
+    - ~payload: <~tmp.rsa_misc_client>:<~/ignore/:> <event.provider>:<~/ignore/ >
+    # March 2017/03/18 18:24:33 ptasnula high syslog-ng[2638]: ill
+    - ~payload: <event.provider>[<process.pid>]:<~/ignore/ ><~tmp.rsa_misc_client>
+
+normalize:
+  # crond
+  - check: event.provider==crond OR event.provider==CROND
+    map:
+      - ~tmp_cron : +ef_delete
+      - rsa.internal.messageid : crond
+      - rsa.misc.action : +a_append/$~tmp.user_command
+      - user.name : +ef_rename/$~tmp.user_name
+
+  # syslog-ng
+  - check: event.provider==syslog-ng
+    map:
+      - rsa.internal.messageid : syslog-ng
+      - rsa.misc.client : +ef_rename/$~tmp.rsa_misc_client
+
+  # 011f0005
+  - check: event.provider==011f0005
+    map:
+      - rsa.internal.messageid : $event.provider
+      - rsa.misc.log_session_id : +ef_rename/$~tmp.log_session_id
+      - url : +ef_rename/$~url
+
+  # F5 APM CATEGORY : 01490106
+  - check: event.provider==01490106
+    map:
+      - ~tmp_f5_01490106 : +ef_delete
+      - rsa.internal.messageid : $event.provider
+      - related.user : +ef_rename/$~tmp.user
+      - user.name : $related.user
+      - rsa.misc.result : +ef_rename/$~tmp.rsa_misc_result
+      - rsa.misc.log_session_id : +ef_rename/$~tmp.log_session_id
+
+  # F5 APM CATEGORY : 01490107
+  - check: event.provider==01490107
+    map:
+      - ~tmp_f5_01490106 : +ef_delete
+      - rsa.internal.messageid : $event.provider
+      - related.user : +ef_rename/$~tmp.user
+      - user.name : $related.user
+      - rsa.misc.result : +ef_rename/$~tmp.rsa_misc_result
+      - rsa.misc.log_session_id : +ef_rename/$~tmp.log_session_id
+      - rsa.web.fqdn : +ef_rename/$~tmp.rsa_web_fqdn
+      - rsa.db.index : +ef_rename/$~tmp.rsa_db_index
+      - related.hosts : +a_append/$rsa.web.fqdn
+
+ # - map :
+   #- ~payload : +ef_delete
+   #- ~tmp : +ef_delete
