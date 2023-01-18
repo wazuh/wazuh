@@ -566,12 +566,17 @@ def runTests(moduleName):
                                             path=utils.rootPath())
                     libgcc = utils.findFile(name="libgcc_s_dw2-1.dll",
                                             path=utils.rootPath())
-                    shutil.copyfile(libgcc,
-                                    os.path.join(rootPath,
-                                                 "libgcc_s_dw2-1.dll"))
-                    shutil.copyfile(stdcpp,
-                                    os.path.join(rootPath,
-                                                 "libstdc++-6.dll"))
+                    binstdcpp = os.path.join(rootPath,
+                                             "libstdc++-6.dll")
+                    binlibgcc = os.path.join(rootPath,
+                                             "libgcc_s_dw2-1.dll")
+
+                    if stdcpp != binstdcpp:
+                        shutil.copyfile(stdcpp, binstdcpp)
+
+                    if libgcc != binlibgcc:
+                        shutil.copyfile(libgcc, binlibgcc)
+
                 command = f'WINEPATH="/usr/i686-w64-mingw32/lib;\
                             {utils.currentPath()}" \
                             WINEARCH=win64 /usr/bin/wine {path}'
