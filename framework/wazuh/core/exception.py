@@ -50,6 +50,9 @@ class WazuhException(Exception):
         1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
         1018: 'Body request is not a valid JSON',
         1019: 'Error trying to create backup file',
+        1020: {'message': 'Could not find any Wazuh log file',
+               'remediation': 'Please check `WAZUH_HOME/logs`'},
+
         # Configuration: 1100 - 1199
         1101: {'message': 'Requested component does not exist',
                'remediation': 'Run `WAZUH_PATH/bin/wazuh-logtest -t` to check your configuration'},
