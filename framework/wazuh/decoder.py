@@ -250,12 +250,16 @@ def upload_decoder_file(filename: str, content: str, overwrite: bool = False) ->
     try:
         if len(content) == 0:
             raise WazuhError(1112)
-
-        validate_wazuh_xml(content)
+        if exists(join(common.DECODERS_PATH, filename)):
+            full_path = join(common.DECODERS_PATH, filename)
+            raise WazuhError(1914)
         # If file already exists and overwrite is False, raise exception
         if not overwrite and exists(full_path):
             raise WazuhError(1905)
-        elif overwrite and exists(full_path):
+
+        validate_wazuh_xml(content)
+
+        if overwrite and exists(full_path):
             backup_file = f'{full_path}.backup'
             delete_file_with_backup(backup_file, full_path, delete_decoder_file)
 
