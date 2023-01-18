@@ -254,6 +254,10 @@ normalize:
      - user.domain: $~event_channel.Event.UserData.LogFileCleared.SubjectDomainName.#text
      - log.logon.id: $~event_channel.Event.UserData.LogFileCleared.SubjectLogonId.#text
      - log.task: Log clear
+     # If we wanted to alert about this event - How the rule would look:
+     # - alert.description: Windows audit log was cleared.
+     # - alert.level: 9
+
 
 # Rename Common Auth Fields
  - check:
@@ -300,8 +304,8 @@ normalize:
 
  # Object Policy Change and SidListDesc
  # Cant be correctly parsed, at least keep recors from original log
-  - check: event.code==4670 OR event.code==4817 OR event.code==4907 OR event.code==4808
-    map:
+ - check: event.code==4670 OR event.code==4817 OR event.code==4907 OR event.code==4808
+   map:
      - log.NewSd: $~event_channel.Event.EventData.NewSd
      - log.OldSd: $~event_channel.Event.EventData.OldSd
      - log.ObjectType: $~event_channel.Event.EventData.ObjectType
@@ -312,4 +316,4 @@ normalize:
 # Cleanup
  - map:
    - ~temp: +ef_delete
-  # - ~event_channel: +ef_delete
+   - ~event_channel: +ef_delete
