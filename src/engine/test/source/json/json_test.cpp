@@ -1762,7 +1762,7 @@ TEST(JsonSettersTest, MergeObjRoot)
         }
     })"};
 
-    ASSERT_NO_THROW(jObjDst.merge(jObjSrc));
+    ASSERT_NO_THROW(jObjDst.merge(json::NOT_RECURSIVE, jObjSrc));
     ASSERT_EQ(jObjDst, jObjExpected);
 }
 
@@ -1797,7 +1797,7 @@ TEST(JsonSettersTest, MergeObjNested)
         }
     })"};
 
-    ASSERT_NO_THROW(jObjDst.merge(jObjSrc, "/key6"));
+    ASSERT_NO_THROW(jObjDst.merge(json::NOT_RECURSIVE, jObjSrc, "/key6"));
     ASSERT_EQ(jObjDst, jObjExpected);
 }
 
@@ -1833,7 +1833,7 @@ TEST(JsonSettersTest, MergeArrayRoot)
         }
     ])"};
 
-    ASSERT_NO_THROW(jArrayDst.merge(jArraySrc));
+    ASSERT_NO_THROW(jArrayDst.merge(json::NOT_RECURSIVE, jArraySrc));
     ASSERT_EQ(jArrayDst, jArrayExpected);
 }
 
@@ -1873,7 +1873,7 @@ TEST(JsonSettersTest, MergeArrayNested)
         ]
     })"};
 
-    ASSERT_NO_THROW(jArrayDst.merge(jArraySrc, "/key1"));
+    ASSERT_NO_THROW(jArrayDst.merge(json::NOT_RECURSIVE, jArraySrc, "/key1"));
     ASSERT_EQ(jArrayDst, jArrayExpected);
 }
 
@@ -1910,14 +1910,14 @@ TEST(JsonSettersTest, MergeFailCases)
     Json jOtherDst {R"("value")"};
 
     // Invalid pointer
-    ASSERT_THROW(jObjDst.merge(jObjSrc, "object/key"), std::runtime_error);
+    ASSERT_THROW(jObjDst.merge(json::NOT_RECURSIVE, jObjSrc, "object/key"), std::runtime_error);
 
     // Different types
-    ASSERT_THROW(jObjDst.merge(jArrSrc), std::runtime_error);
-    ASSERT_THROW(jArrDst.merge(jObjSrc), std::runtime_error);
+    ASSERT_THROW(jObjDst.merge(json::NOT_RECURSIVE, jArrSrc), std::runtime_error);
+    ASSERT_THROW(jArrDst.merge(json::NOT_RECURSIVE, jObjSrc), std::runtime_error);
 
     // Merging into a non-object non-array
-    ASSERT_THROW(jOtherDst.merge(jOtherSrc), std::runtime_error);
+    ASSERT_THROW(jOtherDst.merge(json::NOT_RECURSIVE, jOtherSrc), std::runtime_error);
 }
 
 TEST(JsonSettersTest, MergeObjRootRef)
@@ -1949,7 +1949,7 @@ TEST(JsonSettersTest, MergeObjRootRef)
         }
     })"};
 
-    ASSERT_NO_THROW(jObjDst.merge("/to_merge"));
+    ASSERT_NO_THROW(jObjDst.merge(json::NOT_RECURSIVE, "/to_merge"));
 }
 
 TEST(JsonSettersTest, MergeObjNestedRef)
@@ -1982,7 +1982,7 @@ TEST(JsonSettersTest, MergeObjNestedRef)
         }
     })"};
 
-    ASSERT_NO_THROW(jObjDst.merge("/to_merge", "/key6"));
+    ASSERT_NO_THROW(jObjDst.merge(json::NOT_RECURSIVE, "/to_merge", "/key6"));
     ASSERT_EQ(jObjDst, jObjExpected);
 }
 
@@ -2004,7 +2004,7 @@ TEST(JsonSettersTest, MergeArrayRootRef)
         ]}
     ])"};
 
-    ASSERT_THROW(jArrayDst.merge("/to_merge"), std::runtime_error);
+    ASSERT_THROW(jArrayDst.merge(json::NOT_RECURSIVE, "/to_merge"), std::runtime_error);
 }
 
 TEST(JsonSettersTest, MergeArrayNestedRef)
@@ -2042,7 +2042,7 @@ TEST(JsonSettersTest, MergeArrayNestedRef)
         ]
     })"};
 
-    ASSERT_NO_THROW(jArrayDst.merge("/to_merge", "/key1"));
+    ASSERT_NO_THROW(jArrayDst.merge(json::NOT_RECURSIVE, "/to_merge", "/key1"));
     ASSERT_EQ(jArrayDst, jArrayExpected);
 }
 
@@ -2068,16 +2068,16 @@ TEST(JsonSettersTest, MergeRefFailCases)
     })"};
 
     // Invalid pointer
-    ASSERT_THROW(jObjDst.merge("/object/key"), std::runtime_error);
+    ASSERT_THROW(jObjDst.merge(json::NOT_RECURSIVE, "/object/key"), std::runtime_error);
 
     // Destination not found
-    ASSERT_THROW(jObjDst.merge("/to_non_merge_obj"), std::runtime_error);
+    ASSERT_THROW(jObjDst.merge(json::NOT_RECURSIVE, "/to_non_merge_obj"), std::runtime_error);
 
     // Different types
-    ASSERT_THROW(jObjDst.merge("/to_merge_arr"), std::runtime_error);
+    ASSERT_THROW(jObjDst.merge(json::NOT_RECURSIVE, "/to_merge_arr"), std::runtime_error);
 
     // Merging into a non-object non-array
-    ASSERT_THROW(jObjDst.merge("/to_merge_obj", "/key1"), std::runtime_error);
+    ASSERT_THROW(jObjDst.merge(json::NOT_RECURSIVE, "/to_merge_obj", "/key1"), std::runtime_error);
 }
 
 // json getJson test
@@ -2193,4 +2193,106 @@ TEST(getJsonTest, invalidPath)
     })"};
 
     ASSERT_THROW(j.getJson("key3~"), std::runtime_error);
+}
+
+TEST(JsonSettersTest, MergeRecursiveObjRoot)
+{
+    Json jObjDst {R"({
+        "field1": {
+            "field11": 11,
+            "field12": "value12",
+            "field13": {
+                "field131": "value131",
+                "field132": [404, true, null, "arrayValue132"]
+            }
+        },
+        "field3": {
+            "field31": {
+                "field311": "value311",
+                "field312": 3.12,
+                "field313": {
+                    "field3131": true,
+                    "field3133": 10071992,
+                    "field3134": [911, true, null],
+                    "field3135": {
+                        "field31351": "value31351",
+                        "field31352": 31352,
+                        "field31353": [31353]
+                    }
+                }
+            }
+        },
+        "field4": {
+            "field41": 41
+        }
+    })"};
+
+    Json jObjSrc {R"({
+        "field1": {
+            "field12": "new_value12",
+            "field13": {
+                "field131": "value131",
+                "field132": [404, null, "newArrayValue132", false, 0.07],
+                "field133": null
+            },
+            "field14": "value14"
+        },
+        "field2": {
+            "field21": "value21"
+        },
+        "field3": {
+            "field31": {
+                "field311": "new_value311",
+                "field313": {
+                    "field3132": "value3132",
+                    "field3133": 91218,
+                    "field3134": [null, "arrayValue3134"],
+                    "field3135": {
+                        "field31351": "newValue31351",
+                        "field31352": 31352,
+                        "field31353": [31353, true]
+                    }
+                }
+            }
+        }
+    })"};
+
+    Json jObjExpected {R"({
+            "field1": {
+                "field11": 11,
+                "field12": "new_value12",
+                "field13": {
+                    "field131": "value131",
+                    "field132": [404, true, null, "arrayValue132", "newArrayValue132", false, 0.07],
+                    "field133": null
+                },
+                "field14": "value14"
+            },
+            "field2": {
+                "field21": "value21"
+            },
+            "field3": {
+                "field31": {
+                    "field311": "new_value311",
+                    "field312": 3.12,
+                    "field313": {
+                        "field3131": true,
+                        "field3132": "value3132",
+                        "field3133": 91218,
+                        "field3134": [911, true, null, "arrayValue3134"],
+                        "field3135": {
+                            "field31351": "newValue31351",
+                            "field31352": 31352,
+                            "field31353": [31353, true]
+                        }
+                    }
+                }
+            },
+            "field4": {
+                "field41": 41
+            }
+    })"};
+
+    ASSERT_NO_THROW(jObjDst.merge(json::RECURSIVE, jObjSrc));
+    ASSERT_EQ(jObjDst, jObjExpected);
 }
