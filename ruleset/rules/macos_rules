@@ -83,16 +83,4 @@
     <description>Session $(sessionId) has been destroyed</description>
   </rule>
 
-  <rule id="110011" level="5">
-    <decoded_as>macOS_securityd_process</decoded_as>
-    <match type="pcre2">(?i)killing auth hosts</match>
-    <description>Killing auth hosts for session $(sessionId)</description>
-  </rule>
- 
-  <rule id="110012" level="5">
-    <decoded_as>macOS_securityd_process</decoded_as>
-    <match type="pcre2">(?i)killing session</match>
-    <description>Killing session $(sessionId)</description>
-  </rule>
-
 </group>
