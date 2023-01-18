@@ -4,45 +4,14 @@ name: decoder/aws-cloudtrail/0
 metadata:
   description: Decoder for AWS CloudTrail Logs
   references:
+    - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference-record-contents.html
     - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-examples.html
   product.name: AWS CloudTrail
 
 # Example of Wazuh's integration with AWS Cloudtrail log:
-# {
-#   "aws": {
-#     "source": "cloudtrail",
-#     "eventVersion": "some-event-version",
-#     "eventID": "some-event-id",
-#     "eventTime": "2018-08-24T17:20:08Z",
-#     "log_file": "some-log-file.json.gz",
-#     "additionalEventData": {
-#       "MFAUsed": "No",
-#       "LoginTo": "https://console.aws.amazon.com/console/home",
-#       "MobileVersion": "No"
-#     },
-#     "eventType": "AwsConsoleSignIn",
-#     "errorMessage": "Failed authentication",
-#     "responseElements": {
-#       "ConsoleLogin": "Failure"
-#     },
-#     "awsRegion": "us-east-1",
-#     "eventName": "ConsoleLogin",
-#     "userIdentity": {
-#       "userName": "some-user-name",
-#       "accessKeyId": "some-access-key",
-#       "type": "IAMUser",
-#       "principalId": "some-principal-id",
-#       "accountId": "0303456"
-#     },
-#     "eventSource": "signin.amazonaws.com",
-#     "userAgent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0",
-#     "sourceIPAddress": "7.222.123.101",
-#     "recipientAccountId": "1020304050607080"
-#   },
-#   "integration": "aws"
-# }
+# {"aws":{"source":"cloudtrail","eventVersion":"some-event-version","eventID":"some-event-id","eventTime":"2018-08-24T17:20:08Z","log_file":"some-log-file.json.gz","additionalEventData":{"MFAUsed":"No","LoginTo":"https://console.aws.amazon.com/console/home","MobileVersion":"No"},"eventType":"AwsConsoleSignIn","errorMessage":"Failed authentication","responseElements":{"ConsoleLogin":"Failure"},"awsRegion":"us-east-1","eventName":"ConsoleLogin","userIdentity":{"userName":"some-user-name","accessKeyId":"some-access-key","type":"IAMUser","principalId":"some-principal-id","accountId":"0303456"},"eventSource":"signin.amazonaws.com","userAgent":"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0","sourceIPAddress":"7.222.123.101","recipientAccountId":"1020304050607080"},"integration":"aws"}
 
-parents:
+sources:
   - decoder/aws/0
 
 check:
@@ -50,114 +19,128 @@ check:
 
 normalize:
   - check:
-      - _json.aws.previousDigestHashAlgorithm: +s_eq/SHA-256
+      - ~json.aws.previousDigestHashAlgorithm: +s_eq/SHA-256
     map:
-      - file.hash.sha256: $_json.aws.previousDigestSignature
-
-  - check:
-      - _json.aws.userIdentity.accountId: +ef_not_exists
-    map:
-      - cloud.account.id: $_json.aws.awsAccountId
-
-  - check:
-      - _json.aws.userIdentity.accountId: +ef_exists
-    map:
-      - cloud.account.id: $_json.aws.userIdentity.accountId
-
-  - check:
-      - _json.aws.userIdentity.userName: +ef_not_exists
-    map:
-      - user.name: $_json.aws.userIdentity.sessionContext.sessionIssuer.userName
-
-  - check:
-      - _json.aws.userIdentity.userName: +ef_exists
-    map:
-      - user.name: $_json.aws.userIdentity.userName
+      - file.hash.sha256: $~json.aws.previousDigestSignature
 
   - map:
-      - aws.cloudtrail.additional_eventdata: $_json.aws.additionalEventData
-      - aws.cloudtrail.api_version: $_json.aws.apiVersion
-      - aws.cloudtrail.digest.end_time: $_json.aws.digestEndTime
-      - aws.cloudtrail.digest.log_files: $_json.aws.logFiles
-      - aws.cloudtrail.digest.newest_event_time: $_json.aws.newestEventTime
-      - aws.cloudtrail.digest.oldest_event_time: $_json.aws.oldestEventTime
-      - aws.cloudtrail.digest.previous_hash_algorithm: $_json.aws.previousDigestHashAlgorithm
-      - aws.cloudtrail.digest.previous_s3_bucket: $_json.aws.previousDigestS3Bucket
-      - aws.cloudtrail.digest.public_key_fingerprint: $_json.aws.publicKeyFingerprint
-      - aws.cloudtrail.digest.s3_bucket: $_json.aws.digestEndTime
-      - aws.cloudtrail.digest.signature_algorithm: $_json.aws.digestSignatureAlgorithm
-      - aws.cloudtrail.digest.start_time: $_json.aws.digestStartTime
-      - aws.cloudtrail.error_code: $_json.aws.errorCode
-      - aws.cloudtrail.error_message: $_json.aws.errorMessage
-      - aws.cloudtrail.event_category: $_json.aws.eventCategory
-      - aws.cloudtrail.event_type: $_json.aws.eventType
-      - aws.cloudtrail.event_version: $_json.aws.eventVersion
-      - aws.cloudtrail.flattened.response_elements.ConsoleLogin: $_json.aws.responseElements.ConsoleLogin
-      - aws.cloudtrail.insight_details: $_json.aws.insightDetails
-      - aws.cloudtrail.management_event: $_json.aws.managementEvent
-      - aws.cloudtrail.read_only: $_json.aws.readOnly
-      - aws.cloudtrail.recipient_account_id: $_json.aws.recipientAccountId
-      - aws.cloudtrail.request_id: $_json.aws.requestId
-      - aws.cloudtrail.request_parameters: $_json.aws.requestParameters
-      - aws.cloudtrail.resources.account_id: $_json.aws.resources.accountId
-      - aws.cloudtrail.resources.arn: $_json.aws.resources.ARN
-      - aws.cloudtrail.resources.type: $_json.aws.resources.type
-      - aws.cloudtrail.response_elements: $_json.aws.responseElements
-      - aws.cloudtrail.service_event_details: $_json.aws.serviceEventDetails
-      - aws.cloudtrail.shared_event_id: $_json.aws.sharedEventId
-      - aws.cloudtrail.user_identity.access_key_id: $_json.aws.userIdentity.accessKeyId
-      - aws.cloudtrail.user_identity.arn: $_json.aws.userIdentity.arn
-      - aws.cloudtrail.user_identity.invoked_by: $_json.aws.userIdentity.invokedBy
-      - aws.cloudtrail.user_identity.session_context.creation_date: $_json.aws.userIdentity.sessionContext.attributes.creationDate
-      - aws.cloudtrail.user_identity.session_context.mfa_authenticated: $_json.aws.userIdentity.sessionContext.attributes.mfaAuthenticated
-      - aws.cloudtrail.user_identity.session_context.session_issuer.account_id: $_json.aws.userIdentity.sessionContext.sessionIssuer.accountId
-      - aws.cloudtrail.user_identity.session_context.session_issuer.arn: $_json.aws.userIdentity.sessionContext.sessionIssuer.arn
-      - aws.cloudtrail.user_identity.session_context.session_issuer.principal_id: $_json.aws.userIdentity.sessionContext.sessionIssuer.principalId
-      - aws.cloudtrail.user_identity.type: $_json.aws.userIdentity.type
-      - aws.cloudtrail.vpc_endpoint_id: $_json.aws.vpcEndpointId
+      - cloud.account.id: $~json.aws.userIdentity.accountId
+  - check:
+      - ~json.aws.awsAccountId: +ef_exists
+    map:
+      - cloud.account.id: $~json.aws.awsAccountId
 
-      - cloud.region: $_json.aws.awsRegion
+  - map:
+      - user.name: $~json.aws.userIdentity.sessionContext.sessionIssuer.userName
+  - check:
+      - ~json.aws.userIdentity.userName: +ef_exists
+    map:
+      - user.name: $~json.aws.userIdentity.userName
 
-      - event.action: $_json.aws.eventName
-      - event.id: $_json.aws.eventID
-      - event.provider: $_json.aws.eventSource
+  - map:
+      - aws.cloudtrail.additional_eventdata: $~json.aws.additionalEventData
+      - aws.cloudtrail.api_version: $~json.aws.apiVersion
+      - aws.cloudtrail.digest.end_time: $~json.aws.digestEndTime
+      - aws.cloudtrail.digest.log_files: $~json.aws.logFiles
+      - aws.cloudtrail.digest.newest_event_time: $~json.aws.newestEventTime
+      - aws.cloudtrail.digest.oldest_event_time: $~json.aws.oldestEventTime
+      - aws.cloudtrail.digest.previous_hash_algorithm: $~json.aws.previousDigestHashAlgorithm
+      - aws.cloudtrail.digest.previous_s3_bucket: $~json.aws.previousDigestS3Bucket
+      - aws.cloudtrail.digest.public_key_fingerprint: $~json.aws.publicKeyFingerprint
+      - aws.cloudtrail.digest.s3_bucket: $~json.aws.digestS3Bucket
+      - aws.cloudtrail.digest.signature_algorithm: $~json.aws.digestSignatureAlgorithm
+      - aws.cloudtrail.digest.start_time: $~json.aws.digestStartTime
+      - aws.cloudtrail.error_code: $~json.aws.errorCode
+      - aws.cloudtrail.error_message: $~json.aws.errorMessage
+      - aws.cloudtrail.event_category: $~json.aws.eventCategory
+      - aws.cloudtrail.event_type: $~json.aws.eventType
+      - aws.cloudtrail.event_version: $~json.aws.eventVersion
+      - aws.cloudtrail.insight_details: $~json.aws.insightDetails
+      - aws.cloudtrail.management_event: $~json.aws.managementEvent
+      - aws.cloudtrail.read_only: $~json.aws.readOnly
+      - aws.cloudtrail.recipient_account_id: $~json.aws.recipientAccountId
+      - aws.cloudtrail.request_id: $~json.aws.requestId
+      - aws.cloudtrail.request_parameters: $~json.aws.requestParameters
+      - aws.cloudtrail.resources.account_id: $~json.aws.resources.accountId
+      - aws.cloudtrail.resources.arn: $~json.aws.resources.ARN
+      - aws.cloudtrail.resources.type: $~json.aws.resources.type
+      - aws.cloudtrail.response_elements: $~json.aws.responseElements
+      - aws.cloudtrail.service_event_details: $~json.aws.serviceEventDetails
+      - aws.cloudtrail.shared_event_id: $~json.aws.sharedEventId
+      - aws.cloudtrail.user_identity.access_key_id: $~json.aws.userIdentity.accessKeyId
+      - aws.cloudtrail.user_identity.arn: $~json.aws.userIdentity.arn
+      - aws.cloudtrail.user_identity.invoked_by: $~json.aws.userIdentity.invokedBy
+      - aws.cloudtrail.user_identity.session_context.creation_date: $~json.aws.userIdentity.sessionContext.attributes.creationDate
+      - aws.cloudtrail.user_identity.session_context.mfa_authenticated: $~json.aws.userIdentity.sessionContext.attributes.mfaAuthenticated
+      - aws.cloudtrail.user_identity.session_context.session_issuer.account_id: $~json.aws.userIdentity.sessionContext.sessionIssuer.accountId
+      - aws.cloudtrail.user_identity.session_context.session_issuer.arn: $~json.aws.userIdentity.sessionContext.sessionIssuer.arn
+      - aws.cloudtrail.user_identity.session_context.session_issuer.principal_id: $~json.aws.userIdentity.sessionContext.sessionIssuer.principalId
+      - aws.cloudtrail.user_identity.session_context.session_issuer.type: $~json.aws.userIdentity.sessionContext.sessionIssuer.type
+      - aws.cloudtrail.user_identity.type: $~json.aws.userIdentity.type
+      - aws.cloudtrail.vpc_endpoint_id: $~json.aws.vpcEndpointId
+
+      - cloud.region: $~json.aws.awsRegion
+
+      - event.action: $~json.aws.eventName
+      - event.id: $~json.aws.eventID
+      - event.provider: $~json.aws.eventSource
       - event.outcome: success
 
-      - file.path: $_json.aws.digestS3Object
+      - file.path: $~json.aws.previousDigestS3Object
 
-      - related.hash: $_json.aws.previousDigestSignature
-      - related.user: +s_append/$_json.aws.userIdentity.userName
+      - related.hash: $~json.aws.previousDigestSignature
 
-      - source.address: $_json.aws.sourceIPAddress
-      - source.ip: $_json.aws.sourceIPAddress
+      - related.user: +a_append/$~json.aws.requestParameters.userName
+      - related.user: +a_append/$~json.aws.cloudtrail.flattened.request_parameters.userName
+      - related.user: +a_append/$~json.aws.requestParameters.newUserName
+      - related.user: +a_append/$~json.aws.cloudtrail.flattened.request_parameters.newUserName
+
+      - source.address: $~json.aws.sourceIPAddress #TODO: does it add any value to parse it with ip?
+      - source.ip: $~json.aws.sourceIPAddress
       # TODO: implement geolocalization
       # source.geo: +geo/$source.ip
       # source.as: +geo/$source.ip # database_file: GeoLite2-ASN.mmdb | properties:[asn, organization_name]
 
-      - timestamp: $_json.aws.eventTime
+      - timestamp: $~json.aws.eventTime
 
-      - user_agent: $_json.aws.userAgent
-      - user_agent.original: $_json.aws.userAgent
-      - user.id: $_json.aws.userIdentity.principalId
+      - user_agent: $~json.aws.userAgent
+      - user_agent.original: $~json.aws.userAgent
+      - user.id: $~json.aws.userIdentity.principalId
 
-      # TODO: check the "scripts" and assignments related to "flattened" fields
-
-      - _json: +ef_delete
-
+  # Flattened
   - check:
-      - aws.cloudtrail.error_code: +t_is_not_null
+      # TODO: actually here we should check for each field if it size is less than 32766
+      - aws.cloudtrail.request_parameters: +ef_exists
     map:
-      - _aws_is_failure: true
+      - aws.cloudtrail.flattened.requestParameters: $~json.aws.requestParameters
+      - aws.cloudtrail.flattened.responseElements: $~json.aws.responseElements
+      - aws.cloudtrail.flattened.additionalEventData: $~json.aws.additionalEventData
+      - aws.cloudtrail.flattened.serviceEventDetails: $~json.aws.serviceEventDetails
+      - aws.cloudtrail.flattened.response_elements.ConsoleLogin: $~json.aws.responseElements.ConsoleLogin
+      - aws.cloudtrail.flattened.additionalEventData.login_to: $~json.aws.additionalEventData.MobileVersion.LoginTo
+      - aws.cloudtrail.flattened.additionalEventData.mobile_version: true
+      - aws.cloudtrail.flattened.additionalEventData.mfa_used: true
+      - user.changes.name: $~json.aws.cloudtrail.flattened.request_parameters.newUserName
+      - user.target.name: $~json.aws.cloudtrail.flattened.request_parameters.userName
+      - group.name: $~json.aws.cloudtrail.flattened.request_parameters.groupName
+      - group.id: $~json.aws.cloudtrail.flattened.response_elements.group.groupId
+      - user.target.id: $~json.aws.cloudtrail.flattened.response_elements.user.userId
+
+  - check: ~json.aws.additionalEventData.MobileVersion==No
+    map:
+      - aws.cloudtrail.flattened.additionalEventData.mobile_version: false
+
+  - check: ~json.aws.additionalEventData.MobileVersion.MFAUsed==No
+    map:
+      - aws.cloudtrail.flattened.additionalEventData.mfa_used: false
+
+  - check: +ef_exists/aws.cloudtrail.error_code OR +ef_exists/aws.cloudtrail.error_message
+    map:
       - event.outcome: failure
 
-  - check:
-      - _aws_is_failure: +ef_exists
-      - aws.cloudtrail.error_message: +t_is_not_null
-    map:
-      - event.outcome: failure
-
-  - check:
-      - event.action: +s_eq/ConsoleLogin
-      - aws.cloudtrail.flattened.response_elements.ConsoleLogin: +t_is_not_null
+  - check: ~json.aws.responseElements.ConsoleLogin==ConsoleLogin
     map:
       - event.outcome: +s_lo/aws.cloudtrail.flattened.response_elements.ConsoleLogin
+
+  - map:
+      - ~json: +ef_delete
