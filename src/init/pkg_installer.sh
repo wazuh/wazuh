@@ -260,7 +260,7 @@ else
 
     # Restore service
     if [ -n "${INIT_PATH}" ]; then
-        chk=$(which chkconfig &> /dev/null)
+        chk=$(which chkconfig)
         if [ -n "$chk" ]; then
             /sbin/chkconfig --add ${SERVICE} >> ./logs/upgrade.log 2>&1
         fi
