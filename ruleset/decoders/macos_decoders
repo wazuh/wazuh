@@ -28,16 +28,10 @@
   <program_name>screensharingd</program_name>
 </decoder>
   
-<decoder name="macOS_screensharingd_success">
-  <parent>macOS_screensharingd</parent>
-  <regex>Authentication: SUCCEEDED :: User Name: (\S+) :: Viewer Address: (\d+.\d+.\d+.\d+) :: Type: (\S+)</regex>
-  <order>dstuser, ip_address, type</order>
-</decoder>
-
 <decoder name="macOS_screensharingd_failure">
   <parent>macOS_screensharingd</parent>
-  <regex>Authentication: FAILED :: User Name: (\S+) :: Viewer Address: (\d+.\d+.\d+.\d+) :: Type: (\S+)</regex>
-  <order>dstuser, ip_address, type</order>
+  <regex>Authentication: (\S+) :: User Name: (\S+) :: Viewer Address: (\d+.\d+.\d+.\d+) :: Type: (\S+)</regex>
+  <order>action, dstuser, ip_address, type</order>
 </decoder>
 
 <decoder name="macOS_securityd_process">
