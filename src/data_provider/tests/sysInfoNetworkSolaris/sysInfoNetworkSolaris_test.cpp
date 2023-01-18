@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * October 28, 2021.
  *
  * This program is free software; you can redistribute it
@@ -148,4 +148,3 @@ TEST_F(SysInfoNetworkSolarisTest, Test_THROW_NULLPTR)
     nlohmann::json ifaddr { };
     EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(nullptr)->buildNetworkData(ifaddr));
 }
-
