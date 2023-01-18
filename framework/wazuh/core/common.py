@@ -216,7 +216,9 @@ SHARED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared')
 
 
 # ================================================= Wazuh path - Misc ==================================================
-OSSEC_LOG = os.path.join(WAZUH_PATH, 'logs', 'ossec.log')
+WAZUH_LOGS = os.path.join(WAZUH_PATH, 'logs')
+WAZUH_LOG = os.path.join(WAZUH_LOGS, 'ossec.log')
+WAZUH_LOG_JSON = os.path.join(WAZUH_LOGS, 'ossec.json')
 DATABASE_PATH = os.path.join(WAZUH_PATH, 'var', 'db')
 DATABASE_PATH_GLOBAL = os.path.join(DATABASE_PATH, 'global.db')
 DATABASE_PATH_AGENTS = os.path.join(DATABASE_PATH, 'agents')
