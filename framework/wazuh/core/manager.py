@@ -7,8 +7,9 @@ import json
 import re
 import socket
 from collections import OrderedDict
+from enum import Enum
 from os.path import exists
-from typing import Dict
+from typing import Dict, Union
 
 from api import configuration
 from wazuh import WazuhInternalError, WazuhError, WazuhException
@@ -20,41 +21,63 @@ from wazuh.core.wazuh_socket import WazuhSocket
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
 
+class LogFormat(Enum):
+    plain = "plain"
+    json = "json"
+
+
 def status() -> dict:
     """Return the Manager processes that are running."""
 
     return get_manager_status()
 
 
-def get_ossec_log_fields(log: str) -> tuple:
+def get_ossec_log_fields(log: str, log_format: LogFormat = LogFormat.plain) -> Union[tuple, None]:
     """Get ossec.log log fields.
 
     Parameters
     ----------
     log : str
         Log example.
+    log_format : LogFormat
+        Wazuh log format.
 
     Returns
     -------
-    tuple
+    tuple or None
         Log fields: timestamp, tag, level, and description.
     """
-    regex_category = re.compile(
-        r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
+    if log_format == LogFormat.plain:
+        regex_category = re.compile(
+            r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
 
-    match = re.search(regex_category, log)
+        match = re.search(regex_category, log)
+        if not match:
+            return None
 
-    if match:
         date = match.group(1)
         tag = match.group(2)
         level = match.group(3)
         description = match.group(4)
 
-        if "rootcheck" in tag:  # Unify rootcheck category
-            tag = "wazuh-rootcheck"
+    elif log_format == LogFormat.json:
+        try:
+            match = json.loads(log)
+        except json.decoder.JSONDecodeError:
+            return None
 
+        try:
+            date = match['timestamp']
+            tag = match['tag']
+            level = match['level']
+            description = match['description']
+        except KeyError:
+            return None
     else:
         return None
+
+    if "rootcheck" in tag:  # Unify rootcheck category
+        tag = "wazuh-rootcheck"
 
     return get_utc_strptime(date, '%Y/%m/%d %H:%M:%S'), tag, level.lower(), description
 
@@ -74,8 +97,17 @@ def get_ossec_logs(limit: int = 2000) -> list:
     """
     logs = []
 
-    for line in tail(common.OSSEC_LOG, limit):
-        log_fields = get_ossec_log_fields(line)
+    if exists(common.WAZUH_LOG):
+        wazuh_log_content = tail(common.WAZUH_LOG, limit)
+        log_format = LogFormat.plain
+    elif exists(common.WAZUH_LOG_JSON):
+        wazuh_log_content = tail(common.WAZUH_LOG_JSON, limit)
+        log_format = LogFormat.json
+    else:
+        raise WazuhInternalError(1020)
+
+    for line in wazuh_log_content:
+        log_fields = get_ossec_log_fields(line, log_format=log_format)
         if log_fields:
             date, tag, level, description = log_fields
 
