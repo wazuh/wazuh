@@ -15,13 +15,14 @@ from api import configuration
 from wazuh import WazuhInternalError, WazuhError, WazuhException
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
+from wazuh.core.configuration import get_active_configuration
 from wazuh.core.utils import tail, get_utc_strptime
 from wazuh.core.wazuh_socket import WazuhSocket
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
 
-class LogFormat(Enum):
+class LoggingFormat(Enum):
     plain = "plain"
     json = "json"
 
@@ -32,14 +33,14 @@ def status() -> dict:
     return get_manager_status()
 
 
-def get_ossec_log_fields(log: str, log_format: LogFormat = LogFormat.plain) -> Union[tuple, None]:
+def get_ossec_log_fields(log: str, log_format: LoggingFormat = LoggingFormat.plain) -> Union[tuple, None]:
     """Get ossec.log log fields.
 
     Parameters
     ----------
     log : str
         Log example.
-    log_format : LogFormat
+    log_format : LoggingFormat
         Wazuh log format.
 
     Returns
@@ -47,7 +48,7 @@ def get_ossec_log_fields(log: str, log_format: LogFormat = LogFormat.plain) -> U
     tuple or None
         Log fields: timestamp, tag, level, and description.
     """
-    if log_format == LogFormat.plain:
+    if log_format == LoggingFormat.plain:
         regex_category = re.compile(
             r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
 
@@ -60,7 +61,7 @@ def get_ossec_log_fields(log: str, log_format: LogFormat = LogFormat.plain) -> U
         level = match.group(3)
         description = match.group(4)
 
-    elif log_format == LogFormat.json:
+    elif log_format == LoggingFormat.json:
         try:
             match = json.loads(log)
         except json.decoder.JSONDecodeError:
@@ -82,6 +83,18 @@ def get_ossec_log_fields(log: str, log_format: LogFormat = LogFormat.plain) -> U
     return get_utc_strptime(date, '%Y/%m/%d %H:%M:%S'), tag, level.lower(), description
 
 
+def get_wazuh_active_logging_format() -> LoggingFormat:
+    """Obtain the Wazuh active logging format.
+
+    Returns
+    -------
+    LoggingFormat
+        Wazuh active log format. Can either be `plain` or `json`. If it has both types, `plain` will be returned.
+    """
+    active_logging = get_active_configuration(agent_id="000", component="com", configuration="logging")['logging']
+    return LoggingFormat.plain if active_logging['plain'] == "yes" else LoggingFormat.json
+
+
 def get_ossec_logs(limit: int = 2000) -> list:
     """Return last <limit> lines of ossec.log file.
 
@@ -97,12 +110,11 @@ def get_ossec_logs(limit: int = 2000) -> list:
     """
     logs = []
 
-    if exists(common.WAZUH_LOG):
+    log_format = get_wazuh_active_logging_format()
+    if log_format == LoggingFormat.plain and exists(common.WAZUH_LOG_JSON):
         wazuh_log_content = tail(common.WAZUH_LOG, limit)
-        log_format = LogFormat.plain
-    elif exists(common.WAZUH_LOG_JSON):
+    elif log_format == LoggingFormat.json and exists(common.WAZUH_LOG_JSON):
         wazuh_log_content = tail(common.WAZUH_LOG_JSON, limit)
-        log_format = LogFormat.json
     else:
         raise WazuhInternalError(1020)
 
