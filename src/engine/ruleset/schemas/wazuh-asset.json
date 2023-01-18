@@ -251,7 +251,7 @@
                     "items": {
                         "allOf": [
                             {
-                                "$ref": "custom-ecs-field.json#"
+                                "$ref": "schemas.json#"
                             },
                             {
                                 "maxProperties": 1
