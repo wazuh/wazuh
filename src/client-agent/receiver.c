@@ -297,10 +297,7 @@ int receive_msg()
                                         }
                                     }
                                 }
-                                int j = 0;
-                                while (*(IGNORE_LIST + j)) {
-                                    free(*(IGNORE_LIST + j++));
-                                }
+                                w_FreeArray(IGNORE_LIST);
                                 os_free(IGNORE_LIST);
                             }
                         } else {
