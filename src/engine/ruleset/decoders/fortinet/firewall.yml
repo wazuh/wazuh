@@ -26,53 +26,86 @@ parse:
     - event.original: <~/literal/<190>>date=<~tmp.date> time=<~tmp.time> logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> logdesc="<rule.description>" srcip=<source.ip> dstip=<destination.ip> policyid=<rule.id> interface="<~tmp.interface>" user="<source.user.name>" group="<source.user.group.name>" authproto="<~tmp.authproto>" action="<event.action>" status="<~tmp.status>" reason="<~>" msg="<message>"
     # <189>date=2020-04-23 time=14:32:09 devname="testswitch3" devid="someotherrouteridagain" logid="0100040704" type="event" subtype="system" level="notice" vd="root" eventtime=1587231129938795255 tz="-0300" logdesc="System performance statistics" action="perf-stats" cpu=0 mem=10 totalsession=23 disk=0 bandwidth="23/4" setuprate=0 disklograte=0 fazlograte=0 freediskstorage=331 sysuptime=25170 msg="Performance statistics: average CPU: 0, memory:  23, concurrent sessions:  20, setup-rate: 0"
     - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" action="<event.action>" cpu=<~tmp.cpu> mem=<~tmp.mem> totalsession=<~tmp.totalsession> disk=<~tmp.disk> bandwidth="<~tmp.bandwidth>" setuprate=<~tmp.setuprate> disklograte=<~tmp.disklograte> fazlograte=<~tmp.fazlograte> freediskstorage=<~tmp.freediskstorage> sysuptime=<~tmp.sysuptime> msg="<message>"
+    # <187>date=2020-04-23 time=12:32:47 devname="testswitch3" devid="someotherrouteridagain" logid="0101037124" type="event" subtype="vpn" level="error" vd="root" eventtime=1587231168339114138 tz="-0500" logdesc="IPsec phase 1 error" msg="IPsec phase 1 error" action="negotiate" remip=8.8.4.4 locip=175.16.199.1 remport=500 locport=500 outintf="wan2" cookies="345hkjhdrs87/0000000000000000" user="N/A" group="N/A" xauthuser="N/A" xauthgroup="N/A" assignip=N/A vpntunnel="N/A" status="negotiate_error" reason="peer SA proposal not match local policy" peer_notif="NOT-APPLICABLE"
+    - event.original: <~/literal/<187>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" msg="<message>" action="<event.action>" remip=<destination.ip> locip=<source.ip> remport=<destination.port> locport=<source.port> outintf="<~tmp.outintf>" cookies="<~tmp.cookies>" user="<~>" group="<~>" xauthuser="<~>" xauthgroup="<~>" assignip=<~> vpntunnel="<~>" status="<~tmp.status>" reason="<event.reason>" peer_notif="<~tmp.peer_notif>"
+    # <189>date=2020-04-23 time=12:32:31 devname="testswitch3" devid="someotherrouteridagain" logid="0101037127" type="event" subtype="vpn" level="notice" vd="root" eventtime=1587231151628960857 tz="-0500" logdesc="Progress IPsec phase 1" msg="progress IPsec phase 1" action="negotiate" remip=8.4.5.4 locip=1.128.3.4 remport=500 locport=500 outintf="wan1" cookies="df868dsg876d/0000000000000000" user="N/A" group="N/A" xauthuser="N/A" xauthgroup="N/A" assignip=N/A vpntunnel="elasticvpn" status="success" init="local" mode="main" dir="outbound" stage=1 role="initiator" result="OK"
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" msg="<message>" action="<event.action>" remip=<destination.ip> locip=<source.ip> remport=<destination.port> locport=<source.port> outintf="<~tmp.outintf>" cookies="<~tmp.cookies>" user="<~>" group="<~>" xauthuser="<~>" xauthgroup="<~>" assignip=<~> vpntunnel="<~tmp.vpntunnel>" status="<~tmp.status>" init="<~tmp.init>" mode="<~tmp.mode>" dir="<~tmp.dir>" stage=<~tmp.stage> role="<~tmp.role>" result="<~tmp.result>"
+    # <190>date=2020-11-02 time=08:11:38 devname=testfirewall devid=newrouterid logid=0101037127 type="event" subtype=vpn level=notice vd=root logdesc="Progress IPsec phase 1" msg="progress IPsec phase 1" action=negotiate remip=175.16.199.1 locip=10.10.10.10 remport=500 locport=500 outintf="port1" cookies="125cbf9ee8349965/0000000000000000" user="N/A" group="N/A" xauthuser="N/A" xauthgroup="N/A" assignip=N/A vpntunnel="P1_Test" status=success init=local mode=aggressive dir=outbound stage=1 role=initiator result=OK
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname=<observer.name> devid=<observer.serial_number> logid=<event.code> type="<event.kind>" subtype=<~tmp.subtype> level=<log.level> vd=<~tmp.vd> logdesc="<rule.description>" msg="<message>" action=<event.action> remip=<destination.ip> locip=<source.ip> remport=<destination.port> locport=<source.port> outintf="<~tmp.outintf>" cookies="<~tmp.cookies>" user="<~>" group="<~>" xauthuser="<~>" xauthgroup="<~>" assignip=<~> vpntunnel="<~tmp.vpntunnel>" status=<~tmp.status> init=<~tmp.init> mode=<~tmp.mode> dir=<~tmp.dir> stage=<~tmp.stage> role=<~tmp.role> result=<~tmp.result>
+    # <190>date=2019-05-13 time=14:21:42 logid="0101037127" type="event" subtype="vpn" level="notice" vd="root" eventtime=1557782502722231889 logdesc="Progress IPsec phase 1" msg="progress IPsec phase 1" action="negotiate" remip=50.1.1.101 locip=1.128.3.4 remport=500 locport=500 outintf="port14" cookies="9091f4d4837ea71c/0000000000000000" user="N/A" group="N/A" xauthuser="N/A" xauthgroup="N/A" assignip=N/A vpntunnel="test" status="success" init="local" mode="main" dir="outbound" stage=1 role="initiator" result="OK"
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> logdesc="<rule.description>" msg="<message>" action="<event.action>" remip=<destination.ip> locip=<source.ip> remport=<destination.port> locport=<source.port> outintf="<~tmp.outintf>" cookies="<~tmp.cookies>" user="<~>" group="<~>" xauthuser="<~>" xauthgroup="<~>" assignip=<~> vpntunnel="<~tmp.vpntunnel>" status="<~tmp.status>" init="<~tmp.init>" mode="<~tmp.mode>" dir="<~tmp.dir>" stage=<~tmp.stage> role="<~tmp.role>" result="<~tmp.result>"
 
 normalize:
   - map:
     - event.dataset: fortinet.firewall
     - event.module: fortinet
-    # TODO: se debe validar con distintos parsers
     - event.outcome: sucess
-  - check:
-    - ~tmp.tz: +ef_exists
-    map:
     - event.timezone: $~tmp.tz
+    - related.ip: [$source.ip]
+    - related.user: [$source.user.name]
   - check:
-    - ~tmp.subtype: "user"
+    - log.level: error
+    map:
+      - event.outcome: failure
+  - check:
+    - ~tmp.subtype: user
     - event.action: +r_match/(?i)logon
     map:
-      - event.type: ["start", "user"]
+      - event.type: [start, user]
   - check:
-    - ~tmp.subtype: "user"
+    - ~tmp.subtype: user
     - event.action: +r_match/(?i)logoff
     map:
-      - event.type: ["end", "user"]
+      - event.type: [end, user]
+  - map:
+    - event.category: [authentication]
   - check:
-    - ~tmp.subtype: "user"
+    - ~tmp.subtype: system
     map:
-      - event.category: ["authentication"]
+      - event.category: [host]
+      - event.type: [info]
+      - event.outcome: +ef_delete
   - check:
-    - ~tmp.subtype: "system"
+    - ~tmp.subtype: vpn
     map:
-      - event.category: ["host"]
-      - event.type: ["info"]
-  - check:
-    - ~tmp.subtype: "vpn"
-    map:
-      - event.category: ["network"]
+      - event.category: [network]
+      - event.type: [connection]
+  - map:
+    - ~tmp.timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000
   - check:
     - ~tmp.tz: +ef_exists
     map:
       - ~tmp.timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000/$~tmp.tz
   - check:
-    - ~tmp.tz: +ef_not_exists
+    - destination.ip: +ef_exists
+    - ~tmp.subtype!: vpn
     map:
-      - ~tmp.timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000
+      - related.ip: +a_append/$destination.ip
+  - check:
+    - destination.ip: +ef_exists
+    - ~tmp.subtype: vpn
+    - ~tmp.type: <189>
+    map:
+      - related.ip: +a_append/$destination.ip
+  - check:
+    - destination.ip: +ef_exists
+    - ~tmp.subtype: vpn
+    - ~tmp.type: <190>
+    map:
+      - related.ip: +a_append/$destination.ip
   - map:
       - \@timestamp: $~tmp.timestamp
       - event.start: $~tmp.timestamp
       - fileset.name: firewall
       - fortinet.firewall.action: $event.action
+      - fortinet.firewall.cookies: $~tmp.cookies
+      - fortinet.firewall.init: $~tmp.init
+      - fortinet.firewall.mode: $~tmp.mode
+      - fortinet.firewall.outintf: $~tmp.outintf
+      - fortinet.firewall.result: $~tmp.result
+      - fortinet.firewall.role: $~tmp.role
+      - fortinet.firewall.stage: $~tmp.stage
+      - fortinet.firewall.peer_notif: $~tmp.peer_notif
       - fortinet.firewall.bandwidth: $~tmp.bandwidth
       - fortinet.firewall.cpu: $~tmp.cpu
       - fortinet.firewall.disk: $~tmp.disk
@@ -85,27 +118,42 @@ normalize:
       - fortinet.firewall.totalsession: $~tmp.totalsession
       - fortinet.firewall.authproto: $~tmp.authproto
       - fortinet.firewall.interface: $~tmp.interface
-      - fortinet.firewall.authserver: $~tmp.authserver
       - fortinet.firewall.status: $~tmp.status
-      - fortinet.firewall.server: $~tmp.server
       - fortinet.firewall.subtype: $~tmp.subtype
       - fortinet.firewall.type: $event.kind
       - fortinet.firewall.vd: $~tmp.vd
+      - fortinet.firewall.vpntunnel: $~tmp.vpntunnel
+      - fortinet.firewall.authserver: $~tmp.authserver
+      - fortinet.firewall.server: $~tmp.server
       - input.type: log
       # TODO: Could not map field 'log.offset' due to inability to persist values into yml variables.
       # Also, there is no helper that allows obtaining the size of an event.
       - log.offset: 0
       - ~tmp.ip: +s_ip_version/$source.ip
+      - network.direction: $~tmp.dir
       - network.type: +s_lo/$~tmp.ip
       - observer.product: Fortigate
       - observer.type: firewall
       - observer.vendor: Fortinet
-      - related.ip: [$source.ip]
-      - related.user: [$source.user.name]
+      # TODO: There is no geolocation information to be able to decode this segment of the event
+      # <189>date=2020-04-23 time=12:32:31 devname="testswitch3" devid="someotherrouteridagain" logid="0101037127" type="event" subtype="vpn" level="notice" vd="root" eventtime=1587231151628960857 tz="-0500" logdesc="Progress IPsec phase 1" msg="progress IPsec phase 1" action="negotiate" remip=8.4.5.4 locip=1.128.3.4 remport=500 locport=500 outintf="wan1" cookies="df868dsg876d/0000000000000000" user="N/A" group="N/A" xauthuser="N/A" xauthgroup="N/A" assignip=N/A vpntunnel="elasticvpn" status="success" init="local" mode="main" dir="outbound" stage=1 role="initiator" result="OK"
+      # - source.geo.city_name": "Changchun"
+      # - source.geo.continent_name": "Asia"
+      # - source.geo.country_iso_code": "CN"
+      # - source.geo.country_name": "China"
+      # - source.geo.location.lat": 43.88
+      # - source.geo.location.lon": 125.3228
+      # - source.geo.region_iso_code": "CN-22"
+      # - source.geo.region_name": "Jilin Sheng"
+      # - source.as.number": 1221
+      # - source.as.organization.name": "Telstra Pty Ltd"
       - service.type: fortinet
-      - tags: ["fortinet-firewall", "forwarded"]
-      - ~tmp: +ef_delete
+      - tags: [fortinet-firewall, forwarded]
   - check:
-    - destination.ip: +ef_exists
+    - ~tmp.subtype: vpn
+    - ~tmp.type: <190>
+    - observer.name: +ef_exists
     map:
-      - related.ip: +a_append/$destination.ip
+    - event.start: +ef_delete
+  - map:
+    - ~tmp: +ef_delete
