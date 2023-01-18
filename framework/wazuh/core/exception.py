@@ -368,6 +368,8 @@ class WazuhException(Exception):
         1913: {'message': 'Error getting manager status, directory /proc is not found or permissions to see its status '
                           'are not granted',
                'remediation': 'Please, ensure /proc exists and permissions are granted'},
+        1914: {'message': 'File is part of the Wazuh ruleset',
+               'remediation': 'Please choose another name'},
 
         # Database:
         2000: {'message': 'No such database file'},
