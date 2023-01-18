@@ -56,7 +56,7 @@
     <decoded_as>macOS_screensharingd</decoded_as>
     <match type="pcre2">(?i)authentication.+failed</match>
     <description>Attempt to connect to screen sharing with username $(dstuser) from $(ip_address) failed</description>
-    mitre>
+    <mitre>
       <id>T1021</id>
     </mitre>
   </rule>
