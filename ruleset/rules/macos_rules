@@ -3,13 +3,13 @@
   <rule id="110001" level="5">
     <decoded_as>macOS_tccd</decoded_as>
     <match type="pcre2">(?i)update access record.+allowed</match>
-    <description>$(application) has been granted permission to $(service) at $(time_access_granted)</description>
+    <description>$(application) has been granted permission to $(service) at $(time)</description>
   </rule>
 
   <rule id="110002" level="5">
     <decoded_as>macOS_tccd</decoded_as>
     <match type="pcre2">(?i)update access record.+denied</match>
-    <description>$(application) has been denied permission to $(service) at $(time_access_denied)</description>
+    <description>$(application) has been denied permission to $(service) at $(time)</description>
   </rule>
   
   <rule id="110003" level="5">
