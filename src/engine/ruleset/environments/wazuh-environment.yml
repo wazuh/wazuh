@@ -68,14 +68,15 @@ decoders:
   - decoder/postgresql-csv/0
   - decoder/postgresql-csv-msg-parse/0
 
-  # nginx decoder
+  # NGINX decoder
   - decoder/nginx-access-base/0
   - decoder/nginx-access/0
   - decoder/nginx-error/0
 
-  # nginx decoder
+  # AWS decoder
   - decoder/aws/0
   - decoder/aws-s3/0
+  - decoder/aws-cloudtrail/0
 
 outputs:
   - output/file-output/0
