@@ -21,6 +21,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.manager import *
+        from wazuh.core.manager import LoggingFormat
         from wazuh.core.tests.test_manager import get_logs
         from wazuh import WazuhInternalError
 
@@ -90,7 +91,9 @@ def test_get_status(mock_status):
     (None, 'random', 0, None, True),
     (None, 'warning', 2, None, False)
 ])
-def test_ossec_log(tag, level, total_items, sort_by, sort_ascending):
+@patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=LoggingFormat.plain)
+@patch("wazuh.core.manager.exists", return_value=True)
+def test_ossec_log(mock_exists, mock_active_logging_format, tag, level, total_items, sort_by, sort_ascending):
     """Test reading ossec.log file contents.
 
     Parameters
@@ -131,7 +134,9 @@ def test_ossec_log(tag, level, total_items, sort_by, sort_ascending):
     ('timestamp=2019/03/26 19:49:15', 'timestamp', '=', '2019/03/26T19:49:15Z'),
     ('timestamp<2019/03/26 19:49:14', 'timestamp', '<', '2019/03/26T19:49:15Z'),
 ])
-def test_ossec_log_q(q, field, operation, values):
+@patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=LoggingFormat.plain)
+@patch("wazuh.core.manager.exists", return_value=True)
+def test_ossec_log_q(mock_exists, mock_active_logging_format, q, field, operation, values):
     """Check that the 'q' parameter is working correctly.
 
     Parameters
@@ -158,7 +163,9 @@ def test_ossec_log_q(q, field, operation, values):
             assert all(log[field] in values for log in result.render()['data']['affected_items'])
 
 
-def test_ossec_log_summary():
+@patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=LoggingFormat.plain)
+@patch("wazuh.core.manager.exists", return_value=True)
+def test_ossec_log_summary(mock_exists, mock_active_logging_format):
     """Tests ossec_log_summary function works and returned data match with expected"""
     expected_result = {
         'wazuh-csyslogd': {'all': 2, 'info': 2, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0},
@@ -178,6 +185,7 @@ def test_ossec_log_summary():
         assert result.render()['data']['total_affected_items'] == 6
         assert all(all(value == expected_result[key] for key, value in item.items())
                    for item in result.render()['data']['affected_items'])
+
 
 def test_get_api_config():
     """Checks that get_api_config method is returning current api_conf dict."""
