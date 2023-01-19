@@ -1545,7 +1545,7 @@ checks:
 
   # 2.2.14 Ensure dnsmasq is not installed (Automated)
   - id: 28077
-    title: "Ensure dnsmasq is not installed"
+    title: "Ensure dnsmasq is not installed."
     description: "dnsmasq is a lightweight tool that provides DNS caching, DNS forwarding and DHCP (Dynamic Host Configuration Protocol) services."
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow a user with access to sniff network traffic the ability to steal credentials. The ssh package provides an encrypted session and stronger security."
     remediation: "Run the following command to remove dnsmasq: # dnf remove dnsmasq."
