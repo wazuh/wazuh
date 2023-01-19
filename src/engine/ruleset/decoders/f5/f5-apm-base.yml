@@ -90,6 +90,12 @@ parse:
     - ~payload: <~>:<~/ignore/:> <event.provider>:<~/ignore/:> :<~>:<~/ignore/:> Current snapshot ID:<~>
 
     # ------------------------------
+    # 0149016a
+    # ------------------------------
+    - ~payload: <~>:<~/ignore/:> <event.provider>:<~/ignore/:> :<~>:<~/ignore/:> Initiating snapshot<~>
+
+
+    # ------------------------------
     # syslog-ng 
     # ------------------------------
     # November 2019/11/01 10:16:48 erc low tasnu: [syslog-ng]
@@ -164,8 +170,8 @@ normalize:
       - rsa.misc.log_session_id : +ef_rename/$~tmp.log_session_id
       - rsa.internal.event_desc : +ef_rename/$~tmp.rsa_event_desc
 
-  # 01490166 OR 01490167
-  - check: event.provider==01490166 OR event.provider==01490167
+  # 01490166 OR 01490167 OR 0149016a
+  - check: event.provider==01490166 OR event.provider==01490167 OR event.provider==0149016a
     map:
       - rsa.internal.messageid : $event.provider
       - event.code : $event.provider
