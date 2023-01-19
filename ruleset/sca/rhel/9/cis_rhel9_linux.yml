@@ -757,7 +757,8 @@ checks:
       - mitre_techniques: ["T1565","T1565.001"]
       - mitre_tactics: ["TA0001"]
     condition: all
-    references: "AIDE stable manual: http://aide.sourceforge.net/stable/manual.html"
+    references:
+      - "AIDE stable manual: http://aide.sourceforge.net/stable/manual.html"
     rules:
       - "c:rpm -q aide -> r:aide-"
 
