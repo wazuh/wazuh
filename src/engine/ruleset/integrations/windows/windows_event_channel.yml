@@ -1,33 +1,33 @@
-name: decoder/windows_event_channel/0
+name: decoder/windows_event_decoder/0
 
 sources: 
-  - decoder/queue-windowsevents/0
+  - decoder/queue-windows/0
 
 metadata:
   description: Parent decoder for Windows events  
 
 check:
-  - ~json.Event: +ef_exists
+  - ~parsed_json.Event: +ef_exists
 
 parse:
   logpar:
-    - ~json.Event: <~event_channel/xml/windows>
+    - ~parsed_json.Event: <~windows/xml/windows>
 
 normalize:
  - map:
-   - timestamp: $~event_channel.Event.System.TimeCreated.@SystemTime
-   - event.code: $~event_channel.Event.System.EventID.#text
-   - event.message: $~json.Message
+   - timestamp: $~windows.Event.System.TimeCreated.@SystemTime
+   - event.code: $~windows.Event.System.EventID.#text
+   - event.message: $~parsed_json.Message
    - event.kind: event
-   - event.provider: $~event_channel.Event.System.Provider.@Name
-   - host.name: $~event_channel.Event.System.Computer.#text
-   - log.level: +kvdb_get/win_log_level/$~event_channel.Event.System.Level.#text
-   - log.channel: $~event_channel.Event.System.Channel.#text
-   - log.process.pid: $~event_channel.Event.System.Execution.@ProcessID
-   - log.process.thread.id: $~event_channel.Event.System.Execution.@ThreadID
-   - log.record_id: $~event_channel.Event.System.EventRecordID.#text
-   - log.event_data: $~event_channel.Event.EventData
+   - event.provider: $~windows.Event.System.Provider.@Name
+   - host.name: $~windows.Event.System.Computer.#text
+   - log.level: +kvdb_get/win_log_level/$~windows.Event.System.Level.#text
+   - log.channel: $~windows.Event.System.Channel.#text
+   - log.process.pid: $~windows.Event.System.Execution.@ProcessID
+   - log.process.thread.id: $~windows.Event.System.Execution.@ThreadID
+   - log.record_id: $~windows.Event.System.EventRecordID.#text
+   - log.event_data: $~windows.Event.EventData
 
 # Cleanup
  - map:
-   - ~json: +ef_delete
+   - ~parsed_json: +ef_delete

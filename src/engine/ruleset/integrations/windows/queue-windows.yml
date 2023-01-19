@@ -1,4 +1,4 @@
-name: decoder/queue-windowsevents/0
+name: decoder/queue-windows/0
 
 
 metadata:
@@ -9,4 +9,4 @@ check:
 
 parse:
   logpar:
-    - event.original: <~json/json>
+    - event.original: <~parsed_json/json>

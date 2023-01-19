@@ -1,49 +1,49 @@
 name: decoder/windows_sysmon/0
 
 sources: 
-  - decoder/windows_event_channel/0
+  - decoder/windows_event_decoder/0
 
 metadata:
   description: Decoder for Windows Sysmon events
 
 check:
-  - ~event_channel.Event.System.Provider.@Name: Microsoft-Windows-Sysmon
+  - ~windows.Event.System.Provider.@Name: Microsoft-Windows-Sysmon
 
 
 normalize:
  - map:
     - event.module: sysmon
     - event.kind: event
-    - log.channel: $~event_channel.Event.System.Channel.#text
-    - log.computer_name: $~event_channel.Event.System.Computer.#text
-    - log.event_id:  $~event_channel.Event.System.EventID.#text
+    - log.channel: $~windows.Event.System.Channel.#text
+    - log.computer_name: $~windows.Event.System.Computer.#text
+    - log.event_id:  $~windows.Event.System.EventID.#text
     - log.opcode: info
     
     # Add categorization fields
     - event:  +kvdb_get_merge/win_sysmon_categories/$event.code 
 
-    - rule.name: $~event_channel.Event.EventData.RuleName
-    - event.Hashes: $~event_channel.Event.EventData.Hash
-    - ~temp.hashes: +parse_kv/$~event_channel.Event.EventData.Hashes/=/,/'/'
+    - rule.name: $~windows.Event.EventData.RuleName
+    - event.Hashes: $~windows.Event.EventData.Hash
+    - ~temp.hashes: +parse_kv/$~windows.Event.EventData.Hashes/=/,/'/'
     - related.hash: $~temp.hashes
 
     
   ## Process fields
-    - process.entity_id: $~event_channel.Event.EventData.ProcessGuid
-    - process.pid: $~event_channel.Event.EventData.ProcessId
-    - process.executable: $~event_channel.Event.EventData.Image
-    - process.entity_id: $~event_channel.Event.EventData.SourceProcessGuid
-    - process.entity_id: $~event_channel.Event.EventData.SourceProcessGUID 
-    - process.pid: $~event_channel.Event.EventData.SourceProcessId
-    - process.thread.id: $~event_channel.Event.EventData.SourceThreadId
-    - process.executable: $~event_channel.Event.EventData.SourceImage
-    - process.executable: $~event_channel.Event.EventData.Destination
-    - process.command_line: $~event_channel.Event.EventData.CommandLine
-    - process.working_directory: $~event_channel.Event.EventData.CurrentDirectory
-    - process.parent.entity_id: $~event_channel.Event.EventData.ParentProcessGuid
-    - process.parent.pid: $~event_channel.Event.EventData.ParentProcessId
-    - process.parent.executable: $~event_channel.Event.EventData.ParentImage
-    - process.parent.command_line: $~event_channel.Event.EventData.ParentCommandLine
+    - process.entity_id: $~windows.Event.EventData.ProcessGuid
+    - process.pid: $~windows.Event.EventData.ProcessId
+    - process.executable: $~windows.Event.EventData.Image
+    - process.entity_id: $~windows.Event.EventData.SourceProcessGuid
+    - process.entity_id: $~windows.Event.EventData.SourceProcessGUID 
+    - process.pid: $~windows.Event.EventData.SourceProcessId
+    - process.thread.id: $~windows.Event.EventData.SourceThreadId
+    - process.executable: $~windows.Event.EventData.SourceImage
+    - process.executable: $~windows.Event.EventData.Destination
+    - process.command_line: $~windows.Event.EventData.CommandLine
+    - process.working_directory: $~windows.Event.EventData.CurrentDirectory
+    - process.parent.entity_id: $~windows.Event.EventData.ParentProcessGuid
+    - process.parent.pid: $~windows.Event.EventData.ParentProcessId
+    - process.parent.executable: $~windows.Event.EventData.ParentImage
+    - process.parent.command_line: $~windows.Event.EventData.ParentCommandLine
         
     - process.name: +r_ext/$process.executable/^.*\\(.*[\\.].*)$
     - process.parent.name: +r_ext/$process.parent.executable/^.*\\(.*[\\.].*)$
@@ -55,44 +55,44 @@ normalize:
 
     
   ## File fields
-    - file.path: $~event_channel.Event.EventData.TargetFilename
-    - file.path: $~event_channel.Event.EventData.Device
-    - file.name: $~event_channel.Event.EventData.PipeName
-    - file.path: $~event_channel.Event.EventData.ImageLoaded
-    - file.code_signature.subject_name: $~event_channel.Event.EventData.Signature
-    - file.code_signature.status: $~event_channel.Event.EventData.SignatureStatus
-    - file.code_signature.signed: $~event_channel.Event.EventData.Signed
+    - file.path: $~windows.Event.EventData.TargetFilename
+    - file.path: $~windows.Event.EventData.Device
+    - file.name: $~windows.Event.EventData.PipeName
+    - file.path: $~windows.Event.EventData.ImageLoaded
+    - file.code_signature.subject_name: $~windows.Event.EventData.Signature
+    - file.code_signature.status: $~windows.Event.EventData.SignatureStatus
+    - file.code_signature.signed: $~windows.Event.EventData.Signed
     - file.directory: +r_ext/$file.path/^(.*\\).*[\\.].*$
     - file.extension: +r_ext/$file.path/^.*\\.*[\\.](.*)$
     - file.name: +r_ext/$file.path/^.*\\(.*[\\.].*)$
 
   ## Network, Destination, and Source fields
-    - network.transport: $~event_channel.Event.EventData.Protocol
-    - network.protocol: $~event_channel.Event.EventData.DestinationPortName
-    - network.protocol: $~event_channel.Event.EventData.SourcePortName
-    - source.ip: $~event_channel.Event.EventData.SourceIp
-    - source.domain: $~event_channel.Event.EventData.SourceHostname
-    - source.port: $~event_channel.Event.EventData.SourcePort
-    - destination.ip: $~event_channel.Event.EventData.DestinationIp
-    - destination.domain: $~event_channel.Event.EventData.DestinationHostname
-    - destination.port: $~event_channel.Event.EventData.DestinationPort
-    - dns.question.name: $~event_channel.Event.EventData.QueryName
+    - network.transport: $~windows.Event.EventData.Protocol
+    - network.protocol: $~windows.Event.EventData.DestinationPortName
+    - network.protocol: $~windows.Event.EventData.SourcePortName
+    - source.ip: $~windows.Event.EventData.SourceIp
+    - source.domain: $~windows.Event.EventData.SourceHostname
+    - source.port: $~windows.Event.EventData.SourcePort
+    - destination.ip: $~windows.Event.EventData.DestinationIp
+    - destination.domain: $~windows.Event.EventData.DestinationHostname
+    - destination.port: $~windows.Event.EventData.DestinationPort
+    - dns.question.name: $~windows.Event.EventData.QueryName
   
   ## User fields
-    - user.id: $~event_channel.Event.System.Security.@UserID
-    - ~temp.user_parts: +s_to_array/$~event_channel.Event.EventData.User/\
+    - user.id: $~windows.Event.System.Security.@UserID
+    - ~temp.user_parts: +s_to_array/$~windows.Event.EventData.User/\
     - user.domain: $~temp.user_parts.0
     - user.name: $~temp.user_parts.1
 
   ## Sysmon fields
-    - sysmon.dns.status: $~event_channel.Event.EventData.QueryStatus
-    - sysmon.dns.status: +kvdb_get/sysmon_dns_status/$~event_channel.Event.EventData.QueryStatus
-    - sysmon.file.archived: $~event_channel.Event.EventData.Archived
-    - sysmon.file.is_executable: $~event_channel.Event.EventData.IsExecutable
+    - sysmon.dns.status: $~windows.Event.EventData.QueryStatus
+    - sysmon.dns.status: +kvdb_get/sysmon_dns_status/$~windows.Event.EventData.QueryStatus
+    - sysmon.file.archived: $~windows.Event.EventData.Archived
+    - sysmon.file.is_executable: $~windows.Event.EventData.IsExecutable
 
   ## Related fields
     - related.user: $user.name
-    - related.ip: +a_append/$~event_channel.Event.EventData.NewTargetUserName  
+    - related.ip: +a_append/$~windows.Event.EventData.NewTargetUserName  
 
 
  - check: event.code==255 
@@ -101,51 +101,51 @@ normalize:
 
  - check: event.code==25
    map:
-    - event.message: $~event_channel.Event.EventData.Type
+    - event.message: $~windows.Event.EventData.Type
 
  - check: +s_ne/event.code/7
    map:
-   - process.pe.original_file_name: $~event_channel.Event.EventData.OriginalFileName
-   - process.pe.company: $~event_channel.Event.EventData.Company
-   - process.pe.description: $~event_channel.Event.EventData.Description
-   - process.pe.file_version: $~event_channel.Event.EventData.FileVersion
-   - process.pe.product: $~event_channel.Event.EventData.Product
+   - process.pe.original_file_name: $~windows.Event.EventData.OriginalFileName
+   - process.pe.company: $~windows.Event.EventData.Company
+   - process.pe.description: $~windows.Event.EventData.Description
+   - process.pe.file_version: $~windows.Event.EventData.FileVersion
+   - process.pe.product: $~windows.Event.EventData.Product
 
  - check: event.code==7
    map:
-    - file.pe.original_file_name: $~event_channel.Event.EventData.OriginalFileName
-    - file.pe.company: $~event_channel.Event.EventData.Company
-    - file.pe.description: $~event_channel.Event.EventData.Description
-    - file.pe.file_version: $~event_channel.Event.EventData.FileVersion
-    - file.pe.product: $~event_channel.Event.EventData.Product
+    - file.pe.original_file_name: $~windows.Event.EventData.OriginalFileName
+    - file.pe.company: $~windows.Event.EventData.Company
+    - file.pe.description: $~windows.Event.EventData.Description
+    - file.pe.file_version: $~windows.Event.EventData.FileVersion
+    - file.pe.product: $~windows.Event.EventData.Product
 
   # DNS event
  - check: event.code==22
    map:
     - network.protocol: dns
   # Splits the QueryResults field that contains the DNS responses.
- #- check: $~event_channel.Event.EventData.QueryResults
+ #- check: $~windows.Event.EventData.QueryResults
  #  map:
- #   - ~temp.QueryRresultsArray: $~event_channel.Event.EventData.QueryResults 
+ #   - ~temp.QueryRresultsArray: $~windows.Event.EventData.QueryResults 
     # Needs parsing each element of the array
 
- - check: $~event_channel.Event.EventData.SignatureStatus==Valid
+ - check: $~windows.Event.EventData.SignatureStatus==Valid
    map:
     - file.code_signature.valid: True   
 
- - check: $~event_channel.Event.EventData.Initiated==True
+ - check: $~windows.Event.EventData.Initiated==True
    map:
     - network.direction: egress  
 
- - check: $~event_channel.Event.EventData.Initiated==false
+ - check: $~windows.Event.EventData.Initiated==false
    map:
     - network.direction: ingress
 
- - check: $~event_channel.Event.EventData.SourceIsIpv6==true
+ - check: $~windows.Event.EventData.SourceIsIpv6==true
    map:
     - network.type: ipv6
 
- - check: $~event_channel.Event.EventData.SourceIsIpv6==false
+ - check: $~windows.Event.EventData.SourceIsIpv6==false
    map:
     - network.type: ipv4
 
@@ -162,37 +162,37 @@ normalize:
   ## Registry fields
  - check: event.code==12 OR event.code==13  OR event.code==14
    map:
-    - registry.path: $~event_channel.Event.EventData.TargetObject
+    - registry.path: $~windows.Event.EventData.TargetObject
     - ~temp.registry.array: +s_to_array/$registry.path/\/
     - registry.hive: $~temp.registry.array.0
     - ~temp.registry.array.0: +ef_delete
     - registry.key: +s_from_array/$~temp.registry.array/\\
     - registry.value: +r_ext/$registry.path/^.*\\(.*)$
     # This could be better than what is done in line 181:
-    #- ~temp.is_binary_data: +r_match/~event_channel.Event.EventData.Details/^Binary Data/
+    #- ~temp.is_binary_data: +r_match/~windows.Event.EventData.Details/^Binary Data/
     
- - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~event_channel.Event.EventData.Details/QWORD/
+ - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~windows.Event.EventData.Details/QWORD/
    map:  
     - registry.data.type: SZ_QWORD
-    - registry.data.strings: +r_ext/$~event_channel.Event.EventData.Details/^QWORD\s*\((0x[0-9A-F]+-0x[0-9A-F]+)\)
+    - registry.data.strings: +r_ext/$~windows.Event.EventData.Details/^QWORD\s*\((0x[0-9A-F]+-0x[0-9A-F]+)\)
 
- - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~event_channel.Event.EventData.Details/DWORD/
+ - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~windows.Event.EventData.Details/DWORD/
    map:  
     - registry.data.type: SZ_DWORD
-    - ~temp.value: +r_ext/$~event_channel.Event.EventData.Details/DWORD \((0x[0-9A-F]{8})\)
+    - ~temp.value: +r_ext/$~windows.Event.EventData.Details/DWORD \((0x[0-9A-F]{8})\)
     - registry.data.strings: +s_hex_to_num/$~temp.value
 
  - check: 
-    - ~event_channel.Event.EventData.Details: +s_starts/Binary Data/
+    - ~windows.Event.EventData.Details: +s_starts/Binary Data/
    map:
     - ~temp.is_binary_data: True
 
  - check:  (event.code==12 OR event.code==13  OR event.code==14) AND +t_is_true/~temp.is_binary_data
    map:  
     - registry.data.type: REG_BINARY
-    - registry.data.strings: $~event_channel.Event.EventData.Details
+    - registry.data.strings: $~windows.Event.EventData.Details
 
 # Cleanup
  - map:
    - ~temp: +ef_delete
-   - ~event_channel: +ef_delete
+   - ~windows: +ef_delete
