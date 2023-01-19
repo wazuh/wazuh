@@ -274,10 +274,11 @@ int receive_msg()
                         final_file = strrchr(file, '/');
                         if (final_file) {
                             if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
-                                const char **IGNORE_LIST = malloc(2 * sizeof(char *));
-                                *IGNORE_LIST = strdup(SHAREDCFG_FILENAME);
+                                const char **IGNORE_LIST;
+                                os_malloc(2 * sizeof(char *), IGNORE_LIST);
+                                os_strdup(SHAREDCFG_FILENAME, *IGNORE_LIST);
                                 *(IGNORE_LIST + 1) = NULL;
-                                if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT, &IGNORE_LIST)){
+                                if (!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT, &IGNORE_LIST)) {
                                     char msg_output[OS_MAXSTR];
 
                                     snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);

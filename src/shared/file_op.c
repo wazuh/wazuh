@@ -644,7 +644,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, const char
     }
 
     /* Finds index of the last element on the list */
-    if(unmerged_files != NULL){
+    if (unmerged_files != NULL) {
         for(file_count = 0; *(*unmerged_files + file_count); file_count++);
     }
 
@@ -699,7 +699,6 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, const char
         }
 
         free(copy);
-
 
         /* Create temporary file */
         char tmp_file[strlen(final_name) + 7];
@@ -757,24 +756,24 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, const char
         /* Mv to original name */
         rename_ex(tmp_file, final_name);
 
-        if(unmerged_files != NULL){
+        if (unmerged_files != NULL) {
             /* Removes path from file name */
             file_name = strrchr(final_name, '/');
-            if(file_name){
+            if (file_name) {
                 file_name++;
             }
-            else{
+            else {
                 file_name = final_name;
             }
 
             /* Appends file name to unmerged files list */
-            *unmerged_files = realloc(*unmerged_files, (file_count + 2) * sizeof(char *));
-            *(*unmerged_files + file_count) = strdup(file_name);
+            os_realloc(*unmerged_files, (file_count + 2) * sizeof(char *), *unmerged_files);
+            os_strdup(file_name, *(*unmerged_files + file_count));
             file_count++;
         }
     }
 
-    if(unmerged_files != NULL){
+    if (unmerged_files != NULL) {
         *(*unmerged_files + file_count) = NULL;
     }
 
