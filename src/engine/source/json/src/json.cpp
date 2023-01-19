@@ -948,7 +948,7 @@ bool Json::erase(std::string_view path)
     }
 }
 
-void Json::merge(rapidjson::Value& source, std::string_view path)
+void Json::merge(const bool isRecursive, rapidjson::Value& source, std::string_view path)
 {
     const auto pp = rapidjson::Pointer(path.data());
 
@@ -959,24 +959,27 @@ void Json::merge(rapidjson::Value& source, std::string_view path)
         {
             if (dstValue->GetType() == source.GetType())
             {
-
                 if (dstValue->IsObject())
                 {
-                    for (auto srcIt = source.MemberBegin(); srcIt != source.MemberEnd();
-                         ++srcIt)
+                    for (auto srcIt = source.MemberBegin(); srcIt != source.MemberEnd(); ++srcIt)
                     {
                         if (dstValue->HasMember(srcIt->name))
                         {
-                            rapidjson::Value cpyValue {srcIt->value,
-                                                       m_document.GetAllocator()};
-                            dstValue->FindMember(srcIt->name)->value = cpyValue;
+                            rapidjson::Value cpyValue {srcIt->value, m_document.GetAllocator()};
+                            if (isRecursive && (srcIt->value.IsObject() || srcIt->value.IsArray()))
+                            {
+                                std::string newPath {std::string(path) + "/" + srcIt->name.GetString()};
+                                merge(isRecursive, cpyValue, newPath);
+                            }
+                            else
+                            {
+                                dstValue->FindMember(srcIt->name)->value = cpyValue;
+                            }
                         }
                         else
                         {
-                            rapidjson::Value cpyValue {srcIt->value,
-                                                       m_document.GetAllocator()};
-                            dstValue->AddMember(
-                                srcIt->name, cpyValue, m_document.GetAllocator());
+                            rapidjson::Value cpyValue {srcIt->value, m_document.GetAllocator()};
+                            dstValue->AddMember(srcIt->name, cpyValue, m_document.GetAllocator());
                         }
                     }
                 }
@@ -988,8 +991,7 @@ void Json::merge(rapidjson::Value& source, std::string_view path)
                         // TODO: this is inefficient, but rapidjson does not provide a way
                         // to do it.
                         auto found = false;
-                        for (auto dstIt = dstValue->Begin(); dstIt != dstValue->End();
-                             ++dstIt)
+                        for (auto dstIt = dstValue->Begin(); dstIt != dstValue->End(); ++dstIt)
                         {
                             if (*dstIt == *srcIt)
                             {
@@ -1005,8 +1007,7 @@ void Json::merge(rapidjson::Value& source, std::string_view path)
                 }
                 else
                 {
-                    throw std::runtime_error(
-                        "JSON elements must be either objects or arrays to be merged");
+                    throw std::runtime_error("JSON elements must be either objects or arrays to be merged");
                 }
 
                 return;
@@ -1021,12 +1022,12 @@ void Json::merge(rapidjson::Value& source, std::string_view path)
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-void Json::merge(Json& other, std::string_view path)
+void Json::merge(const bool isRecursive, Json& other, std::string_view path)
 {
-    merge(other.m_document, path);
+    merge(isRecursive, other.m_document, path);
 }
 
-void Json::merge(std::string_view source, std::string_view path)
+void Json::merge(const bool isRecursive, std::string_view source, std::string_view path)
 {
     const auto pp = rapidjson::Pointer(source.data());
 
@@ -1035,7 +1036,7 @@ void Json::merge(std::string_view source, std::string_view path)
         auto* srcValue = pp.Get(m_document);
         if (srcValue)
         {
-            merge(*srcValue, path);
+            merge(isRecursive, *srcValue, path);
             erase(source);
             return;
         }
@@ -1125,4 +1126,5 @@ std::optional<base::Error> Json::checkDuplicateKeys() const
 
     return std::nullopt;
 }
+
 } // namespace json

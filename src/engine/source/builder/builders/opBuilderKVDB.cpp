@@ -119,7 +119,7 @@ base::Expression KVDBGet(const std::any& definition, bool merge, std::shared_ptr
                     {
                         return base::result::makeFailure(event, failureTrace4);
                     }
-                    event->merge(value, targetField);
+                    event->merge(json::NOT_RECURSIVE, value, targetField);
                 }
                 else
                 {
