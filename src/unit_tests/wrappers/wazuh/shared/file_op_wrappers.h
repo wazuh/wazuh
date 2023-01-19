@@ -72,6 +72,8 @@ int __wrap_w_ref_parent_folder(const char * path);
 
 int __wrap_cldir_ex(const char *name);
 
+int __wrap_cldir_ex_ignore(const char *name, const char ** ignore);
+
 int __wrap_UnmergeFiles(const char *finalpath, const char *optdir, int mode);
 
 #ifdef WIN32
@@ -87,7 +89,7 @@ int64_t __wrap_w_ftell (FILE *x);
 
 int __wrap_w_fseek(FILE *x, int64_t pos, int mode);
 
-int __wrap_MergeAppendFile(const char *finalpath, const char *files, const char *tag, int path_offset);
+int __wrap_MergeAppendFile(FILE *finalfp, const char *files, int path_offset);
 
 int __wrap_OS_MoveFile(const char *src, const char *dst);
 

@@ -39,7 +39,7 @@ int teardown_hashmap(__attribute__((unused)) void **state) {
 }
 
 int __real_OSHash_Add(OSHash *self, const char *key, void *data);
-int __wrap_OSHash_Add(OSHash *self, const char *key, void *data) {
+int __wrap_OSHash_Add(__attribute__((unused)) OSHash *self, const char *key, void *data) {
     int retval;
 
     if (key) check_expected(key);
@@ -47,7 +47,7 @@ int __wrap_OSHash_Add(OSHash *self, const char *key, void *data) {
     retval = mock();
 
     if (mock_hashmap != NULL && retval != 0) {
-        __real_OSHash_Add(self, key, data);
+        __real_OSHash_Add(mock_hashmap, key, data);
     }
 
     return retval;
@@ -66,7 +66,7 @@ int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
         retval =  mock();
 
         if (mock_hashmap != NULL && retval != 0) {
-            __real_OSHash_Add(self, key, data);
+            __real_OSHash_Add(mock_hashmap, key, data);
         }
 
         return retval;
@@ -83,6 +83,10 @@ void *__wrap_OSHash_Begin(const OSHash *self, __attribute__((unused)) unsigned i
 void *__real_OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 void *__wrap_OSHash_Clean(__attribute__((unused)) OSHash *self,
                           __attribute__((unused)) void (*cleaner)(void*)) {
+    if (test_mode == 0) {
+        return __real_OSHash_Clean(self, cleaner);
+    }
+
     return mock_type(void *);
 }
 

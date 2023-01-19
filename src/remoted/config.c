@@ -148,6 +148,7 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"request_timeout",request_timeout);
     cJSON_AddNumberToObject(remoted,"response_timeout",response_timeout);
     cJSON_AddNumberToObject(remoted,"shared_reload",INTERVAL);
+    cJSON_AddNumberToObject(remoted,"disk_storage",disk_storage);
     cJSON_AddNumberToObject(remoted,"rlimit_nofile",nofile);
     cJSON_AddNumberToObject(remoted,"merge_shared",logr.nocmerged);
     cJSON_AddNumberToObject(remoted,"guess_agent_group",guess_agent_group);
