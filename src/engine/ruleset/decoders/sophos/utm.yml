@@ -1,0 +1,148 @@
+---
+name: decoder/sophos-utm/0
+
+metadata:
+  module: sophos
+  title: Sophos logs decoder
+  description: Decoder for sophos logs
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-12
+  references:
+    - documentation link
+
+sources:
+  - decoder/queue-syslog/0
+  - decoder/queue-localfile/0
+
+# Example sophos logs:
+
+
+parse:
+  logpar:
+
+    # 2016:2:12-13:12:33 astarosg_TVM[5716]: id=ommod severity=medium sys=inima sub=tlabo name=web request blocked, forbidden application detectedaction=accept method=ugiatnu client=stiae facility=nofdeF user=sunt srcip=10.57.170.140 dstip=10.213.231.72 version=1.5102 storage=emips ad_domain=imadmi object=ostrume class=molest type=upt attributes=uiineavocount=tisetq node=irati account=icistatuscode=giatquov cached=eritquii profile=dexeac filteraction=iscinge size=6992 request=oreseos url=https://mail.example.net/tati/utaliqu.html?iquaUten=santium#iciatisu referer=https://www5.example.org/eporroqu/uat.txt?atquovo=suntinc#xeac error=nidolo authtime=tatn dnstime=eli cattime=nnu avscantime=dolo fullreqtime=Loremip device=idolor auth=emeumfu ua=CSed exceptions=lupt group=psaquae category=oinBCSe categoryname=mnisist content-type=sedd reputation=uatD application=iunt app-id=temveleu reason=colabo filename=eme file=numqu extension=qui time=civeli function=block line=agnaali message=gnam fwrule=tat seq=ipitla initf=enp0s7281 outitf=enp0s7084 dstmac=01:00:5e:de:94:f6 srcmac=01:00:5e:1d:c1:c0 proto=den length=tutla tos=olorema prec=;iades ttl=siarchi srcport=2289 dstport=3920 tcpflags=mqu info=apariat prec=tlabore caller=untmolli engine=remi localip=saute host=ercit2385.internal.home extra=run server=10.47.202.102 cookie=quirat set-cookie=llu
+    - event.original: <@timestamp/%Y:%m:%d-%H:%M:%S> <event.code>[<~process.pid>]:<~/ignore/ >id=<~tmp.id> severity=<~tmp.severity> sys=<~tmp.sys> sub=<~tmp.sub> name=<~tmp.name> detectedaction=<~tmp.detectedaction> method=<~tmp.method> client=<~tmp.client> facility=<~tmp.facility> user=<~tmp.user> srcip=<~tmp.srcip> dstip=<~tmp.dstip> version=<~tmp.version> storage=<~tmp.storage> ad_domain=<~tmp.ad_domain> object=<~tmp.object> class=<~tmp.class> type=<~tmp.type> attributes=<~tmp.attributes> node=<~tmp.node> account=<~tmp.account> cached=<~tmp.cached> profile=<~tmp.profile> filteraction=<~tmp.filteraction> size=<~tmp.size> request=<~tmp.request> url=<~tmp.url/uri> referer=<~tmp.referer> error=<~tmp.error> authtime=<~tmp.authtime> dnstime=<~tmp.dnstime> cattime=<~tmp.cattime> avscantime=<~tmp.avscantime> fullreqtime=<~tmp.fullreqtime> device=<~tmp.device> auth=<~tmp.auth> ua=<~tmp.ua> exceptions=<~tmp.exceptions> group=<~tmp.group> category=<~tmp.category> categoryname=<~tmp.categoryname> content-type=<~tmp.content_type> reputation=<~tmp.reputation> application=<~tmp.application> app-id=<~tmp.app_id> reason=<~tmp.reason> filename=<~tmp.filename> file=<~tmp.file> extension=<~tmp.extension> time=<~tmp.time> function=<~tmp.function> line=<~tmp.line> message=<~tmp.message> fwrule=<~tmp.fwrule> seq=<~tmp.seq> initf=<~tmp.initf> outitf=<~tmp.outitf> dstmac=<~tmp.dstmac> srcmac=<~tmp.srcmac> proto=<~tmp.proto> length=<~tmp.length> tos=<~tmp.tos> prec=<~tmp.prec> ttl=<~tmp.ttl> srcport=<~tmp.srcport> dstport=<~tmp.dstport> tcpflags=<~tmp.tcpflags> info=<~tmp.info> prec=<~tmp.prec2> caller=<~tmp.caller> engine=<~tmp.engine> localip=<~tmp.localip> host=<~tmp.host> extra=<~tmp.extra> server=<~tmp.server> cookie=<~tmp.cookie> set-cookie=<~tmp.set_cookie>
+
+    # 2016:1:29-06:09:59 localhost.localdomain smtpd[905]: MASTER[nnumqua]: QR globally disabled, status one set to 'disabled'
+    - event.original: <@timestamp/%Y:%m:%d-%H:%M:%S> <host.hostname> <event.code>[<~process.pid>]:<~/ignore/ ><message>
+
+    # 2017:3:18-18:24:33 hostname reverseproxy: [tutla] [isund:high] [pid 3136:uidex] [client uptate] Invalid signature, cookie: JSESSIONID
+    - event.original: <@timestamp/%Y:%m:%d-%H:%M:%S> <host.hostname> <event.code>:<~/ignore/ ><message>
+
+
+normalize:
+  - map:
+      - event.dataset: sophos.utm
+      - event.module: sophos
+      - fileset.name: utm
+      - input.type: log
+      - observer.product: UTM
+      - observer.type: Firewall
+      - observer.vendor: Sophos
+      - service.type: sophos
+      - process.pid: $~process.pid
+      - related.host: +a_append/$host.hostname
+      - rsa.network.alias_host: +a_append/$host.hostname
+      - rsa.time.event_time: $@timestamp
+      - rsa.internal.messageid: $event.code
+      - message: +r_ext/$message/] ([^\]]+)$
+      - rsa.internal.event_desc: $message
+      - tags: +a_append/forwarded/$event.dataset
+      - ~process: +ef_delete
+      - message: +ef_delete
+
+      # astarosg_TVM event
+
+      #- ad_domain: $~tmp.ad_domain
+      #- app-id: $~tmp.app_id
+      #- application: $~tmp.application
+      #- auth: $~tmp.auth
+      #- authtime: $~tmp.authtime
+      #- avscantime: $~tmp.avscantime
+      #- cached: $~tmp.cached
+      #- caller: $~tmp.caller
+      #- category: $~tmp.category
+      #- categoryname: $~tmp.categoryname
+      #- cattime: $~tmp.cattime
+      #- client: $~tmp.client
+      #- detectedaction: $~tmp.detectedaction
+      #- device: $~tmp.device
+      #- dnstime: $~tmp.dnstime
+      - destination.ip: $~tmp.dstip
+      - destination.mac: $~tmp.dstmac
+      - destination.port: $~tmp.dstport
+      #- engine: $~tmp.engine
+      #- error: $~tmp.error
+      #- exceptions: $~tmp.exceptions
+      - file.directory: $~tmp.storage
+      - file.extension: $~tmp.extension
+      - file.name: $~tmp.file
+      - file.size: $~tmp.size
+      - filename: $~tmp.filename
+      - fullreqtime: $~tmp.fullreqtime
+      - group.name: $~tmp.group
+      - http.request.referer: $~tmp.referer
+      #- length: $~tmp.length
+      #- line: $~tmp.line
+      #- localip: $~tmp.localip
+      - log.level: $~tmp.severity
+      #- message: $~tmp.message
+      #- object: $~tmp.object
+      - observer.egress.interface.name: $~tmp.outitf
+      - observer.ingress.interface.name: $~tmp.initf
+      - observer.version: $~tmp.version
+      #- prec: $~tmp.prec
+      #- proto: $~tmp.proto
+      - related.hosts: +a_append/$~tmp.host
+      - related.ip: +a_append/$~tmp.server/$~tmp.srcip
+      - related.user: +a_append/$~tmp.profile/$~tmp.account/user
+      - reputation: $~tmp.reputation
+      #- request: $~tmp.request
+      - rsa.db.index: $~tmp.extra
+      - rsa.identity.logon_type: $~tmp.facility
+      - rsa.internal.event_desc: $~tmp.name
+      - rsa.investigations.event_cat: 1901000000,
+      - rsa.investigations.event_cat_name: Other.Default
+      - rsa.misc.action: +a_append/$~tmp.function/method
+      - rsa.misc.comments: $~tmp.reason
+      - rsa.misc.content_type: $~tmp.content_type
+      - rsa.misc.context: $~tmp.info
+      - rsa.misc.group: $~tmp.group
+      - rsa.misc.group_object: $~tmp.class
+      - rsa.misc.node: $~tmp.node
+      - rsa.misc.obj_name: $~tmp.attributes
+      - rsa.misc.obj_type: $~tmp.type
+      - rsa.misc.policy_id: $~tmp.fwrule
+      - rsa.misc.policy_name: $~tmp.filteraction
+      - rsa.misc.rule: $~tmp.id
+      - rsa.misc.severity: $~tmp.severity
+      - rsa.misc.version: $~tmp.version
+      - rsa.misc.vsys: $~tmp.sys
+      - rsa.network.dinterface: $~tmp.outitf
+      - rsa.network.host_dst: $~tmp.host
+      - rsa.network.sinterface: $~tmp.initf
+      - rsa.web.web_cookie: $~tmp.cookie
+      #- seq: $~tmp.seq
+      - service.name: $~tmp.prec2
+      - set-cookie: $~tmp.set_cookie
+      - source.ip: $~tmp.srcip
+      - source.mac: $~tmp.srcmac
+      - source.port: $~tmp.srcport
+      #- sub: $~tmp.sub
+      #- tcpflags: $~tmp.tcpflags
+      #- time: $~tmp.time
+      #- tos: $~tmp.tos
+      #- ttl: $~tmp.ttl
+      #- ua: $~tmp.ua
+
+      - url.domain: $~tmp.url.domain
+      - url.extension: +r_ext/$~tmp.url.original/(\w+)\?
+      - url.fragment: $~tmp.url.fragment
+      - url.original: $~tmp.url.original
+      - url.path: $~tmp.url.path
+      - url.query: $~tmp.url.query
+      - url.scheme: $~tmp.url.scheme
+      - user.name: $~tmp.user
+
+      - ~tmp: +ef_delete
