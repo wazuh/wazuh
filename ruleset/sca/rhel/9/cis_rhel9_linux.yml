@@ -3530,7 +3530,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare <= 900 && n:^\s*ClientAliveInterval\s*\t*(\d+) compare > 0'
-      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare = 0'
+      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare == 0'
 
   ############################################################
   # 5.3 Configure privilege escalation
