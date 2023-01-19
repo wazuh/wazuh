@@ -3015,7 +3015,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - "c:systemctl is-enabled crond"
+      - "c:systemctl is-enabled crond -> r:^enabled"
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured (Automated) 
   - id: 28156 
