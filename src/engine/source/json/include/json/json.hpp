@@ -21,6 +21,9 @@
 namespace json
 {
 
+constexpr bool RECURSIVE {true};
+constexpr bool NOT_RECURSIVE {false};
+
 class Json
 {
 public:
@@ -76,7 +79,7 @@ private:
         }
     }
 
-    void merge(rapidjson::Value& source, std::string_view path);
+    void merge(const bool isRecursive, rapidjson::Value& source, std::string_view path);
 
 public:
     /**
@@ -681,7 +684,7 @@ public:
      * @throws std::runtime_error If path is invalid.
      */
     void appendJson(const Json& value, std::string_view path = "");
-
+    
     /**
      * @brief Erase Json object at the path.
      *
@@ -706,7 +709,7 @@ public:
      * - If either Json Values are not Object or Array.
      * - If Json Values are not the same type.
      */
-    void merge(Json& other, std::string_view path = "");
+    void merge(const bool isRecursive, Json& other, std::string_view path = "");
 
     /**
      * @brief Merge the Json Value at the path with the given Json Value at reference
@@ -723,7 +726,8 @@ public:
      * - If either Json Values are not Object or Array.
      * - If Json Values are not the same type.
      */
-    void merge(std::string_view other, std::string_view path = "");
+    void merge(const bool isRecursive, std::string_view other, std::string_view path = "");
+
 };
 
 } // namespace json
