@@ -286,7 +286,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
             try
             {
                 json::Json jsonEvent {event->str().c_str()};
-                jsonParams.merge(jsonEvent, std::string_view {"/alert"});
+                jsonParams.merge(json::NOT_RECURSIVE, jsonEvent, std::string_view {"/alert"});
             }
             catch (const std::runtime_error& e)
             {

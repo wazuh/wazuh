@@ -191,6 +191,9 @@ base::Expression opBuilderHelperAppend(const std::any& definition);
  * @throw std::runtime_error if the parameters size is not 2 or character separator is not
  * valid.
  */
+
+base::Expression opBuilderHelperFieldAppend(const std::any& definition);
+
 base::Expression opBuilderHelperAppendSplitString(const std::any& definition);
 
 /**

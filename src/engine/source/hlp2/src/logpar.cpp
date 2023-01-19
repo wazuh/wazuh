@@ -650,7 +650,7 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
                             auto& [a, b] = t;
                             if (a.isObject() && b.isObject())
                             {
-                                a.merge(b);
+                                a.merge(json::NOT_RECURSIVE, b);
                                 return a;
                             }
                             else if (a.isObject())
@@ -735,7 +735,7 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
                 auto& [a, b] = t;
                 if (a.isObject() && b.isObject())
                 {
-                    a.merge(b);
+                    a.merge(json::NOT_RECURSIVE, b);
                     return a;
                 }
                 else if (a.isObject())
