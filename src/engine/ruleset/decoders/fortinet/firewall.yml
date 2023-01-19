@@ -13,8 +13,7 @@ metadata:
     - https://docs.fortinet.com/document/forticlient/7.0.2/log-message-reference/327109
 
 sources:
-  - decoder/queue-syslog/0
-  - decoder/queue-localfile/0
+    - decoder/queue-localfile/0
 
 parse:
   logpar:
@@ -48,6 +47,10 @@ parse:
     - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" server="<~tmp.fortinet.firewall.server>" action="<event.action>" msg="<message>"
     # <190>date=2019-05-13 time=11:20:54 logid="0100032001" type="event" subtype="system" level="information" vd="vdom1" eventtime=1557771654587081441 logdesc="Admin login successful" sn="1557771654" user="admin" ui="ssh(172.16.200.254)" method="ssh" srcip=172.16.200.254 dstip=172.16.200.2 action="login" status="success" reason="none" profile="super_admin" msg="Administrator admin logged in successfully from ssh(172.16.200.254)"
     - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> logdesc="<rule.description>" sn="<~tmp.fortinet.firewall.sn>" user="<source.user.name>" ui="<~tmp.fortinet.firewall.ui>" method="<~tmp.fortinet.firewall.method>" srcip=<source.ip> dstip=<destination.ip> action="<event.action>" status="<~tmp.fortinet.firewall.status>" reason="<event.reason>" profile="<~tmp.fortinet.firewall.profile>" msg="<message>"
+    # <189>date=2019-05-14 time=08:32:13 logid="0107045057" type="event" subtype="endpoint" level="information" vd="root" eventtime=1557847933900764210 logdesc="FortiClient connection added" action="add" status="success" license_limit="unlimited" used_for_type=4 connection_type="sslvpn" count=1 user="skubas" ip=172.18.64.250 name="VAN-200957-PC" fctuid="52C66FE08F724FE0B116DAD5062C96CD" msg="Add a FortiClient Connection."
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> logdesc="<rule.description>" action="<event.action>" status="<~tmp.fortinet.firewall.status>" license_limit="<~tmp.fortinet.firewall.license_limit>" used_for_type=<~tmp.fortinet.firewall.used_for_type> connection_type="<~tmp.fortinet.firewall.connection_type>" count=<~tmp.fortinet.firewall.count> user="<source.user.name>" ip=<~tmp.fortinet.firewall.ip> name="<~tmp.fortinet.firewall.name>" fctuid="<~tmp.fortinet.firewall.fctuid>" msg="<message>"
+    # <190>devname="firewall" devid="FG201EEF34CD12AB" vd="root" date=2021-05-07 time=08:31:14 eventtime=1620372674880370858 tz="+0100" logid="0112053203" type="event" subtype="connector" level="information" logdesc="Dynamic address updated" fctemssn="FCTEMS0000011111" addr="FCTEMS0000011111_AV-Running" msg="Updated tag FCTEMS0000011111_AV-Running."
+    - event.original: <~tmp.type>devname="<observer.name>" devid="<observer.serial_number>" vd="<~tmp.fortinet.firewall.vd>" date=<~tmp.date> time=<~tmp.time> eventtime=<~> tz="<~tmp.tz>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" logdesc="<rule.description>" fctemssn="<~tmp.fortinet.firewall.fctemssn>" addr="<~tmp.fortinet.firewall.addrgrp>" msg="<message>"
 
 normalize:
   - map:
@@ -98,6 +101,8 @@ normalize:
       - \@timestamp: $~tmp.timestamp
       - event.start: $~tmp.timestamp
       - fileset.name: firewall
+      - fortinet.firewall.addrgrp: $~tmp.fortinet.firewall.addrgrp
+      - fortinet.firewall.fctemssn: $~tmp.fortinet.firewall.fctemssn
       - fortinet.firewall.action: $event.action
       - fortinet.firewall.method: $~tmp.fortinet.firewall.method
       - fortinet.firewall.profile: $~tmp.fortinet.firewall.profile
