@@ -19,21 +19,35 @@ sources:
 parse:
   logpar:
     # <189>date=2020-04-23 time=12:32:48 devname="testswitch3" devid="someotherrouteridagain" logid="0102043014" type="event" subtype="user" level="notice" vd="root" eventtime=1587231168439640874 tz="-0500" logdesc="FSSO logon authentication status" srcip=10.10.10.10 user="elasticouser" server="elasticserver" action="FSSO-logon" msg="FSSO-logon event from FSSO_elasticserver: user elasticouser logged on 10.10.10.10"
-    - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" srcip=<source.ip> user="<source.user.name>" server="<~tmp.server>" action="<event.action>" msg="<message>"
+    - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" srcip=<source.ip> user="<source.user.name>" server="<~tmp.fortinet.firewall.server>" action="<event.action>" msg="<message>"
     # <189>date=2020-04-23 time=12:32:09 devname="testswitch3" devid="someotherrouteridagain" logid="0102043039" type="event" subtype="user" level="notice" vd="root" eventtime=1587231130109462858 tz="-0500" logdesc="Authentication logon" srcip=10.10.10.10 user="elastiiiuser" authserver="FSSO_elastiauth" action="auth-logon" status="logon" msg="User elastiiiuser added to auth logon"
-    - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" srcip=<source.ip> user="<source.user.name>" authserver="<~tmp.authserver>" action="<event.action>" status="<~tmp.status>" msg="<message>"
+    - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" srcip=<source.ip> user="<source.user.name>" authserver="<~tmp.fortinet.firewall.authserver>" action="<event.action>" status="<~tmp.fortinet.firewall.status>" msg="<message>"
     # <190>date=2019-05-13 time=15:55:56 logid="0102043008" type="event" subtype="user" level="notice" vd="root" eventtime=1557788156913809277 logdesc="Authentication success" srcip=10.1.100.11 dstip=172.16.200.55 policyid=1 interface="port10" user="bob" group="local-group1" authproto="TELNET(10.1.100.11)" action="authentication" status="success" reason="N/A" msg="User bob succeeded in authentication"
-    - event.original: <~/literal/<190>>date=<~tmp.date> time=<~tmp.time> logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> logdesc="<rule.description>" srcip=<source.ip> dstip=<destination.ip> policyid=<rule.id> interface="<~tmp.interface>" user="<source.user.name>" group="<source.user.group.name>" authproto="<~tmp.authproto>" action="<event.action>" status="<~tmp.status>" reason="<~>" msg="<message>"
+    - event.original: <~/literal/<190>>date=<~tmp.date> time=<~tmp.time> logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> logdesc="<rule.description>" srcip=<source.ip> dstip=<destination.ip> policyid=<rule.id> interface="<~tmp.fortinet.firewall.interface>" user="<source.user.name>" group="<source.user.group.name>" authproto="<~tmp.fortinet.firewall.authproto>" action="<event.action>" status="<~tmp.fortinet.firewall.status>" reason="<~>" msg="<message>"
     # <189>date=2020-04-23 time=14:32:09 devname="testswitch3" devid="someotherrouteridagain" logid="0100040704" type="event" subtype="system" level="notice" vd="root" eventtime=1587231129938795255 tz="-0300" logdesc="System performance statistics" action="perf-stats" cpu=0 mem=10 totalsession=23 disk=0 bandwidth="23/4" setuprate=0 disklograte=0 fazlograte=0 freediskstorage=331 sysuptime=25170 msg="Performance statistics: average CPU: 0, memory:  23, concurrent sessions:  20, setup-rate: 0"
-    - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" action="<event.action>" cpu=<~tmp.cpu> mem=<~tmp.mem> totalsession=<~tmp.totalsession> disk=<~tmp.disk> bandwidth="<~tmp.bandwidth>" setuprate=<~tmp.setuprate> disklograte=<~tmp.disklograte> fazlograte=<~tmp.fazlograte> freediskstorage=<~tmp.freediskstorage> sysuptime=<~tmp.sysuptime> msg="<message>"
+    - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" action="<event.action>" cpu=<~tmp.fortinet.firewall.cpu> mem=<~tmp.fortinet.firewall.mem> totalsession=<~tmp.fortinet.firewall.totalsession> disk=<~tmp.fortinet.firewall.disk> bandwidth="<~tmp.fortinet.firewall.bandwidth>" setuprate=<~tmp.fortinet.firewall.setuprate> disklograte=<~tmp.fortinet.firewall.disklograte> fazlograte=<~tmp.fortinet.firewall.fazlograte> freediskstorage=<~tmp.fortinet.firewall.freediskstorage> sysuptime=<~tmp.fortinet.firewall.sysuptime> msg="<message>"
     # <187>date=2020-04-23 time=12:32:47 devname="testswitch3" devid="someotherrouteridagain" logid="0101037124" type="event" subtype="vpn" level="error" vd="root" eventtime=1587231168339114138 tz="-0500" logdesc="IPsec phase 1 error" msg="IPsec phase 1 error" action="negotiate" remip=8.8.4.4 locip=175.16.199.1 remport=500 locport=500 outintf="wan2" cookies="345hkjhdrs87/0000000000000000" user="N/A" group="N/A" xauthuser="N/A" xauthgroup="N/A" assignip=N/A vpntunnel="N/A" status="negotiate_error" reason="peer SA proposal not match local policy" peer_notif="NOT-APPLICABLE"
-    - event.original: <~/literal/<187>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" msg="<message>" action="<event.action>" remip=<destination.ip> locip=<source.ip> remport=<destination.port> locport=<source.port> outintf="<~tmp.outintf>" cookies="<~tmp.cookies>" user="<~>" group="<~>" xauthuser="<~>" xauthgroup="<~>" assignip=<~> vpntunnel="<~>" status="<~tmp.status>" reason="<event.reason>" peer_notif="<~tmp.peer_notif>"
+    - event.original: <~/literal/<187>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" msg="<message>" action="<event.action>" remip=<destination.ip> locip=<source.ip> remport=<destination.port> locport=<source.port> outintf="<~tmp.fortinet.firewall.outintf>" cookies="<~tmp.fortinet.firewall.cookies>" user="<~>" group="<~>" xauthuser="<~>" xauthgroup="<~>" assignip=<~> vpntunnel="<~>" status="<~tmp.fortinet.firewall.status>" reason="<event.reason>" peer_notif="<~tmp.fortinet.firewall.peer_notif>"
     # <189>date=2020-04-23 time=12:32:31 devname="testswitch3" devid="someotherrouteridagain" logid="0101037127" type="event" subtype="vpn" level="notice" vd="root" eventtime=1587231151628960857 tz="-0500" logdesc="Progress IPsec phase 1" msg="progress IPsec phase 1" action="negotiate" remip=8.4.5.4 locip=1.128.3.4 remport=500 locport=500 outintf="wan1" cookies="df868dsg876d/0000000000000000" user="N/A" group="N/A" xauthuser="N/A" xauthgroup="N/A" assignip=N/A vpntunnel="elasticvpn" status="success" init="local" mode="main" dir="outbound" stage=1 role="initiator" result="OK"
-    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" msg="<message>" action="<event.action>" remip=<destination.ip> locip=<source.ip> remport=<destination.port> locport=<source.port> outintf="<~tmp.outintf>" cookies="<~tmp.cookies>" user="<~>" group="<~>" xauthuser="<~>" xauthgroup="<~>" assignip=<~> vpntunnel="<~tmp.vpntunnel>" status="<~tmp.status>" init="<~tmp.init>" mode="<~tmp.mode>" dir="<~tmp.dir>" stage=<~tmp.stage> role="<~tmp.role>" result="<~tmp.result>"
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" msg="<message>" action="<event.action>" remip=<destination.ip> locip=<source.ip> remport=<destination.port> locport=<source.port> outintf="<~tmp.fortinet.firewall.outintf>" cookies="<~tmp.fortinet.firewall.cookies>" user="<~>" group="<~>" xauthuser="<~>" xauthgroup="<~>" assignip=<~> vpntunnel="<~tmp.fortinet.firewall.vpntunnel>" status="<~tmp.fortinet.firewall.status>" init="<~tmp.fortinet.firewall.init>" mode="<~tmp.fortinet.firewall.mode>" dir="<~tmp.dir>" stage=<~tmp.fortinet.firewall.stage> role="<~tmp.fortinet.firewall.role>" result="<~tmp.fortinet.firewall.result>"
     # <190>date=2020-11-02 time=08:11:38 devname=testfirewall devid=newrouterid logid=0101037127 type="event" subtype=vpn level=notice vd=root logdesc="Progress IPsec phase 1" msg="progress IPsec phase 1" action=negotiate remip=175.16.199.1 locip=10.10.10.10 remport=500 locport=500 outintf="port1" cookies="125cbf9ee8349965/0000000000000000" user="N/A" group="N/A" xauthuser="N/A" xauthgroup="N/A" assignip=N/A vpntunnel="P1_Test" status=success init=local mode=aggressive dir=outbound stage=1 role=initiator result=OK
-    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname=<observer.name> devid=<observer.serial_number> logid=<event.code> type="<event.kind>" subtype=<~tmp.subtype> level=<log.level> vd=<~tmp.vd> logdesc="<rule.description>" msg="<message>" action=<event.action> remip=<destination.ip> locip=<source.ip> remport=<destination.port> locport=<source.port> outintf="<~tmp.outintf>" cookies="<~tmp.cookies>" user="<~>" group="<~>" xauthuser="<~>" xauthgroup="<~>" assignip=<~> vpntunnel="<~tmp.vpntunnel>" status=<~tmp.status> init=<~tmp.init> mode=<~tmp.mode> dir=<~tmp.dir> stage=<~tmp.stage> role=<~tmp.role> result=<~tmp.result>
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname=<observer.name> devid=<observer.serial_number> logid=<event.code> type="<event.kind>" subtype=<~tmp.fortinet.firewall.subtype> level=<log.level> vd=<~tmp.fortinet.firewall.vd> logdesc="<rule.description>" msg="<message>" action=<event.action> remip=<destination.ip> locip=<source.ip> remport=<destination.port> locport=<source.port> outintf="<~tmp.fortinet.firewall.outintf>" cookies="<~tmp.fortinet.firewall.cookies>" user="<~>" group="<~>" xauthuser="<~>" xauthgroup="<~>" assignip=<~> vpntunnel="<~tmp.fortinet.firewall.vpntunnel>" status=<~tmp.fortinet.firewall.status> init=<~tmp.fortinet.firewall.init> mode=<~tmp.fortinet.firewall.mode> dir=<~tmp.dir> stage=<~tmp.fortinet.firewall.stage> role=<~tmp.fortinet.firewall.role> result=<~tmp.fortinet.firewall.result>
     # <190>date=2019-05-13 time=14:21:42 logid="0101037127" type="event" subtype="vpn" level="notice" vd="root" eventtime=1557782502722231889 logdesc="Progress IPsec phase 1" msg="progress IPsec phase 1" action="negotiate" remip=50.1.1.101 locip=1.128.3.4 remport=500 locport=500 outintf="port14" cookies="9091f4d4837ea71c/0000000000000000" user="N/A" group="N/A" xauthuser="N/A" xauthgroup="N/A" assignip=N/A vpntunnel="test" status="success" init="local" mode="main" dir="outbound" stage=1 role="initiator" result="OK"
-    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> logid="<event.code>" type="<event.kind>" subtype="<~tmp.subtype>" level="<log.level>" vd="<~tmp.vd>" eventtime=<~> logdesc="<rule.description>" msg="<message>" action="<event.action>" remip=<destination.ip> locip=<source.ip> remport=<destination.port> locport=<source.port> outintf="<~tmp.outintf>" cookies="<~tmp.cookies>" user="<~>" group="<~>" xauthuser="<~>" xauthgroup="<~>" assignip=<~> vpntunnel="<~tmp.vpntunnel>" status="<~tmp.status>" init="<~tmp.init>" mode="<~tmp.mode>" dir="<~tmp.dir>" stage=<~tmp.stage> role="<~tmp.role>" result="<~tmp.result>"
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> logdesc="<rule.description>" msg="<message>" action="<event.action>" remip=<destination.ip> locip=<source.ip> remport=<destination.port> locport=<source.port> outintf="<~tmp.fortinet.firewall.outintf>" cookies="<~tmp.fortinet.firewall.cookies>" user="<~>" group="<~>" xauthuser="<~>" xauthgroup="<~>" assignip=<~> vpntunnel="<~tmp.fortinet.firewall.vpntunnel>" status="<~tmp.fortinet.firewall.status>" init="<~tmp.fortinet.firewall.init>" mode="<~tmp.fortinet.firewall.mode>" dir="<~tmp.dir>" stage=<~tmp.fortinet.firewall.stage> role="<~tmp.fortinet.firewall.role>" result="<~tmp.fortinet.firewall.result>"
+    # <189>date=2020-04-23 time=14:24:13 devname="testswitch3" devid="someotherrouteridagain" logid="0100041006" type="event" subtype="system" level="notice" vd="root" eventtime=1587230655301863513 tz="-0300" logdesc="FortiSandbox AV database updated" version="1.522479" msg="FortiSandbox AV database updated"
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" version="<~tmp.fortinet.firewall.version>" msg="<message>"
+    # <190>date=2020-04-23 time=12:23:47 devname="testswitch3" devid="someotherrouteridagain" logid="0107045057" type="event" subtype="endpoint" level="information" vd="root" eventtime=1587230627558979735 tz="-0500" logdesc="FortiClient connection added" action="add" status="success" license_limit="unlimited" used_for_type=3 connection_type="sslvpn" count=2 user="elastico" ip=172.16.0.2 name="somerouter" fctuid="645234fdd01F885824F764" msg="Add a FortiClient Connection."
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" action="<event.action>" status="<~tmp.fortinet.firewall.status>" license_limit="<~tmp.fortinet.firewall.license_limit>" used_for_type=<~tmp.fortinet.firewall.used_for_type> connection_type="<~tmp.fortinet.firewall.connection_type>" count=<~tmp.fortinet.firewall.count> user="<source.user.name>" ip=<~tmp.fortinet.firewall.ip> name="<~tmp.fortinet.firewall.name>" fctuid="<~tmp.fortinet.firewall.fctuid>" msg="<message>"
+    # <190>date=2020-04-23 time=12:23:47 devname="testswitch3" devid="someotherrouteridagain" logid="0101039943" type="event" subtype="vpn" level="information" vd="root" eventtime=1587230627334405765 tz="-0500" logdesc="SSL VPN new connection" action="ssl-new-con" tunneltype="ssl" tunnelid=2 remip=8.8.8.6 user="N/A" group="N/A" dst_host="N/A" reason="N/A" msg="SSL new connection"
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" action="<event.action>" tunneltype="<~tmp.fortinet.firewall.tunneltype>" tunnelid=<~tmp.fortinet.firewall.tunnelid> remip=<destination.ip> user="<~>" group="<~>" dst_host="<~>" reason="<~>" msg="<message>"
+    # <190>date=2020-04-23 time=12:23:47 devname="testswitch3" devid="someotherrouteridagain" logid="0101039947" type="event" subtype="vpn" level="information" vd="root" eventtime=1587230627698970007 tz="-0500" logdesc="SSL VPN tunnel up" action="tunnel-up" tunneltype="ssl-tunnel" tunnelid=2345 remip=8.8.5.4 tunnelip=10.10.10.10 user="someuser" group="somegroup" dst_host="N/A" reason="tunnel established" msg="SSL tunnel established"
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" action="<event.action>" tunneltype="<~tmp.fortinet.firewall.tunneltype>" tunnelid=<~tmp.fortinet.firewall.tunnelid> remip=<destination.ip> tunnelip=<~tmp.fortinet.firewall.tunnelip> user="<source.user.name>" group="<source.user.group.name>" dst_host="<~>" reason="<event.reason>" msg="<message>"
+    # <189>date=2020-04-23 time=12:16:02 devname="testswitch3" devid="someotherrouteridagain" logid="0100022913" type="event" subtype="system" level="notice" vd="root" eventtime=1587230163375149856 tz="-0500" logdesc="FortiCloud server disconnected" server="4.4.4.4" action="disconnect" reason="connection reset" msg="FortiCloud 4.4.4.4 server is disconnected"
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" server="<~tmp.fortinet.firewall.server>" action="<event.action>" reason="<event.reason>" msg="<message>"
+    # <189>date=2020-04-23 time=12:16:02 devname="testswitch3" devid="someotherrouteridagain" logid="0100022915" type="event" subtype="system" level="notice" vd="root" eventtime=1587230163121116383 tz="-0500" logdesc="FortiCloud server connected" server="1.128.3.4" action="connect" msg="FortiCloud 1.128.3.4 server is connected"
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" server="<~tmp.fortinet.firewall.server>" action="<event.action>" msg="<message>"
+    # <190>date=2019-05-13 time=11:20:54 logid="0100032001" type="event" subtype="system" level="information" vd="vdom1" eventtime=1557771654587081441 logdesc="Admin login successful" sn="1557771654" user="admin" ui="ssh(172.16.200.254)" method="ssh" srcip=172.16.200.254 dstip=172.16.200.2 action="login" status="success" reason="none" profile="super_admin" msg="Administrator admin logged in successfully from ssh(172.16.200.254)"
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> logdesc="<rule.description>" sn="<~tmp.fortinet.firewall.sn>" user="<source.user.name>" ui="<~tmp.fortinet.firewall.ui>" method="<~tmp.fortinet.firewall.method>" srcip=<source.ip> dstip=<destination.ip> action="<event.action>" status="<~tmp.fortinet.firewall.status>" reason="<event.reason>" profile="<~tmp.fortinet.firewall.profile>" msg="<message>"
 
 normalize:
   - map:
@@ -48,25 +62,25 @@ normalize:
     map:
       - event.outcome: failure
   - check:
-    - ~tmp.subtype: user
+    - ~tmp.fortinet.firewall.subtype: user
     - event.action: +r_match/(?i)logon
     map:
       - event.type: [start, user]
   - check:
-    - ~tmp.subtype: user
+    - ~tmp.fortinet.firewall.subtype: user
     - event.action: +r_match/(?i)logoff
     map:
       - event.type: [end, user]
   - map:
     - event.category: [authentication]
   - check:
-    - ~tmp.subtype: system
+    - ~tmp.fortinet.firewall.subtype: system
     map:
       - event.category: [host]
       - event.type: [info]
       - event.outcome: +ef_delete
   - check:
-    - ~tmp.subtype: vpn
+    - ~tmp.fortinet.firewall.subtype: vpn
     map:
       - event.category: [network]
       - event.type: [connection]
@@ -78,19 +92,6 @@ normalize:
       - ~tmp.timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000/$~tmp.tz
   - check:
     - destination.ip: +ef_exists
-    - ~tmp.subtype!: vpn
-    map:
-      - related.ip: +a_append/$destination.ip
-  - check:
-    - destination.ip: +ef_exists
-    - ~tmp.subtype: vpn
-    - ~tmp.type: <189>
-    map:
-      - related.ip: +a_append/$destination.ip
-  - check:
-    - destination.ip: +ef_exists
-    - ~tmp.subtype: vpn
-    - ~tmp.type: <190>
     map:
       - related.ip: +a_append/$destination.ip
   - map:
@@ -98,40 +99,53 @@ normalize:
       - event.start: $~tmp.timestamp
       - fileset.name: firewall
       - fortinet.firewall.action: $event.action
-      - fortinet.firewall.cookies: $~tmp.cookies
-      - fortinet.firewall.init: $~tmp.init
-      - fortinet.firewall.mode: $~tmp.mode
-      - fortinet.firewall.outintf: $~tmp.outintf
-      - fortinet.firewall.result: $~tmp.result
-      - fortinet.firewall.role: $~tmp.role
-      - fortinet.firewall.stage: $~tmp.stage
-      - fortinet.firewall.peer_notif: $~tmp.peer_notif
-      - fortinet.firewall.bandwidth: $~tmp.bandwidth
-      - fortinet.firewall.cpu: $~tmp.cpu
-      - fortinet.firewall.disk: $~tmp.disk
-      - fortinet.firewall.disklograte: $~tmp.disklograte
-      - fortinet.firewall.fazlograte: $~tmp.fazlograte
-      - fortinet.firewall.freediskstorage: $~tmp.freediskstorage
-      - fortinet.firewall.mem: $~tmp.mem
-      - fortinet.firewall.setuprate: $~tmp.setuprate
-      - fortinet.firewall.sysuptime: $~tmp.sysuptime
-      - fortinet.firewall.totalsession: $~tmp.totalsession
-      - fortinet.firewall.authproto: $~tmp.authproto
-      - fortinet.firewall.interface: $~tmp.interface
-      - fortinet.firewall.status: $~tmp.status
-      - fortinet.firewall.subtype: $~tmp.subtype
+      - fortinet.firewall.method: $~tmp.fortinet.firewall.method
+      - fortinet.firewall.profile: $~tmp.fortinet.firewall.profile
+      - fortinet.firewall.sn: $~tmp.fortinet.firewall.sn
+      - fortinet.firewall.connection_type: $~tmp.fortinet.firewall.connection_type
+      - fortinet.firewall.count: $~tmp.fortinet.firewall.count
+      - fortinet.firewall.fctuid: $~tmp.fortinet.firewall.fctuid
+      - fortinet.firewall.ip: $~tmp.fortinet.firewall.ip
+      - fortinet.firewall.license_limit: $~tmp.fortinet.firewall.license_limit
+      - fortinet.firewall.name: $~tmp.fortinet.firewall.name
+      - fortinet.firewall.cookies: $~tmp.fortinet.firewall.cookies
+      - fortinet.firewall.init: $~tmp.fortinet.firewall.init
+      - fortinet.firewall.mode: $~tmp.fortinet.firewall.mode
+      - fortinet.firewall.outintf: $~tmp.fortinet.firewall.outintf
+      - fortinet.firewall.result: $~tmp.fortinet.firewall.result
+      - fortinet.firewall.role: $~tmp.fortinet.firewall.role
+      - fortinet.firewall.stage: $~tmp.fortinet.firewall.stage
+      - fortinet.firewall.peer_notif: $~tmp.fortinet.firewall.peer_notif
+      - fortinet.firewall.bandwidth: $~tmp.fortinet.firewall.bandwidth
+      - fortinet.firewall.cpu: $~tmp.fortinet.firewall.cpu
+      - fortinet.firewall.disk: $~tmp.fortinet.firewall.disk
+      - fortinet.firewall.disklograte: $~tmp.fortinet.firewall.disklograte
+      - fortinet.firewall.fazlograte: $~tmp.fortinet.firewall.fazlograte
+      - fortinet.firewall.freediskstorage: $~tmp.fortinet.firewall.freediskstorage
+      - fortinet.firewall.mem: $~tmp.fortinet.firewall.mem
+      - fortinet.firewall.setuprate: $~tmp.fortinet.firewall.setuprate
+      - fortinet.firewall.sysuptime: $~tmp.fortinet.firewall.sysuptime
+      - fortinet.firewall.totalsession: $~tmp.fortinet.firewall.totalsession
+      - fortinet.firewall.authproto: $~tmp.fortinet.firewall.authproto
+      - fortinet.firewall.interface: $~tmp.fortinet.firewall.interface
+      - fortinet.firewall.status: $~tmp.fortinet.firewall.status
+      - fortinet.firewall.subtype: $~tmp.fortinet.firewall.subtype
+      - fortinet.firewall.tunnelid: $~tmp.fortinet.firewall.tunnelid
+      - fortinet.firewall.tunnelip: $~tmp.fortinet.firewall.tunnelip
+      - fortinet.firewall.tunneltype: $~tmp.fortinet.firewall.tunneltype
       - fortinet.firewall.type: $event.kind
-      - fortinet.firewall.vd: $~tmp.vd
-      - fortinet.firewall.vpntunnel: $~tmp.vpntunnel
-      - fortinet.firewall.authserver: $~tmp.authserver
-      - fortinet.firewall.server: $~tmp.server
+      - fortinet.firewall.ui: $~tmp.fortinet.firewall.ui
+      - fortinet.firewall.vd: $~tmp.fortinet.firewall.vd
+      - fortinet.firewall.used_for_type: $~tmp.fortinet.firewall.used_for_type
+      - fortinet.firewall.vpntunnel: $~tmp.fortinet.firewall.vpntunnel
+      - fortinet.firewall.authserver: $~tmp.fortinet.firewall.authserver
+      - fortinet.firewall.server: $~tmp.fortinet.firewall.server
+      - fortinet.firewall.version: $~tmp.fortinet.firewall.version
       - input.type: log
       # TODO: Could not map field 'log.offset' due to inability to persist values into yml variables.
       # Also, there is no helper that allows obtaining the size of an event.
       - log.offset: 0
-      - ~tmp.ip: +s_ip_version/$source.ip
       - network.direction: $~tmp.dir
-      - network.type: +s_lo/$~tmp.ip
       - observer.product: Fortigate
       - observer.type: firewall
       - observer.vendor: Fortinet
@@ -150,10 +164,14 @@ normalize:
       - service.type: fortinet
       - tags: [fortinet-firewall, forwarded]
   - check:
-    - ~tmp.subtype: vpn
-    - ~tmp.type: <190>
-    - observer.name: +ef_exists
+    - source.ip: +ef_exists
     map:
-    - event.start: +ef_delete
+      - ~tmp.ip: +s_ip_version/$source.ip
+  - check:
+    - destination.ip: +ef_exists
+    - source.ip: +ef_not_exists
+    map:
+      - ~tmp.ip: +s_ip_version/$destination.ip
   - map:
+    - network.type: +s_lo/$~tmp.ip
     - ~tmp: +ef_delete
