@@ -22,6 +22,7 @@ decoders:
   - decoder/rootcheck/0
   - decoder/sca/0
   - decoder/ciscat/0
+  - decoder/sophos-utm/0
   - decoder/syscollector-base/0
   - decoder/syscollector-dbsync-network-protocol/0
   - decoder/syscollector-dbsync-osinfo/0
