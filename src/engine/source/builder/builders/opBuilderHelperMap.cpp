@@ -1054,6 +1054,67 @@ base::Expression opBuilderHelperAppend(const std::any& definition)
         });
 }
 
+// field: +ef_append/$field
+base::Expression opBuilderHelperFieldAppend(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters = helper::base::processParameters(name, rawParameters);
+    helper::base::checkParametersSize(name, parameters, 1);
+    helper::base::checkParameterType(
+        name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+
+    name = helper::base::formatHelperName(name, targetField, parameters);
+
+    // Tracing
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+
+    const std::string failureTrace1 {
+        fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters[0].m_value)};
+    const std::string failureTrace2 {
+        fmt::format(TRACE_TARGET_NOT_FOUND, name, targetField)};
+    const std::string failureTrace3 {
+        fmt::format("[{}] -> Failure: Fields type do not match", name)};
+    const std::string failureTrace4 {
+        fmt::format("[{}] -> Failure: Fields type not supported", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=,
+         targetField = std::move(targetField),
+         fieldReference = std::move(parameters[0].m_value)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            // Check target and reference field exists
+            if (!event->exists(fieldReference))
+            {
+                return base::result::makeFailure(event, failureTrace1);
+            }
+
+            if (!event->exists(targetField))
+            {
+                return base::result::makeFailure(event, failureTrace2);
+            }
+
+            // Check fields types
+            auto targetType = event->type(targetField);
+            if (targetType != event->type(fieldReference))
+            {
+                return base::result::makeFailure(event, failureTrace3);
+            }
+            if (targetType != json::Json::Type::Array
+                && targetType != json::Json::Type::Object)
+            {
+                return base::result::makeFailure(event, failureTrace4);
+            }
+
+            // Merge
+            event->merge(json::RECURSIVE, fieldReference, targetField);
+
+            return base::result::makeSuccess(event, successTrace);
+        });
+}
+
 // field: +s_to_array/$field/[,| | ...]
 base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
 {
@@ -1165,7 +1226,7 @@ base::Expression opBuilderHelperMerge(const std::any& definition)
             }
 
             // Merge
-            event->merge(fieldReference, targetField);
+            event->merge(json::NOT_RECURSIVE, fieldReference, targetField);
 
             return base::result::makeSuccess(event, successTrace);
         });
