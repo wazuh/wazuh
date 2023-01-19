@@ -11,6 +11,9 @@ metadata:
   references:
     - https://docs.rs/redis-module/latest/redis_module/logging/index.html
 
+sources:
+  - decoder/queue-localfile/0
+
 parse:
   logpar:
     # Darwin
