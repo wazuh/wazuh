@@ -1031,7 +1031,7 @@ stages:
       status_code: 400
 
 ---
-test_name: PUT /rule/decoders/{filename}
+test_name: PUT /decoders/files/{filename}
 
 stages:
 
@@ -1123,6 +1123,29 @@ stages:
                 code: 1113
               id:
                 - "etc/decoders/invalid_decoder.xml"
+          total_affected_items: 0
+          total_failed_items: 1
+        error: 1
+
+  - name: Upload decoder that already exists in ruleset
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0006-json_decoders.xml"
+      method: PUT
+      data: "{new_decoder:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1914
+              id:
+                - "ruleset/decoders/0006-json_decoders.xml"
           total_affected_items: 0
           total_failed_items: 1
         error: 1
