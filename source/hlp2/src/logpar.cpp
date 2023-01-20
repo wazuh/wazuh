@@ -577,7 +577,7 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
             else
             {
                 throw std::runtime_error("Group must start with a literal or a "
-                                         "succession of groups and a liretal");
+                                         "succession of groups and a literal");
             }
 
             return endTokens;
