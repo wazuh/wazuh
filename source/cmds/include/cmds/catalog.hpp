@@ -1,111 +1,57 @@
-#ifndef _CMD_APICLNT_CATALOG_HPP
-#define _CMD_APICLNT_CATALOG_HPP
+#ifndef _CMD_CATALOG_HPP
+#define _CMD_CATALOG_HPP
 
-#include <cstring>
 #include <string>
 #include <vector>
 
-namespace cmd
+#include <CLI/CLI.hpp>
+
+#include <api/wazuhRequest.hpp>
+#include <api/wazuhResponse.hpp>
+#include <json/json.hpp>
+
+namespace cmd::catalog
 {
 
-namespace catalog_details
+namespace details
 {
-enum class Action
-{
-    LIST,
-    GET,
-    UPDATE,
-    CREATE,
-    DELETE,
-    VALIDATE,
-    LOAD,
-    ERROR_ACTION
-};
+constexpr auto ORIGIN_NAME = "engine_integrated_catalog_api";
+std::string commandName(const std::string& command);
+json::Json getParameters(const std::string& format,
+                         const std::string& name,
+                         const std::string& content = "");
+void processResponse(const api::WazuhResponse& response);
+void singleRequest(const api::WazuhRequest& request, const std::string& socketPath);
+} // namespace details
 
-constexpr auto actionToString(Action action)
-{
-    switch (action)
-    {
-        case Action::LIST: return "list";
-        case Action::GET: return "get";
-        case Action::UPDATE: return "update";
-        case Action::CREATE: return "create";
-        case Action::DELETE: return "delete";
-        case Action::VALIDATE: return "validate";
-        case Action::LOAD: return "load";
-        default: return "ERROR_ACTION";
-    }
-}
+void runGet(const std::string& socketPath,
+            const std::string& format,
+            const std::string& nameStr);
 
-constexpr auto stringToAction(const char* action)
-{
-    if (strcmp(action, actionToString(Action::LIST)) == 0)
-    {
-        return Action::LIST;
-    }
-    else if (strcmp(action, actionToString(Action::GET)) == 0)
-    {
-        return Action::GET;
-    }
-    else if (strcmp(action, actionToString(Action::UPDATE)) == 0)
-    {
-        return Action::UPDATE;
-    }
-    else if (strcmp(action, actionToString(Action::CREATE)) == 0)
-    {
-        return Action::CREATE;
-    }
-    else if (strcmp(action, actionToString(Action::DELETE)) == 0)
-    {
-        return Action::DELETE;
-    }
-    else if (strcmp(action, actionToString(Action::VALIDATE)) == 0)
-    {
-        return Action::VALIDATE;
-    }
-    else if (strcmp(action, actionToString(Action::LOAD)) == 0)
-    {
-        return Action::LOAD;
-    }
-    else
-    {
-        return Action::ERROR_ACTION;
-    }
-}
+void runUpdate(const std::string& socketPath,
+               const std::string& format,
+               const std::string& nameStr,
+               const std::string& content);
 
-void singleRequest(const std::string& socketPath,
-                   const std::string& actionStr,
-                   const std::string& nameStr,
-                   const std::string& format,
-                   const std::string& content,
-                   const std::string& path);
+void runCreate(const std::string& socketPath,
+               const std::string& format,
+               const std::string& nameStr,
+               const std::string& content);
 
-void loadRuleset(const std::string& socketPath,
-                    const std::string& name,
-                    const std::string& collectionPath,
-                    const std::string& format,
-                    const bool recursive);
+void runDelete(const std::string& socketPath, const std::string& nameStr);
 
-} // namespace catalog_details
+void runValidate(const std::string& socketPath,
+                 const std::string& format,
+                 const std::string& nameStr,
+                 const std::string& content);
 
-/**
- * @brief Operate the engine catalog through the API
- *
- * @param socketPath Path to the api socket where the engine is listening
- * @param actionStr Action to use: list, get, update, create, delete
- * @param nameStr Name of the item to operate on
- * @param format Format of the content: json, yaml
- * @param content  Content of the request, depending on the action
- * @param recursive Option to recursively traverse or not a directory
- */
-void catalog(const std::string& socketPath,
-             const std::string& actionStr,
-             const std::string& nameStr,
+void runLoad(const std::string& socketPath,
              const std::string& format,
-             const std::string& content,
+             const std::string& nameStr,
              const std::string& path,
-             bool recursive,
-             int logLevel);
-} // namespace cmd
+             bool recursive);
 
-#endif // _CMD_APICLNT_CATALOG_HPP
+void configure(CLI::App& app);
+} // namespace cmd::catalog
+
+#endif // _CMD_CATALOG_HPP

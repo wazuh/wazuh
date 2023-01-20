@@ -1,4 +1,4 @@
-#include "cmds/cmdGraph.hpp"
+#include <cmds/graph.hpp>
 
 #include <filesystem>
 #include <fstream>
@@ -13,6 +13,7 @@
 
 #include "base/utils/getExceptionStack.hpp"
 #include "builder.hpp"
+#include "defaultSettings.hpp"
 #include "register.hpp"
 #include "registry.hpp"
 #include "stackExecutor.hpp"
@@ -24,12 +25,9 @@ constexpr auto ENV_GRAPH = "env_graph.dot";
 constexpr auto ENV_EXPR_GRAPH = "env_expr_graph.dot";
 } // namespace
 
-namespace cmd
+namespace cmd::graph
 {
-void graph(const std::string& kvdbPath,
-           const std::string& fileStorage,
-           const std::string& environment,
-           const std::string& graphOutDir)
+void run(const Options& options)
 {
     // Init logging
     // TODO: add cmd to config logging level
@@ -38,10 +36,10 @@ void graph(const std::string& kvdbPath,
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
 
-    auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath);
+    auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(options.kvdbPath);
     g_exitHanlder.add([kvdb]() { kvdb->clear(); });
 
-    auto store = std::make_shared<store::FileDriver>(fileStorage);
+    auto store = std::make_shared<store::FileDriver>(options.fileStorage);
     base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
     auto hlpParsers = store->get(hlpConfigFileName);
     if (std::holds_alternative<base::Error>(hlpParsers))
@@ -72,10 +70,10 @@ void graph(const std::string& kvdbPath,
     }
 
     builder::Builder _builder(store, registry);
-    decltype(_builder.buildEnvironment({environment})) env;
+    decltype(_builder.buildEnvironment({options.environment})) env;
     try
     {
-        env = _builder.buildEnvironment({environment});
+        env = _builder.buildEnvironment({options.environment});
     }
     catch (const std::exception& e)
     {
@@ -101,10 +99,10 @@ void graph(const std::string& kvdbPath,
     }
 
     // Save both graphs
-    std::filesystem::path envGraph {graphOutDir};
+    std::filesystem::path envGraph {options.graphOutDir};
     envGraph.append(ENV_GRAPH);
 
-    std::filesystem::path envExprGraph {graphOutDir};
+    std::filesystem::path envExprGraph {options.graphOutDir};
     envExprGraph.append(ENV_EXPR_GRAPH);
 
     std::ofstream graphFile;
@@ -123,4 +121,44 @@ void graph(const std::string& kvdbPath,
 
     g_exitHanlder.execute();
 }
-} // namespace cmd
+
+void configure(CLI::App& app)
+{
+    auto options = std::make_shared<Options>();
+
+    auto graphApp =
+        app.add_subcommand("graph", "Generate a dot description of an environment.");
+
+    // KVDB path
+    graphApp
+        ->add_option(
+            "-k, --kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
+        ->default_val(ENGINE_KVDB_PATH)
+        ->check(CLI::ExistingDirectory);
+
+    // File storage
+    graphApp
+        ->add_option("-f, --file_storage",
+                     options->fileStorage,
+                     "Sets the path to the folder where the assets are located (store).")
+        ->default_val(ENGINE_STORE_PATH)
+        ->check(CLI::ExistingDirectory);
+
+    // Environment
+    graphApp
+        ->add_option(
+            "--environment", options->environment, "Name of the environment to be used.")
+        ->default_val(ENGINE_ENVIRONMENT);
+
+    // Graph dir
+    graphApp
+        ->add_option("-o, --output_dir",
+                     options->graphOutDir,
+                     "Directory to save the graph files.")
+        ->default_val("./")
+        ->check(CLI::ExistingDirectory);
+
+    // Register callback
+    graphApp->callback([options]() { run(*options); });
+}
+} // namespace cmd::graph
