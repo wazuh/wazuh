@@ -7,6 +7,4 @@ metadata:
 check:
   - wazuh.queue: 102 # eventchannel‘5’
 
-parse:
-  logpar:
-    - event.original: <~parsed_json/json>
+
