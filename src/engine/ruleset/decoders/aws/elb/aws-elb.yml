@@ -4,8 +4,10 @@ name: decoder/aws-elb/0
 metadata:
   description: Decoder for Amazon ELB logs
   references:
-    - htttp.
-  product.name: AWS ELB (Load Balancers)
+    - https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/access-log-collection.html
+    - https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-access-logs.html
+    - https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html
+  product.name: AWS Elastic Load Balancing
 
 sources:
   - decoder/queue-localfile/0
@@ -14,27 +16,43 @@ check:
   - event.original: +ef_exists
 
 definitions:
-  ELBTIMESTAMP: <@timestamp/2018-08-14T14:30:02.203151Z> #TODO: whats better, example or format?
+  ELBTIMESTAMP: <@timestamp/%FT%TZ>?<@timestamp/%FT%T>
   ELBNAME: <aws.elb.name>
   ELBSOURCE: <source.ip>:<source.port>
-  # Or -
+
+
   ELBBACKEND: <aws.elb.backend.ip>:<aws.elb.backend.port>
-  # Or -1 for each expression
+  # TODO: this should be replace by an optional but it doesn't work as expected
+  # making mandatory NO_BE.. variations: <~/literal/->?<aws.elb.backend.ip>(?:<aws.elb.backend.port>)
+
+  # Or -1 for each time fiedl
   ELBPROCESSINGTIME: >-
     <aws.elb.request_processing_time.sec>
     <aws.elb.backend_processing_time.sec>
     <aws.elb.response_processing_time.sec>
-  #  Or - for each expression
-  ELBSSL: <aws.elb.ssl_cipher> <aws.elb.ssl_protocol>
+
+  #  Or '-' for each expression
+  ELBSSL: <~/literal/->?<aws.elb.ssl_cipher> <~/literal/->?<aws.elb.ssl_protocol>
   ELBCOMMON: $ELBTIMESTAMP $ELBNAME $ELBSOURCE $ELBBACKEND $ELBPROCESSINGTIME
+  # TODO: Change in name format due to issue replacing definitions
+  NO_BE_ELBCOMMON: $ELBTIMESTAMP $ELBNAME $ELBSOURCE - $ELBPROCESSINGTIME
   ELBHTTPLOG: >-
     $ELBCOMMON
     <http.response.status_code>
-    <aws.elb.backend.http.response.status_code>
+    <~/literal/->?<aws.elb.backend.http.response.status_code>
     <http.request.body.bytes>
     <http.response.body.bytes>
-    \"<http.request.method> <~tmp.uri_orig> <http.version>\"
-    <~tmp.user_agent/quoted>
+    \"<http.request.method> <~url_original/uri> HTTP/<http.version>\"
+    \"<user_agent.original>\"
+    $ELBSSL
+  NO_BE_ELBHTTPLOG: >-
+    $NO_BE_ELBCOMMON
+    <http.response.status_code>
+    <~/literal/->?<aws.elb.backend.http.response.status_code>
+    <http.request.body.bytes>
+    <http.response.body.bytes>
+    \"<http.request.method> <~url_original/uri> HTTP/<http.version>\"
+    \"<user_agent.original>\"
     $ELBSSL
   ELBTCPLOG: >-
     $ELBCOMMON
@@ -46,33 +64,51 @@ definitions:
     \"-\"
     $ELBSSL
   ELBV2TYPE: <aws.elb.type>
-  ELBV2LOGVERSION: <~/ignore/ > # ignore spaces
 
 parse:
   logpar:
     # HTTP (Classic ELB)
+    # 2019-10-14T12:00:20.694172Z filebeat-aws-elb-test 175.16.199.1:54106 10.0.1.185:80 0.000043 0.000785 0.000023 200 200 0 612 "GET http://18.194.223.56:80/ HTTP/1.1" "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36" - -
     - event.original: $ELBHTTPLOG
+    # 2019-10-14T12:00:20.694172Z filebeat-aws-elb-test 175.16.199.1:54106 - 0.000043 0.000785 0.000023 200 200 0 612 "GET http://18.194.223.56:80/ HTTP/1.1" "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36" - -
+    - event.original: $NO_BE_ELBHTTPLOG
+
     # TCP (Classic ELB)
+    # 2019-10-17T13:22:51.758784Z filebeat-aws-elb-test-elb 81.2.69.193:51600 10.0.0.47:80 0.000943 0.00001 0.000015 - - 134 859 "- - - " "-" - -
     - event.original: $ELBTCPLOG
+
     # HTTP from Application Load Balancers (v2 Load Balancers)
+    # http 2019-10-11T15:55:11.987940Z app/filebeat-aws-elb-test/c86a326e7dc14222 81.2.69.193:37856 10.0.0.192:80 0.000 0.001 0.000 200 200 125 859 "GET http://filebeat-aws-elb-test-12030537.eu-central-1.elb.amazonaws.com:80/ HTTP/1.1" "curl/7.58.0" - - arn:aws:elasticloadbalancing:eu-central-1:627959692251:targetgroup/test-lb-instances/8f04c4fe71f5f794 "Root=1-5da0a5df-7c958e828ff43b63d0e0fac4" "-" "-" 0 2019-10-11T15:55:11.987000Z "forward" "-" "-"
     - event.original: >-
         $ELBV2TYPE
         $ELBHTTPLOG
         <aws.elb.target_group.arn>
         "<aws.elb.trace_id>"
-        "<destination.domain>"
-        "<aws.elb.chosen_cert.arn>"
+        "<~/literal/->?<destination.domain>"
+        "<~/literal/->?<aws.elb.chosen_cert.arn>"
         <aws.elb.matched_rule_priority>
         <event.start/2018-08-14T14:30:02.203151Z>
-        <~tmp.actions_executed/quoted>
-        "<aws.elb.redirect_url>"
-        "<aws.elb.error.reason>"<?~tmp.http_v2_optional>
-    # TODO: process ~tmp.http_v2_optional
-    # TCP from Network Load Balancers (v2 Load Balancers)
+        <~/literal/"-">?<~tmp.actions_executed/quoted>
+        "<~/literal/->?<aws.elb.redirect_url>"
+        "<~/literal/->?<aws.elb.error.reason>"(? <~tmp.http_v2_optional>)
+    # http 2018-07-02T22:23:00.186641Z app/my-loadbalancer/50dc6c495c0c9188 192.168.131.39:2817 - 0.000 0.001 0.000 200 200 34 366 "GET http://www.example.com:80/ HTTP/1.1" "curl/7.46.0" - - arn:aws:elasticloadbalancing:us-east-2:123456789012:targetgroup/my-targets/73e2d6bc24d8a067 "Root=1-58337262-36d228ad5d99923122bbe354" "-" "-" 0 2018-07-02T22:22:48.364000Z "forward" "-" "-" "123" "1234" "clasif" "reason"
     - event.original: >-
         $ELBV2TYPE
-        $ELBV2LOGVERSION
-        $ELBTIMESTAMP
+        $NO_BE_ELBHTTPLOG
+        <aws.elb.target_group.arn>
+        "<aws.elb.trace_id>"
+        "<~/literal/->?<destination.domain>"
+        "<~/literal/->?<aws.elb.chosen_cert.arn>"
+        <aws.elb.matched_rule_priority>
+        <event.start/2018-08-14T14:30:02.203151Z>
+        <~/literal/"-">?<~tmp.actions_executed/quoted>
+        "<~/literal/->?<aws.elb.redirect_url>"
+        "<~/literal/->?<aws.elb.error.reason>"(? <~tmp.http_v2_optional>)
+
+    # TCP from Network Load Balancers (v2 Load Balancers)
+    # tls 1.0 2018-12-20T02:59:40 net/my-network-loadbalancer/c6e77e28c25b2234 g3d4b5e8bb8464cd 89.160.20.112:51341 172.100.100.185:443 5 2 98 246 - arn:aws:acm:us-east-2:671290407336:certificate/2a108f19-aded-46b0-8493-c63eb1ef4a99 - ECDHE-RSA-AES128-SHA tlsv12 - my-network-loadbalancer-c6e77e28c25b2234.elb.us-east-2.amazonaws.com
+    - event.original: >-
+        $ELBV2TYPE <?~version/float> $ELBTIMESTAMP
         $ELBNAME
         <aws.elb.listener>
         $ELBSOURCE
@@ -81,17 +117,17 @@ parse:
         <aws.elb.tls_handshake_time.ms>
         <source.bytes>
         <destination.bytes>
-        <aws.elb.incoming_tls_alert>
-        <aws.elb.chosen_cert.arn>
-        <aws.elb.chosen_cert.serial>
+        <~/literal/->?<aws.elb.incoming_tls_alert>
+        <~/literal/->?<aws.elb.chosen_cert.arn>
+        <~/literal/->?<aws.elb.chosen_cert.serial>
         $ELBSSL
-        <aws.elb.tls_named_group>
-        <destination.domain>
+        <~/literal/->?<~ssl_named_group>
+        <~/literal/->?<destination.domain>
 
 normalize:
   - map:
       - event.kind: event
-      - event.dataset: aws
+      - event.dataset: aws.elb
       - event.module: aws
       - cloud.provider: aws
       - service.type: aws
@@ -101,6 +137,8 @@ normalize:
       - aws.elb.target_status_code: "+s_to_array/$~tmp.target_status_code/ "
       - event.end: $@timestamp
       - tls.cipher: $aws.elb.ssl_cipher
+      - url: $~url_original
+      - aws.elb.ssl_named_group: $~ssl_named_group
       # TODO: process ssl_protocol once parse is avaliable on normalize
 
   - check:
@@ -125,4 +163,16 @@ normalize:
       - aws.elb.protocol: tcp
       - event.category: +a_append/network
 
-  #TODO: add uri and user_agent once parsers are fixed
+  - logpar:
+    - ~tmp.http_v2_optional: >-
+        "<~/literal/->?<~tmp.target_port>"
+        "<~/literal/->?<~tmp.target_status_code>"
+        "<~/literal/->?<aws.elb.classification>"
+        "<~/literal/->?<aws.elb.classification_reason>"
+
+    - aws.elb.ssl_protocol: <tls.version>v<tls.version_protocol>
+
+  - map:
+      - ~tmp: +ef_delete
+      - ~url_original: +ef_delete
+      - ~ssl_named_group: +ef_delete
