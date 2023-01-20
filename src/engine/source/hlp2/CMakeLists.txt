@@ -11,10 +11,9 @@ CPMAddPackage(
 
 CPMAddPackage(
         NAME date
+        # In order to avoid STDOFF errors apply this commit
         GITHUB_REPOSITORY HowardHinnant/date
-        GIT_TAG v3.0.1
-        VERSION 3.0.1
-        GIT_SHALLOW TRUE
+        GIT_TAG 22ceabf205d8d678710a43154da5a06b701c5830
         OPTIONS
         "AUTO_DOWNLOAD 1"
 )
