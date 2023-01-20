@@ -535,7 +535,11 @@ void test_lookfor_agent_group_null_groups()
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     will_return(__wrap_w_is_single_node, 0);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Group assigned: 'default'");
 
@@ -561,7 +565,11 @@ void test_lookfor_agent_group_set_default_group()
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     will_return(__wrap_w_is_single_node, 0);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_wdb_set_agent_groups_csv, id, agent_id);
     will_return(__wrap_wdb_set_agent_groups_csv, 0);
@@ -2806,10 +2814,9 @@ void test_process_groups_find_group_not_changed(void **state)
     os_free(node1);
 }
 
-void test_process_multi_groups_no_agents(void **state)
+void test_process_multi_groups_no_groups(void **state)
 {
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, NULL);
+    will_return(__wrap_wdb_get_distinct_agent_groups, NULL);
 
     expect_value(__wrap_OSHash_Begin, self, m_hash);
     will_return(__wrap_OSHash_Begin, NULL);
@@ -2819,18 +2826,9 @@ void test_process_multi_groups_no_agents(void **state)
 
 void test_process_multi_groups_single_group(void **state)
 {
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1\",\"group_hash\":\"ec282560\"}]");
 
-    cJSON* j_agent_info = cJSON_Parse("{\"group\":\"group1\",\"group_hash\":\"ec282560\"}");
-
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
-
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
 
     expect_value(__wrap_OSHash_Begin, self, m_hash);
     will_return(__wrap_OSHash_Begin, NULL);
@@ -2840,18 +2838,9 @@ void test_process_multi_groups_single_group(void **state)
 
 void test_process_multi_groups_OSHash_Add_fail(void **state)
 {
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
 
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
-
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
-
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, m_hash);
@@ -2866,22 +2855,77 @@ void test_process_multi_groups_OSHash_Add_fail(void **state)
     process_multi_groups();
 }
 
+void test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_first(void **state)
+{
+    cJSON* j_agent_info = cJSON_Parse("[[],[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, m_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Couldn't add multigroup 'group1,group2' to hash table 'm_hash'");
+
+    expect_value(__wrap_OSHash_Begin, self, m_hash);
+    will_return(__wrap_OSHash_Begin, NULL);
+
+    process_multi_groups();
+}
+
+void test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_second(void **state)
+{
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}],[]]");
+
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, m_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Couldn't add multigroup 'group1,group2' to hash table 'm_hash'");
+
+    expect_value(__wrap_OSHash_Begin, self, m_hash);
+    will_return(__wrap_OSHash_Begin, NULL);
+
+    process_multi_groups();
+}
+
+void test_process_multi_groups_OSHash_Add_fail_multi_chunk(void **state)
+{
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}], [{\"group\":\"group3,group4\",\"group_hash\":\"abcdef\"}]]");
+
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, m_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Couldn't add multigroup 'group1,group2' to hash table 'm_hash'");
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, m_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "group3,group4");
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Couldn't add multigroup 'group3,group4' to hash table 'm_hash'");
+
+    expect_value(__wrap_OSHash_Begin, self, m_hash);
+    will_return(__wrap_OSHash_Begin, NULL);
+
+    process_multi_groups();
+}
+
 void test_process_multi_groups_open_fail(void **state)
 {
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
 
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
 
     __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))cleaner);
-
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
-
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, m_hash);
@@ -2915,20 +2959,11 @@ void test_process_multi_groups_open_fail(void **state)
 
 void test_process_multi_groups_find_multi_group_null(void **state)
 {
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
 
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
 
     __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))free_group_c_group);
-
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
-
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, m_hash);
@@ -2987,20 +3022,11 @@ void test_process_multi_groups_group_changed(void **state)
 
     state[0] = multigroup->f_time;
 
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
 
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
 
     __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))cleaner);
-
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
-
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, m_hash);
@@ -3064,20 +3090,11 @@ void test_process_multi_groups_changed_outside(void **state)
 
     state[0] = multigroup->f_time;
 
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
 
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
 
     __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))cleaner);
-
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
-
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, m_hash);
@@ -3154,20 +3171,11 @@ void test_process_multi_groups_changed_outside_nocmerged(void **state)
 
     state[0] = multigroup->f_time;
 
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
 
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
 
     __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))cleaner);
-
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
-
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, m_hash);
@@ -3231,12 +3239,13 @@ void test_c_files(void **state)
 {
     expect_string(__wrap__mdebug2, formatted_msg, "Updating shared files.");
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
 
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, NULL);
+    will_return(__wrap_wdb_get_distinct_agent_groups, NULL);
 
     m_hash = (OSHash *)1;
     expect_value(__wrap_OSHash_Begin, self, m_hash);
@@ -3252,6 +3261,8 @@ void test_c_files(void **state)
 
     expect_value(__wrap_OSHash_Begin, self, multi_groups);
     will_return(__wrap_OSHash_Begin, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug2, formatted_msg, "End updating shared files.");
 
@@ -4533,6 +4544,8 @@ void test_save_controlmsg_could_not_add_pending_data(void **state)
     will_return(__wrap_OSHash_Create, 1);
     pending_data = OSHash_Create();
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_value(__wrap_OSHash_Get, self, pending_data);
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, NULL);
@@ -4541,6 +4554,8 @@ void test_save_controlmsg_could_not_add_pending_data(void **state)
     will_return(__wrap_OSHash_Add, 0);
 
     expect_string(__wrap__merror, formatted_msg, "Couldn't add pending data into hash table.");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
 
@@ -4576,6 +4591,9 @@ void test_save_controlmsg_unable_to_save_last_keepalive(void **state)
     expect_value(__wrap_OSHash_Get, self, pending_data);
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, &data);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_wdb_update_agent_keepalive, id, 1);
     expect_string(__wrap_wdb_update_agent_keepalive, connection_status, AGENT_CS_ACTIVE);
@@ -4616,6 +4634,8 @@ void test_save_controlmsg_update_msg_error_parsing(void **state)
     data->changed = true;
     data->message = message;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_value(__wrap_OSHash_Get, self, pending_data);
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, data);
@@ -4630,6 +4650,8 @@ void test_save_controlmsg_update_msg_error_parsing(void **state)
     expect_value(__wrap_wdb_get_agent_group, id, 1);
     will_return(__wrap_wdb_get_agent_group, group);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is 'test_group'");
 
     expect_value(__wrap_OSHash_Get_ex, self, groups);
@@ -4641,6 +4663,9 @@ void test_save_controlmsg_update_msg_error_parsing(void **state)
     will_return(__wrap_OSHash_Get_ex, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "No such group 'test_group' for agent '001'");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     agent_info_data *agent_data;
     os_calloc(1, sizeof(agent_info_data), agent_data);
@@ -4689,6 +4714,8 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
     data->changed = false;
     data->message = message;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_value(__wrap_OSHash_Get, self, pending_data);
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, data);
@@ -4704,6 +4731,8 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
     memset(&group->merged_sum, 0, sizeof(os_md5));
     snprintf(group->merged_sum, 7, "112359");
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     char* group_name = NULL;
     w_strdup("test_group", group_name);
     expect_value(__wrap_wdb_get_agent_group, id, 1);
@@ -4714,6 +4743,9 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
     expect_value(__wrap_OSHash_Get_ex, self, groups);
     expect_string(__wrap_OSHash_Get_ex, key, "test_group");
     will_return(__wrap_OSHash_Get_ex, group);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     agent_info_data *agent_data;
     os_calloc(1, sizeof(agent_info_data), agent_data);
@@ -4728,6 +4760,9 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
     expect_string(__wrap_parse_agent_update_msg, msg, "valid message \n");
     will_return(__wrap_parse_agent_update_msg, agent_data);
     will_return(__wrap_parse_agent_update_msg, OS_SUCCESS);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_any(__wrap_wdb_update_agent_data, agent_data);
     will_return(__wrap_wdb_update_agent_data, OS_INVALID);
@@ -4786,10 +4821,14 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, data);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting 'valid message \n'");
 
     expect_value(__wrap_wdb_get_agent_group, id, 1);
     will_return(__wrap_wdb_get_agent_group, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__merror, formatted_msg, "Error getting group for agent '001'");
 
@@ -4804,6 +4843,9 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
     expect_string(__wrap_parse_agent_update_msg, msg, "valid message \n");
     will_return(__wrap_parse_agent_update_msg, agent_data);
     will_return(__wrap_parse_agent_update_msg, OS_SUCCESS);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_any(__wrap_wdb_update_agent_data, agent_data);
     will_return(__wrap_wdb_update_agent_data, OS_INVALID);
@@ -4852,6 +4894,9 @@ void test_save_controlmsg_startup(void **state)
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, &data);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     expect_value(__wrap_wdb_update_agent_keepalive, id, 1);
     expect_string(__wrap_wdb_update_agent_keepalive, connection_status, AGENT_CS_PENDING);
     expect_string(__wrap_wdb_update_agent_keepalive, sync_status, "synced");
@@ -4897,6 +4942,9 @@ void test_save_controlmsg_shutdown(void **state)
     expect_value(__wrap_OSHash_Get, self, pending_data);
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, &data);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_wdb_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
@@ -4962,6 +5010,9 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     expect_value(__wrap_OSHash_Get, self, pending_data);
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, &data);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_wdb_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
@@ -5045,9 +5096,12 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_process_groups_find_group_changed, test_process_group_setup, test_process_groups_teardown),
         cmocka_unit_test_setup_teardown(test_process_groups_find_group_not_changed, test_process_group_setup, test_process_groups_teardown),
         // Test process_multi_groups
-        cmocka_unit_test(test_process_multi_groups_no_agents),
+        cmocka_unit_test(test_process_multi_groups_no_groups),
         cmocka_unit_test(test_process_multi_groups_single_group),
         cmocka_unit_test(test_process_multi_groups_OSHash_Add_fail),
+        cmocka_unit_test(test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_first),
+        cmocka_unit_test(test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_second),
+        cmocka_unit_test(test_process_multi_groups_OSHash_Add_fail_multi_chunk),
         cmocka_unit_test_setup_teardown(test_process_multi_groups_open_fail, test_process_multi_groups_setup, test_process_multi_groups_teardown),
         cmocka_unit_test_setup_teardown(test_process_multi_groups_find_multi_group_null, test_process_multi_groups_setup, test_process_multi_groups_teardown),
         cmocka_unit_test_setup_teardown(test_process_multi_groups_group_changed, test_process_multi_groups_groups_setup, test_process_multi_groups_groups_teardown),

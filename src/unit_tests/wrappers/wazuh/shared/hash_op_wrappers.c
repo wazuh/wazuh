@@ -54,7 +54,7 @@ int __wrap_OSHash_Add(__attribute__((unused)) OSHash *self, const char *key, voi
 }
 
 int __real_OSHash_Add_ex(OSHash *self, const char *key, void *data);
-int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
+int __wrap_OSHash_Add_ex(__attribute__((unused)) OSHash *self, const char *key, void *data) {
     int retval;
 
     if (test_mode){

@@ -644,6 +644,7 @@ end:
             OS_SHA256_String(results, hash);
             snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", hash);
             os_free(str);
+            os_free(results);
         }
         return 1;
     }
