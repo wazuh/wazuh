@@ -16,6 +16,7 @@ metadata:
 sources:
   - decoder/queue-syslog/0
   - decoder/queue-localfile/0
+  - decoder/queue-ciscat/0
 
 check:
   - event.original: +s_starts/{

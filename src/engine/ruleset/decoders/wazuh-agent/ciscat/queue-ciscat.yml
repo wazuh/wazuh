@@ -1,0 +1,7 @@
+name: decoder/queue-ciscat/0
+
+metadata:
+  description: Exclusive parent decoder for ciscat (CISCAT_MQ)
+
+check:
+  - wazuh.queue: 101 # CISCAT_MQ 'e'
