@@ -694,7 +694,6 @@ char *get_file_user(const char *path, char **sid) {
 
 char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_type) {
     DWORD dwRtnCode = 0;
-    DWORD dwSecurityInfoErrorCode = 0;
     PSID pSidOwner = NULL;
     BOOL bRtnBool = TRUE;
     char AcctName[BUFFER_LEN];
@@ -722,10 +721,6 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
                                 NULL,                       // SACL
                                 &pSD);                      // Security descriptor
 
-    if (dwRtnCode != ERROR_SUCCESS) {
-        dwSecurityInfoErrorCode = GetLastError();
-    }
-
     if (!ConvertSidToStringSid(pSidOwner, &local_sid)) {
         os_strdup("", *sid);
         mdebug1("The user's SID could not be extracted.");
@@ -734,9 +729,8 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
         LocalFree(local_sid);
     }
 
-    // Check GetLastError for GetSecurityInfo error condition.
     if (dwRtnCode != ERROR_SUCCESS) {
-        merror("GetSecurityInfo error = %lu", dwSecurityInfoErrorCode);
+        merror("GetSecurityInfo error code = (%lu), '%s'", dwRtnCode, win_strerror(dwRtnCode));
         *AcctName = '\0';
         goto end;
     }
@@ -1043,7 +1037,6 @@ char *get_group(__attribute__((unused)) int gid) {
 
 char *get_registry_group(char **sid, HANDLE hndl) {
     DWORD dwRtnCode = 0;
-    DWORD dwSecurityInfoErrorCode = 0;
     PSID pSidGroup = NULL;
     BOOL bRtnBool = TRUE;
     char GrpName[BUFFER_LEN];
@@ -1065,20 +1058,18 @@ char *get_registry_group(char **sid, HANDLE hndl) {
                                 NULL,                       // SACL
                                 &pSD);                      // Security descriptor
 
-    if (dwRtnCode != ERROR_SUCCESS) {
-        dwSecurityInfoErrorCode = GetLastError();
-        merror("GetSecurityInfo error = %lu", dwSecurityInfoErrorCode);
-        *GrpName = '\0';
-        os_strdup("", *sid);
-        goto end;
-    }
-
     if (!ConvertSidToStringSid(pSidGroup, &local_sid)) {
         os_strdup("", *sid);
         mdebug1("The user's SID could not be extracted.");
     } else {
         os_strdup(local_sid, *sid);
         LocalFree(local_sid);
+    }
+
+    if (dwRtnCode != ERROR_SUCCESS) {
+        merror("GetSecurityInfo error code = (%lu), '%s'", dwRtnCode, win_strerror(dwRtnCode));
+        *GrpName = '\0';
+        goto end;
     }
 
     // Second call to LookupAccountSid to get the account name.
