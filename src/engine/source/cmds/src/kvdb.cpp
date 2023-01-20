@@ -1,4 +1,4 @@
-#include "cmds/cmdApiKvdb.hpp"
+#include <cmds/kvdb.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -11,392 +11,349 @@
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 
-#include "apiclnt/connection.hpp"
+#include "apiclnt/sendReceive.hpp"
 #include "base/utils/getExceptionStack.hpp"
+#include "defaultSettings.hpp"
 
-namespace cmd
+namespace cmd::kvdb
 {
 
 namespace
 {
 
-constexpr auto API_KVDB_CMD_SUFIX {"_kvdb"};
-constexpr auto API_KVDB_CREATE_SUBCOMMAND {"create"};
-constexpr auto API_KVDB_DELETE_SUBCOMMAND {"delete"};
-constexpr auto API_KVDB_DUMP_SUBCOMMAND {"dump"};
-constexpr auto API_KVDB_GET_SUBCOMMAND {"get"};
-constexpr auto API_KVDB_INSERT_SUBCOMMAND {"insert"};
-constexpr auto API_KVDB_LIST_SUBCOMMAND {"list"};
-constexpr auto API_KVDB_REMOVE_SUBCOMMAND {"remove"};
+struct Options
+{
+    std::string socketPath;
+    bool loaded;
+    std::string kvdbName;
+    std::string kvdbInputFilePath;
+    std::string kvdbKey;
+    std::string kvdbValue;
+};
 
-/**
- * @brief Get the Response if is possible or return an empty optional
- * 
- * Print the error to the standard error if is not possible to get the response
- * @param socketPath Path to the socket
- * @param req The request to send
- * @return std::optional<api::WazuhResponse> The response if is possible, an empty optional otherwise
- */
-std::optional<api::WazuhResponse> getResponse(const std::string& socketPath,
-                                              const api::WazuhRequest& req)
+} // namespace
+
+namespace details
 {
 
-    try
-    {
-        const auto responseStr {apiclnt::connection(socketPath, req.toStr())};
-        return api::WazuhResponse::fromStr(responseStr);
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << fmt::format("Engine 'kvdb' command: '{}' method: {}.",
-                                 req.getCommand().value_or("Unknown command"),
-                                 e.what())
-                  << std::endl;
-        return std::nullopt;
-    }
+std::string commandName(const std::string& command)
+{
+    return command + "_kvdb";
 }
 
-/**
- * @brief Send a request to create a KVDB and print the response
- * 
- * @param socketPath Path to the socket
- * @param kvdbName Name of the KVDB
- * @param kvdbInputFilePath Path to the file with the data to insert in the KVDB
- */
-void kvdbCreate(const std::string& socketPath,
-                const std::string& kvdbName,
-                const std::string& kvdbInputFilePath)
+json::Json getParameters(const std::string& action, const std::string& name, bool loaded)
 {
-    const auto command = std::string {API_KVDB_CREATE_SUBCOMMAND} + API_KVDB_CMD_SUFIX;
-    // create request
     json::Json data {};
     data.setObject();
-    // TODO: This is not needed now but should be the command
-    data.setString(API_KVDB_CREATE_SUBCOMMAND, "/action");
-    data.setString(kvdbName, "/name");
-    data.setString(kvdbInputFilePath, "/path");
-
-    auto req = api::WazuhRequest::create(command, "api", data);
-
-    // send request
-    const auto response {getResponse(socketPath, req)};
-
-    if (!response)
-    {
-        return;
-    }
-
-    if (!response.value().message().has_value())
-    {
-        std::cerr << fmt::format("Unexpected response from command: '{}'.", command);
-        return;
-    }
-    std::cout << response.value().message().value() << std::endl;
+    data.setString(action, "/action");
+    data.setString(name, "/name");
+    data.setBool(loaded, "/mustBeLoaded");
+    return data;
 }
 
-/**
- * @brief Send a request to delete a KVDB and print the response
- * 
- * @param socketPath Path to the socket
- * @param kvdbName Name of the KVDB
- */
-void kvdbDelete(const std::string& socketPath, const std::string& kvdbName)
+json::Json
+getParameters(const std::string& action, const std::string& name, const std::string& path)
 {
-    const auto command = std::string {API_KVDB_DELETE_SUBCOMMAND} + API_KVDB_CMD_SUFIX;
-    // create request
     json::Json data {};
     data.setObject();
-    // TODO: This is not needed now but should be the command
-    data.setString(API_KVDB_DELETE_SUBCOMMAND, "/action");
-    data.setString(kvdbName, "/name");
-
-    const auto req = api::WazuhRequest::create(command, "api", data);
-
-    // send request
-    const auto response {getResponse(socketPath, req)};
-
-    if (!response)
-    {
-        return;
-    }
-
-    if (!response.value().message().has_value())
-    {
-        std::cerr << fmt::format("Unexpected response from command: '{}'. \n", command);
-        return;
-    }
-    std::cout << response.value().message().value() << std::endl;
+    data.setString(action, "/action");
+    data.setString(name, "/name");
+    data.setString(path, "/path");
+    return data;
 }
 
-/**
- * @brief Send a request to dump a KVDB and print the dump or the error
- * 
- * @param socketPath Path to the socket
- * @param kvdbName Name of the KVDB to dump
- */
-void kvdbDump(const std::string& socketPath, const std::string& kvdbName)
+json::Json getParameters(const std::string& action, const std::string& name)
 {
-    const auto command = std::string {API_KVDB_DUMP_SUBCOMMAND} + API_KVDB_CMD_SUFIX;
-    // create request
     json::Json data {};
     data.setObject();
-    data.setString(API_KVDB_DUMP_SUBCOMMAND, "/action");
-    data.setString(kvdbName, "/name");
-
-    const auto req = api::WazuhRequest::create(command, "api", data);
-
-    // send request
-    const auto response {getResponse(socketPath, req)};
-    if (!response)
-    {
-        return;
-    }
-
-    if (!response.value().message().has_value())
-    {
-        std::cerr << fmt::format("Unexpected response from command: '{}'.", command);
-        return;
-    }
-    if (!response.value().data().isArray())
-    {
-        std::cerr << response.value().message().value() << std::endl;
-        return;
-    }
-    std::cout << response.value().data().str() << std::endl;
+    data.setString(action, "/action");
+    data.setString(name, "/name");
+    return data;
 }
 
-/**
- * @brief Send a request to get a value from a KVDB and print the key and value or an error message
- * 
- * @param socketPath path to the socket
- * @param kvdbName Name of the KVDB
- * @param key Key to get the value
- */
-void kvdbGetValue(const std::string& socketPath,
-                  const std::string& kvdbName,
-                  const std::string& key)
+json::Json getParametersKey(const std::string& action,
+                            const std::string& name,
+                            const std::string& key)
 {
-    const auto command = std::string {API_KVDB_GET_SUBCOMMAND} + API_KVDB_CMD_SUFIX;
-    // create request
     json::Json data {};
     data.setObject();
-    data.setString(API_KVDB_GET_SUBCOMMAND, "/action");
-    data.setString(kvdbName, "/name");
+    data.setString(action, "/action");
+    data.setString(name, "/name");
     data.setString(key, "/key");
-
-    const auto req = api::WazuhRequest::create(command, "api", data);
-
-    // send request
-    const auto response {getResponse(socketPath, req)};
-    if (!response)
-    {
-        return;
-    }
-
-    if (response.value().message().has_value())
-    {
-        std::cout << response.value().message().value() << std::endl;
-    }
-
-    const auto& resData = response.value().data();
-    if (resData.exists("/value") && resData.exists("/key") && resData.isString("/key"))
-    {
-        const auto dataKey = resData.getString("/key").value();
-        const auto dataVal = resData.str("/value").value();
-        std::cout << fmt::format("Key: {}\nValue: {}\n", dataKey, dataVal);
-    }
-
-    return;
+    return data;
 }
 
-/**
- * @brief Send a request to insert a key and value into a KVDB and print the response
- * 
- * @param socketPath The path to the socket
- * @param kvdbName The name of the KVDB to insert the key and value
- * @param key The key to insert
- * @param keyValue The value to insert
- */
-void kvdbInsertKeyValue(const std::string& socketPath,
-                        const std::string& kvdbName,
-                        const std::string& key,
-                        const std::string& keyValue)
+json::Json getParametersKeyValue(const std::string& action,
+                                 const std::string& name,
+                                 const std::string& key,
+                                 const std::string& value)
 {
-    const auto command = std::string {API_KVDB_INSERT_SUBCOMMAND} + API_KVDB_CMD_SUFIX;
-    // create request
     json::Json data {};
     data.setObject();
-    data.setString(API_KVDB_INSERT_SUBCOMMAND, "/action");
-    data.setString(kvdbName, "/name");
+    data.setString(action, "/action");
+    data.setString(name, "/name");
     data.setString(key, "/key");
 
     // check if value is a json
     try
     {
-        json::Json value {keyValue.c_str()};
-        data.set("/value", value);
+        json::Json jvalue {value.c_str()};
+        data.set("/value", jvalue);
     }
     catch (const std::exception& e)
     {
         // If not, set it as a string
-        data.setString(keyValue, "/value");
+        data.setString(value, "/value");
     }
 
-    auto req = api::WazuhRequest::create(command, "api", data);
-
-    // send request
-    const auto response {getResponse(socketPath, req)};
-    if (!response)
-    {
-        return;
-    }
-
-    if (!response.value().message().has_value())
-    {
-        std::cerr << fmt::format("Unexpected response from command: '{}'.\n", command);
-        return;
-    }
-    std::cout << response.value().message().value() << std::endl;
-
-    return;
+    return data;
 }
 
-/**
- * @brief Send a request to get a list of KVDBs and print the list or an error message
- * 
- * @param socketPath The path to the socket
- * @param kvdbName The filter to get a specific KVDB (start with the name)
- * @param loaded If true, only loaded KVDBs will be returned
- */
-void kvdbList(const std::string& socketPath, const std::string& kvdbName, bool loaded)
+void processResponse(const api::WazuhResponse& response)
 {
-    const auto command = std::string {API_KVDB_LIST_SUBCOMMAND} + API_KVDB_CMD_SUFIX;
-    // create request
-    json::Json data {};
-    data.setObject();
-    data.setString(API_KVDB_LIST_SUBCOMMAND, "/action");
-    data.setString(kvdbName, "/name");
-    data.setBool(loaded, "/mustBeLoaded");
+    if (response.data().size() > 0)
+    {
+        std::cout << response.data().prettyStr() << std::endl;
+    }
+    else
+    {
+        std::cout << response.message().value_or("") << std::endl;
+    }
+}
 
-    const auto req = api::WazuhRequest::create(command, "api", data);
+void singleRequest(const api::WazuhRequest& request, const std::string& socketPath)
+{
+    try
+    {
+        const auto response = apiclnt::sendReceive(socketPath, request);
+        details::processResponse(response);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << e.what() << std::endl;
+        return;
+    }
+}
+
+} // namespace details
+
+void runList(const std::string& socketPath, const std::string& kvdbName, bool loaded)
+{
+
+    // create request
+    auto req = api::WazuhRequest::create(
+        details::commandName(details::API_KVDB_LIST_SUBCOMMAND),
+        details::ORIGIN_NAME,
+        details::getParameters(details::API_KVDB_LIST_SUBCOMMAND, kvdbName, loaded));
 
     // send request
-    const auto response {getResponse(socketPath, req)};
-    if (!response)
-    {
-        return;
-    }
+    details::singleRequest(req, socketPath);
+}
 
-    const auto kvdbList = response.value().data().getArray();
+void runCreate(const std::string& socketPath,
+               const std::string& kvdbName,
+               const std::string& kvdbInputFilePath)
+{
+    // create request
+    auto req = api::WazuhRequest::create(
+        details::commandName(details::API_KVDB_CREATE_SUBCOMMAND),
+        details::ORIGIN_NAME,
+        details::getParameters(
+            details::API_KVDB_CREATE_SUBCOMMAND, kvdbName, kvdbInputFilePath));
 
-    if (!kvdbList.has_value())
-    {
-        std::cerr << fmt::format("unexpected response from command: '{}'.\n", command);
-        return;
-    }
+    // send request
+    details::singleRequest(req, socketPath);
+}
 
-    const auto qttyKVDB = kvdbList.value().size();
+void runDump(const std::string& socketPath, const std::string& kvdbName)
+{
+    // create request
+    auto req = api::WazuhRequest::create(
+        details::commandName(details::API_KVDB_DUMP_SUBCOMMAND),
+        details::ORIGIN_NAME,
+        details::getParameters(details::API_KVDB_DUMP_SUBCOMMAND, kvdbName));
 
-    const std::string msg {fmt::format("Databases found: {}", qttyKVDB)};
-    std::cout << msg << std::endl;
+    // send request
+    details::singleRequest(req, socketPath);
+}
 
-    size_t i = 0;
-    for (const auto& kvdb : *kvdbList)
-    {
-        if (!kvdb.getString().has_value())
+void runDelete(const std::string& socketPath, const std::string& kvdbName)
+{
+    // create request
+    auto req = api::WazuhRequest::create(
+        details::commandName(details::API_KVDB_DELETE_SUBCOMMAND),
+        details::ORIGIN_NAME,
+        details::getParameters(details::API_KVDB_DELETE_SUBCOMMAND, kvdbName));
+
+    // send request
+    details::singleRequest(req, socketPath);
+}
+
+void runGetKV(const std::string& socketPath,
+              const std::string& kvdbName,
+              const std::string& kvdbKey)
+{
+    // create request
+    auto req = api::WazuhRequest::create(
+        details::commandName(details::API_KVDB_GET_SUBCOMMAND),
+        details::ORIGIN_NAME,
+        details::getParametersKey(details::API_KVDB_GET_SUBCOMMAND, kvdbName, kvdbKey));
+
+    // send request
+    details::singleRequest(req, socketPath);
+}
+
+void runInsertKV(const std::string& socketPath,
+                 const std::string& kvdbName,
+                 const std::string& kvdbKey,
+                 const std::string& kvdbValue)
+{
+    // create request
+    auto req = api::WazuhRequest::create(
+        details::commandName(details::API_KVDB_INSERT_SUBCOMMAND),
+        details::ORIGIN_NAME,
+        details::getParametersKeyValue(
+            details::API_KVDB_INSERT_SUBCOMMAND, kvdbName, kvdbKey, kvdbValue));
+
+    // send request
+    details::singleRequest(req, socketPath);
+}
+
+void runRemoveKV(const std::string& socketPath,
+                 const std::string& kvdbName,
+                 const std::string& kvdbKey)
+{
+    // create request
+    auto req = api::WazuhRequest::create(
+        details::commandName(details::API_KVDB_REMOVE_SUBCOMMAND),
+        details::ORIGIN_NAME,
+        details::getParametersKey(
+            details::API_KVDB_REMOVE_SUBCOMMAND, kvdbName, kvdbKey));
+
+    // send request
+    details::singleRequest(req, socketPath);
+}
+
+void configure(CLI::App& app)
+{
+    auto kvdbApp = app.add_subcommand("kvdb", "Manage the key-value databases (KVDBs).");
+    kvdbApp->require_subcommand(1);
+    auto options = std::make_shared<Options>();
+
+    // Endpoint
+    kvdbApp->add_option("-a, --api_socket", options->socketPath, "engine api address")
+        ->default_val(ENGINE_API_SOCK);
+
+    // KVDB list subcommand
+    auto list_subcommand = kvdbApp->add_subcommand(details::API_KVDB_LIST_SUBCOMMAND,
+                                                   "List all KVDB availables.");
+    list_subcommand->add_flag(
+        "--loaded", options->loaded, "List only KVDBs loaded on memory.");
+    list_subcommand
+        ->add_option("-n, --name",
+                     options->kvdbName,
+                     "KVDB name to match the start of the name of the available ones.")
+        ->default_val("");
+    list_subcommand->callback(
+        [options]()
+        { runList(options->socketPath, options->kvdbName, options->loaded); });
+
+    // KVDB create subcommand
+    auto create_subcommand = kvdbApp->add_subcommand(
+        details::API_KVDB_CREATE_SUBCOMMAND, "Creates a KeyValueDB named db-name.");
+    // create kvdb name
+    create_subcommand
+        ->add_option("-n, --name", options->kvdbName, "KVDB name to be added.")
+        ->required();
+    // create kvdb from file with path
+    create_subcommand
+        ->add_option(
+            "-p, --path",
+            options->kvdbInputFilePath,
+            "Path to the file to be used as input to create the KVDB. If not provided,"
+            "the KVDB will be created empty.\n"
+            "The file must be a JSON file with the following format: {\"key\": VALUE} "
+            "where VALUE can be any JSON type.")
+        ->check(CLI::ExistingFile);
+    create_subcommand->callback(
+        [options]() {
+            runCreate(options->socketPath, options->kvdbName, options->kvdbInputFilePath);
+        });
+
+    // KVDB dump subcommand
+    auto dump_subcommand = kvdbApp->add_subcommand(
+        details::API_KVDB_DUMP_SUBCOMMAND,
+        "Dumps the full content of a DB named db-name to a JSON.");
+    // dump kvdb name
+    dump_subcommand
+        ->add_option("-n, --name", options->kvdbName, "KVDB name to be dumped.")
+        ->required();
+    dump_subcommand->callback([options]()
+                              { runDump(options->socketPath, options->kvdbName); });
+
+    // KVDB delete subcommand
+    auto delete_subcommand = kvdbApp->add_subcommand(
+        details::API_KVDB_DELETE_SUBCOMMAND, "Deletes a KeyValueDB named db-name.");
+    // delete KVDB name
+    delete_subcommand
+        ->add_option("-n, --name", options->kvdbName, "KVDB name to be deleted.")
+        ->required();
+    delete_subcommand->callback([options]()
+                                { runDelete(options->socketPath, options->kvdbName); });
+
+    // KVDB get subcommand
+    auto get_subcommand = kvdbApp->add_subcommand(
+        details::API_KVDB_GET_SUBCOMMAND,
+        "Gets key or key and value (if possible) of a DB named db-name.");
+    // get kvdb name
+    get_subcommand
+        ->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")
+        ->required();
+    // get key
+    get_subcommand->add_option("-k, --key", options->kvdbKey, "key name to be obtained.")
+        ->required();
+    get_subcommand->callback(
+        [options]()
+        { runGetKV(options->socketPath, options->kvdbName, options->kvdbKey); });
+
+    // KVDB insert subcommand
+    auto insert_subcommand = kvdbApp->add_subcommand(
+        details::API_KVDB_INSERT_SUBCOMMAND, "Inserts key or key value into db-name.");
+    // insert kvdb name
+    insert_subcommand
+        ->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")
+        ->required();
+    // insert key
+    insert_subcommand
+        ->add_option("-k, --key", options->kvdbKey, "key name to be inserted.")
+        ->required();
+    // insert value
+    insert_subcommand
+        ->add_option("-v, --value", options->kvdbValue, "value to be inserted on key.")
+        ->default_val("null");
+    insert_subcommand->callback(
+        [options]()
         {
-            std::cerr << fmt::format(
-                "unexpected response from command: '{}'. Element: {} is not a string.\n",
-                command,
-                kvdb.str());
-            continue;
-        }
+            runInsertKV(options->socketPath,
+                        options->kvdbName,
+                        options->kvdbKey,
+                        options->kvdbValue);
+        });
 
-        const std::string msg {
-            fmt::format("{}/{} - {}", ++i, qttyKVDB, kvdb.getString().value())};
-        std::cout << msg << std::endl;
-    }
+    // KVDB remove subcommand
+    auto remove_subcommand =
+        kvdbApp->add_subcommand("remove", "Removes key from db-name.");
+    // remove kvdb name
+    remove_subcommand
+        ->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")
+        ->required();
+    // remove key
+    auto key = remove_subcommand
+                   ->add_option("-k, --key", options->kvdbKey, "key name to be removed.")
+                   ->required();
+    remove_subcommand->callback(
+        [options]()
+        { runRemoveKV(options->socketPath, options->kvdbName, options->kvdbKey); });
 }
 
-/**
- * @brief This function sends a request to remove a key from a KVDB and print the response
- * 
- * @param socketPath the path to the socket
- * @param kvdbName the name of the KVDB to remove the key
- * @param key the key to remove
- */
-void kvdbRemoveKV(const std::string& socketPath,
-                  const std::string& kvdbName,
-                  const std::string& key)
-{
-    const auto command = std::string {API_KVDB_REMOVE_SUBCOMMAND} + API_KVDB_CMD_SUFIX;
-    // create request
-    json::Json data {};
-    data.setObject();
-    data.setString(API_KVDB_REMOVE_SUBCOMMAND, "/action");
-    data.setString(kvdbName, "/name");
-    data.setString(key, "/key");
-
-    const auto req = api::WazuhRequest::create(command, "api", data);
-
-    // send request
-    const auto response {getResponse(socketPath, req)};
-    if (!response)
-    {
-        return;
-    }
-
-    if (!response.value().message().has_value())
-    {
-        std::cerr << fmt::format("Unexpected response from command: '{}'.\n", command);
-        return;
-    }
-    std::cout << response.value().message().value() << std::endl;
-
-    return;
-}
-
-} // namespace
-
-void kvdb(const std::string& kvdbName,
-          const std::string& socketPath,
-          const std::string& action,
-          const std::string& kvdbInputFilePath,
-          bool loaded,
-          const std::string& kvdbKey,
-          const std::string& kvdbKeyValue)
-{
-
-    if (action == API_KVDB_CREATE_SUBCOMMAND)
-    {
-        kvdbCreate(socketPath, kvdbName, kvdbInputFilePath);
-    }
-    else if (action == API_KVDB_DELETE_SUBCOMMAND)
-    {
-        kvdbDelete(socketPath, kvdbName);
-    }
-    else if (action == API_KVDB_DUMP_SUBCOMMAND)
-    {
-        kvdbDump(socketPath, kvdbName);
-    }
-    else if (action == API_KVDB_GET_SUBCOMMAND)
-    {
-        kvdbGetValue(socketPath, kvdbName, kvdbKey);
-    }
-    else if (action == API_KVDB_INSERT_SUBCOMMAND)
-    {
-        kvdbInsertKeyValue(socketPath, kvdbName, kvdbKey, kvdbKeyValue);
-    }
-    else if (action == API_KVDB_LIST_SUBCOMMAND)
-    {
-        kvdbList(socketPath, kvdbName, loaded);
-    }
-    else if (action == API_KVDB_REMOVE_SUBCOMMAND)
-    {
-        kvdbRemoveKV(socketPath, kvdbName, kvdbKey);
-    }
-
-    return;
-}
-
-} // namespace cmd
+} // namespace cmd::kvdb

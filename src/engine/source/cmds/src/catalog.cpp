@@ -1,5 +1,4 @@
-#include "cmds/cmdApiCatalog.hpp"
-#include "apiclnt/connection.hpp"
+#include <cmds/catalog.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -9,263 +8,150 @@
 #include <string>
 #include <system_error>
 
-#include <api/wazuhRequest.hpp>
-#include <api/wazuhResponse.hpp>
-#include <json/json.hpp>
 #include <name.hpp>
-#include <variant>
+
+#include "apiclnt/sendReceive.hpp"
+#include "defaultSettings.hpp"
+#include "details.hpp"
+
+namespace cmd::catalog
+{
 
 namespace
 {
-constexpr auto INVALID_NAME_FOR_ACTION =
-    "Engine API Catalog: Invalid name \"{}\" for action \"{}\", the name must have the "
-    "following format: \"{}\".";
 
-constexpr auto CONTENT_SHOULD_BE_EMPTY =
-    "Engine API Catalog: Content should be empty for action \"{}\".";
+struct Options
+{
+    std::string apiEndpoint;
+    std::string format;
+    int logLevel;
+    std::string name;
+    std::string content;
+    std::string path;
+    bool recursive;
+};
 
-constexpr auto CONTENT_CANNOT_BE_EMPTY =
-    "Engine API Catalog: Content cannot be empty for action \"{}\".";
 } // namespace
 
-namespace cmd
+namespace details
 {
 
-namespace catalog_details
+std::string commandName(const std::string& command)
 {
+    return command + "_catalog";
+}
 
-void singleRequest(const std::string& socketPath,
-                   const std::string& actionStr,
-                   const std::string& nameStr,
-                   const std::string& format,
-                   const std::string& content)
+json::Json getParameters(const std::string& format,
+                         const std::string& name,
+                         const std::string& content)
 {
-    api::WazuhRequest request;
-
-    WAZUH_LOG_DEBUG("Engine API Catalog: \"{}\" method: Request parameters: socket path: "
-                    "\"{}\", action: \"{}\", type: \"{}\", format: \"{}\".",
-                    __func__,
-                    socketPath,
-                    actionStr,
-                    nameStr,
-                    format);
-
-    auto action = catalog_details::stringToAction(actionStr.c_str());
-    if (action == catalog_details::Action::ERROR_ACTION)
-    {
-        WAZUH_LOG_ERROR("Engine API Catalog: Invalid action \"{}\".", actionStr);
-        return;
-    }
-
-    // Prepare command and assert name is valid for the action
-    std::string command;
-    base::Name name;
-    try
-    {
-        name = base::Name {nameStr};
-    }
-    catch (const std::exception& e)
-    {
-        WAZUH_LOG_ERROR(
-            "Engine API Catalog: Invalid name \"{}\": {}.", nameStr, e.what());
-        return;
-    }
-
-    switch (action)
-    {
-        case catalog_details::Action::LIST:
-            if (name.parts().size() != 1 && name.parts().size() != 2)
-            {
-                // TODO: Check this message
-                WAZUH_LOG_ERROR(
-                    INVALID_NAME_FOR_ACTION, nameStr, actionStr, "<type>[/<item-id>]");
-                return;
-            }
-            if (!content.empty())
-            {
-                WAZUH_LOG_ERROR(CONTENT_SHOULD_BE_EMPTY, actionStr);
-                return;
-            }
-            command = "get";
-            break;
-        case catalog_details::Action::GET:
-            if (name.parts().size() != 3)
-            {
-                WAZUH_LOG_ERROR(INVALID_NAME_FOR_ACTION,
-                                nameStr,
-                                actionStr,
-                                "<type>/<item-id>/<ver>");
-                return;
-            }
-            if (!content.empty())
-            {
-                WAZUH_LOG_ERROR(CONTENT_SHOULD_BE_EMPTY, actionStr);
-                return;
-            }
-            command = "get";
-            break;
-        case catalog_details::Action::UPDATE:
-            if (name.parts().size() != 3)
-            {
-                WAZUH_LOG_ERROR(INVALID_NAME_FOR_ACTION,
-                                nameStr,
-                                actionStr,
-                                "<type>/<item-id>/<ver>");
-                return;
-            }
-            if (content.empty())
-            {
-                WAZUH_LOG_ERROR(CONTENT_CANNOT_BE_EMPTY, actionStr);
-                return;
-            }
-            command = "put";
-            break;
-        case catalog_details::Action::CREATE:
-            if (name.parts().size() != 1)
-            {
-                WAZUH_LOG_ERROR(INVALID_NAME_FOR_ACTION, nameStr, actionStr, "<type>");
-                return;
-            }
-            if (content.empty())
-            {
-                WAZUH_LOG_ERROR(CONTENT_CANNOT_BE_EMPTY, actionStr);
-                return;
-            }
-            command = "post";
-            break;
-        case catalog_details::Action::DELETE:
-            if (!content.empty())
-            {
-                WAZUH_LOG_ERROR(CONTENT_SHOULD_BE_EMPTY, actionStr);
-                return;
-            }
-            command = "delete";
-            break;
-        case catalog_details::Action::VALIDATE:
-            if (name.parts().size() != 3)
-            {
-                WAZUH_LOG_ERROR(INVALID_NAME_FOR_ACTION,
-                                nameStr,
-                                actionStr,
-                                "<type>/<item-id>/<ver>");
-                return;
-            }
-            if (content.empty())
-            {
-                WAZUH_LOG_ERROR(CONTENT_CANNOT_BE_EMPTY, actionStr);
-                return;
-            }
-            command = "validate";
-            break;
-        default:
-            throw std::runtime_error(
-                fmt::format("Invalid action \"{}\" for a single request", actionStr));
-    }
-    command += "_catalog";
-
     json::Json params;
     params.setObject();
     params.setString(format, "/format");
-    params.setString(name.fullName(), "/name");
-    params.setString(content, "/content");
-
-    request = api::WazuhRequest::create(command, "api", params);
-    if (!request.isValid())
+    params.setString(name, "/name");
+    if (!content.empty())
     {
-        // TODO: check this message
-        WAZUH_LOG_ERROR("Engine API Catalog: Malformed request: \"{}\".",
-                        request.toStr());
-        return;
+        params.setString(content, "/content");
     }
 
-    const auto requestStr = request.toStr();
-    std::string responseStr {};
-    try
-    {
-        responseStr = apiclnt::connection(socketPath, requestStr);
-    }
-    catch (const std::exception& e)
-    {
-        WAZUH_LOG_ERROR(
-            "Engine API Catalog: An error occurred while sending a request: {}.",
-            e.what());
+    return params;
+}
 
-        return;
-    }
-
-    if (responseStr.empty())
+void processResponse(const api::WazuhResponse& response)
+{
+    auto content = response.data().getString("/content");
+    auto message = response.message();
+    if (content)
     {
-        WAZUH_LOG_ERROR("Engine API Catalog: Request response is empty.");
-        return;
+        std::cout << content.value() << std::endl;
     }
-
-    try
+    else if (message)
     {
-        // Assert response is valid
-        json::Json responseJson {responseStr.c_str()};
-        const auto errorCode = responseJson.getInt("/error");
-        if (!errorCode)
-        {
-            WAZUH_LOG_ERROR("Engine API Catalog: Malformed response, no return code "
-                            "(\"error\") field found.");
-        }
-        const auto message = responseJson.getString("/message");
-        if (!message)
-        {
-            WAZUH_LOG_ERROR(
-                "Engine API Catalog: Malformed response, no \"message\" field found.",
-                responseStr);
-        }
-        const auto data = responseJson.getJson("/data");
-        if (!data)
-        {
-            WAZUH_LOG_ERROR(
-                "Engine API Catalog: Malformed response, no \"data\" field found.",
-                responseStr);
-        }
-
-        // Print friendly response
-        if (errorCode.value() != 200)
-        {
-            WAZUH_LOG_ERROR("Engine API Catalog: Request error ({}): {}.",
-                            errorCode.value(),
-                            message.value());
-        }
-        else
-        {
-            // TODO: are we sure the field is content and not "messager" or "data"?
-            const auto content = data.value().getString("/content");
-            if (content)
-            {
-                const std::string msg {fmt::format("Request \"{} {}\" response: \"{}\"",
-                                                   actionStr,
-                                                   name.fullName(),
-                                                   content.value())};
-                WAZUH_LOG_INFO("Engine API Catalog: {}.", msg);
-                std::cout << msg << std::endl;
-            }
-            else
-            {
-                const std::string msg {fmt::format(
-                    "Request \"{} {}\" succeeded", actionStr, name.fullName())};
-                WAZUH_LOG_INFO("Engine API Catalog: {}.", msg);
-                std::cout << msg << std::endl;
-            }
-        }
-    }
-    catch (const std::exception& e)
-    {
-        WAZUH_LOG_ERROR("Engine API Catalog: An error occurred while procesing the "
-                        "request response from the API: {}.",
-                        e.what());
+        std::cout << message.value() << std::endl;
     }
 }
 
-void loadRuleset(const std::string& socketPath,
-                 const std::string& collectionNameStr,
-                 const std::string& collectionPathStr,
+void singleRequest(const api::WazuhRequest& request, const std::string& socketPath)
+{
+    try
+    {
+        auto response = apiclnt::sendReceive(socketPath, request);
+        details::processResponse(response);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+}
+
+} // namespace details
+
+void runGet(const std::string& socketPath,
+            const std::string& format,
+            const std::string& nameStr)
+{
+    auto request = api::WazuhRequest::create(details::commandName("get"),
+                                             details::ORIGIN_NAME,
+                                             details::getParameters(format, nameStr));
+
+    details::singleRequest(request, socketPath);
+}
+
+void runUpdate(const std::string& socketPath,
+               const std::string& format,
+               const std::string& nameStr,
+               const std::string& content)
+{
+    auto request =
+        api::WazuhRequest::create(details::commandName("put"),
+                                  details::ORIGIN_NAME,
+                                  details::getParameters(format, nameStr, content));
+
+    details::singleRequest(request, socketPath);
+}
+
+void runCreate(const std::string& socketPath,
+               const std::string& format,
+               const std::string& nameStr,
+               const std::string& content)
+{
+    auto request =
+        api::WazuhRequest::create(details::commandName("post"),
+                                  details::ORIGIN_NAME,
+                                  details::getParameters(format, nameStr, content));
+
+    details::singleRequest(request, socketPath);
+}
+
+void runDelete(const std::string& socketPath,
+               const std::string& format,
+               const std::string& nameStr)
+{
+    auto request = api::WazuhRequest::create(details::commandName("delete"),
+                                             details::ORIGIN_NAME,
+                                             details::getParameters(format, nameStr));
+
+    details::singleRequest(request, socketPath);
+}
+
+void runValidate(const std::string& socketPath,
                  const std::string& format,
-                 const bool recursive)
+                 const std::string& nameStr,
+                 const std::string& content)
+{
+    auto request =
+        api::WazuhRequest::create(details::commandName("validate"),
+                                  details::ORIGIN_NAME,
+                                  details::getParameters(format, nameStr, content));
+
+    details::singleRequest(request, socketPath);
+}
+
+void runLoad(const std::string& socketPath,
+             const std::string& format,
+             const std::string& nameStr,
+             const std::string& path,
+             bool recursive)
 {
     // Build and check collection path
     std::error_code ec;
@@ -273,31 +159,26 @@ void loadRuleset(const std::string& socketPath,
 
     try
     {
-        collectionPath = std::filesystem::path(collectionPathStr);
+        collectionPath = std::filesystem::path(path);
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR(
-            "Engine API Catalog: An error occurred while loading the ruleset: {}.",
-            e.what());
+        std::cout << e.what() << std::endl;
         return;
     }
     if (!std::filesystem::is_directory(collectionPath, ec))
     {
-        WAZUH_LOG_ERROR("Engine API Catalog: \"{}\" is not a directory: {}.",
-                        collectionPathStr,
-                        ec.message());
+        std::cout << collectionPath << " is not a directory: " << std::endl;
         ec.clear();
         return;
     }
 
     // Assert collection name is valid
-    if ("decoder" != collectionNameStr && "rule" != collectionNameStr
-        && "filter" != collectionNameStr && "output" != collectionNameStr
-        && "schema" != collectionNameStr && "environment" != collectionNameStr)
+    if ("decoder" != nameStr && "rule" != nameStr && "filter" != nameStr
+        && "output" != nameStr && "schema" != nameStr && "environment" != nameStr)
     {
-        WAZUH_LOG_ERROR("Engine API Catalog: Invalid collection type \"{}\".",
-                        collectionNameStr);
+        std::cout << "'" << nameStr << "'"
+                  << " is not valid name" << std::endl;
         return;
     }
 
@@ -307,10 +188,9 @@ void loadRuleset(const std::string& socketPath,
         // If error ignore entry and continue
         if (ec)
         {
-            WAZUH_LOG_ERROR(fmt::format("Engine API Catalog: An error ocurred while "
-                                        "reading the file \"{}\": {}",
-                                        dirEntry.path().c_str(),
-                                        ec.message()));
+            std::cout << "Ignoring entry " << dirEntry.path() << ": " << ec.message()
+                      << std::endl;
+
             ec.clear();
             return;
         }
@@ -320,10 +200,8 @@ void loadRuleset(const std::string& socketPath,
             // If error ignore entry and continue
             if (ec)
             {
-                WAZUH_LOG_ERROR(fmt::format("Engine API Catalog: An error ocurred "
-                                            "while reading the file \"{}\": {}",
-                                            dirEntry.path().c_str(),
-                                            ec.message()));
+                std::cout << "Ignoring entry " << dirEntry.path() << ": " << ec.message()
+                          << std::endl;
                 ec.clear();
                 return;
             }
@@ -339,19 +217,27 @@ void loadRuleset(const std::string& socketPath,
             }
             catch (const std::exception& e)
             {
-                WAZUH_LOG_ERROR(fmt::format("Engine API Catalog: An error ocurred "
-                                            "while reading the file \"{}\": {}",
-                                            dirEntry.path().c_str(),
-                                            e.what()));
+                std::cout << "Ignoring entry " << dirEntry.path() << ": " << e.what()
+                          << std::endl;
                 return;
             }
 
             // Send request
-            singleRequest(socketPath,
-                          actionToString(Action::CREATE),
-                          collectionNameStr,
-                          format,
-                          content);
+            auto request = api::WazuhRequest::create(
+                details::commandName("post"),
+                details::ORIGIN_NAME,
+                details::getParameters(format, nameStr, content));
+            std::cout << dirEntry << " ==> ";
+            try
+            {
+                auto response = apiclnt::sendReceive(socketPath, request);
+                details::processResponse(response);
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << e.what() << std::endl;
+                return;
+            }
         }
     };
 
@@ -361,9 +247,6 @@ void loadRuleset(const std::string& socketPath,
         for (const auto& dirEntry :
              std::filesystem::recursive_directory_iterator(collectionPath, ec))
         {
-            WAZUH_LOG_INFO("Engine API Catalog: Loading {}s from file \"{}\".",
-                           collectionNameStr,
-                           dirEntry.path().c_str());
             loadEntry(dirEntry);
         }
     }
@@ -373,57 +256,161 @@ void loadRuleset(const std::string& socketPath,
         for (const auto& dirEntry :
              std::filesystem::directory_iterator(collectionPath, ec))
         {
-            WAZUH_LOG_INFO("Engine API Catalog: Loading {}s from file \"{}\".",
-                           collectionNameStr,
-                           dirEntry.path().c_str());
             loadEntry(dirEntry);
         }
     }
 }
 
-} // namespace catalog_details
-
-void catalog(const std::string& socketPath,
-             const std::string& actionStr,
-             const std::string& nameStr,
-             const std::string& format,
-             const std::string& content,
-             const std::string& path,
-             bool recursive,
-             int logLevel)
+void configure(CLI::App& app)
 {
-    // Init logging
-    logging::LoggingConfig logConfig;
-    switch (logLevel)
-    {
-        case 0: logConfig.logLevel = logging::LogLevel::Debug; break;
-        case 1: logConfig.logLevel = logging::LogLevel::Info; break;
-        case 2: logConfig.logLevel = logging::LogLevel::Warn; break;
-        case 3: logConfig.logLevel = logging::LogLevel::Error; break;
-        default: logging::LogLevel::Error;
-    }
-    logging::loggingInit(logConfig);
+    auto catalogApp = app.add_subcommand("catalog", "Manage the engine's catalog.");
+    catalogApp->require_subcommand(1);
+    auto options = std::make_shared<Options>();
 
-    auto action = catalog_details::stringToAction(actionStr.c_str());
-    switch (action)
-    {
-        case catalog_details::Action::CREATE:
-        case catalog_details::Action::DELETE:
-        case catalog_details::Action::UPDATE:
-        case catalog_details::Action::GET:
-        case catalog_details::Action::LIST:
-        case catalog_details::Action::VALIDATE:
-            catalog_details::singleRequest(
-                socketPath, actionStr, nameStr, format, content);
-            break;
-        case catalog_details::Action::LOAD:
-            catalog_details::loadRuleset(socketPath, nameStr, path, format, recursive);
-            break;
-        default:
-            WAZUH_LOG_ERROR("Engine API Catalog: Action \"{}\" is not supported.",
-                            actionStr);
-            break;
-    }
+    // Shared options
+    // Endpoint
+    catalogApp
+        ->add_option("-a, --api_socket",
+                     options->apiEndpoint,
+                     "Sets the API server socket address.")
+        ->default_val(ENGINE_API_SOCK)
+        ->check(CLI::ExistingFile);
+
+    // format
+    catalogApp
+        ->add_option(
+            "-f, --format", options->format, "Sets the format of the input/output.")
+        ->default_val("yaml")
+        ->check(CLI::IsMember({"json", "yaml"}));
+
+    // Log level
+    catalogApp
+        ->add_option(
+            "-l, --log_level",
+            options->logLevel,
+            "Sets the logging level: 0 = Debug, 1 = Info, 2 = Warning, 3 = Error")
+        ->default_val(3)
+        ->check(CLI::Range(0, 3));
+
+    // Shared option definitions among subcommands
+    auto name = "name";
+    std::string nameDesc = "Name that identifies the ";
+    auto item = "item";
+    std::string itemDesc = "Content of the item, can be passed as argument or redirected "
+                           "from a file using the \"|\" operator or the \"<\" operator.";
+
+    // Catalog subcommands
+    // get
+    auto get_subcommand = catalogApp->add_subcommand(
+        "get",
+        "get item-type[/item-id[/item-version]]: Get an item or list a collection.");
+    get_subcommand
+        ->add_option(
+            name, options->name, nameDesc + "collection to list: item-type[/item-id]")
+        ->required();
+    get_subcommand->callback(
+        [options]() { runGet(options->apiEndpoint, options->format, options->name); });
+
+    // update
+    auto update_subcommand = catalogApp->add_subcommand(
+        "update", "update item-type/item-id/version << item_file: Update an item.");
+    update_subcommand
+        ->add_option(
+            name, options->name, nameDesc + "item to update: item-type/item-id/version")
+        ->required();
+    update_subcommand->add_option(item, options->content, itemDesc)->default_val("");
+    update_subcommand->callback(
+        [options]()
+        {
+            if (options->content.empty() && cmd::details::kbhit() != 0)
+            {
+                std::getline(std::cin, options->content);
+            }
+            runUpdate(
+                options->apiEndpoint, options->format, options->name, options->content);
+        });
+
+    // create
+    auto create_subcommand = catalogApp->add_subcommand(
+        "create",
+        "create item-type << item_file: Create and add an item to the collection.");
+    create_subcommand
+        ->add_option(
+            name, options->name, nameDesc + "collection to add an item to: item-type")
+        ->required();
+    create_subcommand->add_option(item, options->content, itemDesc)->default_val("");
+    create_subcommand->callback(
+        [options]()
+        {
+            if (options->content.empty() && cmd::details::kbhit() != 0)
+            {
+                std::getline(std::cin, options->content);
+            }
+            runCreate(
+                options->apiEndpoint, options->format, options->name, options->content);
+        });
+
+    // delete
+    auto delete_subcommand = catalogApp->add_subcommand(
+        "delete",
+        "delete item-type[/item-id[/version]]: Delete an item or a collection.");
+    delete_subcommand
+        ->add_option(name,
+                     options->name,
+                     nameDesc
+                         + "item or collection to delete: item-type[/item-id[/version]]")
+        ->required();
+    delete_subcommand->callback(
+        [options]() { runDelete(options->apiEndpoint, options->format, options->name); });
+
+    // validate
+    auto validate_subcommand = catalogApp->add_subcommand(
+        "validate", "validate item-type/item-id/version << item_file: Validate an item.");
+    validate_subcommand
+        ->add_option(
+            name, options->name, nameDesc + "item to validate: item-type/item-id/version")
+        ->required();
+    validate_subcommand->add_option(item, options->content, itemDesc)->default_val("");
+    validate_subcommand->callback(
+        [options]()
+        {
+            if (options->content.empty() && cmd::details::kbhit() != 0)
+            {
+                std::getline(std::cin, options->content);
+            }
+            runValidate(
+                options->apiEndpoint, options->format, options->name, options->content);
+        });
+
+    // load
+    auto load_subcommand =
+        catalogApp->add_subcommand("load",
+                                   "load item-type path: Tries to create and add all the "
+                                   "items found in the path to the collection.");
+    load_subcommand
+        ->add_option(name,
+                     options->name,
+                     nameDesc
+                         + "type of the items collection: item-type. The supported item "
+                           "types are: \"decoder\", \"rule\", \"filter\", \"output\", "
+                           "\"schema\" and \"environment\".")
+        ->required();
+    load_subcommand
+        ->add_option("path",
+                     options->path,
+                     "Sets the path to the directory containing the item files.")
+        ->required()
+        ->check(CLI::ExistingDirectory);
+    load_subcommand->add_flag(
+        "-r, --recursive", options->recursive, "Recursive loading of the directory.");
+    load_subcommand->callback(
+        [options]()
+        {
+            runLoad(options->apiEndpoint,
+                    options->format,
+                    options->name,
+                    options->path,
+                    options->recursive);
+        });
 }
-
-} // namespace cmd
+} // namespace cmd::catalog

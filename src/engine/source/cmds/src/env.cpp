@@ -1,4 +1,4 @@
-#include <cmds/cmdApiEnvironment.hpp>
+#include <cmds/env.hpp>
 
 #include <iostream>
 
@@ -7,223 +7,130 @@
 #include <logging/logging.hpp>
 #include <utils/stringUtils.hpp>
 
-#include "apiclnt/connection.hpp"
+#include "apiclnt/sendReceive.hpp"
+#include "defaultSettings.hpp"
 
-namespace cmd
+namespace cmd::env
 {
 
 namespace
 {
-constexpr auto API_ENVIRONMENT_COMMAND {"env"};
-
-void setEnv(const std::string& socketPath, const std::string& target)
+struct Options
 {
-    // target must be start with a '/'
-    if (target.empty())
-    {
-        WAZUH_LOG_ERROR("Engine API Environment: Invalid empty target.");
-        return;
-    }
-
-    // Create a request
-    json::Json data {};
-    data.setObject();
-    data.setString("set", "/action");
-    data.setString(target, "/name"); // Skip the first '/'
-
-    auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, "api", data);
-
-    WAZUH_LOG_DEBUG(
-        "Engine API Environment: \"{}\" method: Request: \"{}\".", __func__, req.toStr());
-
-    // Send the request
-    json::Json response {};
-    std::string responseStr {};
-    try
-    {
-        responseStr = apiclnt::connection(socketPath, req.toStr());
-
-        WAZUH_LOG_DEBUG("Engine API Environment: \"{}\" method: Response: \"{}\".",
-                        __func__,
-                        responseStr);
-
-        response = json::Json {responseStr.c_str()};
-    }
-    catch (const std::exception& e)
-    {
-        WAZUH_LOG_ERROR("Engine API Environment: An error occurred while sending a "
-                        "request: {}",
-                        e.what()); // Doesn't have a closing dot as the lower message does
-        return;
-    }
-
-    if (response.getInt("/error").value_or(-1) != 0)
-    {
-        WAZUH_LOG_ERROR("Engine API Environment: Malformed response, no return code "
-                        "(\"error\") field found.");
-        return;
-    }
-
-    const auto msg = response.getString("/message").value_or("OK");
-    WAZUH_LOG_INFO("Engine API Environment: Request response: {}.", msg);
-    std::cout << msg << std::endl;
-}
-
-void getEnv(const std::string& socketPath, const std::string& target)
-{
-
-    // Create a request
-    json::Json data {};
-    data.setObject();
-    data.setString("get", "/action");
-
-    auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, "api", data);
-
-    WAZUH_LOG_DEBUG(
-        "Engine API Environment: \"{}\" method: Request: \"{}\".", __func__, req.toStr());
-
-    // Send the request
-    json::Json response {};
-    std::string responseStr {};
-    try
-    {
-        responseStr = apiclnt::connection(socketPath, req.toStr());
-
-        WAZUH_LOG_DEBUG("Engine API Environment: \"{}\" method: Response: \"{}\".",
-                        __func__,
-                        responseStr);
-
-        response = json::Json {responseStr.c_str()};
-    }
-    catch (const std::exception& e)
-    {
-        WAZUH_LOG_ERROR("Engine API Environment: An error occurred while sending a "
-                        "request: {}",
-                        e.what()); // Doesn't have a closing dot as the lower message does
-        return;
-    }
-
-    if (response.getInt("/error").value_or(-1) != 0)
-    {
-        WAZUH_LOG_ERROR("Engine API Environment: Malformed response, no return code "
-                        "(\"error\") field found.");
-        return;
-    }
-
-    const auto envs = response.getArray("/data");
-    if (!envs)
-    {
-        WAZUH_LOG_ERROR(
-            "Engine API Environment: Malformed response, no \"data\" field found.");
-        return;
-    }
-    else if (envs.value().empty())
-    {
-        WAZUH_LOG_INFO("Engine API Environment: There are no active environments.");
-        return;
-    }
-    for (const auto& env : *envs)
-    {
-        if (env.isString())
-        {
-            const auto msg =
-                fmt::format("\"{}\" environment is active", env.getString().value());
-            WAZUH_LOG_INFO("Engine API Environment: {}.", msg);
-            std::cout << msg << std::endl;
-        }
-        else
-        {
-            WAZUH_LOG_ERROR("Engine API Environment: Malformed response, environment "
-                            "name is expected to be a string but it is \"{}\".",
-                            env.typeName());
-        }
-    }
-}
-
-void deleteEnv(const std::string& socketPath, const std::string& target)
-{
-    // target must be start with a '/'
-    if (target.empty())
-    {
-        WAZUH_LOG_ERROR("Engine API Environment: An error occurred while trying to "
-                        "delete an environment: Target cannot be empty.");
-    }
-
-    // Create a request
-    json::Json data {};
-    data.setObject();
-    data.setString("delete", "/action");
-    data.setString(target, "/name"); // Skip the first '/'
-
-    const auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, "api", data);
-
-    WAZUH_LOG_DEBUG(
-        "Engine API Environment: \"{}\" method: Request: \"{}\".", __func__, req.toStr());
-
-    // Send the request
-    json::Json response {};
-    std::string responseStr {};
-    try
-    {
-        responseStr = apiclnt::connection(socketPath, req.toStr());
-
-        WAZUH_LOG_DEBUG("Engine API Environment: \"{}\" method: Response: \"{}\".",
-                        __func__,
-                        responseStr);
-
-        response = json::Json {responseStr.c_str()};
-    }
-    catch (const std::exception& e)
-    {
-        WAZUH_LOG_ERROR("Engine API Environment: An error occurred while sending a "
-                        "request: {}",
-                        e.what()); // Doesn't have a closing dot as the lower message does
-        return;
-    }
-
-    if (response.getInt("/error").value_or(-1) != 0)
-    {
-        WAZUH_LOG_ERROR("Engine API Environment: Malformed response, no return code "
-                        "(\"error\") field found.");
-        return;
-    }
-
-    const auto msg = response.getString("/message").value_or("OK");
-    WAZUH_LOG_INFO("Engine API Environment: Request response: {}.", msg);
-    std::cout << msg << std::endl;
-}
-
+    std::string socketPath;
+    std::string target;
+};
 } // namespace
 
-void environment(const std::string& socketPath,
-                 const std::string& action,
-                 const std::string& target)
+namespace details
 {
-    // TODO: logging level should be configured for every command
-    logging::LoggingConfig logConfig;
-    logConfig.logLevel = logging::LogLevel::Debug;
-    logging::loggingInit(logConfig);
+std::string commandName(const std::string& command)
+{
+    return "env";
+}
 
-    api::WazuhRequest request {};
-    if (action == "set")
+json::Json getParameters(const std::string& action, const std::string& target)
+{
+    json::Json data {};
+    data.setObject();
+    data.setString(action, "/action");
+    if (!target.empty())
     {
-        setEnv(socketPath, target);
+        data.setString(target, "/name");
     }
-    else if (action == "get")
+    return data;
+}
+
+void processResponse(const api::WazuhResponse& response)
+{
+    if (response.data().size() > 0)
     {
-        getEnv(socketPath, target);
-    }
-    else if (action == "delete")
-    {
-        deleteEnv(socketPath, target);
+        std::cout << response.data().prettyStr() << std::endl;
     }
     else
     {
-        WAZUH_LOG_ERROR("Engine API Environment: Invalid action \"{}\", for more "
-                        "information use --help.");
-        return;
+        std::cout << response.message().value_or("") << std::endl;
     }
-
-    return;
 }
-} // namespace cmd
+
+void singleRequest(const api::WazuhRequest& request, const std::string& socketPath)
+{
+    try
+    {
+        auto response = apiclnt::sendReceive(socketPath, request);
+        details::processResponse(response);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+}
+
+} // namespace details
+
+void runSet(const std::string& socketPath, const std::string& target)
+{
+    // create request
+    auto request = api::WazuhRequest::create(details::commandName("set"),
+                                             details::ORIGIN_NAME,
+                                             details::getParameters("set", target));
+
+    details::singleRequest(request, socketPath);
+}
+
+void runGet(const std::string& socketPath)
+{
+    // Create a request
+    auto request = api::WazuhRequest::create(
+        details::commandName("get"), details::ORIGIN_NAME, details::getParameters("get"));
+
+    details::singleRequest(request, socketPath);
+}
+
+void runDel(const std::string& socketPath, const std::string& target)
+{
+    // Create a request
+    auto request = api::WazuhRequest::create(details::commandName("delete"),
+                                             details::ORIGIN_NAME,
+                                             details::getParameters("delete", target));
+
+    details::singleRequest(request, socketPath);
+}
+
+void configure(CLI::App& app)
+{
+    auto envApp = app.add_subcommand("env", "Manage the running environments.");
+    envApp->require_subcommand(1);
+    auto options = std::make_shared<Options>();
+
+    // Endpoint
+    envApp
+        ->add_option("-a, --api_socket",
+                     options->socketPath,
+                     "Sets the API server socket address.")
+        ->default_val(ENGINE_API_SOCK);
+
+    // Subcommands
+    // Action: get
+    auto get_subcommand = envApp->add_subcommand("get", "Get active environments.");
+    get_subcommand->callback([options]() { runGet(options->socketPath); });
+
+    // Action: set
+    auto set_subcommand =
+        envApp->add_subcommand("set", "Set an environments to be active.");
+    set_subcommand
+        ->add_option("environment", options->target, "Name of the environment to be set.")
+        ->required();
+    set_subcommand->callback([options]()
+                             { runSet(options->socketPath, options->target); });
+
+    // Action: delete
+    auto delete_subcommand = envApp->add_subcommand("delete", "Delete an environment.");
+    delete_subcommand
+        ->add_option(
+            "environment", options->target, "Name of the environment to be deleted.")
+        ->required();
+    delete_subcommand->callback([options]()
+                                { runDel(options->socketPath, options->target); });
+}
+} // namespace cmd::env

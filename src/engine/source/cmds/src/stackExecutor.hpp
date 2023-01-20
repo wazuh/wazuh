@@ -2,7 +2,10 @@
 #define _STACK_EXECUTOR_HPP
 
 #include <deque>
+#include <exception>
 #include <functional>
+
+#include <logging/logging.hpp>
 
 namespace cmd
 {
@@ -27,7 +30,7 @@ public:
      *
      * @param func Function to add
      */
-    void add(std::function<void()> func);
+    void add(std::function<void()> func) { m_stack.push_back(func); }
 
     /**
      * @brief Execute the stack of functions.
@@ -35,7 +38,25 @@ public:
      * The functions are executed in reverse order of insertion (LIFO), and the stack is
      * cleared.
      */
-    void execute();
+    void execute()
+    {
+        while (!m_stack.empty())
+        {
+            auto func = m_stack.back();
+            m_stack.pop_back();
+            try
+            {
+                func();
+            }
+            catch (const std::exception& e)
+            {
+                WAZUH_LOG_ERROR(
+                    "Engine stack executor: An error occurred while trying to "
+                    "execute a command: {}",
+                    e.what());
+            }
+        }
+    }
 };
 
 } // namespace cmd

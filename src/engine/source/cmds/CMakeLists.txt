@@ -1,15 +1,15 @@
 add_library(cmds STATIC
-    src/cmdGraph.cpp
-    src/cmdRun.cpp
-    src/cmdTest.cpp
-    src/cmdApiKvdb.cpp
-    src/cmdApiCatalog.cpp
-    src/cmdApiEnvironment.cpp
-    src/apiclnt/connection.cpp
-    src/stackExecutor.cpp
+    src/graph.cpp
+    src/start.cpp
+    src/test.cpp
+    src/kvdb.cpp
+    src/catalog.cpp
+    src/env.cpp
+    src/apiclnt/sendReceive.cpp
 )
 
-target_link_libraries(cmds PRIVATE
+target_link_libraries(cmds
+    PRIVATE
     base
     json
     builders
@@ -21,12 +21,13 @@ target_link_libraries(cmds PRIVATE
     uv_a
 )
 
-target_include_directories(cmds PUBLIC
+target_include_directories(cmds
+    PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
 
-target_include_directories(cmds PRIVATE
+    PRIVATE
     ${CameronQueue_SOURCE_DIR}
     ${uvw_SOURCE_DIR}/src/
     ${CMAKE_CURRENT_LIST_DIR}/src
+    ${CLI11_SOURCE_DIR}/include
 )
