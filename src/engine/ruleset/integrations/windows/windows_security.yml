@@ -106,10 +106,10 @@ normalize:
     #    - ~tmp.array_policy_changes: +s_to_array/$~windows.Event.EventData.AuditPolicyChanges/,
     #    - event.AuditPolicyChangesDescription: +kvdb_for_each/win_failure_codes_description/$~tmp.array_policy_changes
     # Access List
- - check:
-      - ~windows.Event.EventData.AccessList: +ef_exists
-   map:
-        - _tmp.array_access_masks: +s_to_array/$~windows.Event.EventData.AccessMask/,
+ #- check:
+   #   - ~windows.Event.EventData.AccessList: +ef_exists
+   #map:
+        #- ~tmp.array_access_masks: +s_to_array/$~windows.Event.EventData.AccessMask/,
         #- event.AccessMask: +kvdb_for_each/win_failure_codes_description/$_tmp.array_access_masks
     #
     # Access Mask - # Requires bitwise operations
@@ -128,20 +128,18 @@ normalize:
         - event.logon.failure.sub_status: +kvdb_get/win_logon_status/$~windows.Event.EventData.SubStatus
 
     # Add Session Events
- - check: event.code!=4778 OR event.code!=4779
+ - check: event.code==4778 OR event.code==4779
    map:
         # AccountName to user.name and related.user
-        - event.user.name: ~windows.Event.EventData.AccountName
-        - event.related.user: +a_append/$~windows.Event.EventData.AccountName
+        - user.name: $~windows.Event.EventData.AccountName
+        - related.user: +a_append/$~windows.Event.EventData.AccountName
         # AccountDomain to user.domain
-        - event.user.domain: ~windows.Event.EventData.AccountDomain
+        - user.domain: $~windows.Event.EventData.AccountDomain
         # ClientAddress to source.ip and related.ip
-        - event.source.ip: ~windows.Event.EventData.ClientAddress
-        - event.related.ip: +a_append/$~windows.Event.EventData.ClientAddress
+        - source.ip: $~windows.Event.EventData.ClientAddress
+        - related.ip: +a_append/$~windows.Event.EventData.ClientAddress
         # ClientName to source.domain
-        - event.source.domain: ~windows.Event.EventData.ClientName
-        # LogonID to winlog.logon.id
-        - event.logon.id: ~windows.Event.EventData.LogonID
+        - source.domain: $~windows.Event.EventData.ClientName
     
     # Copy Target User
     # TargetUserSid to user.id or user.target.id  
@@ -158,7 +156,7 @@ normalize:
  - check: +ef_not_exists/$user.name AND +a_contains/~temp.id_target_user_array/$event.code
    map:
         - user.name: $~windows.Event.EventData.TargetUserName
- - check: +ef_exists/$user.name AND +a_contains/~id_target_user_array/$event.code
+ - check: +ef_exists/$user.name AND +a_contains/~temp.id_target_user_array/$event.code
    map:
         - user.target.name: $~windows.Event.EventData.TargetUserName
  
@@ -176,34 +174,29 @@ normalize:
 
     # Copy MemberName to User and User to Group
  - check:
-        - ~temp.id_memberName_array: +a_contains/$event.code
+        - ~temp.id_memberName_array: +a_contains/event.code
    map:
-        - is_copy_MemberName: true
-        - ~split_memberName: +s_to_array/$~windows.Event.EventData.MemberName/,
-        - ~split_memberName.0: +s_replace/CN=// 
-        - event.member.name: $~split_memberName.0
-        - event.related.user: +a_append/$~split_memberName.0
-        - event.group.id: $~windows.Event.EventData.TargetUserSid
-        - event.group.id: $~windows.Event.EventData.TargetSid 
-        - event.group.name: $~windows.Event.EventData.TargetUserName
+        - ~temp.split_memberName: +s_to_array/$~windows.Event.EventData.MemberName/,
+        - ~temp.split_memberName.0: +s_replace/CN=// 
+        - member.name: $~temp.split_memberName.0
+        - related.user: +a_append/$~temp.split_memberName.0
+        - group.id: $~windows.Event.EventData.TargetUserSid
+        - group.id: $~windows.Event.EventData.TargetSid 
+        - group.name: $~windows.Event.EventData.TargetUserName
         - ~windows.Event.EventData.TargetDomainName: +s_replace/DC=//
         - event.goup.domain: $~windows.Event.EventData.TargetDomainName
-        - event.user.target.group.id: event.group.id
-        - event.user.target.group.name: event.group.name
-        - event.user.target.group.domain: event.group.domain
- - check:   
-        # - ~split_memberName: +a_ge/4
-        - is_copy_MemberName: +t_is_true
-   map:
-        - ~split_memberName.3: +s_replace/DC=// 
-        - event.user.target.domain: $~split_memberName.3
+        - user.target.group.id: $group.id
+        - user.target.group.name: $group.name
+        - user.target.group.domain: $group.domain
+        - ~temp.split_memberName.3: +s_replace/DC=// 
+        - user.target.domain: $~temp.split_memberName.3
 
  # Copy Target User to Computer Object
  - check: event.code==4741 OR event.code==4742 OR event.code==4743
    map:
-    - event.computerObject.id: $~windows.Event.EventData.TargetSid
-    - event.computerObject.name: $~windows.Event.EventData.TargetUserName
-    - event.computerObject.domain: $~windows.Event.EventData.TargetDomainName
+    - log.computerObject.id: $~windows.Event.EventData.TargetSid
+    - log.computerObject.name: $~windows.Event.EventData.TargetUserName
+    - log.computerObject.domain: $~windows.Event.EventData.TargetDomainName
         
  - check: event.code==4634 OR event.code==4647 OR event.code==4964
    map:
@@ -223,10 +216,10 @@ normalize:
     - ~temp.id_copy_target_user_array: +a_contains/$event.code
    map:
      - event.user.target.id: $~windows.Event.EventData.TargetSid
-     - ~name_part: +s_to_array/$~windows.Event.EventData.TargetUserName/@
-     - event.user.target.name: $~name_part.0
-     - event.related.user: +a_append/$event.user.target.name
-     - event.user.target.domain: $~windows.Event.EventData.TargetDomainName
+     - ~temp.name_part: +s_to_array/$~windows.Event.EventData.TargetUserName/@
+     - user.target.name: $~temp.name_part.0
+     - related.user: +a_append/$event.user.target.name
+     - user.target.domain: $~windows.Event.EventData.TargetDomainName
 
 # Copy Target User to Effective
  - check: event.code==4648 OR event.code==4688
@@ -236,8 +229,8 @@ normalize:
 
  - check: +s_ne/$~windows.Event.EventData.TargetUserName/-/ AND  (event.code==4648 OR event.code==4688)
    map:     
-     - ~name_part: +s_to_array/$~windows.Event.EventData.TargetUserName/@
-     - user.effective.name: $~name_part.0
+     - ~temp.name_part: +s_to_array/$~windows.Event.EventData.TargetUserName/@
+     - user.effective.name: $temp.~name_part.0
      - related.user: +a_append/$event.user.effective.name
 
 

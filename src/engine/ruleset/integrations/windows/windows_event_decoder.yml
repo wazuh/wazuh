@@ -1,17 +1,17 @@
 name: decoder/windows_event_decoder/0
 
 sources: 
-  - decoder/queue-windows/0
+  - decoder/json/0
 
 metadata:
   description: Parent decoder for Windows events  
 
 check:
-  - ~parsed_json.Event: +ef_exists
+  - ~json.Event: +ef_exists
 
 parse:
   logpar:
-    - ~parsed_json.Event: <~windows/xml/windows>
+    - ~json.Event: <~windows/xml/windows>
 
 normalize:
  - map:
@@ -30,4 +30,4 @@ normalize:
 
 # Cleanup
  - map:
-   - ~parsed_json: +ef_delete
+   - ~json: +ef_delete
