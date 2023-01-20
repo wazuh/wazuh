@@ -18,6 +18,7 @@ decoders:
   - decoder/fim/0
   - decoder/fim-event/0
   - decoder/fim-scan/0
+  - decoder/redis/0
   - decoder/rootcheck/0
   - decoder/sca/0
   - decoder/syscollector-base/0
