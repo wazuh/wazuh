@@ -1,13 +1,16 @@
-#ifndef _CMD_RUN_HPP
-#define _CMD_RUN_HPP
+#ifndef _CMD_START_HPP
+#define _CMD_START_HPP
 
+#include <memory>
 #include <string>
 
-namespace cmd
+#include <CLI/CLI.hpp>
+
+namespace cmd::start
 {
 
 /**
- * @brief Run environment.
+ * @brief Start engine.
  *
  * @param kvdbPath Path to KVDB folder.
  * @param eventEndpoint Endpoint of the server.
@@ -18,14 +21,20 @@ namespace cmd
  * @param environment Name of the environment to be loaded.
  * @param logLevel Log level.
  */
-void run(const std::string& kvdbPath,
-         const std::string& eventEndpoint,
-         const std::string& apiEndpoint,
-         const int queueSize,
-         const int threads,
-         const std::string& fileStorage,
-         const std::string& environment,
-         const int logLevel);
-} // namespace cmd
+struct Options
+{
+    std::string kvdbPath;
+    std::string eventEndpoint;
+    std::string apiEndpoint;
+    int queueSize;
+    int threads;
+    std::string fileStorage;
+    std::string environment;
+    int logLevel;
+};
+void run(const Options& options);
 
-#endif // _CMD_RUN_HPP
+void configure(CLI::App& app);
+} // namespace cmd::start
+
+#endif // _CMD_START_HPP

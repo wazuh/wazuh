@@ -1,14 +1,31 @@
-#ifndef _CMD_APICLNT_ENV_HPP
-#define _CMD_APICLNT_ENV_HPP
+#ifndef _CMD_ENV_HPP
+#define _CMD_ENV_HPP
 
 #include <string>
 
-namespace cmd
+#include <CLI/CLI.hpp>
+
+#include <api/wazuhRequest.hpp>
+#include <api/wazuhResponse.hpp>
+#include <json/json.hpp>
+
+namespace cmd::env
 {
 
-void environment(const std::string& socketPath,
-                 const std::string& action,
-                 const std::string& target);
-}
+namespace details
+{
+constexpr auto ORIGIN_NAME = "engine_integrated_env_api";
+std::string commandName(const std::string& command);
+json::Json getParameters(const std::string& action, const std::string& target = "");
+void processResponse(const api::WazuhResponse& response);
+void singleRequest(const api::WazuhRequest& request, const std::string& socketPath);
+} // namespace details
 
-#endif // _CMD_APICLNT_ENV_HPP
+void runSet(const std::string& socketPath, const std::string& target);
+void runGet(const std::string& socketPath);
+void runDel(const std::string& socketPath, const std::string& target);
+
+void configure(CLI::App& app);
+} // namespace cmd::env
+
+#endif // _CMD_ENV_HPP
