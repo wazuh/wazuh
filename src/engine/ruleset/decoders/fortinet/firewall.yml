@@ -15,8 +15,14 @@ metadata:
 sources:
     - decoder/queue-localfile/0
 
+check:
+- event.original: +s_starts/<
+
 parse:
   logpar:
+    #
+    # Parsers for firewall event
+    #
     # <189>date=2020-04-23 time=12:32:48 devname="testswitch3" devid="someotherrouteridagain" logid="0102043014" type="event" subtype="user" level="notice" vd="root" eventtime=1587231168439640874 tz="-0500" logdesc="FSSO logon authentication status" srcip=10.10.10.10 user="elasticouser" server="elasticserver" action="FSSO-logon" msg="FSSO-logon event from FSSO_elasticserver: user elasticouser logged on 10.10.10.10"
     - event.original: <~/literal/<189>>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" logdesc="<rule.description>" srcip=<source.ip> user="<source.user.name>" server="<~tmp.fortinet.firewall.server>" action="<event.action>" msg="<message>"
     # <189>date=2020-04-23 time=12:32:09 devname="testswitch3" devid="someotherrouteridagain" logid="0102043039" type="event" subtype="user" level="notice" vd="root" eventtime=1587231130109462858 tz="-0500" logdesc="Authentication logon" srcip=10.10.10.10 user="elastiiiuser" authserver="FSSO_elastiauth" action="auth-logon" status="logon" msg="User elastiiiuser added to auth logon"
@@ -51,6 +57,13 @@ parse:
     - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> logdesc="<rule.description>" action="<event.action>" status="<~tmp.fortinet.firewall.status>" license_limit="<~tmp.fortinet.firewall.license_limit>" used_for_type=<~tmp.fortinet.firewall.used_for_type> connection_type="<~tmp.fortinet.firewall.connection_type>" count=<~tmp.fortinet.firewall.count> user="<source.user.name>" ip=<~tmp.fortinet.firewall.ip> name="<~tmp.fortinet.firewall.name>" fctuid="<~tmp.fortinet.firewall.fctuid>" msg="<message>"
     # <190>devname="firewall" devid="FG201EEF34CD12AB" vd="root" date=2021-05-07 time=08:31:14 eventtime=1620372674880370858 tz="+0100" logid="0112053203" type="event" subtype="connector" level="information" logdesc="Dynamic address updated" fctemssn="FCTEMS0000011111" addr="FCTEMS0000011111_AV-Running" msg="Updated tag FCTEMS0000011111_AV-Running."
     - event.original: <~tmp.type>devname="<observer.name>" devid="<observer.serial_number>" vd="<~tmp.fortinet.firewall.vd>" date=<~tmp.date> time=<~tmp.time> eventtime=<~> tz="<~tmp.tz>" logid="<event.code>" type="<event.kind>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" logdesc="<rule.description>" fctemssn="<~tmp.fortinet.firewall.fctemssn>" addr="<~tmp.fortinet.firewall.addrgrp>" msg="<message>"
+    #
+    # Parsers for firewall traffic
+    #
+    # <189>date=2020-04-23 time=01:16:08 devname="testswitch1" devid="somerouterid" logid="0000000013" type="traffic" subtype="forward" level="notice" vd="OPERATIONAL" eventtime=1592961368 srcip=10.10.10.10 srcport=60899 srcintf="srcintfname" srcintfrole="lan" dstip=175.16.199.1 dstport=161 dstintf="dstintfname" dstintfrole="lan" sessionid=155313 proto=17 action="deny" policyid=0 policytype="policy" service="SNMP" dstcountry="Reserved" srccountry="Reserved" trandisp="noop" duration=0 sentbyte=0 rcvdbyte=0 sentpkt=0 appcat="unscanned" crscore=30 craction=131072 crlevel="high"
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<~tmp.fortinet.firewall.type>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> srcip=<source.ip> srcport=<source.port> srcintf="<observer.ingress.interface.name>" srcintfrole="<~tmp.fortinet.firewall.srcintfrole>" dstip=<destination.ip> dstport=<destination.port> dstintf="<observer.egress.interface.name>" dstintfrole="<~tmp.fortinet.firewall.dstintfrole>" sessionid=<~tmp.fortinet.firewall.sessionid> proto=<network.iana_number> action="<event.action>" policyid=<rule.id> policytype="<rule.ruleset>" service="<network.protocol>" dstcountry="<~tmp.fortinet.firewall.dstcountry>" srccountry="<~tmp.fortinet.firewall.srccountry>" trandisp="<~tmp.fortinet.firewall.trandisp>" duration=<event.duration> sentbyte=<source.bytes> rcvdbyte=<destination.bytes> sentpkt=<source.packets> appcat="<rule.category>" crscore=<~tmp.fortinet.firewall.crscore> craction=<~tmp.fortinet.firewall.craction> crlevel="<~tmp.fortinet.firewall.crlevel>"
+    # <188>date=2020-04-23 time=12:14:09 devname="newfirewall" devid="newrouterid" logid="0000000011" type="traffic" subtype="forward" level="warning" vd="root" eventtime=1587230049761513222 tz="-0500" srcip=192.168.1.6 srcport=53438 srcintf="port1" srcintfrole="lan" dstip=175.16.199.1 dstport=53 dstintf="wan1" dstintfrole="wan" sessionid=435234 proto=17 action="dns" policyid=26 policytype="policy" poluuid="2345de-b143-52134d8-6654f-4654sdfg16f431" policyname="elasticnewruleset" service="DNS" dstcountry="Netherlands" srccountry="Reserved" appcat="unscanned" crscore=5 craction=54144 crlevel="low"
+    - event.original: <~tmp.type>date=<~tmp.date> time=<~tmp.time> devname="<observer.name>" devid="<observer.serial_number>" logid="<event.code>" type="<~tmp.fortinet.firewall.type>" subtype="<~tmp.fortinet.firewall.subtype>" level="<log.level>" vd="<~tmp.fortinet.firewall.vd>" eventtime=<~> tz="<~tmp.tz>" srcip=<source.ip> srcport=<source.port> srcintf="<observer.ingress.interface.name>" srcintfrole="<~tmp.fortinet.firewall.srcintfrole>" dstip=<destination.ip> dstport=<destination.port> dstintf="<observer.egress.interface.name>" dstintfrole="<~tmp.fortinet.firewall.dstintfrole>" sessionid=<~tmp.fortinet.firewall.sessionid> proto=<network.iana_number> action="<event.action>" policyid=<rule.id> policytype="<rule.ruleset>" poluuid="<rule.uuid>" policyname="<rule.name>" service="<network.protocol>" dstcountry="<~tmp.fortinet.firewall.dstcountry>" srccountry="<~tmp.fortinet.firewall.srccountry>" appcat="<rule.category>" crscore=<~tmp.fortinet.firewall.crscore> craction=<~tmp.fortinet.firewall.craction> crlevel="<~tmp.fortinet.firewall.crlevel>"
 
 normalize:
   - map:
@@ -87,6 +100,25 @@ normalize:
     map:
       - event.category: [network]
       - event.type: [connection]
+  - check:
+    - ~tmp.fortinet.firewall.subtype: forward
+    - ~tmp.fortinet.firewall.type: traffic
+    map:
+      - event.category: [network]
+      - event.type: [connection, end]
+      - event.kind: event
+  - check:
+    - ~tmp.fortinet.firewall.subtype: forward
+    - ~tmp.fortinet.firewall.type: traffic
+    - event.action: deny
+    map:
+      - event.type: +a_append/denied
+  - check:
+    - ~tmp.fortinet.firewall.subtype: forward
+    - ~tmp.fortinet.firewall.type: traffic
+    - event.action: dns
+    map:
+      - event.type: +a_append/allowed
   - map:
     - ~tmp.timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000
   - check:
@@ -98,12 +130,28 @@ normalize:
     map:
       - related.ip: +a_append/$destination.ip
   - map:
+    - fortinet.firewall.type: $event.kind
+  - check:
+    - ~tmp.fortinet.firewall.subtype: forward
+    - ~tmp.fortinet.firewall.type: traffic
+    map:
+      - fortinet.firewall.type: $~tmp.fortinet.firewall.type
+  - map:
       - \@timestamp: $~tmp.timestamp
       - event.start: $~tmp.timestamp
       - fileset.name: firewall
       - fortinet.firewall.addrgrp: $~tmp.fortinet.firewall.addrgrp
       - fortinet.firewall.fctemssn: $~tmp.fortinet.firewall.fctemssn
       - fortinet.firewall.action: $event.action
+      - fortinet.firewall.craction: $~tmp.fortinet.firewall.craction
+      - fortinet.firewall.crlevel: $~tmp.fortinet.firewall.crlevel
+      - fortinet.firewall.crscore: $~tmp.fortinet.firewall.crscore
+      - fortinet.firewall.dstcountry: $~tmp.fortinet.firewall.dstcountry
+      - fortinet.firewall.srccountry: $~tmp.fortinet.firewall.srccountry
+      - fortinet.firewall.dstintfrole: $~tmp.fortinet.firewall.dstintfrole
+      - fortinet.firewall.sessionid: $~tmp.fortinet.firewall.sessionid
+      - fortinet.firewall.srcintfrole: $~tmp.fortinet.firewall.srcintfrole
+      - fortinet.firewall.trandisp: $~tmp.fortinet.firewall.trandisp
       - fortinet.firewall.method: $~tmp.fortinet.firewall.method
       - fortinet.firewall.profile: $~tmp.fortinet.firewall.profile
       - fortinet.firewall.sn: $~tmp.fortinet.firewall.sn
@@ -138,7 +186,6 @@ normalize:
       - fortinet.firewall.tunnelid: $~tmp.fortinet.firewall.tunnelid
       - fortinet.firewall.tunnelip: $~tmp.fortinet.firewall.tunnelip
       - fortinet.firewall.tunneltype: $~tmp.fortinet.firewall.tunneltype
-      - fortinet.firewall.type: $event.kind
       - fortinet.firewall.ui: $~tmp.fortinet.firewall.ui
       - fortinet.firewall.vd: $~tmp.fortinet.firewall.vd
       - fortinet.firewall.used_for_type: $~tmp.fortinet.firewall.used_for_type
@@ -147,6 +194,11 @@ normalize:
       - fortinet.firewall.server: $~tmp.fortinet.firewall.server
       - fortinet.firewall.version: $~tmp.fortinet.firewall.version
       - input.type: log
+      - network.bytes: $source.bytes
+      # TODO: Failed to assign field 'network.community id' because value not found in event
+      - network.community_id: "1:8bNES6YDdszaPi28xM3VcSwJdbg="
+      # TODO: Failed to assign field 'network.transport' because value not found in event
+      - network.transport: udp
       # TODO: Could not map field 'log.offset' due to inability to persist values into yml variables.
       # Also, there is no helper that allows obtaining the size of an event.
       - log.offset: 0
@@ -166,6 +218,17 @@ normalize:
       # - source.geo.region_name": "Jilin Sheng"
       # - source.as.number": 1221
       # - source.as.organization.name": "Telstra Pty Ltd"
+
+      # TODO: There is no geolocation information to be able to decode this segment of the event
+      # <189>date=2020-04-23 time=01:16:08 devname="testswitch1" devid="somerouterid" logid="0000000013" type="traffic" subtype="forward" level="notice" vd="OPERATIONAL" eventtime=1592961368 srcip=10.10.10.10 srcport=60899 srcintf="srcintfname" srcintfrole="lan" dstip=175.16.199.1 dstport=161 dstintf="dstintfname" dstintfrole="lan" sessionid=155313 proto=17 action="deny" policyid=0 policytype="policy" service="SNMP" dstcountry="Reserved" srccountry="Reserved" trandisp="noop" duration=0 sentbyte=0 rcvdbyte=0 sentpkt=0 appcat="unscanned" crscore=30 craction=131072 crlevel="high"
+      # - destination.geo.city_name": "Changchun"
+      # - destination.geo.continent_name": "Asia"
+      # - destination.geo.country_iso_code": "CN"
+      # - destination.geo.country_name": "China"
+      # - destination.geo.location.lat": 43.88
+      # - destination.geo.location.lon": 125.3228
+      # - destination.geo.region_iso_code": "CN-22"
+      # - destination.geo.region_name": "Jilin Sheng"
       - service.type: fortinet
       - tags: [fortinet-firewall, forwarded]
   - check:
