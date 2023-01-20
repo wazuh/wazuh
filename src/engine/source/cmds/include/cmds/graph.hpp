@@ -1,9 +1,12 @@
 #ifndef _CMD_GRAPH_HPP
 #define _CMD_GRAPH_HPP
 
+#include <memory>
 #include <string>
 
-namespace cmd
+#include <CLI/CLI.hpp>
+
+namespace cmd::graph
 {
 /**
  * @brief Load and build environment to generate environment graph and environment
@@ -14,10 +17,16 @@ namespace cmd
  * @param environment Name of the environment to be loaded.
  * @param graphOutDir Directory where the graphs will be saved.
  */
-void graph(const std::string& kvdbPath,
-           const std::string& fileStorage,
-           const std::string& environment,
-           const std::string& graphOutDir);
-} // namespace cmd
+struct Options
+{
+    std::string kvdbPath;
+    std::string fileStorage;
+    std::string environment;
+    std::string graphOutDir;
+};
+void run(const Options& options);
+
+void configure(CLI::App& app);
+} // namespace cmd::graph
 
 #endif // _CMD_GRAPH_HPP

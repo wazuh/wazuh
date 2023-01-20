@@ -4,7 +4,9 @@
 #include <string>
 #include <vector>
 
-namespace cmd
+#include <CLI/CLI.hpp>
+
+namespace cmd::test
 {
 
 /**
@@ -16,20 +18,24 @@ namespace cmd
  * @param environment Name of the environment to be loaded.
  * @param logLevel Log level.
  * @param debugLevel Debug level.
- * @param traceAll Trace all assets.
  * @param assetTrace Trace specific assets.
  * @param protocolQueue Queue of the protocol.
  * @param protocolLocation Location of the protocol.
  */
-void test(const std::string& kvdbPath,
-          const std::string& fileStorage,
-          const std::string& environment,
-          int logLevel,
-          int debugLevel,
-          bool traceAll,
-          const std::vector<std::string>& assetTrace,
-          char protocolQueue,
-          const std::string& protocolLocation);
-} // namespace cmd
+struct Options
+{
+    std::string kvdbPath;
+    std::string fileStorage;
+    std::string environment;
+    int logLevel;
+    int debugLevel;
+    std::vector<std::string> assetTrace;
+    char protocolQueue;
+    std::string protocolLocation;
+};
+void run(const Options& options);
+
+void configure(CLI::App& app);
+} // namespace cmd::test
 
 #endif // _CMD_TEST_HPP
