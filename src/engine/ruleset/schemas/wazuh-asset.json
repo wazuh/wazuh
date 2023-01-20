@@ -196,7 +196,7 @@
                     "items": {
                         "allOf": [
                             {
-                                "$ref": "custom-ecs-field.json#"
+                                "$ref": "schemas.json#"
                             },
                             {
                                 "maxProperties": 1
@@ -218,7 +218,7 @@
             "items": {
                 "allOf": [
                     {
-                        "$ref": "custom-ecs-field.json#"
+                        "$ref": "schemas.json#"
                     },
                     {
                         "maxProperties": 1
@@ -241,8 +241,7 @@
             "type": "object",
             "description": "Never shown",
             "minItems": 1,
-            "maxItems": 2,
-            "additionalProperties": false,
+            "additionalProperties": true,
             "properties": {
                 "map": {
                     "description": "Modify fields on the event, an array composed of tuples with syntax `- field`: `value`, where `field` is the field to modify and `value` is the new value. If `value` is a function helper, it will be executed and the result will be used as new value if executed correctly. If `value` is a reference it will be used as new value only if the reference exists.",
