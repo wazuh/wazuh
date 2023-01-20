@@ -1,4 +1,4 @@
-#include "cmds/cmdRun.hpp"
+#include "cmds/start.hpp"
 
 #include <atomic>
 #include <csignal>
@@ -25,6 +25,7 @@
 #include <store/drivers/fileDriver.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
+#include "defaultSettings.hpp"
 #include "register.hpp"
 #include "registry.hpp"
 #include "stackExecutor.hpp"
@@ -40,16 +41,9 @@ void sigint_handler(const int signum)
 }
 } // namespace
 
-namespace cmd
+namespace cmd::start
 {
-void run(const std::string& kvdbPath,
-         const std::string& eventEndpoint,
-         const std::string& apiEndpoint,
-         const int queueSize,
-         const int threads,
-         const std::string& fileStorage,
-         const std::string& environment,
-         const int logLevel)
+void run(const Options& options)
 {
 
     // Set Crt+C handler
@@ -63,7 +57,7 @@ void run(const std::string& kvdbPath,
     }
     // Init logging
     logging::LoggingConfig logConfig;
-    switch (logLevel)
+    switch (options.logLevel)
     {
         case 0: logConfig.logLevel = logging::LogLevel::Debug; break;
         case 1: logConfig.logLevel = logging::LogLevel::Info; break;
@@ -86,14 +80,14 @@ void run(const std::string& kvdbPath,
 
     try
     {
-        const auto bufferSize {static_cast<size_t>(queueSize)};
+        const auto bufferSize {static_cast<size_t>(options.queueSize)};
 
         server = std::make_shared<engineserver::EngineServer>(
-            apiEndpoint, nullptr, eventEndpoint, bufferSize);
+            options.apiEndpoint, nullptr, options.eventEndpoint, bufferSize);
         g_exitHanlder.add([server]() { server->close(); });
         WAZUH_LOG_INFO("Engine \"run\" command: Server successfully configured.");
 
-        kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath);
+        kvdb = std::make_shared<kvdb_manager::KVDBManager>(options.kvdbPath);
         WAZUH_LOG_INFO("Engine \"run\" command: KVDB successfully initialized.");
         g_exitHanlder.add(
             [kvdb]()
@@ -105,7 +99,7 @@ void run(const std::string& kvdbPath,
         // Register KVDB commands
         api::kvdb::cmds::registerAllCmds(kvdb, server->getRegistry());
 
-        store = std::make_shared<store::FileDriver>(fileStorage);
+        store = std::make_shared<store::FileDriver>(options.fileStorage);
         WAZUH_LOG_INFO("Engine \"run\" command: Store successfully initialized.");
 
         base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
@@ -145,7 +139,7 @@ void run(const std::string& kvdbPath,
         WAZUH_LOG_INFO("Engine \"run\" command: Catalog successfully initialized.");
 
         envManager = std::make_shared<router::EnvironmentManager>(
-            builder, server->getEventQueue(), threads);
+            builder, server->getEventQueue(), options.threads);
         g_exitHanlder.add([envManager]() { envManager->delAllEnvironments(); });
 
         WAZUH_LOG_INFO(
@@ -154,16 +148,16 @@ void run(const std::string& kvdbPath,
         server->getRegistry()->registerCommand("env", envManager->apiCallback());
 
         // Up default environment
-        auto error = envManager->addEnvironment(environment);
+        auto error = envManager->addEnvironment(options.environment);
         if (!error)
         {
-            envManager->startEnvironment(environment);
+            envManager->startEnvironment(options.environment);
         }
         else
         {
             WAZUH_LOG_WARN("Engine \"run\" command: An error occurred while creating the "
                            "default environment \"{}\": {}.",
-                           environment,
+                           options.environment,
                            error.value().message);
         }
     }
@@ -191,4 +185,70 @@ void run(const std::string& kvdbPath,
     }
     g_exitHanlder.execute();
 }
-} // namespace cmd
+
+void configure(CLI::App& app)
+{
+    auto startApp = app.add_subcommand("start", "Start a Wazuh engine instance.");
+    auto options = std::make_shared<Options>();
+
+    // Endpoints
+    startApp
+        ->add_option("-e, --event_endpoint",
+                     options->eventEndpoint,
+                     "Sets the events server socket address.")
+        ->default_val(ENGINE_EVENT_SOCK);
+
+    startApp
+        ->add_option("-a, --api_endpoint",
+                     options->apiEndpoint,
+                     "Sets the API server socket address.")
+        ->default_val(ENGINE_API_SOCK);
+
+    // Threads
+    startApp
+        ->add_option("-t, --threads",
+                     options->threads,
+                     "Sets the number of threads to be used by the engine environment.")
+        ->default_val(ENGINE_THREADS);
+
+    // File storage
+    startApp
+        ->add_option("-f, --file_storage",
+                     options->fileStorage,
+                     "Sets the path to the folder where the assets are located (store).")
+        ->default_val(ENGINE_STORE_PATH)
+        ->check(CLI::ExistingDirectory);
+
+    // Queue size
+    startApp
+        ->add_option("-q, --queue_size",
+                     options->queueSize,
+                     "Sets the number of events that can be queued to be processed.")
+        ->default_val(ENGINE_QUEUE_SIZE);
+
+    // KVDB path
+    startApp
+        ->add_option(
+            "-k, --kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
+        ->default_val(ENGINE_KVDB_PATH)
+        ->check(CLI::ExistingDirectory);
+
+    // Environment
+    startApp
+        ->add_option(
+            "--environment", options->environment, "Name of the environment to be used.")
+        ->default_val(ENGINE_ENVIRONMENT);
+
+    // Log level
+    startApp
+        ->add_option(
+            "-l, --log_level",
+            options->logLevel,
+            "Sets the logging level: 0 = Debug, 1 = Info, 2 = Warning, 3 = Error")
+        ->default_val(ENGINE_LOG_LEVEL)
+        ->check(CLI::Range(0, 3));
+
+    // Register callback
+    startApp->callback([options, startApp]() { run(*options); });
+}
+} // namespace cmd::start
