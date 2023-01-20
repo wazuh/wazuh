@@ -31,7 +31,6 @@ class opBuilderKVDBSetTest : public ::testing::Test
 
 protected:
     static constexpr auto DB_NAME = "TEST_DB";
-    static constexpr auto DB_REF_NAME = "$TEST_DB";
     static constexpr auto DB_DIR = "/tmp/";
 
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager =
@@ -39,7 +38,7 @@ protected:
 
     virtual void SetUp() {}
 
-    virtual void TearDown() {}
+    virtual void TearDown() { kvdbManager->unloadDB(DB_NAME); }
 };
 
 // Build ok
@@ -52,9 +51,9 @@ TEST_F(opBuilderKVDBSetTest, buildKVDBSetWithValues)
 
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWithReferences)
 {
-    auto tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_REF_NAME, "$key", "$value"});
+    auto tuple = std::make_tuple<string, string, vector<string>>("/output", "", {"$SOME_DB_NAME", "$key", "$value"});
 
-    ASSERT_NO_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager));
+    ASSERT_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
 }
 
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWrongAmountOfParametersError)
@@ -63,15 +62,15 @@ TEST_F(opBuilderKVDBSetTest, buildKVDBSetWrongAmountOfParametersError)
 
     ASSERT_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
 
-    tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_REF_NAME});
+    tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME});
 
     ASSERT_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
 
-    tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_REF_NAME, "key"});
+    tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, "key"});
 
     ASSERT_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
 
-    tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_REF_NAME, "key", "value", "unexpected"});
+    tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, "key", "value", "unexpected"});
 
     ASSERT_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
 }
