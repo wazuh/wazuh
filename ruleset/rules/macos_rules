@@ -15,7 +15,7 @@
   <rule id="110003" level="5">
     <decoded_as>macOS_loginwindow</decoded_as>
     <regex type="pcre2">sendBSDNotification: \w+.\w+.\w+.screenIsUnlocked</regex>
-    <description>Screen Unlocked with UserID:$(userID)</description>
+    <description>Screen unlocked with userID:$(userID)</description>
     <mitre>
       <id>T1078</id>
     </mitre>
@@ -25,7 +25,7 @@
   <rule id="110004" level="5">
     <decoded_as>macOS_loginwindow</decoded_as>
     <match>screenIsLocked</match>
-    <description>Screen locked for UserID:$(userID)</description>
+    <description>Screen locked</description>
     <mitre>
       <id>T1078</id>
     </mitre>
@@ -35,7 +35,7 @@
   <rule id="110005" level="5">
     <decoded_as>macOS_loginwindow</decoded_as>
     <match>logoutNoReturn</match>
-    <description>User LogOff</description>
+    <description>User logoff</description>
     <mitre>
       <id>T1078</id>
     </mitre>
@@ -45,7 +45,7 @@
   <rule id="110006" level="5">
     <decoded_as>macOS_loginwindow</decoded_as>
     <match>loginIsComplete</match>
-    <description>User Login</description>
+    <description>User login</description>
     <mitre>
       <id>T1078</id>
     </mitre>
