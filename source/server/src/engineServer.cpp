@@ -42,10 +42,8 @@ EngineServer::EngineServer(const std::string& apiEndpointPath,
         apiEndpoint->configure();
         m_endpoints.emplace(EndpointType::API, std::move(apiEndpoint));
 
-        auto eventQueue =
-            std::make_shared<BlockingConcurrentQueue<std::string>>(bufferSize);
-        auto eventEndpoint =
-            std::make_shared<EventEndpoint>(eventEndpointPath, eventQueue);
+        auto eventQueue = std::make_shared<BlockingConcurrentQueue<base::Event>>(bufferSize);
+        auto eventEndpoint = std::make_shared<EventEndpoint>(eventEndpointPath, eventQueue);
         eventEndpoint->configure();
         m_endpoints.emplace(EndpointType::EVENT, std::move(eventEndpoint));
     }
@@ -80,8 +78,7 @@ void EngineServer::close(void)
     }
 }
 
-std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::string>>
-EngineServer::getEventQueue() const
+std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>> EngineServer::getEventQueue() const
 {
     if (m_endpoints.find(EndpointType::EVENT) != m_endpoints.end())
     {

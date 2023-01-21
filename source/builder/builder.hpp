@@ -15,6 +15,7 @@
 #include "asset.hpp"
 #include "environment.hpp"
 #include "registry.hpp"
+#include "route.hpp"
 
 namespace builder
 {
@@ -50,12 +51,39 @@ public:
         return environment;
     }
 
+    Route buildRoute(const base::Name& name) const
+    {
+        auto routeJson = m_storeRead->get(name);
+        if (std::holds_alternative<base::Error>(routeJson))
+        {
+            throw std::runtime_error(fmt::format("Engine builder: Route \"{}\" could not be obtained from the "
+                                                 "store: {}.",
+                                                 name.fullName(),
+                                                 std::get<base::Error>(routeJson).message));
+        }
+        return Route {std::get<json::Json>(routeJson), m_registry};
+    }
+
     std::optional<base::Error> validateEnvironment(const json::Json& json) const override
     {
         try
         {
             Environment env {json, m_storeRead, m_registry};
             env.getExpression();
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {utils::getExceptionStack(e)};
+        }
+
+        return std::nullopt;
+    }
+
+    std::optional<base::Error> validateRoute(const json::Json& json) const override
+    {
+        try
+        {
+            Route route {json, m_registry};
         }
         catch (const std::exception& e)
         {
