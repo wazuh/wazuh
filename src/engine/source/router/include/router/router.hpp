@@ -12,8 +12,9 @@
 #include <blockingconcurrentqueue.h>
 
 #include <baseTypes.hpp>
-#include <expression.hpp>
-#include <registry.hpp>
+#include <route.hpp>
+
+#include "environmentManager.hpp"
 
 /*************************************
 TODO:
@@ -37,49 +38,52 @@ class Router
 private:
     using concurrentQueue = moodycamel::BlockingConcurrentQueue<base::Event>;
 
-    std::size_t m_numThreads;        ///< Number of threads for the router
-    std::shared_mutex m_mutexRoutes; ///< Mutex to protect the routes map
-
-    std::unordered_map<std::string, std::vector<base::Expression>> m_routes;
-
-    std::shared_ptr<builder::internals::Registry> m_registry; ///< Registry for builders
+    /* Status */
+    /**
+     * @brief Map of routes, each route is a vector of expressions, each expression for each thread
+     */
+    std::unordered_map<std::string, std::vector<builder::Route>> m_routes;
+    std::shared_mutex m_mutexRoutes;    ///< Mutex to protect the routes map
     std::atomic_bool m_isRunning;       ///< Flag to know if the router is running
     std::vector<std::thread> m_threads; ///< Vector of threads for the router
 
+    /* Resources */
+    std::shared_ptr<EnvironmentManager> m_environmentManager; ///< Environment manager
+    std::shared_ptr<builder::Builder> m_builder;              ///< Builder
+    std::shared_ptr<concurrentQueue> m_queue;                 ///< Queue to get events
+
+    /* Config */
+    std::size_t m_numThreads; ///< Number of threads for the router
+
 public:
-    Router(std::shared_ptr<builder::internals::Registry> registry, std::size_t threads = 1)
-        : m_mutexRoutes()
-        , m_routes()
-        , m_isRunning(false)
-        , m_registry(registry)
-        , m_numThreads(threads)
+    Router(std::shared_ptr<builder::Builder> builder,
+           std::size_t threads = 1)
+        : m_mutexRoutes {}
+        , m_routes {}
+        , m_isRunning {false}
+        , m_numThreads {threads}
         , m_threads {}
+        , m_builder {builder}
     {
         if (threads == 0)
         {
-            throw std::runtime_error("Number of threads of the router can't be 0");
+            throw std::runtime_error("Router: The number of threads must be greater than 0.");
         }
 
-        if (registry == nullptr)
+        if (builder == nullptr)
         {
-            throw std::runtime_error("Registry can't be null");
+            throw std::runtime_error("Router: Builder can't be null.");
         }
+
+        m_environmentManager = std::make_shared<EnvironmentManager>(builder, threads);
+
     };
-
-    /**
-     * #TODO: Change whens expression can be copied
-     * @brief Get the expression of the router (all threads)
-     *
-     * @return const std::vector<base::Expression>
-     */
-    std::vector<base::Expression> getExpression(); // TODO: Move to private
-
     /**
      * @brief Get the list of route names
      *
      * @return std::unordered_set<std::string>
      */
-    std::vector<std::string> getRouteNames();
+    std::vector<std::string> listRoutes();
 
     /**
      * @brief add a new route to the router
@@ -88,6 +92,16 @@ public:
      * @return A error with description if the route can't be added
      */
     std::optional<base::Error> addRoute(const json::Json& jsonDefinition);
+
+    std::optional<base::Error> addRoute(const std::string& name);
+
+    /**
+     * @brief Delete a route from the router
+     *
+     * @param name name of the route
+     * @return A error with description if the route can't be deleted
+     */
+    std::optional<base::Error> removeRoute(const std::string& name);
 
     /**
      * @brief Launch in a new threads the router to ingest data from the queue
@@ -101,6 +115,7 @@ public:
      * Returns when all threads are stopped
      */
     void stop();
+
 };
 } // namespace router
 #endif // _ROUTER_ROUTER_HPP

@@ -22,12 +22,16 @@
 
 #include <logging/logging.hpp>
 
+#include "parseEvent.hpp"
+
 using uvw::ErrorEvent;
 using uvw::Loop;
 
 // TODO: Refactor how we handle queue flooding and environments down
 static constexpr auto dumpFile = "/var/ossec/logs/archives/flooded.log";
-extern std::atomic_bool g_envDown;
+// extern std::atomic_bool g_envDown;
+// TODO: Refactor how we handle queue flooding and environments down
+std::atomic_bool g_envDown {false}; // TODO: Change this
 
 namespace engineserver::endpoints
 {
@@ -109,7 +113,7 @@ static inline int bindUnixDatagramSocket(const char* path)
 
 EventEndpoint::EventEndpoint(
     const std::string& path,
-    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::string>> eventQueue)
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>> eventQueue)
     : BaseEndpoint {path}
     , m_loop {Loop::getDefault()}
     , m_handle {m_loop->resource<DatagramSocketHandle>()}
@@ -155,7 +159,15 @@ EventEndpoint::EventEndpoint(
             }
             else
             {
-                while (!m_eventQueue->try_enqueue(strRequest))
+                base::Event event;
+                try {
+                    event = base::parseEvent::parseOssecEvent(strRequest);
+                } catch (const std::exception& e) {
+                    WAZUH_LOG_WARN("Engine event endpoint: Error parsing event: '{}' (discarting...)",
+                                    e.what());
+                    return;
+                }
+                while (!m_eventQueue->try_enqueue(event))
                 {
                     if (g_envDown)
                     {
@@ -239,7 +251,7 @@ EventEndpoint::~EventEndpoint(void)
     close();
 }
 
-std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::string>>
+std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>>
 EventEndpoint::getEventQueue(void) const
 {
     return m_eventQueue;

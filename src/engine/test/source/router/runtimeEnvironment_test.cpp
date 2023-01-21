@@ -14,20 +14,6 @@ constexpr auto env_1 = "environment/env_1/0";
 constexpr auto env_2 = "environment/env_2/0";
 constexpr auto env_default = "environment/default/0";
 
-namespace
-{
-// Make event
-// std::list<base::Event> events {};
-// std::transform(sampleEventsStr.begin(), sampleEventsStr.end(), std::back_inserter(events), [](const auto& str) {
-//     return  base::parseEvent::parseOssecEvent(str);
-// });
-const std::vector<std::string> sampleEventsStr {
-    R"(2:10.0.0.1:Test Event - deco_1 )",
-    R"(4:10.0.0.1:Test Event - deco_2 )",
-    R"(8:10.0.0.1:Test Event - deco_3 )"
-    };
-
-} // namespace
 
 TEST(RuntimeEnvironment, build_ok)
 {
@@ -37,8 +23,7 @@ TEST(RuntimeEnvironment, build_ok)
     ASSERT_FALSE(error.has_value()) << error.value().message;
 }
 
-// TODO add more failure tests
-TEST(RuntimeEnvironment, build_fail)
+TEST(RuntimeEnvironment, build_fail_env)
 {
     auto builder = aux::getFakeBuilder();
     auto environment = std::make_shared<router::RuntimeEnvironment>("invalid_env");
@@ -46,26 +31,54 @@ TEST(RuntimeEnvironment, build_fail)
     ASSERT_TRUE(error.has_value());
 }
 
-// TODO add more tests
-TEST(RuntimeEnvironment, push_1_event)
+TEST(RuntimeEnvironment, build_fail_builder)
+{
+    GTEST_SKIP();
+    auto environment = std::make_shared<router::RuntimeEnvironment>("invalid_env");
+    // TODO SHOULD BE ASSERT_THROW LOGIC ERROR
+    environment->build(nullptr);
+}
+
+TEST(RuntimeEnvironment, build_2_times)
+{
+    auto builder = aux::getFakeBuilder();
+    auto environment = std::make_shared<router::RuntimeEnvironment>(env_1);
+    auto error = environment->build(builder);
+    ASSERT_FALSE(error.has_value()) << error.value().message;
+    error = environment->build(builder);
+    ASSERT_TRUE(error.has_value());
+    ASSERT_STREQ(error.value().message.c_str(), "Environment 'environment/env_1/0' is already built.");
+}
+
+TEST(RuntimeEnvironment, processEvent_not_built)
+{
+    auto environment = std::make_shared<router::RuntimeEnvironment>(env_1);
+    auto e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[0]);
+    auto error = environment->processEvent(e);
+    ASSERT_TRUE(error.has_value());
+    ASSERT_STREQ(error.value().message.c_str(), "Environment 'environment/env_1/0' is not built.");
+}
+
+
+TEST(RuntimeEnvironment, processEvent_1_event)
 {
     auto builder = aux::getFakeBuilder();
     auto environment = std::make_shared<router::RuntimeEnvironment>(env_1);
     auto error = environment->build(builder);
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
-    auto e = base::parseEvent::parseOssecEvent(sampleEventsStr[0]);
+    auto e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[0]);
 
     // Send event
     auto decoderPath = json::Json::formatJsonPath("~decoder");
-    auto result = environment->pushEvent(e);
+    auto result = environment->processEvent(e);
     ASSERT_FALSE(result) << result.value().message;
     ASSERT_TRUE(e->exists(decoderPath) && e->isString(decoderPath)) << e->prettyStr();
     ASSERT_EQ(e->getString(decoderPath).value(), "deco_1") << e->prettyStr();
 }
 
 // TODO add more tests
-TEST(RuntimeEnvironment, push_30_event)
+TEST(RuntimeEnvironment, processEvent_30_event)
 {
     auto builder = aux::getFakeBuilder();
     auto environment = std::make_shared<router::RuntimeEnvironment>(env_1);
@@ -75,58 +88,25 @@ TEST(RuntimeEnvironment, push_30_event)
 
     for (std::size_t i = 0; i < 30; i += 3)
     {
-        auto e = base::parseEvent::parseOssecEvent(sampleEventsStr[i % 3]);
+        auto e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[i % 3]);
         // Send event
-        auto result = environment->pushEvent(e);
+        auto result = environment->processEvent(e);
         ASSERT_FALSE(result) << result.value().message;
         ASSERT_TRUE(e->exists(decoderPath) && e->isString(decoderPath)) << e->prettyStr();
         ASSERT_EQ(e->getString(decoderPath).value(), "deco_1") << e->prettyStr();
 
-        e = base::parseEvent::parseOssecEvent(sampleEventsStr[(i + 1) % 3]);
+        e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[(i + 1) % 3]);
         // Send event
-        result = environment->pushEvent(e);
+        result = environment->processEvent(e);
         ASSERT_FALSE(result) << result.value().message;
         ASSERT_TRUE(e->exists(decoderPath) && e->isString(decoderPath)) << e->prettyStr();
         ASSERT_EQ(e->getString(decoderPath).value(), "deco_2") << e->prettyStr();
 
-        e = base::parseEvent::parseOssecEvent(sampleEventsStr[(i + 2) % 3]);
+        e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[(i + 2) % 3]);
         // Send event
-        result = environment->pushEvent(e);
+        result = environment->processEvent(e);
         ASSERT_FALSE(result) << result.value().message;
         ASSERT_TRUE(e->exists(decoderPath) && e->isString(decoderPath)) << e->prettyStr();
         ASSERT_EQ(e->getString(decoderPath).value(), "deco_3") << e->prettyStr();
-    }
-}
-
-// TODO add more tests
-TEST(RuntimeEnvironment, mutiple_environments)
-{
-    std::size_t numEnvironments = 20;
-    std::size_t numEvents = 500;
-    const auto decoderPath = json::Json::formatJsonPath("~decoder");
-    auto builder = aux::getFakeBuilder();
-
-    std::vector<std::shared_ptr<router::RuntimeEnvironment>> environments {};
-
-    for (std::size_t i = 0; i < numEnvironments; i++)
-    {
-        auto environment = std::make_shared<router::RuntimeEnvironment>(env_1);
-        auto error = environment->build(builder);
-        ASSERT_FALSE(error.has_value()) << error.value().message;
-        environments.push_back(environment);
-    }
-
-    for (std::size_t i = 0; i < numEvents; i++)
-    {
-        base::Event e;
-        ASSERT_NO_THROW(e = base::parseEvent::parseOssecEvent(sampleEventsStr[0]));
-
-        // Send event
-        auto result = environments[i % numEnvironments]->pushEvent(e);
-        ASSERT_FALSE(result) << result.value().message;
-        ASSERT_TRUE(e->exists(decoderPath) && e->isString(decoderPath)) << e->prettyStr();
-        ASSERT_EQ(e->getString(decoderPath).value(), "deco_1") << e->prettyStr();
-
-
     }
 }

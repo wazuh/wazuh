@@ -1,0 +1,6 @@
+name: route/allow-all/0
+
+check:
+    - wazuh.queue: +ef_exists
+
+target: environment/wazuh/0
