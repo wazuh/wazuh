@@ -16,7 +16,7 @@ std::optional<base::Error> EnvironmentManager::addEnvironment(const std::string&
     }
     catch (const std::exception& e)
     {
-        return base::Error {fmt::format("Invalid environment name: {}", e.what())};
+        return base::Error {fmt::format("Invalid environment name: '{}'", e.what())};
     }
 
     if (envName.parts().size() != 3)
@@ -32,36 +32,44 @@ std::optional<base::Error> EnvironmentManager::addEnvironment(const std::string&
                                         name)};
     }
 
-    std::unique_lock<std::shared_mutex> lock(m_mutex);
-    if (m_environments.find(name) != m_environments.end())
+    // Create the environment
+    std::vector<RuntimeEnvironment> envs = {};
+    envs.reserve(m_numInstances);
+    for (std::size_t i = 0; i < m_numInstances; ++i)
     {
-        return base::Error {fmt::format("Environment '{}' already exists", name)};
+        auto env = RuntimeEnvironment {name};
+        const auto err = env.build(m_builder);
+        if (err)
+        {
+            return base::Error {err.value()};
+        }
+        envs.push_back(env);
     }
-
-    auto env = std::make_shared<RuntimeEnvironment>(name, m_numThreads, m_queue);
-    const auto err = env->build(m_builder);
-    if (err)
+    // Add the environment to the runtime list
     {
-        return base::Error {err.value()};
+        std::unique_lock<std::shared_mutex> lock(m_mutex);
+        if (m_environments.find(name) != m_environments.end())
+        {
+            return base::Error {fmt::format("Environment '{}' already exists.", name)};
+        }
+        m_environments.insert({name, std::move(envs)});
     }
-    m_environments.emplace(name, std::move(env));
 
     return std::nullopt;
 }
 
-std::optional<base::Error> EnvironmentManager::delEnvironment(const std::string& name)
+std::optional<base::Error> EnvironmentManager::deleteEnvironment(const std::string& name)
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
     auto it = m_environments.find(name);
     if (it == m_environments.end())
     {
-        return base::Error {fmt::format("Environment '{}' does not exist", name)};
+        return base::Error {fmt::format("Environment '{}' doesn't exist.", name)};
     }
 
-    it->second->stop();
     if (m_environments.erase(name) != 1)
     {
-        return base::Error {fmt::format("Environment '{}' could not be deleted", name)};
+        return base::Error {fmt::format("Environment '{}' could not be deleted.", name)};
     }
 
     return std::nullopt;
@@ -70,39 +78,44 @@ std::optional<base::Error> EnvironmentManager::delEnvironment(const std::string&
 void EnvironmentManager::delAllEnvironments()
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
-    for (auto& [name, env] : m_environments)
-    {
-        env->stop();
-    }
     m_environments.clear();
 }
 
-std::optional<base::Error> EnvironmentManager::startEnvironment(const std::string& name)
-{
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-    auto it = m_environments.find(name);
-    if (it != m_environments.end())
-    {
-        const auto err = it->second->run(m_queue);
-        if (err)
-        {
-            return base::Error {err.value()};
-        }
-        return std::nullopt;
-    }
-    return base::Error {fmt::format("Environment '{}' does not exist", name)};
-}
-
-std::vector<std::string> EnvironmentManager::getAllEnvironments()
+std::vector<std::string> EnvironmentManager::listEnvironments()
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
     std::vector<std::string> names = {};
-    for (auto& [name, env] : m_environments)
-    {
-        names.push_back(name);
-    }
+    names.reserve(m_environments.size());
+    std::transform(m_environments.begin(),
+                   m_environments.end(),
+                   std::back_inserter(names),
+                   [](const auto& pair) { return pair.first; });
 
     return names;
+}
+
+std::optional<base::Error>
+EnvironmentManager::forwardEvent(const std::string& name, std::size_t instance, base::Event event)
+{
+
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+    auto it = m_environments.find(name);
+    if (it == m_environments.end())
+    {
+        return base::Error {fmt::format("Environment '{}' doesn't exist.", name)};
+    }
+
+    if (instance >= m_numInstances)
+    {
+        return base::Error {fmt::format("Invalid instance number '{}', the maximum is '{}'",
+                                        instance,
+                                        m_numInstances - 1)};
+    }
+
+    auto& env = it->second[instance];
+    env.processEvent(std::move(event));
+
+    return std::nullopt;
 }
 
 /********************************************************************
@@ -147,8 +160,7 @@ api::WazuhResponse EnvironmentManager::apiSetEnvironment(const json::Json& param
     auto name = params.getString("/name");
     if (!name)
     {
-        response.message(
-            "The \"/name\" parameter is missing, it is required and must be a string");
+        response.message("The \"/name\" parameter is missing, it is required and must be a string");
         return response;
     }
 
@@ -157,28 +169,11 @@ api::WazuhResponse EnvironmentManager::apiSetEnvironment(const json::Json& param
     if (err)
     {
         response.message(err.value().message);
-        return response;
     }
-
-    // TODO: Delete this when support for multiple environments is added
-    // If build OK, then delete other environments
-    for (auto& otherEnv : getAllEnvironments())
+    else
     {
-        if (otherEnv != name.value())
-        {
-            delEnvironment(otherEnv);
-        }
+        response.message("Environment created");
     }
-
-    // start environment
-    err = startEnvironment(name.value());
-
-    if (err)
-    {
-        response.message(err.value().message);
-        return response;
-    }
-    response.message("Environment created and started");
 
     return response;
 }
@@ -190,7 +185,7 @@ api::WazuhResponse EnvironmentManager::apiGetEnvironment(const json::Json& param
     // Array of environments
     json::Json envs;
     envs.setArray();
-    for (auto& e : getAllEnvironments())
+    for (auto& e : listEnvironments())
     {
         envs.appendString(e);
     }
@@ -205,12 +200,11 @@ api::WazuhResponse EnvironmentManager::apiDelEnvironment(const json::Json& param
     auto name = params.getString("/name");
     if (!name)
     {
-        response.message(
-            "The \"/name\" parameter is missing, it is required and must be a string");
+        response.message("The \"/name\" parameter is missing, it is required and must be a string");
         return response;
     }
 
-    auto err = delEnvironment(name.value());
+    auto err = deleteEnvironment(name.value());
     if (err)
     {
         response.message(err.value().message);

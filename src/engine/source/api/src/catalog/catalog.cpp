@@ -136,6 +136,8 @@ Catalog::Catalog(const Config& config)
     m_schemas[Resource::Type::RULE] = std::get<json::Json>(assetSchemaJson);
     m_schemas[Resource::Type::OUTPUT] = std::get<json::Json>(assetSchemaJson);
     m_schemas[Resource::Type::FILTER] = std::get<json::Json>(assetSchemaJson);
+    // TODO: Check if necesary a new schema for route
+    m_schemas[Resource::Type::ROUTE] = std::get<json::Json>(assetSchemaJson);
 
     const auto environmentSchemaJson = m_store->get(environmentSchemaName);
     if (std::holds_alternative<base::Error>(environmentSchemaJson))
@@ -391,10 +393,9 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
     // Assert resource type is Asset or Environment
     if (Resource::Type::DECODER != item.m_type && Resource::Type::RULE != item.m_type
         && Resource::Type::FILTER != item.m_type && Resource::Type::OUTPUT != item.m_type
-        && Resource::Type::ENVIRONMENT != item.m_type)
+        && Resource::Type::ENVIRONMENT != item.m_type && Resource::Type::ROUTE != item.m_type)
     {
-        return base::Error {fmt::format("Invalid resource type \"{}\"",
-                                        Resource::typeToStr(item.m_type))};
+        return base::Error {fmt::format("Invalid resource type \"{}\"", Resource::typeToStr(item.m_type))};
     }
 
     // Validate against the schema first
@@ -428,6 +429,10 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
     else if (item.m_type == Resource::Type::ENVIRONMENT)
     {
         validationError = m_validator->validateEnvironment(content);
+    }
+    else if (item.m_type == Resource::Type::ROUTE)
+    {
+        validationError = m_validator->validateRoute(content);
     }
     else
     {

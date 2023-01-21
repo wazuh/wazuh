@@ -16,7 +16,7 @@
 #include <blockingconcurrentqueue.h>
 
 #include <api/api.hpp>
-
+#include <baseTypes.hpp>
 #include "../../src/endpoints/baseEndpoint.hpp"
 
 /**
@@ -75,7 +75,7 @@ public:
      *
      * @return std::shared_ptr<concurrentQueue>
      */
-    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::string>>
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>>
     getEventQueue() const;
 
     /**

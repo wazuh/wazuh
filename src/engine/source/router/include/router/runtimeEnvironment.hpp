@@ -57,7 +57,7 @@ public:
      * @note This function is not thread safe. Only one event at a time, because the expression tree (helper
      * functions) are not thread safe.
      */
-    std::optional<base::Error> pushEvent(base::Event event);
+    std::optional<base::Error> processEvent(base::Event event);
 };
 
 } // namespace router

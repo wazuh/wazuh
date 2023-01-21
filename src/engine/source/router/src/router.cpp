@@ -1,28 +1,47 @@
 #include <router/router.hpp>
 
-#include <asset.hpp>
-#include <rxbk/rxFactory.hpp>
+#include <builder.hpp>
+
 
 namespace router
 {
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
 
-std::optional<base::Error> Router::addRoute(const json::Json& jsonDefinition)
+std::optional<base::Error> Router::addRoute(const std::string& name)
 {
 
     try
     {
-        std::vector<base::Expression> threadExpressions(m_numThreads);
-        std::shared_ptr<builder::Asset> route {nullptr};
+        // Build the same route for each thread
+        std::vector<builder::Route> routeInstances  {};
+        routeInstances.reserve(m_numThreads);
         for (std::size_t i = 0; i < m_numThreads; ++i)
         {
-            route = std::make_shared<builder::Asset>(jsonDefinition, builder::Asset::Type::ROUTE, m_registry);
-            threadExpressions[i] = route->getExpression();
+            //routeInstances[i] = builder::Route {jsonDefinition, m_registry};
+            auto r = m_builder->buildRoute(name);
+            routeInstances.push_back(r);
         }
-        std::string name = route->m_name;
+        const auto routeName = routeInstances.front().getName();
+        const auto envName = routeInstances.front().getTarget();
+
+        // Add the environment
+        auto err = m_environmentManager->addEnvironment(envName);
+        if (err)
+        {
+            return base::Error {err.value()};
+        }
+
+        // Link the route to the environment
         {
             std::unique_lock lock {m_mutexRoutes};
-            m_routes.insert(std::make_pair(name, std::move(threadExpressions)));
+            // Check if the route already exists, should we update it?
+            if (m_routes.find(routeName) != m_routes.end())
+            {
+                lock.unlock();
+                m_environmentManager->deleteEnvironment(envName);
+                return base::Error {fmt::format("Route '{}' already exists", routeName)};
+            }
+            m_routes.insert(std::make_pair(routeName, std::move(routeInstances)));
         }
     }
     catch (const std::exception& e)
@@ -32,27 +51,24 @@ std::optional<base::Error> Router::addRoute(const json::Json& jsonDefinition)
     return std::nullopt;
 }
 
-std::vector<base::Expression> Router::getExpression()
+std::optional<base::Error> Router::removeRoute(const std::string& routeName)
 {
-    std::shared_lock lock {m_mutexRoutes};
-    if (m_routes.empty())
+    std::unique_lock lock {m_mutexRoutes};
+
+    auto it = m_routes.find(routeName);
+    if (it == m_routes.end())
     {
-        return {};
+        return base::Error {fmt::format("Route '{}' not found", routeName)};
     }
 
-    std::vector<base::Expression> routerThreads;
-    routerThreads.reserve(m_numThreads);
+    const auto envName = it->second.front().getTarget();
+    m_routes.erase(it);
+    lock.unlock();
 
-    for (std::size_t i = 0; i < m_numThreads; ++i)
-    {
-        std::vector<base::Expression> routes(m_routes.size());
-        std::transform(m_routes.begin(), m_routes.end(), routes.begin(), [i](auto& route) { return route.second[i]; });
-        routerThreads[i] = base::Chain::create("router thread " + std::to_string(i), routes);
-    }
-    return routerThreads;
+    return m_environmentManager->deleteEnvironment(envName);
 }
 
-std::vector<std::string> Router::getRouteNames()
+std::vector<std::string> Router::listRoutes()
 {
     std::shared_lock lock {m_mutexRoutes};
     std::vector<std::string> names {};
@@ -65,40 +81,43 @@ std::vector<std::string> Router::getRouteNames()
 std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
 {
     std::shared_lock lock {m_mutexRoutes};
+
     if (m_isRunning.load())
     {
         return base::Error {"The router is already running"};
     }
-    if (m_routes.empty())
-    {
-        return base::Error {"No routes to run"};
-    }
-
-    std::unordered_set<std::string> assetNames {};
-    for (const auto& route : m_routes)
-    {
-        assetNames.insert(route.first);
-    }
-
-    const auto exp = getExpression();
+    //if (m_routes.empty())
+    //{
+    //    return base::Error {"No routes to run"};
+    //}
+    m_queue = queue; // Update queue
     m_isRunning.store(true);
 
     for (std::size_t i = 0; i < m_numThreads; ++i)
     {
         m_threads.emplace_back(
-            [this, queue, i, expression = exp[i], assetNames]()
+            [this, queue, i]()
             {
-                auto controller = rxbk::buildRxPipeline(expression, assetNames);
                 while (m_isRunning.load())
                 {
                     base::Event event {};
                     if (queue->wait_dequeue_timed(event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
-                        auto result = base::result::makeSuccess(event);
-                        controller.ingestEvent(std::make_shared<base::result::Result<base::Event>>(std::move(result)));
+                        std::shared_lock lock {m_mutexRoutes};
+                        // TODO: SHould we check if the event is routed?
+                        for (auto& route : m_routes)
+                        {
+                            if (route.second[i].accept(event))
+                            {
+                                const auto& target = route.second[i].getTarget();
+                                lock.unlock();
+                                // TODO: Send event to target
+                                m_environmentManager->forwardEvent(target, i, std::move(event));
+                                break;
+                            }
+                        }
                     }
                 }
-
                 WAZUH_LOG_DEBUG("Thread [{}] router finished.", i);
             });
     };
@@ -108,7 +127,6 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
 
 void Router::stop()
 {
-    // TODO ADD mechanism to wait for all threads to finish
     if (!m_isRunning.load())
     {
         return;

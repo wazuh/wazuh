@@ -1,5 +1,5 @@
-#ifndef __BUILDER_IVALIDATOR_HPP
-#define __BUILDER_IVALIDATOR_HPP
+#ifndef _BUILDER_IVALIDATOR_HPP
+#define _BUILDER_IVALIDATOR_HPP
 
 #include <optional>
 
@@ -28,6 +28,9 @@ public:
     virtual std::optional<base::Error>
     validateEnvironment(const json::Json& json) const = 0;
 
+    // TODO: Docu
+    virtual std::optional<base::Error> validateRoute(const json::Json& json) const = 0;
+
     /**
      * @brief Validate an Asset.
      *
@@ -38,4 +41,4 @@ public:
 };
 } // namespace builder
 
-#endif // __BUILDER_IVALIDATOR_HPP
+#endif // _BUILDER_IVALIDATOR_HPP

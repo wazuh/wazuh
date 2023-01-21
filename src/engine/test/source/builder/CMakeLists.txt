@@ -115,6 +115,12 @@ add_executable(environment_test
 )
 gtest_discover_tests(environment_test)
 
+# route test
+add_executable(route_test
+  ${BUILDER_TEST_SOURCE_DIR}/route_test.cpp
+)
+gtest_discover_tests(environment_test)
+
 add_executable(baseHelper_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/baseHelper_test.cpp
 )
