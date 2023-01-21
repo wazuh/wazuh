@@ -4,8 +4,12 @@
 #include <router/runtimeEnvironment.hpp>
 
 #include <map>
+#include <shared_mutex>
 #include <string>
+#include <thread>
+#include <vector>
 
+#include <api/api.hpp>
 #include <error.hpp>
 
 namespace router
@@ -13,25 +17,23 @@ namespace router
 
 /**
  * @brief EnvironmentManager is responsible to manage the runtime environment,
- * Creacion, destruction, and execution.
+ * Creacion, destruction, and interaction with the environment.
+ * The environment manager create multiples instaces of the same environments and dont
+ * allow interact to the same environment from different threads.
  */
 class EnvironmentManager
 {
 
 private:
-    // Data for environment creation
-    using activeEnvironment = std::shared_ptr<router::RuntimeEnvironment>;
-    using concurrentQueue = moodycamel::BlockingConcurrentQueue<std::string>;
-
-    std::shared_ptr<builder::Builder> m_builder; ///< Builder for environment creation
-    std::shared_ptr<concurrentQueue> m_queue;    ///< Queue for environment
-    std::size_t m_numThreads; ///< Number of threads for each environment
-
-    /**
-     * @brief Map of active environments
-     */
-    std::unordered_map<std::string, activeEnvironment> m_environments;
+    /* Status */
+    std::unordered_map<std::string, std::vector<RuntimeEnvironment>> m_environments; ///< Map of environments
     std::shared_mutex m_mutex; ///< Mutex to protect the environments map
+
+    /* Config */
+    const std::size_t m_numInstances; ///< Number of instances of each environment
+
+    /* Resources */
+    std::shared_ptr<builder::Builder> m_builder; ///< Builder for environment creation
 
     /**
      * @brief API callback for environment creation
@@ -58,20 +60,30 @@ private:
 
 public:
     /**
-     * @brief Construct a new Environment Manager object
+     * @brief Create the environment manager
      *
+     * The environment manager is responsible to manage the runtime environment, creation, destruction, and interaction
+     * with the environment
      * @param builder Builder for environment creation
-     * @param queue Queue for environment
-     * @param numThreads Number of threads for each enviroment
+     * @param maxInstances Maximum number of instances of each environment
      */
-    EnvironmentManager(std::shared_ptr<builder::Builder> builder,
-                       std::shared_ptr<concurrentQueue> queue,
-                       std::size_t numThreads)
-        : m_builder(builder)
-        , m_queue(queue)
-        , m_numThreads(numThreads)
-        , m_environments()
-        , m_mutex() {};
+    EnvironmentManager(std::shared_ptr<builder::Builder> builder, std::size_t maxInstances)
+        : m_environments {}
+        , m_mutex {}
+        , m_numInstances {maxInstances}
+        , m_builder {builder}
+    {
+        if (maxInstances == 0)
+        {
+            throw std::runtime_error("EnvironmentManager: Number of instances of the environment can't be 0.");
+        }
+
+        if (builder == nullptr)
+        {
+            throw std::runtime_error("EnvironmentManager: Builder can't be null.");
+        }
+    };
+
     ~EnvironmentManager() { delAllEnvironments(); };
 
     /**
@@ -88,7 +100,7 @@ public:
      * @param name Name of the environment
      * @return Error message if any
      */
-    std::optional<base::Error> delEnvironment(const std::string& name);
+    std::optional<base::Error> deleteEnvironment(const std::string& name);
 
     /**
      * @brief Delete all environments
@@ -100,15 +112,20 @@ public:
      *
      * @return std::vector<std::string>
      */
-    std::vector<std::string> getAllEnvironments();
+    std::vector<std::string> listEnvironments();
 
     /**
-     * @brief Start an environment
+     * @brief Forward an event to an environment
      *
      * @param name Name of the environment
-     * @return std::optional<std::string>
+     * @param instance Instance of the environment
+     * @param event Event to forward
+     * @return std::optional<base::Error> if the event can't be forwarded
+     *
+     * @note The instance of the environment should be selected by the thread id,
+     * the instance of an environment is not thread safe for processing events.
      */
-    std::optional<base::Error> startEnvironment(const std::string& name);
+    std::optional<base::Error> forwardEvent(const std::string& name, std::size_t instance, base::Event event);
 
     /**
      * @brief Main API callback for environment management

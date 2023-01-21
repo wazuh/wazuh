@@ -4,91 +4,88 @@
 
 #include <gtest/gtest.h>
 
+#include "parseEvent.hpp"
 #include "register.hpp"
 
-namespace
-{
-const json::Json jRouteExistQueue = json::Json(R"(
-        {
-            "name": "Exist wazuh.queue",
-            "check": [
-                {
-                    "wazuh.queue": "+ef_exists"
-                }
-            ],
-            "destination": "env wazuh queue"
-        }
-    )");
-
-const json::Json jRouteAllowAll = json::Json(R"(
-        {
-            "name": "Allow all",
-            "destination": "env default allow all"
-        }
-    )");
-
-} // namespace
+#include "testAuxiliar/routerAuxiliarFunctions.hpp"
 
 TEST(Router, build_ok)
 {
     auto registry = std::make_shared<builder::internals::Registry>();
     builder::internals::registerBuilders(registry);
+    auto builder = aux::getFakeBuilder();
 
-    router::Router router(registry);
+    router::Router router(builder);
 }
-
+// Add more test
 TEST(Router, build_fail)
 {
-    GTEST_SKIP();
-    ASSERT_THROW(router::Router router(nullptr), std::exception);
+
+    auto registry = std::make_shared<builder::internals::Registry>();
+    builder::internals::registerBuilders(registry);
+    auto builder = aux::getFakeBuilder();
+
+    try {
+        router::Router router(builder, 0);
+        FAIL() << "Router: The router was created with 0 threads";
+    } catch (const std::runtime_error& e) {
+        EXPECT_STREQ(e.what(), "Router: The number of threads must be greater than 0.");
+    } catch (...) {
+        FAIL() << "Router: The router was created with 0 threads";
+    }
+
+    try {
+        router::Router router(nullptr);
+        FAIL() << "Router: The router was created with a null builder";
+    } catch (const std::runtime_error& e) {
+        EXPECT_STREQ(e.what(), "Router: Builder can't be null.");
+    } catch (...) {
+        FAIL() << "Router: The router was created with a null builder";
+    }
 }
 
-/*******************************************************************************
- *           Get expression
- ******************************************************************************/
-TEST(Router, get_expression_empty_router)
+TEST(Router, add_list_remove_routes)
 {
     auto registry = std::make_shared<builder::internals::Registry>();
     builder::internals::registerBuilders(registry);
+    auto builder = aux::getFakeBuilder();
 
-    router::Router router(registry);
+    router::Router router(builder);
 
-    auto expression = router.getExpression();
-}
+    // Add a route
+    auto error = router.addRoute("route/e_wazuh_queue/0");
+    EXPECT_FALSE(error.has_value()) << error.value().message;
 
-TEST(Router, get_expression_1_route)
-{
-    auto registry = std::make_shared<builder::internals::Registry>();
-    builder::internals::registerBuilders(registry);
+    // List routes
+    auto routes = router.listRoutes();
+    EXPECT_EQ(routes.size(), 1) << error.value().message;
 
-    router::Router router(registry);
+    // Add a route
+    error = router.addRoute("route/allow_all/0");
+    EXPECT_FALSE(error.has_value()) << error.value().message;
 
-    router.addRoute(jRouteExistQueue);
+    // List routes
+    auto list = router.listRoutes();
+    EXPECT_EQ(list.size(), 2) << error.value().message;
 
-    auto expression = router.getExpression();
-}
+    std::sort(list.begin(), list.end());
+    list[0] == "route/allow_all/0";
+    list[1] == "route/e_wazuh_queue/0";
 
-TEST(Router, get_expression_1_route_wout_check)
-{
-    auto registry = std::make_shared<builder::internals::Registry>();
-    builder::internals::registerBuilders(registry);
+    // Remove a route
+    error = router.removeRoute("route/e_wazuh_queue/0");
+    EXPECT_FALSE(error.has_value());
 
-    router::Router router(registry);
+    // List routes
+    routes = router.listRoutes();
+    EXPECT_EQ(routes.size(), 1);
+    EXPECT_EQ(routes[0], "route/allow_all/0");
 
-    router.addRoute(jRouteAllowAll);
+    // Remove a route
+    error = router.removeRoute("route/allow_all/0");
+    EXPECT_FALSE(error.has_value());
 
-    auto expression = router.getExpression();
-}
-
-TEST(Router, get_expression_2_routes)
-{
-    auto registry = std::make_shared<builder::internals::Registry>();
-    builder::internals::registerBuilders(registry);
-
-    router::Router router(registry);
-
-    router.addRoute(jRouteExistQueue);
-    router.addRoute(jRouteAllowAll);
-
-    auto expression = router.getExpression();
+    // List routes
+    routes = router.listRoutes();
+    EXPECT_EQ(routes.size(), 0);
 }

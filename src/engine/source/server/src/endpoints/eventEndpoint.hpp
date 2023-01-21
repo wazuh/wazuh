@@ -13,6 +13,7 @@
 #include <uvw/udp.hpp>
 
 #include "baseEndpoint.hpp"
+#include <baseTypes.hpp>
 
 namespace engineserver::endpoints
 {
@@ -26,7 +27,7 @@ class EventEndpoint : public BaseEndpoint
 protected:
     using DatagramSocketEvent = uvw::UDPDataEvent;
     using DatagramSocketHandle = uvw::UDPHandle;
-    using concurrentQueue = moodycamel::BlockingConcurrentQueue<std::string>;
+    using concurrentQueue = moodycamel::BlockingConcurrentQueue<base::Event>;
 
 private:
     int m_socketFd;

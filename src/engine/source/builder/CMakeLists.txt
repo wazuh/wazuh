@@ -50,10 +50,10 @@ add_library(builders OBJECT
   builders/stageBuilderMap.cpp
   builders/stageBuilderNormalize.cpp
   builders/stageBuilderOutputs.cpp
-  builders/stageDestination.cpp
   builders/stageBuilderParse.cpp
   definitions.cpp
   environment.cpp
+  route.cpp
   registry.cpp
 )
 
