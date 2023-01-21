@@ -126,6 +126,16 @@ public:
         return base::Error {"error"};
     }
 
+    std::optional<base::Error> validateRoute(const json::Json& json) const override
+    {
+        if (json.isObject())
+        {
+            return std::nullopt;
+        }
+
+        return base::Error {"error"};
+    }
+
     std::optional<base::Error> validateAsset(const json::Json& json) const override
     {
         if (json.isObject())

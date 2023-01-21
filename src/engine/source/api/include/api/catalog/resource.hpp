@@ -211,9 +211,8 @@ public:
             }
 
             // Assets and Environments needs validation
-            // TODO: Route needs validation?
             if (Type::ENVIRONMENT == m_type || Type::DECODER == m_type || Type::RULE == m_type
-                || Type::FILTER == m_type || Type::OUTPUT == m_type)
+                || Type::FILTER == m_type || Type::OUTPUT == m_type || Type::ROUTE == m_type)
             {
                 m_validation = true;
             }
