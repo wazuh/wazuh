@@ -4,12 +4,14 @@
     <decoded_as>macOS_tccd</decoded_as>
     <match type="pcre2">(?i)update access record.+allowed</match>
     <description>$(application) has been granted permission to $(service) at $(time)</description>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="110002" level="5">
     <decoded_as>macOS_tccd</decoded_as>
     <match type="pcre2">(?i)update access record.+denied</match>
     <description>$(application) has been denied permission to $(service) at $(time)</description>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
   
   <rule id="110003" level="3">
@@ -75,12 +77,14 @@
     <decoded_as>macOS_securityd_process</decoded_as>
     <match type="pcre2">(?i)session.+created</match>
     <description>Session $(sessionId) has been created</description>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="110010" level="3">
     <decoded_as>macOS_securityd_process</decoded_as>
     <match type="pcre2">(?i)session.+destroyed</match>
     <description>Session $(sessionId) has been destroyed</description>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 </group>
