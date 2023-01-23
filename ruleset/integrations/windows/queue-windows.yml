@@ -3,8 +3,17 @@ name: decoder/queue-windows/0
 
 metadata:
   description: Partial parent decoder for Windows events
+  module: Windows
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/23
+  title: This decoder processes event coming through Windows Event Channel queue
+  references:
+    - https://learn.microsoft.com/en-us/windows/win32/events/windows-events
 
 check:
-  - wazuh.queue: 102 # eventchannel‘5’
+  - wazuh.queue: 102 # eventchannel ‘f’
 
 
