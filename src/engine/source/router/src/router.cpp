@@ -2,7 +2,6 @@
 
 #include <builder.hpp>
 
-
 namespace router
 {
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
@@ -13,11 +12,11 @@ std::optional<base::Error> Router::addRoute(const std::string& name)
     try
     {
         // Build the same route for each thread
-        std::vector<builder::Route> routeInstances  {};
+        std::vector<builder::Route> routeInstances {};
         routeInstances.reserve(m_numThreads);
         for (std::size_t i = 0; i < m_numThreads; ++i)
         {
-            //routeInstances[i] = builder::Route {jsonDefinition, m_registry};
+            // routeInstances[i] = builder::Route {jsonDefinition, m_registry};
             auto r = m_builder->buildRoute(name);
             routeInstances.push_back(r);
         }
@@ -86,10 +85,10 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
     {
         return base::Error {"The router is already running"};
     }
-    //if (m_routes.empty())
+    // if (m_routes.empty())
     //{
-    //    return base::Error {"No routes to run"};
-    //}
+    //     return base::Error {"No routes to run"};
+    // }
     m_queue = queue; // Update queue
     m_isRunning.store(true);
 
@@ -141,4 +140,102 @@ void Router::stop()
     WAZUH_LOG_DEBUG("Router stopped.");
 }
 
+/********************************************************************
+ *                  callback API Request
+ ********************************************************************/
+
+api::CommandFn Router::apiCallbacks()
+{
+    return [this](const json::Json params)
+    {
+        api::WazuhResponse response {};
+        const auto action = params.getString("/action");
+
+        if (!action)
+        {
+            response.message(R"(Missing "action" parameter)");
+        }
+        else if (action.value() == "set")
+        {
+            response = apiSetRoute(params);
+        }
+        else if (action.value() == "get")
+        {
+            response = apiGetRoutes(params);
+        }
+        else if (action.value() == "delete")
+        {
+            response = apiDeleteRoute(params);
+        }
+        else
+        {
+            response.message(fmt::format("Invalid action '{}'", action.value()));
+        }
+        return response;
+    };
+}
+
+/********************************************************************
+ *                  private callback API Request
+ ********************************************************************/
+
+api::WazuhResponse Router::apiSetRoute(const json::Json& params)
+{
+    api::WazuhResponse response {};
+    const auto name = params.getString("/name");
+    if (!name)
+    {
+        response.message(R"(Missing "name" parameter)");
+    }
+    else
+    {
+        const auto err = addRoute(name.value());
+        if (err)
+        {
+            response.message(err.value().message);
+        }
+        else
+        {
+            response.message(fmt::format("Route '{}' added", name.value()));
+        }
+    }
+    return response;
+}
+
+api::WazuhResponse Router::apiGetRoutes(const json::Json& params)
+{
+    json::Json data {};
+    data.setArray();
+
+    const auto names = listRoutes();
+    for (const auto& name : names)
+    {
+        data.appendString(name);
+    }
+
+    return api::WazuhResponse {data, "List of routes"};
+}
+
+api::WazuhResponse Router::apiDeleteRoute(const json::Json& params)
+{
+    api::WazuhResponse response {};
+    const auto name = params.getString("/name");
+    if (!name)
+    {
+        response.message(R"(Missing "name" parameter)");
+    }
+    else
+    {
+        const auto err = removeRoute(name.value());
+        if (err)
+        {
+            response.message(err.value().message);
+        }
+        else
+        {
+            response.message(fmt::format("Route '{}' deleted", name.value()));
+        }
+    }
+    return response;
+}
 } // namespace router

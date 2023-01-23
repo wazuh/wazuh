@@ -35,29 +35,6 @@ private:
     /* Resources */
     std::shared_ptr<builder::Builder> m_builder; ///< Builder for environment creation
 
-    /**
-     * @brief API callback for environment creation
-     * @param params Parameters for environment creation ("/name")
-     * @return api::WazuhResponse with the result of the operation
-     */
-    api::WazuhResponse apiSetEnvironment(const json::Json& params);
-
-    /**
-     * @brief API callback for environment status
-     *
-     * @param params Parameters for environment status ("/name")
-     * @return api::WazuhResponse with an array of environments
-     */
-    api::WazuhResponse apiGetEnvironment(const json::Json& params);
-
-    /**
-     * @brief API callback for environment deletion
-     *
-     * @param params Parameters for environment deletion ("/name")
-     * @return api::WazuhResponse with the result of the operation
-     */
-    api::WazuhResponse apiDelEnvironment(const json::Json& params);
-
 public:
     /**
      * @brief Create the environment manager
