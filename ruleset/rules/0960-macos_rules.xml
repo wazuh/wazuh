@@ -4,6 +4,9 @@
     <decoded_as>macOS_tccd</decoded_as>
     <match type="pcre2">(?i)update access record.+allowed</match>
     <description>$(application) has been granted permission to $(service) at $(time)</description>
+    <mitre>
+      <id>T1222.002</id>
+    </mitre>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -11,6 +14,9 @@
     <decoded_as>macOS_tccd</decoded_as>
     <match type="pcre2">(?i)update access record.+denied</match>
     <description>$(application) has been denied permission to $(service) at $(time)</description>
+    <mitre>
+      <id>T1222.002</id>
+    </mitre>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
   
