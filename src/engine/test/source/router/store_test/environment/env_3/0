@@ -1,0 +1,8 @@
+{
+    "name": "environment/env_3/0",
+    "decoders": [
+        "decoder/deco_1/0",
+        "decoder/deco_2/0",
+        "decoder/deco_3/0"
+    ]
+}
