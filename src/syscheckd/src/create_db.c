@@ -319,30 +319,35 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON* changed_attributes = NULL;
     cJSON* old_data = NULL;
     cJSON *attributes = NULL;
-    const cJSON *dbsync_event = NULL;
+    cJSON *aux = NULL;
     cJSON* timestamp = NULL;
     directory_t *configuration = NULL;
     fim_txn_context_t *txn_context = (fim_txn_context_t *) user_data;
+    bool process_event = false;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
         return; // LCOV_EXCL_LINE
     }
 
-    // DBSync returns an array when there is a addition or modification. This callback is executed for each entry, so
-    // this array only has one element.
-    if (cJSON_IsArray(result_json)) {
-        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event == NULL) {
-            return; // LCOV_EXCL_LINE
+    // In the modification events, inside the old field there must be other fields
+    // than "path" and "last_event" to generate a modification event.
+    old_data = cJSON_GetObjectItem(result_json, "old");
+    if (old_data != NULL) {
+        cJSON_ArrayForEach(aux, old_data) {
+            if (strcmp(aux->string, "path") && strcmp(aux->string, "last_event")) {
+                process_event = true;
+                break;
+            }
         }
-    // In case of a deletion, DBSync is not going to return an array.
-    } else {
-        dbsync_event = result_json;
+        if (!process_event) {
+            return;
+        }
     }
 
     // In case of deletions, latest_entry is NULL, so we need to get the path from the json event
     if (resultType == DELETED) {
-        cJSON *path_cjson = cJSON_GetObjectItem(dbsync_event, "path");
+        cJSON *path_cjson = cJSON_GetObjectItem(result_json, "path");
         if (path_cjson == NULL) {
             goto end;
         }
@@ -402,7 +407,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[txn_context->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[txn_context->evt_data->type]);
 
-    if(timestamp = cJSON_GetObjectItem(dbsync_event, "last_event"), timestamp != NULL){
+    if(timestamp = cJSON_GetObjectItem(result_json, "last_event"), timestamp != NULL){
         cJSON_AddNumberToObject(data, "timestamp", timestamp->valueint);
     } else {
         cJSON_AddNumberToObject(data, "timestamp", txn_context->latest_entry->file_entry.data->last_event);
@@ -411,11 +416,10 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     if (resultType == DELETED || txn_context->latest_entry == NULL) {
         // We need to add the `type` field to the attributes JSON. This avoid modifying the dbsync event.
         attributes = cJSON_CreateObject();
-        dbsync_attributes_json(dbsync_event, configuration, attributes);
+        dbsync_attributes_json(result_json, configuration, attributes);
         cJSON_AddItemToObject(data, "attributes", attributes);
     } else {
         cJSON_AddItemToObject(data, "attributes", fim_attributes_json(txn_context->latest_entry->file_entry.data));
-        old_data = cJSON_GetObjectItem(dbsync_event, "old");
 
         if (old_data) {
             old_attributes = cJSON_CreateObject();
