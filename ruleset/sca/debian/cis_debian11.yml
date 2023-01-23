@@ -38,413 +38,41 @@ checks:
  
   # 3.1.1 Ensure system is checked to determine if IPv6 is enabled (Manual) - Not Implemented
 
-  # 3.1.2 Ensure wireless interfaces are disabled (Automated)
-  - id: 3080
-    title: "Ensure wireless interfaces are disabled (Automated)"
-    description: "Wireless networking is used when wired networks are unavailable. Debian contains a wireless tool kit to allow system administrators to configure and use wireless networks."
-    rationale: "If wireless is not to be used, wireless devices can be disabled to reduce the potential attack surface."
-    remediation: "Run the following command to disable any wireless interfaces: # nmcli radio all off" 
-    compliance:
-      - cis: ["3.1.2"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["15.4, 15.5"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - nist_sp_800-53: ["CM-10"]
-      - mitre_techniques: ["T1011, T1011.000, T1595, T1595.001, T1595.002"]
-      - mitre_tactics: ["TA0010"]
-      - mitre_mitigations: ["M1028"]
-    condition: all
-    rules:
-      - "c:nmcli radio wifi -> r:^disabled"
-      - "c:nmcli radio wwan -> r:^disabled"
+  # 3.1.2 Ensure wireless interfaces are disabled (Automated) - Not Implemented
 
-  # 3.1.3 Ensure DCCP is disabled (Automated)
-  - id: 3081
-    title: "Ensure DCCP is disabled (Automated)"
-    description: "The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that supports streaming media and telephony. DCCP provides a way to gain access to congestion control, without having to do it at the application layer, but does not provide in-sequence delivery."
-    rationale: "If the protocol is not required, it is recommended that the drivers not be installed to reduce the potential attack surface."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/dccp.conf and add the following line: install dccp /bin/true" 
-    compliance:
-      - cis: ["3.1.3"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1068, T1068.000, T1210, T1210.000"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_mitigations: ["M1042"]
-    condition: none
-    rules:
-      - "not c:modprobe -n -v dccp -> r:install /bin/true"
-      - "c:lsmod -> r:dccp"
+  # 3.1.3 Ensure DCCP is disabled (Automated) - Not Implemented
 
-  # 3.1.4 Ensure SCTP is disabled (Automated)
-  - id: 3082
-    title: "Ensure SCTP is disabled (Automated)"
-    description: "The Stream Control Transmission Protocol (SCTP) is a transport layer protocol used to support message oriented communication, with several streams of messages in one connection. It serves a similar function as TCP and UDP, incorporating features of both. It is message-oriented like UDP, and ensures reliable in-sequence transport of messages with congestion control like TCP."
-    rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/sctp.conf and add the following line: install sctp /bin/true" 
-    compliance:
-      - cis: ["3.1.4"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1068, T1068.000, T1210, T1210.000"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_mitigations: ["M1042"]
-    condition: none
-    rules:
-      - "not c:modprobe -n -v sctp -> r:install /bin/true"
-      - "c:lsmod -> r:sctp"
+  # 3.1.4 Ensure SCTP is disabled (Automated) - Not Implemented
 
-  # 3.1.5 Ensure RDS is disabled (Automated)
-  - id: 3083
-    title: "Ensure RDS is disabled (Automated)"
-    description: "The Reliable Datagram Sockets (RDS) protocol is a transport layer protocol designed to provide low-latency, high-bandwidth communications between cluster nodes. It was developed by the Oracle Corporation."
-    rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/rds.conf and add the following line: install rds /bin/true" 
-    compliance:
-      - cis: ["3.4.3"]
-      - cis_csc: ["9.2"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: none
-    rules:
-      - "not c:modprobe -n -v rds -> r:install /bin/true"
-      - "c:lsmod -> r:rds"
+  # 3.1.5 Ensure RDS is disabled (Automated) - Not Implemented
 
-  # 3.1.6 Ensure TIPC is disabled (Automated)
-  - id: 3084
-    title: "Ensure TIPC is disabled (Automated)"
-    description: "The Transparent Inter-Process Communication (TIPC) protocol is designed to provide communication between cluster nodes."
-    rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/tipc.conf and add the following line: install tipc /bin/true" 
-    compliance:
-      - cis: ["3.4.4"]
-      - cis_csc: ["9.2"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: none
-    rules:
-      - "not c:modprobe -n -v tipc -> r:install /bin/true"
-      - "c:lsmod -> r:tipc"
+  # 3.1.6 Ensure TIPC is disabled (Automated) - Not Implemented
 
   ############################################################
   # 3.2 Network Parameters (Host Only)
   ############################################################   
 
-  # 3.2.1 Ensure packet redirect sending is disabled (Automated)
-  - id: 3085
-    title: "Ensure packet redirect sending is disabled (Automated)"
-    description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
-    rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0 # sysctl -w net.ipv4.conf.default.send_redirects=0 # sysctl -w net.ipv4.route.flush=1" 
-    compliance:
-      - cis: ["3.2.1"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - NIST SP 800-53 Rev. 5: ["CM-1 CM-2, CM-6, CM-7, IA-5"]
-      - mitre_techniques: ["T1557, T1557.000"]
-      - mitre_tactics: ["TA0006, TA0009"]
-      - mitre_mitigations: ["M1030, M1042"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
+  # 3.2.1 Ensure packet redirect sending is disabled (Automated) - Not Implemented
 
-  # 3.2.2 Ensure IP forwarding is disabled (Automated)
-  - id: 3086
-    title: "Ensure IP forwarding is disabled (Automated)"
-    description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
-    rationale: "Setting: net.ipv4.ip_forward = 0 net.ipv6.conf.all.forwarding = 0 Ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
-    remediation: "Run the following command to restore the default parameter and set the active kernel parameter: # grep -Els \"^\\s*net\\.ipv4\\.ip_forward\\s*=\\s*1\" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf | while read filename; do sed -ri \"s/^\\s*(net\\.ipv4\\.ip_forward\\s*)(=)(\\s*\\S+\\b).*$/# *REMOVED* \\1/\" $filename; done; sysctl -w net.ipv4.ip_forward=0; sysctl -w net.ipv4.route.flush=1 IF IPv6 is enabled: Run the following command to restore the default parameter and set the active kernel parameter: # grep -Els \"^\\s*net\\.ipv6\\.conf\\.all\\.forwarding\\s*=\\s*1\" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf | while read filename; do sed -ri \"s/^\\s*(net\\.ipv6\\.conf\\.all\\.forwarding\\s*)(=)(\\s*\\S+\\b).*$/# *REMOVED* \\1/\" $filename; done; sysctl -w net.ipv6.conf.all.forwarding=0; sysctl -w net.ipv6.route.flush=1" 
-    compliance:
-      - cis: ["3.2.2"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - NIST SP 800-53 Rev. 5: ["CM-1 CM-2, CM-6, CM-7, IA-5"]
-      - mitre_techniques: ["T1557, T1557.000"]
-      - mitre_tactics: ["TA0006, TA0009"]
-      - mitre_mitigations: ["M1030, M1042"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.ip_forward -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv4\.ip_forward /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.ip_forward\s*=\s*0$'
-      - 'c:sysctl net.ipv6.conf.all.forwarding -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.all\.forwarding /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
+  # 3.2.2 Ensure IP forwarding is disabled (Automated) - Not Implemented
 
+  # 3.3.1 Ensure source routed packets are not accepted (Automated) - Not Implemented
 
-  # 3.3.1 Ensure source routed packets are not accepted (Automated)
-  - id: 3087
-    title: "Ensure source routed packets are not accepted (Automated)"
-    description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
-    rationale: "Setting: net.ipv4.conf.all.accept_source_route = 0 net.ipv4.conf.default.accept_source_route = 0 net.ipv6.conf.all.accept_source_route = 0 net.ipv6.conf.default.accept_source_route = 0 Disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_source_route = 0 net.ipv4.conf.default.accept_source_route = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_source_route=0 # sysctl -w net.ipv4.conf.default.accept_source_route=0 # sysctl -w net.ipv4.route.flush=1 IF IPv6 is enabled: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.accept_source_route = 0 net.ipv6.conf.default.accept_source_route = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.accept_source_route=0 # sysctl -w net.ipv6.conf.default.accept_source_route=0 # sysctl -w net.ipv6.route.flush=1" 
-    compliance:
-      - cis: ["3.3.1"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - NIST SP 800-53 Rev. 5: ["CM-1 CM-2, CM-6, CM-7, IA-5"]
-      - mitre_techniques: ["T1590, T1590.005"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
-      - 'c:sysctl net.ipv6.conf.all.accept_source_route -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv6.conf.default.accept_source_route -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_source_route\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_source_route\s*=\s*0$'
+  # 3.3.2 Ensure ICMP redirects are not accepted (Automated) - Not Implemented
 
-  # 3.3.2 Ensure ICMP redirects are not accepted (Automated)
-  - id: 3088
-    title: "Ensure ICMP redirects are not accepted (Automated)"
-    description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables."
-    rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured. By setting: net.ipv4.conf.all.accept_redirects = 0 net.ipv4.conf.default.accept_redirects = 0 net.ipv6.conf.all.accept_redirects = 0 net.ipv6.conf.default.accept_redirects = 0 The system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_redirects = 0 net.ipv4.conf.default.accept_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_redirects=0 # sysctl -w net.ipv4.conf.default.accept_redirects=0 # sysctl -w net.ipv4.route.flush=1 IF IPv6 is enabled: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.accept_redirects = 0 net.ipv6.conf.default.accept_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.accept_redirects=0 # sysctl -w net.ipv6.conf.default.accept_redirects=0 # sysctl -w net.ipv6.route.flush=1" 
-    compliance:
-      - cis: ["3.3.2"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - NIST SP 800-53 Rev. 5: ["CM-1 CM-2, CM-6, CM-7, IA-5"]
-      - mitre_techniques: ["T1557, T1557.000"]
-      - mitre_tactics: ["TA0006, TA0009"]
-      - mitre_mitigations: ["M1030, M1042"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
-      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
+  # 3.3.3 Ensure secure ICMP redirects are not accepted (Automated) - Not Implemented
 
-  # 3.3.3 Ensure secure ICMP redirects are not accepted (Automated)
-  - id: 3089
-    title: "Ensure secure ICMP redirects are not accepted (Automated)"
-    description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
-    rationale: "It is still possible for even known gateways to be compromised. Setting: net.ipv4.conf.default.secure_redirects = 0 net.ipv4.conf.all.secure_redirects = 0 protects the system from routing table updates by possibly compromised known gateways."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.secure_redirects = 0 net.ipv4.conf.default.secure_redirects = 0. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.secure_redirects=0 # sysctl -w net.ipv4.conf.default.secure_redirects=0 # sysctl -w net.ipv4.route.flush=1" 
-    compliance:
-      - cis: ["3.3.3"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - NIST SP 800-53 Rev. 5: ["CM-1 CM-2, CM-6, CM-7, IA-5"]
-      - mitre_techniques: ["T1557, T1557.000"]
-      - mitre_tactics: ["TA0006, TA0009"]
-      - mitre_mitigations: ["M1030, M1042"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
+  # 3.3.4 Ensure suspicious packets are logged (Automated) - Not Implemented
 
-  # 3.3.4 Ensure suspicious packets are logged (Automated)
-  - id: 3090
-    title: "Ensure suspicious packets are logged (Automated)"
-    description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
-    rationale: "Enabling this feature and logging these packets by setting: net.ipv4.conf.all.log_martians = 1 net.ipv4.conf.default.log_martians = 1 allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.log_martians = 1 net.ipv4.conf.default.log_martians = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.log_martians=1 # sysctl -w net.ipv4.conf.default.log_martians=1 # sysctl -w net.ipv4.route.flush=1" 
-    compliance:
-      - cis: ["3.3.4"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["6.2, 6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1","10.2.2","10.2.4","10.2.5","10.3"]
-      - pci_dss_4.0: ["9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5"]
-      - nist_sp_800-53: ["AU-3(1)","AU-7"]
-      - soc_2: ["CC5.2","CC7.2"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1562, T1562.006"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:=\s*\t*1$'
-      - 'c:sysctl net.ipv4.conf.default.log_martians -> r:=\s*\t*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
+  # 3.3.5 Ensure broadcast ICMP requests are ignored (Automated) - Not Implemented
 
-  # 3.3.5 Ensure broadcast ICMP requests are ignored (Automated)
-  - id: 3091
-    title: "Ensure broadcast ICMP requests are ignored (Automated)"
-    description: "Setting net.ipv4.icmp_echo_ignore_broadcasts = 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
-    rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_echo_ignore_broadcasts = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 # sysctl -w net.ipv4.route.flush=1" 
-    compliance:
-      - cis: ["3.3.5"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - NIST SP 800-53 Rev. 5: ["CM-1 CM-2, CM-6, CM-7, IA-5"]
-      - mitre_techniques: ["T1498, T1498.001"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_mitigations: ["M1037"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:=\s*\t*1$'
-      - 'c:grep -Rh net\.ipv4\.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
+  # 3.3.6 Ensure bogus ICMP responses are ignored (Automated) - Not Implemented
+ 
+  # 3.3.7 Ensure Reverse Path Filtering is enabled (Automated) - Not Implemented
 
-  # 3.3.6 Ensure bogus ICMP responses are ignored (Automated)
-  - id: 3092
-    title: "Ensure bogus ICMP responses are ignored (Automated"
-    description: "Setting icmp_ignore_bogus_error_responses = 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
-    rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
-    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_ignore_bogus_error_responses = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 # sysctl -w net.ipv4.route.flush=1" 
-    compliance:
-      - cis: ["3.3.6"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - NIST SP 800-53 Rev. 5: ["CM-1 CM-2, CM-6, CM-7, IA-5"]
-      - mitre_techniques: ["T1562, T1562.006"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_mitigations: ["M1053"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:=\s*\t*1$'
-      - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
+  # 3.3.8 Ensure TCP SYN Cookies is enabled (Automated) - Not Implemented
 
-  # 3.3.7 Ensure Reverse Path Filtering is enabled (Automated)
-  - id: 3093
-    title: "Ensure Reverse Path Filtering is enabled (Automated)"
-    description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
-    rationale: "Setting: net.ipv4.conf.all.rp_filter = 1 net.ipv4.conf.default.rp_filter = 1 is a good way to deter attackers from sending your system bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.rp_filter = 1 net.ipv4.conf.default.rp_filter = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.rp_filter=1 # sysctl -w net.ipv4.conf.default.rp_filter=1 # sysctl -w net.ipv4.route.flush=1" 
-    compliance:
-      - cis: ["3.3.7"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - NIST SP 800-53 Rev. 5: ["CM-1 CM-2, CM-6, CM-7, IA-5"]
-      - mitre_techniques: ["T1498, T1498.001"]
-      - mitre_tactics: ["TA0006, TA0040"]
-      - mitre_mitigations: ["M1030, M1042"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:=\s*\t*1$'
-      - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:=\s*\t*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1$'
-
-  # 3.3.8 Ensure TCP SYN Cookies is enabled (Automated)
-  - id: 3094
-    title: "Ensure TCP SYN Cookies is enabled (Automated)"
-    description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN|ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent. A legitimate connection would send the ACK packet of the three way handshake with the specially crafted sequence number. This allows the system to verify that it has received a valid response to a SYN cookie and allow the connection, even though there is no corresponding SYN in the queue."
-    rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. Setting net.ipv4.tcp_syncookies = 1 enables SYN cookies, allowing the system to keep accepting valid connections, even if under a denial of service attack."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.tcp_syncookies = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.tcp_syncookies=1 # sysctl -w net.ipv4.route.flush=1" 
-    compliance:
-      - cis: ["3.3.8"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - NIST SP 800-53 Rev. 5: ["CM-1 CM-2, CM-6, CM-7, IA-5"]
-      - mitre_techniques: ["T1499, T1499.001"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_mitigations: ["M1037"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.tcp_syncookies -> r:=\s*\t*1$'
-      - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
-
-  # 3.3.9 Ensure IPv6 router advertisements are not accepted (Automated)
-  - id: 3095
-    title: "Ensure IPv6 router advertisements are not accepted (Automated)"
-    description: "This setting disables the system's ability to accept IPv6 router advertisements."
-    rationale: "It is recommended that systems do not accept router advertisements as they could be tricked into routing traffic to compromised machines. Setting hard routes within the system (usually a single default route to a trusted router) protects the system from bad routes. Setting: net.ipv6.conf.all.accept_ra = 0 net.ipv6.conf.default.accept_ra = 0 disables the system's ability to accept IPv6 router advertisements."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.accept_ra = 0 net.ipv6.conf.default.accept_ra = 0. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.accept_ra=0 # sysctl -w net.ipv6.conf.default.accept_ra=0 # sysctl -w net.ipv6.route.flush=1" 
-    compliance:
-      - cis: ["3.3.9"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - NIST SP 800-53 Rev. 5: ["CM-1 CM-2, CM-6, CM-7, IA-5"]
-      - mitre_techniques: ["T1557, T1557.000"]
-      - mitre_tactics: ["TA0006, TA0040"]
-      - mitre_mitigations: ["M1030, M1042"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_ra\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_ra\s*=\s*0$'
+  # 3.3.9 Ensure IPv6 router advertisements are not accepted (Automated) - Not Implemented
 
   ############################################################
   # 3.5 Firewall Configuration
@@ -456,13 +84,13 @@ checks:
 
   # 3.5.1.1.Ensure ufw is installed (Automated) 
   - id: 3096
-    title: "Ensure ufw is installed (Automated)"
+    title: "Ensure ufw is installed"
     description: "The Uncomplicated Firewall (ufw) is a frontend for iptables and is particularly well-suited for host-based firewalls. ufw provides a framework for managing netfilter, as well as a command-line interface for manipulating the firewall."
     rationale: "A firewall utility is required to configure the Linux kernel's netfilter framework via the iptables or nftables back-end. The Linux kernel's netfilter framework host-based firewall can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host. Note: Only one firewall utility should be installed and configured. UFW is dependent on the iptables package."
     remediation: "Run the following command to install Uncomplicated Firewall (UFW): apt install ufw" 
     compliance:
       - cis: ["3.5.1.1"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -470,22 +98,22 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
+      - mitre_mitigations: ["M1031","M1037"]
     condition: all
     rules:
       - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' ufw -> r:install ok installed"
 
   # 3.5.1.2 Ensure iptables-persistent is not installed with ufw (Automated)
   - id: 3097
-    title: "Ensure iptables-persistent is not installed with ufw (Automated)"
+    title: "Ensure iptables-persistent is not installed with ufw"
     description: "The iptables-persistent is a boot-time loader for netfilter rules, iptables plugin"
     rationale: "Running both ufw and the services included in the iptables-persistent package may lead to conflict"
     remediation: "Run the following command to remove the iptables-persistent package: # apt purge iptables-persistent" 
     compliance:
       - cis: ["3.5.1.2"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -493,22 +121,24 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - "c:dpkg-query -s iptables-persistent -> r:package 'iptables-persistent' is not installed"
 
   # 3.5.1.3 Ensure ufw service is enabled (Automated)
   - id: 3098
-    title: "Ensure ufw service is enabled (Automated)"
+    title: "Ensure ufw service is enabled"
     description: "UncomplicatedFirewall (ufw) is a frontend for iptables. ufw provides a framework for managing netfilter, as well as a command-line and available graphical user interface for manipulating the firewall. Notes: When running ufw enable or starting ufw via its initscript, ufw will flush its chains. This is required so ufw can maintain a consistent state, but it may drop existing connections (eg ssh). ufw does support adding rules before enabling the firewall. Run the following command before running ufw enable. # ufw allow proto tcp from any to any port 22 .The rules will still be flushed, but the ssh port will be open after enabling the firewall. Please note that once ufw is 'enabled', ufw will not flush the chains when adding or removing rules (but will when modifying a rule or changing the default policy) By default, ufw will prompt when enabling the firewall while running under ssh. This can be disabled by using ufw --force enable"
     rationale: "The ufw service must be enabled and running in order for ufw to protect the system"
     remediation: "Run the following command to unmask the ufw daemon: # systemctl unmask ufw.service .Run the following command to enable and start the ufw daemon: # systemctl --now enable ufw.service active Run the following command to enable ufw: # ufw enable" 
+    impact: "Changing firewall settings while connected over network can result in being locked out of the system."
+    referencces:
+      - http://manpages.ubuntu.com/manpages/precise/en/man8/ufw.8.html
     compliance:
       - cis: ["3.5.1.3"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -516,24 +146,23 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - "c:systemctl is-enabled ufw.service -> r:enabled"
       - "c:systemctl is-active ufw -> r:^active"
-      - "c:ufw status -> Status: active"
+      - "c:ufw status -> r:active"
 
   # 3.5.1.4 Ensure ufw loopback traffic is configured (Automated)
   - id: 3099
-    title: "Ensure ufw loopback traffic is configured (Automated)"
+    title: "Ensure ufw loopback traffic is configured"
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8 for IPv4 and ::1/128 for IPv6)."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8 for IPv4 and ::1/128 for IPv6) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
     remediation: "Run the following commands to implement the loopback rules: # ufw allow in on lo # ufw allow out on lo # ufw deny in from 127.0.0.0/8 # ufw deny in from ::1" 
     compliance:
       - cis: ["3.5.1.4"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -541,9 +170,9 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
+      - mitre_mitigations: ["M1031","M1037"]
     condition: all
     rules:
       - 'c:ufw status verbose -> r:Anywhere on lo\s*\t*ALLOW IN\s*\t*Anywhere'
@@ -559,13 +188,14 @@ checks:
 
   # 3.5.1.7 Ensure ufw default deny firewall policy (Automated)
   - id: 3100
-    title: "Ensure ufw default deny firewall policy (Automated)"
+    title: "Ensure ufw default deny firewall policy"
     description: "A default deny policy on connections ensures that any unconfigured network usage will be rejected. Note: Any port or protocol without a explicit allow before the default deny will be blocked"
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
     remediation: "Run the following commands to implement a default deny policy: # ufw default deny incoming # ufw default deny outgoing # ufw default deny routed" 
+    impact: "Any port and protocol not explicitly allowed will be blocked. The following rules should be considered before applying the default deny. ufw allow git, ufw allow in http, ufw allow out http <- required for apt to connect to repository, ufw allow in https, ufw allow out https ,ufw allow out 53 ,ufw logging on"
     compliance:
       - cis: ["3.5.1.7"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -573,9 +203,9 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
+      - mitre_mitigations: ["M1031","M1037"]
     condition: all
     rules:
       - 'c:ufw status verbose -> r:^Default && r:deny\W+(incoming)|reject\W+(incoming)'
@@ -588,13 +218,13 @@ checks:
 
   # 3.5.2.1 Ensure nftables is installed (Automated)
   - id: 3101
-    title: "Ensure nftables is installed (Automated)"
+    title: "Ensure nftables is installed"
     description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem. Notes: nftables is available in Linux kernel 3.13 and newer .Only one firewall utility should be installed and configured .Changing firewall settings while connected over the network can result in being locked out of the system"
     rationale: "nftables is a subsystem of the Linux kernel that can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host."
     remediation: "Run the following command to install nftables: # apt install nftables" 
     compliance:
       - cis: ["3.5.2.1"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -602,22 +232,22 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
+      - mitre_mitigations: ["M1031","M1037"]
     condition: all
     rules:
       - "c:dpkg-query -s nftables -> r:install ok installed"
 
   # 3.5.2.2 Ensure ufw is uninstalled or disabled with nftables (Automated)
   - id: 3102
-    title: "Ensure ufw is uninstalled or disabled with nftables (Automated)"
+    title: "Ensure ufw is uninstalled or disabled with nftables"
     description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use."
     rationale: "Running both the nftables service and ufw may lead to conflict and unexpected results."
     remediation: "Run one of the following commands to either remove ufw or disable ufw .Run the following command to remove ufw: # apt purge ufw .Run the following command to disable ufw: # ufw disable" 
     compliance:
       - cis: ["3.5.2.2"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -625,9 +255,8 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: any
     rules:
       - "c:dpkg-query -s ufw -> r:package 'ufw' is not installed"
@@ -637,13 +266,14 @@ checks:
 
   # 3.5.2.4 Ensure a nftables table exists (Automated)
   - id: 3103
-    title: "Ensure a nftables table exists (Automated)"
+    title: "Ensure a nftables table exists"
     description: "Tables hold chains. Each table only has one address family and only applies to packets of this family. Tables can have one of five families."
     rationale: "nftables doesn't have any default tables. Without a table being build, nftables will not filter network traffic."
     remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter" 
+    impact: "Adding rules to a running nftables can cause loss of connectivity to the system"
     compliance:
       - cis: ["3.5.2.4"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -651,22 +281,23 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
+      - mitre_mitigations: ["M1031","M1037"]
     condition: all
     rules:
       - 'c:nft list tables -> r:\w+'
 
   # 3.5.2.5 Ensure nftables base chains exist (Automated)
 #  - id: 3104
-#    title: "Ensure nftables base chains exist (Automated)"
+#    title: "Ensure nftables base chains exist"
 #    description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
 #    rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
 #    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \; } Example: # nft create chain inet filter input { type filter hook input priority 0 \; } # nft create chain inet filter forward { type filter hook forward priority 0 \; } # nft create chain inet filter output { type filter hook output priority 0 \; }"
+#    impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop"
 #    compliance:
 #      - cis: ["3.5.2.5"]
-#      - cis_csc_v8: ["4.4, 4.5"]
+#      - cis_csc_v8: ["4.4","4.5"]
 #      - cis_csc_v7: ["9.4"]
 #      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
 #      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -674,9 +305,8 @@ checks:
 #      - nist_sp_800-53: ["SC-7(5)"]
 #      - soc_2: ["CC6.6"]
 #      - iso_27001-2013: ["A.13.1.1"]
-#      - mitre_techniques: ["T1562, T1562.004"]
+#      - mitre_techniques: ["T1562","T1562.004"]
 #      - mitre_tactics: ["TA0005"]
-#      - mitre_mitigations: [""]
 #    condition: all
 #    rules:
 #      - "c:nft list ruleset -> r:hook input"
@@ -685,13 +315,13 @@ checks:
 
   # 3.5.2.6 Ensure nftables loopback traffic is configured (Automated)
   - id: 3105
-    title: "Ensure nftables loopback traffic is configured (Automated)"
+    title: "Ensure nftables loopback traffic is configured"
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network"
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
     remediation: "Run the following commands to implement the loopback rules: # nft add rule inet filter input iif lo accept # nft create rule inet filter input ip saddr 127.0.0.0/8 counter drop IF IPv6 is enabled on the system: Run the following command to implement the IPv6 loopback rule: # nft add rule inet filter input ip6 saddr ::1 counter drop" 
     compliance:
       - cis: ["3.5.2.6"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -699,9 +329,8 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
@@ -709,42 +338,14 @@ checks:
       - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
 
   # 3.5.2.7 Ensure nftables outbound and established connections are configured (Manual)
-  - id: 3106
-    title: "Ensure nftables outbound and established connections are configured (Manual)"
-    description: "Configure the firewall rules for new outbound, and established connections"
-    rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage."
-    remediation: "Configure nftables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # nft add rule inet filter input ip protocol tcp ct state established accept # nft add rule inet filter input ip protocol udp ct state established accept # nft add rule inet filter input ip protocol icmp ct state established accept # nft add rule inet filter output ip protocol tcp ct state new,related,established accept # nft add rule inet filter output ip protocol udp ct state new,related,established accept # nft add rule inet filter output ip protocol icmp ct state new,related,established accept" 
-    compliance:
-      - cis: ["3.5.2.7"]
-      - cis_csc_v8: ["4.4, 4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
-      - pci_dss_4.0: ["1.2.1","1.4.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - soc_2: ["CC6.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562"]
-      - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
-    condition: all
-    rules:
-      - "c:nft list ruleset | awk '/hook input/,/}/' | grep -E 'ip protocol(tcp|udp|icmp) ct state' ->r: tcp"
-      - "c:nft list ruleset | awk '/hook input/,/}/' | grep -E 'ip protocol(tcp|udp|icmp) ct state' ->r: udp"
-      - "c:nft list ruleset | awk '/hook input/,/}/' | grep -E 'ip protocol(tcp|udp|icmp) ct state' ->r: icmp"
-      - "c:nft list ruleset | awk '/hook output/,/}/' | grep -E 'ip protocol(tcp|udp|icmp) ct state' ->r:tcp"
-      - "c:nft list ruleset | awk '/hook output/,/}/' | grep -E 'ip protocol(tcp|udp|icmp) ct state' ->r:udp"
-      - "c:nft list ruleset | awk '/hook output/,/}/' | grep -E 'ip protocol(tcp|udp|icmp) ct state' ->r:icmp"
-
-  # 3.5.2.8 Ensure nftables default deny firewall policy (Automated)
-#  - id: 3107
-#    title: "Ensure nftables default deny firewall policy (Automated)"
-#    description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
-#    rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue transversing the network stack. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-#    remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \; } Example: # nft chain inet filter input { policy drop \; } # nft chain inet filter forward { policy drop \; } # nft chain inet filter output { policy drop \; }" 
+#  - id: 3106
+#    title: "Ensure nftables outbound and established connections are configured"
+#    description: "Configure the firewall rules for new outbound, and established connections"
+#    rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage."
+#    remediation: "Configure nftables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # nft add rule inet filter input ip protocol tcp ct state established accept # nft add rule inet filter input ip protocol udp ct state established accept # nft add rule inet filter input ip protocol icmp ct state established accept # nft add rule inet filter output ip protocol tcp ct state new,related,established accept # nft add rule inet filter output ip protocol udp ct state new,related,established accept # nft add rule inet filter output ip protocol icmp ct state new,related,established accept" 
 #    compliance:
-#      - cis: ["3.5.2.8"]
-#      - cis_csc_v8: ["4.4, 4.5"]
+#      - cis: ["3.5.2.7"]
+#      - cis_csc_v8: ["4.4","4.5"]
 #      - cis_csc_v7: ["9.4"]
 #      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
 #      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -752,9 +353,41 @@ checks:
 #      - nist_sp_800-53: ["SC-7(5)"]
 #      - soc_2: ["CC6.6"]
 #      - iso_27001-2013: ["A.13.1.1"]
-#      - mitre_techniques: ["T1562, T1562.004"]
+#      - mitre_techniques: ["T1562"]
 #      - mitre_tactics: ["TA0011"]
-#      - mitre_mitigations: ["M1031, M1037"]
+#      - mitre_mitigations: ["M1031","M1037"]
+#    condition: all
+#    rules:
+#      - "c:nft list ruleset | awk '/hook input/,/}/' | grep -E 'ip protocol(tcp|udp|icmp) ct state' ->r: tcp"
+#      - "c:nft list ruleset | awk '/hook input/,/}/' | grep -E 'ip protocol(tcp|udp|icmp) ct state' ->r: udp"
+#      - "c:nft list ruleset | awk '/hook input/,/}/' | grep -E 'ip protocol(tcp|udp|icmp) ct state' ->r: icmp"
+#      - "c:nft list ruleset | awk '/hook output/,/}/' | grep -E 'ip protocol(tcp|udp|icmp) ct state' ->r:tcp"
+#      - "c:nft list ruleset | awk '/hook output/,/}/' | grep -E 'ip protocol(tcp|udp|icmp) ct state' ->r:udp"
+#      - "c:nft list ruleset | awk '/hook output/,/}/' | grep -E 'ip protocol(tcp|udp|icmp) ct state' ->r:icmp"
+#
+  # 3.5.2.8 Ensure nftables default deny firewall policy (Automated)
+#  - id: 3107
+#    title: "Ensure nftables default deny firewall policy"
+#    description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
+#    rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue transversing the network stack. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
+#    remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \; } Example: # nft chain inet filter input { policy drop \; } # nft chain inet filter forward { policy drop \; } # nft chain inet filter output { policy drop \; }" 
+#    impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop"
+#    default value: "accept"
+#    references: 
+#      - Manual Page nft
+#    compliance:
+#      - cis: ["3.5.2.8"]
+#      - cis_csc_v8: ["4.4","4.5"]
+#      - cis_csc_v7: ["9.4"]
+#      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
+#      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
+#      - pci_dss_4.0: ["1.2.1","1.4.1"]
+#      - nist_sp_800-53: ["SC-7(5)"]
+#      - soc_2: ["CC6.6"]
+#      - iso_27001-2013: ["A.13.1.1"]
+#      - mitre_techniques: ["T1562","T1562.004"]
+#      - mitre_tactics: ["TA0011"]
+#      - mitre_mitigations: ["M1031","M1037"]
 #    condition: all
 #    rules:
 #      - "c:nft list ruleset -> r:hook input && r:policy drop"
@@ -763,13 +396,13 @@ checks:
 
   # 3.5.2.9 Ensure nftables service is enabled (Automated)
   - id: 3108
-    title: "Ensure nftables service is enabled (Automated)"
+    title: "Ensure nftables service is enabled"
     description: "The nftables service allows for the loading of nftables rulesets during boot, or starting on the nftables service."
     rationale: "The nftables service restores the nftables rules from the rules files referenced in the /etc/nftables.conf file during boot or the starting of the nftables service."
     remediation: "Run the following command to enable the nftables service: # systemctl enable nftables" 
     compliance:
       - cis: ["3.5.2.9"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -777,22 +410,22 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
+      - mitre_mitigations: ["M1031","M1037"]
     condition: all
     rules:
-      - "c:systemctl is-enabled nftables ->r:enabled"
+      - "c:systemctl is-enabled nftables -> r:enabled"
 
   # 3.5.2.10 Ensure nftables rules are permanent (Automated)
 #  - id: 3109
-#    title: "Ensure nftables rules are permanent (Automated)"
+#    title: "Ensure nftables rules are permanent"
 #    description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames. The nftables service reads the /etc/nftables.conf file for a nftables file or files to include in the nftables ruleset. A nftables ruleset containing the input, forward, and output base chains allow network traffic to be filtered."
 #    rationale: "Changes made to nftables ruleset only affect the live system, you will also need to configure the nftables ruleset to apply on boot"
 #    remediation: "Edit the /etc/nftables.conf file and un-comment or add a line with include <Absolute path to nftables rules file> for each nftables file you want included in the nftables ruleset on boot .Example: # vi /etc/nftables.conf .Add the line: include "/etc/nftables.rules"" 
 #    compliance:
 #      - cis: ["3.5.2.10"]
-#      - cis_csc_v8: ["4.4, 4.5"]
+#      - cis_csc_v8: ["4.4","4.5"]
 #      - cis_csc_v7: ["9.4"]
 #      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
 #      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -800,7 +433,7 @@ checks:
 #      - nist_sp_800-53: ["SC-7(5)"]
 #      - soc_2: ["CC6.6"]
 #      - iso_27001-2013: ["A.13.1.1"]
-#      - mitre_techniques: ["T1562, T1562.004"]
+#      - mitre_techniques: ["T1562","T1562.004"]
 #      - mitre_tactics: ["TA0011"]
 #      - mitre_mitigations: ["M1031"]
 #    condition: all
@@ -819,13 +452,13 @@ checks:
 
   # 3.5.3.1.1 Ensure iptables packages are installed (Automated)
   - id: 3110
-    title: "Ensure iptables packages are installed (Automated)"
+    title: "Ensure iptables packages are installed"
     description: "iptables is a utility program that allows a system administrator to configure the tables provided by the Linux kernel firewall, implemented as different Netfilter modules, and the chains and rules it stores. Different kernel modules and programs are used for different protocols; iptables applies to IPv4, ip6tables to IPv6, arptables to ARP, and ebtables to Ethernet frames."
     rationale: "A method of configuring and maintaining firewall rules is necessary to configure a Host Based Firewall."
     remediation: "Run the following command to install iptables and iptables-persistent # apt install iptables iptables-persistent" 
     compliance:
       - cis: ["3.5.3.1.1"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -833,22 +466,22 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
+      - mitre_mitigations: ["M1031","M1037"]
     condition: all
     rules:
-      - "c:apt list iptables iptables-persistent ->r:installed,automatic"
+      - "c:apt list iptables iptables-persistent -> r:installed,automatic"
 
   # 3.5.3.1.2 Ensure nftables is not installed with iptables (Automated)
   - id: 3111
-    title: "Ensure nftables is not installed with iptables (Automated)"
+    title: "Ensure nftables is not installed with iptables"
     description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames and is the successor to iptables."
     rationale: "Running both iptables and nftables may lead to conflict."
     remediation: "Run the following command to remove nftables: # apt purge nftables" 
     compliance:
       - cis: ["3.5.3.1.2"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -856,22 +489,21 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' nftables ->r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' nftables -> r:unknown ok not-installed"
 
   # 3.5.3.1.3 Ensure ufw is uninstalled or disabled with iptables (Automated)
   - id: 3112
-    title: "Ensure ufw is uninstalled or disabled with iptables (Automated)"
+    title: "Ensure ufw is uninstalled or disabled with iptables"
     description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use. Uses a command-line interface consisting of a small number of simple commands .Uses iptables for configuration"
     rationale: "Running iptables.persistent with ufw enabled may lead to conflict and unexpected results."
     remediation: "Run one of the following commands to either remove ufw or stop and mask ufw Run the following command to remove ufw: # apt purge ufw OR Run the following commands to disable ufw: # ufw disable # systemctl stop ufw # systemctl mask ufw" 
     compliance:
       - cis: ["3.5.3.1.3"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -879,14 +511,13 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: [""]
     condition: any
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' ufw ->r:unknown ok not-installed"
-      - "c:ufw status ->r:inactive"
-      - "c:systemctl is-enabled ufw ->r:masked"
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' ufw -> r:unknown ok not-installed"
+      - "c:ufw status -> r:inactive"
+      - "c:systemctl is-enabled ufw -> r:masked"
 
   ############################################################
   # 3.5.3.2 Configure IPv4 iptables
@@ -894,13 +525,13 @@ checks:
 
   # 3.5.3.2.1 Ensure iptables default deny firewall policy (Automated)
   - id: 3113
-    title: "Ensure iptables default deny firewall policy (Automated)"
+    title: "Ensure iptables default deny firewall policy"
     description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected. Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well"
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
     remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP # iptables -P OUTPUT DROP # iptables -P FORWARD DROP" 
     compliance:
       - cis: ["3.5.3.2.1"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -908,9 +539,9 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
+      - mitre_mitigations: ["M1031","M1037"]
     condition: all
     rules:
       - 'c:iptables -L -> r:Chain INPUT \(policy DROP\)|Chain INPUT \(policy REJECT\)'
@@ -919,13 +550,13 @@ checks:
 
   # 3.5.3.2.2 Ensure iptables loopback traffic is configured (Automated)
   - id: 3114
-    title: "Ensure iptables loopback traffic is configured (Automated)"
+    title: "Ensure iptables loopback traffic is configured"
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8). Notes: Changing firewall settings while connected over network can result in being locked out of the system .Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well"
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
     remediation: "Run the following commands to implement the loopback rules: # iptables -A INPUT -i lo -j ACCEPT # iptables -A OUTPUT -o lo -j ACCEPT # iptables -A INPUT -s 127.0.0.0/8 -j DROP" 
     compliance:
       - cis: ["3.5.3.2.2"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -933,24 +564,26 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
+      - mitre_mitigations: ["M1031","M1037"]
     condition: all
     rules:
       - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
       - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
       - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
 
+  # Ensure iptables outbound and established connections are configured (Manual) - Not Implemented
+#
   # 3.5.3.2.4 Ensure iptables firewall rules exist for all open ports (Automated)
 #  - id: 3115
-#    title: "Ensure iptables firewall rules exist for all open ports (Automated)"
+#    title: "Ensure iptables firewall rules exist for all open ports"
 #    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic. Note: Changing firewall settings while connected over network can result in being locked out of the system .Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well .The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
 #    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports."
 #    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # iptables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT" 
 #    compliance:
 #      - cis: ["3.5.3.2.4"]
-#      - cis_csc_v8: ["4.4, 4.5"]
+#      - cis_csc_v8: ["4.4","4.5"]
 #      - cis_csc_v7: ["9.4"]
 #      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
 #      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -958,9 +591,9 @@ checks:
 #      - nist_sp_800-53: ["SC-7(5)"]
 #      - soc_2: ["CC6.6"]
 #      - iso_27001-2013: ["A.13.1.1"]
-#      - mitre_techniques: ["T1562, T1562.004"]
+#      - mitre_techniques: ["T1562","T1562.004"]
 #      - mitre_tactics: ["TA0011"]
-#      - mitre_mitigations: ["M1031, M1037"]
+#      - mitre_mitigations: ["M1031","M1037"]
 #    condition: all
 #    rules:
 #      - "c:ss -4tuln"
@@ -972,13 +605,13 @@ checks:
 
   # 3.5.3.3.1 Ensure ip6tables default deny firewall policy (Automated)
   - id: 3116
-    title: "Ensure ip6tables default deny firewall policy (Automated)"
+    title: "Ensure ip6tables default deny firewall policy"
     description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected. Note: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
     remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP # ip6tables -P OUTPUT DROP # ip6tables -P FORWARD DROP" 
     compliance:
       - cis: ["3.5.3.3.1"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -986,9 +619,9 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
+      - mitre_mitigations: ["M1031","M1037"]
     condition: all
     rules:
       - "c:ip6tables -L -> r:^Chain INPUT && r:policy DROP"
@@ -997,13 +630,13 @@ checks:
 
   # 3.5.3.3.2 Ensure ip6tables loopback traffic is configured (Automated)
   - id: 3117
-    title: "Ensure ip6tables loopback traffic is configured (Automated)"
+    title: "Ensure ip6tables loopback traffic is configured"
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (::1). Note: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (::1) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
     remediation: "Run the following commands to implement the loopback rules: # ip6tables -A INPUT -i lo -j ACCEPT # ip6tables -A OUTPUT -o lo -j ACCEPT # ip6tables -A INPUT -s ::1 -j DROP" 
     compliance:
       - cis: ["3.5.3.3.2"]
-      - cis_csc_v8: ["4.4, 4.5"]
+      - cis_csc_v8: ["4.4","4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -1011,9 +644,9 @@ checks:
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562, T1562.004"]
+      - mitre_techniques: ["T1562","T1562.004"]
       - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031, M1037"]
+      - mitre_mitigations: ["M1031","M1037"]
     condition: all
     rules:
       - 'c:ip6tables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*::/0\.*::/0'
@@ -1024,13 +657,13 @@ checks:
 
   # 3.5.3.3.4 Ensure ip6tables firewall rules exist for all open ports (Automated)
 #  - id: 3118
-#    title: "Ensure ip6tables firewall rules exist for all open ports (Automated)"
+#    title: "Ensure ip6tables firewall rules exist for all open ports"
 #    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic. Note: Changing firewall settings while connected over network can result in being locked out of the system Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well. The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
 #    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports."
 #    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # ip6tables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT" 
 #    compliance:
 #      - cis: ["3.5.3.3.4"]
-#      - cis_csc_v8: ["4.4, 4.5"]
+#      - cis_csc_v8: ["4.4","4.5"]
 #      - cis_csc_v7: ["9.4"]
 #      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
 #      - pci_dss_3.2.1: ["1.1.4","1.3.1","1.4"]
@@ -1040,7 +673,7 @@ checks:
 #      - iso_27001-2013: ["A.13.1.1"]
 #      - mitre_techniques: ["T1562, T1562.004"]
 #      - mitre_tactics: ["TA0011"]
-#      - mitre_mitigations: ["M1031, M1037"]
+#      - mitre_mitigations: ["M1031","M1037"]
 #    condition: all
 #    rules:
 #      - "c:ss -6tuln"
