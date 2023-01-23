@@ -63,6 +63,7 @@ decoders:
   # Fortinet
   - decoder/fortinet-client-endpoint/0
   - decoder/fortinet-firewall/0
+  - decoder/fortinet-fortimail/0
   - decoder/fortinet-fortimanager/0
 
 outputs:
