@@ -470,6 +470,13 @@ int read_data_unit(const char *content);
 void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node);
 
 /**
+ * @brief Change sysnative directory to system32.
+ *
+ * @param path Directory path read from configuration file
+ */
+void fim_adjust_path(char** path);
+
+/**
  * @brief Creates a directory_t object from defined values
  *
  * @param path Path to be dumped

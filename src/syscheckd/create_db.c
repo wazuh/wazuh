@@ -134,6 +134,9 @@ time_t fim_scan() {
     OSListNode *node_it;
     directory_t *dir_it;
 
+#ifdef WIN32
+    Wow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
+#endif
     cputime_start = clock();
     gettime(&start);
     minfo(FIM_FREQUENCY_STARTED);
