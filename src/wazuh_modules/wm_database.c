@@ -377,6 +377,7 @@ void sync_keys_with_wdb(keystore *keys) {
             if (OS_IsAllowedID(keys, id) == -1) {
                 char *agent_name = wdb_get_agent_name(agents[i], &wdb_wmdb_sock);
 
+                mtdebug2(WM_DATABASE_LOGTAG, "Trying to delete agent %s", id);
                 if (wdb_remove_agent(agents[i], &wdb_wmdb_sock) < 0) {
                     mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
                     os_free(agent_name);
