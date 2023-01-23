@@ -207,7 +207,7 @@ endif()
 list(APPEND shared_tests_names "test_syscheck_op")
 set(SYSCHECK_OP_BASE_FLAGS "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,getpwuid_r -Wl,--wrap,w_getgrgid \
                             -Wl,--wrap,wstr_split -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
-                            -Wl,--wrap,sysconf ${DEBUG_OP_WRAPPERS}")
+                            -Wl,--wrap,sysconf -Wl,--wrap,win_strerror ${DEBUG_OP_WRAPPERS}")
 if(${TARGET} STREQUAL "winagent")
     # cJSON_CreateArray@0 instead of cJSON_CreateArray since linker will be looking for cdecl forma
     # More info at: (https://devblogs.microsoft.com/oldnewthing/20040108-00/?p=41163)
