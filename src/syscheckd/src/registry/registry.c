@@ -77,36 +77,44 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON *old_data = NULL;
     cJSON *old_attributes = NULL;
     cJSON *changed_attributes = NULL;
-    const cJSON *dbsync_event = NULL;
+    cJSON *aux = NULL;
     cJSON *timestamp = NULL;
     fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
     fim_registry_key* key = event_data->key;
     char *path = NULL;
     int arch = -1;
     char *hash_full_path;
+    bool process_event = false;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
         return;
     }
 
-    if (cJSON_IsArray(result_json)) {
-        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event == NULL) {
+    // In the modification events, inside the old field there must be other fields
+    // than "path", "arch" and "last_event" to generate a modification event.
+    old_data = cJSON_GetObjectItem(result_json, "old");
+    if (old_data != NULL) {
+        cJSON_ArrayForEach(aux, old_data) {
+            if (strcmp(aux->string, "path") && strcmp(aux->string, "last_event") && strcmp(aux->string, "arch")) {
+                process_event = true;
+                break;
+            }
+        }
+        if (!process_event) {
             return;
         }
-    } else {
-        dbsync_event = result_json;
     }
 
     // In case of deletions, key is NULL, so we need to get the path and arch from the json event
     if (key == NULL) {
-        if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path == NULL) {
+        if (json_path = cJSON_GetObjectItem(result_json, "path"), json_path == NULL) {
             goto end;
         }
-        if (json_arch = cJSON_GetObjectItem(dbsync_event, "arch"), json_arch == NULL) {
+        if (json_arch = cJSON_GetObjectItem(result_json, "arch"), json_arch == NULL) {
             goto end;
         }
-        if (json_hash = cJSON_GetObjectItem(dbsync_event, "hash_full_path"), json_hash == NULL) {
+        if (json_hash = cJSON_GetObjectItem(result_json, "hash_full_path"), json_hash == NULL) {
             goto end;
         }
         path = cJSON_GetStringValue(json_path);
@@ -166,14 +174,14 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
     cJSON_AddStringToObject(data, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    if(timestamp = cJSON_GetObjectItem(dbsync_event, "last_event"), timestamp != NULL){
+    if(timestamp = cJSON_GetObjectItem(result_json, "last_event"), timestamp != NULL){
         cJSON_AddNumberToObject(data, "timestamp", timestamp->valueint);
     } else {
         cJSON_AddNumberToObject(data, "timestamp", key->last_event);
     }
-    cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(dbsync_event, key, configuration));
+    cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(result_json, key, configuration));
 
-    if (old_data = cJSON_GetObjectItem(dbsync_event, "old"), old_data != NULL) {
+    if (old_data = cJSON_GetObjectItem(result_json, "old"), old_data != NULL) {
         old_attributes = cJSON_CreateObject();
         changed_attributes = cJSON_CreateArray();
         cJSON_AddItemToObject(data, "old_attributes", old_attributes);
@@ -208,7 +216,6 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
 
     registry_t *configuration = NULL;
     cJSON *json_event = NULL;
-    const cJSON *dbsync_event = NULL;
     cJSON *json_path = NULL;
     cJSON *json_arch = NULL;
     cJSON *json_name = NULL;
@@ -216,6 +223,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON *old_attributes = NULL;
     cJSON *old_data = NULL;
     cJSON *changed_attributes = NULL;
+    cJSON *aux = NULL;
     cJSON *timestamp = NULL;
     char *path = NULL;
     char *name = NULL;
@@ -224,32 +232,40 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
     char* diff = event_data->diff;
     fim_registry_value_data *value = event_data->data;
     char *hash_full_path;
+    bool process_event = false;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
         return;
     }
 
-    if (cJSON_IsArray(result_json)) {
-        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event == NULL) {
+    // In the modification events, inside the old field there must be other fields
+    // than "path", "arch", "name" and "last_event" to generate a modification event.
+    old_data = cJSON_GetObjectItem(result_json, "old");
+    if (old_data != NULL) {
+        cJSON_ArrayForEach(aux, old_data) {
+            if (strcmp(aux->string, "path") && strcmp(aux->string, "last_event") && strcmp(aux->string, "arch") && strcmp(aux->string, "name")) {
+                process_event = true;
+                break;
+            }
+        }
+        if (!process_event) {
             return;
         }
-    } else {
-        dbsync_event = result_json;
     }
 
     // In case of deletions, value is NULL, so we need to get the path and arch from the json event
     if (value == NULL) {
-        if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path == NULL) {
+        if (json_path = cJSON_GetObjectItem(result_json, "path"), json_path == NULL) {
             goto end;
         }
-        if (json_arch = cJSON_GetObjectItem(dbsync_event, "arch"), json_arch == NULL) {
+        if (json_arch = cJSON_GetObjectItem(result_json, "arch"), json_arch == NULL) {
             goto end;
         }
-        if (json_name = cJSON_GetObjectItem(dbsync_event, "name"), json_name == NULL) {
+        if (json_name = cJSON_GetObjectItem(result_json, "name"), json_name == NULL) {
             goto end;
         }
-        if (json_hash = cJSON_GetObjectItem(dbsync_event, "hash_full_path"), json_hash == NULL) {
+        if (json_hash = cJSON_GetObjectItem(result_json, "hash_full_path"), json_hash == NULL) {
             goto end;
         }
         path = cJSON_GetStringValue(json_path);
@@ -311,15 +327,15 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddStringToObject(data, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
     cJSON_AddStringToObject(data, "value_name", name);
 
-    if(timestamp = cJSON_GetObjectItem(dbsync_event, "last_event"), timestamp != NULL){
+    if(timestamp = cJSON_GetObjectItem(result_json, "last_event"), timestamp != NULL){
         cJSON_AddNumberToObject(data, "timestamp", timestamp->valueint);
     } else {
         cJSON_AddNumberToObject(data, "timestamp", value->last_event);
     }
 
-    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(dbsync_event, value, configuration));
+    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(result_json, value, configuration));
 
-    old_data = cJSON_GetObjectItem(dbsync_event, "old");
+    old_data = cJSON_GetObjectItem(result_json, "old");
     if (old_data != NULL) {
         old_attributes = cJSON_CreateObject();
         changed_attributes = cJSON_CreateArray();

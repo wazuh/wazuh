@@ -219,7 +219,7 @@ static void getCallbackCtx(ReturnTypeCallback /*type*/,
 struct GetDeletedRowsAction final : public IAction
 {
     void execute(std::unique_ptr<TestContext>& ctx,
-                 const nlohmann::json& value) override
+                 const nlohmann::json& /*value*/) override
     {
         std::stringstream oFileName;
         oFileName << "action_" << ctx->currentId << ".json";
@@ -586,7 +586,7 @@ struct AddTableRelationshipCPP final : public IAction
 struct GetDeletedRowsActionCPP final : public IAction
 {
     void execute(std::unique_ptr<TestContext>& ctx,
-                 const nlohmann::json& value) override
+                 const nlohmann::json& /*value*/) override
     {
         std::stringstream oFileName;
         oFileName << "action_" << ctx->currentId << ".json";

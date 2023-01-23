@@ -728,7 +728,7 @@ TEST_F(DBSyncTest, syncRowInsertAndModifiedWithOldData)
     EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"({"pid":4,"name":"System","tid":100})"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"({"pid":5,"name":"System","tid":101})"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"({"pid":6,"name":"System","tid":102})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"({"new":{"name":"System","pid":4,"tid":101},"old":{"name":"System","pid":4,"tid":100}})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"({"new":{"name":"System","pid":4,"tid":101},"old":{"pid":4,"tid":100}})"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"({"new":{"name":"Systemmm","pid":4,"tid":105},"old":{"name":"System","pid":4,"tid":101}})"))).Times(1);
 
 

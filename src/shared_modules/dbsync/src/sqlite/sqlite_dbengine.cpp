@@ -1341,6 +1341,7 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
                         isModified = true;
                         oldData[value.first] = object[value.first];
                     }
+
                     updatedData[value.first] = *it;
                 }
             }
