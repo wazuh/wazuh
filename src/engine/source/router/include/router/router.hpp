@@ -55,9 +55,32 @@ private:
     /* Config */
     std::size_t m_numThreads; ///< Number of threads for the router
 
+    /* Api callbacks */
+    /**
+     * @brief API callback for route creation
+     *
+     * @param params Parameters for route creation ("/name")
+     * @return api::WazuhResponse with the result of the operation
+     */
+    api::WazuhResponse apiSetRoute(const json::Json& params);
+
+    /**
+     * @brief API callback for list routes
+     * @param params
+     * @return api::WazuhResponse with the result of the operation
+     */
+    api::WazuhResponse apiGetRoutes(const json::Json& params);
+
+    /**
+     * @brief API callback for route deletion
+     *
+     * @param params Parameters for route deletion ("/name")
+     * @return api::WazuhResponse with the result of the operation
+     */
+    api::WazuhResponse apiDeleteRoute(const json::Json& params);
+
 public:
-    Router(std::shared_ptr<builder::Builder> builder,
-           std::size_t threads = 1)
+    Router(std::shared_ptr<builder::Builder> builder, std::size_t threads = 1)
         : m_mutexRoutes {}
         , m_routes {}
         , m_isRunning {false}
@@ -76,7 +99,6 @@ public:
         }
 
         m_environmentManager = std::make_shared<EnvironmentManager>(builder, threads);
-
     };
     /**
      * @brief Get the list of route names
@@ -88,11 +110,9 @@ public:
     /**
      * @brief add a new route to the router
      *
-     * @param jsonDefinition json definition of the route (asset)
+     * @param name name of the route
      * @return A error with description if the route can't be added
      */
-    std::optional<base::Error> addRoute(const json::Json& jsonDefinition);
-
     std::optional<base::Error> addRoute(const std::string& name);
 
     /**
@@ -104,7 +124,7 @@ public:
     std::optional<base::Error> removeRoute(const std::string& name);
 
     /**
-     * @brief Launch in a new threads the router to ingest data from the queue
+     * @brief Launch in a new threads the router to ingest data from the queue.
      *
      */
     std::optional<base::Error> run(std::shared_ptr<concurrentQueue> queue);
@@ -116,6 +136,12 @@ public:
      */
     void stop();
 
+    /**
+     * @brief Main API callback for environment management
+     *
+     * @return api::CommandFn
+     */
+    api::CommandFn apiCallbacks();
 };
 } // namespace router
 #endif // _ROUTER_ROUTER_HPP
