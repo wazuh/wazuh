@@ -4,7 +4,16 @@ sources:
   - decoder/json/0
 
 metadata:
-  description: Parent decoder for Windows events  
+  description: Parent decoder for Windows events
+  module: Windows
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/23
+  title: This Windows decoders decodes basic field from Windows events
+  references:
+    - https://learn.microsoft.com/en-us/windows/win32/events/windows-events
 
 check:
   - ~json.Event: +ef_exists
@@ -21,12 +30,12 @@ normalize:
    - event.kind: event
    - event.provider: $~windows.Event.System.Provider.@Name
    - host.name: $~windows.Event.System.Computer.#text
-   - log.level: +kvdb_get/win_log_level/$~windows.Event.System.Level.#text
-   - log.channel: $~windows.Event.System.Channel.#text
-   - log.process.pid: $~windows.Event.System.Execution.@ProcessID
-   - log.process.thread.id: $~windows.Event.System.Execution.@ThreadID
-   - log.record_id: $~windows.Event.System.EventRecordID.#text
-   - log.event_data: $~windows.Event.EventData
+   - winlog.level: +kvdb_get/win_log_level/$~windows.Event.System.Level.#text
+   - winlog.channel: $~windows.Event.System.Channel.#text
+   - winlog.process.pid: $~windows.Event.System.Execution.@ProcessID
+   - winlog.process.thread.id: $~windows.Event.System.Execution.@ThreadID
+   - winlog.record_id: $~windows.Event.System.EventRecordID.#text
+   - winlog.event_data: $~windows.Event.EventData
 
 # Cleanup
  - map:
