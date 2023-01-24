@@ -57,6 +57,8 @@ TEST(DateParser, parser)
         return doc;
     };
 
+    std::string buildYear = __DATE__ + 7;
+
     std::vector<TestCase> testCases {
         // locale
         // https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
@@ -72,13 +74,13 @@ TEST(DateParser, parser)
                   true,
                   {},
                   Options {"%b %d %T", "en_US.UTF-8"},
-                  fn("2022-06-14T15:16:01.000Z"),
+                  fn(buildYear + "-06-14T15:16:01.000Z"),
                   15},
         TestCase {"June 14 15:16:01",
                   true,
                   {},
                   Options {"%B %d %T", "en_US.UTF-8"},
-                  fn("2022-06-14T15:16:01.000Z"),
+                  fn(buildYear + "-06-14T15:16:01.000Z"),
                   strlen("June 14 15:16:01")},
         TestCase {"2019-12-12",
                   true,
@@ -259,25 +261,25 @@ TEST(DateParser, parser)
                   true,
                   {},
                   Options {"%B %d %R:%6S %Z"},
-                  fn("2022-12-26T16:16:55.123Z"),
+                  fn(buildYear + "-12-26T16:16:55.123Z"),
                   strlen("December 26 16:16:55.123 UTC")},
         TestCase {"December 26 16:16:55.123 -0000",
                   true,
                   {},
                   Options {"%B %d %R:%6S %z"},
-                  fn("2022-12-26T16:16:55.123Z"),
+                  fn(buildYear + "-12-26T16:16:55.123Z"),
                   strlen("December 26 16:16:55.123 -0000")},
         TestCase {"Dec 26 16:16:55.123 UTC",
                   true,
                   {},
                   Options {"%b %d %R:%6S %Z"},
-                  fn("2022-12-26T16:16:55.123Z"),
+                  fn(buildYear + "-12-26T16:16:55.123Z"),
                   strlen("Dec 26 16:16:55.123 UTC")},
         TestCase {"Dec 26 16:16:55.123 -0000",
                   true,
                   {},
                   Options {"%b %d %R:%6S %z"},
-                  fn("2022-12-26T16:16:55.123Z"),
+                  fn(buildYear + "-12-26T16:16:55.123Z"),
                   strlen("Dec 26 16:16:55.123 -0000")},
         TestCase {"26/Dec/2016:16:16:55 -0000",
                   true,
