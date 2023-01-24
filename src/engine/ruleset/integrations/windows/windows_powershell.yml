@@ -5,6 +5,15 @@ sources:
 
 metadata:
   description: Decoder for Windows Powershell events
+  module: Windows Powershell
+  title: Decoder for Windows Powershell events
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/23
+  references:
+    - https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/wmf/whats-new/script-logging?view=powershell-7.3
 
 check:
   - ~windows.Event.System.Channel.#text: +s_eq/Windows PowerShell
@@ -15,6 +24,7 @@ normalize:
    - event.kind: event
    - event.category: process
    - event.type: info
+   - event.sequence: $~windows.Event.EventData.SequenceNumber
 
   ## Process fields.
    - process.entity_id: $~windows.Event.EventData.HostId

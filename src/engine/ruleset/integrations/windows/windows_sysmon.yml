@@ -5,6 +5,15 @@ sources:
 
 metadata:
   description: Decoder for Windows Sysmon events
+  module: Windows Sysmon
+  title: Decoder for Windows Sysmon
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/23
+  references:
+    - https://learn.microsoft.com/es-es/sysinternals/downloads/sysmon
 
 check:
   - ~windows.Event.System.Provider.@Name: Microsoft-Windows-Sysmon
@@ -169,7 +178,7 @@ normalize:
     - registry.key: +s_from_array/$~temp.registry.array/\\
     - registry.value: +r_ext/$registry.path/^.*\\(.*)$
     # This could be better than what is done in line 181:
-    #- ~temp.is_binary_data: +r_match/~windows.Event.EventData.Details/^Binary Data/
+    # - ~temp.is_binary_data: +r_match/~windows.Event.EventData.Details/^Binary Data/
     
  - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~windows.Event.EventData.Details/QWORD/
    map:  
