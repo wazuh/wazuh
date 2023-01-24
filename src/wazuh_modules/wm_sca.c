@@ -2023,7 +2023,6 @@ int wm_sca_pattern_matches(const char * const str,
             minterm++;
             negated = 1;
         }
-        OSRegex_FreePattern(regex_engine->regex);
 
         const int minterm_result = negated ^ wm_sca_test_positive_minterm (minterm, str, reason, regex_engine);
         OSMatch_FreePattern(regex_engine->match);
