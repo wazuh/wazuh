@@ -21,6 +21,8 @@ class Route
 private:
     std::string m_name;
     std::string m_target;
+    std::size_t m_priority;
+
     base::Expression m_expr;
 
     bool executeExpression(base::Expression expression, base::Event event) const;
@@ -30,6 +32,8 @@ public:
 
     const std::string& getName() const { return m_name; }
     const std::string& getTarget() const { return m_target; }
+    std::size_t getPriority() const { return m_priority; }
+    void setPriority(int priority);
 
     bool accept(base::Event event) const { return executeExpression(m_expr, event); }
 };

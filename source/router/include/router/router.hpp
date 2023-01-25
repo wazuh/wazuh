@@ -42,7 +42,8 @@ private:
     /**
      * @brief Map of routes, each route is a vector of expressions, each expression for each thread
      */
-    std::unordered_map<std::string, std::vector<builder::Route>> m_routes;
+    std::unordered_map<std::string, std::size_t> m_namePriority;
+    std::map<std::size_t, std::vector<builder::Route>> m_priorityRoute;
     std::shared_mutex m_mutexRoutes;    ///< Mutex to protect the routes map
     std::atomic_bool m_isRunning;       ///< Flag to know if the router is running
     std::vector<std::thread> m_threads; ///< Vector of threads for the router
@@ -79,10 +80,13 @@ private:
      */
     api::WazuhResponse apiDeleteRoute(const json::Json& params);
 
+    api::WazuhResponse apiChangeRoutePriority(const json::Json& params);
+
 public:
     Router(std::shared_ptr<builder::Builder> builder, std::size_t threads = 1)
         : m_mutexRoutes {}
-        , m_routes {}
+        , m_namePriority {}
+        , m_priorityRoute {}
         , m_isRunning {false}
         , m_numThreads {threads}
         , m_threads {}
@@ -105,7 +109,9 @@ public:
      *
      * @return std::unordered_set<std::string>
      */
-    std::vector<std::string> listRoutes();
+    std::vector<std::tuple<std::string, std::size_t, std::string>> getRouteTable();
+
+    std::optional<base::Error> changeRoutePriority(const std::string& name, int priority);
 
     /**
      * @brief add a new route to the router
@@ -113,7 +119,7 @@ public:
      * @param name name of the route
      * @return A error with description if the route can't be added
      */
-    std::optional<base::Error> addRoute(const std::string& name);
+    std::optional<base::Error> addRoute(const std::string& name, std::optional<int> optPriority = std::nullopt);
 
     /**
      * @brief Delete a route from the router

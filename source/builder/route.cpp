@@ -3,10 +3,17 @@
 namespace builder
 {
 
+namespace {
+    constexpr auto PATH_TARGET = "target";
+    constexpr auto PATH_PRIORITY = "priority";
+    constexpr int MAX_PRIORITY = 255L;
+    constexpr int MIN_PRIORITY = 0L;
+}
+
 Route::Route(json::Json jsonDefinition, std::shared_ptr<builder::internals::Registry> registry)
 {
     // Get the target
-    auto targetPath = json::Json::formatJsonPath("target");
+    auto targetPath = json::Json::formatJsonPath(PATH_TARGET);
     if (auto target = jsonDefinition.getString(targetPath))
     {
         m_target = target.value();
@@ -20,8 +27,19 @@ Route::Route(json::Json jsonDefinition, std::shared_ptr<builder::internals::Regi
     {
         throw std::runtime_error(fmt::format("Route '{}' has an empty target.", m_name));
     }
-
     jsonDefinition.erase(targetPath);
+
+    // Get the priority
+    auto priorityPath = json::Json::formatJsonPath(PATH_PRIORITY);
+    if (auto priority = jsonDefinition.getInt(priorityPath))
+    {
+        setPriority(priority.value());
+    }
+    else
+    {
+        throw std::runtime_error(R"(Route has no "priority" or "priority" is not an integer.)");
+    }
+    jsonDefinition.erase(priorityPath);
 
     // Get the expression
     auto assetRoute = std::make_shared<builder::Asset>(jsonDefinition, builder::Asset::Type::ROUTE, registry);
@@ -29,6 +47,19 @@ Route::Route(json::Json jsonDefinition, std::shared_ptr<builder::internals::Regi
 
     // Get the name
     m_name = assetRoute->m_name;
+}
+
+void Route::setPriority(int priority)
+{
+    if (priority < MIN_PRIORITY || priority > MAX_PRIORITY)
+    {
+        throw std::runtime_error(
+            fmt::format("Route '{}' has an invalid priority. Priority must be between {} and {}.",
+                        m_name,
+                        MIN_PRIORITY,
+                        MAX_PRIORITY));
+    }
+    m_priority = priority;
 }
 
 bool Route::executeExpression(base::Expression expression, base::Event event) const
