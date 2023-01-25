@@ -1,0 +1,15 @@
+name: SCA main fields checker
+on:
+    pull_request:
+        paths:
+            - 'rulset/sca/**'
+
+jobs:
+    test_sca_checker:
+        name: Check if blank spaces were inserted at SCA files in title, description, rationale and remediation fields beginning
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v2
+
+          - name: Run SCA fields checker
+            run: bash .github/actions/sca/beginning_blank_spaces_checker.sh
