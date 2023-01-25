@@ -5,15 +5,17 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
-import wazuh_integration
-
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+import wazuh_integration
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'services'))
 import aws_service
 import inspector
+
+TEST_SERVICES_SCHEMA = 'schema_services_test.sql'
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
@@ -51,6 +53,40 @@ def test_AWSInspector_send_describe_findings(mock_aws_service):
         mock_format.assert_called_once()
 
 
-@pytest.mark.skip("Not implemented yet")
-def test_AWSInspector_get_alerts():
-    pass
+@pytest.mark.parametrize('reparse', [True, False])
+@pytest.mark.parametrize('only_logs_after', [utils.TEST_ONLY_LOGS_AFTER, None])
+@patch('wazuh_integration.WazuhIntegration.init_db')
+@patch('wazuh_integration.WazuhIntegration.close_db')
+@patch('inspector.AWSInspector.send_describe_findings')
+@patch('inspector.aws_tools.debug')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('aws_service.AWSService.__init__', side_effect=aws_service.AWSService.__init__)
+def test_AWSInspector_get_alerts(mock_aws_service, mock_sts_client, mock_debug, mock_send_describe_findings,
+                                 mock_init_db, mock_close_db, only_logs_after, reparse, custom_database):
+    utils.database_execute_script(custom_database, TEST_SERVICES_SCHEMA)
+
+    instance = utils.get_mocked_service(class_=inspector.AWSInspector,
+                                        reparse=reparse, only_logs_after=only_logs_after, region=utils.TEST_REGION)
+
+    instance.account_id = utils.TEST_ACCOUNT_ID
+
+    instance.db_connector = custom_database
+    instance.db_cursor = instance.db_connector.cursor()
+
+    instance.client = MagicMock()
+    mock_list_findings = instance.client.list_findings
+    mock_list_findings.side_effect = [{'findingArns': ['arn1'], 'nextToken': None},
+                                      {'findingArns': ['arn2']}]
+
+    instance.get_alerts()
+
+    last_scan_date = utils.database_execute_query(custom_database,
+                                                  instance.sql_find_last_scan.format(table_name=instance.db_table_name),
+                                                  {
+                                                      'service_name': instance.service_name,
+                                                      'aws_account_id': instance.account_id,
+                                                      'aws_region': instance.region}
+                                                  )
+
+    assert datetime.strptime(last_scan_date.split(' ')[0], "%Y-%m-%d").strftime("%Y%m%d") == datetime.utcnow().strftime("%Y%m%d")
+
