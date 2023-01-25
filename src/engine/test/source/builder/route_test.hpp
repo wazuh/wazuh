@@ -5,6 +5,7 @@ namespace testRoutes
 const json::Json existQNQ = json::Json(R"(
         {
             "name": "Exist wazuh.queue and wazuh.no_queue",
+            "priority": 2,
             "check": [
                 {
                     "wazuh.queue": "+ef_exists"
@@ -20,6 +21,7 @@ const json::Json existQNQ = json::Json(R"(
 const json::Json queue49or50 = json::Json(R"~(
         {
             "name": "Exist wazuh.queue and is 49 or 50",
+            "priority": 1,
             "check": "+ef_exists/wazuh.queue AND (+i_eq/wazuh.queue/49 OR +i_eq/wazuh.queue/50)",
             "target": "queue49or50"
         }
@@ -29,6 +31,7 @@ const json::Json queue49or50 = json::Json(R"~(
 const json::Json allowAll = json::Json(R"(
         {
             "name": "Allow all",
+            "priority": 0,
             "target": "allowAll"
         }
     )");
