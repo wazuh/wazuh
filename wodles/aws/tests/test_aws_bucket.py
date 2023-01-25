@@ -31,7 +31,6 @@ TEST_EMPTY_TABLE_SCHEMA = "schema_empty_table.sql"
 CLOUDTRAIL_SCHEMA_COUNT = 8
 CUSTOM_SCHEMA_COUNT = 8
 
-SQL_COUNT_ROWS = """SELECT count(*) FROM {table_name};"""
 SQL_GET_ROW = "SELECT bucket_path, aws_account_id, aws_region, log_key, created_date FROM {table_name};"
 SQL_COUNT_TABLES = """SELECT count(*) FROM sqlite_master WHERE type ='table' AND name NOT LIKE 'sqlite_%';"""
 SQL_SELECT_TABLES = """SELECT name FROM sqlite_master WHERE type ='table' AND name NOT LIKE 'sqlite_%';"""
@@ -138,14 +137,14 @@ def test_AWSBucket_mark_complete(custom_database):
     bucket.db_table_name = utils.TEST_TABLE_NAME
 
     assert utils.database_execute_query(bucket.db_connector,
-                                        SQL_COUNT_ROWS.format(table_name=bucket.db_table_name)) == 0
+                                        utils.SQL_COUNT_ROWS.format(table_name=bucket.db_table_name)) == 0
 
     with patch('aws_bucket.AWSBucket.get_creation_date', return_value=utils.TEST_CREATION_DATE):
         bucket.mark_complete(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION,
                              log_file={'Key': utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1})
 
     assert utils.database_execute_query(bucket.db_connector,
-                                        SQL_COUNT_ROWS.format(table_name=bucket.db_table_name)) == 1
+                                        utils.SQL_COUNT_ROWS.format(table_name=bucket.db_table_name)) == 1
 
     row = utils.database_execute_query(bucket.db_connector, SQL_GET_ROW.format(table_name=bucket.db_table_name))
     assert row[0] == f"{utils.TEST_BUCKET}/"
@@ -251,13 +250,13 @@ def test_AWSBucket_db_maintenance(custom_database, expected_db_count):
     bucket.db_table_name = utils.TEST_TABLE_NAME
     bucket.retain_db_records = expected_db_count
 
-    assert utils.database_execute_query(bucket.db_connector, SQL_COUNT_ROWS.format(
+    assert utils.database_execute_query(bucket.db_connector, utils.SQL_COUNT_ROWS.format(
         table_name=bucket.db_table_name)) == CLOUDTRAIL_SCHEMA_COUNT
 
     with patch('aws_bucket.AWSBucket.db_count_region', return_value=CLOUDTRAIL_SCHEMA_COUNT):
         bucket.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION)
 
-    assert utils.database_execute_query(bucket.db_connector, SQL_COUNT_ROWS.format(
+    assert utils.database_execute_query(bucket.db_connector, utils.SQL_COUNT_ROWS.format(
         table_name=bucket.db_table_name)) == expected_db_count
 
 
@@ -1181,13 +1180,13 @@ def test_AWSCustomBucket_db_maintenance(mock_bucket, mock_integration, mock_sts,
     instance.retain_db_records = expected_db_count
     instance.aws_account_id = utils.TEST_ACCOUNT_ID
 
-    assert utils.database_execute_query(instance.db_connector, SQL_COUNT_ROWS.format(
+    assert utils.database_execute_query(instance.db_connector, utils.SQL_COUNT_ROWS.format(
         table_name=instance.db_table_name)) == CUSTOM_SCHEMA_COUNT
 
     with patch('aws_bucket.AWSCustomBucket.db_count_custom', return_value=CUSTOM_SCHEMA_COUNT):
         instance.db_maintenance(aws_account_id=aws_account_id)
 
-    assert utils.database_execute_query(instance.db_connector, SQL_COUNT_ROWS.format(
+    assert utils.database_execute_query(instance.db_connector, utils.SQL_COUNT_ROWS.format(
         table_name=instance.db_table_name)) == expected_db_count
 
 

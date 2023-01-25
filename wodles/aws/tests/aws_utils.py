@@ -66,6 +66,8 @@ TEST_MESSAGE = "test_message"
 QUEUE_PATH = 'queue/sockets/queue'
 WODLE_PATH = 'wodles/aws'
 
+SQL_COUNT_ROWS = """SELECT count(*) FROM {table_name};"""
+
 data_path = os.path.join(os.path.dirname(__file__), 'data')
 
 # Error codes

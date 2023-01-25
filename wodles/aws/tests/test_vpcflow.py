@@ -23,7 +23,6 @@ TEST_LOG_KEY = 'vpc/AWSLogs/123456789/vpcflowlogs/us-east-1/2019/04/15/123456789
 TEST_DATE = "2023/01/01"
 
 SQL_GET_DATE_LAST_LOG_PROCESSED = """SELECT created_date FROM {table_name} ORDER BY log_key DESC LIMIT 1;"""
-SQL_COUNT_ROWS = """SELECT count(*) FROM {table_name};"""
 SQL_GET_ROW = "SELECT bucket_path, aws_account_id, aws_region, flow_log_id, log_key, created_date FROM {table_name};"
 SQL_FIND_LAST_KEY_PROCESSED = """SELECT log_key FROM {table_name} ORDER BY log_key DESC LIMIT 1;"""
 
@@ -274,14 +273,14 @@ def test_AWSVPCFlowBucket_db_maintenance(custom_database, expected_db_count):
     instance.db_table_name = TEST_TABLE_NAME
     instance.retain_db_records = expected_db_count
 
-    assert utils.database_execute_query(instance.db_connector, SQL_COUNT_ROWS.format(
+    assert utils.database_execute_query(instance.db_connector, utils.SQL_COUNT_ROWS.format(
         table_name=instance.db_table_name)) == VPC_SCHEMA_COUNT
 
     with patch('aws_bucket.AWSBucket.db_count_region', return_value=VPC_SCHEMA_COUNT):
         instance.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION,
                                 flow_log_id=TEST_FLOW_LOG_ID)
 
-    assert utils.database_execute_query(instance.db_connector, SQL_COUNT_ROWS.format(
+    assert utils.database_execute_query(instance.db_connector, utils.SQL_COUNT_ROWS.format(
         table_name=instance.db_table_name)) == expected_db_count
 
 
@@ -443,13 +442,13 @@ def test_AWSVPCFlowBucket_mark_complete(custom_database):
     instance.db_table_name = TEST_TABLE_NAME
 
     assert utils.database_execute_query(instance.db_connector,
-                                        SQL_COUNT_ROWS.format(table_name=instance.db_table_name)) == 0
+                                        utils.SQL_COUNT_ROWS.format(table_name=instance.db_table_name)) == 0
 
     instance.mark_complete(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION,
                            log_file=log_file, flow_log_id=TEST_FLOW_LOG_ID)
 
     assert utils.database_execute_query(instance.db_connector,
-                                        SQL_COUNT_ROWS.format(table_name=instance.db_table_name)) == 1
+                                        utils.SQL_COUNT_ROWS.format(table_name=instance.db_table_name)) == 1
 
     row = utils.database_execute_query(instance.db_connector, SQL_GET_ROW.format(table_name=instance.db_table_name))
     assert row[0] == f"{utils.TEST_BUCKET}/"
