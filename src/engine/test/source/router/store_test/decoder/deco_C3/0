@@ -1,0 +1,20 @@
+{
+    "name": "decoder/deco_C3/0",
+    "metadata": {
+        "description": "Allow all set ~decoder to deco_C3 "
+    },
+    "check": [
+        {
+            "wazuh.queue": "+ef_exists"
+        }
+    ],
+    "normalize": [
+        {
+            "map": [
+                {
+                    "~decoder": "deco_C3"
+                }
+            ]
+        }
+    ]
+}

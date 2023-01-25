@@ -1,4 +1,5 @@
 {
             "name": "route/allow_all/0",
+            "priority": 1,
             "target": "environment/env_2/0"
         }

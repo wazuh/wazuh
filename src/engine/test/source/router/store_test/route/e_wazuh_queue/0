@@ -1,5 +1,6 @@
 {
     "name": "route/e_wazuh_queue/0",
+    "priority": 2,
     "check": [
         {
             "wazuh.queue": "+ef_exists"
