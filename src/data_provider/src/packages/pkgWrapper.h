@@ -41,7 +41,14 @@ class PKGWrapper final : public IPackageWrapper
             , m_vendor{UNKNOWN_VALUE}
             , m_installTime {UNKNOWN_VALUE}
         {
-            getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
+            std::string packagePath = ctx.filePath + "/" + ctx.package;
+
+            if (Utils::endsWith(ctx.package, ".app"))
+            {
+                packagePath = packagePath + "/" + APP_INFO_PATH;
+            }
+
+            getPkgData(packagePath);
         }
 
         ~PKGWrapper() = default;
@@ -134,6 +141,18 @@ class PKGWrapper final : public IPackageWrapper
                 }
             };
 
+            static const auto truncateVersion
+            {
+                [](const std::string & val)
+                {
+                    constexpr auto VERSION_FORMAT{R"(^([^.]+\.[^.]+\.[^.]+).*$)"};
+                    static std::regex versionFormatRegex{VERSION_FORMAT};
+                    std::string version;
+                    Utils::findRegexInString(val, version, versionFormatRegex, 1);
+                    return version;
+                }
+            };
+
             const auto getDataFnc
             {
                 [this, &filePath](std::istream & data)
@@ -142,16 +161,29 @@ class PKGWrapper final : public IPackageWrapper
                     std::string bundleShortVersionString;
                     std::string bundleVersion;
 
+                    m_name = UNKNOWN_VALUE;
+                    m_version = UNKNOWN_VALUE;
+                    m_installTime = UNKNOWN_VALUE;
+                    m_location = filePath;
+                    m_groups = UNKNOWN_VALUE;
+                    m_description = UNKNOWN_VALUE;
+                    m_size = 0;
+                    m_priority = UNKNOWN_VALUE;
+                    m_multiarch = UNKNOWN_VALUE;
+                    m_source = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
+
                     while (std::getline(data, line))
                     {
                         line = Utils::trim(line, " \t");
 
-                        if (line == "<key>CFBundleName</key>" &&
+                        if ((line == "<key>CFBundleName</key>" ||
+                                line == "<key>PackageIdentifier</key>") &&
                                 std::getline(data, line))
                         {
                             m_name = getValueFnc(line);
                         }
-                        else if (line == "<key>CFBundleShortVersionString</key>" &&
+                        else if ((line == "<key>CFBundleShortVersionString</key>" ||
+                                  line == "<key>PackageVersion</key>") &&
                                  std::getline(data, line))
                         {
                             bundleShortVersionString = getValueFnc(line);
@@ -200,14 +232,6 @@ class PKGWrapper final : public IPackageWrapper
                             m_version = bundleShortVersionString;
                         }
                     }
-
-                    m_architecture = UNKNOWN_VALUE;
-                    m_multiarch = UNKNOWN_VALUE;
-                    m_priority = UNKNOWN_VALUE;
-                    m_size = 0;
-                    m_installTime = UNKNOWN_VALUE;
-                    m_source = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
-                    m_location = filePath;
                 }
             };
 

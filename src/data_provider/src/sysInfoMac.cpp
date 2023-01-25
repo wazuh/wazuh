@@ -52,6 +52,8 @@ static const std::map<std::string, int> s_mapPackagesDirectories =
     { "/System/Applications", PKG},
     { "/System/Applications/Utilities", PKG},
     { "/System/Library/CoreServices", PKG},
+    { "/private/var/db/receipts", PKG},
+    { "/Library/Apple/System/Library/Receipts", PKG},
     { "/usr/local/Cellar", BREW},
     { "/opt/local/var/macports/registry", MACPORTS}
 };
