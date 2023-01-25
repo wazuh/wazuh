@@ -2,7 +2,7 @@ name: SCA main fields checker
 on:
     pull_request:
         paths:
-            - 'rulset/sca/**'
+            - 'ruleset/sca/**'
 
 jobs:
     test_sca_checker:
