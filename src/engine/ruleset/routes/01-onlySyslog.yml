@@ -1,0 +1,8 @@
+name: route/01-onlySyslog/0
+
+priority: 11
+
+check:
+    - wazuh.queue: 50
+
+target: environment/zz_test/0
