@@ -20,9 +20,14 @@
 
 # Logging configuration
 # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
+# Values for API log max_size: <value><unit>. Valid units: K (kilobytes), M (megabytes)
+# Enabling the API log max_size will disable the time based rotation (on midnight)
 # logs:
 #  level: "info"
 #  format: "plain"
+#  max_size:
+#    enabled: False
+#    size: "1M"
 
 # Cross-origin resource sharing: https://github.com/aio-libs/aiohttp-cors#usage
 # cors:

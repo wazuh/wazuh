@@ -4385,7 +4385,7 @@ components:
           enum:
             - passed
             - failed
-            - ""
+            - "not applicable"
         title:
           type: string
           description: "A brief description of what is being checked"
@@ -14317,7 +14317,6 @@ paths:
         - $ref: '#/components/parameters/rationale'
         - $ref: '#/components/parameters/remediation'
         - $ref: '#/components/parameters/command'
-        - $ref: '#/components/parameters/status'
         - $ref: '#/components/parameters/reason'
         - $ref: '#/components/parameters/full_path_filter'
         - $ref: '#/components/parameters/process'
@@ -14357,12 +14356,11 @@ paths:
                       server. If this filesystem type is not needed, disable it."
                       condition: "all"
                       title: "Ensure mounting of cramfs filesystems is disabled."
-                      result: ""
+                      result: "not applicable"
                       policy_id: "cis_ubuntu20-04"
                       remediation: "1) Edit or create a file in the /etc/modprobe.d/ directory ending in .conf and add
                       the following line: install cramfs /bin/true. 2) Run the following command to unload the cramfs
                       module: # rmmod cramfs"
-                      status: "Not applicable"
                       compliance:
                         - value: "1.1.1.1"
                           key: "cis"

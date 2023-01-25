@@ -67,8 +67,7 @@ namespace DbSync
 
             void getDeleted(const DBSYNC_HANDLE   handle,
                             const TXN_HANDLE      txnHandle,
-                            const ResultCallback  callback,
-                            const nlohmann::json& options);
+                            const ResultCallback  callback);
 
             void selectData(const DBSYNC_HANDLE    handle,
                             const nlohmann::json&  json,

@@ -181,6 +181,7 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
 
             if (inTransactionParam)
             {
+                // No changes detected, only update the status field to avoid row deletion during the txn close.
                 if (result.empty())
                 {
                     std::for_each(primaryKeyList.begin(),
@@ -193,7 +194,7 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
                         }
                     });
                 }
-                else
+                else // Changes detected, update the row with the new values.
                 {
                     ret = result;
                 }
@@ -364,19 +365,10 @@ void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames)
 
 void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                                                const DbSync::ResultCallback callback,
-                                               const nlohmann::json& options,
                                                std::unique_lock<std::shared_timed_mutex>& lock)
 {
-    auto allColumns {false};
-
-    const auto itAllColumns {options.find("all_columns")};
     m_transaction->commit();
     m_transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
-
-    if (options.end() != itAllColumns)
-    {
-        allColumns = itAllColumns->is_boolean() ? itAllColumns.value().get<bool>() : allColumns;
-    }
 
     for (const auto& tableValue : tableNames)
     {
@@ -385,18 +377,6 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
         if (0 != loadTableData(table))
         {
             auto tableFields { m_tableFields[table] };
-
-            if (!allColumns)
-            {
-                // Remove unneeded fields before looking for the expected ones.
-                tableFields.erase(std::remove_if(tableFields.begin(), tableFields.end(), [](const ColumnData & column)
-                {
-                    const auto isNotTxnStatusField { !std::get<TableHeader::TXNStatusField>(column) };
-                    const auto isNotPK             { !std::get<TableHeader::PK>(column) };
-                    return isNotTxnStatusField && isNotPK;
-                }), tableFields.end());
-            }
-
             const auto stmt { getStatement(getSelectAllQuery(table, tableFields)) };
 
             while (SQLITE_ROW == stmt->step())
@@ -1359,14 +1339,16 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
                     {
                         // Diff found
                         isModified = true;
-                        updatedData[value.first] = *it;
                         oldData[value.first] = object[value.first];
                     }
+
+                    updatedData[value.first] = *it;
                 }
             }
         }
     }
 
+    // If the row is not modified, we clear the result to update the status field value only.
     if (!isModified)
     {
         updatedData.clear();

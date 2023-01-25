@@ -950,6 +950,9 @@ stages:
                   ssl_ciphers: !anystr
                 logs:
                   level: !anystr
+                  max_size:
+                    enabled: !anybool
+                    size: !anystr
                 cors:
                   enabled: !anybool
                   source_route: !anystr
