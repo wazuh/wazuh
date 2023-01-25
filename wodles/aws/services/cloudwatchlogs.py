@@ -160,12 +160,13 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         try:
             for log_group in self.log_group_list:
                 for log_stream in self.get_log_streams(log_group=log_group):
-                    aws_tools.debug('Getting data from DB for log stream "{}" in log group "{}"'.format(log_stream, log_group), 1)
+                    aws_tools.debug(
+                        'Getting data from DB for log stream "{}" in log group "{}"'.format(log_stream, log_group), 1)
                     db_values = self.get_data_from_db(log_group=log_group, log_stream=log_stream)
                     aws_tools.debug('Token: "{}", start_time: "{}", '
-                          'end_time: "{}"'.format(db_values['token'] if db_values else None,
-                                                  db_values['start_time'] if db_values else None,
-                                                  db_values['end_time'] if db_values else None), 2)
+                                    'end_time: "{}"'.format(db_values['token'] if db_values else None,
+                                                            db_values['start_time'] if db_values else None,
+                                                            db_values['end_time'] if db_values else None), 2)
                     result_before = None
                     start_time = self.only_logs_after_millis if self.only_logs_after_millis else self.default_date_millis
                     end_time = None
@@ -220,7 +221,8 @@ class AWSCloudWatchLogs(aws_service.AWSService):
             aws_tools.debug(f'ERROR: The "remove_aws_log_stream" request failed: {err}', 1)
             sys.exit(16)
         except Exception:
-            aws_tools.debug('Error trying to remove "{}" log stream from "{}" log group.'.format(log_stream, log_group), 0)
+            aws_tools.debug('Error trying to remove "{}" log stream from "{}" log group.'.format(log_stream, log_group),
+                            0)
 
     def get_alerts_within_range(self, log_group, log_stream, token, start_time, end_time):
         """Get all the logs from a log stream with a timestamp between the range of the provided start and end times and
@@ -262,8 +264,9 @@ class AWSCloudWatchLogs(aws_service.AWSService):
 
         # Request event logs until CloudWatch returns an empty list for the log stream
         while response is None or response['events'] != list():
-            aws_tools.debug('Getting CloudWatch logs from log stream "{}" in log group "{}" using token "{}", start_time '
-                  '"{}" and end_time "{}"'.format(log_stream, log_group, token, start_time, end_time), 1)
+            aws_tools.debug(
+                'Getting CloudWatch logs from log stream "{}" in log group "{}" using token "{}", start_time '
+                '"{}" and end_time "{}"'.format(log_stream, log_group, token, start_time, end_time), 1)
 
             # Try to get CloudWatch Log events until the request succeeds or the allowed number of attempts is reached
             try:
@@ -272,7 +275,8 @@ class AWSCloudWatchLogs(aws_service.AWSService):
 
             except botocore.exceptions.EndpointConnectionError:
                 aws_tools.debug(f'WARNING: The "get_log_events" request was denied because the endpoint URL was not '
-                      f'available. Attempting again.', 1)
+                                f'available. Attempting again.', 1)
+                continue  # Needed to make the get_log_events request again
             except botocore.exceptions.ClientError as err:
                 aws_tools.debug(f'ERROR: The "get_log_events" request failed: {err}', 1)
                 sys.exit(16)
@@ -484,10 +488,11 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         # Check the difference and remove if applicable
         log_streams_to_purge = log_streams_sql - log_streams_aws
         if log_streams_to_purge != set():
-            aws_tools.debug('Data for the following log streams will be removed from {}: "{}"'.format(self.db_table_name,
-                                                                                            log_streams_to_purge), 2)
+            aws_tools.debug(
+                'Data for the following log streams will be removed from {}: "{}"'.format(self.db_table_name,
+                                                                                          log_streams_to_purge), 2)
         for log_stream in log_streams_to_purge:
-            self.db_cursor.execute(self.sql_cloudwatch_purge.format(tablename=self.db_table_name), {
+            self.db_cursor.execute(self.sql_cloudwatch_purge.format(table_name=self.db_table_name), {
                 'aws_region': self.region,
                 'aws_log_group': log_group,
                 'aws_log_stream': log_stream})
