@@ -1036,7 +1036,7 @@ checks:
 
   # 2.2.2 Remove X Windows (Scored)
   - id: 4556
-    title: " Ensure X11 Server components are not installed"
+    title: "Ensure X11 Server components are not installed"
     description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
     rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
     remediation: "Run the following command to remove the X Windows System packages: # yum remove xorg-x11*"
@@ -1052,7 +1052,7 @@ checks:
 
   # 2.2.3 Ensure Avahi Server is not installed (Automated)
   - id: 4557
-    title: " Ensure Avahi Server is not installed"
+    title: "Ensure Avahi Server is not installed"
     description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
     rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to remove this package to reduce the potential attack surface."
     remediation: "Run the following commands to stop, mask and remove avahi-autoipd and avahi: # systemctl stop avahi-daemon.socket avahi-daemon.service; # yum remove avahi-autoipd avahi"
@@ -1155,7 +1155,7 @@ checks:
 
   # 2.2.9 Ensure DNS Server is not installed (Automate)
   - id: 4563
-    title: " Ensure DNS Server is not installed "
+    title: "Ensure DNS Server is not installed "
     description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network."
     rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run the following command to disable named: # yum remove bind"
@@ -3278,7 +3278,7 @@ checks:
 
   # 5.4.4 Ensure default user shell timeout is configured (Automated)
   - id: 4682
-    title: " Ensure default user shell timeout is configured"
+    title: "Ensure default user shell timeout is configured"
     description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds."
     rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session."
     remediation: "Edit the /etc/bashrc and /etc/profile files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: TMOUT=600"

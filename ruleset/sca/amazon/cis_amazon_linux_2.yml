@@ -906,7 +906,7 @@ checks:
 
   # 2.1.2 Ensure X11 Server components are not installed.
   - id: 20549
-    title: " Ensure X Window System is not installed."
+    title: "Ensure X Window System is not installed."
     description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
     rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
     remediation: "Run the following command to remove the X Windows System packages: # yum remove xorg-x11*"
@@ -922,7 +922,7 @@ checks:
 
   # 2.1.3 Ensure Avahi Server is not enabled.
   - id: 20550
-    title: " Ensure Avahi Server is not enabled."
+    title: "Ensure Avahi Server is not enabled."
     description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
     rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to disable this package to reduce the potential attack surface."
     remediation: "Run the following command to disable avahi-daemon:  # systemctl disable avahi-daemon"
@@ -3123,7 +3123,7 @@ checks:
 
   # 5.5.4 Ensure default user shell timeout is configured.
   - id: 20671
-    title: " Ensure default user shell timeout is 900 seconds or less."
+    title: "Ensure default user shell timeout is 900 seconds or less."
     description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds."
     rationale: "Having no timeout value associated with a shell could allow an unauthorized user access to another user's shell session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value at least reduces the risk of this happening"
     remediation: "Edit the /etc/bashrc and /etc/profile files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: TMOUT=600"

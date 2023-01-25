@@ -506,7 +506,7 @@ checks:
     title: "Ensure filesystem integrity is regularly checked"
     description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
     rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
-    remediation: " Run the following commands: # cp ./config/aidecheck.service /etc/systemd/system/aidecheck.service  # cp ./config/aidecheck.timer /etc/systemd/system/aidecheck.timer   # chmod 0644 /etc/systemd/system/aidecheck.*  # systemctl reenable aidecheck.timer # systemctl restart aidecheck.timer # systemctl daemon-reload. OR Run the following command: crontab -u root -e // Add the following line to the crontab: 0 5 * * * /usr/sbin/aide --check  // Notes: The checking in this recommendation occurs every day at 5am. Alter the frequency and time of the checks in compliance with site policy.  "
+    remediation: "Run the following commands: # cp ./config/aidecheck.service /etc/systemd/system/aidecheck.service  # cp ./config/aidecheck.timer /etc/systemd/system/aidecheck.timer   # chmod 0644 /etc/systemd/system/aidecheck.*  # systemctl reenable aidecheck.timer # systemctl restart aidecheck.timer # systemctl daemon-reload. OR Run the following command: crontab -u root -e // Add the following line to the crontab: 0 5 * * * /usr/sbin/aide --check  // Notes: The checking in this recommendation occurs every day at 5am. Alter the frequency and time of the checks in compliance with site policy.  "
     compliance:
       - cis: ["1.3.2"]
       - cis_csc: ["3.5"]

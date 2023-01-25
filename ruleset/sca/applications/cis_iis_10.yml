@@ -106,7 +106,7 @@ checks:
       - 'c:%systemroot%\system32\inetsrv\appcmd list app -> r:anonymousAuthentication enabled="true"'
 
   - id: 22005
-    title: " Ensure WebDav feature is disabled"
+    title: "Ensure WebDav feature is disabled"
     description: "WebDAV is an extension to the HTTP protocol which allows clients to create, move, and delete files and resources on the web server. This functionality is available in IIS when the WebDAV feature is enabled."
     rationale: "WebDAV is not widely used, and it has serious security concerns because it may allow clients to modify unauthorized files on the web server. Therefore, the WebDav feature should be disabled."
     remediation: "To disable this feature using PowerShell, enter the following command: Remove-WindowsFeature Web-DAV-Publishing Verify that Success is True"
@@ -209,7 +209,7 @@ checks:
   #    title: "Ensure ASP.NET stack tracing is not enabled"
 
   #3.6 - Has to be done manually as each website name must be provided
-  #    title: " Ensure 'httpcookie' mode is configured for session state"
+  #    title: "Ensure 'httpcookie' mode is configured for session state"
 
   #3.7 - Has to be done manually as each website name must be provided
   #    title: "Ensure 'cookies' are set with HttpOnly attribute"
@@ -244,7 +244,7 @@ checks:
       - 'c:%systemroot%\system32\inetsrv\appcmd list config /commit:WEBROOT /section:machineKey -> r:validation="HMACSHA256"'
 
   - id: 22012
-    title: " Ensure global .NET trust level is configured"
+    title: "Ensure global .NET trust level is configured"
     description: "This only applies to .Net 2.0. Future versions have stopped supporting this feature. An application's trust level determines the permissions that are granted by the ASP.NET code access security (CAS) policy. CAS defines two trust categories: full trust and partial trust. An application that has full trust permissions may access all resource types on a server and perform privileged operations, while applications that run with partial trust have varying levels of operating permissions and access to resources. It is recommended that the global .NET Trust Level be set to Medium or lower."
     rationale: "The CAS determines the permissions that are granted to the application on the server. Setting a minimal level of trust that is compatible with the applications will limit the potential harm that a compromised application could cause to a system."
     remediation: "To set the .Net Trust Level to Medium at the server level using an appcmd.exe command: %systemroot%\\system32\\inetsrv\\appcmd set config /commit:WEBROOT /section:trust /level:Medium"

@@ -577,7 +577,7 @@ checks:
   - id: 18534
     title: "Ensure interactive boot is not enabled."
     description: "Interactive boot allows console users to interactively select which services start on boot. Not all distributions support this capability.The PROMPT_FOR_CONFIRM option provides console users the ability to interactively boot the system and select which services to start on boot ."
-    rationale: " Turn off the PROMPT_FOR_CONFIRMoption on the console to prevent console users from potentially overriding established security settings."
+    rationale: "Turn off the PROMPT_FOR_CONFIRMoption on the console to prevent console users from potentially overriding established security settings."
     remediation: "If interactive boot is available disable it."
     compliance:
       - cis: ["1.5.4"]

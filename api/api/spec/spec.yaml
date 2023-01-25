@@ -11085,15 +11085,15 @@ paths:
                     - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-remoted
                       level: debug
-                      description: " TCP socket 20 already in keystore. Updating..."
+                      description: "TCP socket 20 already in keystore. Updating..."
                     - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-remoted
                       level: debug
-                      description: " Agent '003' group is 'default'"
+                      description: "Agent '003' group is 'default'"
                     - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-remoted
                       level: debug
-                      description: " Agent '003' with group 'default' file 'merged.mg' MD5
+                      description: "Agent '003' with group 'default' file 'merged.mg' MD5
                         '9a016508cea1e997ab8569f5cfab30f5'"
                   total_affected_items: 3
                   total_failed_items: 0
@@ -12729,7 +12729,7 @@ paths:
                     - timestamp: '2020-04-15T13:50:24Z'
                       tag: wazuh-maild
                       level: error
-                      description: " (1263): Error Sending email to 69.172.200.109 (smtp server)"
+                      description: "(1263): Error Sending email to 69.172.200.109 (smtp server)"
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0

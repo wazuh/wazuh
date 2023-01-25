@@ -2293,7 +2293,7 @@ checks:
 
   # 3.4.3.3.1 Ensure ip6tables loopback traffic is configured (Automated)
   - id: 28120
-    title: " Ensure ip6tables loopback traffic is configured."
+    title: "Ensure ip6tables loopback traffic is configured."
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (::1)."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (::1) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure. Note: Changing firewall settings while connected over network can result in being locked out of the system."
     remediation: "Run the following commands to implement the loopback rules:# ip6tables -A INPUT -i lo -j ACCEPT# ip6tables -A OUTPUT -o lo -j ACCEPT# ip6tables -A INPUT -s::1 -j DROP."
