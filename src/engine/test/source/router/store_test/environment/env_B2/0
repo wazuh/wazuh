@@ -1,0 +1,6 @@
+{
+    "name": "environment/env_B2/0",
+    "decoders": [
+        "decoder/deco_B2/0"
+    ]
+}

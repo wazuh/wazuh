@@ -1,0 +1,5 @@
+{
+    "name": "route/allow_all_C3/0",
+    "priority": 103,
+    "target": "environment/env_C3/0"
+}

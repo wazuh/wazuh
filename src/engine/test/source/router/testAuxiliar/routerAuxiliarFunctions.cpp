@@ -44,5 +44,12 @@ std::shared_ptr<builder::Builder> getFakeBuilder()
 };
 
 
+base::Event createFakeMessage(std::optional<std::string> msgOpt)
+{
+
+    auto msgStr = msgOpt.value_or("1:127.0.0.1:Fake message");
+
+    return base::parseEvent::parseOssecEvent(msgStr);
+}
 
 } // namespace aux
