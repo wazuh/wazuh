@@ -15,11 +15,11 @@ sources:
   - decoder/aws/0
 
 check:
-  - wazuh.modules.aws.source: +s_eq/cloudtrail
+  - wazuh.modules.aws.source: cloudtrail
 
 normalize:
   - check:
-      - ~json.aws.previousDigestHashAlgorithm: +s_eq/SHA-256
+      - ~json.aws.previousDigestHashAlgorithm: SHA-256
     map:
       - file.hash.sha256: $~json.aws.previousDigestSignature
 
@@ -126,11 +126,13 @@ normalize:
       - group.id: $~json.aws.cloudtrail.flattened.response_elements.group.groupId
       - user.target.id: $~json.aws.cloudtrail.flattened.response_elements.user.userId
 
-  - check: ~json.aws.additionalEventData.MobileVersion==No
+  - check:
+      - ~json.aws.additionalEventData.MobileVersion: No
     map:
       - aws.cloudtrail.flattened.additionalEventData.mobile_version: false
 
-  - check: ~json.aws.additionalEventData.MobileVersion.MFAUsed==No
+  - check:
+      - ~json.aws.additionalEventData.MobileVersion.MFAUsed: No
     map:
       - aws.cloudtrail.flattened.additionalEventData.mfa_used: false
 
@@ -138,7 +140,8 @@ normalize:
     map:
       - event.outcome: failure
 
-  - check: ~json.aws.responseElements.ConsoleLogin==ConsoleLogin
+  - check:
+      - ~json.aws.responseElements.ConsoleLogin: ConsoleLogin
     map:
       - event.outcome: +s_lo/aws.cloudtrail.flattened.response_elements.ConsoleLogin
 

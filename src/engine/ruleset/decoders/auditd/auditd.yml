@@ -4,149 +4,69 @@ name: decoder/auditd/0
 metadata:
   description: Decoder for Linux auditd logs
   references:
+    - https://linux.die.net/man/8/auditd
     - https://docs.elastic.co/en/integrations/auditd
   product.name: auditd
 
 definitions:
-  TYPE_FIELD: type=<_log.record_type>
-  NODE_FIELD: node=<_node>
-  LOG_EPOCH: <_log.epoch>
+  TYPE_FIELD: type=<~log.record_type>
+  LOG_EPOCH: <~log.epoch>
   LOG_SEQUENCE: <auditd.log.sequence>
-  EPOCH_SEQ_FIELD: "($LOG_EPOCH:$LOG_SEQUENCE):"
-  MSG_FIELD: msg=audit$EPOCH_SEQ_FIELD
+  MSG_FIELD: '<~/literal/msg=audit(>$LOG_EPOCH:$LOG_SEQUENCE<~/literal/):>'
+
+sources:
+  - decoder/queue-localfile/0
 
 check:
   - event.original: +r_match/msg=audit
 
-# Example auditd logs:
-# type=SYSCALL msg=audit(1234567890.876:15315345): arch=a1b2c3d4 syscall=44 success=yes exit=184 a0=9 a1=5f563c6007a0 a2=c3 a3=0 items=0 ppid=2022 pid=6969 auid=3238672382 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=3238672382 comm=\"chandon\" exe=2f7573722f706174682f7765616b7069672f6368616e646f6e202864656c6574656429 key=(null)
-# node=localhost.somedomain type=DAEMON_START msg=audit(1234765101.484:3404): op=start ver=2.3.4 format=raw kernel=3.9.0-1061.8.1.el7.x86_64 auid=4943949201 pid=6969 uid=0 ses=4943949201 subj=system_u:system_r:auditd_t:s0 res=success
-# node=localhost.somexdomain type=SYSTEM_BOOT msg=audit(1234765101.484:3): pid=6969 uid=0 auid=4943949201 ses=4943949201 subj=system_u:system_r:init_t:s0 msg=' comm="systemd-update-utmp" exe="/usr/lib/systemd/systemd-update-utmp" hostname=? addr=? terminal=? res=success'
-# type=SYSCALL msg=audit(1234567890.404:1992): arch=c000003e syscall=42 success=no exit=-112 a0=4 a1=5f563c6007a0 a2=10 a3=4 items=0 ppid=1 pid=6969 auid=3238672382 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=3238672382 comm="google_ip_forwa" exe="/usr/bin/python3.7" key="key=net"
-# type=AVC msg=audit(1234567890.203:33): avc:  denied  { getattr } for  pid=6969 comm="httpd" path="/var/path/some/file" dev=dm-0 ino=223344 scontext=unconfined_u:system_r:httpd_t:s0 tcontext=unconfined_u:object_r:samba_share_t:s0 tclass=file
-# type=EXECVE msg=audit(1234567890.666:700): argc=101 a0="/path/program" a1="/arg1" a2="/arg2" a3="/arg3" a4="/arg4" a5="/arg5" a6="/arg6" a7="/arg7" a8="/arg8" a9="/arg9" a10="/arg10" a11="/arg11" a12="/arg12" a13="/arg13" a14="/arg14" a15="/arg15" a16="/arg16" a17="/arg17" a18="/arg18" a19="/arg19" a20="/arg20" a21="/arg21" a22="/arg22" a23="/arg23" a24="/arg24" a25="/arg25" a26="/arg26" a27="/arg27" a28="/arg28" a29="/arg29" a30="/arg30" a31="/arg31" a32="/arg32" a33="/arg33" a34="/arg34" a35="/arg35" a36="/arg36" a37="/arg37" a38="/arg38" a39="/arg39" a40="/arg40" a41="/arg41" a42="/arg42" a43="/arg43" a44="/arg44" a45="/arg45" a46="/arg46" a47="/arg47" a48="/arg48" a49="/arg49" a50="/arg50" a51="/arg51" a52="/arg52" a53="/arg53" a54="/arg54" a55="/arg55" a56="/arg56" a57="/arg57" a58="/arg58" a59="/arg59" a60="/arg60" a61="/arg61" a62="/arg62" a63="/arg63" a64="/arg64" a65="/arg65" a66="/arg66" a67="/arg67" a68="/arg68" a69="/arg69" a70="/arg70" a71="/arg71" a72="/arg72" a73="/arg73" a74="/arg74" a75="/arg75" a76="/arg76" a77="/arg77" a78="/arg78" a79="/arg79" a80="/arg80" a81="/arg81" a82="/arg82" a83="/arg83" a84="/arg84" a85="/arg85" a86="/arg86" a87="/arg87" a88="/arg88" a89="/arg89" a90="/arg90" a91="/arg91" a92="/arg92" a93="/arg93" a94="/arg94" a95="/arg95" a96="/arg96" a97="/arg97" a98="/arg98" a99="/arg99"
-# type=PROCTITLE msg=audit(1234567890.606:1992): proctitle=737368643a206f6e2066697265205b7075625d
-# type=TTY msg=audit(1234567890.550:1992): tty pid=6969 uid=1000 auid=1000 ses=777 major=232 minor=0 comm="zsh" data=20383532332020676e6f6d65202d2d76657273696f6e0d0a20383532342020474e4f4d455f4445534b544f505f53455353494f4e5f49440d0a2038353235202024474e4f4d455f4445534b544f505f53455353494f4e5f49440d0a20383532362020676e6f6d652d736f667477617265202d2d76657273696f6e0d0a2038353237202073736820726f6f74403139322e3136382e31302e31300d0a203835323820207375646f20617074207570646174650d0a203835323920207375646f2061707420646973742d757067726164650d0a2038353330202073736820726f6f74403139322e3136382e31302e31300d0a2038353331202063642070726f6a656374732f77617a75682f7265706f730d0a2038353332202063642070726f6a6563740d0a20383533352020676974207374617475730d0a203835333620206769742070757368202d660d0a
-# type=VIRT_MACHINE_ID msg=audit(1234567890.911:1992): pid=6969 uid=0 auid=4943949201 ses=4943949201 subj=system_u:system_r:virtd_t:s0-s0:c0.c1023 msg='virt=kvm vm=\"rhel-work3\" uuid=650c2a3b-2a7d-a7bd-bbc7-aa0069007bbf vm-ctx=system_u:system_r:svirt_t:s0:c424,c957 img-ctx=system_u:object_r:svirt_image_t:s0:c424,c957 model=selinux exe="/usr/sbin/someexe" hostname=? addr=? terminal=? res=success'
-
 parse:
   logpar:
-    # Logs that start with "type="
+    # type=TEST_GROUP msg=audit(1610903123.444:555): pid=2940 uid=0 auid=1000 old auid=old_auid_example new auid=new_auid_example old ses=old_ses_example new ses=new_ses_example
     - event.original: >-
-        $TYPE_FIELD $MSG_FIELD <_log.msg>
+        (?node=<~node> )$TYPE_FIELD $MSG_FIELD <~log.msg>
         old auid=<auditd.log.old_auid> new auid=<auditd.log.new_auid>
         old ses=<auditd.log.old_ses> new ses=<auditd.log.new_ses>
 
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/' /'>
+    # DOUBLE QUOTED
+    # type=TEST_GROUP msg=audit(1610903123.444:555): pid=2940 uid=0 auid=1000 ses=14 msg="op=adding group to /etc/group id=1004 exe='/usr/sbin/groupadd' hostname=ubuntu-bionic addr=127.0.0.1 terminal=pts/2 res=success"
+    # node=localhost.localdomain type=SERVICE_START msg=audit(1594053514.709:6): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg="unit=auditd comm=\"systemd\" exe=\"/usr/lib/systemd/systemd\" hostname=? addr=? terminal=? res=success"
+    - event.original: (?node=<~node> )$TYPE_FIELD $MSG_FIELD <~log.msg> msg=<~log.sub_msg/quoted>
 
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/" /">
+    # SIMPLE QUOTED
+    # type=USER_CHAUTHTOK msg=audit(1610903123.444:555): pid=2953 uid=0 auid=1000 ses=14 msg='op=PAM:chauthtok acct="charlie" exe="/usr/bin/passwd" hostname=ubuntu-bionic addr=127.0.0.1 terminal=pts/2 res=success'
+    - event.original: (?node=<~node> )$TYPE_FIELD $MSG_FIELD <~log.msg> msg=<~log.sub_msg/quoted/'>
 
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/' /'>
+    # type=AVC msg=audit(1226874073.147:96): avc:  denied  { getattr } for  pid=2465 comm="httpd" path="/var/www/html/file1" dev=dm-0 ino=284133 scontext=unconfined_u:system_r:httpd_t:s0 tcontext=unconfined_u:object_r:samba_share_t:s0 tclass=file
+    - event.original: (?node=<~node> )$TYPE_FIELD $MSG_FIELD <~>for  <~log.msg>
 
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/" /">
-
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
-
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
-
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
-
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
-
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD <_avc/quoted/avc:/for > <_log.msg>
-
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD <_avc/quoted/avc:/for ><_log.msg>
-
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD tty <_log.msg>
-
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD <_log.msg>
-
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD
-
-    # Logs that start with "node="
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD $MSG_FIELD <_log.msg>
-        old auid=<auditd.log.old_auid> new auid=<auditd.log.new_auid>
-        old ses=<auditd.log.old_ses> new ses=<auditd.log.new_ses>
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD
-        $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/' /'>
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD
-        $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/" /">
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD
-        $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/' /'>
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD
-        $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/" /">
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD
-        $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD
-        $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD
-        $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD
-        $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD
-        $MSG_FIELD <_avc/quoted/avc:/for > <_log.msg>
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD
-        $MSG_FIELD <_avc/quoted/avc:/for ><_log.msg>
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD
-        $MSG_FIELD tty <_log.msg>
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD $MSG_FIELD <_log.msg>
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD $MSG_FIELD
+    # type=SYSCALL msg=audit(1234567890.404:1992): arch=c000003e syscall=42 success=no exit=-112 a0=4 a1=5f563c6007a0 a2=10 a3=4 items=0 ppid=1 pid=6969 auid=3238672382 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=3238672382 comm="google_ip_forwa" exe="/usr/bin/python3.7" key="key=net"
+    # node=localhost.localdomain type=DAEMON_START msg=audit(1594053514.588:4686): op=start ver=2.8.5 format=raw kernel=3.10.0-1062.9.1.el7.x86_64 auid=4294967295 pid=1643 uid=0 ses=4294967295 subj=system_u:system_r:auditd_t:s0 res=success
+    - event.original: (?node=<~node> )$TYPE_FIELD $MSG_FIELD (?tty )<~log.msg>
 
 normalize:
   - check:
-      - _log.msg: +ef_exists
-      - _log.sub_msg: +ef_exists
+      - ~log.msg: +ef_exists
+      - ~log.sub_msg: +ef_exists
     map:
-      - _kv_msg: +s_concat/$_log.msg/ /$_log.sub_msg
+      - ~kv_msg: +s_concat/$~log.msg/ /$~log.sub_msg
 
   - check:
-      - _log.sub_msg: +ef_not_exists
-      - _log.msg: +ef_exists
+      - ~log.sub_msg: +ef_not_exists
+      - ~log.msg: +ef_exists
     map:
-      - _kv_msg: $_log.msg
+      - ~kv_msg: $~log.msg
 
   - map:
       - event.kind: event
-      - timestamp: $_log.epoch
-      - event.action: +s_lo/$_log.record_type
-      - wazuh.avc: +ef_rename/$_avc
+      - event.module: auditd
+      - fileset.name: log
+      - auditd.log.old-auid: auditd.log.old_auid
+      - auditd.log.old-ses: auditd.log.old_ses
+
+      # TODO: we need a HF that parses a date from epoch in secs
+      - timestamp: $~log.epoch
+      # TODO: this must be queried from a db with the process name as argument
+      - event.action: +s_lo/$~log.record_type
+      - event.type: info
+      - event.category: process
