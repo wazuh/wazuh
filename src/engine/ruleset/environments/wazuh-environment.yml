@@ -61,7 +61,6 @@ decoders:
   - decoder/syscollector-program/0
   - decoder/syscollector-program-del/0
   - decoder/syscollector-program-save/0
-  - decoder/auditd/0
 
   # Service decoders
   - decoder/syslog/0
@@ -80,6 +79,10 @@ decoders:
   - decoder/aws-s3/0
   - decoder/aws-cloudtrail/0
   - decoder/aws-elb/0
+
+  # Auditd
+  - decoder/auditd/0
+  - decoder/auditd-kv/0
 
 outputs:
   - output/file-output/0
