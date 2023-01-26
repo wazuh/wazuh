@@ -30,6 +30,14 @@ int total_files;
  */
 STATIC int w_logcollector_get_macos_log_type(const char * content);
 
+/**
+ * @brief Check the regex type configured in localfile, the allowed types are osmatch, osregex and pcre2
+ * @param node Current configuration node being edited
+ * @param element Configuration element tag name
+ * @return Returns the variable associated with the specified regex type
+ */
+w_exp_type_t w_check_regex_type(xml_node * node, const char * element);
+
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     unsigned int pl = 0;
@@ -54,12 +62,15 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_age = "age";
     const char *xml_localfile_exclude = "exclude";
     const char *xml_localfile_binaries = "ignore_binaries";
+    const char *xml_localfile_ignore = "ignore";
+    const char *xml_localfile_restrict = "restrict";
     const char *xml_localfile_multiline_regex =  "multiline_regex";
 
     logreader *logf;
     logreader_config *log_config;
     size_t labels_z=0;
     label_flags_t flags;
+    w_exp_type_t regex_type;
 
     log_config = (logreader_config *)d1;
 
@@ -99,6 +110,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].exists = 1;
     logf[pl].future = 1;
     logf[pl].reconnect_time = DEFAULT_EVENTCHANNEL_REC_TIME;
+    logf[pl].regex_ignore = NULL;
+    logf[pl].regex_restrict = NULL;
 
     /* Search for entries related to files */
     i = 0;
@@ -446,6 +459,65 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+        } else if (strcasecmp(node[i]->element, xml_localfile_ignore) == 0) {
+            regex_type = EXP_TYPE_PCRE2;
+            if (node[i]->attributes && node[i]->values && node[i]->attributes[0]) {
+                if (!strcmp(node[i]->attributes[0], "type")) {
+                    regex_type = w_check_regex_type(node[i], xml_localfile_ignore);
+                } else {
+                    merror(LF_LOG_REGEX, xml_localfile_ignore, node[i]->content);
+                    return (OS_INVALID);
+                }
+            }
+
+            if (logf[pl].regex_ignore == NULL) {
+                logf[pl].regex_ignore = OSList_Create();
+                if (logf[pl].regex_ignore == NULL) {
+                    merror(MEM_ERROR, errno, strerror(errno));
+                    return (OS_INVALID);
+                }
+                OSList_SetFreeDataPointer(logf[pl].regex_ignore, (void (*)(void *))w_free_expression);
+            }
+            w_expression_t * expression_ignore;
+
+            w_calloc_expression_t(&expression_ignore, regex_type);
+
+            if (!w_expression_compile(expression_ignore, node[i]->content, 0)) {
+                merror(LF_LOG_REGEX, "ignore", node[i]->content);
+                w_free_expression_t(&expression_ignore);
+                return (OS_INVALID);
+            }
+            OSList_InsertData(logf[pl].regex_ignore, NULL, expression_ignore);
+
+        } else if (strcasecmp(node[i]->element, xml_localfile_restrict) == 0) {
+            regex_type = EXP_TYPE_PCRE2;
+            if (node[i]->attributes && node[i]->values && node[i]->attributes[0]) {
+                if (!strcmp(node[i]->attributes[0], "type")) {
+                    regex_type = w_check_regex_type(node[i], xml_localfile_restrict);
+                } else {
+                    merror(LF_LOG_REGEX, xml_localfile_restrict, node[i]->content);
+                    return (OS_INVALID);
+                }
+            }
+
+            if (logf[pl].regex_restrict == NULL) {
+                logf[pl].regex_restrict = OSList_Create();
+                if (logf[pl].regex_restrict == NULL) {
+                    merror(MEM_ERROR, errno, strerror(errno));
+                    return (OS_INVALID);
+                }
+                OSList_SetFreeDataPointer(logf[pl].regex_restrict, (void (*)(void *))w_free_expression);
+            }
+            w_expression_t * expression_restrict;
+
+            w_calloc_expression_t(&expression_restrict, regex_type);
+
+            if (!w_expression_compile(expression_restrict, node[i]->content, 0)) {
+                merror(LF_LOG_REGEX, "restrict", node[i]->content);
+                w_free_expression_t(&expression_restrict);
+                return (OS_INVALID);
+            }
+            OSList_InsertData(logf[pl].regex_restrict, NULL, expression_restrict);
 
         } else {
             merror(XML_INVELEM, node[i]->element);
@@ -745,6 +817,15 @@ void Free_Logreader(logreader * logf) {
         os_free(logf->exclude);
         os_free(logf->query_level);
 
+        if (logf->regex_ignore) {
+            OSList_Destroy(logf->regex_ignore);
+            logf->regex_ignore = NULL;
+        }
+        if (logf->regex_restrict) {
+            OSList_Destroy(logf->regex_restrict);
+            logf->regex_restrict = NULL;
+        }
+
         if (logf->target) {
             for (i = 0; logf->target[i]; i++) {
                 free(logf->target[i]);
@@ -937,4 +1018,20 @@ STATIC int w_logcollector_get_macos_log_type(const char * content) {
     }
 
     return retval;
+}
+
+w_exp_type_t w_check_regex_type(xml_node * node, const char * element) {
+
+    if (node->values[0]) {
+        if (strcasecmp(node->values[0], OSREGEX_STR) == 0) {
+            return EXP_TYPE_OSREGEX;
+        } else if (strcasecmp(node->values[0], OSMATCH_STR) == 0) {
+            return EXP_TYPE_OSMATCH;
+        } else if (strcasecmp(node->values[0], PCRE2_STR) == 0) {
+            return EXP_TYPE_PCRE2;
+        }
+    }
+    mwarn(LOGCOLLECTOR_DEFAULT_REGEX_TYPE, element, node->content);
+
+    return EXP_TYPE_PCRE2;
 }

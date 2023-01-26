@@ -118,6 +118,10 @@ void __wrap_w_inc_global_agent_get_groups_integrity();
 
 void __wrap_w_inc_global_agent_get_groups_integrity_time(__attribute__((unused))struct timeval diff);
 
+void __wrap_w_inc_global_agent_get_distinct_groups();
+
+void __wrap_w_inc_global_agent_get_distinct_groups_time(__attribute__((unused))struct timeval diff);
+
 // Global group counters
 
 void __wrap_w_inc_global_group_insert_agent_group();

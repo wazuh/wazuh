@@ -1190,6 +1190,13 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_get_all_agents_time(diff);
             }
+        } else if (strcmp(query, "get-distinct-groups") == 0) {
+            w_inc_global_agent_get_distinct_groups();
+            gettimeofday(&begin, 0);
+            result = wdb_parse_global_get_distinct_agent_groups(wdb, next, output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_agent_get_distinct_groups_time(diff);
         } else if (strcmp(query, "get-agent-info") == 0) {
             w_inc_global_agent_get_agent_info();
             if (!next) {
@@ -5997,6 +6004,27 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
     if (!result) {
         mdebug1("Error getting agents from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agents from global.db.");
+        return OS_INVALID;
+    }
+
+    //Print response
+    char* out = cJSON_PrintUnformatted(result);
+    snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
+
+    cJSON_Delete(result);
+    os_free(out)
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_get_distinct_agent_groups(wdb_t* wdb, char* input, char* output) {
+
+    // Execute command
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_distinct_agent_groups(wdb, input, &status);
+    if (!result) {
+        mdebug1("Error getting agent groups from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agent groups from global.db.");
         return OS_INVALID;
     }
 

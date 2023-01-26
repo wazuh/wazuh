@@ -113,7 +113,10 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
                 continue;
             }
 
-            w_msg_hash_queues_push(utf8_string, lf->file, utf8_bytes, lf->log_target, LOCALFILE_MQ);
+            if (!check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, utf8_string)) {
+                w_msg_hash_queues_push(utf8_string, lf->file, utf8_bytes, lf->log_target, LOCALFILE_MQ);
+            }
+
             os_free(utf8_string);
         }
         /* Incorrect message size */

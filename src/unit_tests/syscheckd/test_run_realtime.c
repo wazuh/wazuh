@@ -1424,7 +1424,7 @@ void test_realtime_adddir_whodata_non_existent_file(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9));
+    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5));
     configuration->dirs_status.status &= ~WD_CHECK_WHODATA;
     configuration->dirs_status.status |= WD_CHECK_REALTIME;
 
@@ -1451,7 +1451,7 @@ void test_realtime_adddir_whodata_error_adding_whodata_dir(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9));
+    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5));
     configuration->dirs_status.status &= ~WD_CHECK_WHODATA;
     configuration->dirs_status.status |= WD_CHECK_REALTIME;
 
@@ -1483,7 +1483,7 @@ void test_realtime_adddir_whodata_file_success(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9));
+    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5));
     configuration->dirs_status.status &= ~WD_CHECK_WHODATA;
     configuration->dirs_status.status |= WD_CHECK_REALTIME;
 
@@ -1512,7 +1512,7 @@ void test_realtime_adddir_whodata_dir_success(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9));
+    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5));
     configuration->dirs_status.status &= ~WD_CHECK_WHODATA;
     configuration->dirs_status.status |= WD_CHECK_REALTIME;
 

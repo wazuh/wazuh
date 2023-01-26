@@ -125,7 +125,7 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_non_null(syscheck.directories);
     // Directories configuration have 100 directories in one line. It only can monitor 64 per line.
     // With the first 10 directories in other lines, the count should be 74 (75 should be NULL)
-    for (int i = 0; i < 74; i++){
+    for (int i = 0; i < 70; i++){
         assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, i)));
     }
     assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 74)));
@@ -344,7 +344,7 @@ void test_getSyscheckConfig(void **state)
 #if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_dir), 6);
     #elif defined(TEST_WINAGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_dir), 17);
+    assert_int_equal(cJSON_GetArraySize(sys_dir), 13);
 #endif
 
 
@@ -479,7 +479,7 @@ void test_getSyscheckConfig_no_audit(void **state)
 #ifndef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(sys_dir), 8);
 #else
-    assert_int_equal(cJSON_GetArraySize(sys_dir), 10);
+    assert_int_equal(cJSON_GetArraySize(sys_dir), 6);
 #endif
 
     cJSON *sys_nodiff = cJSON_GetObjectItem(sys_items, "nodiff");
@@ -844,6 +844,51 @@ void test_fim_copy_directory_return_dir_copied(void **state) {
     test_struct->dir1 = new_entry;
 }
 
+void test_fim_adjust_path_no_changes (void **state) {
+    char *path = strdup("c:\\a\\path\\not\\replaced");
+
+    fim_adjust_path(&path);
+
+    assert_string_equal(path, "c:\\a\\path\\not\\replaced");
+
+    free(path);
+}
+
+void test_fim_adjust_path_convert_sysnative (void **state) {
+    char *path = strdup("C:\\windows\\sysnative\\test");
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6307): Convert 'c:\\windows\\sysnative\\test' to 'c:\\windows\\system32\\test' to process the FIM events.");
+
+    fim_adjust_path(&path);
+
+    assert_string_equal(path, "c:\\windows\\system32\\test");
+
+    free(path);
+}
+
+void test_fim_adjust_path_convert_syswow64 (void **state) {
+
+    char *path = strdup("C:\\windows\\syswow64\\test");
+
+    fim_adjust_path(&path);
+
+    assert_string_equal(path, "c:\\windows\\syswow64\\test");
+
+    free(path);
+}
+
+void test_fim_adjust_path_convert_system32 (void **state) {
+
+    char *path = strdup("c:\\windows\\system32\\test");
+
+    fim_adjust_path(&path);
+
+    assert_string_equal(path, "c:\\windows\\system32\\test");
+
+    free(path);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_success, restart_syscheck),
@@ -861,7 +906,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_insert_directory_insert_entry_before, setup_entry, teardown_entry),
         cmocka_unit_test_setup_teardown(test_fim_insert_directory_insert_entry_last, setup_entry, teardown_entry),
         cmocka_unit_test(test_fim_copy_directory_null),
-        cmocka_unit_test_setup_teardown(test_fim_copy_directory_return_dir_copied, setup_entry, teardown_entry)
+        cmocka_unit_test_setup_teardown(test_fim_copy_directory_return_dir_copied, setup_entry, teardown_entry),
+	    cmocka_unit_test(test_fim_adjust_path_no_changes),
+        cmocka_unit_test(test_fim_adjust_path_convert_sysnative),
+        cmocka_unit_test(test_fim_adjust_path_convert_syswow64),
+        cmocka_unit_test(test_fim_adjust_path_convert_system32)
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

@@ -8576,6 +8576,131 @@ void test_wdb_global_set_agent_groups_sync_status_success(void** state){
     assert_int_equal(OS_SUCCESS, wdb_global_set_agent_groups_sync_status(data->wdb, id, sync));
 }
 
+/* Tests wdb_global_get_distinct_agent_groups */
+
+void test_wdb_global_get_distinct_agent_groups_transaction_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    char group_hash[] = "abcdef";
+
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_distinct_agent_groups(data->wdb, group_hash, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
+}
+
+void test_wdb_global_get_distinct_agent_groups_cache_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    char group_hash[] = "abcdef";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_distinct_agent_groups(data->wdb, group_hash, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
+}
+
+void test_wdb_global_get_distinct_agent_groups_bind_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    char group_hash[] = "abcdef";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "abcdef");
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_distinct_agent_groups(data->wdb, group_hash, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
+}
+
+void test_wdb_global_get_distinct_agent_groups_exec_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    char group_hash[] = "abcdef";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "abcdef");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    wrap_wdb_exec_stmt_sized_failed_call(STMT_MULTI_COLUMN);
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_distinct_agent_groups(data->wdb, group_hash, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
+}
+
+void test_wdb_global_get_distinct_agent_groups_succes_due(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    char group_hash[] = "abcdef";
+    cJSON* j_result = cJSON_Parse("[{\"group\":\"group1\",\"group_hash\":\"ec282560\"}]");
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "abcdef");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    wrap_wdb_exec_stmt_sized_socket_full_call(j_result, STMT_MULTI_COLUMN);
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_distinct_agent_groups(data->wdb, group_hash, &status);
+
+    char *output = cJSON_PrintUnformatted(result);
+    assert_string_equal(output, "[{\"group\":\"group1\",\"group_hash\":\"ec282560\"}]");
+    os_free(output);
+    assert_int_equal(status, WDBC_DUE);
+    __real_cJSON_Delete(result);
+}
+
+void test_wdb_global_get_distinct_agent_groups_succes_ok(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    char group_hash[] = "abcdef";
+    cJSON* j_result = cJSON_Parse("[{\"group\":\"group1\",\"group_hash\":\"ec282560\"}]");
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "abcdef");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    wrap_wdb_exec_stmt_sized_success_call(j_result, STMT_MULTI_COLUMN);
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_distinct_agent_groups(data->wdb, group_hash, &status);
+
+    char *output = cJSON_PrintUnformatted(result);
+    assert_string_equal(output, "[{\"group\":\"group1\",\"group_hash\":\"ec282560\"}]");
+    os_free(output);
+    assert_int_equal(status, WDBC_OK);
+    __real_cJSON_Delete(result);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -8623,7 +8748,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_groups_integrity_hash_mismatch, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_groups_integrity_synced, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_groups_integrity_error, test_setup, test_teardown),
-        /* Test _wdb_global_get_agent_max_group_priority */
+        /* Tests wdb_global_get_agent_max_group_priority */
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_statement_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_bind_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_step_fail, test_setup, test_teardown),
@@ -8948,7 +9073,7 @@ int main()
                                         test_setup,
                                         test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_calculate_agent_group_csv_success, test_setup, test_teardown),
-        /* wdb_global_assign_agent_group */
+        /* Tests wdb_global_assign_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_insert_belong_error,
                                         test_setup,
@@ -8956,7 +9081,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_find_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_insert_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_invalid_json, test_setup, test_teardown),
-        /* wdb_global_unassign_agent_group */
+        /* Tests wdb_global_unassign_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_success_assign_default_group, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_delete_tuple_error,
@@ -8964,7 +9089,7 @@ int main()
                                         test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_find_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_invalid_json, test_setup, test_teardown),
-        /* wdb_global_set_agent_group_context */
+        /* Tests wdb_global_set_agent_group_context */
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_init_stmt_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_exec_stmt_error, test_setup, test_teardown),
@@ -8973,17 +9098,17 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_groups_number_get_bind_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_groups_number_get_exec_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_groups_number_get_success, test_setup, test_teardown),
-        /* wdb_global_validate_group_name */
+        /* Tests wdb_global_validate_group_name */
         cmocka_unit_test_setup_teardown(test_wdb_global_validate_group_name_fail_group_name_contains_invalid_character_1, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_validate_group_name_fail_group_name_contains_invalid_character_2, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_validate_group_name_fail_group_name_exceeds_max_length, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_validate_group_name_fail_group_name_current_directory_reserved_name, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_validate_group_name_fail_group_name_parent_directory_reserved_name, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_validate_group_name_success, test_setup, test_teardown),
-        /* wdb_global_validate_groups */
+        /* Tests wdb_global_validate_groups */
         cmocka_unit_test_setup_teardown(test_wdb_global_validate_groups_fail_groups_exceeds_max_number, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_validate_groups_success, test_setup, test_teardown),
-        /* wdb_global_set_agent_group */
+        /* Tests wdb_global_set_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_override_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_override_delete_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_add_modes_assign_error, test_setup, test_teardown),
@@ -8995,11 +9120,18 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_invalid_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_calculate_csv_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_set_group_ctx_error, test_setup, test_teardown),
-        /* wdb_global_set_agent_groups_sync_status*/
+        /* Tests wdb_global_set_agent_groups_sync_status*/
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_sync_status_invalid_stmt, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_sync_status_bad_bind_sync, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_sync_status_bad_bind_id, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_sync_status_success, test_setup, test_teardown),
+        /* Tests wdb_global_get_distinct_agent_groups */
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_distinct_agent_groups_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_distinct_agent_groups_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_distinct_agent_groups_bind_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_distinct_agent_groups_exec_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_distinct_agent_groups_succes_due, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_distinct_agent_groups_succes_ok, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

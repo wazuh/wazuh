@@ -1175,8 +1175,8 @@ static void test_fim_check_depth_success(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 #else
 
-    char *aux_path = "c:\\windows\\sysnative\\wbem\\folder1\\folder2\\folder3\\path.exe";
-    directory_t configuration = { .path = "c:\\windows\\sysnative\\wbem", .recursion_level = 4 };
+    char *aux_path = "c:\\windows\\System32\\wbem\\folder1\\folder2\\folder3\\path.exe";
+    directory_t configuration = { .path = "c:\\windows\\System32\\wbem", .recursion_level = 4 };
     char path[OS_MAXSTR];
 
     if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
@@ -1250,7 +1250,7 @@ static void test_fim_configuration_directory_file(void **state) {
 }
 #else
 static void test_fim_configuration_directory_file(void **state) {
-    char *aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
+    char *aux_path = "%WINDIR%\\System32\\drivers\\etc";
     char path[OS_MAXSTR];
     directory_t *ret;
 
@@ -2302,7 +2302,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 7))->options |= CHECK_SEECHANGES;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5))->options |= CHECK_SEECHANGES;
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -2343,7 +2343,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 
     errno = 0;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 7))->options &= ~CHECK_SEECHANGES;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5))->options &= ~CHECK_SEECHANGES;
 }
 
 static void test_fim_checker_fim_regular(void **state) {
@@ -2570,13 +2570,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     struct stat directory_stat = { .st_mode = S_IFDIR };
     TXN_HANDLE mock_handle;
     char expanded_dirs[10][OS_SIZE_1024];
-    char directories[10][OS_SIZE_256] = {
+    char directories[6][OS_SIZE_256] = {
         "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
         "%WINDIR%",
-        "%WINDIR%\\SysNative",
-        "%WINDIR%\\SysNative\\drivers\\etc",
-        "%WINDIR%\\SysNative\\wbem",
-        "%WINDIR%\\SysNative\\WindowsPowerShell\\v1.0",
         "%WINDIR%\\System32",
         "%WINDIR%\\System32\\drivers\\etc",
         "%WINDIR%\\System32\\wbem",
@@ -2601,7 +2597,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    for(i = 0; i < 10; i++) {
+    for(i = 0; i < 6; i++) {
         if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024)) {
             fail();
         }
@@ -2634,13 +2630,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
 static void test_fim_scan_db_full_not_double_scan(void **state) {
     char expanded_dirs[10][OS_SIZE_1024];
-    char directories[10][OS_SIZE_256] = {
+    char directories[6][OS_SIZE_256] = {
         "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
         "%WINDIR%",
-        "%WINDIR%\\SysNative",
-        "%WINDIR%\\SysNative\\drivers\\etc",
-        "%WINDIR%\\SysNative\\wbem",
-        "%WINDIR%\\SysNative\\WindowsPowerShell\\v1.0",
         "%WINDIR%\\System32",
         "%WINDIR%\\System32\\drivers\\etc",
         "%WINDIR%\\System32\\wbem",
@@ -2667,7 +2659,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    for(i = 0; i < 10; i++) {
+    for(i = 0; i < 6; i++) {
         if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024)) {
             fail();
         }
@@ -2699,13 +2691,9 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
 static void test_fim_scan_no_limit(void **state) {
     char expanded_dirs[10][OS_SIZE_1024];
-    char directories[10][OS_SIZE_256] = {
+    char directories[6][OS_SIZE_256] = {
         "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
         "%WINDIR%",
-        "%WINDIR%\\SysNative",
-        "%WINDIR%\\SysNative\\drivers\\etc",
-        "%WINDIR%\\SysNative\\wbem",
-        "%WINDIR%\\SysNative\\WindowsPowerShell\\v1.0",
         "%WINDIR%\\System32",
         "%WINDIR%\\System32\\drivers\\etc",
         "%WINDIR%\\System32\\wbem",
@@ -2733,7 +2721,7 @@ static void test_fim_scan_no_limit(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    for(i = 0; i < 10; i++) {
+    for(i = 0; i < 6; i++) {
         if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024)) {
             fail();
         }

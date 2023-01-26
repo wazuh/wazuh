@@ -2098,3 +2098,32 @@ time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
 
     return oldest_backup_time;
 }
+
+cJSON* wdb_global_get_distinct_agent_groups(wdb_t *wdb, char *group_hash, wdbc_result* status) {
+    //Prepare SQL query
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        *status = WDBC_ERROR;
+        return NULL;
+    }
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_GROUPS) < 0) {
+        mdebug1("Cannot cache statement");
+        *status = WDBC_ERROR;
+        return NULL;
+    }
+    sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_GROUPS];
+    if (sqlite3_bind_text(stmt, 1, group_hash != NULL ? group_hash : "", -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        *status = WDBC_ERROR;
+        return NULL;
+    }
+
+    //Execute SQL query limited by size
+    int sql_status = SQLITE_ERROR;
+    cJSON* result = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
+    if (SQLITE_DONE == sql_status) *status = WDBC_OK;
+    else if (SQLITE_ROW == sql_status) *status = WDBC_DUE;
+    else *status = WDBC_ERROR;
+
+    return result;
+}

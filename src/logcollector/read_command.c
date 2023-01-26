@@ -58,6 +58,11 @@ void *read_command(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 
+        /* Check ignore and restrict log regex, if configured. */
+        if (check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
+            continue;
+        }
+
         mdebug2("Reading command message: '%s'", str);
 
         /* Send message to queue */

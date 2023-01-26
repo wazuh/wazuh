@@ -30,7 +30,7 @@ ecdsa==0.16.1
 envparse==0.2.0
 Flask==1.1.2
 frozenlist==1.2.0
-future==0.17.1
+future==0.18.3
 google-api-core==1.30.0
 googleapis-common-protos==1.51.0
 google-auth==1.28.0

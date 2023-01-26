@@ -250,6 +250,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GROUP_CTX_SET,
     WDB_STMT_GLOBAL_GROUP_HASH_GET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
+    WDB_STMT_GLOBAL_GET_GROUPS,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
@@ -631,6 +632,18 @@ void wdb_free_agent_info_data(agent_info_data *agent_data);
  * @return JSON array with the statement execution results. NULL On error.
  */
 wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, int* last_item, int* last_size);
+
+/**
+ * @brief Function to parse a chunk response that contains the status of the query and a json array.
+ *        This function will add the parsed response to the output_json (json) array.
+ *
+ * @param [in] input The chunk obtained from WazuhDB to be parsed.
+ * @param [out] output_json Json array in which the new elements will be added.
+ * @param [in] item Json string to search elements on the chunks.
+ * @param [out] last_item_value Value of the last item. If NULL no value is written.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_parse_chunk_to_json_by_string_item(char* input, cJSON** output_json, const char* item, char** last_item_value);
 
 /**
  * @brief Function to initialize a new transaction and cache the statement.
@@ -1353,6 +1366,16 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output);
  * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output);
+
+/**
+ * @brief Function to parse the get-distinct-groups command data.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with 'last_group_hash'.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_get_distinct_agent_groups(wdb_t* wdb, char *input, char* output);
 
 /**
  * @brief Function to parse the reset agent connection status request.
@@ -2204,6 +2227,18 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
  * @retval -1 The table "agent" is missing or an error occurred.
  */
 int wdb_global_check_manager_keepalive(wdb_t *wdb);
+
+/**
+ * @brief Returns a JSON array containing the group and group_hash assigned to all agents,
+ *        if two agents have the same group assigned it is only included once
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] group_hash Group hash where to start querying.
+ * @param [out] status wdbc_result to represent if all group/group_hash has being obtained or any error occurred.
+ * @retval JSON with group/group_hash on success.
+ * @retval NULL on error.
+ */
+cJSON* wdb_global_get_distinct_agent_groups(wdb_t *wdb, char *group_hash, wdbc_result* status);
 
 /**
  * @brief Function to insert or update rows with a dynamic query based on metadata.

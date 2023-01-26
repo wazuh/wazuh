@@ -32,7 +32,7 @@ relationships:
         - vulnerability_run
       rule_ids:
         - wui_elastic_admin
-        - wui_opendistro_admin
+        - wui_opensearch_admin
 
     readonly:
       policy_ids:

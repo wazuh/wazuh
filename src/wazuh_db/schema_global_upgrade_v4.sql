@@ -1,6 +1,6 @@
 /*
  * SQL Schema for upgrading databases
- * Copyright (C) 2015-2022, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * November, 2021.
  *
@@ -79,5 +79,7 @@ END;
 
 DROP TABLE IF EXISTS `group`;
 ALTER TABLE `_group` RENAME TO `group`;
+
+CREATE INDEX IF NOT EXISTS group_name ON `group` (name);
 
 UPDATE metadata SET value = '4' where key = 'db_version';

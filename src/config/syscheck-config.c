@@ -1674,7 +1674,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         /* Get directories */
         else if (strcmp(node[i]->element, xml_directories) == 0) {
             char dirs[OS_MAXSTR];
-
+#ifdef WIN32
+            fim_adjust_path(&(node[i]->content));
+#endif
             strncpy(dirs, node[i]->content, sizeof(dirs) - 1);
             if (!read_attr(syscheck,
                            dirs,
@@ -2188,6 +2190,23 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     }
 
     return (0);
+}
+
+void fim_adjust_path(char** path){
+    const char *system_32       = "system32";
+    const char *system_native   = "sysnative";
+    char *new_path              = NULL;
+
+    str_lowercase(*path);
+
+    if (strstr(*path, system_native)) {
+        new_path = wstr_replace(*path, system_native, system_32);
+    }
+    if (new_path) {
+        mdebug2(FIM_CONVERT_PATH, *path, new_path);
+        free(*path);
+        *path = new_path;
+    }
 }
 
 char *syscheck_opts2str(char *buf, int buflen, int opts) {

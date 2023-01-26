@@ -177,6 +177,11 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 
+        /* Check ignore and restrict log regex, if configured. */
+        if (check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
+            continue;
+        }
+
         mdebug2("Reading DJB multilog message: '%s'", buffer);
 
         /* Send message to queue */

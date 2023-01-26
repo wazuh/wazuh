@@ -3789,6 +3789,113 @@ void test_wdb_parse_global_get_fragmentation_success(void **state) {
     os_free(query);
 }
 
+/* Tests wdb_parse_global_get_distinct_agent_groups */
+
+void test_wdb_parse_global_get_distinct_agent_groups_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-distinct-groups";
+    cJSON *group_info = cJSON_Parse("[\"GROUP INFO\"]");
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-groups");
+    expect_value(__wrap_wdb_global_get_distinct_agent_groups, group_hash, NULL);
+    will_return(__wrap_wdb_global_get_distinct_agent_groups, WDBC_OK);
+    will_return(__wrap_wdb_global_get_distinct_agent_groups, group_info);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups_time);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok [\"GROUP INFO\"]");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_get_distinct_agent_groups_success_with_last_hash(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-distinct-groups abcdef";
+    cJSON *group_info = cJSON_Parse("[\"GROUP INFO\"]");
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-groups abcdef");
+    expect_string(__wrap_wdb_global_get_distinct_agent_groups, group_hash, "abcdef");
+    will_return(__wrap_wdb_global_get_distinct_agent_groups, WDBC_OK);
+    will_return(__wrap_wdb_global_get_distinct_agent_groups, group_info);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups_time);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok [\"GROUP INFO\"]");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_get_distinct_agent_groups_result_null(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-distinct-groups";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-groups");
+    expect_value(__wrap_wdb_global_get_distinct_agent_groups, group_hash, NULL);
+    will_return(__wrap_wdb_global_get_distinct_agent_groups, WDBC_ERROR);
+    will_return(__wrap_wdb_global_get_distinct_agent_groups, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent groups from global.db.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups_time);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Error getting agent groups from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_distinct_agent_groups_result_null_with_last_hash(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-distinct-groups abcdef";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-groups abcdef");
+    expect_string(__wrap_wdb_global_get_distinct_agent_groups, group_hash, "abcdef");
+    will_return(__wrap_wdb_global_get_distinct_agent_groups, WDBC_ERROR);
+    will_return(__wrap_wdb_global_get_distinct_agent_groups, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent groups from global.db.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups_time);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Error getting agent groups from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
 
 int main()
 {
@@ -3890,7 +3997,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_del_label_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_set_label_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_success, test_setup, test_teardown),
-        /* Test wdb_parse_global_set_agent_groups */
+        /* Tests wdb_parse_global_set_agent_groups */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_invalid_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_missing_field, test_setup, test_teardown),
@@ -3944,25 +4051,30 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_limit_succes, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_query_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_query_fail, test_setup, test_teardown),
-        /* wdb_parse_global_get_backup */
+        /* Tests wdb_parse_global_get_backup */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_backup_failed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_backup_success, test_setup, test_teardown),
-        /* wdb_parse_global_restore_backup */
+        /* Tests wdb_parse_global_restore_backup */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_invalid_syntax, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_success_missing_snapshot, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_success_pre_restore_true, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_success_pre_restore_false, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_success_pre_restore_missing, test_setup, test_teardown),
-        /* wdb_parse_global_vacuum */
+        /* Tests wdb_parse_global_vacuum */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_commit_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_vacuum_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_success_get_db_state_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_success_update_vacuum_data_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_success, test_setup, test_teardown),
-        /* wdb_parse_global_get_fragmentation */
+        /* Tests wdb_parse_global_get_fragmentation */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_fragmentation_db_state_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_fragmentation_free_pages_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_fragmentation_success, test_setup, test_teardown),
+        /* Tests wdb_parse_global_get_distinct_agent_groups */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_distinct_agent_groups_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_distinct_agent_groups_result_null, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_distinct_agent_groups_success_with_last_hash, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_distinct_agent_groups_result_null_with_last_hash, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
