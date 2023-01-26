@@ -5,6 +5,9 @@
       },
       {
         "$ref": "aws-fields.json"
+      },
+      {
+        "$ref": "auditd-fields.json"
       }
     ]
 }
