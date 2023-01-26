@@ -19,6 +19,7 @@ TEST_CONFIG_SCHEMA = "schema_config_test.sql"
 TEST_TABLE_NAME = 'config'
 
 TEST_DATE = '2023/1/1'
+DAYS_DELTA = 10
 
 SQL_FIND_LAST_LOG_PROCESSED = """SELECT created_date FROM {table_name} ORDER BY created_date DESC LIMIT 1;"""
 SQL_FIND_LAST_KEY_PROCESSED = """SELECT log_key FROM {table_name} ORDER BY log_key DESC LIMIT 1;"""
@@ -37,8 +38,9 @@ def test_AWSConfigBucket__init__(mock_logs_bucket):
     assert instance._extract_date_regex == re.compile(r'\d{4}/\d{1,2}/\d{1,2}')
 
 
-@patch('aws_bucket.AWSLogsBucket.__init__')
-def test_AWSConfigBucket_get_days_since_today(mock_logs_bucket):
+def test_AWSConfigBucket_get_days_since_today():
+    """Test 'get_days_since_today' returns the expected number of days since today.
+    """
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
     test_date = "20220630"
 
@@ -49,13 +51,13 @@ def test_AWSConfigBucket_get_days_since_today(mock_logs_bucket):
 
 
 @patch('config.AWSConfigBucket.get_date_last_log')
-@patch('config.AWSConfigBucket.get_days_since_today', return_value=10)
-@patch('aws_bucket.AWSLogsBucket.__init__')
-def test_AWSConfigBucket_get_date_list(mock_logs_bucket, mock_days_since_today, mock_date_last_log):
+@patch('config.AWSConfigBucket.get_days_since_today', return_value=DAYS_DELTA)
+def test_AWSConfigBucket_get_date_list(mock_days_since_today, mock_date_last_log):
+    """Test 'get_date_list' returns the expected list of dates for a given delta of days.
+    """
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
-    num_days = instance.get_days_since_today(mock_date_last_log(utils.TEST_ACCOUNT_ID, utils.TEST_REGION))
 
-    date_list_time = [datetime.utcnow() - timedelta(days=x) for x in range(0, num_days)]
+    date_list_time = [datetime.utcnow() - timedelta(days=x) for x in range(0, DAYS_DELTA)]
 
     assert instance.get_date_list(utils.TEST_ACCOUNT_ID, utils.TEST_REGION) == [datetime.strftime(date, "%Y/%-m/%-d")
                                                                                 for date in reversed(date_list_time)]
@@ -63,8 +65,17 @@ def test_AWSConfigBucket_get_date_list(mock_logs_bucket, mock_days_since_today, 
 
 @pytest.mark.parametrize('only_logs_after', [None, utils.TEST_ONLY_LOGS_AFTER])
 @pytest.mark.parametrize('reparse', [True, False])
-@patch('aws_bucket.AWSLogsBucket.__init__', side_effect=aws_bucket.AWSLogsBucket.__init__)
-def test_AWSConfigBucket_get_date_last_log(mock_logs_bucket, custom_database, reparse, only_logs_after):
+def test_AWSConfigBucket_get_date_last_log(custom_database, reparse: bool, only_logs_after: str or None):
+    """Test 'get_date_last_log' method returns the expected last log date, checking the DB
+    or getting it from the instance's attributes (only_logs_after) if the DB is empty.
+
+    Parameters
+    ----------
+    reparse: bool
+        Whether to parse already parsed logs or not.
+    only_logs_after: str or None
+        Date after which obtain logs.
+    """
     utils.database_execute_script(custom_database, TEST_CONFIG_SCHEMA)
 
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, bucket=utils.TEST_BUCKET, reparse=reparse,
@@ -99,10 +110,18 @@ def test_AWSConfigBucket_get_date_last_log(mock_logs_bucket, custom_database, re
 @patch('config.AWSConfigBucket.get_date_list', return_value=['2022/12/24'])
 @patch('config.AWSConfigBucket.iter_files_in_bucket')
 @patch('aws_bucket.AWSBucket.db_maintenance')
-@patch('aws_bucket.AWSLogsBucket.__init__')
-def test_AWSConfigBucket_iter_regions_and_accounts(mock_logs_bucket, mock_db_maintenance, mock_iter_files,
-                                                   mock_date_list,
-                                                   mock_find_accounts, mock_find_regions, regions, account_id):
+def test_AWSConfigBucket_iter_regions_and_accounts(mock_db_maintenance, mock_iter_files, mock_date_list,
+                                                   mock_find_accounts, mock_find_regions,
+                                                   regions: list[str] or None, account_id: list[str] or None):
+    """Test 'iter_regions_and_accounts' method makes the necessary calls in order to process the bucket's files.
+
+    Parameters
+    ----------
+    regions: list[str] or None
+        List of region names.
+    account_id: list[str] or None
+        List of account ids.
+    """
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
 
     instance.iter_regions_and_accounts(account_id, regions)
@@ -130,15 +149,11 @@ def test_AWSConfigBucket_iter_regions_and_accounts(mock_logs_bucket, mock_db_mai
     ('2000/2/12', '20000212'),
     ('2022/02/1', '20220201')
 ])
-@patch('aws_bucket.AWSLogsBucket.__init__', side_effect=aws_bucket.AWSLogsBucket.__init__)
-def test_AWSConfigBucket__format_created_date(mock_logs_bucket, date: str, expected_date: str):
-    """
-    Test AWSConfigBucket's format_created_date method.
+def test_AWSConfigBucket__format_created_date(date: str, expected_date: str):
+    """Test AWSConfigBucket's _format_created_date method.
 
     Parameters
     ----------
-    mock_logs_bucket : MagicMock
-        AWSLogsBucket.__init__ mock.
     date : str
         The date introduced.
     expected_date : str
@@ -154,15 +169,24 @@ def test_AWSConfigBucket__format_created_date(mock_logs_bucket, date: str, expec
     ('AWSLogs/123456789/Config/us-east-1/2019/04/15/', 'AWSLogs/123456789/Config/us-east-1/2019/4/15/'),
     ('AWSLogs/123456789/Config/us-east-1/2019/12/06/', 'AWSLogs/123456789/Config/us-east-1/2019/12/6/')
 ])
-@patch('aws_bucket.AWSLogsBucket.__init__', side_effect=aws_bucket.AWSLogsBucket.__init__)
-def test_AWSConfigBucket__remove_padding_zeros_from_marker(mock_logs_bucket, marker, result_marker):
+def test_AWSConfigBucket__remove_padding_zeros_from_marker(marker: str, result_marker: str):
+    """Test AWSConfigBucket's '_remove_padding_zeros_from_marker' method.
+
+    Parameters
+    ----------
+    marker: str
+        The marker introduced.
+    result_marker: str
+        The marker the method should return without padding zeros in the date.
+    """
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
 
     assert instance._remove_padding_zeros_from_marker(marker) == result_marker
 
 
-@patch('aws_bucket.AWSLogsBucket.__init__', side_effect=aws_bucket.AWSLogsBucket.__init__)
-def test_AWSConfigBucket__remove_padding_zeros_from_marker_ko(mock_logs_bucket):
+def test_AWSConfigBucket__remove_padding_zeros_from_marker_ko():
+    """Test '_remove_padding_zeros_from_marker' method handles the AtrributeError exception and exits
+    with the expected exit code."""
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
 
     with patch('re.sub') as mock_re_sub:
@@ -173,8 +197,9 @@ def test_AWSConfigBucket__remove_padding_zeros_from_marker_ko(mock_logs_bucket):
 
 
 @patch('aws_bucket.AWSBucket.marker_only_logs_after')
-@patch('aws_bucket.AWSLogsBucket.__init__', side_effect=aws_bucket.AWSLogsBucket.__init__)
-def test_AWSConfigBucket_marker_only_logs_after(mock_logs_bucket, mock_marker_only_logs_after):
+def test_AWSConfigBucket_marker_only_logs_after(mock_marker_only_logs_after):
+    """Test 'marker_only_logs_after' method returns the expected marker.
+    """
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, only_logs_after=utils.TEST_ONLY_LOGS_AFTER)
     mock_marker_only_logs_after.return_value = f'AWSLogs/{utils.TEST_ACCOUNT_ID}/Config/{utils.TEST_REGION}/{instance.only_logs_after.strftime(instance.date_format)}'
 
@@ -184,8 +209,9 @@ def test_AWSConfigBucket_marker_only_logs_after(mock_logs_bucket, mock_marker_on
 
 
 @patch('aws_bucket.AWSBucket.marker_custom_date')
-@patch('aws_bucket.AWSLogsBucket.__init__', side_effect=aws_bucket.AWSLogsBucket.__init__)
-def test_AWSConfigBucket_marker_custom_date(mock_logs_bucket, mock_marker_custom_date):
+def test_AWSConfigBucket_marker_custom_date(mock_marker_custom_date):
+    """Test 'marker_custom_date' method returns the expected marker when specifying a custom date.
+    """
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
     custom_date = datetime(2022, 9, 8)
 
@@ -200,10 +226,21 @@ def test_AWSConfigBucket_marker_custom_date(mock_logs_bucket, mock_marker_custom
 @pytest.mark.parametrize('only_logs_after', ['20230201', None])
 @pytest.mark.parametrize('iterating', [True, False])
 @pytest.mark.parametrize('region', [utils.TEST_REGION, 'region_for_empty_db'])
-@patch('aws_bucket.AWSLogsBucket.__init__', side_effect=aws_bucket.AWSLogsBucket.__init__)
-def test_AWSConfigBucket_build_s3_filter_args(mock_logs_bucket, custom_database,
-                                              region, iterating,
-                                              only_logs_after, reparse):
+def test_AWSConfigBucket_build_s3_filter_args(custom_database,
+                                              region: str, iterating: bool, only_logs_after: str or None, reparse: bool):
+    """Test 'build_s3_filter_args' method returns the expected filter arguments for the list_objects_v2 call.
+
+    Parameters
+    ----------
+    region : str
+        Region name.
+    iterating: bool
+        Whether the call to the method is being made inside a loop due to a truncated response.
+    only_logs_after: str or None
+        Date after which obtain logs.
+    reparse: bool
+        Whether to parse already parsed logs or not.
+    """
     utils.database_execute_script(custom_database, TEST_CONFIG_SCHEMA)
 
     aws_account_id = utils.TEST_ACCOUNT_ID
@@ -245,8 +282,9 @@ def test_AWSConfigBucket_build_s3_filter_args(mock_logs_bucket, custom_database,
     assert expected_filter_args == instance.build_s3_filter_args(aws_account_id, aws_region, date, iterating)
 
 
-@patch('aws_bucket.AWSLogsBucket.__init__', side_effect=aws_bucket.AWSLogsBucket.__init__)
-def test_AWSConfigBucket_build_s3_filter_args_ko(mock_logs_bucket):
+def test_AWSConfigBucket_build_s3_filter_args_ko():
+    """Test 'build_s3_filter_args' method handles exceptions raised and exits with the expected exit code.
+    """
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, reparse=True)
 
     aws_account_id = utils.TEST_ACCOUNT_ID
@@ -264,7 +302,19 @@ def test_AWSConfigBucket_build_s3_filter_args_ko(mock_logs_bucket):
 @pytest.mark.parametrize('delete_file', [True, False])
 @patch('aws_bucket.aws_tools.debug')
 @patch('config.AWSConfigBucket.build_s3_filter_args')
-def test_AWSConfigBucket_iter_files_in_bucket(mock_build_filter, mock_debug, delete_file, reparse, object_list):
+def test_AWSConfigBucket_iter_files_in_bucket(mock_build_filter, mock_debug,
+                                              delete_file: bool, reparse: bool, object_list: dict):
+    """Test 'iter_files_in_bucket' method makes the necessary method calls in order to process the logs inside the bucket.
+
+    Parameters
+    ----------
+    delete_file: bool
+        Whether to remove the file from the bucket or not.
+    reparse: bool
+        Whether to parse already parsed logs or not.
+    object_list: dict
+        Objects to be returned by list_objects_v2.
+    """
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, bucket=utils.TEST_BUCKET, delete_file=delete_file, reparse=reparse)
     mock_build_filter.return_value = {
         'Bucket': instance.bucket,
@@ -314,8 +364,10 @@ def test_AWSConfigBucket_iter_files_in_bucket(mock_build_filter, mock_debug, del
                 mock_mark_complete.assert_called_with(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, bucket_file)
 
 
-@patch('aws_bucket.AWSLogsBucket.__init__', side_effect=aws_bucket.AWSLogsBucket.__init__)
-def test_AWSConfigBucket_iter_files_in_bucket_ko(mock_logs_bucket):
+def test_AWSConfigBucket_iter_files_in_bucket_ko():
+    """Test 'iter_files_in_bucket' method handles exceptions raised when trying to fetch objects from AWS
+    or by an unexpected cause and exits with the expected exit code.
+    """
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
 
     instance.client = MagicMock()
@@ -338,8 +390,24 @@ def test_AWSConfigBucket_iter_files_in_bucket_ko(mock_logs_bucket):
 @pytest.mark.parametrize('created_time', [1672763065, '2020-06-01T01:03:03.106Z'])
 @pytest.mark.parametrize('iam_profile', ['iamInstanceProfileName', {}])
 @patch('aws_bucket.AWSBucket.reformat_msg')
-@patch('aws_bucket.AWSLogsBucket.__init__', side_effect=aws_bucket.AWSLogsBucket.__init__)
-def test_AWSConfigBucket_reformat_msg(mock_logs_bucket, mock_reformat, iam_profile, created_time, state, availability_zones, security_groups):
+def test_AWSConfigBucket_reformat_msg(mock_reformat,
+                                      iam_profile: str or dict, created_time: int or str, state: str or dict,
+                                      availability_zones: str or dict, security_groups: str or dict):
+    """Test 'reformat_msg' method returns the expected message when passing different types of fields.
+
+    Parameters
+    ----------
+    iam_profile: str or dict
+        IAM instance profile.
+    created_time: int or str
+        Event creation time.
+    state: str or dict
+        State values for the state key.
+    availability_zones: str or dict
+        Availability zones values for the availabilityZones key.
+    security_groups: str or dict
+        Security groups values for the securityGroups key.
+    """
     event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
     event['aws'].update(
         {

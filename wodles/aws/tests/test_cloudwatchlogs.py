@@ -29,8 +29,19 @@ TEST_CLOUDWATCH_SCHEMA = "schema_cloudwatchlogs_test.sql"
 @pytest.mark.parametrize('remove_log_streams', [True, False])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('aws_service.AWSService.__init__', side_effect=aws_service.AWSService.__init__)
-def test_AWSCloudWatchLogs__init__(mock_aws_service, mock_sts_client, remove_log_streams, aws_log_groups,
-                                   only_logs_after):
+def test_AWSCloudWatchLogs__init__(mock_aws_service, mock_sts_client,
+                                   remove_log_streams: bool, aws_log_groups: str or None , only_logs_after: str or None):
+    """Test if the instances of AWSCloudWatchLogs are created properly.
+
+    Parameters
+    ----------
+    aws_log_groups: str or None
+        Log group names.
+    only_logs_after: str or None
+        Date after which obtain logs.
+    remove_log_streams: bool
+        Indicate if log streams should be removed after being fetched.
+    """
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs,
                                         remove_log_streams=remove_log_streams,
                                         aws_log_groups=aws_log_groups,
@@ -59,9 +70,20 @@ def test_AWSCloudWatchLogs__init__(mock_aws_service, mock_sts_client, remove_log
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('cloudwatchlogs.aws_tools.debug')
 def test_AWSCloudWatchLogs_get_alerts(mock_debug, mock_sts_client, mock_remove_aws_log_stream, mock_get_log_streams,
-                                      mock_get_alerts_within_range,
-                                      mock_get_data_from_db, mock_update_values, mock_purge, mock_close, mock_init,
-                                      reparse, only_logs_after, remove_log_streams):
+                                      mock_get_alerts_within_range, mock_get_data_from_db,
+                                      mock_update_values, mock_purge, mock_close, mock_init,
+                                      reparse: bool, only_logs_after: str or None, remove_log_streams: bool):
+    """Test 'get_alerts' method makes the expected calls in order to fetch the events and send them to Analysisd.
+
+    Parameters
+    ----------
+    reparse: bool
+        Whether to parse already parsed logs or not.
+    only_logs_after: str or None
+        Date after which obtain logs.
+    remove_log_streams: bool
+        Indicate if log streams should be removed after being fetched.
+    """
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, aws_log_groups=TEST_LOG_GROUP,
                                         reparse=reparse, remove_log_streams=remove_log_streams,
                                         only_logs_after=only_logs_after)
@@ -95,6 +117,8 @@ def test_AWSCloudWatchLogs_get_alerts(mock_debug, mock_sts_client, mock_remove_a
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('cloudwatchlogs.aws_tools.debug')
 def test_AWSCloudWatchLogs_remove_aws_log_stream(mock_debug, mock_sts_client):
+    """Test 'remove_aws_log_stream' method makes the necessary calls in order to remove the specified log stream
+    from AWS Cloudwatch Logs."""
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs)
 
     instance.client = MagicMock()
@@ -109,6 +133,9 @@ def test_AWSCloudWatchLogs_remove_aws_log_stream(mock_debug, mock_sts_client):
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('cloudwatchlogs.aws_tools.debug')
 def test_AWSCloudWatchLogs_remove_aws_log_stream_ko(mock_debug, mock_sts_client):
+    """Test 'remove_aws_log_stream' method handles exceptions raised when trying to remove a log stream from a log group.
+    This could be due to a botocore ClientError or another type of Exception.
+    """
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs)
 
     instance.client = MagicMock()
@@ -135,7 +162,23 @@ def test_AWSCloudWatchLogs_remove_aws_log_stream_ko(mock_debug, mock_sts_client)
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('cloudwatchlogs.aws_tools.debug')
 def test_AWSCloudWatchLogs_get_alerts_within_range(mock_debug, mock_sts_client, mock_send_msg,
-                                                   token, timestamp, start_time, end_time):
+                                                   token: str or None, timestamp: int,
+                                                   start_time: int or None, end_time: int or None):
+    """Test 'get_alerts_within_range' method makes the necessary calls in order to get the events from AWS CloudWatch Logs,
+    send them to Analysisd and return the expected token and timestamps.
+
+
+    Parameters
+    ----------
+    token: str
+        Token to the next set of logs.
+    timestamp: int
+        Expected timestamp to be retrieved inside the get_log_events response.
+    start_time : int or None
+        The start of the time range, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.
+    end_time : int or None
+        The end of the time range, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.
+    """
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs)
 
     instance.client = MagicMock()
@@ -186,6 +229,9 @@ def test_AWSCloudWatchLogs_get_alerts_within_range(mock_debug, mock_sts_client, 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 def test_AWSCloudWatchLogs_get_alerts_within_range_ko(mock_sts_client):
+    """Test 'get_alerts_within_range' method handles exceptions raised
+    when trying to get log events from AWS CloudWatch Logs.
+    """
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs)
 
     instance.client = MagicMock()
@@ -201,6 +247,8 @@ def test_AWSCloudWatchLogs_get_alerts_within_range_ko(mock_sts_client):
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 def test_AWSCloudWatchLogs_get_data_from_db(mock_sts_client, custom_database):
+    """Test 'get_data_from_db' method retrieves the expected information from the DB.
+    """
     utils.database_execute_script(custom_database, TEST_CLOUDWATCH_SCHEMA)
 
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, region=utils.TEST_REGION)
@@ -215,7 +263,7 @@ def test_AWSCloudWatchLogs_get_data_from_db(mock_sts_client, custom_database):
 
 @pytest.mark.parametrize('values', [None,
                                     {'token': TEST_TOKEN, 'start_time': TEST_START_TIME, 'end_time': TEST_END_TIME},
-                                    # TODO: REVIEW TEST CASE {'token': TEST_TOKEN, 'start_time': None, 'end_time': None}
+                                    {'token': TEST_TOKEN, 'start_time': None, 'end_time': None}
                                     ])
 @pytest.mark.parametrize('result_after', [None,
                                           {'token': TEST_TOKEN, 'start_time': TEST_START_TIME + 1,
@@ -224,7 +272,19 @@ def test_AWSCloudWatchLogs_get_data_from_db(mock_sts_client, custom_database):
                                            {'token': TEST_TOKEN, 'start_time': TEST_START_TIME - 1,
                                             'end_time': TEST_END_TIME - 1}])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-def test_AWSCloudWatchLogs_update_values(mock_sts_client, result_before, result_after, values):
+def test_AWSCloudWatchLogs_update_values(mock_sts_client, result_before: dict or None, result_after: dict or None,
+                                         values: dict or None):
+    """Test 'update_values' method returns the expected dict with the results of previous executions.
+
+    Parameters
+    ----------
+    result_before: dict or None
+        A dict containing the token, start_time and end_time values to be updated.
+    result_after: dict or None
+        A dict containing the expected token, start_time and end_time values of a 'get_alerts_within_range' execution.
+    values: dict or None
+        A dict containing the expected token, start_time and end_time values of a 'get_alerts_within_range' execution.
+    """
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs)
 
     token = TEST_TOKEN if result_before or result_after else None
@@ -232,9 +292,25 @@ def test_AWSCloudWatchLogs_update_values(mock_sts_client, result_before, result_
     end_time = None
 
     if values or result_after or result_before:
-        start_time = min((value['start_time'] for value in [values, result_before, result_after] if value and value['start_time']), default=None)
+        start_time = min(
+            (value['start_time'] for value in [values, result_before, result_after] if value and value['start_time']),
+            default=None)
 
-        end_time = max((value['end_time'] for value in [values, result_before, result_after] if value and value['end_time']), default=None)
+        end_time = max(
+            (value['end_time'] for value in [values, result_before, result_after] if value and value['end_time']),
+            default=None)
+
+        if values:
+            if not values['start_time']:
+                start_time = max(
+                    (value['end_time'] for value in [values, result_before, result_after] if
+                     value and value['end_time']),
+                    default=None)
+            if not values['end_time']:
+                end_time = max(
+                    (value['end_time'] for value in [values, result_before, result_after] if
+                     value and value['end_time']),
+                    default=None)
 
     result = {
         'token': token,
@@ -248,6 +324,10 @@ def test_AWSCloudWatchLogs_update_values(mock_sts_client, result_before, result_
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('cloudwatchlogs.aws_tools.debug')
 def test_AWSCloudWatchLogs_save_data_db(mock_debug, mock_sts_client, custom_database):
+    """
+    Test 'save_data_db' method inserts token, start_time and end_time values into the DB and updates them if
+    already exist.
+    """
     utils.database_execute_script(custom_database, TEST_CLOUDWATCH_SCHEMA)
 
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, region=utils.TEST_REGION)
@@ -257,8 +337,21 @@ def test_AWSCloudWatchLogs_save_data_db(mock_debug, mock_sts_client, custom_data
 
     instance.save_data_db(TEST_LOG_GROUP, TEST_LOG_STREAM,
                           {'token': TEST_TOKEN, 'start_time': TEST_START_TIME, 'end_time': TEST_END_TIME})
+
+    assert utils.database_execute_query(instance.db_connector,
+                                        instance.sql_cloudwatch_select.format(table_name=instance.db_table_name), {
+                                            'aws_region': instance.region,
+                                            'aws_log_group': TEST_LOG_GROUP,
+                                            'aws_log_stream': TEST_LOG_STREAM})[2] == TEST_END_TIME
+
     instance.save_data_db(TEST_LOG_GROUP, TEST_LOG_STREAM,
                           {'token': TEST_TOKEN, 'start_time': TEST_START_TIME, 'end_time': TEST_END_TIME + 1})
+
+    assert utils.database_execute_query(instance.db_connector,
+                                        instance.sql_cloudwatch_select.format(table_name=instance.db_table_name), {
+                                            'aws_region': instance.region,
+                                            'aws_log_group': TEST_LOG_GROUP,
+                                            'aws_log_stream': TEST_LOG_STREAM})[2] == TEST_END_TIME + 1
 
     mock_debug.assert_any_call("Some data already exists on DB for that key. Updating their values...", 2)
 
@@ -284,8 +377,18 @@ def test_AWSCloudWatchLogs_save_data_db(mock_debug, mock_sts_client, custom_data
                          ])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('cloudwatchlogs.aws_tools.debug')
-def test_AWSCloudWatchLogs_get_log_streams(mock_debug, mock_sts_client, describe_log_streams_response,
-                                           expected_result_list):
+def test_AWSCloudWatchLogs_get_log_streams(mock_debug, mock_sts_client,
+                                           describe_log_streams_response, expected_result_list: list[str]):
+    """Test 'get_log_streams' method retrieves the log streams from
+    the response of describe_log_streams with the specified log group.
+
+    Parameters
+    ----------
+    describe_log_streams_response: list[dict]
+        List of the different responses that can be received.
+    expected_result_list: list[str]
+        Expected list of log streams to be returned by the method.
+    """
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs)
 
     instance.client = MagicMock()
@@ -304,6 +407,10 @@ def test_AWSCloudWatchLogs_get_log_streams(mock_debug, mock_sts_client, describe
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('cloudwatchlogs.aws_tools.debug')
 def test_AWSCloudWatchLogs_get_log_streams_ko(mock_debug, mock_sts_client):
+    """Test 'get_log_streams' method handles exceptions raised when trying to fetch the log streams
+    from the specified log group.
+    This could be due to a botocore Error or another type of Exception.
+    """
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs)
 
     instance.client = MagicMock()
@@ -325,6 +432,8 @@ def test_AWSCloudWatchLogs_get_log_streams_ko(mock_debug, mock_sts_client):
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('cloudwatchlogs.AWSCloudWatchLogs.get_log_streams', return_value=[])
 def test_AWSCloudWatchLogs_purge_db(mock_get_log_streams, mock_sts_client, custom_database):
+    """Test 'purge_db' method removes the records for log streams when they no longer exist on AWS CloudWatch Logs.
+    """
     utils.database_execute_script(custom_database, TEST_CLOUDWATCH_SCHEMA)
 
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, region=utils.TEST_REGION)

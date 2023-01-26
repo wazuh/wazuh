@@ -28,7 +28,16 @@ import aws_utils as utils
     (['main', '--service', 'cloudwatchlogs'], 'services.cloudwatchlogs.AWSCloudWatchLogs')
 ])
 @patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
-def test_main(mock_arguments, args, class_):
+def test_main(mock_arguments, args: list[str], class_):
+    """Test 'main' function makes the expected calls when processing buckets or services.
+
+    Parameters
+    ----------
+    args : list[str]
+        List of arguments that make the `main` function exit.
+    class_: AWSBucket or AWSService
+        Class to be instantiated.
+    """
     instance = MagicMock()
     with patch("sys.argv", args), \
             patch(class_) as mocked_class:
@@ -49,7 +58,14 @@ def test_main(mock_arguments, args, class_):
     ['main', '--service', 'invalid']
 ])
 @patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
-def test_main_ko(mock_arguments, args):
+def test_main_ko(mock_arguments, args: list[str]):
+    """Test 'main' function handles exceptions when receiving invalid buckets or services.
+
+    Parameters
+    ----------
+    args : list[str]
+        List of arguments that make the `main` function exit.
+    """
     with patch("sys.argv", args), \
             pytest.raises(SystemExit) as e:
         aws_s3.main(args)

@@ -88,6 +88,7 @@ INVALID_KEY_FORMAT_ERROR_CODE = 17
 INVALID_PREFIX_ERROR_CODE = 18
 INVALID_REQUEST_TIME_ERROR_CODE = 19
 
+
 def get_WazuhIntegration_parameters(db_name: str = TEST_DATABASE, db_table_name: str = TEST_TABLE_NAME,
                                     service_name: str = TEST_SERVICE_NAME, aws_profile: str = TEST_AWS_PROFILE,
                                     access_key: str = None, secret_key: str = None, iam_role_arn: str = None,
@@ -149,7 +150,46 @@ def get_AWSBucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str =
 
     Parameters
     ----------
-    TODO
+    db_table_name : str
+        The name of the table to be created for the given bucket or service.
+    bucket : str
+        Name of the bucket.
+    reparse : bool
+        Whether to parse already parsed logs or not.
+    aws_profile : str
+        AWS profile name.
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        Secret key value.
+    iam_role_arn : str
+        IAM Role ARN value.
+    only_logs_after : str
+        Date after which obtain logs.
+    skip_on_error : bool
+        Whether to continue processing logs or stop when an error takes place.
+    account_alias: str
+        Alias of the AWS account where the bucket is.
+    prefix : str
+        Prefix to filter files in bucket.
+    suffix : str
+        Suffix to filter files in bucket.
+    delete_file : bool
+        Whether to delete an already processed file from a bucket or not.
+    aws_organization_id : str
+        The AWS organization ID.
+    region : str
+        Region name.
+    discard_field : list of str
+        List of field names to be discarded.
+    discard_regex : str
+        Regex to be applied to the fields to determine if they should be discarded.
+    sts_endpoint : str
+        STS endpoint URL.
+    service_endpoint : str
+        Service endpoint URL.
+    iam_role_duration : str
+        The desired duration of the session that is going to be assumed.
 
     Returns
     -------
@@ -163,20 +203,51 @@ def get_AWSBucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str =
             'region': region, 'discard_field': discard_field, 'discard_regex': discard_regex,
             'sts_endpoint': sts_endpoint, 'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
 
+
 def get_AWSService_parameters(db_table_name: str = TEST_TABLE_NAME, service_name: str = 'cloudwatchlogs',
                               reparse: bool = False, access_key: str = None, secret_key: str = None,
                               aws_profile: str = TEST_AWS_PROFILE, iam_role_arn: str = None,
-                              only_logs_after: str = None, region: str = None,  aws_log_groups:str = None, remove_log_streams: bool = None,
-                              discard_field: str = None,
+                              only_logs_after: str = None, region: str = None, aws_log_groups: str = None,
+                              remove_log_streams: bool = None, discard_field: str = None,
                               discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
                               iam_role_duration: str = None):
-
     """Return a dict containing every parameter supported by AWSService. Used to simulate different ossec.conf
     configurations.
 
     Parameters
     ----------
-    TODO
+    reparse : bool
+        Whether to parse already parsed logs or not.
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
+    aws_profile : str
+        AWS profile.
+    iam_role_arn : str
+        IAM Role.
+    service_name : str
+        Service name to extract logs from.
+    only_logs_after : str
+        Date after which obtain logs.
+    region : str
+        Region name.
+    aws_log_groups : str
+        String containing a list of log group names separated by a comma.
+    remove_log_streams: str
+        Indicate if log streams should be removed after being fetched.
+    db_table_name : str
+        The name of the table to be created for the given bucket or service.
+    discard_field : str
+        Name of the event field to apply the regex value on.
+    discard_regex : str
+        REGEX value to determine whether an event should be skipped.
+    sts_endpoint : str
+        STS endpoint URL.
+    service_endpoint : str
+        Service endpoint URL.
+    iam_role_duration : str
+        The desired duration of the session that is going to be assumed.
 
     Returns
     -------
@@ -190,6 +261,7 @@ def get_AWSService_parameters(db_table_name: str = TEST_TABLE_NAME, service_name
             'discard_regex': discard_regex, 'sts_endpoint': sts_endpoint,
             'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
 
+
 def get_mocked_WazuhIntegration(**kwargs):
     with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
             patch('wazuh_integration.WazuhIntegration.get_client'), \
@@ -197,6 +269,7 @@ def get_mocked_WazuhIntegration(**kwargs):
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
         return wazuh_integration.WazuhIntegration(**get_WazuhIntegration_parameters(**kwargs))
+
 
 def get_mocked_AWSBucket(**kwargs):
     with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
@@ -206,6 +279,7 @@ def get_mocked_AWSBucket(**kwargs):
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
         return aws_bucket.AWSBucket(**get_AWSBucket_parameters(**kwargs))
 
+
 def get_mocked_bucket(class_=aws_bucket.AWSBucket, **kwargs):
     with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
             patch('wazuh_integration.WazuhIntegration.get_client'), \
@@ -213,6 +287,7 @@ def get_mocked_bucket(class_=aws_bucket.AWSBucket, **kwargs):
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
         return class_(**get_AWSBucket_parameters(**kwargs))
+
 
 def get_mocked_service(class_=aws_service.AWSService, **kwargs):
     with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
@@ -222,11 +297,13 @@ def get_mocked_service(class_=aws_service.AWSService, **kwargs):
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
         return class_(**get_AWSService_parameters(**kwargs))
 
+
 def database_execute_script(connector, sql_file):
     with open(os.path.join(data_path, sql_file)) as f:
         connector.cursor().executescript(f.read())
     connector.commit()
 
-def database_execute_query(connector, query, query_params = {}):
+
+def database_execute_query(connector, query, query_params={}):
     row = connector.execute(query, query_params).fetchone()
     return row[0] if row and len(row) == 1 else row
