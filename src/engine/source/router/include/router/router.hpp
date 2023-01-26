@@ -52,6 +52,7 @@ private:
     std::shared_ptr<EnvironmentManager> m_environmentManager; ///< Environment manager
     std::shared_ptr<builder::Builder> m_builder;              ///< Builder
     std::shared_ptr<concurrentQueue> m_queue;                 ///< Queue to get events
+    std::optional<std::string> m_floodFile;               ///< File to log floods
 
     /* Config */
     std::size_t m_numThreads; ///< Number of threads for the router
@@ -83,7 +84,7 @@ private:
     api::WazuhResponse apiChangeRoutePriority(const json::Json& params);
 
 public:
-    Router(std::shared_ptr<builder::Builder> builder, std::size_t threads = 1)
+    Router(std::shared_ptr<builder::Builder> builder, std::size_t threads = 1, std::optional<std::string> floodFile = std::nullopt)
         : m_mutexRoutes {}
         , m_namePriority {}
         , m_priorityRoute {}
@@ -91,6 +92,7 @@ public:
         , m_numThreads {threads}
         , m_threads {}
         , m_builder {builder}
+        , m_floodFile {floodFile}
     {
         if (threads == 0)
         {
