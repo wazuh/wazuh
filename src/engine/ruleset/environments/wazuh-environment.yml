@@ -23,6 +23,7 @@ decoders:
   - decoder/sca/0
   - decoder/ciscat/0
   - decoder/sophos-antivirus/0
+  - decoder/sophos-waf/0
   - decoder/sophos-utm/0
   - decoder/sophos-wifi/0
   - decoder/syscollector-base/0
