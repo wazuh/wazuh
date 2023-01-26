@@ -1016,14 +1016,13 @@ def test_AWSCustomBucket_load_information_from_file(mock_bucket, mock_integratio
 def test_AWSCustomBucket_get_creation_date(mock_bucket, mock_integration, mock_sts, log_file: dict, expected_date: int):
     """
     Test AWSCustomBucket's get_creation_date method.
+
     Parameters
     ----------
     log_file : dict
-        The log file introduced
+        The log file introduced.
     expected_date : int
         The date that the method should return.
-    aws_custom_bucket : aws_bucket.AWSCustomBucket
-        Instance of the AWSCustomBucket class.
     """
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
 

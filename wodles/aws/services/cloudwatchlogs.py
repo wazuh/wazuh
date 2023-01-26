@@ -19,39 +19,39 @@ class AWSCloudWatchLogs(aws_service.AWSService):
     Attributes
     ----------
     access_key : str
-        AWS access key id
+        AWS access key id.
     secret_key : str
-        AWS secret access key
+        AWS secret access key.
     aws_profile : str
-        AWS profile
+        AWS profile.
     iam_role_arn : str
-        IAM Role
+        IAM Role.
     only_logs_after : str
-        Date after which obtain logs
+        Date after which obtain logs.
     region : str
-        Region where the logs are located
+        Region where the logs are located.
     aws_log_groups : str
-        String containing a list of log group names separated by a comma
+        String containing a list of log group names separated by a comma.
     remove_log_streams : bool
-        Indicate if log streams should be removed after being fetched
+        Indicate if log streams should be removed after being fetched.
     db_table_name : str
-        Name of the table to be created on aws_service.db
+        Name of the table to be created on aws_service.db.
     only_logs_after_millis : int
-        only_logs_after expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC
+        only_logs_after expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.
     reparse : bool
         Whether to parse already parsed logs or not.
     log_group_list : list of str
-        List of each log group to be parsed
+        List of each log group to be parsed.
     sql_cloudwatch_create_table : str
-        Query for the creation of the table
+        Query for the creation of the table.
     sql_cloudwatch_insert : str
-        Query to insert the token for a given log stream
+        Query to insert the token for a given log stream.
     sql_cloudwatch_update : str
-        Query for updating the token, start_time and end_time values
+        Query for updating the token, start_time and end_time values.
     sql_cloudwatch_select : str
-        Query to obtain the token, start_time and end_time values
+        Query to obtain the token, start_time and end_time values.
     sql_cloudwatch_select_logstreams : str
-        Query to get all logstreams in the DB
+        Query to get all logstreams in the DB.
     sql_cloudwatch_purge : str
         Query to delete a row from the DB.
     """
@@ -337,13 +337,13 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         Parameters
         ----------
         values : dict
-            A dict containing the token, start_time and end_time values to be updated
+            A dict containing the token, start_time and end_time values to be updated.
         result_after : dict
             A dict containing the resulting token, start_time and end_time values of a 'get_alerts_within_range'
-            execution
+            execution.
         result_before : dict
             A dict containing the resulting token, start_time and end_time values of a 'get_alerts_within_range'
-            execution
+            execution.
 
         Returns
         -------
@@ -387,7 +387,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
             return result
 
     def save_data_db(self, log_group, log_stream, values):
-        """Insert the token, start_time and end_time values into the DB. If the values already exists they will be
+        """Insert the token, start_time and end_time values into the DB. If the values already exist they will be
         updated instead.
 
         Parameters
@@ -465,7 +465,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         return result_list
 
     def purge_db(self, log_group):
-        """Remove from AWS_Service.db any record for log streams that no longer exists on AWS CloudWatch.
+        """Remove from AWS_Service.db any record for log streams that no longer exist on AWS CloudWatch Logs.
 
         Parameters
         ----------

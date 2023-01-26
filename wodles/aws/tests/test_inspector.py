@@ -21,6 +21,7 @@ TEST_SERVICES_SCHEMA = 'schema_services_test.sql'
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('aws_service.AWSService.__init__', side_effect=aws_service.AWSService.__init__)
 def test_AWSInspector__init__(mock_aws_service, mock_sts_client):
+    """Test if the instances of AWSInspector are created properly."""
     instance = utils.get_mocked_service(class_=inspector.AWSInspector)
 
     mock_aws_service.assert_called_once()
@@ -30,6 +31,9 @@ def test_AWSInspector__init__(mock_aws_service, mock_sts_client):
 
 @patch('aws_service.AWSService.__init__')
 def test_AWSInspector_send_describe_findings(mock_aws_service):
+    """Test 'send_describe_findings' method sends the findings to Analysisd
+    and updates the instance's sent_events attribute accordingly to the number of findings.
+    """
     arn_list = ['arn1']
 
     instance = utils.get_mocked_service(class_=inspector.AWSInspector)
@@ -60,9 +64,17 @@ def test_AWSInspector_send_describe_findings(mock_aws_service):
 @patch('inspector.AWSInspector.send_describe_findings')
 @patch('inspector.aws_tools.debug')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('aws_service.AWSService.__init__', side_effect=aws_service.AWSService.__init__)
-def test_AWSInspector_get_alerts(mock_aws_service, mock_sts_client, mock_debug, mock_send_describe_findings,
-                                 mock_init_db, mock_close_db, only_logs_after, reparse, custom_database):
+def test_AWSInspector_get_alerts(mock_sts_client, mock_debug, mock_send_describe_findings, mock_init_db, mock_close_db,
+                                 only_logs_after, reparse, custom_database):
+    """Test 'get_alerts' method sends the collected events and updates the DB accordingly.
+
+    Parameters
+    ----------
+    reparse: bool
+        Whether to parse already parsed logs or not.
+    only_logs_after: str or None
+        Date after which obtain logs.
+    """
     utils.database_execute_script(custom_database, TEST_SERVICES_SCHEMA)
 
     instance = utils.get_mocked_service(class_=inspector.AWSInspector,

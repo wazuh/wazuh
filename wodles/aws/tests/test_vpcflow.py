@@ -14,6 +14,8 @@ import vpcflow
 
 VPC_SCHEMA_COUNT = 8
 
+DAYS_DELTA = 10
+
 TEST_VPCFLOW_SCHEMA = "schema_vpcflow_test.sql"
 TEST_EMPTY_TABLE_SCHEMA = "schema_empty_vpc_table.sql"
 
@@ -29,7 +31,7 @@ SQL_FIND_LAST_KEY_PROCESSED = """SELECT log_key FROM {table_name} ORDER BY log_k
 
 @patch('aws_bucket.AWSLogsBucket.__init__')
 def test_AWSVPCFlowBucket__init__(mock_logs_bucket):
-    """Test if the instances of CiscoUmbrella are created properly."""
+    """Test if the instances of AWSVPCFlowBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
     assert instance.service == 'vpcflowlogs'
 
@@ -37,6 +39,8 @@ def test_AWSVPCFlowBucket__init__(mock_logs_bucket):
 
 
 def test_AWSVPCFlowBucket_load_information_from_file():
+    """Test 'load_information_from_file' method returns the expected information.
+    """
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
     data = '2 123456789123 eni-12345678912345678 0.0.0.0 0.0.0.0 3500 52000 6 39 4698 1622505433 1622505730 ACCEPT OK'
@@ -62,7 +66,18 @@ def test_AWSVPCFlowBucket_load_information_from_file():
 @pytest.mark.parametrize('access_key', [None, utils.TEST_ACCESS_KEY])
 @pytest.mark.parametrize('secret_key', [None, utils.TEST_SECRET_KEY])
 @pytest.mark.parametrize('profile', [None, utils.TEST_AWS_PROFILE])
-def test_AWSVPCFlowBucket_get_ec2_client(access_key, secret_key, profile):
+def test_AWSVPCFlowBucket_get_ec2_client(access_key: str or None, secret_key: str or None, profile: str or None):
+    """Test 'get_ec2_client' method instantiates a boto3.Session object with the proper arguments.
+
+    Parameters
+    ----------
+    access_key: str or None
+        AWS access key id.
+    secret_key: str or None
+        AWS secret access key.
+    profile: str or None
+        AWS profile.
+    """
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
     region = utils.TEST_REGION
 
@@ -82,6 +97,8 @@ def test_AWSVPCFlowBucket_get_ec2_client(access_key, secret_key, profile):
 
 @patch('aws_bucket.AWSLogsBucket.__init__')
 def test_AWSVPCFlowBucket_get_ec2_client_ko(mock_logs_bucket):
+    """Test 'get_ec2_client' method handles exceptions raised when trying to get the EC2 client.
+    """
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
     with patch('boto3.Session'), \
@@ -92,6 +109,8 @@ def test_AWSVPCFlowBucket_get_ec2_client_ko(mock_logs_bucket):
 
 @patch('vpcflow.AWSVPCFlowBucket.get_ec2_client')
 def test_AWSVPCFlowBucket_get_flow_logs_ids(mock_get_ec2_client):
+    """Test 'get_flow_logs_ids' method returns the expected flow log ids from the client's response.
+    """
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
     ec2_client = mock_get_ec2_client.return_value
@@ -117,13 +136,27 @@ def test_AWSVPCFlowBucket_get_flow_logs_ids(mock_get_ec2_client):
                                                                utils.TEST_REGION, utils.TEST_AWS_PROFILE)
 
 
-@pytest.mark.parametrize('log_file, bucket, account_id, region, expected_result', [
-    (TEST_LOG_KEY, utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
-    ("", utils.TEST_BUCKET, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, False),
-    (TEST_LOG_KEY, utils.TEST_BUCKET, "", utils.TEST_REGION, False),
+@pytest.mark.parametrize('log_file, account_id, region, expected_result', [
+    (TEST_LOG_KEY, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
+    ("", utils.TEST_ACCOUNT_ID, utils.TEST_REGION, False),
+    (TEST_LOG_KEY, "", utils.TEST_REGION, False),
 ])
-def test_AWSVPCFlowBucket_already_processed(custom_database, log_file, bucket, account_id, region,
-                                            expected_result):
+def test_AWSVPCFlowBucket_already_processed(custom_database,
+                                            log_file: str, account_id: str,
+                                            region: str, expected_result: bool):
+    """Test 'already_processed' method correctly determines if a log file has been processed.
+
+    Parameters
+    ----------
+    log_file: str
+        Complete path of the downloaded file.
+    account_id: str
+        AWS account ID.
+    region: str
+        Region of service.
+    expected_result: bool
+        Expected result from the method's execution.
+    """
     utils.database_execute_script(custom_database, TEST_VPCFLOW_SCHEMA)
 
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket=utils.TEST_BUCKET)
@@ -136,8 +169,9 @@ def test_AWSVPCFlowBucket_already_processed(custom_database, log_file, bucket, a
                                       aws_region=region, flow_log_id=TEST_FLOW_LOG_ID) == expected_result
 
 
-@patch('aws_bucket.AWSLogsBucket.__init__')
-def test_AWSVPCFlowBucket_get_days_since_today(mock_logs_bucket):
+def test_AWSVPCFlowBucket_get_days_since_today():
+    """Test 'get_days_since_today' returns the expected number of days since today.
+    """
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
     test_date = "20220630"
 
@@ -147,15 +181,14 @@ def test_AWSVPCFlowBucket_get_days_since_today(mock_logs_bucket):
     assert instance.get_days_since_today(test_date) == delta.days
 
 
-@patch('vpcflow.AWSVPCFlowBucket.get_date_last_log')
-@patch('vpcflow.AWSVPCFlowBucket.get_days_since_today', return_value=10)
-def test_AWSVPCFlowBucket_get_date_list(mock_days_since_today, mock_date_last_log):
+@patch('vpcflow.AWSVPCFlowBucket.get_days_since_today', return_value=DAYS_DELTA)
+def test_AWSVPCFlowBucket_get_date_list(mock_days_since_today):
+    """Test 'get_date_list' returns the expected list of dates for a given delta of days.
+    """
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
     instance.date_format = "%Y/%m/%d"
 
-    num_days = instance.get_days_since_today(mock_date_last_log(utils.TEST_ACCOUNT_ID, utils.TEST_REGION))
-
-    date_list_time = [datetime.utcnow() - timedelta(days=x) for x in range(0, num_days)]
+    date_list_time = [datetime.utcnow() - timedelta(days=x) for x in range(0, DAYS_DELTA)]
 
     assert instance.get_date_list(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, TEST_FLOW_LOG_ID) == [
         datetime.strftime(date, instance.date_format)
@@ -164,7 +197,16 @@ def test_AWSVPCFlowBucket_get_date_list(mock_days_since_today, mock_date_last_lo
 
 @pytest.mark.parametrize('only_logs_after', [utils.TEST_ONLY_LOGS_AFTER, None])
 @pytest.mark.parametrize('reparse', [True, False])
-def test_AWSVPCFlowBucket_get_date_last_log(custom_database, reparse, only_logs_after):
+def test_AWSVPCFlowBucket_get_date_last_log(custom_database, reparse: bool, only_logs_after: str or None):
+    """Test 'get_date_last_log' method returns the expected last log date checking the DB.
+
+   Parameters
+   ----------
+   reparse: bool
+       Whether to parse already parsed logs or not.
+   only_logs_after: str or None
+       Date after which obtain logs.
+   """
     utils.database_execute_script(custom_database, TEST_VPCFLOW_SCHEMA)
 
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket=utils.TEST_BUCKET, reparse=reparse,
@@ -193,6 +235,9 @@ def test_AWSVPCFlowBucket_get_date_last_log(custom_database, reparse, only_logs_
 
 
 def test_AWSVPCFlowBucket_get_date_last_log_db_error(custom_database):
+    """Test 'get_date_last_log' method returns the expected last log date getting it from
+    the instance's attributes (only_logs_after) if the DB is empty for a given bucket.
+    """
     utils.database_execute_script(custom_database, TEST_VPCFLOW_SCHEMA)
 
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket='db_exception_bucket',
@@ -219,7 +264,16 @@ def test_AWSVPCFlowBucket_get_date_last_log_db_error(custom_database):
 def test_AWSVPCFlowBucket_iter_regions_and_accounts(mock_find_regions, mock_accounts,
                                                     mock_maintenance, mock_get_date_list, mock_get_flow_logs_ids,
                                                     mock_iter_files_in_bucket,
-                                                    regions, account_id):
+                                                    regions: list[str] or None, account_id: list[str] or None):
+    """Test 'iter_regions_and_accounts' method makes the necessary calls in order to process the bucket's files.
+
+    Parameters
+    ----------
+    regions: list[str] or None
+        List of regions.
+    account_id: list[str] or None
+        List of account IDs.
+    """
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
     instance.access_key = utils.TEST_ACCESS_KEY
@@ -252,7 +306,16 @@ def test_AWSVPCFlowBucket_iter_regions_and_accounts(mock_find_regions, mock_acco
 
 @pytest.mark.parametrize('flow_log_id', [TEST_FLOW_LOG_ID, "other-id"])
 @pytest.mark.parametrize('region', [utils.TEST_REGION, "invalid_region"])
-def test_AWSVPCFlowBucket_db_count_region(custom_database, region, flow_log_id):
+def test_AWSVPCFlowBucket_db_count_region(custom_database, region: str, flow_log_id: str):
+    """Test 'db_count_region' method returns the number of rows in DB for a region.
+
+    Parameters
+    ----------
+    region: str
+        AWS region that may or not be in DB.
+    flow_log_id: str
+        Flow log ID.
+    """
     utils.database_execute_script(custom_database, TEST_VPCFLOW_SCHEMA)
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket=utils.TEST_BUCKET)
     instance.db_connector = custom_database
@@ -264,7 +327,7 @@ def test_AWSVPCFlowBucket_db_count_region(custom_database, region, flow_log_id):
 
 
 @pytest.mark.parametrize('expected_db_count', [VPC_SCHEMA_COUNT, 0])
-def test_AWSVPCFlowBucket_db_maintenance(custom_database, expected_db_count):
+def test_AWSVPCFlowBucket_db_maintenance(custom_database, expected_db_count: int):
     """Test 'db_maintenance' function deletes rows from a table until the count is equal to 'retain_db_records'."""
     utils.database_execute_script(custom_database, TEST_VPCFLOW_SCHEMA)
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket=utils.TEST_BUCKET)
@@ -284,8 +347,9 @@ def test_AWSVPCFlowBucket_db_maintenance(custom_database, expected_db_count):
         table_name=instance.db_table_name)) == expected_db_count
 
 
-@patch('aws_bucket.AWSLogsBucket.__init__')
-def test_AWSVPCFlowBucket_get_vpc_prefix(mock_logs_bucket):
+def test_AWSVPCFlowBucket_get_vpc_prefix():
+    """Test 'get_vpc_prefix' method returns the prefix with the expected format.
+    """
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
     expected_vpc_prefix = utils.TEST_FULL_PREFIX + TEST_DATE + '/' + utils.TEST_ACCOUNT_ID + '_vpcflowlogs_' + utils.TEST_REGION + '_' + TEST_FLOW_LOG_ID
@@ -301,8 +365,21 @@ def test_AWSVPCFlowBucket_get_vpc_prefix(mock_logs_bucket):
 @pytest.mark.parametrize('iterating', [True, False])
 @pytest.mark.parametrize('region', [utils.TEST_REGION, 'region_for_empty_db'])
 @patch('aws_bucket.AWSLogsBucket.get_full_prefix', return_value=utils.TEST_FULL_PREFIX)
-def test_AWSVPCFlowBucket_build_s3_filter_args(mock_get_full_prefix, custom_database, region, iterating,
-                                               only_logs_after, reparse):
+def test_AWSVPCFlowBucket_build_s3_filter_args(mock_get_full_prefix, custom_database,
+                                               region: str, iterating: bool, only_logs_after: str or None, reparse: bool):
+    """Test 'build_s3_filter_args' method returns the expected filter arguments for the list_objects_v2 call.
+
+    Parameters
+    ----------
+    region: str
+        Region of service.
+    iterating: bool
+        Whether the call to the method is being made inside a loop due to a truncated response.
+    only_logs_after: str or None
+        Date after which obtain logs.
+    reparse: bool
+        Whether to parse already parsed logs or not.
+    """
     utils.database_execute_script(custom_database, TEST_VPCFLOW_SCHEMA)
 
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket=utils.TEST_BUCKET, reparse=reparse,
@@ -348,7 +425,20 @@ def test_AWSVPCFlowBucket_build_s3_filter_args(mock_get_full_prefix, custom_data
 @pytest.mark.parametrize('delete_file', [True, False])
 @patch('aws_bucket.aws_tools.debug')
 @patch('vpcflow.AWSVPCFlowBucket.build_s3_filter_args')
-def test_AWSVPCFlowBucket_iter_files_in_bucket(mock_build_filter, mock_debug, delete_file, reparse, object_list):
+def test_AWSVPCFlowBucket_iter_files_in_bucket(mock_build_filter, mock_debug,
+                                               delete_file: bool, reparse: bool, object_list: dict):
+
+    """Test 'iter_files_in_bucket' method makes the necessary method calls in order to process the logs inside the bucket.
+
+    Parameters
+    ----------
+    delete_file: bool
+        Whether to remove the file from the bucket or not.
+    reparse: bool
+        Whether to parse already parsed logs or not.
+    object_list: dict
+        Objects to be returned by list_objects_v2.
+    """
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket=utils.TEST_BUCKET,
                                        delete_file=delete_file, reparse=reparse)
 
@@ -404,6 +494,8 @@ def test_AWSVPCFlowBucket_iter_files_in_bucket(mock_build_filter, mock_debug, de
 
 
 def test_AWSVPCFlowBucket_iter_files_in_bucket_ko():
+    """Test 'iter_files_in_bucket' method handles exceptions raised by botocore or by an unexpected cause and exits with the expected exit code.
+    """
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
     instance.client = MagicMock()
@@ -422,6 +514,8 @@ def test_AWSVPCFlowBucket_iter_files_in_bucket_ko():
 
 
 def test_AWSVPCFlowBucket_mark_complete(custom_database):
+    """Test 'mark_complete' method inserts non-processed logs into the DB.
+    """
     utils.database_execute_script(custom_database, TEST_EMPTY_TABLE_SCHEMA)
 
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket=utils.TEST_BUCKET)
@@ -461,6 +555,8 @@ def test_AWSVPCFlowBucket_mark_complete(custom_database):
 
 @patch('aws_bucket.aws_tools.debug')
 def test_AWSVPCFlowBucket_mark_complete_ko(mock_debug, custom_database):
+    """Test 'mark_complete' handles exceptions raised when trying to execute a query to the DB.
+    """
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, reparse=False)
 
     instance.db_connector = custom_database

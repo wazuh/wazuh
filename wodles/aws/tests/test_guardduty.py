@@ -25,6 +25,8 @@ def test_AWSGuardDutyBucket__init__(mock_custom_bucket):
 @patch('guardduty.AWSGuardDutyBucket.reformat_msg', return_value=['message'])
 @patch('aws_bucket.AWSCustomBucket.__init__')
 def test_AWSGuardDutyBucket_send_event(mock_custom_bucket, mock_reformat, mock_send):
+    """Test 'send_event' method makes the necessary calls in order to send the event to Analysisd.
+    """
     event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
     instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
     instance.send_event(event)
@@ -62,7 +64,14 @@ def test_AWSGuardDutyBucket_send_event(mock_custom_bucket, mock_reformat, mock_s
 }, {'otherField': 'element'}])
 @patch('aws_bucket.AWSBucket.reformat_msg')
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_AWSGuardDutyBucket_reformat_msg(mock_custom_bucket, mock_reformat, fields):
+def test_AWSGuardDutyBucket_reformat_msg(mock_custom_bucket, mock_reformat, fields: dict):
+    """Test 'reformat_msg' method returns the expected message when passing different types of fields.
+
+    Parameters
+    ----------
+    fields: dict
+        Dictionary part of the event to be reformatted.
+    """
     event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
     event['aws'].update({'source': 'guardduty'})
     event['aws'].update(fields)

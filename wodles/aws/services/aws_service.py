@@ -6,7 +6,6 @@ from datetime import datetime
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
 
-
 DEFAULT_DATABASE_NAME = "aws_services"
 DEFAULT_TABLENAME = "aws_services"
 
@@ -14,11 +13,47 @@ AWS_SERVICE_MSG_TEMPLATE = {'integration': 'aws', 'aws': ''}
 
 
 class AWSService(wazuh_integration.WazuhIntegration):
+    """
+    Represents a service which provides events.
 
-    def __init__(self, reparse, access_key, secret_key, aws_profile, iam_role_arn,
-                 service_name, only_logs_after, region, db_table_name=DEFAULT_TABLENAME, aws_log_groups: str = None, remove_log_streams: bool =None,
-                 discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None,
-                 iam_role_duration=None):
+    This is an abstract class.
+
+    Parameters
+    ----------
+    reparse : bool
+        Whether to parse already parsed logs or not.
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
+    aws_profile : str
+        AWS profile.
+    iam_role_arn : str
+        IAM Role.
+    service_name : str
+        Service name to extract logs from.
+    only_logs_after : str
+        Date after which obtain logs.
+    region : str
+        Region name.
+    db_table_name : str
+        The name of the table to be created for the given bucket or service.
+    discard_field : str
+        Name of the event field to apply the regex value on.
+    discard_regex : str
+        REGEX value to determine whether an event should be skipped.
+    sts_endpoint : str
+        STS endpoint URL.
+    service_endpoint : str
+        Service endpoint URL.
+    iam_role_duration : str
+        The desired duration of the session that is going to be assumed.
+    """
+
+    def __init__(self, reparse: bool, access_key: str, secret_key: str, aws_profile: str, iam_role_arn: str,
+                 service_name: str, only_logs_after: str, region: str, db_table_name: str = DEFAULT_TABLENAME,
+                 discard_field: str = None, discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
+                 iam_role_duration: str = None, **kwargs):
         wazuh_integration.WazuhIntegration.__init__(self, db_name=DEFAULT_DATABASE_NAME, db_table_name=db_table_name,
                                                     service_name=service_name, access_key=access_key,
                                                     secret_key=secret_key, aws_profile=aws_profile,

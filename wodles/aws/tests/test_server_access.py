@@ -13,9 +13,9 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 
 import aws_bucket
 import server_access
 
-
 TEST_LOG_SERVER_ACCESS_FULL_PATH = '2021-04-29-09-12-25-F123456789012345'
 utils.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = TEST_LOG_SERVER_ACCESS_FULL_PATH
+
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
 def test_AWSServerAccess___init__(mock_custom_bucket):
@@ -35,22 +35,50 @@ def test_AWSServerAccess___init__(mock_custom_bucket):
                           (datetime(2019, 1, 1, 0, 0), datetime(2018, 1, 1, 0, 0), None, False),
                           (None, datetime(2018, 1, 1, 0, 0), '20190101', False)
                           ])
-def test_AWSServerAccess__key_is_old(only_logs_after, last_key_date, file_date, is_old):
-    with patch('wazuh_integration.WazuhIntegration.get_sts_client'), \
-            patch('wazuh_integration.WazuhIntegration.__init__'):
+def test_AWSServerAccess__key_is_old(only_logs_after: str or None, last_key_date: datetime or None,
+                                     file_date: datetime or None, is_old: bool):
+    """Test '_key_is_old' method returns if the file must be skipped based on its date.
+
+    Parameters
+    ----------
+    only_logs_after: str or None
+        Date after which obtain logs.
+    last_key_date: datetime or None
+        Date from the last key.
+    file_date: datetime or None
+        Date present in the filename.
+    is_old: bool
+        Expected method result.
+    """
+    with patch('wazuh_integration.WazuhIntegration.get_sts_client'):
         instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess,
                                            only_logs_after=only_logs_after)
 
         assert instance._key_is_old(file_date, last_key_date) == is_old
 
 
-@pytest.mark.parametrize('object_list', [utils.LIST_OBJECT_V2, utils.LIST_OBJECT_V2_NO_PREFIXES, utils.LIST_OBJECT_V2_TRUNCATED])
+@pytest.mark.parametrize('object_list',
+                         [utils.LIST_OBJECT_V2, utils.LIST_OBJECT_V2_NO_PREFIXES, utils.LIST_OBJECT_V2_TRUNCATED])
 @pytest.mark.parametrize('reparse', [True, False])
 @pytest.mark.parametrize('delete_file', [True, False])
 @pytest.mark.parametrize('same_prefix_result', [True, False])
 @patch('aws_bucket.aws_tools.debug')
 @patch('aws_bucket.AWSBucket.build_s3_filter_args')
-def test_AWSServerAccess_iter_files_in_bucket(mock_build_filter, mock_debug, same_prefix_result, delete_file, reparse, object_list):
+def test_AWSServerAccess_iter_files_in_bucket(mock_build_filter, mock_debug,
+                                              same_prefix_result: bool, delete_file: bool, reparse: bool, object_list: dict):
+    """Test 'iter_files_in_bucket' method makes the necessary method calls in order to process the logs inside the bucket.
+
+    Parameters
+    ----------
+    same_prefix_result: bool
+        Result from the execution of the _same_prefix method.
+    delete_file: bool
+        Whether to delete an already processed file from a bucket or not.
+    reparse: bool
+        Whether to parse already parsed logs or not.
+    object_list: dict
+        Objects to be returned by list_objects_v2.
+    """
     with patch('wazuh_integration.WazuhIntegration.get_sts_client'), \
             patch('wazuh_integration.WazuhIntegration.__init__'):
 
@@ -125,10 +153,11 @@ def test_AWSServerAccess_iter_files_in_bucket(mock_build_filter, mock_debug, sam
                     mock_build_filter.assert_any_call(aws_account_id, aws_region, True)
 
 
-
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_AWSConfigBucket_iter_files_in_bucket_ko(mock_integration, mock_sts):
+def test_AWSServerAccess_iter_files_in_bucket_ko(mock_sts):
+    """Test 'iter_files_in_bucket' method handles exceptions raised when the filename does not have the valid format
+    or by an unexpected cause and exits with the expected exit code.
+    """
     instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
 
     instance.client = MagicMock()
@@ -147,11 +176,10 @@ def test_AWSConfigBucket_iter_files_in_bucket_ko(mock_integration, mock_sts):
         assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
 
 
-
-
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_AWSServerAccess_marker_only_logs_after(mock_integration, mock_sts):
+def test_AWSServerAccess_marker_only_logs_after(mock_sts):
+    """Test 'marker_only_logs_after' method returns the expected marker using the `only_logs_after` value.
+    """
     test_only_logs_after = utils.TEST_ONLY_LOGS_AFTER
 
     instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess, only_logs_after=test_only_logs_after)
@@ -164,8 +192,9 @@ def test_AWSServerAccess_marker_only_logs_after(mock_integration, mock_sts):
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_AWSServerAccess_check_bucket_ko_empty(mock_integration, mock_sts):
+def test_AWSServerAccess_check_bucket_ko_empty(mock_sts):
+    """Test 'check_bucket' method exits with the expected code when no files are found in the bucket.
+    """
     instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess, bucket=utils.TEST_BUCKET)
     instance.client = MagicMock()
     instance.client.list_objects_v2.return_value = {'ResponseWithoutCommonPrefixes'}
@@ -182,9 +211,17 @@ def test_AWSServerAccess_check_bucket_ko_empty(mock_integration, mock_sts):
     ("OtherClientError", utils.UNKNOWN_ERROR_CODE)
 ])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_AWSServerAccess_check_bucket_ko_client(mock_integration, mock_sts,
-                                         error_code, exit_code):
+def test_AWSServerAccess_check_bucket_ko_client(mock_sts,
+                                                error_code: str, exit_code: int):
+    """Test 'check_bucket' method handles the different botocore exception and exits with the expected code when an exception is raised accessing to AWS.
+
+    Parameters
+    ----------
+    error_code: str
+        Expected error message.
+    exit_code: int
+        Expected exit code.
+    """
     instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
     instance.client = MagicMock()
     instance.client.list_objects_v2.side_effect = botocore.exceptions.ClientError({'Error': {'Code': error_code}},
@@ -197,6 +234,8 @@ def test_AWSServerAccess_check_bucket_ko_client(mock_integration, mock_sts,
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
 def test_AWSServerAccess_load_information_from_file(mock_custom_bucket):
+    """Test 'load_information_from_file' method returns the expected information.
+    """
     instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
 
     data = 'bucket_owner test_bucket [29/Apr/2025:08:47:53 +0000] 0.0.0.0 arn:aws:iam::123456789123:user/test.user ' \

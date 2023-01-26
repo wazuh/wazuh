@@ -69,7 +69,7 @@ class AWSServerAccess(AWSCustomBucket):
                                   "skipping it.", 1)
                             continue
                         else:
-                            print(f"ERROR: The filename of {bucket_file['Key']} doesn't have the a valid format.")
+                            print(f"ERROR: The filename of {bucket_file['Key']} doesn't have a valid format.")
                             sys.exit(17)
 
                     if not self._same_prefix(match_start, aws_account_id, aws_region):

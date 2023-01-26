@@ -37,7 +37,14 @@ def test_arg_valid_date_ko():
 
 
 @pytest.mark.parametrize('arg_string', ['prefix', 'prefix/', None])
-def test_arg_valid_prefix(arg_string):
+def test_arg_valid_prefix(arg_string: str or None):
+    """Test 'arg_valid_prefix' function returns the expected prefix.
+
+    Parameters
+    ----------
+    arg_string: str or None
+        String containing the prefix to be formatted.
+    """
     prefix = aws_tools.arg_valid_prefix(arg_string)
     if arg_string:
         assert isinstance(prefix, str)
@@ -51,7 +58,14 @@ def test_arg_valid_prefix(arg_string):
     f'{utils.TEST_ACCOUNT_ID},{utils.TEST_ACCOUNT_ID},{utils.TEST_ACCOUNT_ID}',
     None
 ])
-def test_arg_valid_accountid(arg_string):
+def test_arg_valid_accountid(arg_string: str or None):
+    """Test 'arg_valid_accountid' function returns the expected number of account IDs.
+
+    Parameters
+    ----------
+    arg_string: str or None
+        String of account ids separated by comma.
+    """
     account_ids = aws_tools.arg_valid_accountid(arg_string)
     assert isinstance(account_ids, list)
     assert len(account_ids) == (len(arg_string.split(',')) if arg_string else 0)
@@ -63,6 +77,14 @@ def test_arg_valid_accountid(arg_string):
     f'{utils.TEST_ACCOUNT_ID},{utils.TEST_ACCOUNT_ID},123456789abc'
 ])
 def test_arg_valid_accountid_ko(arg_string):
+    """Test 'arg_valid_accountid' function raises an 'ArgumentTypeError' error
+    if the number of digits is different to 12 or the account id is not formed only by digits.
+
+    Parameters
+    ----------
+    arg_string: str or None
+        String of account ids separated by comma.
+    """
     with pytest.raises(argparse.ArgumentTypeError):
         aws_tools.arg_valid_accountid(arg_string)
 
@@ -74,13 +96,27 @@ def test_arg_valid_accountid_ko(arg_string):
     None
 ])
 def test_arg_valid_regions(arg_string):
+    """Test 'arg_valid_regions' function returns the expected number of regions.
+
+    Parameters
+    ----------
+    arg_string: str or None
+        String of regions separated by comma.
+    """
     regions = aws_tools.arg_valid_regions(arg_string)
     assert isinstance(regions, list)
     assert len(regions) == (len(arg_string.split(',')) if arg_string else 0)
 
 
 @pytest.mark.parametrize('arg_string', ["900", "3600"])
-def test_arg_valid_iam_role_duration(arg_string):
+def test_arg_valid_iam_role_duration(arg_string: str):
+    """Test 'arg_valid_iam_role_duration' function returns the expected duration.
+
+    Parameters
+    ----------
+    arg_string: str
+        The desired session duration in seconds.
+    """
     duration = aws_tools.arg_valid_iam_role_duration(arg_string)
     assert isinstance(duration, int)
     assert duration == int(arg_string)
@@ -88,12 +124,21 @@ def test_arg_valid_iam_role_duration(arg_string):
 
 @pytest.mark.parametrize('arg_string', ["899", "3601"])
 def test_arg_valid_iam_role_duration_ko(arg_string):
+    """Test 'arg_valid_iam_role_duration' function raises an 'ArgumentTypeError' error
+    when the duration is not between 15m and 12h.
+
+    Parameters
+    ----------
+    arg_string: str
+        The desired session duration in seconds.
+    """
     with pytest.raises(argparse.ArgumentTypeError):
         aws_tools.arg_valid_iam_role_duration(arg_string)
 
 
 @patch('configparser.RawConfigParser')
 def test_get_aws_config_params(mock_config):
+    """Test 'get_aws_config_params' function returns the expected configparser.RawConfigParser object"""
     config = MagicMock()
     mock_config.return_value = config
     assert aws_tools.get_aws_config_params() == config

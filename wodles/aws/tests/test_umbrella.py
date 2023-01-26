@@ -62,7 +62,19 @@ def test_CiscoUmbrella__init__(mock_custom_bucket):
        'source': 'cisco_umbrella'}])
 ])
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_CiscoUmbrella_load_information_from_file(mock_custom_bucket, prefix, data, expected_result):
+def test_CiscoUmbrella_load_information_from_file(mock_custom_bucket,
+                                                  prefix: str, data: str, expected_result: list[dict]):
+    """Test 'load_information_from_file' method returns the expected information.
+
+    Parameters
+    ----------
+    prefix: str
+        Prefix to filter files in bucket.
+    data: str
+        Data found in a Cisco Umbrella log file.
+    expected_result: list[dict]
+        Expected data extracted from a Cisco Umbrella log file.
+    """
     instance = utils.get_mocked_bucket(class_=umbrella.CiscoUmbrella)
     instance.prefix = prefix
 
@@ -72,6 +84,9 @@ def test_CiscoUmbrella_load_information_from_file(mock_custom_bucket, prefix, da
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
 def test_CiscoUmbrella_load_information_from_file_ko(mock_custom_bucket):
+    """Test 'load_information_from_file' method exits when the prefix is not dnslogs, proxylogs or iplogs
+    with the expected error code
+    """
     instance = utils.get_mocked_bucket(class_=umbrella.CiscoUmbrella)
     instance.prefix = 'Error prefix'
 
@@ -83,8 +98,9 @@ def test_CiscoUmbrella_load_information_from_file_ko(mock_custom_bucket):
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__')
-@patch('aws_bucket.AWSCustomBucket.__init__', side_effect=aws_bucket.AWSCustomBucket.__init__)
-def test_CiscoUmbrella_marker_only_logs_after(mock_custom_bucket, mock_integration, mock_sts):
+def test_CiscoUmbrella_marker_only_logs_after(mock_integration, mock_sts):
+    """Test 'marker_only_logs_after' method returns the expected marker using the `only_logs_after` value.
+    """
     test_only_logs_after = utils.TEST_ONLY_LOGS_AFTER
 
     instance = utils.get_mocked_bucket(class_=umbrella.CiscoUmbrella, only_logs_after=test_only_logs_after)
