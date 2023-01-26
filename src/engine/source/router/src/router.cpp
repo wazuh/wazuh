@@ -1,10 +1,50 @@
 #include <router/router.hpp>
 
+#include <fstream>
+#include <iostream>
+
 #include <builder.hpp>
 
 namespace router
 {
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
+
+namespace
+{
+struct dumpFile
+{
+    static const auto flags = std::ios::out | std::ios::app | std::ios::ate;
+    std::ofstream m_file;
+    std::string m_fileName;
+    std::shared_mutex m_mutex; // Protects m_file, only one thread can write to it at a time
+
+    explicit dumpFile(std::string filePath)
+        : m_mutex {}
+        , m_fileName {filePath}
+    {
+        m_file = std::ofstream {filePath, flags};
+        if (!m_file.good())
+        {
+            throw std::runtime_error {fmt::format("Cannot open dump file: '{}', flooded events will be lost", filePath)};
+        }
+    }
+
+    /**
+     * @brief Write a string to the file
+     * @param strRequest String to write
+     * @return true if write failed, false otherwise
+    */
+    bool write(const std::string& strRequest)
+    {
+        std::unique_lock lock {m_mutex};
+        if (m_file.good()) {
+            m_file << strRequest.c_str() << std::endl;
+            return false;
+        }
+        return true;
+    }
+};
+} // namespace
 
 std::optional<base::Error> Router::addRoute(const std::string& name, std::optional<int> optPriority)
 {
@@ -174,17 +214,26 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
     {
         return base::Error {"The router is already running"};
     }
-    // if (m_routes.empty())
-    //{
-    //     return base::Error {"No routes to run"};
-    // }
     m_queue = queue; // Update queue
     m_isRunning.store(true);
+
+    std::shared_ptr<struct dumpFile> dumpFile {nullptr};
+    if (m_floodFile)
+    {
+        try
+        {
+            dumpFile = std::make_shared<struct dumpFile>(m_floodFile.value());
+        }
+        catch (const std::exception& e)
+        {
+            WAZUH_LOG_WARN("Error opening dump file: {}", e.what());
+        }
+    }
 
     for (std::size_t i = 0; i < m_numThreads; ++i)
     {
         m_threads.emplace_back(
-            [this, queue, i]()
+            [this, queue, i, dumpFile]()
             {
                 while (m_isRunning.load())
                 {
@@ -192,14 +241,18 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
                     if (queue->wait_dequeue_timed(event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
                         std::shared_lock lock {m_mutexRoutes};
-                        // TODO: SHould we check if the event is routed?
+
+                        if (m_priorityRoute.empty() && dumpFile && dumpFile->write(event->str()))
+                        {
+                            WAZUH_LOG_WARN("Flood detected. Dumping events to file failed. Events will be lost.");
+                            continue;
+                        }
                         for (auto& route : m_priorityRoute)
                         {
                             if (route.second[i].accept(event))
                             {
                                 const auto& target = route.second[i].getTarget();
                                 lock.unlock();
-                                // TODO: Send event to target
                                 m_environmentManager->forwardEvent(target, i, std::move(event));
                                 break;
                             }
