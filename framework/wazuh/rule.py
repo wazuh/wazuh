@@ -329,6 +329,7 @@ def get_rule_file(filename: str = None, raw: bool = False, default_ruleset: bool
                                       all_msg='Selected rule was returned')
     files = get_rules_files(filename=filename).affected_items
     rules_path = common.RULES_PATH if default_ruleset else common.USER_RULES_PATH
+    exc_path = join(rules_path.replace(common.WAZUH_PATH, 'WAZUH_HOME'), filename)
 
     if len(files) > 0 and any([file for file in files if file['relative_dirname'] in rules_path]):
         try:
@@ -343,14 +344,13 @@ def get_rule_file(filename: str = None, raw: bool = False, default_ruleset: bool
                 result.total_affected_items = 1
         except ExpatError as e:
             result.add_failed_item(id_=filename,
-                                   error=WazuhError(1413, extra_message=f"{join('WAZUH_HOME', rules_path, filename)}:"
-                                                                        f" {str(e)}"))
+                                   error=WazuhError(1413, extra_message=f"{exc_path}: {str(e)}"))
         except OSError:
             result.add_failed_item(id_=filename,
-                                   error=WazuhError(1414, extra_message=join('WAZUH_HOME', rules_path, filename)))
+                                   error=WazuhError(1414, extra_message=exc_path))
 
     else:
-        result.add_failed_item(id_=filename, error=WazuhError(1415))
+        result.add_failed_item(id_=filename, error=WazuhError(1415, extra_message=exc_path))
 
     return result
 

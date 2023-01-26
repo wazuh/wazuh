@@ -201,6 +201,7 @@ def get_decoder_file(filename: str, raw: bool = False, default_ruleset: bool = T
                                       all_msg='Selected decoder was returned')
     decoders = get_decoders_files(filename=filename).affected_items
     decoder_path = common.DECODERS_PATH if default_ruleset else common.USER_DECODERS_PATH
+    exc_path = join(decoder_path.replace(common.WAZUH_PATH, 'WAZUH_HOME'), filename)
 
     if len(decoders) > 0 and any([decoder for decoder in decoders if decoder['relative_dirname'] in decoder_path]):
         try:
@@ -215,14 +216,14 @@ def get_decoder_file(filename: str, raw: bool = False, default_ruleset: bool = T
                 result.total_affected_items = 1
         except ExpatError as e:
             result.add_failed_item(id_=filename,
-                                   error=WazuhError(1501, extra_message=f"{join('WAZUH_HOME', decoder_path, filename)}:"
-                                                                        f" {str(e)}"))
+                                   error=WazuhError(1501,
+                                                    extra_message=f"{exc_path}: {str(e)}"))
         except OSError:
             result.add_failed_item(id_=filename,
-                                   error=WazuhError(1502, extra_message=join('WAZUH_HOME', decoder_path, filename)))
+                                   error=WazuhError(1502, extra_message=exc_path))
 
     else:
-        result.add_failed_item(id_=filename, error=WazuhError(1503))
+        result.add_failed_item(id_=filename, error=WazuhError(1503, extra_message=exc_path))
 
     return result
 
