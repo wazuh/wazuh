@@ -307,7 +307,8 @@ def get_requirement(requirement: str = None, offset: int = 0, limit: int = commo
     return result
 
 
-def get_rule_file(filename: str = None, raw: bool = False) -> Union[str, AffectedItemsWazuhResult]:
+def get_rule_file(filename: str = None, raw: bool = False, default_ruleset: bool = True) -> \
+        Union[str, AffectedItemsWazuhResult]:
     """Read content of specified file.
 
     Parameters
@@ -316,6 +317,8 @@ def get_rule_file(filename: str = None, raw: bool = False) -> Union[str, Affecte
         Name of the rule file. Default `None`
     raw : bool, optional
         Whether to return the content in raw format (str->XML) or JSON. Default `False` (JSON format)
+    default_ruleset : bool
+        Whether to search for the rule in the default ruleset path or not. Default `True`
 
     Returns
     -------
@@ -325,11 +328,11 @@ def get_rule_file(filename: str = None, raw: bool = False) -> Union[str, Affecte
     result = AffectedItemsWazuhResult(none_msg='No rule was returned',
                                       all_msg='Selected rule was returned')
     files = get_rules_files(filename=filename).affected_items
+    rules_path = common.RULES_PATH if default_ruleset else common.USER_RULES_PATH
 
-    if len(files) > 0:
-        rules_path = files[0]['relative_dirname']
+    if len(files) > 0 and any([file for file in files if file['relative_dirname'] in rules_path]):
         try:
-            full_path = join(common.WAZUH_PATH, rules_path, filename)
+            full_path = join(rules_path, filename)
             with open(full_path) as f:
                 content = f.read()
             if raw:
