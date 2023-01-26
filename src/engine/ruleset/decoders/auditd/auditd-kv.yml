@@ -1,0 +1,678 @@
+---
+name: decoder/auditd-kv/0
+
+metadata:
+  description: Decoder for parsing the msg field of Linux auditd logs
+  references:
+    - https://linux.die.net/man/8/auditd
+    - https://docs.elastic.co/en/integrations/auditd
+  product.name: auditd
+
+sources:
+  - decoder/auditd/0
+
+check:
+  - ~kv_msg: +ef_exists
+
+parse:
+  logpar:
+    - ~kv_msg: '<~kv_map/kv/=/ /"/\\>'
+
+normalize:
+  - map:
+      - auditd.log: +ef_rename/$~kv_map
+      - auditd.log.node: +ef_rename/$~node
+      #TODO: issue on +s_eq can't use it as a value
+      - ~null_parenthesis: (null)
+      - ~kv_msg: +ef_delete
+
+  # Start of hexa to string fields transformation
+  # for each audit.log.X
+  # -> remove field if value is '?' '(null)' or 'empty' (null value after parser)
+  # -> key is "exe", "cmd", "data", "path", "comm", "file", "name", "watch", "cwd",
+  #   "acct", "dir", "vm", "old-chardev", "new-chardev", "old-disk", "new-disk", "old-fs",
+  #   "new-fs", "old-net", "new-net", "device", "cgroup", "apparmor", "operation",
+  #   "denied_mask", "info", "profile", "requested_mask", "old-rng", "new-rng", "ocomm",
+  #   "grp", "new_group", "invalid_context", "sw", "root_dir", "proctitle"
+  # -> convert value to hex if it can
+  # -> removed quotes from start or end
+  # -> key is arch or value is c000003e -> ".. .arch" : "x86_64"
+
+  # TODO: Fix issue of +t_is_null check value using target as first parameter
+  - check:
+      - auditd.log.exe: +t_is_null
+    map:
+      - auditd.log.exe: +ef_delete
+  - check: auditd.log.exe==? OR +s_eq/$auditd.log.exe/$~null_parenthesis
+    map:
+      - auditd.log.exe: +ef_delete
+  - map:
+      - auditd.log.exe: +s_from_hexa/$auditd.log.exe
+  - check: +s_starts/auditd.log.exe/" OR +s_starts/auditd.log.exe/'
+    map:
+      - auditd.log.exe: +s_trim/both/"
+      - auditd.log.exe: +s_trim/both/'
+
+  - check:
+      - auditd.log.cmd: +t_is_null
+    map:
+      - auditd.log.cmd: +ef_delete
+  - check: auditd.log.cmd==? OR +s_eq/$auditd.log.cmd/$~null_parenthesis
+    map:
+      - auditd.log.cmd: +ef_delete
+  - map:
+      - auditd.log.cmd: +s_from_hexa/$auditd.log.cmd
+  - check: +s_starts/auditd.log.cmd/" OR +s_starts/auditd.log.cmd/'
+    map:
+      - auditd.log.cmd: +s_trim/both/"
+      - auditd.log.cmd: +s_trim/both/'
+
+  - check:
+      - auditd.log.data: +t_is_null
+    map:
+      - auditd.log.data: +ef_delete
+  - check: auditd.log.data==? OR +s_eq/$auditd.log.data/$~null_parenthesis
+    map:
+      - auditd.log.data: +ef_delete
+  - map:
+      - auditd.log.data: +s_from_hexa/$auditd.log.data
+  - check: +s_starts/auditd.log.data/" OR +s_starts/auditd.log.data/'
+    map:
+      - auditd.log.data: +s_trim/both/"
+      - auditd.log.data: +s_trim/both/'
+
+  - check:
+      - auditd.log.path: +t_is_null
+    map:
+      - auditd.log.path: +ef_delete
+  - check: auditd.log.path==? OR +s_eq/$auditd.log.path/$~null_parenthesis
+    map:
+      - auditd.log.path: +ef_delete
+  - map:
+      - auditd.log.path: +s_from_hexa/$auditd.log.path
+  - check: +s_starts/auditd.log.path/" OR +s_starts/auditd.log.path/'
+    map:
+      - auditd.log.path: +s_trim/both/"
+      - auditd.log.path: +s_trim/both/'
+
+  - check:
+      - auditd.log.comm: +t_is_null
+    map:
+      - auditd.log.comm: +ef_delete
+  - check: auditd.log.comm==? OR +s_eq/$auditd.log.comm/$~null_parenthesis
+    map:
+      - auditd.log.comm: +ef_delete
+  - map:
+      - auditd.log.comm: +s_from_hexa/$auditd.log.comm
+  - check: +s_starts/auditd.log.comm/" OR +s_starts/auditd.log.comm/'
+    map:
+      - auditd.log.comm: +s_trim/both/"
+      - auditd.log.comm: +s_trim/both/'
+
+  - check:
+      - auditd.log.file: +t_is_null
+    map:
+      - auditd.log.file: +ef_delete
+  - check: auditd.log.file==? OR +s_eq/$auditd.log.file/$~null_parenthesis
+    map:
+      - auditd.log.file: +ef_delete
+  - map:
+      - auditd.log.file: +s_from_hexa/$auditd.log.file
+  - check: +s_starts/auditd.log.file/" OR +s_starts/auditd.log.file/'
+    map:
+      - auditd.log.file: +s_trim/both/"
+      - auditd.log.file: +s_trim/both/'
+
+  - check:
+      - auditd.log.name: +t_is_null
+    map:
+      - auditd.log.name: +ef_delete
+  - check: auditd.log.name==? OR +s_eq/$auditd.log.name/$~null_parenthesis
+    map:
+      - auditd.log.name: +ef_delete
+  - map:
+      - auditd.log.name: +s_from_hexa/$auditd.log.name
+  - check: +s_starts/auditd.log.name/" OR +s_starts/auditd.log.name/'
+    map:
+      - auditd.log.name: +s_trim/both/"
+      - auditd.log.name: +s_trim/both/'
+
+  - check:
+      - auditd.log.watch: +t_is_null
+    map:
+      - auditd.log.watch: +ef_delete
+  - check: auditd.log.watch==? OR +s_eq/$auditd.log.watch/$~null_parenthesis
+    map:
+      - auditd.log.watch: +ef_delete
+  - map:
+      - auditd.log.watch: +s_from_hexa/$auditd.log.watch
+  - check: +s_starts/auditd.log.watch/" OR +s_starts/auditd.log.watch/'
+    map:
+      - auditd.log.watch: +s_trim/both/"
+      - auditd.log.watch: +s_trim/both/'
+
+  - check:
+      - auditd.log.cwd: +t_is_null
+    map:
+      - auditd.log.cwd: +ef_delete
+  - check: auditd.log.cwd==? OR +s_eq/$auditd.log.cwd/$~null_parenthesis
+    map:
+      - auditd.log.cwd: +ef_delete
+  - map:
+      - auditd.log.cwd: +s_from_hexa/$auditd.log.cwd
+  - check: +s_starts/auditd.log.cwd/" OR +s_starts/auditd.log.cwd/'
+    map:
+      - auditd.log.cwd: +s_trim/both/"
+      - auditd.log.cwd: +s_trim/both/'
+
+  - check:
+      - auditd.log.acct: +t_is_null
+    map:
+      - auditd.log.acct: +ef_delete
+  - check: auditd.log.acct==? OR +s_eq/$auditd.log.acct/$~null_parenthesis
+    map:
+      - auditd.log.acct: +ef_delete
+  - map:
+      - auditd.log.acct: +s_from_hexa/$auditd.log.acct
+  - check: +s_starts/auditd.log.acct/" OR +s_starts/auditd.log.acct/'
+    map:
+      - auditd.log.acct: +s_trim/both/"
+      - auditd.log.acct: +s_trim/both/'
+
+  - check:
+      - auditd.log.dir: +t_is_null
+    map:
+      - auditd.log.dir: +ef_delete
+  - check: auditd.log.dir==? OR +s_eq/$auditd.log.dir/$~null_parenthesis
+    map:
+      - auditd.log.dir: +ef_delete
+  - map:
+      - auditd.log.dir: +s_from_hexa/$auditd.log.dir
+  - check: +s_starts/auditd.log.dir/" OR +s_starts/auditd.log.dir/'
+    map:
+      - auditd.log.dir: +s_trim/both/"
+      - auditd.log.dir: +s_trim/both/'
+
+  - check:
+      - auditd.log.vm: +t_is_null
+    map:
+      - auditd.log.vm: +ef_delete
+  - check: auditd.log.vm==? OR +s_eq/$auditd.log.vm/$~null_parenthesis
+    map:
+      - auditd.log.vm: +ef_delete
+  - map:
+      - auditd.log.vm: +s_from_hexa/$auditd.log.vm
+  - check: +s_starts/auditd.log.vm/" OR +s_starts/auditd.log.vm/'
+    map:
+      - auditd.log.vm: +s_trim/both/"
+      - auditd.log.vm: +s_trim/both/'
+
+  - check:
+      - auditd.log.old-chardev: +t_is_null
+    map:
+      - auditd.log.old-chardev: +ef_delete
+  - check: auditd.log.old-chardev==? OR +s_eq/$auditd.log.old-chardev/$~null_parenthesis
+    map:
+      - auditd.log.old-chardev: +ef_delete
+  - map:
+      - auditd.log.old-chardev: +s_from_hexa/$auditd.log.old-chardev
+  - check: +s_starts/auditd.log.old-chardev/" OR +s_starts/auditd.log.old-chardev/'
+    map:
+      - auditd.log.old-chardev: +s_trim/both/"
+      - auditd.log.old-chardev: +s_trim/both/'
+
+  - check:
+      - auditd.log.new-chardev: +t_is_null
+    map:
+      - auditd.log.new-chardev: +ef_delete
+  - check: auditd.log.new-chardev==? OR +s_eq/$auditd.log.new-chardev/$~null_parenthesis
+    map:
+      - auditd.log.new-chardev: +ef_delete
+  - map:
+      - auditd.log.new-chardev: +s_from_hexa/$auditd.log.new-chardev
+  - check: +s_starts/auditd.log.new-chardev/" OR +s_starts/auditd.log.new-chardev/'
+    map:
+      - auditd.log.new-chardev: +s_trim/both/"
+      - auditd.log.new-chardev: +s_trim/both/'
+
+  - check:
+      - auditd.log.old-disk: +t_is_null
+    map:
+      - auditd.log.old-disk: +ef_delete
+  - check: auditd.log.old-disk==? OR +s_eq/$auditd.log.old-disk/$~null_parenthesis
+    map:
+      - auditd.log.old-disk: +ef_delete
+  - map:
+      - auditd.log.old-disk: +s_from_hexa/$auditd.log.old-disk
+  - check: +s_starts/auditd.log.old-disk/" OR +s_starts/auditd.log.old-disk/'
+    map:
+      - auditd.log.old-disk: +s_trim/both/"
+      - auditd.log.old-disk: +s_trim/both/'
+
+  - check:
+      - auditd.log.new-disk: +t_is_null
+    map:
+      - auditd.log.new-disk: +ef_delete
+  - check: auditd.log.new-disk==? OR +s_eq/$auditd.log.new-disk/$~null_parenthesis
+    map:
+      - auditd.log.new-disk: +ef_delete
+  - map:
+      - auditd.log.new-disk: +s_from_hexa/$auditd.log.new-disk
+  - check: +s_starts/auditd.log.new-disk/" OR +s_starts/auditd.log.new-disk/'
+    map:
+      - auditd.log.new-disk: +s_trim/both/"
+      - auditd.log.new-disk: +s_trim/both/'
+
+  - check:
+      - auditd.log.old-fs: +t_is_null
+    map:
+      - auditd.log.old-fs: +ef_delete
+  - check: auditd.log.old-fs==? OR +s_eq/$auditd.log.old-fs/$~null_parenthesis
+    map:
+      - auditd.log.old-fs: +ef_delete
+  - map:
+      - auditd.log.old-fs: +s_from_hexa/$auditd.log.old-fs
+  - check: +s_starts/auditd.log.old-fs/" OR +s_starts/auditd.log.old-fs/'
+    map:
+      - auditd.log.old-fs: +s_trim/both/"
+      - auditd.log.old-fs: +s_trim/both/'
+
+  - check:
+      - auditd.log.new-fs: +t_is_null
+    map:
+      - auditd.log.new-fs: +ef_delete
+  - check: auditd.log.new-fs==? OR +s_eq/$auditd.log.new-fs/$~null_parenthesis
+    map:
+      - auditd.log.new-fs: +ef_delete
+  - map:
+      - auditd.log.new-fs: +s_from_hexa/$auditd.log.new-fs
+  - check: +s_starts/auditd.log.new-fs/" OR +s_starts/auditd.log.new-fs/'
+    map:
+      - auditd.log.new-fs: +s_trim/both/"
+      - auditd.log.new-fs: +s_trim/both/'
+
+  - check:
+      - auditd.log.old-net: +t_is_null
+    map:
+      - auditd.log.old-net: +ef_delete
+  - check: auditd.log.old-net==? OR +s_eq/$auditd.log.old-net/$~null_parenthesis
+    map:
+      - auditd.log.old-net: +ef_delete
+  - map:
+      - auditd.log.old-net: +s_from_hexa/$auditd.log.old-net
+  - check: +s_starts/auditd.log.old-net/" OR +s_starts/auditd.log.old-net/'
+    map:
+      - auditd.log.old-net: +s_trim/both/"
+      - auditd.log.old-net: +s_trim/both/'
+
+  - check:
+      - auditd.log.new-net: +t_is_null
+    map:
+      - auditd.log.new-net: +ef_delete
+  - check: auditd.log.new-net==? OR +s_eq/$auditd.log.new-net/$~null_parenthesis
+    map:
+      - auditd.log.new-net: +ef_delete
+  - map:
+      - auditd.log.new-net: +s_from_hexa/$auditd.log.new-net
+  - check: +s_starts/auditd.log.new-net/" OR +s_starts/auditd.log.new-net/'
+    map:
+      - auditd.log.new-net: +s_trim/both/"
+      - auditd.log.new-net: +s_trim/both/'
+
+  - check:
+      - auditd.log.device: +t_is_null
+    map:
+      - auditd.log.device: +ef_delete
+  - check: auditd.log.device==? OR +s_eq/$auditd.log.device/$~null_parenthesis
+    map:
+      - auditd.log.device: +ef_delete
+  - map:
+      - auditd.log.device: +s_from_hexa/$auditd.log.device
+  - check: +s_starts/auditd.log.device/" OR +s_starts/auditd.log.device/'
+    map:
+      - auditd.log.device: +s_trim/both/"
+      - auditd.log.device: +s_trim/both/'
+
+  - check:
+      - auditd.log.cgroup: +t_is_null
+    map:
+      - auditd.log.cgroup: +ef_delete
+  - check: auditd.log.cgroup==? OR +s_eq/$auditd.log.cgroup/$~null_parenthesis
+    map:
+      - auditd.log.cgroup: +ef_delete
+  - map:
+      - auditd.log.cgroup: +s_from_hexa/$auditd.log.cgroup
+  - check: +s_starts/auditd.log.cgroup/" OR +s_starts/auditd.log.cgroup/'
+    map:
+      - auditd.log.cgroup: +s_trim/both/"
+      - auditd.log.cgroup: +s_trim/both/'
+
+  - check:
+      - auditd.log.apparmor: +t_is_null
+    map:
+      - auditd.log.apparmor: +ef_delete
+  - check: auditd.log.apparmor==? OR +s_eq/$auditd.log.apparmor/$~null_parenthesis
+    map:
+      - auditd.log.apparmor: +ef_delete
+  - map:
+      - auditd.log.apparmor: +s_from_hexa/$auditd.log.apparmor
+  - check: +s_starts/auditd.log.apparmor/" OR +s_starts/auditd.log.apparmor/'
+    map:
+      - auditd.log.apparmor: +s_trim/both/"
+      - auditd.log.apparmor: +s_trim/both/'
+
+  - check:
+      - auditd.log.operation: +t_is_null
+    map:
+      - auditd.log.operation: +ef_delete
+  - check: auditd.log.operation==? OR +s_eq/$auditd.log.operation/$~null_parenthesis
+    map:
+      - auditd.log.operation: +ef_delete
+  - map:
+      - auditd.log.operation: +s_from_hexa/$auditd.log.operation
+  - check: +s_starts/auditd.log.operation/" OR +s_starts/auditd.log.operation/'
+    map:
+      - auditd.log.operation: +s_trim/both/"
+      - auditd.log.operation: +s_trim/both/'
+
+  - check:
+      - auditd.log.denied_mask: +t_is_null
+    map:
+      - auditd.log.denied_mask: +ef_delete
+  - check: auditd.log.denied_mask==? OR +s_eq/$auditd.log.denied_mask/$~null_parenthesis
+    map:
+      - auditd.log.denied_mask: +ef_delete
+  - map:
+      - auditd.log.denied_mask: +s_from_hexa/$auditd.log.denied_mask
+  - check: +s_starts/auditd.log.denied_mask/" OR +s_starts/auditd.log.denied_mask/'
+    map:
+      - auditd.log.denied_mask: +s_trim/both/"
+      - auditd.log.denied_mask: +s_trim/both/'
+
+  - check:
+      - auditd.log.info: +t_is_null
+    map:
+      - auditd.log.info: +ef_delete
+  - check: auditd.log.info==? OR +s_eq/$auditd.log.info/$~null_parenthesis
+    map:
+      - auditd.log.info: +ef_delete
+  - map:
+      - auditd.log.info: +s_from_hexa/$auditd.log.info
+  - check: +s_starts/auditd.log.info/" OR +s_starts/auditd.log.info/'
+    map:
+      - auditd.log.info: +s_trim/both/"
+      - auditd.log.info: +s_trim/both/'
+
+  - check:
+      - auditd.log.profile: +t_is_null
+    map:
+      - auditd.log.profile: +ef_delete
+  - check: auditd.log.profile==? OR +s_eq/$auditd.log.profile/$~null_parenthesis
+    map:
+      - auditd.log.profile: +ef_delete
+  - map:
+      - auditd.log.profile: +s_from_hexa/$auditd.log.profile
+  - check: +s_starts/auditd.log.profile/" OR +s_starts/auditd.log.profile/'
+    map:
+      - auditd.log.profile: +s_trim/both/"
+      - auditd.log.profile: +s_trim/both/'
+
+  - check:
+      - auditd.log.requested_mask: +t_is_null
+    map:
+      - auditd.log.requested_mask: +ef_delete
+  - check: auditd.log.requested_mask==? OR +s_eq/$auditd.log.requested_mask/$~null_parenthesis
+    map:
+      - auditd.log.requested_mask: +ef_delete
+  - map:
+      - auditd.log.requested_mask: +s_from_hexa/$auditd.log.requested_mask
+  - check: +s_starts/auditd.log.requested_mask/" OR +s_starts/auditd.log.requested_mask/'
+    map:
+      - auditd.log.requested_mask: +s_trim/both/"
+      - auditd.log.requested_mask: +s_trim/both/'
+
+  - check:
+      - auditd.log.old-rng: +t_is_null
+    map:
+      - auditd.log.old-rng: +ef_delete
+  - check: auditd.log.old-rng==? OR +s_eq/$auditd.log.old-rng/$~null_parenthesis
+    map:
+      - auditd.log.old-rng: +ef_delete
+  - map:
+      - auditd.log.old-rng: +s_from_hexa/$auditd.log.old-rng
+  - check: +s_starts/auditd.log.old-rng/" OR +s_starts/auditd.log.old-rng/'
+    map:
+      - auditd.log.old-rng: +s_trim/both/"
+      - auditd.log.old-rng: +s_trim/both/'
+
+  - check:
+      - auditd.log.new-rng: +t_is_null
+    map:
+      - auditd.log.new-rng: +ef_delete
+  - check: auditd.log.new-rng==? OR +s_eq/$auditd.log.new-rng/$~null_parenthesis
+    map:
+      - auditd.log.new-rng: +ef_delete
+  - map:
+      - auditd.log.new-rng: +s_from_hexa/$auditd.log.new-rng
+  - check: +s_starts/auditd.log.new-rng/" OR +s_starts/auditd.log.new-rng/'
+    map:
+      - auditd.log.new-rng: +s_trim/both/"
+      - auditd.log.new-rng: +s_trim/both/'
+
+  - check:
+      - auditd.log.ocomm: +t_is_null
+    map:
+      - auditd.log.ocomm: +ef_delete
+  - check: auditd.log.ocomm==? OR +s_eq/$auditd.log.ocomm/$~null_parenthesis
+    map:
+      - auditd.log.ocomm: +ef_delete
+  - map:
+      - auditd.log.ocomm: +s_from_hexa/$auditd.log.ocomm
+  - check: +s_starts/auditd.log.ocomm/" OR +s_starts/auditd.log.ocomm/'
+    map:
+      - auditd.log.ocomm: +s_trim/both/"
+      - auditd.log.ocomm: +s_trim/both/'
+
+  - check:
+      - auditd.log.grp: +t_is_null
+    map:
+      - auditd.log.grp: +ef_delete
+  - check: auditd.log.grp==? OR +s_eq/$auditd.log.grp/$~null_parenthesis
+    map:
+      - auditd.log.grp: +ef_delete
+  - map:
+      - auditd.log.grp: +s_from_hexa/$auditd.log.grp
+  - check: +s_starts/auditd.log.grp/" OR +s_starts/auditd.log.grp/'
+    map:
+      - auditd.log.grp: +s_trim/both/"
+      - auditd.log.grp: +s_trim/both/'
+
+  - check:
+      - auditd.log.new_group: +t_is_null
+    map:
+      - auditd.log.new_group: +ef_delete
+  - check: auditd.log.new_group==? OR +s_eq/$auditd.log.new_group/$~null_parenthesis
+    map:
+      - auditd.log.new_group: +ef_delete
+  - map:
+      - auditd.log.new_group: +s_from_hexa/$auditd.log.new_group
+  - check: +s_starts/auditd.log.new_group/" OR +s_starts/auditd.log.new_group/'
+    map:
+      - auditd.log.new_group: +s_trim/both/"
+      - auditd.log.new_group: +s_trim/both/'
+
+  - check:
+      - auditd.log.invalid_context: +t_is_null
+    map:
+      - auditd.log.invalid_context: +ef_delete
+  - check: auditd.log.invalid_context==? OR +s_eq/$auditd.log.invalid_context/$~null_parenthesis
+    map:
+      - auditd.log.invalid_context: +ef_delete
+  - map:
+      - auditd.log.invalid_context: +s_from_hexa/$auditd.log.invalid_context
+  - check: +s_starts/auditd.log.invalid_context/" OR +s_starts/auditd.log.invalid_context/'
+    map:
+      - auditd.log.invalid_context: +s_trim/both/"
+      - auditd.log.invalid_context: +s_trim/both/'
+
+  - check:
+      - auditd.log.sw: +t_is_null
+    map:
+      - auditd.log.sw: +ef_delete
+  - check: auditd.log.sw==? OR +s_eq/$auditd.log.sw/$~null_parenthesis
+    map:
+      - auditd.log.sw: +ef_delete
+  - map:
+      - auditd.log.sw: +s_from_hexa/$auditd.log.sw
+  - check: +s_starts/auditd.log.sw/" OR +s_starts/auditd.log.sw/'
+    map:
+      - auditd.log.sw: +s_trim/both/"
+      - auditd.log.sw: +s_trim/both/'
+
+  - check:
+      - auditd.log.root_dir: +t_is_null
+    map:
+      - auditd.log.root_dir: +ef_delete
+  - check: auditd.log.root_dir==? OR +s_eq/$auditd.log.root_dir/$~null_parenthesis
+    map:
+      - auditd.log.root_dir: +ef_delete
+  - map:
+      - auditd.log.root_dir: +s_from_hexa/$auditd.log.root_dir
+  - check: +s_starts/auditd.log.root_dir/" OR +s_starts/auditd.log.root_dir/'
+    map:
+      - auditd.log.root_dir: +s_trim/both/"
+      - auditd.log.root_dir: +s_trim/both/'
+
+  - check:
+      - auditd.log.proctitle: +t_is_null
+    map:
+      - auditd.log.proctitle: +ef_delete
+  - check: auditd.log.proctitle==? OR +s_eq/$auditd.log.proctitle/$~null_parenthesis
+    map:
+      - auditd.log.proctitle: +ef_delete
+  - map:
+      - auditd.log.proctitle: +s_from_hexa/$auditd.log.proctitle
+  - check: +s_starts/auditd.log.proctitle/" OR +s_starts/auditd.log.proctitle/'
+    map:
+      - auditd.log.proctitle: +s_trim/both/"
+      - auditd.log.proctitle: +s_trim/both/'
+
+  - check:
+      - auditd.log.arch: c000003e
+  - map:
+      - auditd.log.arch: x86_64
+  # End of hexa to string fields transformation
+
+  # Begin Auditd record types mapping
+
+  - check: auditd.log.syscall==execve AND auditd.log.record_type==SYSCALL
+    map:
+      - event.category: [process]
+      - event.type: info
+
+  - check: auditd.log.record_type==SYSTEM_BOOT OR auditd.log.record_type==SYSTEM_SHUTDOWN
+    map:
+      - event.category: [host]
+      - event.type: info
+
+  - check: auditd.log.record_type==VIRT_CONTROL OR auditd.log.record_type==VIRT_MACHINE_ID
+    map:
+      - event.category: [host]
+
+  - check: >-
+      auditd.log.syscall==accept OR +i_eq/auditd.log.syscall/43 OR
+      auditd.log.syscall==recvfrom OR +i_eq/auditd.log.syscall/45 OR
+      auditd.log.syscall==recvmsg OR +i_eq/auditd.log.syscall/47 OR
+      auditd.log.syscall==accept4 OR +i_eq/auditd.log.syscall/288
+    map:
+      - network.direction: ingress
+
+  - check: >-
+      auditd.log.syscall==connect OR +i_eq/auditd.log.syscall/42 OR
+      auditd.log.syscall==sendto OR +i_eq/auditd.log.syscall/44 OR
+      auditd.log.syscall==sendmsg OR +i_eq/auditd.log.syscall/46
+    map:
+      - network.direction: egress
+
+  - check: auditd.log.op==start AND auditd.log.record_type==VIRT_CONTROL
+    map:
+      - event.type: start
+
+  - check: auditd.log.op==stop AND auditd.log.record_type==VIRT_CONTROL
+    map:
+      - event.type: end
+
+  - check: auditd.log.op==create AND auditd.log.record_type==VIRT_CONTROL
+    map:
+      - event.type: creation
+
+  - check: auditd.log.op==delete AND auditd.log.record_type==VIRT_CONTROL
+    map:
+      - event.type: deletion
+
+  - check:
+      - auditd.log.record_type: VIRT_MACHINE_ID
+    map:
+      - event.category: [host]
+      - event.type: creation
+      - container.name: $auditd.log.vm
+      - container.runtime: $auditd.log.virt
+
+  - check:
+      - auditd.log.user: +ef_not_exists
+    map:
+      - user.name: +ef_rename/$auditd.log.acct
+
+  - check:
+      - auditd.log.success: no
+    map:
+      - auditd.log.success: false
+
+  - check:
+      - auditd.log.success: yes
+    map:
+      - auditd.log.success: true
+
+  - check:
+      - auditd.log.src: +ef_not_exists
+    map:
+      - auditd.log.src: $auditd.log.addr
+
+  - map:
+      - auditd.log.record_type: +s_lo/$auditd.log.record_type
+      - destination.address: $auditd.log.dst
+      - event.action: +s_lo/$auditd.log.record_type
+      - event.outcome: +ef_rename/$auditd.log.res
+      - host.architecture: +ef_rename/$auditd.log.arch
+      - message: +ef_rename/$auditd.log.msg
+      - process.args_count: +ef_rename/$auditd.log.argc
+      - process.args: "+s_to_array/$auditd.log.cmd/ " # It ends with a space
+      - process.executable: +ef_rename/$auditd.log.exe
+      - process.exit_code: +ef_rename/$auditd.log.exit
+      - process.name: +ef_rename/$auditd.log.comm
+      - process.parent.pid: +ef_rename/$auditd.log.ppid
+      - process.pid: +ef_rename/$auditd.log.pid
+      - process.working_directory: +ef_rename/$auditd.log.cwd
+      - source.address: +parse_ip/$auditd.log.src
+      - source.address: +parse_ip/$auditd.log.addr
+      - source.as.number: +ef_rename/$source.as.asn
+      - source.as.organization.name: +ef_rename/$source.as.organization_name
+      - user.audit.group.id: +ef_rename/$auditd.log.agid
+      - user.audit.id: +ef_rename/$auditd.log.auid
+      - user.effective.group.id: +ef_rename/$auditd.log.egid
+      - user.effective.id: +ef_rename/$auditd.log.euid
+      - user.filesystem.group.id: +ef_rename/$auditd.log.fsgid
+      - user.filesystem.id: +ef_rename/$auditd.log.fsuid
+      - user.group.id: +ef_rename/$auditd.log.gid
+      - user.id: +ef_rename/$auditd.log.uid
+      - user.name: +ef_rename/$auditd.log.acct
+      - user.name: +ef_rename/$auditd.log.user
+      - user.owner.group.id: +ef_rename/$auditd.log.ogid
+      - user.owner.id: +ef_rename/$auditd.log.ouid
+      - user.saved.group.id: +ef_rename/$auditd.log.sgid
+      - user.saved.id: +ef_rename/$auditd.log.suid
+      - user.terminal: +ef_rename/$auditd.log.terminal
+      - auditd.log.kv: +ef_delete
+      - auditd.log.sub_kv: +ef_delete
+      - auditd.log.epoch: +ef_delete
+      - auditd.log.copy: +ef_delete
