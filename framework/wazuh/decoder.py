@@ -179,7 +179,8 @@ def get_decoders_files(status: str = None, relative_dirname: str = None, filenam
     return result
 
 
-def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedItemsWazuhResult]:
+def get_decoder_file(filename: str, raw: bool = False, default_ruleset: bool = True) -> \
+        Union[str, AffectedItemsWazuhResult]:
     """Read content of a specified file.
 
     Parameters
@@ -188,6 +189,8 @@ def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedIte
         Name of the decoder file.
     raw : bool
         Whether to return the content in raw format (str->XML) or JSON.
+    default_ruleset : bool
+        Whether to search for the rule in the default ruleset path or not. Default `True`
 
     Returns
     -------
@@ -197,11 +200,11 @@ def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedIte
     result = AffectedItemsWazuhResult(none_msg='No decoder was returned',
                                       all_msg='Selected decoder was returned')
     decoders = get_decoders_files(filename=filename).affected_items
+    decoder_path = common.DECODERS_PATH if default_ruleset else common.USER_DECODERS_PATH
 
-    if len(decoders) > 0:
-        decoder_path = decoders[0]['relative_dirname']
+    if len(decoders) > 0 and any([decoder for decoder in decoders if decoder['relative_dirname'] in decoder_path]):
         try:
-            full_path = join(common.WAZUH_PATH, decoder_path, filename)
+            full_path = join(decoder_path, filename)
             with open(full_path) as f:
                 file_content = f.read()
             if raw:
