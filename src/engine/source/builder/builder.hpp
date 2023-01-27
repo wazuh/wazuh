@@ -40,7 +40,7 @@ public:
         if (std::holds_alternative<base::Error>(envJson))
         {
             throw std::runtime_error(fmt::format(
-                "Engine builder: Environment \"{}\" could not be obtained from the "
+                "Engine builder: Environment '{}' could not be obtained from the "
                 "store: {}.",
                 name.fullName(),
                 std::get<base::Error>(envJson).message));
@@ -51,12 +51,20 @@ public:
         return environment;
     }
 
+    /**
+     * @brief Build a route from the store.
+     *
+     * @param name Name of the route.
+     * @return The route.
+     * @throws std::runtime_error if the route could not be obtained from the store or if the route definition is
+     * invalid.
+     */
     Route buildRoute(const base::Name& name) const
     {
         auto routeJson = m_storeRead->get(name);
         if (std::holds_alternative<base::Error>(routeJson))
         {
-            throw std::runtime_error(fmt::format("Engine builder: Route \"{}\" could not be obtained from the "
+            throw std::runtime_error(fmt::format("Engine builder: Route '{}' could not be obtained from the "
                                                  "store: {}.",
                                                  name.fullName(),
                                                  std::get<base::Error>(routeJson).message));
@@ -79,6 +87,9 @@ public:
         return std::nullopt;
     }
 
+    /**
+     * @copydoc IValidator::validateRoute
+     */
     std::optional<base::Error> validateRoute(const json::Json& json) const override
     {
         try

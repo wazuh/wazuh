@@ -1,5 +1,5 @@
 add_executable(helpersFunctions_benchmarks
-filters_bench.cpp
+    filters_bench.cpp
 )
 
 # TODO Why is necessary add logixExpression
