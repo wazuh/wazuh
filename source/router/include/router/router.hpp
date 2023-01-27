@@ -16,22 +16,18 @@
 
 #include "environmentManager.hpp"
 
-/*************************************
-TODO:
-- Add list route
-- delete route
-- Refresh routes (pipeline)
-- Check if destination is valid ?
-- check if destination is in the router and his route is up
-- check routes aviable and the states
-- check if the route is valid
-- Implement all api callbacks
-
-*************************************/
-
 namespace router
 {
 
+/**
+ * @brief Router class to manage routes and events
+ *
+ * The router is the main class of the router module. It manages the routes and has the logic to route the events to the
+ * correct environment. Also it has the thread pool to process the events, and the environment manager to manage the
+ * runtime environments (creation, destruction, and interaction).
+ * Get the events from the queue, select the correct environment (with the route priority and conditions), and send the
+ * event to the environment.
+ */
 class Router
 {
 
@@ -52,7 +48,6 @@ private:
     std::shared_ptr<EnvironmentManager> m_environmentManager; ///< Environment manager
     std::shared_ptr<builder::Builder> m_builder;              ///< Builder
     std::shared_ptr<concurrentQueue> m_queue;                 ///< Queue to get events
-    std::optional<std::string> m_floodFile;               ///< File to log floods
 
     /* Config */
     std::size_t m_numThreads; ///< Number of threads for the router
@@ -61,15 +56,16 @@ private:
     /**
      * @brief API callback for route creation
      *
-     * @param params Parameters for route creation ("/name")
+     * @param params Parameters for route creation ("/name"), optional priority ("/priority") to override the default
      * @return api::WazuhResponse with the result of the operation
      */
     api::WazuhResponse apiSetRoute(const json::Json& params);
 
     /**
      * @brief API callback for list routes
-     * @param params
-     * @return api::WazuhResponse with the result of the operation
+     * @param params none
+     * @return api::WazuhResponse with the result of the operation, a list of  entries with the name, priority and target
+     *
      */
     api::WazuhResponse apiGetRoutes(const json::Json& params);
 
@@ -84,7 +80,8 @@ private:
     api::WazuhResponse apiChangeRoutePriority(const json::Json& params);
 
 public:
-    Router(std::shared_ptr<builder::Builder> builder, std::size_t threads = 1, std::optional<std::string> floodFile = std::nullopt)
+    Router(std::shared_ptr<builder::Builder> builder,
+           std::size_t threads = 1)
         : m_mutexRoutes {}
         , m_namePriority {}
         , m_priorityRoute {}
@@ -92,7 +89,6 @@ public:
         , m_numThreads {threads}
         , m_threads {}
         , m_builder {builder}
-        , m_floodFile {floodFile}
     {
         if (threads == 0)
         {
@@ -106,18 +102,29 @@ public:
 
         m_environmentManager = std::make_shared<EnvironmentManager>(builder, threads);
     };
+
     /**
-     * @brief Get the list of route names
+     * @brief Get the list of route names, priority and target
      *
      * @return std::unordered_set<std::string>
      */
     std::vector<std::tuple<std::string, std::size_t, std::string>> getRouteTable();
 
+    /**
+     * @brief Change the priority of a route
+     *
+     * @param name name of the route
+     * @param priority new priority
+     * @return std::optional<base::Error> A error with description if the route can't be changed
+     */
     std::optional<base::Error> changeRoutePriority(const std::string& name, int priority);
 
     /**
-     * @brief add a new route to the router
+     * @brief Add a new route to the router.
      *
+     * Optionally, the priority can be specified. If not, the priority is the especified in the route.
+     * If the route already exists or the priority is already used, the route is not
+     * added.
      * @param name name of the route
      * @return A error with description if the route can't be added
      */
@@ -133,14 +140,13 @@ public:
 
     /**
      * @brief Launch in a new threads the router to ingest data from the queue.
-     *
      */
     std::optional<base::Error> run(std::shared_ptr<concurrentQueue> queue);
 
     /**
      * @brief Stop the router
      *
-     * Returns when all threads are stopped
+     * Send a stop signal to the router and wait for the threads to finish.
      */
     void stop();
 
