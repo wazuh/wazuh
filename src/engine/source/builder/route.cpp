@@ -3,12 +3,13 @@
 namespace builder
 {
 
-namespace {
-    constexpr auto PATH_TARGET = "target";
-    constexpr auto PATH_PRIORITY = "priority";
-    constexpr int MAX_PRIORITY = 255L;
-    constexpr int MIN_PRIORITY = 0L;
-}
+namespace
+{
+constexpr auto PATH_TARGET = "target";
+constexpr auto PATH_PRIORITY = "priority";
+constexpr int MAX_PRIORITY = 255L;
+constexpr int MIN_PRIORITY = 0L;
+} // namespace
 
 Route::Route(json::Json jsonDefinition, std::shared_ptr<builder::internals::Registry> registry)
 {
@@ -53,11 +54,10 @@ void Route::setPriority(int priority)
 {
     if (priority < MIN_PRIORITY || priority > MAX_PRIORITY)
     {
-        throw std::runtime_error(
-            fmt::format("Route '{}' has an invalid priority. Priority must be between {} and {}.",
-                        m_name,
-                        MIN_PRIORITY,
-                        MAX_PRIORITY));
+        throw std::runtime_error(fmt::format("Route '{}' has an invalid priority. Priority must be between {} and {}.",
+                                             m_name,
+                                             MIN_PRIORITY,
+                                             MAX_PRIORITY));
     }
     m_priority = priority;
 }
