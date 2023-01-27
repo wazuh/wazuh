@@ -636,7 +636,6 @@ class AWSBucket(WazuhIntegration):
             except Exception as e:
                 debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
 
-
     def db_count_region(self, aws_account_id, aws_region):
         """Counts the number of rows in DB for a region
         :param aws_account_id: AWS account ID
@@ -2624,7 +2623,8 @@ class AWSServerAccess(AWSCustomBucket):
     def check_bucket(self):
         """Check if the bucket is empty or the credentials are wrong."""
         try:
-            if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Delimiter='/'):
+            bucket_objects = self.client.list_objects_v2(Bucket=self.bucket, Delimiter='/')
+            if not 'CommonPrefixes' in bucket_objects and not 'Contents' in bucket_objects:
                 print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
         except botocore.exceptions.ClientError as error:
