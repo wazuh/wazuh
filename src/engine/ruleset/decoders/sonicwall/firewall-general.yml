@@ -1,5 +1,5 @@
 ---
-name: decoder/firewall-general/0
+name: decoder/sonicwall-firewall-general/0
 
 metadata:
   module: firewall
