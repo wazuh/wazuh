@@ -12,7 +12,7 @@ metadata:
     - documentation link
 
 check:
-  - event.original: +r_match/<\d+>\s*device=.*?date=.*?time
+  - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="Wireless Protection"
 
 sources:
   - decoder/queue-syslog/0
