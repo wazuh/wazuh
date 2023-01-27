@@ -9,7 +9,7 @@ metadata:
   product.name: auditd
 
 definitions:
-  TYPE_FIELD: type=<~log.record_type>
+  TYPE_FIELD: type=<auditd.log.record_type>
   LOG_EPOCH: <~log.epoch>
   LOG_SEQUENCE: <auditd.log.sequence>
   MSG_FIELD: '<~/literal/msg=audit(>$LOG_EPOCH:$LOG_SEQUENCE<~/literal/):>'
@@ -66,7 +66,3 @@ normalize:
 
       # TODO: we need a HF that parses a date from epoch in secs
       - timestamp: $~log.epoch
-      # TODO: this must be queried from a db with the process name as argument
-      - event.action: +s_lo/$~log.record_type
-      - event.type: info
-      - event.category: process
