@@ -11,6 +11,9 @@ metadata:
   references:
     - documentation link
 
+check:
+  - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="WAF"
+
 sources:
   - decoder/queue-syslog/0
   - decoder/queue-localfile/0
@@ -36,8 +39,36 @@ normalize:
       - event.duration: +s_concat/$~tmp.responsetime/000
       - event.kind: alert
       - event.module: sophos
+  - check:
+      - ~tmp.priority: unknown
+    map:
+      - event.severity: 0
+  - check:
+      - ~tmp.priority: alert
+    map:
+      - event.severity: 1
+  - check:
+      - ~tmp.priority: critical
+    map:
+      - event.severity: 2
+  - check:
+      - ~tmp.priority: error
+    map:
+      - event.severity: 3
+  - check:
+      - ~tmp.priority: warning
+    map:
+      - event.severity: 4
+  - check:
+      - ~tmp.priority: notification
+    map:
+      - event.severity: 5
+  - check:
+      - ~tmp.priority: Information
+    map:
       - event.severity: 6
-      - event.timezone: -02:00
+  - map:
+      - event.timezone: $~tmp.timezone
       - event.type: [connection, denied]
       - destination.bytes: $~tmp.httpstatus
       - destination.ip: $~tmp.localip
@@ -75,7 +106,7 @@ normalize:
       - source.bytes: $~tmp.bytesrcv
       - source.ip: $~tmp.sourceip
       - tags: [forwarded, preserve_original_even, sophos-xg]
-      - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000-02:00
+      - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time
       - url.full: $~tmp.url
       - user_agent.original: $~tmp.useragent
       - ~log: +ef_delete
