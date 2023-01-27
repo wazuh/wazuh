@@ -19,10 +19,10 @@ decoders:
   - decoder/fim-event/0
   - decoder/fim-scan/0
   - decoder/redis/0
-  - decoder/firewall-general/0
-  - decoder/firewall-generated/0
   - decoder/rootcheck/0
   - decoder/sca/0
+  - decoder/sonicwall-firewall-general/0
+  - decoder/sonicwall-firewall-generated/0
   - decoder/syscollector-base/0
   - decoder/syscollector-dbsync-network-protocol/0
   - decoder/syscollector-dbsync-osinfo/0
