@@ -1,7 +1,11 @@
 import socket
 import sqlite3
 import sys
-import boto3
+try:
+    import boto3
+except ImportError:
+    print('ERROR: boto3 module is required.')
+    sys.exit(4)
 import botocore
 import json
 import re

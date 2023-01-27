@@ -2,11 +2,15 @@ import csv
 import sys
 from os import path
 from aws_bucket import  AWSLogsBucket
-import boto3
+try:
+    import boto3
+except ImportError:
+    print('ERROR: boto3 module is required.')
+    sys.exit(4)
+import botocore
 import operator
 from datetime import datetime
 from datetime import timedelta
-import botocore
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
 
