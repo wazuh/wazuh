@@ -14,73 +14,68 @@
 
 #include "json.hpp"
 #include "sharedDefs.h"
+#include <typeindex>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
 namespace PackageLinuxHelper
 {
+    static const std::map<char, std::pair<std::type_index, std::string>> s_mapAlpineFields =
+    {
+        {'P', {typeid(std::string), "name"}},
+        {'V', {typeid(std::string), "version"}},
+        {'A', {typeid(std::string), "architecture"}},
+        {'I', {typeid(int32_t), "size"}},
+        {'T', {typeid(std::string), "description"}},
+    };
+
     static nlohmann::json parseApk(const std::vector<std::pair<char, std::string>>& entries)
     {
         nlohmann::json packageInfo;
 
+        packageInfo["architecture"] = UNKNOWN_VALUE;
+        packageInfo["size"] = 0;
+        packageInfo["format"] = "apk";
+        packageInfo["vendor"] = "Alpine Linux";
+        packageInfo["install_time"] = UNKNOWN_VALUE;
+        packageInfo["location"] = UNKNOWN_VALUE;
+        packageInfo["groups"] = UNKNOWN_VALUE;
+        packageInfo["priority"] = UNKNOWN_VALUE;
+        packageInfo["multiarch"] = UNKNOWN_VALUE;
+        packageInfo["source"] = UNKNOWN_VALUE;
+
+        // Lambda to check if a string is empty and assign default value.
+        const auto loadData = [&packageInfo](const std::pair<std::type_index, std::string>& key,
+                                             const std::string & value)
+        {
+            if (!value.empty())
+            {
+                if (key.first == typeid(std::string))
+                {
+                    packageInfo[key.second] = value;
+                }
+                else if (key.first == typeid(int32_t))
+                {
+                    try
+                    {
+                        packageInfo[key.second] = std::stol(value);
+                    }
+                    catch (const std::exception&)
+                    {
+                        packageInfo[key.second] = 0;
+                    }
+                }
+            }
+        };
+
         for (const auto& item : entries)
         {
-            switch (item.first)
-            {
-                case 'P': // Package entry format: "P:musl"
-                    packageInfo["name"] = item.second;
-                    break;
-
-                case 'V': // Version entry format: "V:1.2.3-r4"
-                    packageInfo["version"] = item.second;
-                    break;
-
-                case 'A': // Architecture entry format: "A:x86_64"
-                    packageInfo["architecture"] = !item.second.empty() ? item.second : UNKNOWN_VALUE;
-                    break;
-
-                case 'I': // Size entry format: "I:634880"
-                    packageInfo["size"] = !item.second.empty() ? stol(item.second) : 0;
-                    break;
-
-                case 'T': // Description entry format: "T:the musl c library (libc) implementation"
-                    packageInfo["description"] = !item.second.empty() ? item.second : UNKNOWN_VALUE;
-                    break;
-            }
+            loadData(s_mapAlpineFields.at(item.first), item.second);
         }
 
-        if (packageInfo.contains("name") &&
-                packageInfo.contains("version") &&
-                0 != packageInfo.at("name").get<std::string>().size() &&
-                0 != packageInfo.at("version").get<std::string>().size())
-        {
-
-            if (!packageInfo.contains("architecture"))
-            {
-                packageInfo["architecture"] = UNKNOWN_VALUE;
-            }
-
-            if (!packageInfo.contains("size"))
-            {
-                packageInfo["size"] = 0;
-            }
-
-            if (!packageInfo.contains("description"))
-            {
-                packageInfo["description"] = UNKNOWN_VALUE;
-            }
-
-            packageInfo["format"] = "apk";
-            packageInfo["vendor"] = "Alpine Linux";
-            packageInfo["install_time"] = UNKNOWN_VALUE;
-            packageInfo["location"] = UNKNOWN_VALUE;
-            packageInfo["groups"] = UNKNOWN_VALUE;
-            packageInfo["priority"] = UNKNOWN_VALUE;
-            packageInfo["multiarch"] = UNKNOWN_VALUE;
-            packageInfo["source"] = UNKNOWN_VALUE;
-        }
-        else
+        if (!packageInfo.contains("name") ||
+                !packageInfo.contains("version"))
         {
             packageInfo.clear();
         }

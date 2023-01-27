@@ -21,7 +21,7 @@ void getApkInfo(const std::string& fileName, std::function<void(nlohmann::json&)
 
     // https://wiki.alpinelinux.org/wiki/Apk_spec#APKINDEX_Format
     std::array<char, 5> keys{'P', 'V', 'A', 'I', 'T'};
-    std::string separator = ":";
+    const auto separator = ':';
 
     if (apkDb.is_open())
     {
@@ -31,8 +31,7 @@ void getApkInfo(const std::string& fileName, std::function<void(nlohmann::json&)
             {
                 if (std::find(std::cbegin(keys), std::cend(keys), line.front()) != std::cend(keys))
                 {
-                    data.push_back(std::pair<char, std::string>(line.front(),
-                                                                line.substr(line.find_first_of(separator) + 1)));
+                    data.emplace_back(line.front(), line.substr(line.find_first_of(separator) + 1));
                 }
             }
             else
