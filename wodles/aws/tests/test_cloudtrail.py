@@ -21,7 +21,7 @@ def test_AWSCloudTrailBucket__init__(mock_logs_bucket):
 
 @patch('aws_bucket.AWSBucket.reformat_msg')
 def test_AWSCloudTrailBucket_reformat_msg(mock_reformat):
-    """Test 'reformat_msg' function applies the expected format to a given event."""
+    """Test 'reformat_msg' method applies the expected format to a given event."""
     event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
     # Add problematic fields
     for field in cloudtrail.DYNAMIC_FIELDS:

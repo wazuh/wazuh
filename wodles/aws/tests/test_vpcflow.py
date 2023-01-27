@@ -39,8 +39,7 @@ def test_AWSVPCFlowBucket__init__(mock_logs_bucket):
 
 
 def test_AWSVPCFlowBucket_load_information_from_file():
-    """Test 'load_information_from_file' method returns the expected information.
-    """
+    """Test 'load_information_from_file' method returns the expected information."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
     data = '2 123456789123 eni-12345678912345678 0.0.0.0 0.0.0.0 3500 52000 6 39 4698 1622505433 1622505730 ACCEPT OK'
@@ -97,8 +96,7 @@ def test_AWSVPCFlowBucket_get_ec2_client(access_key: str or None, secret_key: st
 
 @patch('aws_bucket.AWSLogsBucket.__init__')
 def test_AWSVPCFlowBucket_get_ec2_client_ko(mock_logs_bucket):
-    """Test 'get_ec2_client' method handles exceptions raised when trying to get the EC2 client.
-    """
+    """Test 'get_ec2_client' method handles exceptions raised when trying to get the EC2 client."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
     with patch('boto3.Session'), \
@@ -109,8 +107,7 @@ def test_AWSVPCFlowBucket_get_ec2_client_ko(mock_logs_bucket):
 
 @patch('vpcflow.AWSVPCFlowBucket.get_ec2_client')
 def test_AWSVPCFlowBucket_get_flow_logs_ids(mock_get_ec2_client):
-    """Test 'get_flow_logs_ids' method returns the expected flow log ids from the client's response.
-    """
+    """Test 'get_flow_logs_ids' method returns the expected flow log ids from the client's response."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
     ec2_client = mock_get_ec2_client.return_value
@@ -170,8 +167,7 @@ def test_AWSVPCFlowBucket_already_processed(custom_database,
 
 
 def test_AWSVPCFlowBucket_get_days_since_today():
-    """Test 'get_days_since_today' returns the expected number of days since today.
-    """
+    """Test 'get_days_since_today' returns the expected number of days since today."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
     test_date = "20220630"
 
@@ -183,8 +179,7 @@ def test_AWSVPCFlowBucket_get_days_since_today():
 
 @patch('vpcflow.AWSVPCFlowBucket.get_days_since_today', return_value=DAYS_DELTA)
 def test_AWSVPCFlowBucket_get_date_list(mock_days_since_today):
-    """Test 'get_date_list' returns the expected list of dates for a given delta of days.
-    """
+    """Test 'get_date_list' returns the expected list of dates for a given delta of days."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
     instance.date_format = "%Y/%m/%d"
 
@@ -348,8 +343,7 @@ def test_AWSVPCFlowBucket_db_maintenance(custom_database, expected_db_count: int
 
 
 def test_AWSVPCFlowBucket_get_vpc_prefix():
-    """Test 'get_vpc_prefix' method returns the prefix with the expected format.
-    """
+    """Test 'get_vpc_prefix' method returns the prefix with the expected format."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
     expected_vpc_prefix = utils.TEST_FULL_PREFIX + TEST_DATE + '/' + utils.TEST_ACCOUNT_ID + '_vpcflowlogs_' + utils.TEST_REGION + '_' + TEST_FLOW_LOG_ID
@@ -494,8 +488,7 @@ def test_AWSVPCFlowBucket_iter_files_in_bucket(mock_build_filter, mock_debug,
 
 
 def test_AWSVPCFlowBucket_iter_files_in_bucket_ko():
-    """Test 'iter_files_in_bucket' method handles exceptions raised by botocore or by an unexpected cause and exits with the expected exit code.
-    """
+    """Test 'iter_files_in_bucket' method handles exceptions raised by botocore or by an unexpected cause and exits with the expected exit code."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
     instance.client = MagicMock()
@@ -514,8 +507,7 @@ def test_AWSVPCFlowBucket_iter_files_in_bucket_ko():
 
 
 def test_AWSVPCFlowBucket_mark_complete(custom_database):
-    """Test 'mark_complete' method inserts non-processed logs into the DB.
-    """
+    """Test 'mark_complete' method inserts non-processed logs into the DB."""
     utils.database_execute_script(custom_database, TEST_EMPTY_TABLE_SCHEMA)
 
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket=utils.TEST_BUCKET)
@@ -555,8 +547,7 @@ def test_AWSVPCFlowBucket_mark_complete(custom_database):
 
 @patch('aws_bucket.aws_tools.debug')
 def test_AWSVPCFlowBucket_mark_complete_ko(mock_debug, custom_database):
-    """Test 'mark_complete' handles exceptions raised when trying to execute a query to the DB.
-    """
+    """Test 'mark_complete' handles exceptions raised when trying to execute a query to the DB."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, reparse=False)
 
     instance.db_connector = custom_database

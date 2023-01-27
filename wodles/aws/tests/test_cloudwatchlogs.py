@@ -324,8 +324,7 @@ def test_AWSCloudWatchLogs_update_values(mock_sts_client, result_before: dict or
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('cloudwatchlogs.aws_tools.debug')
 def test_AWSCloudWatchLogs_save_data_db(mock_debug, mock_sts_client, custom_database):
-    """
-    Test 'save_data_db' method inserts token, start_time and end_time values into the DB and updates them if
+    """Test 'save_data_db' method inserts token, start_time and end_time values into the DB and updates them if
     already exist.
     """
     utils.database_execute_script(custom_database, TEST_CLOUDWATCH_SCHEMA)
@@ -432,8 +431,7 @@ def test_AWSCloudWatchLogs_get_log_streams_ko(mock_debug, mock_sts_client):
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('cloudwatchlogs.AWSCloudWatchLogs.get_log_streams', return_value=[])
 def test_AWSCloudWatchLogs_purge_db(mock_get_log_streams, mock_sts_client, custom_database):
-    """Test 'purge_db' method removes the records for log streams when they no longer exist on AWS CloudWatch Logs.
-    """
+    """Test 'purge_db' method removes the records for log streams when they no longer exist on AWS CloudWatch Logs."""
     utils.database_execute_script(custom_database, TEST_CLOUDWATCH_SCHEMA)
 
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, region=utils.TEST_REGION)
