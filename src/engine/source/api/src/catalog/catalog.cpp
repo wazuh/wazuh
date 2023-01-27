@@ -136,7 +136,6 @@ Catalog::Catalog(const Config& config)
     m_schemas[Resource::Type::RULE] = std::get<json::Json>(assetSchemaJson);
     m_schemas[Resource::Type::OUTPUT] = std::get<json::Json>(assetSchemaJson);
     m_schemas[Resource::Type::FILTER] = std::get<json::Json>(assetSchemaJson);
-    // TODO: Check if necesary a new schema for route
     m_schemas[Resource::Type::ROUTE] = std::get<json::Json>(assetSchemaJson);
 
     const auto environmentSchemaJson = m_store->get(environmentSchemaName);
@@ -420,7 +419,6 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
 
     // Builder validator
     std::optional<base::Error> validationError;
-    // TODO: Validate Router
     if (item.m_type == Resource::Type::DECODER || item.m_type == Resource::Type::RULE
         || item.m_type == Resource::Type::FILTER || item.m_type == Resource::Type::OUTPUT)
     {

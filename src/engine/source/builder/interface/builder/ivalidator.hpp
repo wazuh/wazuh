@@ -28,7 +28,12 @@ public:
     virtual std::optional<base::Error>
     validateEnvironment(const json::Json& json) const = 0;
 
-    // TODO: Docu
+    /**
+     * @brief Validate a route.
+     *
+     * @param json Route Json definition.
+     * @return std::optional<base::Error> An error if the Route is not valid. (Invalid definition)
+     */
     virtual std::optional<base::Error> validateRoute(const json::Json& json) const = 0;
 
     /**

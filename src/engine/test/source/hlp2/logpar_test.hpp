@@ -19,7 +19,7 @@ json::Json getConfig()
     return config;
 }
 
-parsec::Parser<json::Json> __dummyTextParser(std::string endToken,
+parsec::Parser<json::Json> _dummyTextParser(std::string endToken,
                                              std::vector<std::string> args)
 {
     return parsec::Parser<json::Json> {
@@ -73,11 +73,11 @@ parsec::Parser<json::Json> dummyTextParser(std::string,
         throw std::runtime_error("No arguments expected");
     }
 
-    parsec::Parser<json::Json> p = __dummyTextParser(endTokens.front(), args);
+    parsec::Parser<json::Json> p = _dummyTextParser(endTokens.front(), args);
     endTokens.pop_front();
     for (auto& end : endTokens)
     {
-        p = p | __dummyTextParser(end, args);
+        p = p | _dummyTextParser(end, args);
     }
 
     return p;
