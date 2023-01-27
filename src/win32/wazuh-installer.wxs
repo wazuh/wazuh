@@ -210,6 +210,9 @@
                         <ServiceControl Id="ServiceControl_ossec_upgrade_noec" Name="WazuhSvc" Remove="uninstall" Start="install" Stop="both" Wait="yes" />
                         <Condition>((OSSECINSTALLED AND (OSSECRUNNING = "Running")) OR ((WAZUHINSTALLED = "Wazuh") AND (WAZUHRUNNING = "Running"))) AND (VersionNT &lt; 600)</Condition>
                     </Component>
+                    <Component Id="WAZUH_AGENT_CONFIG_SERVICE" DiskId="1" Guid="D60079CA-5FB0-49AB-9EA6-E347B50191F7">
+					    <util:ServiceConfig ServiceName="WazuhSvc" FirstFailureActionType="restart"  SecondFailureActionType="restart" ThirdFailureActionType="restart" />
+                    </Component>
                     <Component Id="VISTA_SEC.TXT" DiskId="1" Guid="20EF5801-369B-4EC2-87A2-59DCE56308D9">
                         <File Id="VISTA_SEC.TXT" Name="vista_sec.txt" Source="vista_sec.txt" />
                     </Component>
@@ -579,6 +582,7 @@
             <ComponentRef Id="WAZUH_AGENT.EXE" />
             <ComponentRef Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" />
             <ComponentRef Id="WAZUH_AGENT_UPGRADE_OSSEC_NOEC.EXE" />
+            <ComponentRef Id="WAZUH_AGENT_CONFIG_SERVICE" />
             <ComponentRef Id="VISTA_SEC.TXT" />
             <ComponentRef Id="RESTART_WAZUH.EXE" />
             <ComponentRef Id="ROUTE_NULL.EXE" />
