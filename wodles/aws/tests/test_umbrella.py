@@ -99,8 +99,7 @@ def test_CiscoUmbrella_load_information_from_file_ko(mock_custom_bucket):
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__')
 def test_CiscoUmbrella_marker_only_logs_after(mock_integration, mock_sts):
-    """Test 'marker_only_logs_after' method returns the expected marker using the `only_logs_after` value.
-    """
+    """Test 'marker_only_logs_after' method returns the expected marker using the `only_logs_after` value."""
     test_only_logs_after = utils.TEST_ONLY_LOGS_AFTER
 
     instance = utils.get_mocked_bucket(class_=umbrella.CiscoUmbrella, only_logs_after=test_only_logs_after)

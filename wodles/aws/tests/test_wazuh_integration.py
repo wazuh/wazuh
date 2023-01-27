@@ -382,7 +382,9 @@ def test_WazuhIntegration_create_table():
 
 
 def test_WazuhIntegration_create_table_ko():
-    """Test `create_table` function creates the table using the expected SQL."""
+    """Test `create_table` function handles exceptions raised
+    and exits with the expected code when the table cannot be created.
+    """
     instance = utils.get_mocked_WazuhIntegration()
     instance.db_cursor = MagicMock()
     instance.db_cursor.execute.side_effect = Exception

@@ -33,8 +33,7 @@ def test_AWSWAFBucket__init__(mock_custom_bucket):
 @patch('aws_bucket.AWSCustomBucket.__init__', side_effect=aws_bucket.AWSCustomBucket.__init__)
 def test_AWSWAFBucket_load_information_from_file(mock_custom_bucket, mock_bucket, mock_sts, mock_integration,
                                                  log_file: str, skip_on_error: bool):
-    """
-    Test AWSWAFBucket's implementation of the load_information_from_file method.
+    """Test AWSWAFBucket's implementation of the load_information_from_file method.
 
     Parameters
     ----------
@@ -64,8 +63,7 @@ def test_AWSWAFBucket_load_information_from_file(mock_custom_bucket, mock_bucket
 def test_AWSWAFBucket_load_information_from_file_ko(mock_custom_bucket, mock_bucket, mock_sts, mock_integration,
                                                     log_file: str, skip_on_error: bool,
                                                     expected_exception: Exception):
-    """
-    Test that AWSWAFBucket's implementation of the load_information_from_file method raises
+    """Test that AWSWAFBucket's implementation of the load_information_from_file method raises
     an exception when called with invalid arguments.
 
     Parameters

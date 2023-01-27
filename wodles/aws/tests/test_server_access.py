@@ -178,8 +178,7 @@ def test_AWSServerAccess_iter_files_in_bucket_ko(mock_sts):
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 def test_AWSServerAccess_marker_only_logs_after(mock_sts):
-    """Test 'marker_only_logs_after' method returns the expected marker using the `only_logs_after` value.
-    """
+    """Test 'marker_only_logs_after' method returns the expected marker using the `only_logs_after` value."""
     test_only_logs_after = utils.TEST_ONLY_LOGS_AFTER
 
     instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess, only_logs_after=test_only_logs_after)
@@ -193,8 +192,7 @@ def test_AWSServerAccess_marker_only_logs_after(mock_sts):
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 def test_AWSServerAccess_check_bucket_ko_empty(mock_sts):
-    """Test 'check_bucket' method exits with the expected code when no files are found in the bucket.
-    """
+    """Test 'check_bucket' method exits with the expected code when no files are found in the bucket."""
     instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess, bucket=utils.TEST_BUCKET)
     instance.client = MagicMock()
     instance.client.list_objects_v2.return_value = {'ResponseWithoutCommonPrefixes'}
@@ -234,8 +232,7 @@ def test_AWSServerAccess_check_bucket_ko_client(mock_sts,
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
 def test_AWSServerAccess_load_information_from_file(mock_custom_bucket):
-    """Test 'load_information_from_file' method returns the expected information.
-    """
+    """Test 'load_information_from_file' method returns the expected information."""
     instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
 
     data = 'bucket_owner test_bucket [29/Apr/2025:08:47:53 +0000] 0.0.0.0 arn:aws:iam::123456789123:user/test.user ' \

@@ -39,8 +39,7 @@ def test_AWSConfigBucket__init__(mock_logs_bucket):
 
 
 def test_AWSConfigBucket_get_days_since_today():
-    """Test 'get_days_since_today' returns the expected number of days since today.
-    """
+    """Test 'get_days_since_today' returns the expected number of days since today."""
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
     test_date = "20220630"
 
@@ -53,8 +52,7 @@ def test_AWSConfigBucket_get_days_since_today():
 @patch('config.AWSConfigBucket.get_date_last_log')
 @patch('config.AWSConfigBucket.get_days_since_today', return_value=DAYS_DELTA)
 def test_AWSConfigBucket_get_date_list(mock_days_since_today, mock_date_last_log):
-    """Test 'get_date_list' returns the expected list of dates for a given delta of days.
-    """
+    """Test 'get_date_list' returns the expected list of dates for a given delta of days."""
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
 
     date_list_time = [datetime.utcnow() - timedelta(days=x) for x in range(0, DAYS_DELTA)]
@@ -198,8 +196,7 @@ def test_AWSConfigBucket__remove_padding_zeros_from_marker_ko():
 
 @patch('aws_bucket.AWSBucket.marker_only_logs_after')
 def test_AWSConfigBucket_marker_only_logs_after(mock_marker_only_logs_after):
-    """Test 'marker_only_logs_after' method returns the expected marker.
-    """
+    """Test 'marker_only_logs_after' method returns the expected marker."""
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, only_logs_after=utils.TEST_ONLY_LOGS_AFTER)
     mock_marker_only_logs_after.return_value = f'AWSLogs/{utils.TEST_ACCOUNT_ID}/Config/{utils.TEST_REGION}/{instance.only_logs_after.strftime(instance.date_format)}'
 
@@ -210,8 +207,7 @@ def test_AWSConfigBucket_marker_only_logs_after(mock_marker_only_logs_after):
 
 @patch('aws_bucket.AWSBucket.marker_custom_date')
 def test_AWSConfigBucket_marker_custom_date(mock_marker_custom_date):
-    """Test 'marker_custom_date' method returns the expected marker when specifying a custom date.
-    """
+    """Test 'marker_custom_date' method returns the expected marker when specifying a custom date."""
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
     custom_date = datetime(2022, 9, 8)
 
@@ -232,7 +228,7 @@ def test_AWSConfigBucket_build_s3_filter_args(custom_database,
 
     Parameters
     ----------
-    region : str
+    region: str
         Region name.
     iterating: bool
         Whether the call to the method is being made inside a loop due to a truncated response.
@@ -283,8 +279,7 @@ def test_AWSConfigBucket_build_s3_filter_args(custom_database,
 
 
 def test_AWSConfigBucket_build_s3_filter_args_ko():
-    """Test 'build_s3_filter_args' method handles exceptions raised and exits with the expected exit code.
-    """
+    """Test 'build_s3_filter_args' method handles exceptions raised and exits with the expected exit code."""
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, reparse=True)
 
     aws_account_id = utils.TEST_ACCOUNT_ID
@@ -393,7 +388,7 @@ def test_AWSConfigBucket_iter_files_in_bucket_ko():
 def test_AWSConfigBucket_reformat_msg(mock_reformat,
                                       iam_profile: str or dict, created_time: int or str, state: str or dict,
                                       availability_zones: str or dict, security_groups: str or dict):
-    """Test 'reformat_msg' method returns the expected message when passing different types of fields.
+    """Test 'reformat_msg' method applies the expected format to a given event.
 
     Parameters
     ----------

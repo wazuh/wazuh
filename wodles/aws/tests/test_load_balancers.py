@@ -33,7 +33,7 @@ def test_AWSLBBucket_get_base_prefix(mock_sts):
 @patch('load_balancers.AWSLBBucket.get_base_prefix', return_value='base_prefix/')
 @patch('aws_bucket.AWSCustomBucket.__init__')
 def test_AWSLBBucket_get_service_prefix(mock_custom_bucket, mock_base_prefix):
-    """Test 'get_service_prefix' returns the expected prefix with the format <base_prefix>/<account_id>/<service>"""
+    """Test 'get_service_prefix' returns the expected prefix with the format <base_prefix>/<account_id>/<service>."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSLBBucket)
     expected_service_prefix = f'base_prefix/{utils.TEST_ACCOUNT_ID}/{instance.service}/'
     assert instance.get_service_prefix(utils.TEST_ACCOUNT_ID) == expected_service_prefix
@@ -53,7 +53,7 @@ def test_AWSLBBucket_iter_regions_and_accounts(mock_custom_bucket, mock_iter_reg
        return_value=f'base_prefix/{utils.TEST_ACCOUNT_ID}/elasticloadbalancing/')
 @patch('aws_bucket.AWSCustomBucket.__init__')
 def test_AWSLBBucket_get_full_prefix(mock_custom_bucket, mock_service_prefix):
-    """Test 'get_full_prefix' returns the expected prefix with the format <service_prefix>/<region>"""
+    """Test 'get_full_prefix' returns the expected prefix with the format <service_prefix>/<region>."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSLBBucket)
     expected_full_prefix = f'base_prefix/{utils.TEST_ACCOUNT_ID}/elasticloadbalancing/{utils.TEST_REGION}/'
     assert instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION) == expected_full_prefix
@@ -80,8 +80,7 @@ def test_AWSALBBucket__init__(mock_lb_bucket):
 
 @patch('load_balancers.AWSLBBucket.__init__')
 def test_AWSALBBucket_load_information_from_file(mock_lb_bucket):
-    """Test 'load_information_from_file' method returns the expected information or logs the appropriate error message.
-    """
+    """Test 'load_information_from_file' method returns the expected information or logs the appropriate error message."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSALBBucket)
 
     with patch('aws_bucket.AWSBucket.decompress_file'), \
@@ -141,8 +140,7 @@ def test_AWSCLBBucket__init__(mock_lb_bucket):
 
 @patch('load_balancers.AWSLBBucket.__init__')
 def test_AWSCLBBucket_load_information_from_file(mock_lb_bucket):
-    """Test 'load_information_from_file' method returns the expected information.
-    """
+    """Test 'load_information_from_file' method returns the expected information."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSCLBBucket)
 
     with patch('aws_bucket.AWSBucket.decompress_file'), \
@@ -180,8 +178,7 @@ def test_AWSNLBBucket___init__(mock_lb_bucket):
 
 @patch('load_balancers.AWSLBBucket.__init__')
 def test_AWSNLBBucket_load_information_from_file(mock_lb_bucket):
-    """Test 'load_information_from_file' method returns the expected information.
-    """
+    """Test 'load_information_from_file' method returns the expected information."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSNLBBucket)
 
     with patch('aws_bucket.AWSBucket.decompress_file'), \
