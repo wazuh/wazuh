@@ -636,7 +636,6 @@ class AWSBucket(WazuhIntegration):
             except Exception as e:
                 debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
 
-
     def db_count_region(self, aws_account_id, aws_region):
         """Counts the number of rows in DB for a region
         :param aws_account_id: AWS account ID
@@ -992,7 +991,7 @@ class AWSBucket(WazuhIntegration):
 
         def _event_should_be_skipped(event_):
             return self.discard_field and self.discard_regex \
-                   and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
+                and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
 
         if event_list is not None:
             for event in event_list:
@@ -1839,7 +1838,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
     def get_vpc_prefix(self, aws_account_id, aws_region, date, flow_log_id):
         return self.get_full_prefix(aws_account_id, aws_region) + date \
-               + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
+            + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
 
     def build_s3_filter_args(self, aws_account_id, aws_region, date, flow_log_id, iterating=False):
         filter_marker = ''
@@ -2228,8 +2227,8 @@ class AWSGuardDutyBucket(AWSCustomBucket):
     def check_guardduty_type(self):
         try:
             return \
-                'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=f'{self.prefix}AWSLogs',
-                                                                Delimiter='/', MaxKeys=1)
+                    'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=f'{self.prefix}AWSLogs',
+                                                                    Delimiter='/', MaxKeys=1)
         except Exception as err:
             if hasattr(err, 'message'):
                 debug(f"+++ Unexpected error: {err.message}", 2)
@@ -2624,7 +2623,8 @@ class AWSServerAccess(AWSCustomBucket):
     def check_bucket(self):
         """Check if the bucket is empty or the credentials are wrong."""
         try:
-            if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Delimiter='/'):
+            bucket_objects = self.client.list_objects_v2(Bucket=self.bucket, Delimiter='/')
+            if not 'CommonPrefixes' in bucket_objects and not 'Contents' in bucket_objects:
                 print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
         except botocore.exceptions.ClientError as error:
