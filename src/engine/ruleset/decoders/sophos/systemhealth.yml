@@ -11,6 +11,9 @@ metadata:
   references:
     - documentation link
 
+check:
+  - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="System Health"
+
 sources:
   - decoder/queue-syslog/0
   - decoder/queue-localfile/0
@@ -35,11 +38,39 @@ normalize:
       - event.kind: event
       - event.module: sophos
       - event.dataset: sophos.xg
+  - check:
+      - ~tmp.priority: unknown
+    map:
+      - event.severity: 0
+  - check:
+      - ~tmp.priority: alert
+    map:
+      - event.severity: 1
+  - check:
+      - ~tmp.priority: critical
+    map:
+      - event.severity: 2
+  - check:
+      - ~tmp.priority: error
+    map:
+      - event.severity: 3
+  - check:
+      - ~tmp.priority: warning
+    map:
+      - event.severity: 4
+  - check:
+      - ~tmp.priority: notification
+    map:
+      - event.severity: 5
+  - check:
+      - ~tmp.priority: Information
+    map:
       - event.severity: 6
-      - event.timezone: -02:00
+  - map:
+      - event.timezone: $~tmp.timezone
       - fileset.name: xg
       - input.type": log
-      - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000-02:00
+      - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time
       - log.level: $~tmp.priority
       - observer.product: XG
       - observer.serial_number: $~tmp.device_id
