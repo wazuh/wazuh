@@ -18,8 +18,8 @@ namespace router
 /**
  * @brief EnvironmentManager is responsible to manage the runtime environment,
  * Creacion, destruction, and interaction with the environment.
- * The environment manager create multiples instaces of the same environments and dont
- * allow interact to the same environment from different threads.
+ * The environment manager create multiples instaces of the same environments this
+ * allow interact to the same environment from different threads without any synchronization.
  */
 class EnvironmentManager
 {
@@ -42,7 +42,7 @@ public:
      * The environment manager is responsible to manage the runtime environment, creation, destruction, and interaction
      * with the environment
      * @param builder Builder for environment creation
-     * @param maxInstances Maximum number of instances of each environment
+     * @param maxInstances Number of instances of each environment
      */
     EnvironmentManager(std::shared_ptr<builder::Builder> builder, std::size_t maxInstances)
         : m_environments {}
@@ -101,15 +101,10 @@ public:
      *
      * @note The instance of the environment should be selected by the thread id,
      * the instance of an environment is not thread safe for processing events.
+     * The lamda function of the expression no are thread safe.
      */
     std::optional<base::Error> forwardEvent(const std::string& name, std::size_t instance, base::Event event);
 
-    /**
-     * @brief Main API callback for environment management
-     *
-     * @return api::CommandFn
-     */
-    api::CommandFn apiCallback();
 };
 } // namespace router
 

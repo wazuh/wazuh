@@ -61,7 +61,7 @@ namespace {
     };
 }
 
-// IP parsing
+// Parse Events
 static void parseOssecEvent_batch(benchmark::State& state)
 {
 
@@ -87,7 +87,7 @@ static void parseOssecEvent_batch(benchmark::State& state)
 BENCHMARK(parseOssecEvent_batch)->Threads(1)->Threads(2)->Threads(4)->UseRealTime();
 
 
-// Copy events
+// Copy events | Copy json
 static void copyEvents_batch(benchmark::State& state)
 {
 
@@ -102,8 +102,6 @@ static void copyEvents_batch(benchmark::State& state)
 
     for (auto _ : state) {
         current = (current + 1) % sizeOfEvents;
-        //json::Json j;
-        //benchmark::DoNotOptimize(j = *events[current]);
         base::Event e;
         benchmark::DoNotOptimize(e = std::make_shared<json::Json>(*events[current]));
         benchmark::ClobberMemory();
