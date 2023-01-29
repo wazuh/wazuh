@@ -50,6 +50,27 @@ parse:
     # <189>date=2020-04-23 time=12:17:45 devname="testswitch1" devid="somerouterid" logid="0317013312" type="utm" subtype="webfilter" eventtype="ftgd_allow" level="notice" vd="root" eventtime=1587230266314799756 tz="-0500" policyid=38 sessionid=543234 user="elasticuser" group="elasticgroup" authserver="elasticauth" srcip=192.168.2.1 srcport=65236 srcintf="port1" srcintfrole="lan" dstip=175.16.199.1 dstport=443 dstintf="wan1" dstintfrole="wan" proto=6 service="HTTPS" hostname="elastic.co" profile="elasticruleset" action="passthrough" reqtype="direct" url="/" sentbyte=3545 rcvdbyte=6812 direction="outgoing" msg="URL belongs to an allowed category in policy" method="domain" cat=23 catdesc="Web-based Email"
     # <190>date=2020-04-23 time=13:17:35 devname="testswitch1" devid="somerouterid" logid="1059028704" type="utm" subtype="app-ctrl" eventtype="signature" level="information" vd="root" eventtime=1587230255061492894 tz="-0400" appid=40568 user="elasticuser" group="elasticgroup" authserver="elasticauth" srcip=192.168.2.1 dstip=175.16.199.1 srcport=59790 dstport=443 srcintf="LAN" srcintfrole="lan" dstintf="wan1" dstintfrole="wan" proto=6 service="SSL" direction="outgoing" policyid=12 sessionid=453234 applist="elasticruleset" action="pass" appcat="Web.Client" app="HTTPS.BROWSER" hostname="elastic.co" incidentserialno=23465 url="/" msg="Web.Client: HTTPS.BROWSER," apprisk="medium" scertcname="test.elastic.co"
     # <189>date=2020-04-23 time=12:17:29 devname="testswitch1" devid="somerouterid" logid="1501054802" type="utm" subtype="dns" eventtype="dns-response" level="notice" vd="root" eventtime=1587230249360109339 tz="-0500" policyid=26 sessionid=543234 srcip=192.168.2.1 srcport=53430 srcintf="port1" srcintfrole="lan" dstip=175.16.199.1 dstport=53 dstintf="wan1" dstintfrole="wan" proto=17 profile="test" xid=2234 qname="elastic.example.com" qtype="A" qtypeval=1 qclass="IN" ipaddr="175.16.199.1" msg="Domain is monitored" action="pass" cat=23 catdesc="Web-based Email"
+    # <189>date=2020-04-23 time=12:17:29 devname="testswitch1" devid="somerouterid" logid="1501054802" type="utm" subtype="dns" eventtype="dns-response" level="notice" vd="root" eventtime=1587230249360109339 tz="-0500" policyid=26 sessionid=543234 srcip=192.168.2.1 srcport=53430 srcintf="port1" srcintfrole="lan" dstip=175.16.199.1 dstport=53 dstintf="wan1" dstintfrole="wan" proto=17 profile="test" xid=2234 qname="elastic.example.com" qtype="A" qtypeval=1 qclass="IN" ipaddr="175.16.199.1, 8.8.4.4" msg="Domain is monitored" action="pass" cat=23 catdesc="Web-based Email"
+    # <189>date=2020-04-23 time=12:17:04 devname="testswitch1" devid="somerouterid" logid="1501054802" type="utm" subtype="dns" eventtype="dns-response" level="notice" vd="root" eventtime=1587230224712900694 tz="-0500" policyid=26 sessionid=5432 srcip=192.168.2.1 srcport=54438 srcintf="port1" srcintfrole="lan" dstip=175.16.199.1 dstport=53 dstintf="wan1" dstintfrole="wan" proto=17 profile="elastictest" xid=2352 qname="elastic.co" qtype="A" qtypeval=1 qclass="IN" ipaddr="175.16.199.1" msg="Domain is monitored" action="pass" cat=93 catdesc="Remote Access"
+    # <190>date=2020-04-23 time=12:17:12 devname="testswitch1" devid="somerouterid" logid="1500054000" type="utm" subtype="dns" eventtype="dns-query" level="information" vd="root" eventtime=1587230232658642672 tz="-0500" policyid=26 sessionid=543234 srcip=192.168.2.1 srcport=54788 srcintf="port1" srcintfrole="lan" dstip=175.16.199.1 dstport=53 dstintf="wan1" dstintfrole="wan" proto=17 profile="elastictest" xid=235 qname="elastic.co" qtype="A" qtypeval=1 qclass="IN"
+    # <189>date=2020-04-23 time=13:15:18 devname="testswitch2" devid="someotherid" logid="1700062001" type="utm" subtype="ssl" eventtype="ssl-anomalies" level="notice" vd="root" eventtime=1587230118838592454 tz="-0400" policyid=12 sessionid=42346234 service="HTTPS" user="elasticuser2" group="elasticgroup2" profile="somecerts" srcip=192.168.2.1 srcport=59726 dstip=8.8.4.4 dstport=443 srcintf="LAN" srcintfrole="lan" dstintf="wan1" dstintfrole="wan" proto=6 action="passthrough" msg="Server certificate passed" reason="untrusted-cert"
+    # <190>date=2019-05-15 time=18:03:36 logid="1059028704" type="utm" subtype="app-ctrl" eventtype="app-ctrl-all" level="information" vd="root" eventtime=1557968615 appid=40568 srcip=10.1.100.22 dstip=195.8.215.136 srcport=50798 dstport=443 srcintf="port10" srcintfrole="lan" dstintf="port9" dstintfrole="wan" proto=6 service="HTTPS" direction="outgoing" policyid=1 sessionid=4414 applist="block-social.media" appcat="Web.Client" app="HTTPS.BROWSER" action="pass" hostname="www.dailymotion.com" incidentserialno=1962906680 url="/" msg="Web.Client: HTTPS.BROWSER," apprisk="medium" scertcname="*.dailymotion.com" scertissuer="DigiCert SHA2 High Assurance Server CA"
+    # <190>date=2019-05-13 time=11:45:03 logid="0211008192" type="utm" subtype="virus" eventtype="infected" level="warning" vd="vdom1" eventtime=1557773103767393505 msg="File is infected." action="blocked" service="HTTP" sessionid=359260 srcip=10.1.100.11 dstip=172.16.200.55 srcport=60446 dstport=80 srcintf="port12" srcintfrole="undefined" dstintf="port11" dstintfrole="undefined" policyid=4 proto=6 direction="incoming" filename="eicar.com" quarskip="File-was-not-quarantined." virus="EICAR_TEST_FILE" dtype="Virus" ref="http://www.fortinet.com/ve?vn=EICAR_TEST_FILE" virusid=2172 url="http://172.16.200.55/virus/eicar.com" profile="g-default" agent="curl/7.47.0" analyticscksum="275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f" analyticssubmit="false" crscore=50 craction=2 crlevel="critical"
+    # <189>date=2019-05-13 time=16:29:45 logid="0316013056" type="utm" subtype="webfilter" eventtype="ftgd_blk" level="warning" vd="vdom1" eventtime=1557790184975119738 policyid=1 sessionid=381780 srcip=10.1.100.11 srcport=44258 srcintf="port12" srcintfrole="undefined" dstip=185.244.31.158 dstport=80 dstintf="port11" dstintfrole="undefined" proto=6 service="HTTP" hostname="morrishittu.ddns.net" profile="test-webfilter" action="blocked" reqtype="direct" url="/" sentbyte=84 rcvdbyte=0 direction="outgoing" msg="URL belongs to a denied category in policy" method="domain" cat=26 catdesc="Malicious Websites" crscore=30 craction=4194304 crlevel="high"
+    # <189>date=2019-05-15 time=17:56:41 logid="0419016384" type="utm" subtype="ips" eventtype="signature" level="alert" vd="root" eventtime=1557968201 severity="critical" srcip=10.1.100.22 srccountry="Reserved" dstip=172.16.200.55 srcintf="port10" srcintfrole="lan" dstintf="port9" dstintfrole="wan" sessionid=4017 action="dropped" proto=6 service="HTTP" policyid=1 attack="Adobe.Flash.newfunction.Handling.Code.Execution" srcport=46810 dstport=80 hostname="172.16.200.55" url="/ips/sig1.pdf" direction="incoming" attackid=23305 profile="block-critical-ips" ref="http://www.fortinet.com/ids/VID23305" incidentserialno=582633933 msg="applications3: Adobe.Flash.newfunction.Handling.Code.Execution," crscore=50 craction=4096 crlevel="critical"
+    # <189>date=2019-05-13 time=17:05:59 logid="0720018433" type="utm" subtype="anomaly" eventtype="anomaly" level="alert" vd="vdom1" eventtime=1557792359461869329 severity="critical" srcip=10.1.100.11 srccountry="Reserved" dstip=172.16.200.55 srcintf="port12" srcintfrole="undefined" sessionid=0 action="clear_session" proto=1 service="PING" count=1 attack="icmp_flood" icmpid="0x1474" icmptype="0x08" icmpcode="0x00" attackid=16777316 policyid=1 policytype="DoS-policy" ref="http://www.fortinet.com/ids/VID16777316" msg="anomaly: icmp_flood, 51 > threshold 50" crscore=50 craction=4096 crlevel="critical"
+    # <189>date=2019-05-15 time=16:18:17 logid="1601061010" type="utm" subtype="ssh" eventtype="ssh-channel" level="warning" vd="vdom1" eventtime=1557962296 policyid=1 sessionid=344 profile="ssh-deepscan" srcip=10.1.100.11 srcport=43580 dstip=172.16.200.44 dstport=22 srcintf="port21" srcintfrole="undefined" dstintf="port23" dstintfrole="undefined" proto=6 action="blocked" direction="outgoing" login="root" channeltype="shell"
+    # <189>date=2019-03-28 time=10:44:53 logid="1700062002" type="utm" subtype="ssl" eventtype="ssl-anomalies" level="warning" vd="vdom1" eventtime=1553795092 policyid=1 sessionid=10796 service="HTTPS" srcip=10.1.100.66 srcport=43602 dstip=104.154.89.105 dstport=443 srcintf="port2" srcintfrole="undefined" dstintf="port3" dstintfrole="undefined" proto=6 action="blocked" msg="Server certificate blocked" reason="block-cert-invalid"
+    # <189>date=2019-03-28 time=10:51:17 logid="1700062002" type="utm" subtype="ssl" eventtype="ssl-anomalies" level="warning" vd="vdom1" eventtime=1553795476 policyid=1 sessionid=11110 service="HTTPS" srcip=10.1.100.66 srcport=49076 dstip=172.16.200.99 dstport=443 srcintf="port2" srcintfrole="undefined" dstintf="port3" dstintfrole="undefined" proto=6 action="blocked" msg="Server certificate blocked" reason="block-cert-untrusted"
+    # <189>date=2019-03-28 time=10:55:43 logid="1700062002" type="utm" subtype="ssl" eventtype="ssl-anomalies" level="warning" vd="vdom1" eventtime=1553795742 policyid=1 sessionid=11334 service="HTTPS" srcip=10.1.100.66 srcport=49082 dstip=172.16.200.99 dstport=443 srcintf="port2" srcintfrole="undefined" dstintf="port3" dstintfrole="undefined" proto=6 action="blocked" msg="Server certificate blocked" reason="block-cert-req"
+    # <189>date=2019-03-28 time=10:57:42 logid="1700062053" type="utm" subtype="ssl" eventtype="ssl-anomalies" level="warning" vd="vdom1" eventtime=1553795861 policyid=1 sessionid=11424 service="SMTPS" profile="block-unsupported-ssl" srcip=10.1.100.66 srcport=41296 dstip=172.16.200.99 dstport=8080 srcintf="port2" srcintfrole="undefined" dstintf=unknown-0 dstintfrole="undefined" proto=6 action="blocked" msg="Connection is blocked due to unsupported SSL traffic" reason="malformed input"
+    # <189>date=2019-03-28 time=11:00:17 logid="1700062002" type="utm" subtype="ssl" eventtype="ssl-anomalies" level="warning" vd="vdom1" eventtime=1553796016 policyid=1 sessionid=11554 service="HTTPS" srcip=10.1.100.66 srcport=49088 dstip=172.16.200.99 dstport=443 srcintf="port2" srcintfrole="undefined" dstintf="port3" dstintfrole="undefined" proto=6 action="blocked" msg="Server certificate blocked" reason="block-cert-sni-mismatch"
+    # <189>date=2019-03-28 time=11:02:07 logid="1700062000" type="utm" subtype="ssl" eventtype="ssl-anomalies" level="warning" vd="vdom1" eventtime=1553796126 policyid=1 sessionid=11667 service="HTTPS" srcip=10.1.100.66 srcport=49096 dstip=172.16.200.99 dstport=443 srcintf="port2" srcintfrole="undefined" dstintf="port3" dstintfrole="undefined" proto=6 action="blocked" msg="Certificate blacklisted" certhash="1115ec1857ed7f937301ff5e02f6b0681cf2ec4e" reason="Other"
+    # <189>date=2019-03-28 time=11:06:05 logid="1701062003" type="utm" subtype="ssl" eventtype="ssl-exempt" level="notice" vd="vdom1" eventtime=1553796363 policyid=1 sessionid=11871 service="HTTPS" srcip=10.1.100.66 srcport=47384 dstip=50.18.221.132 dstport=443 srcintf="port2" srcintfrole="undefined" dstintf="port3" dstintfrole="undefined" proto=6 action="exempt" msg="SSL connection exempted" reason="exempt-whitelist"
+    # <189>date=2019-03-28 time=11:09:14 logid="1701062003" type="utm" subtype="ssl" eventtype="ssl-exempt" level="notice" vd="vdom1" eventtime=1553796553 policyid=1 sessionid=12079 service="HTTPS" srcip=10.1.100.66 srcport=49102 dstip=172.16.200.99 dstport=443 srcintf="port2" srcintfrole="undefined" dstintf="port3" dstintfrole="undefined" proto=6 action="exempt" msg="SSL connection exempted" reason="exempt-addr"
+    # <189>date=2019-03-28 time=11:10:55 logid="1701062003" type="utm" subtype="ssl" eventtype="ssl-exempt" level="notice" vd="vdom1" eventtime=1553796654 policyid=1 sessionid=12171 service="HTTPS" srcip=10.1.100.66 srcport=47390 dstip=50.18.221.132 dstport=443 srcintf="port2" srcintfrole="undefined" dstintf="port3" dstintfrole="undefined" proto=6 action="exempt" msg="SSL connection exempted" reason="exempt-ftgd-cat"
+    # <189>date=2019-05-15 time=16:28:17 logid="1800063000" type="utm" subtype="cifs" eventtype="cifs-filefilter" level="warning" vd="vdom1" eventtime=1557962895 msg="File was blocked by file filter." direction="incoming" action="blocked" service="CIFS" srcip=10.1.100.11 dstip=172.16.200.44 srcport=56348 dstport=445 srcintf="port21" srcintfrole="undefined" dstintf="port23" dstintfrole="undefined" policyid=1 proto=16 profile="cifs" filesize="13824" filename="sample\\test.xls" filtername="1" filetype="msoffice"
+    # <189>date=2021-03-30 time=14:04:58 devname="htd-Kfgt1" devid="FGT50EXXXXXXXXXX" logid="0211008192" type="utm" subtype="virus" eventtype="infected" level="warning" vd="root" eventtime=1617080699214283280 tz="+0900" policyid=5 msg="File is infected." action="blocked" service="HTTP" sessionid=20572875 srcip=192.168.2.1 dstip=150.95.25.17 srcport=54987 dstport=80 srcintf="port10" srcintfrole="undefined" dstintf="wan1" dstintfrole="wan" proto=6 direction="incoming" filename="eicar_test_virus.zip" quarskip="File-was-not-quarantined." virus="EICAR_TEST_FILE" dtype="Virus" ref="http://www.fortinet.com/ve?vn=EICAR_TEST_FILE" virusid=2172 url="http://lhsp.s206.xrea.com/download/eicar_test_virus.zip" profile="default" agent="Chrome/89.0.4389.90" analyticscksum="8a18d44ed122e6257863169d9a219946f4229f57b1d49ca0493b8366338230e8" analyticssubmit="false" crscore=50 craction=2 crlevel="critical"
     - event.original: \<<~log.head_message>><~log.payload_messge>
 
 normalize:
@@ -62,11 +83,18 @@ normalize:
   - check:
     - ~tmp: +ef_exists
     map:
-      - observer.serial_number: $~tmp.devid
-      - observer.name: $~tmp.devname
       - event.dataset: "fortinet.firewall"
       - event.module: "fortinet"
       - event.outcome: "sucess"
+      - event.kind: "event"
+      - observer.product: "Fortigate"
+      - observer.type: "firewall"
+      - observer.vendor: "Fortinet"
+      - service.type: "fortinet"
+      - input.type: "log"
+      - tags: ["fortinet-firewall", "forwarded"]
+      - observer.serial_number: $~tmp.devid
+      - observer.name: $~tmp.devname
       - event.timezone: $~tmp.tz
       - log.level: $~tmp.level
       - event.action: $~tmp.action
@@ -74,13 +102,13 @@ normalize:
       - source.packets: $~tmp.sentpkt
       # TODO: parse to number, but is string
       - event.code: $~tmp.logid
-      - event.kind: $~tmp.type
       - message: $~tmp.msg
       - rule.description: $~tmp.logdesc
       - event.reason: $~tmp.reason
       - ~tmp.addrgrp: $~tmp.addr
       - destination.bytes: $~tmp.rcvdbyte
       - event.duration: $~tmp.duration
+      - event.reference: $~tmp.ref
       - source.bytes: $~tmp.sentbyte
       - network.iana_number: $~tmp.proto
       - network.protocol: $~tmp.service
@@ -95,6 +123,7 @@ normalize:
       - source.nat.port: $~tmp.transport
       - source.user.group.name: $~tmp.group
       - ~tmp.timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000
+      - ~tmp.subtype: +s_lo/$~tmp.subtype
 
   # Check-mapping for all fortinet-firewall types: event, traffic & utm
   - check:
@@ -185,7 +214,7 @@ normalize:
   - map:
     - network.type: +s_lo/$~tmp.ip
 
-  # Check-mapping for fortinet-event
+  # Check-mapping for firewall-event
   - check:
     - ~tmp.subtype: user
     - event.action: +r_match/(?i)logon
@@ -205,7 +234,7 @@ normalize:
       - event.type: [info]
       - event.outcome: +ef_delete
 
-  # Check-mapping for fortinet-traffic
+  # Check-mapping for firewall-traffic
   - check:
     - ~tmp.subtype: vpn
     map:
@@ -214,25 +243,14 @@ normalize:
   - check: (+s_eq/~tmp.type/traffic) OR (+s_eq/~tmp.type/utm)
     map:
       - event.category: [network]
-
-  # Check-mapping for traffic & utm
   - check:
     - ~tmp.type: traffic
     map:
       - event.type: [connection]
-      - event.kind: event
-  - check:
-    - ~tmp.type: utm
-    map:
-      - event.kind: event
-  - check: (+s_eq/~tmp.type/utm) AND
-            ((+s_eq/event.action/block) OR (+s_eq/event.action/blocked) OR (+s_eq/event.action/deny) OR
-            (+s_eq/event.action/close) OR (+s_eq/event.action/server-rst) OR (+s_eq/event.action/dropped))
-    map:
-      - event.type: +a_append/denied
-  - check: (+s_eq/~tmp.type/traffic) AND
-            ((+s_eq/event.action/block) OR (+s_eq/event.action/blocked) OR (+s_eq/event.action/deny) OR
-            (+s_eq/event.action/close) OR (+s_eq/event.action/server-rst) OR (+s_eq/~tmp.utmaction/block))
+  - check: >-
+        (+s_eq/~tmp.type/traffic) AND ((+s_eq/event.action/block) OR (+s_eq/event.action/blocked) OR
+        (+s_eq/event.action/deny) OR (+s_eq/event.action/close) OR
+        (+s_eq/event.action/server-rst) OR (+s_eq/~tmp.utmaction/block))
     map:
       - event.type: +a_append/denied
   - check:
@@ -243,9 +261,6 @@ normalize:
     - event.action: +s_ne/deny
     - event.action: +s_ne/close
     - event.action: +s_ne/server-rst
-    map:
-      - event.type: +a_append/allowed
-  - check: (+s_eq/~tmp.type/utm) AND ((+s_eq/event.action/pass) OR (+s_eq/event.action/passthrough) OR (+s_eq/event.action/exempt))
     map:
       - event.type: +a_append/allowed
   - check:
@@ -269,31 +284,73 @@ normalize:
     - network.application: +ef_exists
     map:
       - event.type: +a_append/protocol
-  - check: (+ef_exists/destination.ip) AND ((+s_eq/~tmp.type/traffic) OR (+s_eq/~tmp.type/utm))
-    map:
-      - related.ip: +a_append/$destination.ip
-  - map:
-    - fortinet.firewall.type: $event.kind
-  - check: (+s_eq/~tmp.type/traffic) OR (+s_eq/~tmp.type/utm)
-    map:
-      - fortinet.firewall.type: $~tmp.type
   - check:
     - ~tmp.type: traffic
     - network.packets: +ef_not_exists
     - source.packets: +ef_exists
     map:
     - network.packets: $source.packets
+  - check: >-
+        (+s_eq/~tmp.type/traffic) AND (+ef_exists/destination.ip)
+    map:
+      - related.ip: +a_append/$destination.ip
+
+  # Check-mapping for firewall-utm
+  - check: >-
+        (+s_eq/~tmp.type/utm) AND ((+s_eq/event.action/block) OR
+        (+s_eq/event.action/blocked) OR (+s_eq/event.action/deny) OR
+        (+s_eq/event.action/close) OR (+s_eq/event.action/server-rst) OR
+        (+s_eq/event.action/dropped))
+    map:
+      - event.type: +a_append/denied
+  - check: >-
+        (+s_eq/~tmp.type/utm) AND ((+s_eq/event.action/pass) OR
+        (+s_eq/event.action/passthrough) OR (+s_eq/event.action/exempt))
+    map:
+      - event.type: +a_append/allowed
+  - check:
+    - ~tmp.type: utm
+    - ~tmp.ipaddr: +ef_exists
+    map:
+      - ~tmp.ipaddr: +s_replace/ //
+      - ~tmp.ipaddr_array: +s_to_array/$~tmp.ipaddr/,
+      - dns.resolved_ip: $~tmp.ipaddr_array
+  - check:
+    - ~tmp.type: utm
+    - ~tmp.ipaddr: +ef_not_exists
+    - destination.ip: +ef_exists
+    map:
+      - dns.resolved_ip: [$destination.ip]
+  - check: >-
+        (+s_eq/~tmp.type/utm) AND (+ef_exists/destination.ip) AND
+        (+ef_not_exists/~tmp.ipaddr)
+    map:
+      - related.ip: +a_append/$destination.ip
+  - check: >-
+        (+s_eq/~tmp.type/utm) AND (+ef_exists/~tmp.ipaddr)
+    map:
+      - related.ip: +ef_merge/$~tmp.ipaddr_array
   - check:
     - ~tmp.type: utm
     - ~tmp.subtype: dns
     map:
       - event.type: +a_append/info
+  - check:
+    - ~tmp.type: utm
+    - ~tmp.subtype: ips
+    map:
+      - event.category: +a_append/intrusion_detection
+  - check: >-
+        (+s_eq/~tmp.type/utm) AND (+ef_not_exists/~tmp.attack) AND ((+r_match/~tmp.subtype/ips) OR (+r_match/~tmp.subtype/virus))
+    map:
+      - event.kind: "alert"
 
   # General mapping
   - map:
       - \@timestamp: $~tmp.timestamp
       - event.start: $~tmp.timestamp
       - fileset.name: firewall
+      - fortinet.firewall.type: $~tmp.type
       - fortinet.firewall.addrgrp: $~tmp.addrgrp
       - fortinet.firewall.fctemssn: $~tmp.fctemssn
       - fortinet.firewall.action: $event.action
@@ -382,10 +439,44 @@ normalize:
       - fortinet.firewall.reqtype: $~tmp.reqtype
       - fortinet.firewall.incidentserialno: $~tmp.incidentserialno
       - fortinet.firewall.qtypeval: $~tmp.qtypeval
+      - fortinet.firewall.analyticscksum: $~tmp.analyticscksum
+      - fortinet.firewall.analyticssubmit: $~tmp.analyticssubmit
+      - fortinet.firewall.quarskip: $~tmp.quarskip
+      - fortinet.firewall.virus: $~tmp.virus
+      - fortinet.firewall.virusid: $~tmp.virusid
+      - fortinet.firewall.attack: $~tmp.attack
+      - fortinet.firewall.attackid: $~tmp.attackid
+      - fortinet.firewall.severity: $~tmp.crlevel
+      - fortinet.firewall.icmpcode: $~tmp.icmpcode
+      - fortinet.firewall.icmpid: $~tmp.icmpid
+      - fortinet.firewall.icmptype: $~tmp.icmptype
+      - fortinet.firewall.policytype: $~tmp.policytype
+      - fortinet.firewall.severity: $~tmp.severity
+      - fortinet.firewall.dlpextra: $~tmp.dlpextra
+      - fortinet.firewall.epoch: $~tmp.epoch
+      - fortinet.firewall.filtercat: $~tmp.filtercat
+      - fortinet.firewall.filteridx: $~tmp.filteridx
+      - fortinet.firewall.filtertype: $~tmp.filtertype
+      - fortinet.firewall.channeltype: $~tmp.channeltype
+      - fortinet.firewall.login: $~tmp.login
+      - fortinet.firewall.certhash: $~tmp.certhash
+      - fortinet.firewall.quarskip: $~tmp.quarskip
       - url.domain: $~tmp.hostname
       - url.original: $~tmp.url
       - url.path: $~tmp.url
+      - url.scheme: $~tmp.service
       - tls.server.x509.subject.common_name: $~tmp.scertcname
+      - tls.server.x509.issuer.common_name: $~tmp.scertissuer
+      - tls.server.issuer: $~tmp.scertissuer
+      # TODO: it does't work
+      - ~tmp.agent_array: +s_to_array/$~tmp.agent/\/
+      - user_agent.name: $~tmp.agent_array.1
+      - user_agent.original: $~tmp.agent
+      - user_agent.version: $~tmp.agent_array.2
+      - vulnerability.category: $~tmp.dtype
+      - file.extension: $~tmp.filetype
+      - file.name: $~tmp.filename
+      - file.size: $~tmp.filesize
       - source.mac: $~tmp.mastersrcmac
       - network.bytes: $source.bytes
       - network.direction: $~tmp.dir
@@ -393,17 +484,7 @@ normalize:
       - dns.question.class: $~tmp.qclass
       - dns.question.name: $~tmp.qname
       - dns.question.type: $~tmp.qtype
-      - dns.resolved_ip: [$destination.ip]
       - related.hosts: [$~tmp.qname]
-
-  # Constants
-  - map:
-      - observer.product: Fortigate
-      - observer.type: firewall
-      - observer.vendor: Fortinet
-      - service.type: fortinet
-      - input.type: log
-      - tags: [fortinet-firewall, forwarded]
 
   # Clean variables
   - map:
