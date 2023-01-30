@@ -44,7 +44,8 @@ public:
      * @param eventBuffer (ServerOutput) Reference to the event queue.
      */
     explicit EventEndpoint(const std::string& path,
-                           std::shared_ptr<concurrentQueue> eventQueue);
+                           std::shared_ptr<concurrentQueue> eventQueue,
+                           std::optional<std::string> pathFloodedFile = std::nullopt);
 
     ~EventEndpoint();
 

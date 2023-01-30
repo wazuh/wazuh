@@ -77,6 +77,12 @@ private:
      */
     api::WazuhResponse apiDeleteRoute(const json::Json& params);
 
+    /**
+     * @brief API callback for route priority change
+     *
+     * @param params Parameters for route priority change ("/name"), new priority ("/priority")
+     * @return api::WazuhResponse with the result of the operation
+     */
     api::WazuhResponse apiChangeRoutePriority(const json::Json& params);
 
 public:
