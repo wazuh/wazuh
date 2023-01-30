@@ -156,11 +156,13 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         void* rsync_module = NULL;
         if(rsync_module = so_check_module_loaded("rsync"), rsync_module) {
-            void (*rsync_initialize_ptr)(full_log_fnc_t) = so_get_function_sym(rsync_module, "rsync_initialize_log_function");
-            rsync_initialize_ptr(mt_log_wrapper);
-            #ifndef WIN32
+            rsync_initialize_log_func rsync_initialize_log_function_ptr = so_get_function_sym(rsync_module, "rsync_initialize_log_function");
+            if(rsync_initialize_log_function_ptr) {
+                rsync_initialize_log_function_ptr(mt_log_wrapper);
+            }
+#ifndef WIN32
             so_free_library(rsync_module);
-            #endif
+#endif
         }
     } else {
 #ifdef __hpux

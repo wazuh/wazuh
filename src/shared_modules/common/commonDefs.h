@@ -121,9 +121,10 @@ typedef struct
 typedef void((*log_fnc_t)(const char* msg));
 
 /**
- * @brief Callback function for user defined logging but with extra details.
+ * @brief Callback function for user defined logging but adding a tag, the file name,
+ * the line number and the name of the function where the log was generated.
  *
- * @param log_type Log level (info, debug, etc.)
+ * @param log_type Log level (info, debug, debug_verbose, warning or error).
  * @param tag      Tag to identify the log.
  * @param file     File name where the log is generated.
  * @param line     Line number where the log is generated.
