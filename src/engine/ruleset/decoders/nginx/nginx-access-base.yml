@@ -8,8 +8,8 @@ metadata:
   product.versions:
     - nginx-1.23.2
 
-check:
-  - event.original: +ef_exists
+sources:
+  - decoder/queue-localfile/0
 
 definitions:
   STATUS_W_BYTES: <http.response.status_code> <http.response.body.bytes>

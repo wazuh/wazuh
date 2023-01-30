@@ -35,7 +35,7 @@ normalize:
   #   "denied_mask", "info", "profile", "requested_mask", "old-rng", "new-rng", "ocomm",
   #   "grp", "new_group", "invalid_context", "sw", "root_dir", "proctitle"
   # -> convert value to hex if it can
-  # -> removed quotes from start or end
+  # -> remove quotes from start or end
   # -> key is arch or value is c000003e -> ".. .arch" : "x86_64"
 
   - check: +t_is_null/auditd.log.exe OR auditd.log.exe==? OR +s_eq/$auditd.log.exe/$~null_parenthesis
@@ -414,22 +414,20 @@ normalize:
       - auditd.log.arch: x86_64
   # End of hexa to string fields transformation
 
-  # Begin Auditd record types mapping
-  #####################################################################################
-  # - if auditd.log.record_type is_null
-  # -- > do nothing ************************************************************** EXIT
-  # - from DB_PARAMS_TYPE obtain object named {auditd.log.record_type}
-  # - if is_null AND auditd.log.syscall is_not_null
-  # -- > from DB_PARAMS_SYSCALLS obtain {auditd.log.syscall [42, 43, 44, 54, execv, 313]}
-  # -- -- > if is_null obtain '*' -> {"category": "process", "type": "info"}
-  # -- -- > do nothing else ****************************************************** EXIT
-  # - iterate through object obtained from DB (syscall or types)
-  # -- > if each object doesn't contain a 'has_fields' field or auditd.log.[has_fields_value] is not_null
-  # -- -- > add each object's event field to event json as in (CHUSER_ID):
-  # -- -- > {"event":{"action":"changed-user-id", "category":"process", "type":"change"}}
+  # - If auditd.log.record_type is_null ******************************************** EXIT
+  # - from KVDB_TYPE obtain object named {auditd.log.record_type}
+  # - If object is_null AND auditd.log.syscall is_not_null
+  # -- > from KVDB_SYSCALLS obtain object
+  # -- -- > if is_null get '*' -> {"category": "process", "type": "info"} ********** EXIT
+  # - Iterate through object obtained from either KVDB
+  # -- > if each object doesn't contain a 'has_fields' field or
+  # -- > auditd.log.[has_fields_value] is not_null
+  # -- -- > add each object's event field to event ("action","category","type")
   # -- -- > contains copy? iterate in it
-  # -- -- -- > for each element in 'from' field assign VALUE = auditd.log.<from_field_val>
-  # -- -- -- > if is a not null string assign to auditd.log.to + suffx = VALUE
+  # -- -- -- > for each element in 'from' field set VALUE = auditd.log.<from_field_val>
+  # -- -- -- > if VALUE is not a null string set TARGET = <object>[to] + suffx
+  # -- -- -- > Being suffix = ".id" if VALUE is a numeric value and ".name" if not.
+  # -- -- -- > map each TARGET = VALUE
 
   # auditd KVDBs event field requests
   - check: +ef_exists/auditd.log.record_type
@@ -446,33 +444,9 @@ normalize:
       # TODO: Check types -> array is transformed to object
       - ~event: +ef_merge/$~temp_event.event
 
-  # auditd KVDBs event copy requests
-  #TODO: this should be forced to the first element in either case
-  - check: +ef_exists/~temp_event.0.copy
-    map:
-      - ~copy_from: ~temp_event.0.copy.0.from
-  - check: +ef_exists/~copy_from
-    map:
-      - ~copy_from_value: audit.log.\$~copy_from #TODO: can this be done?
-  #TODO: how to assign a field setting his route dynamically
-
-  # - check: +ef_exists/~copy_from_value
-  #   map:
-  #     - ~target: $~temp_event.0.copy.0.to
-  # - check: +ef_exists/~target AND +t_is_num/~copy_from_value
-  #   map:
-  #     - ~target: +s_concat/$~target/.id
-  # - check: +ef_exists/~target AND +t_is_not_num/~copy_from_value
-  #   map:
-  #     - ~target: +s_concat/$~target/.name
-
-  # - check: +ef_exists/~copy_from_value AND +ef_exists/~target
-  #   map:
-  #     - \$~target: ~copy_from_value #TODO: can this be done?
-
-  # End Auditd record types mapping
-  #####################################################################################
-
+  #TODO: pending auditd KVDBs copy fields mapping
+  # * iterations throug copy objects
+  # * mapping values to an specific dynamic field (dependent on event)
 
   - check: auditd.log.syscall==execve AND auditd.log.record_type==SYSCALL
     map:
@@ -585,3 +559,4 @@ normalize:
       - auditd.log.sub_kv: +ef_delete
       - auditd.log.epoch: +ef_delete
       - auditd.log.copy: +ef_delete
+      - ~temp_event: +ef_delete
