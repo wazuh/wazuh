@@ -3,8 +3,8 @@ name: decoder/nginx-error/0
 metadata:
   description: Nginx error log decoder
 
-check:
-  - event.original: +ef_exists
+sources:
+  - decoder/queue-localfile/0
 
 parse:
   logpar:

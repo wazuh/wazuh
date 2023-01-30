@@ -25,7 +25,7 @@ definitions:
   # TODO: this should be replace by an optional but it doesn't work as expected
   # making mandatory NO_BE.. variations: <~/literal/->?<aws.elb.backend.ip>(?:<aws.elb.backend.port>)
 
-  # Or -1 for each time fiedl
+  # Or -1 for each time field
   ELBPROCESSINGTIME: >-
     <aws.elb.request_processing_time.sec>
     <aws.elb.backend_processing_time.sec>
