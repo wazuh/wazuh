@@ -25,8 +25,8 @@
  */
 namespace engineserver
 {
-
-constexpr uint32_t DEFAULT_BUFFER_SIZE = 1024;
+// (ceil(N / BLOCK_SIZE) - 1 + 2 * MAX_NUM_PRODUCERS) * BLOCK_SIZE
+constexpr uint32_t DEFAULT_QUEUE_SIZE = 1024;
 
 enum class EndpointType
 {
@@ -56,7 +56,8 @@ public:
     explicit EngineServer(const std::string& apiEndpointPath,
                           std::shared_ptr<api::Registry> registry,
                           const std::string& eventEndpointPath,
-                          const int bufferSize = DEFAULT_BUFFER_SIZE);
+                          std::optional<std::string> pathFloodedFile = std::nullopt,
+                          const int bufferSize = DEFAULT_QUEUE_SIZE);
 
     /**
      * @brief Start server.

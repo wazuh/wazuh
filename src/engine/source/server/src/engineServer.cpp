@@ -30,6 +30,7 @@ namespace engineserver
 EngineServer::EngineServer(const std::string& apiEndpointPath,
                            std::shared_ptr<api::Registry> registry,
                            const std::string& eventEndpointPath,
+                           std::optional<std::string> pathFloodedFile,
                            const int bufferSize)
 {
     try
@@ -43,7 +44,7 @@ EngineServer::EngineServer(const std::string& apiEndpointPath,
         m_endpoints.emplace(EndpointType::API, std::move(apiEndpoint));
 
         auto eventQueue = std::make_shared<BlockingConcurrentQueue<base::Event>>(bufferSize);
-        auto eventEndpoint = std::make_shared<EventEndpoint>(eventEndpointPath, eventQueue);
+        auto eventEndpoint = std::make_shared<EventEndpoint>(eventEndpointPath, eventQueue, pathFloodedFile);
         eventEndpoint->configure();
         m_endpoints.emplace(EndpointType::EVENT, std::move(eventEndpoint));
     }
