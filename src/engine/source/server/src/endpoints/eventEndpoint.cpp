@@ -27,18 +27,75 @@
 using uvw::ErrorEvent;
 using uvw::Loop;
 
-// TODO: Refactor how we handle queue flooding and environments down
-static constexpr auto dumpFile = "/var/ossec/logs/archives/flooded.log";
-// extern std::atomic_bool g_envDown;
-// TODO: Refactor how we handle queue flooding and environments down
-std::atomic_bool g_envDown {false}; // TODO: Change this
 
 namespace engineserver::endpoints
 {
 
-constexpr int BIND_SOCK_ERROR {-1};
-constexpr unsigned int MAX_MSG_SIZE {65536 + 512};
-constexpr unsigned int TRY_ENQUEUE_WAIT_MS {100};
+namespace
+{
+constexpr int BIND_SOCK_ERROR {-1}; ///< Error code for bindUnixDatagramSocket function
+constexpr unsigned int MAX_MSG_SIZE {65536 + 512}; ///< Maximum message size (TODO: I think this should be 65507)
+
+/**
+ * @brief Provides a wrapper for the flooding file
+ *
+ * @warning this struct is not thread safe
+ */
+struct floodingFile
+{
+    // append and don't create if not exists
+    const std::ios::openmode FLAGS = std::ios::out | std::ios::app | std::ios::ate; ///< Flags for the flooding file
+    std::ofstream m_file; ///< File stream for the flooding file
+    std::string m_error; ///< Error message if the file is not good
+
+    /**
+     * @brief Construct a new flooding File object
+     *
+     * @param path (const std::string&) Path to the flooding file
+     */
+    floodingFile(const std::string& path)
+        : m_file(path, FLAGS)
+        , m_error {}
+    {
+        if (!m_file.good())
+        {
+            m_error = strerror(errno);
+        }
+    }
+
+    /**
+     * @brief Checks if the file is good (i.e. it is open and ready to write)
+     *
+     * @return true if the file is good
+     * @return false otherwise
+     */
+    std::optional<std::string> getError() const
+    {
+        if (m_file.good())
+        {
+            return std::nullopt;
+        }
+        return m_error;
+    }
+
+    /**
+     * @brief Writes a message to the flooding file
+     * @param message (const std::string&) Message to write
+     */
+    bool write(const std::string& message)
+    {
+        if (m_file.good())
+        {
+            m_file << message.c_str() << std::endl;
+            return true;
+        }
+        return false;
+    }
+
+
+};
+
+} // namespace
 
 /**
  * @brief This function opens, binds and configures a unix datagram socket.
@@ -113,7 +170,8 @@ static inline int bindUnixDatagramSocket(const char* path)
 
 EventEndpoint::EventEndpoint(
     const std::string& path,
-    std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>> eventQueue)
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>> eventQueue,
+    std::optional<std::string> pathFloodedFile)
     : BaseEndpoint {path}
     , m_loop {Loop::getDefault()}
     , m_handle {m_loop->resource<DatagramSocketHandle>()}
@@ -131,64 +189,67 @@ EventEndpoint::EventEndpoint(
                             event.what());
         });
 
-    auto dumpFileHandler = std::make_shared<std::ofstream>(
-        dumpFile, std::ios::out | std::ios::app | std::ios::ate);
-    if (!dumpFileHandler || !dumpFileHandler->good())
+    std::shared_ptr<floodingFile> dumpFileHandler {nullptr};
+    const auto isFloodedFileEnabled {pathFloodedFile.has_value()};
+
+    if (isFloodedFileEnabled)
     {
-        dumpFileHandler.reset();
-        WAZUH_LOG_ERROR("Cannot open dump file: {}, flooded events will be lost",
-                        dumpFile);
-    }
-    m_handle->on<DatagramSocketEvent>(
-        [this, dumpFileHandler](const DatagramSocketEvent& event,
-                                DatagramSocketHandle& handle)
+        dumpFileHandler = std::make_shared<floodingFile>(*pathFloodedFile);
+        if (auto err = dumpFileHandler->getError())
         {
-            auto strRequest = std::string {event.data.get(), event.length};
-            if (g_envDown)
+            throw std::runtime_error(fmt::format("Engine event endpoints: Error opening flooding file '{}': {}",
+                                                 *pathFloodedFile,
+                                                 *err));
+        }
+        else
+        {
+            WAZUH_LOG_DEBUG("Engine event endpoints: Flooding file '{}' are ready.", *pathFloodedFile);
+        }
+    } else {
+        WAZUH_LOG_INFO("Engine event endpoints: Flooding file is not enabled.");
+    }
+
+    m_handle->on<DatagramSocketEvent>(
+        [this, dumpFileHandler, isFloodedFileEnabled](const DatagramSocketEvent& eventSocket, DatagramSocketHandle& handle)
+        {
+            auto strRequest = std::string {eventSocket.data.get(), eventSocket.length};
+            base::Event event;
+            try
             {
-                if (dumpFileHandler && dumpFileHandler->good())
+                event = base::parseEvent::parseOssecEvent(strRequest);
+            }
+            catch (const std::exception& e)
+            {
+                WAZUH_LOG_WARN("Engine event endpoint: Error parsing event: '{}' (discarting...)", e.what());
+                return;
+            }
+
+            if (!isFloodedFileEnabled)
+            {
+                while (!m_eventQueue->try_enqueue(event))
                 {
-                    *dumpFileHandler << strRequest.c_str() << std::endl;
-                }
-                else
-                {
-                    WAZUH_LOG_ERROR(
-                        "Cannot write to dump file: {}, flooded events will be lost",
-                        dumpFile);
+                    // Right now we process 1 event for ~0.1ms, we sleep by a factor
+                    // of 5 because we are saturating the queue and we don't want to.
+                    std::this_thread::sleep_for(std::chrono::microseconds(500));
                 }
             }
             else
             {
-                base::Event event;
-                try {
-                    event = base::parseEvent::parseOssecEvent(strRequest);
-                } catch (const std::exception& e) {
-                    WAZUH_LOG_WARN("Engine event endpoint: Error parsing event: '{}' (discarting...)",
-                                    e.what());
-                    return;
-                }
-                while (!m_eventQueue->try_enqueue(event))
+                std::size_t attempts {0};
+                const std::size_t maxAttempts {3}; // Shoul be a macro?
+                for (; attempts < maxAttempts; ++attempts)
                 {
-                    if (g_envDown)
+                    if (m_eventQueue->try_enqueue(event))
                     {
-                        if (dumpFileHandler && dumpFileHandler->good())
-                        {
-                            *dumpFileHandler << strRequest.c_str() << std::endl;
-                        }
-                        else
-                        {
-                            WAZUH_LOG_ERROR("Cannot write to dump file: {}, flooded "
-                                            "events will be lost",
-                                            dumpFile);
-                        }
-                        return;
+                        break;
                     }
-                    else
-                    {
-                        // Right now we process 1 event for ~0.1ms, we sleep by a factor
-                        // of 10 because we are saturating the queue
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                    }
+                    // TODO: Benchmarks to find the best value.... (0.1ms)
+                    std::this_thread::sleep_for(std::chrono::microseconds(100));
+
+                }
+                if (attempts >= maxAttempts)
+                {
+                    dumpFileHandler->write(strRequest);
                 }
             }
         });
