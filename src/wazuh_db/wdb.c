@@ -51,6 +51,7 @@ static const char *SQL_METADATA_GET_FRAGMENTATION_DATA = "SELECT key, value FROM
 static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
+static const char *SQL_ROLLBACK = "ROLLBACK;";
 static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_LOAD] = "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE file = ?;",
     [WDB_STMT_FIM_FIND_ENTRY] = "SELECT 1 FROM fim_entry WHERE file = ?",
@@ -636,68 +637,29 @@ int wdb_step(sqlite3_stmt *stmt) {
 
 /* Begin transaction */
 int wdb_begin(sqlite3 *db) {
-    sqlite3_stmt *stmt = NULL;
-    int result = 0;
-
-    if (sqlite3_prepare_v2(db, SQL_BEGIN, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
-        return -1;
-    }
-
-    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
-        result = -1;
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
+    return wdb_any_transaction(db, SQL_BEGIN);
 }
 
 int wdb_begin2(wdb_t * wdb) {
-    if (wdb->transaction) {
-        return 0;
-    }
-
-    if (wdb_begin(wdb->db) == -1) {
-        return -1;
-    }
-
-    wdb->transaction = 1;
-    wdb->transaction_begin_time = time(NULL);
-
-    return 0;
+    return wdb_write_state_transaction(wdb, 1, wdb_begin);
 }
 
 /* Commit transaction */
 int wdb_commit(sqlite3 *db) {
-    sqlite3_stmt * stmt = NULL;
-    int result = 0;
-
-    if (sqlite3_prepare_v2(db, SQL_COMMIT, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
-        return -1;
-    }
-
-    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
-        result = -1;
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
+    return wdb_any_transaction(db, SQL_COMMIT);
 }
 
 int wdb_commit2(wdb_t * wdb) {
-    if (!wdb->transaction) {
-        return 0;
-    }
+    return wdb_write_state_transaction(wdb, 0, wdb_commit);
+}
 
-    if (wdb_commit(wdb->db) == -1) {
-        return -1;
-    }
+/* Rollback transaction */
+int wdb_rollback(sqlite3 *db) {
+    return wdb_any_transaction(db, SQL_ROLLBACK);
+}
 
-    wdb->transaction = 0;
-    return 0;
+int wdb_rollback2(wdb_t * wdb) {
+    return wdb_write_state_transaction(wdb, 0, wdb_rollback);
 }
 
 /* Create global database */
@@ -1906,4 +1868,42 @@ bool wdb_check_backup_enabled() {
     }
 
     return result;
+}
+
+int wdb_any_transaction(sqlite3 *db, const char* sql_transaction) {
+    sqlite3_stmt *stmt = NULL;
+    int result = 0;
+
+    if (sqlite3_prepare_v2(db, sql_transaction, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
+        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
+        result = -1;
+    }
+
+    sqlite3_finalize(stmt);
+    return result;
+}
+
+int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn) {
+    if (wdb->transaction) {
+        return 0;
+    }
+    if (wdb_ptr_any_txn != NULL) {
+        if (wdb_ptr_any_txn(wdb->db) == -1) {
+            return -1;
+        }
+    }
+
+    wdb->transaction = state;
+    if (1 == state) {
+        wdb->transaction_begin_time = time(NULL);
+    } else {
+        /* do nothing */
+    }
+
+    return 0;
 }

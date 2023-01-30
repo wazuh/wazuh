@@ -628,6 +628,19 @@ int wdb_parse(char * input, char * output, int peer) {
             gettimeofday(&end, 0);
             timersub(&end, &begin, &diff);
             w_inc_agent_commit_time(diff);
+        } else if (strcmp(query, "rollback") == 0) {
+            w_inc_agent_rollback();
+            gettimeofday(&begin, 0);
+            if (wdb_rollback2(wdb) < 0) {
+                mdebug1("DB(%s) Cannot end transaction.", sagent_id);
+                snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
+                result = OS_INVALID;
+            } else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+            }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_agent_rollback_time(diff);
         } else if (strcmp(query, "close") == 0) {
             w_inc_agent_close();
             wdb_leave(wdb);

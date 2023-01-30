@@ -512,6 +512,9 @@ struct kv_list {
     const struct kv_list *next;
 };
 
+/** @brief pointer to function for any transaction*/
+typedef int (*wdb_ptr_any_txn_t)(sqlite3 *);
+
 /**
  * @brief Opens global database and stores it in DB pool.
  *
@@ -725,6 +728,9 @@ int wdb_begin2(wdb_t * wdb);
 /* Commit transaction */
 int wdb_commit(sqlite3 *db);
 int wdb_commit2(wdb_t * wdb);
+
+int wdb_rollback(sqlite3 *db);
+int wdb_rollback2(wdb_t * wdb);
 
 /* Create global database */
 int wdb_create_global(const char *path);
@@ -2563,4 +2569,19 @@ cJSON* wdb_get_config();
  */
 void wdbcom_dispatch(char* request, char* output);
 
+/**
+ * @brief Execute any transaction
+ * @param db Database to query for the table existence.
+ * @param sql_transaction
+*/
+int wdb_any_transaction(sqlite3 *db, const char* sql_transaction);
+
+/**
+ * @brief write the status of the transaction
+ * @param db Database to query for the table existence.
+ * @param state 1 when is on, 0 whe is off
+ * @param wdb_ptr_any_txn function that points to the transaction
+ * @return 0 when succeed, !=0 otherwise.
+*/
+int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn);
 #endif

@@ -98,6 +98,7 @@ typedef struct _agent_breakdown_t {
     uint64_t begin_queries;
     uint64_t close_queries;
     uint64_t commit_queries;
+    uint64_t rollback_queries;
     uint64_t remove_queries;
     uint64_t sql_queries;
     uint64_t vacuum_queries;
@@ -105,6 +106,7 @@ typedef struct _agent_breakdown_t {
     struct timeval begin_time;
     struct timeval close_time;
     struct timeval commit_time;
+    struct timeval rollback_time;
     struct timeval remove_time;
     struct timeval sql_time;
     struct timeval vacuum_time;
@@ -339,6 +341,18 @@ void w_inc_agent_commit();
  * @param time Value to increment the counter.
  */
 void w_inc_agent_commit_time(struct timeval time);
+
+/**
+ * @brief Increment rollback agent queries counter
+ */
+void w_inc_agent_rollback();
+
+/**
+ * @brief Increment rollback agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_agent_rollback_time(struct timeval time);
 
 /**
  * @brief Increment close agent queries counter
