@@ -1,16 +1,63 @@
 import sys
 from os import path
-from aws_bucket import AWSBucket, AWSCustomBucket
+import json
+from aws_bucket import AWSBucket, AWSCustomBucket, AWSLogsBucket
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
 
+GUARDDUTY_URL = 'https://documentation.wazuh.com/current/amazon/services/supported-services/guardduty.html'
+GUARDDUTY_DEPRECATED_MESSAGE = 'The functionality to process GuardDuty logs stored in S3 via Kinesis was deprecated ' \
+                               'in {release}. Consider configuring GuardDuty to store its findings directly in an S3 ' \
+                               'bucket instead. Check {url} for more information.'
 
 class AWSGuardDutyBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
         kwargs['db_table_name'] = 'guardduty'
         AWSCustomBucket.__init__(self, **kwargs)
+
+        self.service = 'GuardDuty'
+        if self.check_guardduty_type():
+            self.type = "GuardDutyNative"
+        else:
+            self.type = "GuardDutyKinesis"
+
+    def check_guardduty_type(self):
+        try:
+            return \
+                'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=f'{self.prefix}AWSLogs',
+                                                                Delimiter='/', MaxKeys=1)
+        except Exception as err:
+            if hasattr(err, 'message'):
+                aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
+            else:
+                aws_tools.debug(f"+++ Unexpected error: {err}", 2)
+            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+            sys.exit(7)
+
+    def get_service_prefix(self, account_id):
+        return AWSLogsBucket.get_service_prefix(self, account_id)
+
+    def get_full_prefix(self, account_id, account_region):
+        if self.type == "GuardDutyNative":
+            return AWSLogsBucket.get_full_prefix(self, account_id, account_region)
+        else:
+            return self.prefix
+
+    def get_base_prefix(self):
+        if self.type == "GuardDutyNative":
+            return AWSLogsBucket.get_base_prefix(self)
+        else:
+            return self.prefix
+
+    def iter_regions_and_accounts(self, account_id, regions):
+        if self.type == "GuardDutyNative":
+            AWSBucket.iter_regions_and_accounts(self, account_id, regions)
+        else:
+            print(GUARDDUTY_DEPRECATED_MESSAGE.format(release="4.5", url=GUARDDUTY_URL))
+            self.check_prefix = True
+            AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)
 
     def send_event(self, event):
         # Send the message (split if it is necessary)
@@ -32,4 +79,17 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         else:
             AWSBucket.reformat_msg(self, event)
             yield event
+
+    def load_information_from_file(self, log_key):
+        if log_key.endswith('.jsonl.gz'):
+            with self.decompress_file(log_key=log_key) as f:
+                json_list = list(f)
+                result = []
+                for json_item in json_list:
+                    x = json.loads(json_item)
+                    result.append(dict(x, source=x['service']['serviceName']))
+                return result
+        else:
+            return AWSCustomBucket.load_information_from_file(self, log_key)
+
 
