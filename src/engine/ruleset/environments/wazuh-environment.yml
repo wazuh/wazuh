@@ -72,5 +72,8 @@ decoders:
   # Service decoders
   - decoder/syslog/0
 
+  # Sophos decoders
+  - decoder/sophos-antispam/0
+
 outputs:
   - output/file-output/0
