@@ -2,11 +2,16 @@
 name: decoder/auditd-kv/0
 
 metadata:
+  title: Auditd Decoder
   description: Decoder for parsing the msg field of Linux auditd logs
   references:
     - https://linux.die.net/man/8/auditd
     - https://docs.elastic.co/en/integrations/auditd
   product.name: auditd
+  author:
+      name: Wazuh, Inc.
+      url: https://wazuh.com
+      date: 2023/01/30
 
 sources:
   - decoder/auditd/0

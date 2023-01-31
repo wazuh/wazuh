@@ -2,7 +2,8 @@
 name: decoder/postgresql-csv-msg-parse/0
 
 metadata:
-  description: Decoder for postgresql in csv log format
+  title: Postgresql csv Decoder
+  description: Decoder for messages from postgresql in csv log format
   references: "https://www.postgresql.org/docs/current/runtime-config-logging.html#RUNTIME-CONFIG-LOGGING-CSVLOG"
   product.name: postgresql
   product.versions:
@@ -11,6 +12,9 @@ metadata:
     - v13
     - v12
     - v11
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-05
 
 sources:
   - decoder/postgresql-csv/0

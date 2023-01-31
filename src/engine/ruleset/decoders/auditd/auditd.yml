@@ -2,11 +2,16 @@
 name: decoder/auditd/0
 
 metadata:
+  title: Auditd Decoder
   description: Decoder for Linux auditd logs
   references:
     - https://linux.die.net/man/8/auditd
     - https://docs.elastic.co/en/integrations/auditd
   product.name: auditd
+  author:
+      name: Wazuh, Inc.
+      url: https://wazuh.com
+      date: 2023/01/30
 
 definitions:
   TYPE_FIELD: type=<auditd.log.record_type>

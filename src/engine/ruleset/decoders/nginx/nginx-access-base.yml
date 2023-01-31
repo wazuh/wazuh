@@ -2,11 +2,16 @@
 name: decoder/nginx-access-base/0
 
 metadata:
+  title: NGINX Access Decoder
   description: Parses nginx access logs
   references: "https://docs.nginx.com/nginx/admin-guide/monitoring/logging/#access_log"
   product.name: nginx
   product.versions:
     - nginx-1.23.2
+  author:
+      name: Wazuh, Inc.
+      url: https://wazuh.com
+      date: 2023/01/23
 
 sources:
   - decoder/queue-localfile/0
