@@ -15,6 +15,7 @@ constexpr auto ENGINE_THREADS = 1;
 constexpr auto ENGINE_PROTOCOL_QUEUE = 1;
 constexpr auto ENGINE_PROTOCOL_LOCATION = "/dev/stdin";
 constexpr auto TRACE_ALL = "ALL";
+constexpr auto ENGINE_LOG_OUTPUT = "/dev/stderr";
 } // namespace cmd
 
 #endif // _CMD_DEFAULT_SETTINGS_HPP

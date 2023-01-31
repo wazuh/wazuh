@@ -1,5 +1,5 @@
-#ifndef _STACK_EXECUTOR_HPP
-#define _STACK_EXECUTOR_HPP
+#ifndef _CMD_DETAILS_STACK_EXECUTOR_HPP
+#define _CMD_DETAILS_STACK_EXECUTOR_HPP
 
 #include <deque>
 #include <exception>
@@ -7,7 +7,7 @@
 
 #include <logging/logging.hpp>
 
-namespace cmd
+namespace cmd::details
 {
 
 /**
@@ -59,6 +59,6 @@ public:
     }
 };
 
-} // namespace cmd
+} // namespace cmd::details
 
-#endif // _STACK_EXECUTOR_HPP
+#endif // _CMD_DETAILS_STACK_EXECUTOR_HPP

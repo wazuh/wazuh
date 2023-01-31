@@ -25,7 +25,7 @@ void runSet(const std::string& socketPath, const std::string& target);
 void runGet(const std::string& socketPath);
 void runDel(const std::string& socketPath, const std::string& target);
 
-void configure(CLI::App& app);
+void configure(CLI::App_p app);
 } // namespace cmd::env
 
 #endif // _CMD_ENV_HPP

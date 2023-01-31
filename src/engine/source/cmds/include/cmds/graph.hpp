@@ -26,7 +26,7 @@ struct Options
 };
 void run(const Options& options);
 
-void configure(CLI::App& app);
+void configure(CLI::App_p app);
 } // namespace cmd::graph
 
 #endif // _CMD_GRAPH_HPP
