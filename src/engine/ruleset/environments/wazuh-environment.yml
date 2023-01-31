@@ -60,8 +60,10 @@ decoders:
   # Service decoders
   - decoder/syslog/0
 
-  - decoder/f5-apm-base/0
-  - decoder/f5-apm/0
+
+  - decoder/f5-afm/0
+  - decoder/f5-apm-own/0
+  - decoder/f5-apm-third/0
 
 outputs:
   - output/file-output/0
