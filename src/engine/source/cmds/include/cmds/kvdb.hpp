@@ -59,7 +59,7 @@ void runRemoveKV(const std::string& socketPath,
                  const std::string& kvdbName,
                  const std::string& kvdbKey);
 
-void configure(CLI::App& app);
+void configure(CLI::App_p app);
 
 } // namespace cmd::kvdb
 

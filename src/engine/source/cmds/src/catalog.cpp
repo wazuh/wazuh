@@ -9,10 +9,10 @@
 #include <system_error>
 
 #include <name.hpp>
+#include <cmds/details/kbhit.hpp>
 
 #include "apiclnt/sendReceive.hpp"
 #include "defaultSettings.hpp"
-#include "details.hpp"
 
 namespace cmd::catalog
 {
@@ -261,9 +261,9 @@ void runLoad(const std::string& socketPath,
     }
 }
 
-void configure(CLI::App& app)
+void configure(CLI::App_p app)
 {
-    auto catalogApp = app.add_subcommand("catalog", "Manage the engine's catalog.");
+    auto catalogApp = app->add_subcommand("catalog", "Manage the engine's catalog.");
     catalogApp->require_subcommand(1);
     auto options = std::make_shared<Options>();
 
