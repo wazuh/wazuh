@@ -4,6 +4,7 @@
 #include <fstream>
 #include <memory>
 
+#include <cmds/details/stackExecutor.hpp>
 #include <hlp/logpar.hpp>
 #include <hlp/registerParsers.hpp>
 #include <kvdb/kvdbManager.hpp>
@@ -16,11 +17,10 @@
 #include "defaultSettings.hpp"
 #include "register.hpp"
 #include "registry.hpp"
-#include "stackExecutor.hpp"
 
 namespace
 {
-cmd::StackExecutor g_exitHanlder {};
+cmd::details::StackExecutor g_exitHanlder {};
 constexpr auto ENV_GRAPH = "env_graph.dot";
 constexpr auto ENV_EXPR_GRAPH = "env_expr_graph.dot";
 } // namespace
@@ -122,12 +122,12 @@ void run(const Options& options)
     g_exitHanlder.execute();
 }
 
-void configure(CLI::App& app)
+void configure(CLI::App_p app)
 {
     auto options = std::make_shared<Options>();
 
     auto graphApp =
-        app.add_subcommand("graph", "Generate a dot description of an environment.");
+        app->add_subcommand("graph", "Generate a dot description of an environment.");
 
     // KVDB path
     graphApp

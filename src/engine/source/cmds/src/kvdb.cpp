@@ -234,9 +234,9 @@ void runRemoveKV(const std::string& socketPath,
     details::singleRequest(req, socketPath);
 }
 
-void configure(CLI::App& app)
+void configure(CLI::App_p app)
 {
-    auto kvdbApp = app.add_subcommand("kvdb", "Manage the key-value databases (KVDBs).");
+    auto kvdbApp = app->add_subcommand("kvdb", "Manage the key-value databases (KVDBs).");
     kvdbApp->require_subcommand(1);
     auto options = std::make_shared<Options>();
 

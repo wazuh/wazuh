@@ -97,9 +97,9 @@ void runDel(const std::string& socketPath, const std::string& target)
     details::singleRequest(request, socketPath);
 }
 
-void configure(CLI::App& app)
+void configure(CLI::App_p app)
 {
-    auto envApp = app.add_subcommand("env", "Manage the running environments.");
+    auto envApp = app->add_subcommand("env", "Manage the running environments.");
     envApp->require_subcommand(1);
     auto options = std::make_shared<Options>();
 

@@ -6,10 +6,10 @@ add_library(cmds STATIC
     src/catalog.cpp
     src/env.cpp
     src/apiclnt/sendReceive.cpp
+    src/config.cpp
 )
 
 target_link_libraries(cmds
-    PRIVATE
     base
     json
     builders
@@ -19,6 +19,8 @@ target_link_libraries(cmds
     store::fileDriver
     api
     uv_a
+    conf::cliconf
+    conf::iconf
 )
 
 target_include_directories(cmds
