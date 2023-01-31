@@ -32,7 +32,8 @@ typedef enum _error_codes {
     ERROR_INVALID_AGENTS,
     ERROR_EMPTY_AGENTS,
     ERROR_EMPTY_LASTID,
-    ERROR_TOO_MANY_AGENTS
+    ERROR_TOO_MANY_AGENTS,
+    ERROR_EMPTY_AGENT_OR_MD5
 } error_codes;
 
 const char * error_messages[] = {
@@ -47,7 +48,8 @@ const char * error_messages[] = {
     [ERROR_INVALID_AGENTS] = "Invalid agents parameter",
     [ERROR_EMPTY_AGENTS] = "Error getting agents from DB",
     [ERROR_EMPTY_LASTID] = "Empty last id",
-    [ERROR_TOO_MANY_AGENTS] = "Too many agents"
+    [ERROR_TOO_MANY_AGENTS] = "Too many agents",
+    [ERROR_EMPTY_AGENT_OR_MD5] = "Invalid agent or md5 parameter"
 };
 
 /**
@@ -96,6 +98,8 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
     cJSON *config_json = NULL;
     cJSON *agents_json = NULL;
     cJSON *last_id_json = NULL;
+    cJSON *agent_json = NULL;
+    cJSON *md5_json = NULL;
     const char *json_err;
     int *agents_ids;
     int count;
@@ -158,6 +162,18 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
                     }
                 } else {
                     *output = remcom_output_builder(ERROR_EMPTY_SECTION, error_messages[ERROR_EMPTY_SECTION], NULL);
+                }
+            } else {
+                *output = remcom_output_builder(ERROR_EMPTY_PARAMATERS, error_messages[ERROR_EMPTY_PARAMATERS], NULL);
+            }
+        } else if (strcmp(command_json->valuestring, "assigngroup") == 0) {
+            if (parameters_json = cJSON_GetObjectItem(request_json, "parameters"), cJSON_IsObject(parameters_json)) {
+                agent_json = cJSON_GetObjectItem(parameters_json, "agent");
+                md5_json = cJSON_GetObjectItem(parameters_json, "md5");
+                if (cJSON_IsString(agent_json) && cJSON_IsString(md5_json)) {
+                    *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], assign_group_to_agent(agent_json->valuestring, md5_json->valuestring));
+                } else {
+                    *output = remcom_output_builder(ERROR_EMPTY_AGENT_OR_MD5, error_messages[ERROR_EMPTY_AGENT_OR_MD5], NULL);
                 }
             } else {
                 *output = remcom_output_builder(ERROR_EMPTY_PARAMATERS, error_messages[ERROR_EMPTY_PARAMATERS], NULL);

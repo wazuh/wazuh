@@ -141,98 +141,6 @@ STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum);
 STATIC bool group_changed(const char *multi_group);
 
 /**
- * @brief Process group, update file sum structure and create merged.mg file
- * @param group Group name
- * @param _f_sum File sum structure to update
- * @param sharedcfg_dir Group directory
- * @param create_merged Flag indicating if merged.mg needs to be created
- */
-STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir, bool create_merged);
-
-/**
- * @brief Process multigroup, update file sum structure and create merged.mg file
- * @param multi_group Multigroup name
- * @param _f_sum File sum structure to update
- * @param hash_multigroup Multigroup hash
- * @param create_merged Flag indicating if merged.mg needs to be created
- */
-STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_multigroup, bool create_merged);
-
-/**
- * @brief Process groups and multigroups files
- */
-STATIC void c_files(void);
-
-/**
- * @brief Analize and generate new groups, update existing groups
- */
-STATIC void process_groups();
-
-/**
- * @brief Analize and generate new multigroups, update existing multigroups
- */
-STATIC void process_multi_groups();
-
-/**
- * @brief Delete all groups that no longer exist
- */
-STATIC void process_deleted_groups();
-
-/**
- * @brief Delete all multigroups that no longer exist
- */
-STATIC void process_deleted_multi_groups();
-
-/**
- * @brief Find a group structure from its name
- * @param group Group name
- * @return Group structure if exists, NULL otherwise
- */
-STATIC group_t* find_group(const char *group);
-
-/**
- * @brief Find a multigroup structure from its name
- * @param multigroup Multigroup name
- * @return Multigroup structure if exists, NULL otherwise
- */
-STATIC group_t* find_multi_group(const char *multigroup);
-
-/**
- * @brief Find a group structure from a file name and md5
- * @param file File name
- * @param md5 MD5 of the file
- * @param group Array to store the group name if exists
- * @return Group structure if exists, NULL otherwise
- */
-STATIC group_t* find_group_from_file(const char * file, const char * md5, char group[OS_SIZE_65536]);
-
-/**
- * @brief Find a multigroup structure from a file name and md5
- * @param file File name
- * @param md5 MD5 of the file
- * @param multigroup Array to store the multigroup name if exists
- * @return Multigroup structure if exists, NULL otherwise
- */
-STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, char multigroup[OS_SIZE_65536]);
-
-/**
- * @brief Compare and check if the file sum has changed
- * @param old_sum File sum of previous scan
- * @param new_sum File sum of new scan
- * @return true Changed
- * @return false Didn't change
- */
-STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum);
-
-/**
- * @brief Check if any group of a given multigroup has changed
- * @param multi_group Multigroup name
- * @return true Any group changed
- * @return false Groups didn't change
- */
-STATIC bool group_changed(const char *multi_group);
-
-/**
  * @brief Get agent group
  * @param agent_id. Agent id to assign a group
  * @param msg. Message from agent to process and validate current configuration files
@@ -580,6 +488,41 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     }
 
     os_free(clean);
+}
+
+/* Assign a group to an agent without group */
+cJSON *assign_group_to_agent(const char *agent_id, const char *md5) {
+    cJSON *result = NULL;
+    char* group = NULL;
+
+    os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
+
+    mdebug2("Agent '%s' with file '%s' MD5 '%s'", agent_id, SHAREDCFG_FILENAME, md5);
+
+    w_mutex_lock(&files_mutex);
+
+    if (!guess_agent_group || (!find_group_from_file(SHAREDCFG_FILENAME, md5, group) && !find_multi_group_from_file(SHAREDCFG_FILENAME, md5, group))) {
+        // If the group could not be guessed, set to "default"
+        // or if the user requested not to guess the group, through the internal
+        // option 'guess_agent_group', set to "default"
+        strncpy(group, "default", OS_SIZE_65536);
+    }
+
+    w_mutex_unlock(&files_mutex);
+
+    wdb_set_agent_groups_csv(atoi(agent_id),
+                            group,
+                            WDB_GROUP_MODE_EMPTY_ONLY,
+                            w_is_single_node(NULL) ? "synced" : "syncreq",
+                            NULL);
+
+    mdebug2("Group assigned: '%s'", group);
+
+    result = cJSON_CreateObject();
+    cJSON_AddStringToObject(result, "group", group);
+
+    os_free(group);
+    return result;
 }
 
 /* Generate merged file for groups */
@@ -1467,31 +1410,21 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
 
         /* New agents only have merged.mg */
         if (strcmp(file, SHAREDCFG_FILENAME) == 0) {
+            cJSON *group_json = NULL;
+            cJSON *value = NULL;
 
-            // If group was not got, guess it by matching sum
-            os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
-            mdebug2("Agent '%s' with file '%s' MD5 '%s'", agent_id, SHAREDCFG_FILENAME, md5);
+            group_json = assign_group_to_agent(agent_id, md5);
 
-            w_mutex_lock(&files_mutex);
-
-            if (!guess_agent_group || (!find_group_from_file(file, md5, group) && !find_multi_group_from_file(file, md5, group))) {
-                // If the group could not be guessed, set to "default"
-                // or if the user requested not to guess the group, through the internal
-                // option 'guess_agent_group', set to "default"
-                strncpy(group, "default", OS_SIZE_65536);
+            value = cJSON_GetObjectItem(group_json, "group");
+            if(cJSON_IsString(value) && value->valuestring != NULL){
+                os_strdup(value->valuestring, *r_group);
+            } else {
+                merror("Agent '%s' invalid group assigned.", agent_id);
+                cJSON_Delete(group_json);
+                break;
             }
 
-            w_mutex_unlock(&files_mutex);
-
-            wdb_set_agent_groups_csv(atoi(agent_id),
-                                 group,
-                                 WDB_GROUP_MODE_EMPTY_ONLY,
-                                 w_is_single_node(NULL) ? "synced" : "syncreq",
-                                 NULL);
-            *r_group = group;
-
-            mdebug2("Group assigned: '%s'", group);
-
+            cJSON_Delete(group_json);
             os_free(fmsg);
             return OS_SUCCESS;
         }
