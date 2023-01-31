@@ -22,6 +22,7 @@ decoders:
   - decoder/rootcheck/0
   - decoder/sca/0
   - decoder/ciscat/0
+  - decoder/sophos-antispam/0
   - decoder/sophos-antivirus/0
   - decoder/sophos-atp/0
   - decoder/sophos-cfilter/0
