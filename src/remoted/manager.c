@@ -151,6 +151,14 @@ STATIC bool group_changed(const char *multi_group);
 STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group, int* wdb_sock);
 
 /**
+ * @brief Redirect the request to the master node to assign a group
+ * @param agent_id. Agent id to assign a group
+ * @param md5. MD5 sum used if guessing is enabled
+ * @return JSON* with group name if successful, NULL otherwise
+ */
+STATIC cJSON *assign_group_to_agent_worker(const char *agent_id, const char *md5);
+
+/**
  * @brief Send a shared file to an agent
  * @param agent_id ID of the destination agent
  * @param group Name of the group where the file is located
@@ -523,6 +531,43 @@ cJSON *assign_group_to_agent(const char *agent_id, const char *md5) {
 
     os_free(group);
     return result;
+}
+
+STATIC cJSON *assign_group_to_agent_worker(const char *agent_id, const char *md5) {
+    char response[OS_MAXSTR] = "";
+    char *request = NULL;
+    cJSON *payload_json = NULL;
+    cJSON *response_json = NULL;
+    cJSON *data_json = NULL;
+
+    cJSON *message_json = cJSON_CreateObject();
+    cJSON *parameters_json = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(parameters_json, "agent", agent_id);
+    cJSON_AddStringToObject(parameters_json, "md5", md5);
+
+    cJSON_AddStringToObject(message_json, "command", "assigngroup");
+    cJSON_AddItemToObject(message_json, "parameters", parameters_json);
+
+    payload_json = w_create_sendsync_payload("remoted", message_json);
+
+    request = cJSON_PrintUnformatted(payload_json);
+
+    mdebug2("Sending message to master node: '%s'", request);
+
+    w_send_clustered_message("sendsync", request, response);
+
+    mdebug2("Message received from master node: '%s'", response);
+
+    response_json = cJSON_Parse(response);
+
+    data_json = cJSON_Duplicate(cJSON_GetObjectItem(response_json, "data"), 1);
+
+    os_free(request);
+    cJSON_Delete(payload_json);
+    cJSON_Delete(response_json);
+
+    return data_json;
 }
 
 /* Generate merged file for groups */
@@ -1413,13 +1458,17 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
             cJSON *group_json = NULL;
             cJSON *value = NULL;
 
-            group_json = assign_group_to_agent(agent_id, md5);
+            if (!logr.worker_node) {
+                group_json = assign_group_to_agent(agent_id, md5);
+            } else {
+                group_json = assign_group_to_agent_worker(agent_id, md5);
+            }
 
             value = cJSON_GetObjectItem(group_json, "group");
-            if(cJSON_IsString(value) && value->valuestring != NULL){
+            if (cJSON_IsString(value) && value->valuestring != NULL) {
                 os_strdup(value->valuestring, *r_group);
             } else {
-                merror("Agent '%s' invalid group assigned.", agent_id);
+                merror("Agent '%s' invalid or empty group assigned.", agent_id);
                 cJSON_Delete(group_json);
                 break;
             }
