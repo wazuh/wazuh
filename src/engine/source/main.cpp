@@ -1,32 +1,47 @@
+#include <string>
+
 #include <CLI/CLI.hpp>
 
 #include <cmds/catalog.hpp>
+#include <cmds/config.hpp>
 #include <cmds/env.hpp>
 #include <cmds/graph.hpp>
 #include <cmds/kvdb.hpp>
 #include <cmds/start.hpp>
 #include <cmds/test.hpp>
 
+namespace
+{
+
+// Defaults
+constexpr auto CONF_PATH = "/tmp/config.toml";
+
+} // namespace
+
 int main(int argc, char* argv[])
 {
-    CLI::App app(
+    CLI::App_p app = std::make_shared<CLI::App>(
         "The Wazuh engine analyzes all the events received from agents, remote devices "
         "and Wazuh integrations. This integrated console application allows to manage "
-        "all the engine components.\n");
-    app.require_subcommand(1);
+        "all the engine components.");
+    // app->require_subcommand(1);
+
+    // Configuratin file
+    app->set_config("--config", CONF_PATH);
 
     // Configure each subcommand
-    cmd::start::configure(app);
+    cmd::server::configure(app);
     cmd::test::configure(app);
     cmd::graph::configure(app);
     cmd::kvdb::configure(app);
     cmd::env::configure(app);
     cmd::catalog::configure(app);
+    cmd::config::configure(app);
 
     try
     {
         // Parse the command line and execute the subcommand callback
-        CLI11_PARSE(app, argc, argv);
+        CLI11_PARSE(*app, argc, argv);
     }
     catch (const std::exception& e)
     {

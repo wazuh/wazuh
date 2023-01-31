@@ -51,7 +51,7 @@ void runLoad(const std::string& socketPath,
              const std::string& path,
              bool recursive);
 
-void configure(CLI::App& app);
+void configure(CLI::App_p app);
 } // namespace cmd::catalog
 
 #endif // _CMD_CATALOG_HPP

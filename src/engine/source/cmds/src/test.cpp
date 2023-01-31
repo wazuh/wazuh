@@ -7,6 +7,8 @@
 
 #include <re2/re2.h>
 
+#include <cmds/details/kbhit.hpp>
+#include <cmds/details/stackExecutor.hpp>
 #include <hlp/logpar.hpp>
 #include <hlp/registerParsers.hpp>
 #include <kvdb/kvdbManager.hpp>
@@ -19,16 +21,14 @@
 #include "base/utils/getExceptionStack.hpp"
 #include "builder.hpp"
 #include "defaultSettings.hpp"
-#include "details.hpp"
 #include "register.hpp"
 #include "registry.hpp"
 #include "server/wazuhStreamProtocol.hpp"
-#include "stackExecutor.hpp"
 
 namespace
 {
 std::atomic<bool> gs_doRun = true;
-cmd::StackExecutor g_exitHanlder {};
+cmd::details::StackExecutor g_exitHanlder {};
 
 void sigint_handler(const int signum)
 {
@@ -330,11 +330,11 @@ void run(const Options& options)
     g_exitHanlder.execute();
 }
 
-void configure(CLI::App& app)
+void configure(CLI::App_p app)
 {
     auto options = std::make_shared<Options>();
 
-    auto logtestApp = app.add_subcommand("test", "Utility to test the ruleset.");
+    auto logtestApp = app->add_subcommand("test", "Utility to test the ruleset.");
     // KVDB path
     logtestApp
         ->add_option(

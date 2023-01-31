@@ -1,8 +1,9 @@
-#ifndef _CMD_UTILS_HPP
-#define _CMD_UTILS_HPP
+#ifndef _CMD_DETAILS_KBHIT_HPP
+#define _CMD_DETAILS_KBHIT_HPP
 
 #include <sstream>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 namespace cmd::details
@@ -32,4 +33,4 @@ inline int kbhit()
 }
 } // namespace cmd::details
 
-#endif // _CMD_UTILS_HPP
+#endif // _CMD_DETAILS_KBHIT_HPP

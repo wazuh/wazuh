@@ -35,7 +35,7 @@ struct Options
 };
 void run(const Options& options);
 
-void configure(CLI::App& app);
+void configure(CLI::App_p app);
 } // namespace cmd::test
 
 #endif // _CMD_TEST_HPP

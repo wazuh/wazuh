@@ -1,16 +1,16 @@
-#include "stackExecutor.hpp"
+#include <cmds/details/stackExecutor.hpp>
 
 #include <gtest/gtest.h>
 
 TEST(StackExecutor, Init_empty)
 {
-    ASSERT_NO_THROW(cmd::StackExecutor());
-    ASSERT_NO_THROW(cmd::StackExecutor().execute());
+    ASSERT_NO_THROW(cmd::details::StackExecutor());
+    ASSERT_NO_THROW(cmd::details::StackExecutor().execute());
 }
 
 TEST(StackExecutor, add)
 {
-    cmd::StackExecutor stack;
+    cmd::details::StackExecutor stack;
     std::string result {};
 
     stack.add([&result](){ result += "1"; });
@@ -22,7 +22,7 @@ TEST(StackExecutor, add)
 
 TEST(StackExecutor, execute_as_lifo)
 {
-    cmd::StackExecutor stack;
+    cmd::details::StackExecutor stack;
     std::string result {};
 
     stack.add([&result](){ result += "1"; });
@@ -35,7 +35,7 @@ TEST(StackExecutor, execute_as_lifo)
 
 TEST(StackExecutor, execute_clears_stack)
 {
-    cmd::StackExecutor stack;
+    cmd::details::StackExecutor stack;
     std::string result {};
 
     stack.add([&result](){ result += "1"; });
@@ -50,7 +50,7 @@ TEST(StackExecutor, execute_clears_stack)
 
 TEST(StackExecutor, execute_catches_exceptions)
 {
-    cmd::StackExecutor stack;
+    cmd::details::StackExecutor stack;
     std::string result {};
 
     stack.add([&result](){ result += "1"; });
