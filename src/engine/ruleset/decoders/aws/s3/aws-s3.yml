@@ -2,10 +2,15 @@
 name: decoder/aws-s3/0
 
 metadata:
+  title: AWS S3 Decoder
   description: Decoder for Amazon S3 server access logs
   references:
     - https://docs.aws.amazon.com/AmazonS3/latest/userguide/LogFormat.html
   product.name: Amazon S3 server access
+  author:
+      name: Wazuh, Inc.
+      url: https://wazuh.com
+      date: 2022/01/20
 
 sources:
   - decoder/aws/0
