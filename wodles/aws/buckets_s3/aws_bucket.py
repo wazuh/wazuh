@@ -913,7 +913,8 @@ class AWSCustomBucket(AWSBucket):
                     lat = float(match.group(1))
                     lon = float(match.group(2))
                     new_pattern = f'"lat":{lat},"lon":{lon}'
-                    json_data, json_index = decoder.raw_decode(re.sub(self.macie_location_pattern, new_pattern, data))
+                    data = re.sub(self.macie_location_pattern, new_pattern, data)
+                    json_data, json_index = decoder.raw_decode(data)
                 data = data[json_index:]
                 yield json_data
 
