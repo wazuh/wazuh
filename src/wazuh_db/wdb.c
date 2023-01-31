@@ -1889,9 +1889,11 @@ int wdb_any_transaction(sqlite3 *db, const char* sql_transaction) {
 }
 
 int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn) {
-    if (wdb->transaction) {
+
+    if (((state == 1) ? wdb->transaction : !wdb->transaction)) {
         return 0;
     }
+
     if (wdb_ptr_any_txn != NULL) {
         if (wdb_ptr_any_txn(wdb->db) == -1) {
             return -1;

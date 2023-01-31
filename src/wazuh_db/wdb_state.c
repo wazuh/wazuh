@@ -115,18 +115,6 @@ void w_inc_agent_commit_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-void w_inc_agent_rollback() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.rollback_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_agent_rollback_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.rollback_time, &time, &wdb_state.queries_breakdown.agent_breakdown.rollback_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
 void w_inc_agent_close() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.agent_breakdown.close_queries++;
@@ -847,6 +835,18 @@ void w_inc_global_get_fragmentation() {
 void w_inc_global_get_fragmentation_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
     timeradd(&wdb_state.queries_breakdown.global_breakdown.get_fragmentation_time, &time, &wdb_state.queries_breakdown.global_breakdown.get_fragmentation_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_global_rollback() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.global_breakdown.rollback_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_global_rollback_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.global_breakdown.rollback_time, &time, &wdb_state.queries_breakdown.global_breakdown.rollback_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 

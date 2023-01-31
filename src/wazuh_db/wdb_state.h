@@ -98,7 +98,6 @@ typedef struct _agent_breakdown_t {
     uint64_t begin_queries;
     uint64_t close_queries;
     uint64_t commit_queries;
-    uint64_t rollback_queries;
     uint64_t remove_queries;
     uint64_t sql_queries;
     uint64_t vacuum_queries;
@@ -106,7 +105,6 @@ typedef struct _agent_breakdown_t {
     struct timeval begin_time;
     struct timeval close_time;
     struct timeval commit_time;
-    struct timeval rollback_time;
     struct timeval remove_time;
     struct timeval sql_time;
     struct timeval vacuum_time;
@@ -193,10 +191,12 @@ typedef struct _global_breakdown_t {
     uint64_t sql_queries;
     uint64_t vacuum_queries;
     uint64_t get_fragmentation_queries;
+    uint64_t rollback_queries;
     struct timeval backup_time;
     struct timeval sql_time;
     struct timeval vacuum_time;
     struct timeval get_fragmentation_time;
+    struct timeval rollback_time;
     global_agent_t agent;
     global_belongs_t belongs;
     global_group_t group;
@@ -341,18 +341,6 @@ void w_inc_agent_commit();
  * @param time Value to increment the counter.
  */
 void w_inc_agent_commit_time(struct timeval time);
-
-/**
- * @brief Increment rollback agent queries counter
- */
-void w_inc_agent_rollback();
-
-/**
- * @brief Increment rollback agent time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_agent_rollback_time(struct timeval time);
 
 /**
  * @brief Increment close agent queries counter
@@ -1097,6 +1085,18 @@ void w_inc_global_get_fragmentation();
  * @param time Value to increment the counter.
  */
 void w_inc_global_get_fragmentation_time(struct timeval time);
+
+/**
+ * @brief Increment rollback global queries counter
+ */
+void w_inc_global_rollback();
+
+/**
+ * @brief Increment rollback global time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_global_rollback_time(struct timeval time);
 
 /**
  * @brief Increment task queries counter

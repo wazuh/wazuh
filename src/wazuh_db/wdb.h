@@ -2579,7 +2579,7 @@ int wdb_any_transaction(sqlite3 *db, const char* sql_transaction);
 /**
  * @brief write the status of the transaction
  * @param db Database to query for the table existence.
- * @param state 1 when is on, 0 whe is off
+ * @param state 1 when is Begin-transaction, 0 other transactions
  * @param wdb_ptr_any_txn function that points to the transaction
  * @return 0 when succeed, !=0 otherwise.
 */
