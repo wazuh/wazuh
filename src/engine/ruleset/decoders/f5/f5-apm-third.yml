@@ -1,0 +1,100 @@
+---
+name: decoder/f5-apm-third/0
+
+metadata:
+  module: F5
+  title: F5 APM Decoder for third party providers
+  description: Decodes F5 BIG-IP Access Policy Manager logs of third party providers.
+  compatibility: >
+    New Wazuh Engine
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/31
+  references:
+    - https://techdocs.f5.com/kb/en-us/products/big-ip_apm/manuals/product/apm-network-access-12-1-0/10.html
+
+sources:
+  - decoder/f5-apm-own/0
+
+parse:
+  logpar:
+    # Rule
+    - ~payload: <event.provider>[<process.pid>]:<~/ignore/ ><~tmp.rsa.internal.messageid>:<~/ignore/ ><~tmp.rsa.misc.rule_name> \<\<<~tmp.rsa.internal.event_desc>>:<~/ignore/ >APM_EVENT=<event.action> | <user.name> | <~> ***<~tmp.rsa.misc.result>***
+
+    # crond
+    # March 2016/03/12 03:17:42 seq high crond[5738]: (ccaecat) veleumi
+    # July 2016/07/18 18:40:50 lum high CROND[1675]: (sitvolup) CMD (cancel)
+    # January 2019/01/19 13:25:23 volup very-high crond[4071]: (iconsequ) CMD (block)
+    # April 2019/04/29 14:43:23 Nequepo high CROND[2977]: (emac) CMD (cancel)
+    - ~payload: <event.provider>[<process.pid>]:<~/ignore/ >\(<~tmp.user_name>\) (?CMD \(<~tmp.user_command>\))<?~tmp.rsa_index>
+
+    # syslog-ng - auditd - Rule - SMTP
+    # November 2019/11/01 10:16:48 erc low tasnu: [syslog-ng]
+    - ~payload: <~tmp.rsa_misc_client>:<~/ignore/:> [<event.provider>]
+    # June 2018/06/04 20:44:15 lorumw high tdolo[3872]: syslog-ng: 
+    - ~payload: <~tmp.rsa_misc_client>[<process.pid>]:<~/ignore/ ><event.provider>:<~/ignore/ >
+    # April 2018/04/08 16:33:58 liq low mvolupta: syslog-ng: 
+    - ~payload: <~tmp.rsa_misc_client>:<~/ignore/:> <event.provider>:<~/ignore/ >
+    # March 2017/03/18 18:24:33 ptasnula high syslog-ng[2638]: ill
+    - ~payload: <event.provider>[<process.pid>]:<~/ignore/ ><~tmp.rsa_misc_client>
+
+normalize:
+  # crond
+  - check: event.provider==crond OR event.provider==CROND
+    map:
+      - rsa.internal.messageid : crond
+      - rsa.misc.action : +a_append/$~tmp.user_command
+      - user.name : $~tmp.user_name
+
+  # syslog-ng
+  - check: event.provider==syslog-ng
+    map:
+      - rsa.internal.messageid : syslog-ng
+      - rsa.misc.client : $~tmp.rsa_misc_client
+
+  # auditd
+  - check: event.provider==auditd
+    map:
+      - event.code : $event.provider
+      - rsa.db.index : $~tmp.rsa_misc_client
+      - rsa.internal.messageid : $event.provider
+      - rsa.misc.client : $event.provider
+
+
+  # Rule
+  - check: ~tmp.rsa.internal.messageid==Rule
+    map:
+      - event.code: Rule
+      - rsa.internal.messageid: Rule
+      - rsa.internal.event_desc: $~tmp.rsa.internal.event_desc
+      - rsa.misc.action: $event.action
+      - rsa.misc.rule_name: $~tmp.rsa.misc.rule_name
+      - rsa.misc.result: $tmp.rsa.misc.result
+      - rule.name: $rsa.misc.rule_name
+
+  # SMTP
+  - check: event.provider==sSMTP
+    map:
+      - event.code: $event.provider
+      - rsa.db.index: $~tmp.rsa_misc_client
+      - rsa.internal.messageid: $event.provider
+      - rsa.misc.client : $event.provider
+
+  # General fields mapping
+  - map:
+    - ~content : +ef_delete
+    - ~payload : +ef_delete
+    - ~tmp: +ef_delete
+    - event.dataset : f5.bigipapm
+    - event.module : f5
+    - event.provider: +ef_delete
+    - input.type : log
+    - rsa.misc.severity : $log.level
+    - rsa.time.event_time : $@timestamp
+    - fileset.name : bigipapm
+    - observer.product : Big-IP
+    - observer.type : Access
+    - observer.vendor : F5
+    - service.type : f5
+    - tags : +a_append/$event.dataset
+    - tags : +a_append/forwarded
