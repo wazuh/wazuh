@@ -23,6 +23,7 @@ decoders:
   - decoder/sca/0
   - decoder/ciscat/0
   - decoder/sophos-antivirus/0
+  - decoder/sophos-event/0
   - decoder/sophos-firewall/0
   - decoder/sophos-idp/0
   - decoder/sophos-sandstorn/0
