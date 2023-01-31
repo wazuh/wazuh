@@ -1,6 +1,11 @@
 name: decoder/nginx-error/0
 
 metadata:
+  title: NGINX Error Decoder
+  author:
+      name: Wazuh, Inc.
+      url: https://wazuh.com
+      date: 2023/01/13
   description: Nginx error log decoder
 
 sources:

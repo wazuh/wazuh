@@ -2,12 +2,17 @@
 name: decoder/aws-elb/0
 
 metadata:
+  title: AWS ELB Decoder
   description: Decoder for Amazon ELB logs
   references:
     - https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/access-log-collection.html
     - https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-access-logs.html
     - https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html
   product.name: AWS Elastic Load Balancing
+  author:
+      name: Wazuh, Inc.
+      url: https://wazuh.com
+      date: 2023/01/20
 
 sources:
   - decoder/queue-localfile/0
