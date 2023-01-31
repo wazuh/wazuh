@@ -141,18 +141,6 @@ class PKGWrapper final : public IPackageWrapper
                 }
             };
 
-            static const auto truncateVersion
-            {
-                [](const std::string & val)
-                {
-                    constexpr auto VERSION_FORMAT{R"(^([^.]+\.[^.]+\.[^.]+).*$)"};
-                    static std::regex versionFormatRegex{VERSION_FORMAT};
-                    std::string version;
-                    Utils::findRegexInString(val, version, versionFormatRegex, 1);
-                    return version;
-                }
-            };
-
             const auto getDataFnc
             {
                 [this, &filePath](std::istream & data)
@@ -161,7 +149,6 @@ class PKGWrapper final : public IPackageWrapper
                     std::string bundleShortVersionString;
                     std::string bundleVersion;
 
-                    m_name = UNKNOWN_VALUE;
                     m_version = UNKNOWN_VALUE;
                     m_installTime = UNKNOWN_VALUE;
                     m_location = filePath;
