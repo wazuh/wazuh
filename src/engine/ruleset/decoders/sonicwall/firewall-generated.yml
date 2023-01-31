@@ -2,9 +2,10 @@
 name: decoder/sonicwall-firewall-generated/0
 
 metadata:
-  module: firewall
-  title: Firewall logs decoder
-  description: Decoder for Linux firewall logs
+  module: Firewall
+  title: Sonicwall-Firewall generated logs decoder
+  description: Decoder for generated Firmware module logs belonging to Sonicwall
+  version: [6.5]
   author:
     name: Wazuh Inc. info@wazuh.com
     date: 2023-01-12
@@ -16,7 +17,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/id\=.*?sn\=.*?time\=.*?fw
+  - event.original: +r_match/id\=[[:alpha:]]*? sn\=[[:alnum:]]*? time\=.*? fw
 
 parse:
   logpar:
