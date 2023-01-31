@@ -1,10 +1,11 @@
 ---
-name: decoder/sonicwall-firewall-general/0
+name: decoder/sonicwall-firewall/0
 
 metadata:
-  module: firewall
-  title: Firewall logs decoder
-  description: Decoder for Linux firewall logs
+  module: Firewall
+  title: Sonicwall-Firewall logs decoder
+  description: Decoder for Firmware module logs belonging to Sonicwall
+  version: [6.5]
   author:
     name: Wazuh Inc. info@wazuh.com
     date: 2023-01-12
@@ -16,19 +17,14 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/id\=.*?sn\=.*?time\=.*?fw
+  - message: +r_match/^id\=[[:alpha:]]*? sn\=[[:alnum:]]*? time\=.*? fw
 
 parse:
   logpar:
     # Jan  3 13:45:36 192.168.5.1 id=firewall sn=000SERIAL time="2007-01-03 14:48:06" fw=89.160.20.156 pri=6 c=262144 m=98 msg="Connection Opened" n=23419 src=2.2.2.2:36701:WAN dst=89.160.20.156:50000:WAN proto=tcp/50000
-    - event.original: >-
-        <~log.timestamp/date/%b %d %T> <host.ip> <~log.message>
+    - message: <~tmp/kv/=/ /"/'>
 
 normalize:
-  - check:
-      - ~log.message: +ef_exists
-    logpar:
-      - ~log.message: <~tmp/kv/=/ /"/'>
   - map:
       - event.code: $~tmp.m
       - event.dataset: sonicwall.firewall
@@ -47,7 +43,7 @@ normalize:
   - check:
       - ~tmp.src: +ef_exists
     logpar:
-      - ~tmp.src: <~tmp.src.ip>:<~tmp.src.port>:<~tmp.src.interface.name>
+      - ~tmp.src: <~tmp.src.ip/ip>:<~tmp.src.port/long>:<~tmp.src.interface.name>
     map:
       - observer.ingress.interface.name: $~tmp.src.interface.name
       - rsa.network.sinterface: $~tmp.src.interface.name
@@ -67,11 +63,5 @@ normalize:
     map:
       - rsa.misc.action: +a_append/$~tmp.msg
   - map:
-      - ~log: +ef_delete
       - ~tmp: +ef_delete
-      # TODO: The message field comes from the syslog decoder, don't use this field as original event in this decoder as it
-      # is not parsing well. You have a problem here time="2007-01-03 14:48:06", because it cuts processing at 14: and
-      # the new message starts with 48:06 and then the rest of the message.
-      - message: +ef_delete
-      - process.name: +ef_delete
 
