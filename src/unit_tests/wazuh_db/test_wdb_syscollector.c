@@ -2952,7 +2952,7 @@ void test_wdb_hardware_save_success(void **state) {
 
     expect_sqlite3_step_call(SQLITE_DONE);
 
-    output = wdb_hardware_save(data, "scan_id", "scan_time", "serial", "cpu_name", -1, -1, 0, 0, -1, "checksum", false);
+    output = wdb_hardware_save(data, "scan_id", "scan_time", "serial", "cpu_name", 0, 0, 0, 0, 0, "checksum", false);
     assert_int_equal(output, 0);
 }
 
@@ -5150,9 +5150,9 @@ static void test_wdb_hardware_insert_success_null_values(void **state) {
     int ret = OS_INVALID;
     test_struct_t *data = (test_struct_t *)*state;
     hardware_object temp_hardware = hardware;
-    temp_hardware.cpu_cores = -1;
-    temp_hardware.cpu_mhz = -1;
-    temp_hardware.ram_usage = -1;
+    temp_hardware.cpu_cores = 0;
+    temp_hardware.cpu_mhz = 0;
+    temp_hardware.ram_usage = 0;
     temp_hardware.ram_total = 0;
     temp_hardware.ram_free = 0;
 
