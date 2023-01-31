@@ -130,6 +130,9 @@ class SendStringTask:
     """
     Create an asyncio task that can be identified by a task_id specified in advance.
     """
+    # Due to a CPython bug in the Streams library, tasks must be hard-referenced so that they are not deleted
+    # by the garbage collector (https://github.com/python/cpython/issues/90467). It should be fixed in Python 3.10.8.
+    tasks_hard_reference = set()
 
     def __init__(self, wazuh_common, logger):
         """Class constructor.
@@ -144,6 +147,7 @@ class SendStringTask:
         self.wazuh_common = wazuh_common
         self.coro = self.set_up_coro()
         self.task = asyncio.create_task(self.coro())
+        self.tasks_hard_reference.add(self.task)
         self.task.add_done_callback(self.done_callback)
         self.logger = logger
 
@@ -162,6 +166,7 @@ class SendStringTask:
 
         Remove string and task_id (if exist) from sync_tasks dict. If task was not cancelled, raise stored exception.
         """
+        self.tasks_hard_reference.discard(self.task)
         if not self.task.cancelled():
             task_exc = self.task.exception()
             if task_exc:
