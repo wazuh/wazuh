@@ -15,6 +15,7 @@ metadata:
     - https://datatracker.ietf.org/doc/html/rfc5424
 
 sources:
+  - decoder/agent-event-enrichment/0
   - decoder/queue-syslog/0
   - decoder/queue-localfile/0
 
