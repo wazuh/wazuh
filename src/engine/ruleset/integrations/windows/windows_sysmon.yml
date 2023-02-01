@@ -110,7 +110,7 @@ normalize:
 
  - check: event.code==25
    map:
-    - event.message: $~windows.Event.EventData.Type
+    - message: $~windows.Event.EventData.Type
 
  - check: +s_ne/event.code/7
    map:
