@@ -51,7 +51,7 @@ normalize:
       - ~do_update_kvdb: true
 
   - map:
-      - ~json.data.tmp.address: $~json.data.address     
+      - ~json.data.tmp.address: $~json.data.address
   - check:
       - ~json.data.address: +ef_not_exists
     map:
@@ -81,11 +81,11 @@ normalize:
       - ~query: +s_concat/agent /$agent.id/ dbsync network_address /$~json.operation/ /$~json.data.iface/|/$~json.data.proto/|/$~json.data.tmp.address/|/$~json.data.netmask/|/$~json.data.broadcast/|/$~json.data.checksum/|/$~json.data.item_id/|
       - ~query_response: +wdb_update/$~query
 
-  - check: 
+  - check:
       - ~query_response: +t_is_false
-    map: 
+    map:
       - ~do_update_kvdb: false
-      
+
   - check:
       - ~query_response: +t_is_true
     map:

@@ -141,11 +141,10 @@ getIntCmpFunction(const std::string& targetField,
     // Tracing messages
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: Target field \"{}\" not found", name, targetField)};
-    const auto failureTrace2 {fmt::format(
-        "[{}] -> Failure: Parameter \"{}\" not found", name, rightParameter.m_value)};
-    const auto failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
+    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
+    const std::string failureTrace2 {
+        fmt::format("[{}] -> Failure: Parameter \"{}\" not found", name, rightParameter.m_value)};
+    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
 
     // Function that implements the helper
     return [=](base::Event event) -> base::result::Result<base::Event>
@@ -263,11 +262,10 @@ getStringCmpFunction(const std::string& targetField,
     // Tracing messages
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: Target field \"{}\" not found", name, targetField)};
-    const auto failureTrace2 {fmt::format(
-        "[{}] -> Failure: Parameter \"{}\" not found", name, rightParameter.m_value)};
-    const auto failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
+    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
+    const std::string failureTrace2 {
+        fmt::format("[{}] -> Failure: Parameter \"{}\" not found", name, rightParameter.m_value)};
+    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
 
     // Function that implements the helper
     return [=](base::Event event) -> base::result::Result<base::Event>
@@ -475,9 +473,8 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: Target field \"{}\" not found", name, targetField)};
-    const auto failureTrace2 {fmt::format("[{}] -> Failure: Regex did not match", name)};
+    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
+    const std::string failureTrace2 {fmt::format("[{}] -> Failure: Regex did not match", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -531,9 +528,8 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: Target field \"{}\" not found", name, targetField)};
-    const auto failureTrace2 {fmt::format("[{}] -> Failure: Regex did match", name)};
+    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
+    const std::string failureTrace2 {fmt::format("[{}] -> Failure: Regex did match", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -614,14 +610,11 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     uint32_t net_upper {net_lower | (~mask)};
 
     // Tracing
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: Target field \"{}\" not found", name, targetField)};
-    const auto failureTrace2 {fmt::format("[{}] -> Failure: IPv4 address ", name)
-                              + "\"{}\" could not be converted to int: {}"};
-    const auto failureTrace3 {
-        fmt::format("[{}] -> Failure: IP address is not in CIDR", name)};
+    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
+    const std::string failureTrace2 {fmt::format("[{}] -> Failure: IPv4 address ", name)};
+    const std::string failureTrace3 {fmt::format("[{}] -> Failure: IP address is not in CIDR", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -643,7 +636,9 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
             catch (std::exception& e)
             {
                 return base::result::makeFailure(
-                    event, fmt::format(failureTrace2, resolvedField.value(), e.what()));
+                    event,
+                    failureTrace2
+                        + fmt::format("'{}' could not be converted to int: {}", resolvedField.value(), e.what()));
             }
             if (net_lower <= ip && ip <= net_upper)
             {
@@ -669,16 +664,14 @@ base::Expression opBuilderHelperExists(const std::any& definition)
     name = helper::base::formatHelperName(name, targetField, parameters);
 
     // Tracing
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
-
-    const auto failureTrace {fmt::format("[{}] -> Failure: ", name)
-                             + "Field \"{}\" does not exist"};
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
+    const std::string failureTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' does not exist", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             if (event->exists(targetField))
             {
@@ -686,8 +679,7 @@ base::Expression opBuilderHelperExists(const std::any& definition)
             }
             else
             {
-                return base::result::makeFailure(event,
-                                                 fmt::format(failureTrace, targetField));
+                return base::result::makeFailure(event, failureTrace);
             }
         });
 }
@@ -701,16 +693,14 @@ base::Expression opBuilderHelperNotExists(const std::any& definition)
     name = helper::base::formatHelperName(name, targetField, parameters);
 
     // Tracing
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure: ", name)
-                             + "Field \"{}\" does exist"};
+    const std::string failureTrace {fmt::format("[{}] -> Failure: Target field '{}' does exist", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             if (!event->exists(targetField))
             {
@@ -718,8 +708,7 @@ base::Expression opBuilderHelperNotExists(const std::any& definition)
             }
             else
             {
-                return base::result::makeFailure(event,
-                                                 fmt::format(failureTrace, targetField));
+                return base::result::makeFailure(event, failureTrace);
             }
         });
 }
@@ -737,21 +726,18 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
     name = helper::base::formatHelperName(name, targetField, parameters);
 
     // Tracing
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: Target field \"{}\" not found", name, targetField)};
-    const auto failureTrace2 {fmt::format("[{}] -> Failure: ", name)
-                              + "Target field \"{}\" is not an array"};
-    const auto failureTrace3 {
-        fmt::format("[{}] -> Failure: ", name)
-        + "Target array \"{}\" does not contain any of the parameters"};
+    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
+    const std::string failureTrace2 {
+        fmt::format("[{}] -> Failure: Target field '{}' is not an array", name, targetField)};
+    const std::string failureTrace3 {
+        fmt::format("[{}] -> Failure: Target array '{}' does not contain any of the parameters", name, targetField)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             if (!event->exists(targetField))
             {
@@ -761,8 +747,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
             const auto resolvedArray {event->getArray(targetField)};
             if (!resolvedArray.has_value())
             {
-                return base::result::makeFailure(event,
-                                                 fmt::format(failureTrace2, targetField));
+                return base::result::makeFailure(event, failureTrace2);
             }
 
             json::Json cmpValue {};
@@ -802,8 +787,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
             }
 
             // Not found
-            return base::result::makeFailure(event,
-                                             fmt::format(failureTrace3, targetField));
+            return base::result::makeFailure(event, failureTrace3);
         });
 }
 
@@ -820,19 +804,17 @@ base::Expression opBuilderHelperIsNumber(const std::any& definition)
     name = helper::base::formatHelperName(name, targetField, parameters);
 
     // Tracing
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is not a number"};
-
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' is not a number", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
@@ -844,8 +826,7 @@ base::Expression opBuilderHelperIsNumber(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else
@@ -866,19 +847,16 @@ base::Expression opBuilderHelperIsNotNumber(const std::any& definition)
     name = helper::base::formatHelperName(name, targetField, parameters);
 
     // Tracing
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is a number"};
-
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureTrace {fmt::format("[{}] -> Failure: Target field '{}' is a number", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
@@ -890,8 +868,7 @@ base::Expression opBuilderHelperIsNotNumber(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else
@@ -912,19 +889,17 @@ base::Expression opBuilderHelperIsString(const std::any& definition)
     name = helper::base::formatHelperName(name, targetField, parameters);
 
     // Tracing
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is not a string"};
-
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' is not a string", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
@@ -936,8 +911,7 @@ base::Expression opBuilderHelperIsString(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else
@@ -960,11 +934,10 @@ base::Expression opBuilderHelperIsNotString(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is a string"};
+    const std::string failureTrace {fmt::format("[{}] -> Failure: Target field '{}' is a string", name, targetField)};
 
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -982,8 +955,7 @@ base::Expression opBuilderHelperIsNotString(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else
@@ -1006,11 +978,11 @@ base::Expression opBuilderHelperIsBool(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is not a boolean"};
+    const std::string failureTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' is not a boolean", name, targetField)};
 
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -1028,8 +1000,7 @@ base::Expression opBuilderHelperIsBool(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else
@@ -1052,11 +1023,10 @@ base::Expression opBuilderHelperIsNotBool(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is a boolean"};
+    const std::string failureTrace {fmt::format("[{}] -> Failure: Target field '{}' is a boolean", name, targetField)};
 
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -1074,8 +1044,7 @@ base::Expression opBuilderHelperIsNotBool(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else
@@ -1098,11 +1067,11 @@ base::Expression opBuilderHelperIsArray(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is not an array"};
+    const std::string failureTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' is not an array", name, targetField)};
 
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -1120,8 +1089,7 @@ base::Expression opBuilderHelperIsArray(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else
@@ -1144,11 +1112,10 @@ base::Expression opBuilderHelperIsNotArray(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is an array"};
+    const std::string failureTrace {fmt::format("[{}] -> Failure: Target field '{}' is an array", name, targetField)};
 
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -1166,8 +1133,7 @@ base::Expression opBuilderHelperIsNotArray(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else
@@ -1190,11 +1156,11 @@ base::Expression opBuilderHelperIsObject(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is not an object"};
+    const std::string failureTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' is not an object", name, targetField)};
 
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -1212,8 +1178,7 @@ base::Expression opBuilderHelperIsObject(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else
@@ -1236,11 +1201,10 @@ base::Expression opBuilderHelperIsNotObject(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is an object"};
+    const std::string failureTrace {fmt::format("[{}] -> Failure: Target field '{}' is an object", name, targetField)};
 
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -1258,8 +1222,7 @@ base::Expression opBuilderHelperIsNotObject(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else
@@ -1282,11 +1245,10 @@ base::Expression opBuilderHelperIsNull(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is not null"};
+    const std::string failureTrace {fmt::format("[{}] -> Failure: Target field '{}' is not null", name, targetField)};
 
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -1304,8 +1266,7 @@ base::Expression opBuilderHelperIsNull(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else
@@ -1328,11 +1289,10 @@ base::Expression opBuilderHelperIsNotNull(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is null"};
+    const std::string failureTrace {fmt::format("[{}] -> Failure: Target field '{}' is null", name, targetField)};
 
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -1350,8 +1310,7 @@ base::Expression opBuilderHelperIsNotNull(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else
@@ -1374,11 +1333,10 @@ base::Expression opBuilderHelperIsTrue(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is false"};
+    const std::string failureTrace {fmt::format("[{}] -> Failure: Target field '{}' is false", name, targetField)};
 
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -1396,8 +1354,7 @@ base::Expression opBuilderHelperIsTrue(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else
@@ -1420,11 +1377,10 @@ base::Expression opBuilderHelperIsFalse(const std::any& definition)
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace {fmt::format("[{}] -> Failure:", name)
-                             + "Field \"{}\" is true"};
+    const std::string failureTrace {fmt::format("[{}] -> Failure: Target field '{}' is true", name, targetField)};
 
-    const auto failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Field \"{}\" not found", name, targetField)};
+    const std::string failureMissingValueTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -1442,8 +1398,7 @@ base::Expression opBuilderHelperIsFalse(const std::any& definition)
                 }
                 else
                 {
-                    result = base::result::makeFailure(
-                        event, fmt::format(failureTrace, targetField));
+                    result = base::result::makeFailure(event, failureTrace);
                 }
             }
             else

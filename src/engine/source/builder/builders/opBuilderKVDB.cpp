@@ -44,11 +44,11 @@ base::Expression KVDBGet(const std::any& definition, bool merge, std::shared_ptr
     }
 
     // Trace messages
-    const std::string successTrace = fmt::format("[{}] -> Success", name);
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
     const std::string failureTrace1 = fmt::format("[{}] -> Failure: reference '{}' not found", name, key.m_value);
     const std::string failureTrace2 =
         fmt::format("[{}] -> Failure: key '{}' could not be found on database '{}'", name, key.m_value, dbName);
-    const std::string failureTrace3 = fmt::format("[{}] -> Failure: target field '{}' not found", name, targetField);
+    const std::string failureTrace3 = fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField);
     const std::string failureTrace4 = fmt::format("[{}] -> Failure: fields type mismatch when merging", name);
     const std::string failureTrace5 = fmt::format("[{}] -> Failure: malformed JSON for key '{}'", name, key.m_value);
 
@@ -150,10 +150,10 @@ existanceCheck(const std::any& definition, bool checkExist, std::shared_ptr<kvdb
         throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(result).message));
     }
 
-    const std::string successTrace = fmt::format("[{}] -> Success", name);
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
 
-    const std::string failureTrace =
-        fmt::format("[{}] -> ", name) + "Failure, target {} does not exist or it is not a string.";
+    const std::string failureTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' does not exist or it is not a string", name, targetField)};
 
     return base::Term<base::EngineOp>::create(
         name,
@@ -174,7 +174,7 @@ existanceCheck(const std::any& definition, bool checkExist, std::shared_ptr<kvdb
             }
             catch (std::exception& e)
             {
-                return base::result::makeFailure(event, fmt::format(failureTrace, targetField) + e.what());
+                return base::result::makeFailure(event, failureTrace + ": " + e.what());
             }
 
             // TODO: is this condition right? shouldn't this condition be: "!checkExist ||
@@ -187,7 +187,7 @@ existanceCheck(const std::any& definition, bool checkExist, std::shared_ptr<kvdb
             }
             else
             {
-                return base::result::makeFailure(event, fmt::format(failureTrace, targetField));
+                return base::result::makeFailure(event, failureTrace);
             }
         });
 }
@@ -235,12 +235,11 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
     // Trace messages
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
 
+    const std::string failureTrace {fmt::format("[{}] -> Failure: ", name)};
     const std::string failureTrace1 {fmt::format("[{}] -> Failure: reference '{}' not found", name, dbName)};
     const std::string failureTrace2 {fmt::format("[{}] -> Failure: reference '{}' not found", name, key.m_value)};
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: reference '{}' not found", name, value.m_value)};
     const std::string failureTrace4 {fmt::format("[{}] -> ", name) + "Failure: Database '{}' could not be loaded: {}"};
-    const std::string failureTrace5 {fmt::format("[{}] -> ", name)
-                                     + "Failure: Key '{}' and value '{}' could not be written to database '{}': {}"};
 
     // Return Expression
     return base::Term<base::EngineOp>::create(
@@ -313,7 +312,13 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
             if (err)
             {
                 return base::result::makeFailure(
-                    event, fmt::format(failureTrace5, resolvedKey, resolvedStrValue, dbName, err.value().message));
+                    event,
+                    failureTrace
+                        + fmt::format("Failure: Key '{}' and value '{}' could not be written to database '{}': {}",
+                                      resolvedKey,
+                                      resolvedStrValue,
+                                      dbName,
+                                      err.value().message));
             }
 
             event->setBool(true, targetField);
@@ -344,8 +349,8 @@ base::Expression KVDBDelete(const std::any& definition, std::shared_ptr<kvdb_man
     // Trace messages
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
 
+    const std::string failureTrace {fmt::format("[{}] -> Failure: ", name)};
     const std::string failureTrace1 {fmt::format("[{}] -> Failure: reference '{}' not found", name, dbName.m_value)};
-    const std::string failureTrace2 {fmt::format("[{}] -> ", name) + "Failure: Database '{}' could not be deleted: {}"};
 
     // Return Expression
     return base::Term<base::EngineOp>::create(
@@ -376,8 +381,11 @@ base::Expression KVDBDelete(const std::any& definition, std::shared_ptr<kvdb_man
             const auto deleteResult = kvdbManager->deleteDB(resolvedDBName);
             if (deleteResult)
             {
-                return base::result::makeFailure(
-                    event, fmt::format(failureTrace2, resolvedDBName, deleteResult.value().message));
+                return base::result::makeFailure(event,
+                                                 failureTrace
+                                                     + fmt::format("Database '{}' could not be deleted: {}",
+                                                                   resolvedDBName,
+                                                                   deleteResult.value().message));
             }
 
             event->setBool(true, targetField);
