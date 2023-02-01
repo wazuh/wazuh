@@ -323,26 +323,10 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON* timestamp = NULL;
     directory_t *configuration = NULL;
     fim_txn_context_t *txn_context = (fim_txn_context_t *) user_data;
-    bool process_event = false;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
         return; // LCOV_EXCL_LINE
-    }
-
-    // In the modification events, inside the old field there must be other fields
-    // than "path" and "last_event" to generate a modification event.
-    old_data = cJSON_GetObjectItem(result_json, "old");
-    if (old_data != NULL) {
-        cJSON_ArrayForEach(aux, old_data) {
-            if (strcmp(aux->string, "path") && strcmp(aux->string, "last_event")) {
-                process_event = true;
-                break;
-            }
-        }
-        if (!process_event) {
-            return;
-        }
     }
 
     // In case of deletions, latest_entry is NULL, so we need to get the path from the json event
@@ -421,6 +405,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     } else {
         cJSON_AddItemToObject(data, "attributes", fim_attributes_json(txn_context->latest_entry->file_entry.data));
 
+        old_data = cJSON_GetObjectItem(result_json, "old");
         if (old_data) {
             old_attributes = cJSON_CreateObject();
             changed_attributes = cJSON_CreateArray();
