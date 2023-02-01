@@ -1,0 +1,114 @@
+---
+name: decoder/sophos-atp/0
+
+metadata:
+  module: sophos
+  title: Sophos logs decoder
+  description: Decoder for sophos logs
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-12
+  references:
+    - documentation link
+
+check:
+  - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="ATP"
+
+sources:
+  - decoder/queue-syslog/0
+  - decoder/queue-localfile/0
+
+parse:
+  logpar:
+    # <30>device="SFW" date=2020-05-18 time=14:38:34 timezone="CEST" device_name="XG230" device_id=1234567890123456 log_id=086504418010 log_type="ATP" log_component="Web" log_subtype="Drop" priority=Warning user_name="" protocol="TCP" src_port=57579 dst_port=80 sourceip=172.16.34.24 destinationip=13.226.155.22 url=http://sophostest.com/callhome/index.html threatname=C2/Generic-A eventid=E91DAD80-BDE4-4682-B7E8-FE394B70A36C eventtype="Standard" login_user="" process_user="" ep_uuid="" execution_path=""
+    - event.original: \<<~log.head_message>><~log.payload_message>
+
+normalize:
+  - check:
+      - ~log.payload_message: +ef_exists
+    map:
+      - ~log.payload_message: +s_replace/=""/=" "
+    logpar:
+      - ~log.payload_message: <~tmp/kv/=/ /"/'>
+  - map:
+      - destination.ip: $~tmp.destinationip
+      - destination.port: $~tmp.dst_port
+      - event.action: +s_lo/$~tmp.log_subtype
+      - event.code: $~tmp.log_id
+      - event.dataset: sophos.xg
+      - event.id: $~tmp.eventid
+      - event.kind: event
+      - event.module: sophos
+      - event.outcome: success
+  - check:
+      - ~tmp.priority: Unknown
+    map:
+      - event.severity: 0
+  - check:
+      - ~tmp.priority: Alert
+    map:
+      - event.severity: 1
+  - check:
+      - ~tmp.priority: Critical
+    map:
+      - event.severity: 2
+  - check:
+      - ~tmp.priority: Error
+    map:
+      - event.severity: 3
+  - check:
+      - ~tmp.priority: Warning
+    map:
+      - event.severity: 4
+  - check:
+      - ~tmp.priority: Notification
+    map:
+      - event.severity: 5
+  - check:
+      - ~tmp.priority: Information
+    map:
+      - event.severity: 6
+  - map:
+      - event.timezone: $~tmp.timezone
+      - fileset.name: xg
+      - input.type: log
+      - log.level: $~tmp.priority
+      - observer.product: XG
+      - observer.serial_number: $~tmp.device_id
+      - observer.type: firewall
+      - observer.vendor: Sophos
+      - network.transport: +s_lo/$~tmp.protocol
+      - service.type: sophos
+      - sophos.xg.device: $~tmp.device
+      - sophos.xg.device_name: $~tmp.device_name
+      - sophos.xg.eventtype: $~tmp.eventtype
+      - sophos.xg.log_component: $~tmp.log_component
+      - sophos.xg.log_id: $~tmp.log_id
+      - sophos.xg.log_subtype: $~tmp.log_subtype
+      - sophos.xg.log_type: $~tmp.log_type
+      - sophos.xg.priority: $~tmp.priority
+      - sophos.xg.threatname: $~tmp.threatname
+      - source.ip: $~tmp.sourceip
+      - source.port: $~tmp.src_port
+      - tags: [forwarded, preserve_original_event, sophos-xg]
+      - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time
+  - logpar:
+        # "http://sophostest.com/callhome/index.html"
+      - ~tmp.url: <~tmp.schema>://<~tmp.domain>/<~tmp.path>
+    map:
+      - ~tmp.aux_slash: /
+      - url.domain: $~tmp.domain
+      - url.full: $~tmp.url
+      - url.original: $~tmp.url
+      - url.path: +s_concat/$~tmp.aux_slash/$~tmp.path
+      - url.scheme: $~tmp.schema
+  - map:
+      - related.ip: [$destination.ip, $source.ip]
+      - user_agent.original: $~tmp.user_agent
+  - logpar:
+      - user_agent.original: <~tmp.fill>\(<~tmp.agent.os.name>;<~tmp.fill>
+    map:
+      - user_agent.os.name: $~tmp.agent.os.name
+  - map:
+      - ~log: +ef_delete
+      - ~tmp: +ef_delete
