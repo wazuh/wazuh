@@ -14,7 +14,7 @@ namespace
 {
 
 // Defaults
-constexpr auto CONF_PATH = "/tmp/config.toml";
+constexpr auto CONF_PATH = "/etc/wazuh/engine.conf";
 
 } // namespace
 
