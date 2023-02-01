@@ -415,6 +415,11 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
                                             old_data,
                                             old_attributes,
                                             changed_attributes);
+
+            if (cJSON_GetArraySize(changed_attributes) == 0) {
+                mwarn(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
+                goto end;
+            }
         }
     }
 
@@ -812,11 +817,18 @@ void fim_event_callback(void* data, void * ctx)
 
     if (json_event != NULL) {
         cJSON* data_json = cJSON_GetObjectItem(json_event, "data");
-        if (ctx_data->config->options & CHECK_SEECHANGES) {
-            char* path;
-            char* diff;
+        char* path;
 
-            path = cJSON_GetStringValue(cJSON_GetObjectItem(data_json, "path"));
+        path = cJSON_GetStringValue(cJSON_GetObjectItem(data_json, "path"));
+
+        cJSON *changed_attributes = cJSON_GetObjectItem(data_json, "changed_attributes");
+        if (changed_attributes && cJSON_GetArraySize(changed_attributes) == 0) {
+            mwarn(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
+            return;
+        }
+
+        if (ctx_data->config->options & CHECK_SEECHANGES) {
+            char* diff;
 
             diff = fim_file_diff(path, ctx_data->config);
             if (diff != NULL) {

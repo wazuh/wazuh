@@ -176,6 +176,11 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
                                             old_data,
                                             changed_attributes,
                                             old_attributes);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            mwarn(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
+            goto end;
+        }
     }
 
     if (configuration->tag != NULL) {
@@ -315,6 +320,11 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
                                               old_data,
                                               changed_attributes,
                                               old_attributes);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            mwarn(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
+            goto end;
+        }
     }
 
     if (configuration->tag != NULL) {
