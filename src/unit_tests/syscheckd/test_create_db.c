@@ -2302,7 +2302,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5))->options |= CHECK_SEECHANGES;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->options |= CHECK_SEECHANGES;
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -2343,7 +2343,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 
     errno = 0;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5))->options &= ~CHECK_SEECHANGES;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->options &= ~CHECK_SEECHANGES;
 }
 
 static void test_fim_checker_fim_regular(void **state) {
