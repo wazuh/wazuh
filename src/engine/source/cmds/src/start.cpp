@@ -191,8 +191,7 @@ void runStart(ConfHandler confManager)
         WAZUH_LOG_DEBUG("Environment manager API registered.")
 
         // Register Configuration API commands
-        api::config::cmds::registerCommands(server->getRegistry(),
-                                                           confManager);
+        api::config::cmds::registerCommands(server->getRegistry(), confManager);
         WAZUH_LOG_DEBUG("Configuration manager API registered.");
 
         // Up default environment
@@ -244,11 +243,13 @@ void configure(CLI::App_p app)
             options->logLevel,
             "Sets the logging level: 0 = Debug, 1 = Info, 2 = Warning, 3 = Error")
         ->default_val(ENGINE_LOG_LEVEL)
-        ->check(CLI::Range(0, 3));
+        ->check(CLI::Range(0, 3))
+        ->envname(ENGINE_LOG_LEVEL_ENV);
     // Log output
     serverApp->add_option("--log_output", options->logOutput, "Sets the logging output")
         ->default_val(ENGINE_LOG_OUTPUT)
-        ->check(CLI::ExistingFile);
+        ->check(CLI::ExistingFile)
+        ->envname(ENGINE_LOG_OUTPUT_ENV);
 
     // Server
     // Endpoints
@@ -256,23 +257,27 @@ void configure(CLI::App_p app)
         ->add_option("--event_endpoint",
                      options->eventEndpoint,
                      "Sets the events server socket address.")
-        ->default_val(ENGINE_EVENT_SOCK);
+        ->default_val(ENGINE_EVENT_SOCK)
+        ->envname(ENGINE_EVENT_SOCK_ENV);
     serverApp
         ->add_option(
             "--api_endpoint", options->apiEndpoint, "Sets the API server socket address.")
-        ->default_val(ENGINE_API_SOCK);
+        ->default_val(ENGINE_API_SOCK)
+        ->envname(ENGINE_API_SOCK_ENV);
     // Threads
     serverApp
         ->add_option("--threads",
                      options->threads,
                      "Sets the number of threads to be used by the engine environment.")
-        ->default_val(ENGINE_THREADS);
+        ->default_val(ENGINE_THREADS)
+        ->envname(ENGINE_THREADS_ENV);
     // Queue size
     serverApp
         ->add_option("--queue_size",
                      options->queueSize,
                      "Sets the number of events that can be queued to be processed.")
-        ->default_val(ENGINE_QUEUE_SIZE);
+        ->default_val(ENGINE_QUEUE_SIZE)
+        ->envname(ENGINE_QUEUE_SIZE_ENV);
 
     // Store
     // Path
@@ -281,7 +286,8 @@ void configure(CLI::App_p app)
                      options->fileStorage,
                      "Sets the path to the folder where the assets are located (store).")
         ->default_val(ENGINE_STORE_PATH)
-        ->check(CLI::ExistingDirectory);
+        ->check(CLI::ExistingDirectory)
+        ->envname(ENGINE_STORE_PATH_ENV);
 
     // KVDB
     // Path
@@ -289,14 +295,16 @@ void configure(CLI::App_p app)
         ->add_option(
             "--kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
         ->default_val(ENGINE_KVDB_PATH)
-        ->check(CLI::ExistingDirectory);
+        ->check(CLI::ExistingDirectory)
+        ->envname(ENGINE_KVDB_PATH_ENV);
 
     // Start subcommand
     auto startApp = serverApp->add_subcommand("start", "Start a Wazuh engine instance");
     startApp
         ->add_option(
             "--environment", options->environment, "Name of the environment to be used.")
-        ->default_val(ENGINE_ENVIRONMENT);
+        ->default_val(ENGINE_ENVIRONMENT)
+        ->envname(ENGINE_ENVIRONMENT_ENV);
 
     // Register callback
     startApp->callback(
