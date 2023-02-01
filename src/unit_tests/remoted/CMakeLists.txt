@@ -48,7 +48,8 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,wdb_remove_group_db -Wl,--wrap,wdb_get_all_agents -Wl,--wrap,wdb_get_agent_info \
                             -Wl,--wrap,rem_inc_send_ack -Wl,--wrap,rem_inc_recv_ctrl_request -Wl,--wrap,rem_inc_recv_ctrl_keepalive \
                             -Wl,--wrap,rem_inc_recv_ctrl_startup -Wl,--wrap,rem_inc_recv_ctrl_shutdown -Wl,--wrap,pthread_mutex_lock \
-                            -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,wdb_get_distinct_agent_groups")
+                            -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,wdb_get_distinct_agent_groups \
+                            -Wl,--wrap,w_create_sendsync_payload -Wl,--wrap,w_send_clustered_message")
 
 list(APPEND remoted_names "test_secure")
 list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
@@ -90,6 +91,7 @@ list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,r
 list(APPEND remoted_names "test_remcom")
 list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \
                            -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getRemoteConfig -Wl,--wrap,rem_create_agents_state_json  \
+                           -Wl,--wrap,assign_group_to_agent \
                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,json_parse_agents -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
 
 list(LENGTH remoted_names count)

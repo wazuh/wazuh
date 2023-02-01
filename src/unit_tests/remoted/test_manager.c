@@ -388,36 +388,8 @@ void test_lookfor_agent_group_with_group()
     int ret = lookfor_agent_group(agent_id_str, msg, &r_group, NULL);
     assert_int_equal(OS_SUCCESS, ret);
     assert_string_equal(r_group, test_group);
-}
 
-void test_lookfor_agent_group_null_groups()
-{
-    const int agent_id = 1;
-    const char agent_id_str[] = "001";
-    char *msg = "Linux |localhost.localdomain |4.18.0-240.22.1.el8_3.x86_64 |#1 SMP Thu Apr 8 19:01:30 UTC 2021 |x86_64 [CentOS Linux|centos: 8.3] - Wazuh v4.2.0 / ab73af41699f13fdd81903b5f23d8d00\nc2305e0ac17e7176e924294c69cc7a24 merged.mg\n#\"_agent_ip\":10.0.2.4";
-    char *r_group = NULL;
-
-    expect_value(__wrap_wdb_get_agent_group, id, agent_id);
-    will_return(__wrap_wdb_get_agent_group, NULL);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    will_return(__wrap_w_is_single_node, 0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Group assigned: 'default'");
-
-    expect_value(__wrap_wdb_set_agent_groups_csv, id, agent_id);
-    will_return(__wrap_wdb_set_agent_groups_csv, 0);
-
-    int ret = lookfor_agent_group(agent_id_str, msg, &r_group, NULL);
-    assert_int_equal(OS_SUCCESS, ret);
-    assert_string_equal(r_group, "default");
-
-    os_free(r_group);
+    os_free(test_group);
 }
 
 void test_lookfor_agent_group_set_default_group()
@@ -448,6 +420,122 @@ void test_lookfor_agent_group_set_default_group()
     assert_string_equal(r_group, "default");
 
     os_free(r_group);
+}
+
+void test_lookfor_agent_group_set_group_worker()
+{
+    const int agent_id = 1;
+    const char agent_id_str[] = "001";
+    char *msg = "Linux |localhost.localdomain |4.18.0-240.22.1.el8_3.x86_64 |#1 SMP Thu Apr 8 19:01:30 UTC 2021 |x86_64 [CentOS Linux|centos: 8.3] - Wazuh v4.2.0 / ab73af41699f13fdd81903b5f23d8d00\nc2305e0ac17e7176e924294c69cc7a24 merged.mg\n#\"_agent_ip\":10.0.2.4";
+    char *r_group = NULL;
+
+    cJSON *input = cJSON_CreateObject();
+
+    cJSON *parameters = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(parameters, "agent", "001");
+    cJSON_AddStringToObject(parameters, "md5", "c2305e0ac17e7176e924294c69cc7a24");
+
+    cJSON_AddStringToObject(input, "command", "assigngroup");
+    cJSON_AddItemToObject(input, "parameters", parameters);
+
+    cJSON * cluster_request = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(cluster_request, "daemon_name", "remoted");
+    cJSON_AddItemToObject(cluster_request, "message", input);
+
+    char *message = "{\"daemon_name\":\"remoted\","
+                     "\"message\":{\"command\":\"assigngroup\","
+                                  "\"parameters\":{\"agent\":\"001\","
+                                                  "\"md5\":\"c2305e0ac17e7176e924294c69cc7a24\"}}}";
+
+    char *response = "{\"error\":0,\"data\":{\"group\":\"test1\"}}";
+
+    expect_value(__wrap_wdb_get_agent_group, id, agent_id);
+    will_return(__wrap_wdb_get_agent_group, NULL);
+
+    expect_string(__wrap_w_create_sendsync_payload, daemon_name, "remoted");
+    will_return(__wrap_w_create_sendsync_payload, 1);
+    will_return(__wrap_w_create_sendsync_payload, cluster_request);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Sending message to master node: '{\"daemon_name\":\"remoted\","
+                                                                                    "\"message\":{\"command\":\"assigngroup\","
+                                                                                                 "\"parameters\":{\"agent\":\"001\","
+                                                                                                                 "\"md5\":\"c2305e0ac17e7176e924294c69cc7a24\"}}}'");
+
+    expect_string(__wrap_w_send_clustered_message, command, "sendsync");
+    expect_string(__wrap_w_send_clustered_message, payload, message);
+    will_return(__wrap_w_send_clustered_message, response);
+    will_return(__wrap_w_send_clustered_message, 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Message received from master node: '{\"error\":0,\"data\":{\"group\":\"test1\"}}'");
+
+    logr.worker_node = 1;
+    int ret = lookfor_agent_group(agent_id_str, msg, &r_group, NULL);
+    logr.worker_node = 0;
+
+    assert_int_equal(OS_SUCCESS, ret);
+    assert_string_equal(r_group, "test1");
+
+    os_free(r_group);
+}
+
+void test_lookfor_agent_group_set_group_worker_error()
+{
+    const int agent_id = 1;
+    const char agent_id_str[] = "001";
+    char *msg = "Linux |localhost.localdomain |4.18.0-240.22.1.el8_3.x86_64 |#1 SMP Thu Apr 8 19:01:30 UTC 2021 |x86_64 [CentOS Linux|centos: 8.3] - Wazuh v4.2.0 / ab73af41699f13fdd81903b5f23d8d00\nc2305e0ac17e7176e924294c69cc7a24 merged.mg\n#\"_agent_ip\":10.0.2.4";
+    char *r_group = NULL;
+
+    cJSON *input = cJSON_CreateObject();
+
+    cJSON *parameters = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(parameters, "agent", "001");
+    cJSON_AddStringToObject(parameters, "md5", "c2305e0ac17e7176e924294c69cc7a24");
+
+    cJSON_AddStringToObject(input, "command", "assigngroup");
+    cJSON_AddItemToObject(input, "parameters", parameters);
+
+    cJSON * cluster_request = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(cluster_request, "daemon_name", "remoted");
+    cJSON_AddItemToObject(cluster_request, "message", input);
+
+    char *message = "{\"daemon_name\":\"remoted\","
+                     "\"message\":{\"command\":\"assigngroup\","
+                                  "\"parameters\":{\"agent\":\"001\","
+                                                  "\"md5\":\"c2305e0ac17e7176e924294c69cc7a24\"}}}";
+
+    char *response = "{\"error\":1,\"data\":{}}";
+
+    expect_value(__wrap_wdb_get_agent_group, id, agent_id);
+    will_return(__wrap_wdb_get_agent_group, NULL);
+
+    expect_string(__wrap_w_create_sendsync_payload, daemon_name, "remoted");
+    will_return(__wrap_w_create_sendsync_payload, 1);
+    will_return(__wrap_w_create_sendsync_payload, cluster_request);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Sending message to master node: '{\"daemon_name\":\"remoted\","
+                                                                                    "\"message\":{\"command\":\"assigngroup\","
+                                                                                                 "\"parameters\":{\"agent\":\"001\","
+                                                                                                                 "\"md5\":\"c2305e0ac17e7176e924294c69cc7a24\"}}}'");
+
+    expect_string(__wrap_w_send_clustered_message, command, "sendsync");
+    expect_string(__wrap_w_send_clustered_message, payload, message);
+    will_return(__wrap_w_send_clustered_message, response);
+    will_return(__wrap_w_send_clustered_message, 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Message received from master node: '{\"error\":1,\"data\":{}}'");
+
+    expect_string(__wrap__merror, formatted_msg, "Agent '001' invalid or empty group assigned.");
+
+    logr.worker_node = 1;
+    int ret = lookfor_agent_group(agent_id_str, msg, &r_group, NULL);
+    logr.worker_node = 0;
+
+    assert_int_equal(OS_INVALID, ret);
+    assert_null(r_group);
 }
 
 void test_lookfor_agent_group_msg_without_enter()
@@ -3968,8 +4056,10 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         // Tests lookfor_agent_group
+        cmocka_unit_test(test_lookfor_agent_group_with_group),
         cmocka_unit_test(test_lookfor_agent_group_set_default_group),
-        cmocka_unit_test(test_lookfor_agent_group_null_groups),
+        cmocka_unit_test(test_lookfor_agent_group_set_group_worker),
+        cmocka_unit_test(test_lookfor_agent_group_set_group_worker_error),
         cmocka_unit_test(test_lookfor_agent_group_msg_without_enter),
         cmocka_unit_test(test_lookfor_agent_group_bad_message),
         cmocka_unit_test(test_lookfor_agent_group_message_without_second_enter),
