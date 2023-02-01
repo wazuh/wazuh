@@ -29,6 +29,11 @@ int main(int argc, char* argv[])
     // Configuratin file
     app->set_config("--config", CONF_PATH);
 
+    // Version
+    // TODO: Use cmake to set the version
+    app->set_version_flag("-v, --version", "Wazuh Engine v0.0.1");
+
+
     // Configure each subcommand
     cmd::server::configure(app);
     cmd::test::configure(app);
