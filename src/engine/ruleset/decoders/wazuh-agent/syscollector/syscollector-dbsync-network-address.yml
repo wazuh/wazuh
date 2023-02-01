@@ -52,7 +52,7 @@ normalize:
       - ~do_update_kvdb: true
 
   - map:
-      - ~json.data.tmp.address: $~json.data.address 
+      - ~json.data.tmp.address: $~json.data.address
   - check:
       - ~json.data.address: +ef_not_exists
     map:
@@ -83,9 +83,9 @@ normalize:
       - ~query: +s_replace/||/|NULL|
       - ~query_response: +wdb_query/$~query
 
-  - check: 
+  - check:
       - ~query_response: +ef_not_exists
-    map: 
+    map:
       - ~do_update_kvdb: false
 
   - check:

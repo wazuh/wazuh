@@ -104,28 +104,28 @@ normalize:
       - ~json.data.tmp.mac: ""
 
   - map:
-      - ~json.data.tmp.tx_packets: $~json.data.tx_packets  
+      - ~json.data.tmp.tx_packets: $~json.data.tx_packets
   - check:
       - ~json.data.tx_packets: +ef_not_exists
     map:
       - ~json.data.tmp.tx_packets: ""
 
   - map:
-      - ~json.data.tmp.rx_packets: $~json.data.rx_packets  
+      - ~json.data.tmp.rx_packets: $~json.data.rx_packets
   - check:
       - ~json.data.rx_packets: +ef_not_exists
     map:
       - ~json.data.tmp.rx_packets: ""
 
   - map:
-      - ~json.data.tmp.tx_bytes: $~json.data.tx_bytes  
+      - ~json.data.tmp.tx_bytes: $~json.data.tx_bytes
   - check:
       - ~json.data.tx_bytes: +ef_not_exists
     map:
       - ~json.data.tmp.tx_bytes: ""
 
   - map:
-      - ~json.data.tmp.rx_bytes: $~json.data.rx_bytes  
+      - ~json.data.tmp.rx_bytes: $~json.data.rx_bytes
   - check:
       - ~json.data.rx_bytes: +ef_not_exists
     map:
@@ -165,9 +165,9 @@ normalize:
       - ~query: +s_concat/agent /$agent.id/ dbsync network_iface /$~json.operation/ /$~json.data.scan_time/|/$~json.data.name/|/$~json.data.adapter/|/$~json.data.type/|/$~json.data.state/|/$~json.data.mtu/|/$~json.data.tmp.mac/|/$~json.data.tmp.tx_packets/|/$~json.data.tmp.rx_packets/|/$~json.data.tmp.tx_bytes/|/$~json.data.tmp.rx_bytes/|/$~json.data.tx_errors/|/$~json.data.rx_errors/|/$~json.data.tx_dropped/|/$~json.data.rx_dropped/|/$~json.data.checksum/|/$~json.data.item_id/|
       - ~query_response: +wdb_update/$~query
 
-  - check: 
+  - check:
       - ~query_response: +t_is_false
-    map: 
+    map:
       - ~do_update_kvdb: false
 
   - check:

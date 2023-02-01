@@ -39,7 +39,7 @@ normalize:
     map:
       - ~json.data.tmp.hostname: +s_replace/|/$~escaped_pipe_char
       - ~json.data.tmp.hostname: +s_replace/NULL/_NULL_
-      - ~do_update_kvdb: true      
+      - ~do_update_kvdb: true
   - check:
       - ~json.data.hostname: +s_eq//
     map:
@@ -56,7 +56,7 @@ normalize:
     map:
       - ~json.data.tmp.architecture: +s_replace/|/$~escaped_pipe_char
       - ~json.data.tmp.architecture: +s_replace/NULL/_NULL_
-      - ~do_update_kvdb: true      
+      - ~do_update_kvdb: true
   - check:
       - ~json.data.architecture: +s_eq//
     map:
@@ -213,9 +213,9 @@ normalize:
       - ~query: +s_concat/agent /$agent.id/ dbsync osinfo /$~json.operation/ /$~json.data.scan_time/|/$~json.data.tmp.hostname/|/$~json.data.tmp.architecture/|/$~json.data.os_name/|/$~json.data.os_version/|/$~json.data.os_codename/|/$~json.data.os_major/|/$~json.data.os_minor/|/$~json.data.os_patch/|/$~json.data.os_build/|/$~json.data.os_platform/|/$~json.data.sysname/|/$~json.data.release/|/$~json.data.version/|/$~json.data.os_release/|/$~json.data.checksum/|/$~json.data.os_display_version/|/$~json.data.triaged/|/$~json.data.reference/|
       - ~query_response: +wdb_update/$~query
 
-  - check: 
+  - check:
       - ~query_response: +t_is_false
-    map: 
+    map:
       - ~do_update_kvdb: false
 
   - check:
@@ -249,6 +249,3 @@ normalize:
 
   - map:
       - ~json.data.tmp: +ef_delete
-  
-
-
