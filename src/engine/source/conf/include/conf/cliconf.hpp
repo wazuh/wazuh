@@ -75,6 +75,7 @@ public:
         auto opt = getOption(key);
         auto prev = opt->as<std::string>();
         // Config option does not behave like the rest
+        // Only options with capture variable return the callback
         if (opt->get_name() == "--config")
         {
             throw std::runtime_error(
