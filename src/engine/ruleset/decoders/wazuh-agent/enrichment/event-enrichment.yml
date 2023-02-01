@@ -22,10 +22,10 @@ check:
 normalize:
   - map:
       - host.id: $agent.id
-      - ~agents_kvdb_name: agents_host_data # KVDB name of the cached agents data
-      - ~host.data: +kvdb_get/$~agents_kvdb_name/$agent.id
+      - ~kvdb_host: +kvdb_get/agents_host_data/$agent.id
 
   - check:
-      - ~host.data: +ef_exists
+      - ~kvdb_host: +ef_exists
     map:
-      - host: +parse_json/~host.data
+    # TODO: KVDB host data must be processed before merging
+      - host: +ef_merge_r/$~kvdb_host
