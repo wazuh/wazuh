@@ -4,6 +4,7 @@ name: decoder/sophos-antispam/0
 metadata:
   module: sophos
   title: Sophos logs decoder
+  version: [15.01.0]
   description: Decoder for sophos logs
   author:
     name: Wazuh Inc. info@wazuh.com
@@ -31,15 +32,15 @@ parse:
     # <30>device="SFW" date=2018-06-06 time=12:53:39 timezone="IST" device_name="SG430" device_id=S4000806149EE49 log_id=041123413012 log_type="Anti-Spam" log_component="SMTP" log_subtype="Dos" status="" priority=Warning fw_rule_id=0 user_name="" av_policy_name="None" from_email_address="" to_email_address="" email_subject="" mailid="" mailsize=0 spamaction="TMPREJECT" reason="SMTP DoS" src_domainname="" dst_domainname="" src_ip=10.198.16.121 src_country_code=R1 dst_ip=10.198.17.121 dst_country_code=R1 protocol="TCP" src_port=60392 dst_port=25 sent_bytes=0 recv_bytes=0 quarantine_reason="Other"
     # <30>device="SFW" date=2018-06-06 time=12:56:53 timezone="IST" device_name="SG430" device_id=S4000806149EE49 log_id=041102413014 log_type="Anti-Spam" log_component="SMTP" log_subtype="Denied" status="" priority=Warning fw_rule_id=0 user_name="" av_policy_name="postman" from_email_address="pankhil1@postman.local" to_email_address="pankhil@postman. local" email_subject="Fwd: test sand" mailid="c0000008-1528270010" mailsize=419835 spamaction="DROP" reason="Email is marked Malicious by Sophos Sandstorm." src_domainname="postman.local" dst_domainname="" src_ip=10.198.16.121 src_country_code=R1 dst_ip=10.198.17.121 dst_country_code=R1 protocol="TCP" src_port=60608 dst_port=25 sent_bytes=0 recv_bytes=0
     # <30>device="SFW" date=2017-01-31 time=18:31:11 timezone="IST" device_name="CR750iNG-XP" device_id=C44313350024-P29PUA log_id=041207414001 log_type="Anti-Spam" log_component="POP3" log_subtype="Spam" status="" priority=Warning fw_rule_id=0 user_name="gaurav" av_policy_name="GauravPatel" from_email_address="gaurav1@iview.com" to_email_address="gaurav2@iview. com" email_subject="RPD Spam Test: Spam" mailid="<2a2dd5d4-1a30-617b-27b1-7961ad07cf07@iview.com>" mailsize=574 spamaction="Accept" reason="" src_domainname=" iview.com" dst_domainname="iview.com" src_ip=10.198.47.71 src_country_code=R1 dst_ip=10.198.233.61 dst_country_code=R1 protocol="TCP" src_port=22333 dst_port=110 sent_bytes=0 recv_bytes=0 quarantine_reason="Other"
-    - event.original: \<<~log.head_message>><~log.payload_messge>
+    - event.original: \<<~>><~tmp.payload_messge>
 
 normalize:
   - check:
-      - ~log.payload_messge: +ef_exists
+      - ~tmp.payload_messge: +ef_exists
     map:
-      - ~log.payload_messge: +s_replace/=""/=" "
+      - ~tmp.payload_messge: +s_replace/=""/=" "
     logpar:
-      - ~log.payload_messge: <~tmp/kv/=/ /"/'>
+      - ~tmp.payload_messge: <~tmp/kv/=/ /"/'>
   - map:
     - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time
     - destination.bytes: $~tmp.recv_bytes
