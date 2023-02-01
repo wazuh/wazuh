@@ -80,7 +80,8 @@ void runPut(const std::string& socketPath,
 
 void configure(CLI::App_p app)
 {
-    auto configApp = app->add_subcommand("config", "Manage the Wazuh configuration");
+    auto configApp =
+        app->add_subcommand("config", "Manage the Wazuh Engine configuration");
     auto options = std::make_shared<Options>();
 
     // Shared options
@@ -92,7 +93,10 @@ void configure(CLI::App_p app)
         ->default_val(ENGINE_API_SOCK)
         ->check(CLI::ExistingFile);
 
-    auto get_subcommand = configApp->add_subcommand("get", "Get the Wazuh configuration");
+    auto get_subcommand = configApp->add_subcommand(
+        "get",
+        "Get a configuration option value or the whole configuration if no name is "
+        "provided");
     get_subcommand
         ->add_option(
             "name",
@@ -102,7 +106,7 @@ void configure(CLI::App_p app)
     get_subcommand->callback([options]() { runGet(options->socketPath, options->name); });
 
     auto save_subcommand =
-        configApp->add_subcommand("save", "Save the Wazuh configuration");
+        configApp->add_subcommand("save", "Persist the current configuration");
     save_subcommand
         ->add_option("path",
                      options->path,
@@ -111,7 +115,8 @@ void configure(CLI::App_p app)
     save_subcommand->callback([options]()
                               { runSave(options->socketPath, options->path); });
 
-    auto put_subcommand = configApp->add_subcommand("put", "Set the Wazuh configuration");
+    auto put_subcommand =
+        configApp->add_subcommand("put", "Update a configuration option");
     put_subcommand
         ->add_option("name", options->name, "Name of the configuration option to set")
         ->required();
