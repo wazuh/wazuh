@@ -46,10 +46,16 @@ normalize:
     map:
       - ~json.data.proto: ""
 
+  - check: +ef_exists/~json.data.address
+    map:
+      - ~do_update_kvdb: true
+
+  - map:
+      - ~json.data.tmp.address: $~json.data.address     
   - check:
       - ~json.data.address: +ef_not_exists
     map:
-      - ~json.data.address: ""
+      - ~json.data.tmp.address: ""
 
   - check:
       - ~json.data.netmask: +ef_not_exists
@@ -72,9 +78,14 @@ normalize:
       - ~json.data.item_id: ""
 
   - map:
-      - ~query: +s_concat/agent /$agent.id/ dbsync network_address /$~json.operation/ /$~json.data.iface/|/$~json.data.proto/|/$~json.data.address/|/$~json.data.netmask/|/$~json.data.broadcast/|/$~json.data.checksum/|/$~json.data.item_id/|
+      - ~query: +s_concat/agent /$agent.id/ dbsync network_address /$~json.operation/ /$~json.data.iface/|/$~json.data.proto/|/$~json.data.tmp.address/|/$~json.data.netmask/|/$~json.data.broadcast/|/$~json.data.checksum/|/$~json.data.item_id/|
       - ~query_response: +wdb_update/$~query
 
+  - check: 
+      - ~query_response: +t_is_false
+    map: 
+      - ~do_update_kvdb: false
+      
   - check:
       - ~query_response: +t_is_true
     map:
@@ -86,5 +97,7 @@ normalize:
       - wazuh.syscollector.netinfo.addr.broadcast: $~json.data.broadcast
       - ~query: +ef_delete
       - ~query_response: +ef_delete
-      - ~json.data: +ef_delete
       - ~escaped_pipe_char: +ef_delete
+
+  - map:
+      - ~json.data.tmp: +ef_delete

@@ -2,19 +2,8 @@
 name: decoder/kvdb-agent-update/0
 
 sources:
-  - decoder/dbsync/0
   - decoder/dbsync-host-data/0
-  - decoder/syscollector-dbsync-network-address-inserted/0
-  - decoder/syscollector-dbsync-network-address/0
-  - decoder/syscollector-dbsync-network-iface-inserted/0
-  - decoder/syscollector-dbsync-network-iface/0
-  - decoder/syscollector-dbsync-osinfo-inserted/0
-  - decoder/syscollector-dbsync-osinfo/0
-  - decoder/syscollector-network-ip/0
-  - decoder/syscollector-network/0
-  - decoder/syscollector-osinfo/0
-  - decoder/syscollector-port-del/0
-  - decoder/syscollector-port-save/0
+  - decoder/syscollector-dbsync-host-data/0
 
 metadata:
   title: Wazuh agent kvdb data update
@@ -30,4 +19,4 @@ check:
 
 normalize:
   - map:
-      - ~kvdb_update_result: +kvdb_set/$~agents_kvdb_name/$agent.id/$host
+      - ~kvdb_update_result: +kvdb_set/agents_host_data/$agent.id/$~kvdb_host

@@ -109,6 +109,7 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
     // Map helpers: Event Field functions
     registry->registerBuilder(builders::opBuilderHelperDeleteField, "helper.ef_delete");
     registry->registerBuilder(builders::opBuilderHelperMerge, "helper.ef_merge");
+    registry->registerBuilder(builders::opBuilderHelperFieldAppend, "helper.ef_merge_r");
     registry->registerBuilder(builders::opBuilderHelperRenameField, "helper.ef_rename");
     // Map helpers: Hash functions
     registry->registerBuilder(builders::opBuilderHelperHashSHA1, "helper.h_sha1");
