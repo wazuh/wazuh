@@ -3,6 +3,7 @@ name: decoder/agent-event-enrichment/0
 
 sources:
   - decoder/queue-dbsync/0
+  - decoder/queue-fim/0
   - decoder/queue-localfile/0
   - decoder/queue-rootcheck/0
   - decoder/queue-sca/0

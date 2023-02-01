@@ -169,16 +169,13 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
         default: throw std::logic_error("Invalid HLP parser type");
     }
 
-    const auto traceName =
-        helper::base::formatHelperName(name, targetField, parameters);
-    const auto successTrace = fmt::format("[{}] -> Success", traceName);
-    const auto failureTrace1 = fmt::format("[{}] -> Failure: parameter is not a string"
-                                           " or it doesn't exist",
-                                           traceName);
-    const auto failureTrace2 = fmt::format("[{}] -> Failure: {}", traceName, "{}");
-    const auto failureTrace3 = fmt::format("[{}] -> Failure: There is still text "
-                                           "to analyze after parsing",
-                                           traceName);
+    const std::string traceName {helper::base::formatHelperName(name, targetField, parameters)};
+    const std::string successTrace {fmt::format("[{}] -> Success", traceName)};
+    const std::string failureTrace {fmt::format("[{}] -> Failure: ", traceName)};
+    const std::string failureTrace1 {
+        fmt::format("[{}] -> Failure: parameter is not a string or it doesn't exist", traceName)};
+    const std::string failureTrace3 {
+        fmt::format("[{}] -> Failure: There is still text to analyze after parsing", traceName)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -200,8 +197,7 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
             const auto result = parser(sourceValue.value(), 0);
             if (result.failure())
             {
-                const auto tracerFailure = fmt::format(failureTrace2, result.error());
-                return base::result::makeFailure(event, tracerFailure);
+                return base::result::makeFailure(event, failureTrace + result.error());
             }
 
             // Check if has a remaining string

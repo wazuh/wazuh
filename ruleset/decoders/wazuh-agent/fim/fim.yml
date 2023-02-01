@@ -2,6 +2,8 @@
 name: decoder/fim/0
 
 sources:
+  - decoder/agent-event-enrichment/0
+  # TODO: is this necessary? Can a log come through the fim queue withouth having an agent id?
   - decoder/queue-fim/0
 
 metadata:
