@@ -16,11 +16,17 @@ sources:
   - decoder/syslog/0
   - decoder/queue-localfile/0
 
+# Since the event is first parsed by the syslog, event.original is
+# not used here but the message field where the syslog saved the rest of the event information.
 check:
   - message: +r_match/^id\=[[:alpha:]]*? sn\=[[:alnum:]]*? time\=.*? fw
 
 parse:
   logpar:
+    # The syslog decoder captures this part of the original event "Jan 3 13:45:36 192.168.5.1"
+    # and stores in message this "id=firewall sn=000SERIAL time="2007-01-03 14:48:06" fw= 89.160.20.156 pri=6
+    # c=262144 m=98 msg="Connection Opened" n=23419 src=2.2.2.2:36701:WAN dst=89.160.20.156:50000:WAN proto=tcp/50000"
+
     # Jan  3 13:45:36 192.168.5.1 id=firewall sn=000SERIAL time="2007-01-03 14:48:06" fw=89.160.20.156 pri=6 c=262144 m=98 msg="Connection Opened" n=23419 src=2.2.2.2:36701:WAN dst=89.160.20.156:50000:WAN proto=tcp/50000
     - message: <~tmp/kv/=/ /"/'>
 

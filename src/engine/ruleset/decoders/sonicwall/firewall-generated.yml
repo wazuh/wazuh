@@ -151,10 +151,8 @@ normalize:
       - rsa.misc.action: +a_append/$event.action
   - check:
       - event.action: +ef_not_exists
-    logpar:
-      - ~log.msg_action: "<~log.msg_action.payload>"
     map:
-      - rsa.internal.msg: $~log.msg_action.payload
+      - rsa.internal.msg: $~log.msg_action
   - check:
       - source.mac: +ef_exists
     map:
