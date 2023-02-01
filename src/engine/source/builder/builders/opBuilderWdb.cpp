@@ -43,14 +43,11 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::any& definiti
     rValue = rightParameter.m_value;
 
     // Tracing
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: Target field \"{}\" not found", name, targetField)};
-    const auto failureTrace2 {
-        fmt::format("[{}] -> Failure: Target field \"{}\" is empty", name, targetField)};
-    const auto failureTrace3 {fmt::format("[{}] -> Failure: ", name)
-                              + "Result code is \"{}.\""};
+    const std::string failureTrace {fmt::format("[{}] -> Failure: ", name)};
+    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
+    const std::string failureTrace2 {fmt::format("[{}] -> Failure: Target field '{}' is empty", name, targetField)};
 
     // instantiate WDB
     auto wdb = std::make_shared<wazuhdb::WazuhDB>(wazuhdb::WDB_SOCK_PATH);
@@ -117,8 +114,7 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::any& definiti
                             retCode = it.first;
                         }
                     }
-                    return base::result::makeFailure(event,
-                                                     fmt::format(failureTrace3, retCode));
+                    return base::result::makeFailure(event, failureTrace + fmt::format("Result code is '{}'", retCode));
                 }
             }
             else

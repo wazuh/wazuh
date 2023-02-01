@@ -107,41 +107,29 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
     }
 
     // Tracing
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
+
+    const std::string failureTrace {fmt::format("[{}] -> Failure: ", name)};
+
     const std::string failureTrace1 {fmt::format(
-        "[{}] -> Failure: Trying to get command name value, \"{}\" reference not found",
-        name,
-        parameters[0].m_value)};
+        "[{}] -> Failure: Trying to get command name value, '{}' reference not found", name, parameters[0].m_value)};
     std::string failureTrace2 {};
     if (paramsQtty >= 3)
     {
         failureTrace2 = fmt::format(
-            "[{}] -> Failure: Trying to get timeout value, \"{}\" reference not found",
-            name,
-            parameters[2].m_value);
+            "[{}] -> Failure: Trying to get timeout value, '{}' reference not found", name, parameters[2].m_value);
     }
-    const std::string failureTrace3 {
-        fmt::format("[{}] -> Failure: ", name)
-        + "Timeout value \"{}\" cannot be converted to a number"};
     const std::string failureTrace4 {fmt::format(
-        "[{}] -> Failure: Trying to get location value, \"{}\" reference not found",
-        name,
-        parameters[1].m_value)};
-    const std::string failureTrace5 {fmt::format(
-        "[{}] -> Failure: Agent ID \"{}\" not found", name, ar::AGENT_ID_PATH)};
-    const std::string failureTrace6 {fmt::format("[{}] -> Failure: ", name)
-                                     + "Agent ID \"{}\" is not a number"};
-    const std::string failureTrace7 {
-        fmt::format("[{}] -> Failure: Agent ID is not set", name)};
-    const std::string failureTrace8 {
-        fmt::format("[{}] -> Failure: Trying to get extra "
-                    "arguments value, \"{}\" reference not found",
-                    name,
-                    parameters[1].m_value)};
-    const std::string failureTrace9 {fmt::format(
-        "[{}] -> Failure: Wrong extra argument, a string was expected.", name)};
-    const std::string failureTrace10 {
-        fmt::format("[{}] -> Failure: Event could not be inserted in alert: ", name)};
+        "[{}] -> Failure: Trying to get location value, '{}' reference not found", name, parameters[1].m_value)};
+    const std::string failureTrace5 {fmt::format("[{}] -> Failure: Agent ID '{}' not found", name, ar::AGENT_ID_PATH)};
+    const std::string failureTrace7 {fmt::format("[{}] -> Failure: Agent ID is not set", name)};
+    const std::string failureTrace8 {fmt::format("[{}] -> Failure: Trying to get extra "
+                                                 "arguments value, '{}' reference not found",
+                                                 name,
+                                                 parameters[1].m_value)};
+    const std::string failureTrace9 {
+        fmt::format("[{}] -> Failure: Wrong extra argument, a string was expected.", name)};
+    const std::string failureTrace10 {fmt::format("[{}] -> Failure: Event could not be inserted in alert: ", name)};
 
     // Function that implements the helper
     return base::Term<base::EngineOp>::create(
@@ -186,7 +174,9 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
             if (!ar::isStringNumber(timeoutResolvedValue))
             {
                 return base::result::makeFailure(
-                    event, fmt::format(failureTrace3, timeoutResolvedValue));
+                    event,
+                    failureTrace
+                        + fmt::format("Timeout value '{}' cannot be converted to a number", timeoutResolvedValue));
             }
 
             // Adds the timeout at the end of the command name (or "0" if no timeout set)
@@ -245,7 +235,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
                 else
                 {
                     return base::result::makeFailure(
-                        event, fmt::format(failureTrace6, location));
+                        event, failureTrace + fmt::format("Agent ID '{}' is not a number", location));
                 }
             }
 
