@@ -1,6 +1,8 @@
 name: decoder/syscollector-base/0
 
 sources:
+  - decoder/agent-event-enrichment/0
+  # TODO: is this necessary? Can a log come through the Syscollector queue withouth having an agent id?
   - decoder/queue-syscollector/0
 
 metadata:

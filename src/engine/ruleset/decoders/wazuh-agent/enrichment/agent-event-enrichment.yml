@@ -2,10 +2,12 @@
 name: decoder/agent-event-enrichment/0
 
 sources:
-  - decoder/json/0
+  - decoder/queue-dbsync/0
   - decoder/queue-localfile/0
+  - decoder/queue-rootcheck/0
+  - decoder/queue-sca/0
+  - decoder/queue-syscollector/0
   - decoder/queue-syslog/0
-  - decoder/syslog/0
 
 metadata:
   title: Wazuh agent events enrichment
@@ -27,5 +29,5 @@ normalize:
   - check:
       - ~kvdb_host: +ef_exists
     map:
-    # TODO: KVDB host data must be processed before merging
-      - host: +ef_merge_r/$~kvdb_host
+      # TODO: KVDB host data must be processed to get the actual host data in the expected format
+      - host: $~kvdb_host
