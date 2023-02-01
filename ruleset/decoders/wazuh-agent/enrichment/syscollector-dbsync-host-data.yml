@@ -17,7 +17,7 @@ metadata:
     compatibility: >
         This decoder has been tested on Wazuh version 4.3
     author:
-        name: Wazuh, Inc. 
+        name: Wazuh, Inc.
         url: https://wazuh.com
         date: 2022/01/23
 
@@ -31,7 +31,7 @@ normalize:
     map:
       - ~kvdb_host.hostname: $~json.data.hostname
       - ~kvdb_host.name: $~json.data.hostname
-  
+
   - check: +ef_exists/~json.data.architecture
     map:
       - ~kvdb_host.architecture: $~json.data.architecture
@@ -39,7 +39,7 @@ normalize:
   - check: +ef_not_exists/~kvdb_host.network
     map:
       - ~kvdb_host.network: "{}"
-      - ~kvdb_host.network: +parse_json/$~kvdb_host.network   
+      - ~kvdb_host.network: +parse_json/$~kvdb_host.network
 
   - check: +ef_exists/~json.data.mac AND +ef_exists/~json.data.name
     map:
