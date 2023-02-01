@@ -55,7 +55,7 @@ normalize:
       - ~json.data.adapter: +s_eq//
     map:
       - ~json.data.adapter: "NULL"
-  - check: +ef_not_exists/~json.data.adapter OR +t_is_null/~json.data.adapter  
+  - check: +ef_not_exists/~json.data.adapter OR +t_is_null/~json.data.adapter
     map:
       - ~json.data.adapter: "NULL"
 
@@ -91,7 +91,7 @@ normalize:
       - ~json.data.mtu: +ef_not_exists
     map:
       - ~json.data.mtu: "NULL"
-  
+
   - check: +ef_exists/~json.data.mac OR +ef_exists/~json.data.tx_packets OR +ef_exists/~json.data.rx_packets OR +ef_exists/~json.data.tx_bytes OR +ef_exists/~json.data.rx_bytes
     map:
       - ~do_update_kvdb: true
@@ -166,9 +166,9 @@ normalize:
       - ~query: +s_replace/||/|NULL|
       - ~query_response: +wdb_query/$~query
 
-  - check: 
+  - check:
       - ~query_response: +ef_not_exists
-    map: 
+    map:
       - ~do_update_kvdb: false
 
   - check:
@@ -199,6 +199,6 @@ normalize:
       - ~query_response_values: +ef_delete
       - ~array_of_field: +ef_delete
       - ~escaped_pipe_char: +ef_delete
-  
+
   - map:
       - ~json.data.tmp: +ef_delete

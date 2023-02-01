@@ -50,7 +50,7 @@ normalize:
       - ~json.data.tmp.hostname: "NULL"
 
   - map:
-      - ~json.data.tmp.architecture: ~json.data.architecture 
+      - ~json.data.tmp.architecture: ~json.data.architecture
   - check:
       - ~json.data.architecture: +s_ne//
     map:
@@ -214,11 +214,11 @@ normalize:
       - ~query: +s_replace/||/|NULL|
       - ~query_response: +wdb_query/$~query
 
-  - check: 
+  - check:
       - ~query_response: +ef_not_exists
-    map: 
+    map:
       - ~do_update_kvdb: false
-      
+
   - check:
       - ~query_response: +s_ne//
     map:
@@ -254,4 +254,4 @@ normalize:
 
   - map:
       - ~json.data.tmp: +ef_delete
-        
+
