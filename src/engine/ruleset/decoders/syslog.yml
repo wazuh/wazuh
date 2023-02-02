@@ -38,4 +38,3 @@ normalize:
       - event.kind: event
       - related.hosts: +a_append/$host.hostname
       - process.name: $~TAG
-
