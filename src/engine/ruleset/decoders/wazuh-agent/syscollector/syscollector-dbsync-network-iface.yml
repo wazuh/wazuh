@@ -92,7 +92,7 @@ normalize:
     map:
       - ~json.data.mtu: "NULL"
 
-  - check: +ef_exists/~json.data.mac OR +ef_exists/~json.data.tx_packets OR +ef_exists/~json.data.rx_packets OR +ef_exists/~json.data.tx_bytes OR +ef_exists/~json.data.rx_bytes
+  - check: +ef_exists/~json.data.mac
     map:
       - ~do_update_kvdb: true
 
@@ -103,33 +103,25 @@ normalize:
     map:
       - ~json.data.tmp.mac: "NULL"
 
-  - map:
-      - ~json.data.tmp.tx_packets: $~json.data.tx_packets
   - check:
       - ~json.data.tx_packets: +ef_not_exists
     map:
-      - ~json.data.tmp.tx_packets: "NULL"
+      - ~json.data.tx_packets: "NULL"
 
-  - map:
-      - ~json.data.tmp.rx_packets: $~json.data.rx_packets
   - check:
       - ~json.data.rx_packets: +ef_not_exists
     map:
-      - ~json.data.tmp.rx_packets: "NULL"
+      - ~json.data.rx_packets: "NULL"
 
-  - map:
-      - ~json.data.tmp.tx_bytes: $~json.data.tx_bytes
   - check:
       - ~json.data.tx_bytes: +ef_not_exists
     map:
-      - ~json.data.tmp.tx_bytes: "NULL"
+      - ~json.data.tx_bytes: "NULL"
 
-  - map:
-      - ~json.data.tmp.rx_bytes: $~json.data.rx_bytes
   - check:
       - ~json.data.rx_bytes: +ef_not_exists
     map:
-      - ~json.data.tmp.rx_bytes: "NULL"
+      - ~json.data.rx_bytes: "NULL"
 
   - check:
       - ~json.data.tx_errors: +ef_not_exists
@@ -162,7 +154,7 @@ normalize:
       - ~json.data.item_id: "NULL"
 
   - map:
-      - ~query: +s_concat/agent /$agent.id/ dbsync network_iface /$~json.operation/ /$~json.data.scan_time/|/$~json.data.name/|/$~json.data.adapter/|/$~json.data.type/|/$~json.data.state/|/$~json.data.mtu/|/$~json.data.tmp.mac/|/$~json.data.tmp.tx_packets/|/$~json.data.tmp.rx_packets/|/$~json.data.tmp.tx_bytes/|/$~json.data.tmp.rx_bytes/|/$~json.data.tx_errors/|/$~json.data.rx_errors/|/$~json.data.tx_dropped/|/$~json.data.rx_dropped/|/$~json.data.checksum/|/$~json.data.item_id/|
+      - ~query: +s_concat/agent /$agent.id/ dbsync network_iface /$~json.operation/ /$~json.data.scan_time/|/$~json.data.name/|/$~json.data.adapter/|/$~json.data.type/|/$~json.data.state/|/$~json.data.mtu/|/$~json.data.tmp.mac/|/$~json.data.tx_packets/|/$~json.data.rx_packets/|/$~json.data.tx_bytes/|/$~json.data.rx_bytes/|/$~json.data.tx_errors/|/$~json.data.rx_errors/|/$~json.data.tx_dropped/|/$~json.data.rx_dropped/|/$~json.data.checksum/|/$~json.data.item_id/|
       - ~query: +s_replace/||/|NULL|
       - ~query_response: +wdb_query/$~query
 
