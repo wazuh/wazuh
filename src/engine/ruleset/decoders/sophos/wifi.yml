@@ -86,7 +86,4 @@ normalize:
       - sophos.xg.ssid: $~tmp.ssid
       - related.host: [$host.name]
       - tags: [forwarded, preserve_original_even, sophos-xg]
-      - ~log: +ef_delete
       - ~tmp: +ef_delete
-
-
