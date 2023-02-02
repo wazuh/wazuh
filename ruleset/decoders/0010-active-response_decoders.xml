@@ -74,3 +74,50 @@ Tue 08/28/2018 09:27:23.14 "active-response/bin/netsh.cmd" add "-" "1.2.3.4" "15
   <regex type="pcre2">\"eventdata\":\{.*?\"user\"(?:.*\\\\)?([^\"]+)\",</regex>
   <order>user</order>
 </decoder>
+
+
+
+
+
+
+
+<!-- NEW -->
+<decoder name="ar_log">
+  <prematch>active-response/bin/</prematch>
+</decoder>
+
+<decoder name="ar_log_fields">
+    <parent>ar_log</parent>
+    <regex type="pcre2">\/bin\/(\S+)"\s+(\S+)</regex>
+    <order>script, type</order>
+</decoder>
+
+<decoder name="ar_log_fields">
+    <parent>ar_log</parent>
+    <regex type="pcre2">\/bin\/(\S+)\s+(\S+)</regex>
+    <order>script, type</order>
+</decoder>
+
+<decoder name="ar_log_fields">
+    <parent>ar_log</parent>
+    <regex type="pcre2">\/bin\/\S+"\s+\S+\s(\w+)</regex>
+    <order>dstuser</order>
+</decoder>
+
+<decoder name="ar_log_fields">
+    <parent>ar_log</parent>
+    <regex type="pcre2">\/bin\/\S+\s+\S+\s(\w+)</regex>
+    <order>dstuser</order>
+</decoder>
+
+<decoder name="ar_log_fields">
+    <parent>ar_log</parent>
+    <regex>(\d+.\d+.\d+.\d+)</regex>
+    <order>srcip</order>
+</decoder>
+
+<decoder name="ar_log_fields">
+    <parent>ar_log</parent>
+    <regex>(\d+)"$|(\d+)$</regex>
+    <order>id</order>
+</decoder>
