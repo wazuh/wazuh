@@ -1,15 +1,6 @@
 ---
 name: decoder/agent-event-enrichment/0
 
-sources:
-  - decoder/queue-dbsync/0
-  - decoder/queue-fim/0
-  - decoder/queue-localfile/0
-  - decoder/queue-rootcheck/0
-  - decoder/queue-sca/0
-  - decoder/queue-syscollector/0
-  - decoder/queue-syslog/0
-
 metadata:
   title: Wazuh agent events enrichment
   description: It enriches events coming from a Wazuh agent with information related to it
@@ -19,16 +10,9 @@ metadata:
     name: Wazuh, Inc.
     date: 2022/01/09
 
-check:
-  - agent.id: +ef_exists
-
 normalize:
+  - check:
+      - agent.id: +ef_exists
   - map:
       - host.id: $agent.id
-      - ~kvdb_host: +kvdb_get/agents_host_data/$agent.id
-
-  - check:
-      - ~kvdb_host: +ef_exists
-    map:
-      # TODO: KVDB host data must be processed to get the actual host data in the expected format
-      - host: $~kvdb_host
+      - host: +kvdb_get/agents_host_data/$agent.id

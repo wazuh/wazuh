@@ -24,62 +24,57 @@ normalize:
   - check: +ef_exists/~json.data.attributes.hostname OR +ef_exists/~json.data.attributes.architecture
     map:
       - ~do_update_kvdb: true
-      - ~kvdb_host.hostname: $~json.data.attributes.hostname
-      - ~kvdb_host.name: $~json.data.attributes.hostname
-      - ~kvdb_host.architecture: $~json.data.attributes.architecture
+      - host.hostname: $~json.data.attributes.hostname
+      - host.name: $~json.data.attributes.hostname
+      - host.architecture: $~json.data.attributes.architecture
 
-  - check: +ef_not_exists/~kvdb_host.network
+  - check: +ef_exists/host.mac AND +ef_exists/~json.data.attributes.mac AND +ef_exists/~json.data.attributes.iface
     map:
-      - ~kvdb_host.network: +parse_json/{}
-
-  - check: +ef_exists/~json.data.attributes.mac AND +ef_exists/~json.data.attributes.name
+      - ~mac_aux: +a_append/$~json.data.attributes.mac
+      - host.mac: +ef_merge/$~mac_aux
+  - check: +ef_not_exists/host.mac AND +ef_exists/~json.data.attributes.mac AND +ef_exists/~json.data.attributes.iface
     map:
-      - ~do_update_kvdb: true
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.attributes.name/":{"mac":"/$~json.data.attributes.mac/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
+      - host.mac: +a_append/$~json.data.attributes.mac
 
+  - check: +ef_exists/host.address AND +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface
+    map:
+      - ~address_aux: +a_append/$~json.data.attributes.address
+      - host.address: +ef_merge/$~address_aux
+  - check: +ef_not_exists/host.address AND +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface
+    map:
+      - host.address: +a_append/$~json.data.attributes.address
+
+  - check: +ef_not_exists/host.tx_bytes
+    map:
+      - host.tx_bytes: 0
   - check: +ef_exists/~json.data.attributes.tx_bytes AND +ef_exists/~json.data.attributes.name
     map:
       - ~do_update_kvdb: true
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.attributes.name/":{"tx_bytes":"/$~json.data.attributes.tx_bytes/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
+      - host.tx_bytes: +i_calc/sum/$~json.data.attributes.tx_bytes
 
+  - check: +ef_not_exists/host.rx_bytes
+    map:
+      - host.rx_bytes: 0
   - check: +ef_exists/~json.data.attributes.rx_bytes AND +ef_exists/~json.data.attributes.name
     map:
       - ~do_update_kvdb: true
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.attributes.name/":{"rx_bytes":"/$~json.data.attributes.rx_bytes/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
+      - host.rx_bytes: +i_calc/sum/$~json.data.attributes.rx_bytes
 
+  - check: +ef_not_exists/host.tx_packets
+    map:
+      - host.tx_packets: 0
   - check: +ef_exists/~json.data.attributes.tx_packets AND +ef_exists/~json.data.attributes.name
     map:
       - ~do_update_kvdb: true
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.attributes.name/":{"tx_packets":"/$~json.data.attributes.tx_packets/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
+      - host.tx_packets: +i_calc/sum/$~json.data.attributes.tx_packets
 
+  - check: +ef_not_exists/host.rx_packets
+    map:
+      - host.rx_packets: 0
   - check: +ef_exists/~json.data.attributes.rx_packets AND +ef_exists/~json.data.attributes.name
     map:
       - ~do_update_kvdb: true
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.attributes.name/":{"rx_packets":"/$~json.data.attributes.rx_packets/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
-
-  - check: +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface AND +i_eq/~json.data.attributes.proto/0
-    map:
-      - ~do_update_kvdb: true
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.attributes.iface/":{"ipv4":"/$~json.data.attributes.address/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
-
-  - check: +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface AND +i_eq/~json.data.attributes.proto/1
-    map:
-      - ~do_update_kvdb: true
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.attributes.iface/":{"ipv6":"/$~json.data.attributes.address/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
+      - host.rx_packets: +i_calc/sum/$~json.data.attributes.rx_packets
 
   - map:
-      - ~host_aux: +ef_delete
+      - host_aux: +ef_delete
