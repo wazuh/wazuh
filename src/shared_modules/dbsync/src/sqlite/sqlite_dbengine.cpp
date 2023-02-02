@@ -1382,7 +1382,7 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
                 }
             };
 
-            if (!haveDiffOnNonIgnored(updatedData))
+            if (!haveDiffOnNonIgnored(oldData))
             {
                 updatedData.clear();
                 oldData.clear();

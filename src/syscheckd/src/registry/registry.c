@@ -84,26 +84,10 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     char *path = NULL;
     int arch = -1;
     char *hash_full_path;
-    bool process_event = false;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
         return;
-    }
-
-    // In the modification events, inside the old field there must be other fields
-    // than "path", "arch" and "last_event" to generate a modification event.
-    old_data = cJSON_GetObjectItem(result_json, "old");
-    if (old_data != NULL) {
-        cJSON_ArrayForEach(aux, old_data) {
-            if (strcmp(aux->string, "path") && strcmp(aux->string, "last_event") && strcmp(aux->string, "arch")) {
-                process_event = true;
-                break;
-            }
-        }
-        if (!process_event) {
-            return;
-        }
     }
 
     // In case of deletions, key is NULL, so we need to get the path and arch from the json event
@@ -181,7 +165,8 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     }
     cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(result_json, key, configuration));
 
-    if (old_data = cJSON_GetObjectItem(result_json, "old"), old_data != NULL) {
+    old_data = cJSON_GetObjectItem(result_json, "old");
+    if (old_data != NULL) {
         old_attributes = cJSON_CreateObject();
         changed_attributes = cJSON_CreateArray();
         cJSON_AddItemToObject(data, "old_attributes", old_attributes);
@@ -191,6 +176,11 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
                                             old_data,
                                             changed_attributes,
                                             old_attributes);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            mwarn(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
+            goto end;
+        }
     }
 
     if (configuration->tag != NULL) {
@@ -232,26 +222,10 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
     char* diff = event_data->diff;
     fim_registry_value_data *value = event_data->data;
     char *hash_full_path;
-    bool process_event = false;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
         return;
-    }
-
-    // In the modification events, inside the old field there must be other fields
-    // than "path", "arch", "name" and "last_event" to generate a modification event.
-    old_data = cJSON_GetObjectItem(result_json, "old");
-    if (old_data != NULL) {
-        cJSON_ArrayForEach(aux, old_data) {
-            if (strcmp(aux->string, "path") && strcmp(aux->string, "last_event") && strcmp(aux->string, "arch") && strcmp(aux->string, "name")) {
-                process_event = true;
-                break;
-            }
-        }
-        if (!process_event) {
-            return;
-        }
     }
 
     // In case of deletions, value is NULL, so we need to get the path and arch from the json event
@@ -346,6 +320,11 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
                                               old_data,
                                               changed_attributes,
                                               old_attributes);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            mwarn(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
+            goto end;
+        }
     }
 
     if (configuration->tag != NULL) {

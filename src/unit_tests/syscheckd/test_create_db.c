@@ -3791,6 +3791,46 @@ static void test_transaction_callback_modify(void **state) {
     data->txn_context->latest_entry = NULL;
 }
 
+static void test_transaction_callback_modify_empty_changed_attributes(void **state) {
+    txn_data_t *data = (txn_data_t *) *state;
+#ifndef TEST_WINAGENT
+    char *path = "/etc/a_test_file.txt";
+#else
+    char *path = "c:\\windows\\a_test_file.txt";
+#endif
+    fim_txn_context_t *txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
+    txn_context->latest_entry = &entry;
+
+    cJSON *result = cJSON_Parse("{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11},\"old\":{\"path\":\"/etc/a_test_file.txt\"}}");
+    data->dbsync_event = result;
+
+    // These functions are called every time transaction_callback calls fim_configuration_directory
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
+
+#ifndef TEST_WINAGENT
+    expect_string(__wrap__mwarn, formatted_msg, "(6954): Entry '/etc/a_test_file.txt' does not have any modified fields. No event will be generated.");
+#else
+    expect_string(__wrap__mwarn, formatted_msg, "(6954): Entry 'c:\\windows\\a_test_file.txt' does not have any modified fields. No event will be generated.");
+#endif
+    transaction_callback(MODIFIED, result, txn_context);
+    assert_int_equal(txn_context->evt_data->type, FIM_MODIFICATION);
+
+    data->txn_context->latest_entry = NULL;
+}
+
 static void test_transaction_callback_modify_report_changes(void **state) {
     txn_data_t *data = (txn_data_t *) *state;
 #ifndef TEST_WINAGENT
@@ -3984,6 +4024,31 @@ static void test_fim_event_callback(void **state) {
 #else
     char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"content_changes\":\"diff\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0},\"tags\":\"tag_name\"}}";
 #endif
+    char* string_event = cJSON_PrintUnformatted(json_event);
+    assert_string_equal(string_event, test_event);
+
+    os_free(string_event);
+    cJSON_Delete(json_event);
+}
+
+static void test_fim_event_callback_empty_changed_attributes(void **state) {
+    whodata_evt w_event = {.user_name = "audit_user_name" };
+    event_data_t evt_data = { .report_event = true, .w_evt = &w_event };
+    directory_t configuration = { .options = -1, .tag = "tag_name" };
+    create_json_event_ctx callback_ctx = { .event = &evt_data, .config = &configuration };
+
+    cJSON* json_event = cJSON_CreateObject();
+    cJSON* data = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(data, "path", "/path/to/file");
+    cJSON_AddArrayToObject(data, "changed_attributes");
+    cJSON_AddItemToObject(json_event, "data", data);
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6954): Entry '/path/to/file' does not have any modified fields. No event will be generated.");
+
+    fim_event_callback(json_event, &callback_ctx);
+
+    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"changed_attributes\":[]}}";
     char* string_event = cJSON_PrintUnformatted(json_event);
     assert_string_equal(string_event, test_event);
 
@@ -4363,6 +4428,7 @@ int main(void) {
         /* transaction_callback */
         cmocka_unit_test_setup_teardown(test_transaction_callback_add, setup_transaction_callback, teardown_transaction_callback),
         cmocka_unit_test_setup_teardown(test_transaction_callback_modify, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(test_transaction_callback_modify_empty_changed_attributes, setup_transaction_callback, teardown_transaction_callback),
         cmocka_unit_test_setup_teardown(test_transaction_callback_modify_report_changes, setup_transaction_callback, teardown_transaction_callback),
         cmocka_unit_test_setup_teardown(test_transaction_callback_delete, setup_transaction_callback, teardown_transaction_callback),
         cmocka_unit_test_setup_teardown(test_transaction_callback_delete_report_changes, setup_transaction_callback, teardown_transaction_callback),
@@ -4371,6 +4437,7 @@ int main(void) {
 
         /* fim_event_callback */
         cmocka_unit_test(test_fim_event_callback),
+        cmocka_unit_test(test_fim_event_callback_empty_changed_attributes),
 
         cmocka_unit_test(test_fim_calculate_dbsync_difference_no_attributes),
         cmocka_unit_test(test_fim_calculate_dbsync_difference),

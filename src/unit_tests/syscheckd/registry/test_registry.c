@@ -850,6 +850,23 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
     fim_registry_scan();
 }
 
+static void test_fim_registry_key_transaction_callback_empty_changed_attributes(){
+    _base_line = 1;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_registry_key key;
+    key.path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    key.arch = ARCH_64BIT;
+    key.hash_full_path = "234567890ABCDEF1234567890ABCDEF123456111";
+    key.last_event = 12345;
+    ReturnTypeCallback resultType = MODIFIED;
+    const cJSON *result_json = cJSON_Parse("{\"new\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\",\"last_event\":12345, \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"},\"old\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\"}}");
+    fim_key_txn_context_t user_data = {.key = &key, .evt_data = &event_data};
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6954): Entry 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile' does not have any modified fields. No event will be generated.");
+
+    registry_key_transaction_callback(resultType, result_json, &user_data);
+}
+
 static void test_fim_registry_key_transaction_callback_base_line(){
     _base_line = 0;
     ReturnTypeCallback resultType = INSERTED;
@@ -862,7 +879,7 @@ static void test_fim_registry_key_transaction_callback_base_line(){
 static void test_fim_registry_key_transaction_callback_empty_json_array(){
     _base_line = 1;
     ReturnTypeCallback resultType = INSERTED;
-    const char* json_string = "[{}]";
+    const char* json_string = "{}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = NULL};
 
@@ -939,6 +956,23 @@ static void test_fim_registry_key_transaction_callback_max_rows(){
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
 
+static void test_fim_registry_value_transaction_callback_empty_changed_attributes(){
+    _base_line = 1;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_registry_value_data value;
+    value.path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    value.arch = ARCH_64BIT;
+    value.name = "mock_value_name";
+    value.hash_full_path = "234567890ABCDEF1234567890ABCDEF123456111";
+    ReturnTypeCallback resultType = MODIFIED;
+    const cJSON *result_json = cJSON_Parse("{\"new\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\",\"name\":\"mock_name_value\",\"last_event\":12345, \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"},\"old\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\",\"name\":\"mock_name_value\"}}");
+    fim_val_txn_context_t user_data = {.data = &value, .evt_data = &event_data, .diff = NULL};
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6954): Entry 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile' does not have any modified fields. No event will be generated.");
+
+    registry_value_transaction_callback(resultType, result_json, &user_data);
+}
+
 static void test_fim_registry_value_transaction_callback_base_line(){
     _base_line = 0;
     event_data_t event_data;
@@ -952,7 +986,7 @@ static void test_fim_registry_value_transaction_callback_base_line(){
 static void test_fim_registry_value_transaction_callback_empty_json_array(){
     _base_line = 1;
     ReturnTypeCallback resultType = INSERTED;
-    const char* json_string = "[{}]";
+    const char* json_string = "{}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = NULL, .diff = NULL};
 
@@ -1127,6 +1161,7 @@ int main(void) {
         cmocka_unit_test(test_fim_registry_scan_RegQueryInfoKey_fail),
 
         /* fim registry key transaction callback tests */
+        cmocka_unit_test(test_fim_registry_key_transaction_callback_empty_changed_attributes),
         cmocka_unit_test(test_fim_registry_key_transaction_callback_empty_json_array),
         cmocka_unit_test(test_fim_registry_key_transaction_callback_base_line),
         cmocka_unit_test(test_fim_registry_key_transaction_callback_null_configuration),
@@ -1136,6 +1171,7 @@ int main(void) {
         cmocka_unit_test(test_fim_registry_key_transaction_callback_max_rows),
 
         /* fim registry value transaction callback tests */
+        cmocka_unit_test(test_fim_registry_value_transaction_callback_empty_changed_attributes),
         cmocka_unit_test(test_fim_registry_value_transaction_callback_empty_json_array),
         cmocka_unit_test(test_fim_registry_value_transaction_callback_base_line),
         cmocka_unit_test(test_fim_registry_value_transaction_callback_null_configuration),
