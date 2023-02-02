@@ -17,16 +17,12 @@ namespace details
 {
 constexpr auto ORIGIN_NAME = "engine_integrated_catalog_api";
 std::string commandName(const std::string& command);
-json::Json getParameters(const std::string& format,
-                         const std::string& name,
-                         const std::string& content = "");
+json::Json getParameters(const std::string& format, const std::string& name, const std::string& content = "");
 void processResponse(const api::WazuhResponse& response);
 void singleRequest(const api::WazuhRequest& request, const std::string& socketPath);
 } // namespace details
 
-void runGet(const std::string& socketPath,
-            const std::string& format,
-            const std::string& nameStr);
+void runGet(const std::string& socketPath, const std::string& format, const std::string& nameStr);
 
 void runUpdate(const std::string& socketPath,
                const std::string& format,

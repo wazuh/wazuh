@@ -164,8 +164,7 @@ void run(const Options& options)
     // output
     std::stringstream output;
     auto stderrSubscriber = rxcpp::make_subscriber<rxbk::RxEvent>(
-        [&](const rxbk::RxEvent& event)
-        { output << event->payload()->prettyStr() << std::endl; });
+        [&](const rxbk::RxEvent& event) { output << event->payload()->prettyStr() << std::endl; });
     controller.getOutput().subscribe(stderrSubscriber);
 
     // Tracer subscriber for history
@@ -208,12 +207,10 @@ void run(const Options& options)
             {
                 try
                 {
-                    controller.listenOnTrace(name,
-                                             rxcpp::make_subscriber<std::string>(
-                                                 [&, name](const std::string& trace) {
-                                                     traceBuffer[name] << trace
-                                                                       << std::endl;
-                                                 }));
+                    controller.listenOnTrace(
+                        name,
+                        rxcpp::make_subscriber<std::string>([&, name](const std::string& trace)
+                                                            { traceBuffer[name] << trace << std::endl; }));
                 }
                 catch (const std::exception& e)
                 {
@@ -233,10 +230,7 @@ void run(const Options& options)
     // Stdin loop
     while (gs_doRun)
     {
-        std::cout << std::endl
-                  << std::endl
-                  << "Enter a log in single line (Crtl+C to exit):" << std::endl
-                  << std::endl;
+        std::cout << std::endl << std::endl << "Enter a log in single line (Crtl+C to exit):" << std::endl << std::endl;
         std::string line;
         std::getline(std::cin, line);
         if (line.empty())
@@ -251,12 +245,9 @@ void run(const Options& options)
             output.clear();
 
             // Send event
-            auto event = fmt::format(
-                "{}:{}:{}", options.protocolQueue, options.protocolLocation, line);
-            auto result =
-                base::result::makeSuccess(base::parseEvent::parseOssecEvent(event));
-            controller.ingestEvent(
-                std::make_shared<base::result::Result<base::Event>>(std::move(result)));
+            auto event = fmt::format("{}:{}:{}", options.protocolQueue, options.protocolLocation, line);
+            auto result = base::result::makeSuccess(base::parseEvent::parseOssecEvent(event));
+            controller.ingestEvent(std::make_shared<base::result::Result<base::Event>>(std::move(result)));
 
             // Decoder history
             if (options.debugLevel > 0)
@@ -267,8 +258,7 @@ void run(const Options& options)
                 {
                     if (env.assets()[asset]->m_type == builder::Asset::Type::DECODER)
                     {
-                        std::cerr << fmt::format("{}{}  ->  {}", indent, asset, condition)
-                                  << std::endl;
+                        std::cerr << fmt::format("{}{}  ->  {}", indent, asset, condition) << std::endl;
                         if (traceBuffer.find(asset) != traceBuffer.end())
                         {
                             std::string line;
@@ -293,8 +283,7 @@ void run(const Options& options)
                 {
                     if (env.assets()[asset]->m_type == builder::Asset::Type::RULE)
                     {
-                        std::cerr << fmt::format("{}{}  ->  {}", indent, asset, condition)
-                                  << std::endl;
+                        std::cerr << fmt::format("{}{}  ->  {}", indent, asset, condition) << std::endl;
                         if (traceBuffer.find(asset) != traceBuffer.end())
                         {
                             std::string line;
@@ -321,9 +310,7 @@ void run(const Options& options)
         }
         catch (const std::exception& e)
         {
-            WAZUH_LOG_ERROR(
-                "Engine \"test\" command: An error occurred while parsing a message: {}",
-                e.what());
+            WAZUH_LOG_ERROR("Engine \"test\" command: An error occurred while parsing a message: {}", e.what());
         }
     }
 
@@ -336,9 +323,7 @@ void configure(CLI::App_p app)
 
     auto logtestApp = app->add_subcommand("test", "Utility to test the ruleset.");
     // KVDB path
-    logtestApp
-        ->add_option(
-            "-k, --kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
+    logtestApp->add_option("-k, --kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
         ->default_val(ENGINE_KVDB_TEST_PATH)
         ->check(CLI::ExistingDirectory);
 
@@ -351,40 +336,33 @@ void configure(CLI::App_p app)
         ->check(CLI::ExistingDirectory);
 
     // Environment
-    logtestApp
-        ->add_option(
-            "--environment", options->environment, "Name of the environment to be used.")
+    logtestApp->add_option("--environment", options->environment, "Name of the environment to be used.")
         ->default_val(ENGINE_ENVIRONMENT);
 
     // Protocol queue
     logtestApp
-        ->add_option("-q, --protocol_queue",
-                     options->protocolQueue,
-                     "Event protocol queue identifier (a single character).")
+        ->add_option(
+            "-q, --protocol_queue", options->protocolQueue, "Event protocol queue identifier (a single character).")
         ->default_val(ENGINE_PROTOCOL_QUEUE);
 
     // Protocol location
-    logtestApp
-        ->add_option(
-            "--protocol_location", options->protocolLocation, "Protocol location.")
+    logtestApp->add_option("--protocol_location", options->protocolLocation, "Protocol location.")
         ->default_val(ENGINE_PROTOCOL_LOCATION);
 
     // Log level
     logtestApp
-        ->add_option(
-            "-l, --log_level",
-            options->logLevel,
-            "Sets the logging level. 0 = Debug, 1 = Info, 2 = Warning, 3 = Error.")
+        ->add_option("-l, --log_level",
+                     options->logLevel,
+                     "Sets the logging level. 0 = Debug, 1 = Info, 2 = Warning, 3 = Error.")
         ->default_val(ENGINE_LOG_LEVEL)
         ->check(CLI::Range(0, 3));
 
     // Debug levels
-    auto debug =
-        logtestApp->add_flag("-d, --debug",
-                             options->debugLevel,
-                             "Enable debug mode [0-3]. Flag can appear multiple times. "
-                             "No flag[0]: No debug, d[1]: Asset history, dd[2]: 1 + "
-                             "Full tracing, ddd[3]: 2 + detailed parser trace.");
+    auto debug = logtestApp->add_flag("-d, --debug",
+                                      options->debugLevel,
+                                      "Enable debug mode [0-3]. Flag can appear multiple times. "
+                                      "No flag[0]: No debug, d[1]: Asset history, dd[2]: 1 + "
+                                      "Full tracing, ddd[3]: 2 + detailed parser trace.");
 
     // Trace
     logtestApp

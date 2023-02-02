@@ -120,8 +120,7 @@ void runStart(ConfHandler confManager)
     {
         const auto bufferSize {static_cast<size_t>(queueSize)};
 
-        server = std::make_shared<engineserver::EngineServer>(
-            apiEndpoint, nullptr, eventEndpoint, bufferSize);
+        server = std::make_shared<engineserver::EngineServer>(apiEndpoint, nullptr, eventEndpoint, bufferSize);
         g_exitHanlder.add([server]() { server->close(); });
         WAZUH_LOG_DEBUG("Server configured.");
 
@@ -164,14 +163,11 @@ void runStart(ConfHandler confManager)
         builder = std::make_shared<builder::Builder>(store, registry);
         WAZUH_LOG_INFO("Builder initialized.");
 
-        api::catalog::Config catalogConfig {store,
-                                            builder,
-                                            fmt::format("schema{}wazuh-asset{}0",
-                                                        base::Name::SEPARATOR_S,
-                                                        base::Name::SEPARATOR_S),
-                                            fmt::format("schema{}wazuh-environment{}0",
-                                                        base::Name::SEPARATOR_S,
-                                                        base::Name::SEPARATOR_S)};
+        api::catalog::Config catalogConfig {
+            store,
+            builder,
+            fmt::format("schema{}wazuh-asset{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S),
+            fmt::format("schema{}wazuh-environment{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S)};
 
         catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
         WAZUH_LOG_INFO("Catalog initialized.");
@@ -179,8 +175,7 @@ void runStart(ConfHandler confManager)
         api::catalog::cmds::registerAllCmds(catalog, server->getRegistry());
         WAZUH_LOG_DEBUG("Catalog API registered.")
 
-        envManager = std::make_shared<router::EnvironmentManager>(
-            builder, server->getEventQueue(), threads);
+        envManager = std::make_shared<router::EnvironmentManager>(builder, server->getEventQueue(), threads);
         g_exitHanlder.add([envManager]() { envManager->delAllEnvironments(); });
         WAZUH_LOG_INFO("Environment manager initialized.");
 
@@ -200,10 +195,9 @@ void runStart(ConfHandler confManager)
         }
         else
         {
-            WAZUH_LOG_WARN(
-                "An error occurred while creating the default environment \"{}\": {}.",
-                environment,
-                error.value().message);
+            WAZUH_LOG_WARN("An error occurred while creating the default environment \"{}\": {}.",
+                           environment,
+                           error.value().message);
             WAZUH_LOG_WARN("Engine running without active environment.")
         }
     }
@@ -237,9 +231,7 @@ void configure(CLI::App_p app)
     // Log level
     serverApp
         ->add_option(
-            "--log_level",
-            options->logLevel,
-            "Sets the logging level: 0 = Debug, 1 = Info, 2 = Warning, 3 = Error")
+            "--log_level", options->logLevel, "Sets the logging level: 0 = Debug, 1 = Info, 2 = Warning, 3 = Error")
         ->default_val(ENGINE_LOG_LEVEL)
         ->check(CLI::Range(0, 3))
         ->envname(ENGINE_LOG_LEVEL_ENV);
@@ -251,56 +243,43 @@ void configure(CLI::App_p app)
 
     // Server
     // Endpoints
-    serverApp
-        ->add_option("--event_endpoint",
-                     options->eventEndpoint,
-                     "Sets the events server socket address.")
+    serverApp->add_option("--event_endpoint", options->eventEndpoint, "Sets the events server socket address.")
         ->default_val(ENGINE_EVENT_SOCK)
         ->envname(ENGINE_EVENT_SOCK_ENV);
-    serverApp
-        ->add_option(
-            "--api_endpoint", options->apiEndpoint, "Sets the API server socket address.")
+    serverApp->add_option("--api_endpoint", options->apiEndpoint, "Sets the API server socket address.")
         ->default_val(ENGINE_API_SOCK)
         ->envname(ENGINE_API_SOCK_ENV);
     // Threads
     serverApp
-        ->add_option("--threads",
-                     options->threads,
-                     "Sets the number of threads to be used by the engine environment.")
+        ->add_option("--threads", options->threads, "Sets the number of threads to be used by the engine environment.")
         ->default_val(ENGINE_THREADS)
         ->envname(ENGINE_THREADS_ENV);
     // Queue size
     serverApp
-        ->add_option("--queue_size",
-                     options->queueSize,
-                     "Sets the number of events that can be queued to be processed.")
+        ->add_option(
+            "--queue_size", options->queueSize, "Sets the number of events that can be queued to be processed.")
         ->default_val(ENGINE_QUEUE_SIZE)
         ->envname(ENGINE_QUEUE_SIZE_ENV);
 
     // Store
     // Path
     serverApp
-        ->add_option("--store_path",
-                     options->fileStorage,
-                     "Sets the path to the folder where the assets are located (store).")
+        ->add_option(
+            "--store_path", options->fileStorage, "Sets the path to the folder where the assets are located (store).")
         ->default_val(ENGINE_STORE_PATH)
         ->check(CLI::ExistingDirectory)
         ->envname(ENGINE_STORE_PATH_ENV);
 
     // KVDB
     // Path
-    serverApp
-        ->add_option(
-            "--kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
+    serverApp->add_option("--kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
         ->default_val(ENGINE_KVDB_PATH)
         ->check(CLI::ExistingDirectory)
         ->envname(ENGINE_KVDB_PATH_ENV);
 
     // Start subcommand
     auto startApp = serverApp->add_subcommand("start", "Start a Wazuh engine instance");
-    startApp
-        ->add_option(
-            "--environment", options->environment, "Name of the environment to be used.")
+    startApp->add_option("--environment", options->environment, "Name of the environment to be used.")
         ->default_val(ENGINE_ENVIRONMENT)
         ->envname(ENGINE_ENVIRONMENT_ENV);
 
@@ -308,8 +287,7 @@ void configure(CLI::App_p app)
     startApp->callback(
         [app, options]()
         {
-            auto confManager =
-                std::make_shared<conf::IConf<conf::CliConf>>(conf::CliConf(app));
+            auto confManager = std::make_shared<conf::IConf<conf::CliConf>>(conf::CliConf(app));
             runStart(confManager);
         });
 }

@@ -14,7 +14,7 @@ namespace
 {
 
 // Defaults
-constexpr auto CONF_PATH = "/etc/wazuh/engine.conf";
+constexpr auto CONF_PATH = "/var/ossec/etc/engine.conf";
 
 } // namespace
 

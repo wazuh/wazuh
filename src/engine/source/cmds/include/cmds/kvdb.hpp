@@ -27,12 +27,8 @@ constexpr auto API_KVDB_REMOVE_SUBCOMMAND {"remove"};
 
 std::string commandName(const std::string& command);
 json::Json getParameters(const std::string& action, const std::string& name, bool loaded);
-json::Json getParameters(const std::string& action,
-                         const std::string& name,
-                         const std::string& path);
-json::Json getParametersKey(const std::string& action,
-                            const std::string& name,
-                            const std::string& key);
+json::Json getParameters(const std::string& action, const std::string& name, const std::string& path);
+json::Json getParametersKey(const std::string& action, const std::string& name, const std::string& key);
 json::Json getParametersKeyValue(const std::string& action,
                                  const std::string& name,
                                  const std::string& key,
@@ -43,21 +39,15 @@ void singleRequest(const api::WazuhRequest& request, const std::string& socketPa
 } // namespace details
 
 void runList(const std::string& socketPath, const std::string& kvdbName, bool loaded);
-void runCreate(const std::string& socketPath,
-               const std::string& kvdbName,
-               const std::string& kvdbInputFilePath);
+void runCreate(const std::string& socketPath, const std::string& kvdbName, const std::string& kvdbInputFilePath);
 void runDump(const std::string& socketPath, const std::string& kvdbName);
 void runDelete(const std::string& socketPath, const std::string& kvdbName);
-void runGetKV(const std::string& socketPath,
-              const std::string& kvdbName,
-              const std::string& kvdbKey);
+void runGetKV(const std::string& socketPath, const std::string& kvdbName, const std::string& kvdbKey);
 void runInsertKV(const std::string& socketPath,
                  const std::string& kvdbName,
                  const std::string& kvdbKey,
                  const std::string& kvdbValue);
-void runRemoveKV(const std::string& socketPath,
-                 const std::string& kvdbName,
-                 const std::string& kvdbKey);
+void runRemoveKV(const std::string& socketPath, const std::string& kvdbName, const std::string& kvdbKey);
 
 void configure(CLI::App_p app);
 
