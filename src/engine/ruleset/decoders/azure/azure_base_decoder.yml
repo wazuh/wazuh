@@ -18,3 +18,18 @@ metadata:
 
 check:
    - wazuh.origin: Azure
+
+normalize:
+  - map:
+     - cloud.provider: azure
+     
+     # Split in two decoders?
+     - event.outcome: $~json.result
+     - azure.auditlogs.properties.operation_type: $~json.operationType
+     - azure.auditlogs.properties.activity_display_name: $~json.activityDisplayName
+     - azure.auditlogs.properties.activity_datetime: $~json.activityDateTime
+     - azure.auditlogs.properties.additional_details: $~json.additionalDetails
+     - azure.auditlogs.properties.result_reason: $~json.resultReason
+     - azure.auditlogs.properties.correlation_id: $~json.correlationId
+     - azure.auditlogs.properties.logged_by_service: $~json.loggedByService
+     - azure.auditlogs.properties.target_resources: $~json.targetResources
