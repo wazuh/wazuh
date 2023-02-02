@@ -134,7 +134,9 @@ enum class ParserType
     P_FILE,
     P_IGNORE,
     // Error type
-    ERROR_TYPE
+    ERROR_TYPE,
+    // Alphanumeric type
+    P_ALPHANUMERIC
 };
 
 constexpr auto parserTypeToStr(ParserType type)
@@ -164,6 +166,7 @@ constexpr auto parserTypeToStr(ParserType type)
         case ParserType::P_FQDN: return "fqdn";
         case ParserType::P_FILE: return "file";
         case ParserType::P_IGNORE: return "ignore";
+        case ParserType::P_ALPHANUMERIC: return "alphanumeric";
         default: return "error_type";
     }
 }
@@ -216,6 +219,8 @@ constexpr auto strToParserType(std::string_view str)
         return ParserType::P_FILE;
     if (str == parserTypeToStr(ParserType::P_IGNORE))
         return ParserType::P_IGNORE;
+    if (str == parserTypeToStr(ParserType::P_ALPHANUMERIC))
+        return ParserType::P_ALPHANUMERIC;
     return ParserType::ERROR_TYPE;
 }
 

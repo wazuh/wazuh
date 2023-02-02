@@ -198,6 +198,8 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
                               "helper.parse_quoted");
     registry->registerBuilder(builders::opBuilderSpecificHLPBetweenParse,
                               "helper.parse_between");
+    registry->registerBuilder(builders::opBuilderSpecificHLPAlphanumericParse,
+                              "helper.parse_alphanumeric");
 }
 } // namespace builder::internals
 
