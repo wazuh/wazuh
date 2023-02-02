@@ -41,7 +41,7 @@ std::tuple<bool, std::string> getNameOrError(const json::Json& params)
 
 /**
  * @brief Get the KVDB's key from the params or return an error
- * 
+ *
  * @param params The json /data from the request
  * @return [bool, std::string] True if the key is valid, false otherwise
  *                            The key if it's valid, the error message otherwise.
@@ -164,7 +164,7 @@ api::CommandFn kvdbGetKeyCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbMana
         const auto& value {std::get<json::Json>(result)};
 
         json::Json data {};
-        data.setObject("/data");
+        data.setObject();
         data.setString(key, "/key");
         data.set("/value", value);
         return api::WazuhResponse {std::move(data), 0, ""};
