@@ -47,10 +47,7 @@ public:
      * @param path The path to save the configuration to.
      *
      */
-    void saveConfiguration(const std::string& path = "") const
-    {
-        m_confDriver.saveConfiguration(path);
-    }
+    void saveConfiguration(const std::string& path = "") const { m_confDriver.saveConfiguration(path); }
 
     /**
      * @brief Put a value in the configuration.
@@ -58,10 +55,7 @@ public:
      * @param key The key of the option.
      * @param value The value to put in the option.
      */
-    void put(const std::string& key, const std::string& value)
-    {
-        m_confDriver.put(key, value);
-    }
+    void put(const std::string& key, const std::string& value) { m_confDriver.put(key, value); }
 
     /**
      * @brief Get the configuration as a string.
