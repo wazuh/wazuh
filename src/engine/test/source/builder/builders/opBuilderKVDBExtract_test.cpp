@@ -34,7 +34,7 @@ protected:
 
     virtual void SetUp()
     {
-        auto res = kvdbManager->getHandler(DB_NAME);
+        auto res = kvdbManager->getHandler(DB_NAME, true);
         if (auto err = std::get_if<base::Error>(&res))
         {
             throw std::runtime_error(err->message);
