@@ -7,7 +7,7 @@
 #include <logging/logging.hpp>
 #include <utils/stringUtils.hpp>
 
-#include "apiclnt/sendReceive.hpp"
+#include "apiclnt/client.hpp"
 #include "defaultSettings.hpp"
 
 namespace cmd::env
@@ -57,7 +57,8 @@ void singleRequest(const api::WazuhRequest& request, const std::string& socketPa
 {
     try
     {
-        auto response = apiclnt::sendReceive(socketPath, request);
+        apiclnt::Client client(socketPath);
+        auto response = client.send(request);
         details::processResponse(response);
     }
     catch (const std::exception& e)
