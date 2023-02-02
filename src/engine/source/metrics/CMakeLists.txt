@@ -7,7 +7,7 @@ CPMAddPackage(
     GIT_TAG v1.8.2
     VERSION 1.8.2
     EXCLUDE_FROM_ALL YES
-    DOWNLOAD_ONLY
+#    DOWNLOAD_ONLY
     OPTIONS
         "BUILD_TESTING OFF"
 )
@@ -22,7 +22,7 @@ add_library(metrics STATIC
     src/metrics.cpp
 )
 
-target_link_libraries(metrics PRIVATE opentelemetry base)
+target_link_libraries(metrics PRIVATE opentelemetry_api base)
 
 target_include_directories(metrics
     PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include
