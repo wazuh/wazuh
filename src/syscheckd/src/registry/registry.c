@@ -166,7 +166,7 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(result_json, key, configuration));
 
     old_data = cJSON_GetObjectItem(result_json, "old");
-    if (old_data = cJSON_GetObjectItem(result_json, "old"), old_data != NULL) {
+    if (old_data != NULL) {
         old_attributes = cJSON_CreateObject();
         changed_attributes = cJSON_CreateArray();
         cJSON_AddItemToObject(data, "old_attributes", old_attributes);
