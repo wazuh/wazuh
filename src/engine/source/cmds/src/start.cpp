@@ -54,8 +54,6 @@ struct Options
     std::string environment;
 };
 
-constexpr auto START_ENVIRONMENT = "environment/wazuh/0";
-
 } // namespace
 
 namespace cmd::server

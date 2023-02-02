@@ -17,10 +17,8 @@
 
 namespace cmd::kvdb
 {
-
 namespace
 {
-
 struct Options
 {
     std::string socketPath;
@@ -35,7 +33,6 @@ struct Options
 
 namespace details
 {
-
 std::string commandName(const std::string& command)
 {
     return command + "_kvdb";
@@ -139,14 +136,11 @@ void singleRequest(const api::WazuhRequest& request, const std::string& socketPa
 
 void runList(const std::string& socketPath, const std::string& kvdbName, bool loaded)
 {
-
-    // create request
     auto req = api::WazuhRequest::create(
         details::commandName(details::API_KVDB_LIST_SUBCOMMAND),
         details::ORIGIN_NAME,
         details::getParameters(details::API_KVDB_LIST_SUBCOMMAND, kvdbName, loaded));
 
-    // send request
     details::singleRequest(req, socketPath);
 }
 
@@ -154,38 +148,32 @@ void runCreate(const std::string& socketPath,
                const std::string& kvdbName,
                const std::string& kvdbInputFilePath)
 {
-    // create request
     auto req = api::WazuhRequest::create(
         details::commandName(details::API_KVDB_CREATE_SUBCOMMAND),
         details::ORIGIN_NAME,
         details::getParameters(
             details::API_KVDB_CREATE_SUBCOMMAND, kvdbName, kvdbInputFilePath));
 
-    // send request
     details::singleRequest(req, socketPath);
 }
 
 void runDump(const std::string& socketPath, const std::string& kvdbName)
 {
-    // create request
     auto req = api::WazuhRequest::create(
         details::commandName(details::API_KVDB_DUMP_SUBCOMMAND),
         details::ORIGIN_NAME,
         details::getParameters(details::API_KVDB_DUMP_SUBCOMMAND, kvdbName));
 
-    // send request
     details::singleRequest(req, socketPath);
 }
 
 void runDelete(const std::string& socketPath, const std::string& kvdbName)
 {
-    // create request
     auto req = api::WazuhRequest::create(
         details::commandName(details::API_KVDB_DELETE_SUBCOMMAND),
         details::ORIGIN_NAME,
         details::getParameters(details::API_KVDB_DELETE_SUBCOMMAND, kvdbName));
 
-    // send request
     details::singleRequest(req, socketPath);
 }
 
@@ -193,13 +181,11 @@ void runGetKV(const std::string& socketPath,
               const std::string& kvdbName,
               const std::string& kvdbKey)
 {
-    // create request
     auto req = api::WazuhRequest::create(
         details::commandName(details::API_KVDB_GET_SUBCOMMAND),
         details::ORIGIN_NAME,
         details::getParametersKey(details::API_KVDB_GET_SUBCOMMAND, kvdbName, kvdbKey));
 
-    // send request
     details::singleRequest(req, socketPath);
 }
 
@@ -208,14 +194,12 @@ void runInsertKV(const std::string& socketPath,
                  const std::string& kvdbKey,
                  const std::string& kvdbValue)
 {
-    // create request
     auto req = api::WazuhRequest::create(
         details::commandName(details::API_KVDB_INSERT_SUBCOMMAND),
         details::ORIGIN_NAME,
         details::getParametersKeyValue(
             details::API_KVDB_INSERT_SUBCOMMAND, kvdbName, kvdbKey, kvdbValue));
 
-    // send request
     details::singleRequest(req, socketPath);
 }
 
@@ -223,14 +207,12 @@ void runRemoveKV(const std::string& socketPath,
                  const std::string& kvdbName,
                  const std::string& kvdbKey)
 {
-    // create request
     auto req = api::WazuhRequest::create(
         details::commandName(details::API_KVDB_REMOVE_SUBCOMMAND),
         details::ORIGIN_NAME,
         details::getParametersKey(
             details::API_KVDB_REMOVE_SUBCOMMAND, kvdbName, kvdbKey));
 
-    // send request
     details::singleRequest(req, socketPath);
 }
 
