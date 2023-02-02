@@ -1,10 +1,5 @@
 name: decoder/rootcheck/0
 
-sources:
-  - decoder/agent-event-enrichment/0
-  # TODO: is this necessary? Can a log come through the rootcheck queue withouth having an agent id?
-  - decoder/queue-rootcheck/0
-
 metadata:
     module: wazuh-agent/rootcheck/rootcheck
     title: Rootcheck Decoder
@@ -20,6 +15,9 @@ metadata:
     references:
         - https://documentation.wazuh.com/current/user-manual/capabilities/policy-monitoring/rootcheck/index.html
         - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/rootcheck.html
+
+sources:
+  - decoder/queue-rootcheck/0
 
 normalize:
   - map:
