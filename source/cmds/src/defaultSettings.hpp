@@ -25,7 +25,7 @@ constexpr auto ENGINE_ENVIRONMENT_ENV = "WZE_ENVIRONMENT";
 constexpr auto ENGINE_QUEUE_SIZE = 1000000;
 constexpr auto ENGINE_QUEUE_SIZE_ENV = "WZE_QUEUE_SIZE";
 
-constexpr auto ENGINE_LOG_LEVEL = 3;
+constexpr auto ENGINE_LOG_LEVEL = 2;
 constexpr auto ENGINE_LOG_LEVEL_ENV = "WZE_LOG_LEVEL";
 
 constexpr auto ENGINE_THREADS = 1;
