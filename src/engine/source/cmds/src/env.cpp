@@ -45,7 +45,7 @@ void processResponse(const api::WazuhResponse& response)
 {
     if (response.data().size() > 0)
     {
-        std::cout << response.data().prettyStr() << std::endl;
+        std::cout << response.data().str() << std::endl;
     }
     else
     {
