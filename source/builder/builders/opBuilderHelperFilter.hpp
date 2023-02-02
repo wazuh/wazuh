@@ -127,6 +127,9 @@ base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition);
  */
 base::Expression opBuilderHelperStringStarts(const std::any& definition);
 
+// TODO: documentation
+base::Expression opBuilderHelperStringContains(const std::any& definition);
+
 //*************************************************
 //*              Int filters                      *
 //*************************************************
