@@ -5,7 +5,6 @@ add_library(cmds STATIC
     src/kvdb.cpp
     src/catalog.cpp
     src/env.cpp
-    src/apiclnt/sendReceive.cpp
     src/config.cpp
 )
 

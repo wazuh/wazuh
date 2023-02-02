@@ -11,7 +11,7 @@
 #include <cmds/details/kbhit.hpp>
 #include <name.hpp>
 
-#include "apiclnt/sendReceive.hpp"
+#include "apiclnt/client.hpp"
 #include "defaultSettings.hpp"
 
 namespace cmd::catalog
@@ -73,7 +73,8 @@ void singleRequest(const api::WazuhRequest& request, const std::string& socketPa
 {
     try
     {
-        auto response = apiclnt::sendReceive(socketPath, request);
+        apiclnt::Client client(socketPath);
+        auto response = client.send(request);
         details::processResponse(response);
     }
     catch (const std::exception& e)
@@ -209,7 +210,8 @@ void runLoad(const std::string& socketPath,
             std::cout << dirEntry << " ==> ";
             try
             {
-                auto response = apiclnt::sendReceive(socketPath, request);
+                apiclnt::Client client(socketPath);
+                auto response = client.send(request);
                 details::processResponse(response);
             }
             catch (const std::exception& e)
