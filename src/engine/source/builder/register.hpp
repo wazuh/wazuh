@@ -130,6 +130,7 @@ static void registerBuilders(std::shared_ptr<Registry> registry,
     registry->registerBuilder(builders::opBuilderHelperStringReplace, "helper.s_replace");
     registry->registerBuilder(builders::opBuilderHelperStringTrim, "helper.s_trim");
     registry->registerBuilder(builders::opBuilderHelperStringUP, "helper.s_up");
+    registry->registerBuilder(builders::opBuilderHelperStringContains, "helper.s_contains");
     // Map helpers: Time functions
     registry->registerBuilder(builders::opBuilderHelperEpochTimeFromSystem,
                               "helper.sys_epoch");

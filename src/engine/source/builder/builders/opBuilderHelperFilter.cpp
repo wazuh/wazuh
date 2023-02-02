@@ -30,7 +30,8 @@ enum class Operator
     GE, ///< greater than equal
     LT, ///< less than
     LE, ///< less than equal
-    ST  ///< start with
+    ST, ///< start with
+    CN  ///< contains
 };
 
 /**
@@ -255,6 +256,12 @@ getStringCmpFunction(const std::string& targetField,
                 return l.substr(0, r.length()) == r;
             };
             break;
+        case Operator::CN:
+            cmpFunction = [](const std::string& l, const std::string& r)
+            {
+                return l.find(r) != std::string::npos;
+            };
+            break;
 
         default: break;
     }
@@ -440,6 +447,14 @@ base::Expression opBuilderHelperStringStarts(const std::any& definition)
     auto expression {opBuilderComparison(definition, Operator::ST, Type::STRING)};
     return expression;
 }
+
+//field: +s_contains/value|$ref
+base::Expression opBuilderHelperStringContains(const std::any& definition)
+{
+    auto expression {opBuilderComparison(definition, Operator::CN, Type::STRING)};
+    return expression;
+}
+
 
 //*************************************************
 //*               Regex filters                   *
