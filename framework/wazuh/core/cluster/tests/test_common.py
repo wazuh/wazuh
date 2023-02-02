@@ -165,6 +165,7 @@ def test_sst_init(setup_coro_mock, create_task_mock):
     with patch.object(TaskMock, "add_done_callback") as done_callback_mock:
         sst_task = cluster_common.SendStringTask(wazuh_common=cluster_common.WazuhCommon(), logger='')
         assert sst_task.logger == ''
+        assert sst_task.task in sst_task.tasks_hard_reference
         assert isinstance(sst_task.wazuh_common, cluster_common.WazuhCommon)
         setup_coro_mock.assert_called_once()
         done_callback_mock.assert_called_once()
@@ -202,8 +203,10 @@ def test_sst_done_callback(setup_coro_mock, create_task_mock):
         logger = logging.getLogger('wazuh')
         with patch.object(logger, "error") as logger_mock:
             sst_task = cluster_common.SendStringTask(wazuh_common=wazuh_common_mock, logger=logger)
+            assert sst_task.task in sst_task.tasks_hard_reference
             sst_task.done_callback()
             logger_mock.assert_called_once_with(Exception)
+            assert sst_task.task not in sst_task.tasks_hard_reference
 
 
 # Test ReceiveStringTask methods

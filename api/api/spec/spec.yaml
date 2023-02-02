@@ -6994,6 +6994,14 @@ components:
       schema:
         type: string
         format: xml_filename_path
+    default_ruleset_path:
+      in: query
+      name: default_ruleset
+      description: "Search for the given filename in the Wazuh default ruleset if true. Otherwise, search for it in the custom user ruleset"
+      required: false
+      schema:
+        type: boolean
+        default: true
 
 
 tags:
@@ -13995,6 +14003,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/raw'
+        - $ref: '#/components/parameters/default_ruleset_path'
       responses:
         '200':
           description: "Rule content"
@@ -14771,6 +14780,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/raw'
+        - $ref: '#/components/parameters/default_ruleset_path'
       responses:
         '200':
           description: "Decoder content"
