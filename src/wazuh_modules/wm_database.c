@@ -165,7 +165,9 @@ void* wm_database_main(wm_database *data) {
             {
                 if (file = strrchr(path, '/'), file) {
                     *(file++) = '\0';
-                    wm_sync_file(path, file);
+                    if (!is_worker) {
+                        wm_sync_file(path, file);
+                    }
                 } else {
                     mterror(WM_DATABASE_LOGTAG, "Couldn't extract file name from '%s'", path);
                 }
@@ -192,7 +194,9 @@ void* wm_database_main(wm_database *data) {
 #ifndef LOCAL
             if (data->sync_agents) {
                 wm_check_agents();
-                wm_sync_multi_groups(SHAREDCFG_DIR);
+                if (!is_worker) {
+                    wm_sync_multi_groups(SHAREDCFG_DIR);
+                }
                 wm_clean_dangling_legacy_dbs();
                 wm_clean_dangling_wdb_dbs();
             }
@@ -842,8 +846,8 @@ void wm_inotify_setup(wm_database * data) {
         }
         else {
             wm_sync_agents_artifacts();
+            wm_sync_multi_groups(SHAREDCFG_DIR);
         }
-        wm_sync_multi_groups(SHAREDCFG_DIR);
         wm_clean_dangling_legacy_dbs();
         wm_clean_dangling_wdb_dbs();
     }
