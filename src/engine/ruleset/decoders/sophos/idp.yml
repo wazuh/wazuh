@@ -107,4 +107,3 @@ normalize:
       - tags: [forwarded, preserve_original_even, sophos-xg]
       - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time
       - ~tmp: +ef_delete
-
