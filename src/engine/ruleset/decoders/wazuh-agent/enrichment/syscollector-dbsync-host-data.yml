@@ -29,59 +29,56 @@ check:
 normalize:
   - check: +ef_exists/~json.data.hostname
     map:
-      - ~kvdb_host.hostname: $~json.data.hostname
-      - ~kvdb_host.name: $~json.data.hostname
+      - host.hostname: $~json.data.hostname
+      - host.name: $~json.data.hostname
 
   - check: +ef_exists/~json.data.architecture
     map:
-      - ~kvdb_host.architecture: $~json.data.architecture
+      - host.architecture: $~json.data.architecture
 
-  - check: +ef_not_exists/~kvdb_host.network
+  - check: +ef_exists/host.mac AND +ef_exists/~json.data.mac AND +ef_exists/~json.data.iface
     map:
-      - ~kvdb_host.network: "{}"
-      - ~kvdb_host.network: +parse_json/$~kvdb_host.network
-
-  - check: +ef_exists/~json.data.mac AND +ef_exists/~json.data.name
+      - ~mac_aux: +a_append/$~json.data.mac
+      - host.mac: +ef_merge/$~mac_aux
+  - check: +ef_not_exists/host.mac AND +ef_exists/~json.data.mac AND +ef_exists/~json.data.iface
     map:
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.name/":{"mac":"/$~json.data.mac/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
+      - host.mac: +a_append/$~json.data.mac
 
-  - check: +ef_exists/~json.data.tx_packets AND +ef_exists/~json.data.name
+  - check: +ef_exists/host.address AND +ef_exists/~json.data.address AND +ef_exists/~json.data.iface
     map:
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.name/":{"tx_packets":"/$~json.data.tx_packets/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
-
-  - check: +ef_exists/~json.data.rx_packets AND +ef_exists/~json.data.name
+      - ~address_aux: +a_append/$~json.data.address
+      - host.address: +ef_merge/$~address_aux
+  - check: +ef_not_exists/host.address AND +ef_exists/~json.data.address AND +ef_exists/~json.data.iface
     map:
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.name/":{"rx_packets":"/$~json.data.rx_packets/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
+      - host.address: +a_append/$~json.data.address
 
+  - check: +ef_not_exists/host.tx_bytes
+    map:
+      - host.tx_bytes: 0
   - check: +ef_exists/~json.data.tx_bytes AND +ef_exists/~json.data.name
     map:
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.name/":{"tx_bytes":"/$~json.data.tx_bytes/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
+      - kvdb_host.tx_bytes: +i_calc/sum/$~json.data.tx_bytes
 
+  - check: +ef_not_exists/host.rx_bytes
+    map:
+      - host.rx_bytes: 0
   - check: +ef_exists/~json.data.rx_bytes AND +ef_exists/~json.data.name
     map:
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.name/":{"rx_bytes":"/$~json.data.rx_bytes/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
+      - kvdb_host.rx_bytes: +i_calc/sum/$~json.data.rx_bytes
 
-  - check: +ef_exists/~json.data.address AND +ef_exists/~json.data.iface AND +i_eq/~json.data.proto/0
+  - check: +ef_not_exists/host.tx_packets
     map:
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.iface/":{"ipv4":"/$~json.data.address/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
+      - host.tx_packets: 0
+  - check: +ef_exists/~json.data.tx_packets AND +ef_exists/~json.data.name
+    map:
+      - kvdb_host.tx_packets: +i_calc/sum/$~json.data.tx_packets
 
-  - check: +ef_exists/~json.data.address AND +ef_exists/~json.data.iface AND +i_eq/~json.data.proto/1
+  - check: +ef_not_exists/host.rx_packets
     map:
-      - ~host_aux: +s_concat/{"network":{"/$~json.data.iface/":{"ipv6":"/$~json.data.address/"/}}}
-      - ~host_aux: +parse_json/$~host_aux
-      - ~kvdb_host.network: +ef_merge_r/$~host_aux.network
+      - host.rx_packets: 0
+  - check: +ef_exists/~json.data.rx_packets AND +ef_exists/~json.data.name
+    map:
+      - host.rx_packets: +i_calc/sum/$~json.data.rx_packets
 
   - map:
       - ~host_aux: +ef_delete

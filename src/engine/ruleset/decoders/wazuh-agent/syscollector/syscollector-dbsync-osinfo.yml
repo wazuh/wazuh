@@ -32,7 +32,7 @@ normalize:
     map:
       - ~json.data.scan_time: "NULL"
 
-  - map: 
+  - map:
       - ~json.data.tmp.hostname: ~json.data.hostname
   - check:
       - ~json.data.hostname: +s_ne//

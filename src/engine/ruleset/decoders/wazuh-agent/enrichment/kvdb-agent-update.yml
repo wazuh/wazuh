@@ -19,4 +19,4 @@ check:
 
 normalize:
   - map:
-      - ~kvdb_update_result: +kvdb_set/agents_host_data/$agent.id/$~kvdb_host
+      - ~kvdb_update_result: +kvdb_set/agents_host_data/$agent.id/$host

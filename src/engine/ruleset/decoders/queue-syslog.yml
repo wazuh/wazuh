@@ -4,5 +4,8 @@ name: decoder/queue-syslog/0
 metadata:
   description: Exclusive parent decoder por Wazuh-Syslog server (SYSLOG_MQ)
 
+sources:
+  - decoder/agent-event-enrichment/0
+
 check:
   - wazuh.queue: 50 # SYSLOG_MQ -> '2' = 50

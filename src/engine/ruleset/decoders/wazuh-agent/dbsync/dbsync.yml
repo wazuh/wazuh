@@ -1,9 +1,5 @@
+---
 name: decoder/dbsync/0
-
-sources:
-  - decoder/agent-event-enrichment/0
-  # TODO: is this necessary? Can a log come through the dbsync queue withouth having an agent id?
-  - decoder/queue-dbsync/0
 
 metadata:
     module: wazuh-agent/dbsync/dbsync
@@ -18,6 +14,9 @@ metadata:
         date: 2022/11/08
     references:
         - https://github.com/wazuh/wazuh/issues/13521
+
+sources:
+  - decoder/queue-dbsync/0
 
 check:
   - event.original: +s_starts/{

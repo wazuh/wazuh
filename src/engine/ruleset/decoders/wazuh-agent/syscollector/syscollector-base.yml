@@ -1,10 +1,5 @@
 name: decoder/syscollector-base/0
 
-sources:
-  - decoder/agent-event-enrichment/0
-  # TODO: is this necessary? Can a log come through the Syscollector queue withouth having an agent id?
-  - decoder/queue-syscollector/0
-
 metadata:
     module: wazuh-agent/syscollector/syscollector-base
     title: Syscollector Decoder event
@@ -21,6 +16,9 @@ metadata:
         - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/wodle-syscollector.html
         - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html#syscollector-tables
         - https://github.com/wazuh/wazuh/issues/13521
+
+sources:
+  - decoder/queue-syscollector/0
 
 check:
   - wazuh.origin: +s_eq/syscollector

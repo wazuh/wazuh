@@ -1,7 +1,11 @@
+---
 name: decoder/queue-dbsync/0
 
 metadata:
   description: Exclusive parent decoder for Wazuh-DB Sync server (DBSYNC_MQ)
+
+sources:
+  - decoder/agent-event-enrichment/0
 
 check:
   - wazuh.queue: 53 # DBSYNC_MQ '5'
