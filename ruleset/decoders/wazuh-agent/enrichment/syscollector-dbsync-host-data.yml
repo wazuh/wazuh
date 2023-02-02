@@ -19,7 +19,7 @@ metadata:
     author:
         name: Wazuh, Inc.
         url: https://wazuh.com
-        date: 2022/01/23
+        date: 2023/01/02
 
 check:
   - ~do_update_kvdb: +t_is_true
@@ -51,34 +51,6 @@ normalize:
   - check: +ef_not_exists/host.address AND +ef_exists/~json.data.address AND +ef_exists/~json.data.iface
     map:
       - host.address: +a_append/$~json.data.address
-
-  - check: +ef_not_exists/host.tx_bytes
-    map:
-      - host.tx_bytes: 0
-  - check: +ef_exists/~json.data.tx_bytes AND +ef_exists/~json.data.name
-    map:
-      - kvdb_host.tx_bytes: +i_calc/sum/$~json.data.tx_bytes
-
-  - check: +ef_not_exists/host.rx_bytes
-    map:
-      - host.rx_bytes: 0
-  - check: +ef_exists/~json.data.rx_bytes AND +ef_exists/~json.data.name
-    map:
-      - kvdb_host.rx_bytes: +i_calc/sum/$~json.data.rx_bytes
-
-  - check: +ef_not_exists/host.tx_packets
-    map:
-      - host.tx_packets: 0
-  - check: +ef_exists/~json.data.tx_packets AND +ef_exists/~json.data.name
-    map:
-      - kvdb_host.tx_packets: +i_calc/sum/$~json.data.tx_packets
-
-  - check: +ef_not_exists/host.rx_packets
-    map:
-      - host.rx_packets: 0
-  - check: +ef_exists/~json.data.rx_packets AND +ef_exists/~json.data.name
-    map:
-      - host.rx_packets: +i_calc/sum/$~json.data.rx_packets
 
   - map:
       - ~host_aux: +ef_delete
