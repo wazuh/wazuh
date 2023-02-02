@@ -16,17 +16,17 @@ constexpr auto ENGINE_STORE_PATH_ENV = "WZE_STORE_PATH";
 constexpr auto ENGINE_KVDB_PATH = "/var/ossec/etc/kvdb/";
 constexpr auto ENGINE_KVDB_PATH_ENV = "WZE_KVDB_PATH";
 
-constexpr auto ENGINE_LOG_OUTPUT = "/dev/stderr";
-constexpr auto ENGINE_LOG_OUTPUT_ENV = "WZE_LOG_OUTPUT";
-
 constexpr auto ENGINE_ENVIRONMENT = "environment/wazuh/0";
 constexpr auto ENGINE_ENVIRONMENT_ENV = "WZE_ENVIRONMENT";
 
 constexpr auto ENGINE_QUEUE_SIZE = 1000000;
 constexpr auto ENGINE_QUEUE_SIZE_ENV = "WZE_QUEUE_SIZE";
 
-constexpr auto ENGINE_LOG_LEVEL = 2;
+constexpr auto ENGINE_LOG_LEVEL = 0; // Debug
 constexpr auto ENGINE_LOG_LEVEL_ENV = "WZE_LOG_LEVEL";
+
+constexpr auto ENGINE_LOG_OUTPUT = "/dev/stderr";
+constexpr auto ENGINE_LOG_OUTPUT_ENV = "WZE_LOG_OUTPUT";
 
 constexpr auto ENGINE_THREADS = 1;
 constexpr auto ENGINE_THREADS_ENV = "WZE_THREADS";
