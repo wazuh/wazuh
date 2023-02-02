@@ -26,6 +26,7 @@ namespace
 
 enum class HLPParserType
 {
+    ALPHANUMERIC,
     BOOL,
     BYTE,
     LONG,
@@ -102,6 +103,9 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
     parsec::Parser<json::Json> parser;
     switch (type)
     {
+        case HLPParserType::ALPHANUMERIC:
+            parser = hlp::getAlphanumericParser({}, {""}, hlpOptionsList);
+            break;
         case HLPParserType::BOOL:
             parser = hlp::getBoolParser({}, {""}, hlpOptionsList);
             break;
@@ -332,4 +336,9 @@ base::Expression opBuilderSpecificHLPBetweenParse(const std::any& definition){
     return opBuilderSpecificHLPTypeParse(definition, HLPParserType::BETWEEN);
 }
 
+// +parse_alphanumeric/[$ref|value]
+base::Expression opBuilderSpecificHLPAlphanumericParse(const std::any& definition)
+{
+    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::ALPHANUMERIC);
+}
 } // namespace builder::internals::builders

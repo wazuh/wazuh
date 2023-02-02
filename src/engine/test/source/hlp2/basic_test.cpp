@@ -301,3 +301,34 @@ TEST(HLP2, TextParser)
         runTest(t, hlp::getTextParser);
     }
 }
+
+TEST(HLP2, AlphanumericParser)
+{
+    ASSERT_THROW(hlp::getAlphanumericParser({}, {}, {"arg"}), std::runtime_error);
+
+    auto fn = [](std::string in) -> json::Json
+    {
+        json::Json doc;
+        doc.setString(in);
+        return doc;
+    };
+    std::vector<TestCase> testCases {
+        TestCase {"id98A",
+                true,
+                {},
+                Options(),
+                fn("id98A"),
+                5},
+        TestCase {"id98A:69",
+                false,
+                {},
+                Options(),
+                fn("id98A:69"),
+                0}
+    };
+
+    for (auto t : testCases)
+    {
+        runTest(t, hlp::getAlphanumericParser);
+    }
+}

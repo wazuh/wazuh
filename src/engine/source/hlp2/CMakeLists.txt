@@ -56,7 +56,8 @@ add_library(hlp2 STATIC
         src/text.cpp
         src/quoted.cpp
         src/encodings.cpp
-        src/literal.cpp)
+        src/literal.cpp
+        src/alphanumeric.cpp)
 
 # https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
 # This works with glibc 2.28-211.el8 RHEL 8

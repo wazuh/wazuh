@@ -36,6 +36,7 @@ inline void registerParsers(std::shared_ptr<logpar::Logpar> logpar)
     logpar->registerBuilder(ParserType::P_FQDN, hlp::getFQDNParser);
     logpar->registerBuilder(ParserType::P_FILE, hlp::getFilePathParser);
     logpar->registerBuilder(ParserType::P_IGNORE, hlp::getIgnoreParser);
+    logpar->registerBuilder(ParserType::P_ALPHANUMERIC, hlp::getAlphanumericParser);
 }
 
 } // namespace hlp
