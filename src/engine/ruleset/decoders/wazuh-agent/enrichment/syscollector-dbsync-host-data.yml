@@ -36,11 +36,11 @@ normalize:
     map:
       - host.architecture: $~json.data.architecture
 
-  - check: +ef_exists/host.mac AND +ef_exists/~json.data.mac AND +ef_exists/~json.data.iface
+  - check: +ef_exists/host.mac AND +ef_exists/~json.data.mac AND +ef_exists/~json.data.name
     map:
       - ~mac_aux: +a_append/$~json.data.mac
       - host.mac: +ef_merge/$~mac_aux
-  - check: +ef_not_exists/host.mac AND +ef_exists/~json.data.mac AND +ef_exists/~json.data.iface
+  - check: +ef_not_exists/host.mac AND +ef_exists/~json.data.mac AND +ef_exists/~json.data.name
     map:
       - host.mac: +a_append/$~json.data.mac
 
