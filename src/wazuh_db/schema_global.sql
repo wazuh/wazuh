@@ -65,6 +65,8 @@ CREATE TABLE IF NOT EXISTS `group` (
     UNIQUE (name)
 );
 
+CREATE INDEX IF NOT EXISTS group_name ON `group` (name);
+
 CREATE TABLE IF NOT EXISTS belongs (
     id_agent INTEGER REFERENCES agent (id) ON DELETE CASCADE,
     id_group INTEGER,

@@ -4,17 +4,22 @@
 
 import json
 import os
-from datetime import datetime
-from unittest.mock import patch
+import re
+from importlib import reload
+from unittest.mock import patch, call, MagicMock
 
 import pytest
-from sqlalchemy import create_engine
+import yaml
+from sqlalchemy import create_engine, Column, String
+from sqlalchemy import orm as sqlalchemy_orm
+from sqlalchemy.exc import OperationalError
 
-from wazuh.rbac.tests.utils import init_db
 from wazuh.core.utils import get_utc_now
+from wazuh.rbac.tests.utils import init_db
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
+in_memory_db_path = ":memory:"
 
 
 @pytest.fixture(scope='function')
@@ -24,19 +29,37 @@ def db_setup():
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as rbac
+                    # Clear mappers
+                    sqlalchemy_orm.clear_mappers()
+
     init_db('schema_security_test.sql', test_data_path)
 
     yield rbac
+
+
+@pytest.fixture(scope="function")
+def fresh_in_memory_db():
+    # Clear mappers
+    sqlalchemy_orm.clear_mappers()
+
+    # Create fresh in-memory db
+    with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
+        import wazuh.rbac.orm as orm
+        reload(orm)
+
+        orm.db_manager.close_sessions()
+        orm.db_manager.connect(in_memory_db_path)
+        orm.db_manager.create_database(in_memory_db_path)
+
+    yield orm
+
+    orm.db_manager.close_sessions()
 
 
 def test_database_init(db_setup):
     """Check users db is properly initialized"""
     with db_setup.RolesManager() as rm:
         assert rm.get_role('wazuh') != db_setup.SecurityError.ROLE_NOT_EXIST
-
-
-def test_json_validator(db_setup):
-    assert not db_setup.json_validator('Not a dictionary')
 
 
 def test_add_token(db_setup):
@@ -252,7 +275,7 @@ def test_delete_rules(db_setup):
 
         for rule in rum.get_rules():
             # Admin rules
-            if rule.id < db_setup.max_id_reserved:
+            if rule.id < db_setup.MAX_ID_RESERVED:
                 assert rum.delete_rule(rule.id) == db_setup.SecurityError.ADMIN_RESOURCES
             # Other rules
             else:
@@ -264,7 +287,7 @@ def test_delete_all_security_rules(db_setup):
     with db_setup.RulesManager() as rum:
         assert rum.delete_all_rules()
         # Only admin rules are left
-        assert all(rule.id < db_setup.max_id_reserved for rule in rum.get_rules())
+        assert all(rule.id < db_setup.MAX_ID_RESERVED for rule in rum.get_rules())
         rum.add_rule(name='toDelete', rule={'Unittest': 'Rule'})
         rum.add_rule(name='toDelete1', rule={'Unittest1': 'Rule'})
         len_rules = len(rum.get_rules())
@@ -843,3 +866,205 @@ def test_update_policy_from_role(db_setup):
 
         assert not rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[0])
         assert rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[-1])
+
+
+def test_databasemanager___init__(fresh_in_memory_db):
+    """Test class constructor for `DatabaseManager`."""
+    assert hasattr(fresh_in_memory_db.db_manager, "engines")
+    assert hasattr(fresh_in_memory_db.db_manager, "sessions")
+
+
+@patch("wazuh.rbac.orm.create_engine")
+@patch("wazuh.rbac.orm.sessionmaker")
+def test_databasemanager_connect(sessionmaker_mock, create_engine_mock, fresh_in_memory_db):
+    """Test `connect` method for class `DatabaseManager`."""
+    dbm = fresh_in_memory_db.db_manager
+    db_path = "/random/path/to/database.db"
+    dbm.connect(db_path)
+
+    assert dbm.engines[db_path]
+    assert dbm.sessions[db_path]
+
+    sessionmaker_mock.assert_called_once_with(bind=dbm.engines[db_path])
+    create_engine_mock.assert_called_once_with(f"sqlite:///{db_path}", echo=False)
+
+
+@patch("wazuh.rbac.orm.create_engine")
+@patch("wazuh.rbac.orm.sessionmaker")
+def test_databasemanager_close_sessions(sessionmaker_mock, create_engine_mock, fresh_in_memory_db):
+    """Test `close_sessions` method for class `DatabaseManager`."""
+    dbm = fresh_in_memory_db.db_manager
+    db_path = "/random/path/to/database.db"
+    dbm.connect(db_path)
+
+    dbm.close_sessions()
+
+    create_engine_mock.assert_has_calls([call().dispose()])
+    sessionmaker_mock.assert_has_calls([call()().close()])
+
+
+@patch("wazuh.rbac.orm._Base.metadata.create_all")
+def test_databasemanager_create_database(create_db_mock, fresh_in_memory_db):
+    """Test `create_database` method for class `DatabaseManager`."""
+    dbm = fresh_in_memory_db.db_manager
+    db_path = "random/path/to_database.db"
+    engine_mock = MagicMock()
+    dbm.engines = engine_mock
+
+    dbm.create_database(db_path)
+
+    engine_mock.assert_has_calls([call.__getitem__(db_path)])
+    create_db_mock.assert_called_once_with(dbm.engines[db_path])
+
+
+def test_databasemanager_get_database_version(fresh_in_memory_db):
+    """Test `get_database_version` method for class `DatabaseManager`."""
+    # Assert its version is 0 using the method (value set by default)
+    assert fresh_in_memory_db.db_manager.get_database_version(in_memory_db_path) == "0"
+
+
+def test_databasemanager_insert_default_resources(fresh_in_memory_db):
+    """Test `insert_default_resources` method for class `DatabaseManager`.
+
+    Only a brief check of the number of default security resources added will be tested.
+    """
+    def _get_default_resources(resource: str) -> dict:
+        with open(os.path.join(default_path, f"{resource}.yaml"), 'r') as r_stream:
+            return yaml.safe_load(r_stream)
+
+    # Insert default resources
+    fresh_in_memory_db.db_manager.insert_default_resources(in_memory_db_path)
+    default_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'default')
+
+    # Check default users
+    default_users = _get_default_resources("users")
+    with fresh_in_memory_db.AuthenticationManager(fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
+        users = auth.get_users()
+        assert len([user for user in users if user['user_id'] < fresh_in_memory_db.MAX_ID_RESERVED]) \
+               == len(default_users[next(iter(default_users))])
+
+    # Check default roles
+    default_roles = _get_default_resources("roles")
+    with fresh_in_memory_db.RolesManager(fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as rm:
+        roles = rm.get_roles()
+        assert len([role for role in roles if role.id < fresh_in_memory_db.MAX_ID_RESERVED]) \
+               == len(default_roles[next(iter(default_roles))])
+
+    # Check default policies
+    default_policies = [policy for policy_group in _get_default_resources("policies")['default_policies'].values()
+                        for policy in policy_group['policies']]
+
+    with fresh_in_memory_db.PoliciesManager(fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as pm:
+        policies = pm.get_policies()
+        assert len([policy for policy in policies if policy.id < fresh_in_memory_db.MAX_ID_RESERVED])\
+               == len(default_policies)
+
+    # Check default rules
+    default_rules = _get_default_resources("rules")
+    with fresh_in_memory_db.RulesManager(fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as rum:
+        rules = rum.get_rules()
+        assert len([rule for rule in rules if rule.id < fresh_in_memory_db.MAX_ID_RESERVED]) \
+               == len(default_rules[next(iter(default_rules))])
+
+
+def test_databasemanager_get_table(fresh_in_memory_db):
+    """Test `get_table` method for class `DatabaseManager`."""
+    class EnhancedUser(fresh_in_memory_db.User):
+        new_column = Column("new_column", String(32), nullable=False, default="default_value")
+
+        def __init__(self, new_column=None):
+            self.new_column = new_column
+
+    session = fresh_in_memory_db.db_manager.sessions[in_memory_db_path]
+    column_regex = r"users\.([a-z_]+)"
+
+    # Assert that `get_table` returns the correct Query object depending on the given Table
+    current_columns = set(re.findall(column_regex, str(fresh_in_memory_db.db_manager.get_table(
+        session, fresh_in_memory_db.User))))
+    with patch("wazuh.rbac.orm._new_columns", new={"new_column"}):
+        updated_columns = set(re.findall(column_regex, str(fresh_in_memory_db.db_manager.get_table(session, 
+                                                                                                   EnhancedUser))))
+
+    assert current_columns == updated_columns
+
+    # Assert that `get_table` uses `_new_columns` correctly. Thus, if the new column is not added to that set, an
+    # exception will raise
+    with pytest.raises(OperationalError):
+        fresh_in_memory_db.db_manager.get_table(session, EnhancedUser).first()
+
+
+def test_databasemanager_rollback(fresh_in_memory_db):
+    """Test `rollback` method for class `DatabaseManager`."""
+    fresh_in_memory_db.db_manager.sessions[in_memory_db_path] = MagicMock()
+    fresh_in_memory_db.db_manager.rollback(in_memory_db_path)
+    fresh_in_memory_db.db_manager.sessions[in_memory_db_path].assert_has_calls([call.rollback()])
+
+
+def test_databasemanager_set_database_version(fresh_in_memory_db):
+    """Test `set_database_version` method for class `DatabaseManager`."""
+    fresh_in_memory_db.db_manager.set_database_version(in_memory_db_path, 555)
+    assert fresh_in_memory_db.db_manager.sessions[in_memory_db_path].execute("pragma user_version").first()[0] == 555
+
+
+@patch("wazuh.rbac.orm.safe_move")
+@patch("wazuh.rbac.orm.os.remove")
+@patch("wazuh.rbac.orm.chown")
+@patch("wazuh.rbac.orm.os.chmod")
+def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move_mock, fresh_in_memory_db):
+    """Test `check_database_integrity` function briefly.
+
+    NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
+    db_mock = MagicMock()
+    with patch("wazuh.rbac.orm.db_manager", new=db_mock):
+        with patch("wazuh.rbac.orm.os.path.exists", return_value=True):
+            with patch("wazuh.rbac.orm.CURRENT_ORM_VERSION", new=99999):
+                # DB exists and a migration is needed
+                fresh_in_memory_db.check_database_integrity()
+                db_mock.assert_has_calls([
+                    call.connect(fresh_in_memory_db.DB_FILE_TMP),
+                    call.get_database_version(fresh_in_memory_db.DB_FILE),
+                    call.create_database(fresh_in_memory_db.DB_FILE_TMP),
+                    call.insert_default_resources(fresh_in_memory_db.DB_FILE_TMP),
+                    call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
+                                      from_id=fresh_in_memory_db.CLOUD_RESERVED_RANGE,
+                                      to_id=fresh_in_memory_db.MAX_ID_RESERVED),
+                    call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
+                                      from_id=fresh_in_memory_db.MAX_ID_RESERVED + 1),
+                    call.set_database_version(fresh_in_memory_db.DB_FILE_TMP, fresh_in_memory_db.CURRENT_ORM_VERSION),
+                    call.close_sessions()
+                ], any_order=True)
+
+        safe_move_mock.assert_called_once_with(fresh_in_memory_db.DB_FILE_TMP, fresh_in_memory_db.DB_FILE,
+                                               ownership=(fresh_in_memory_db.wazuh_uid(),
+                                                          fresh_in_memory_db.wazuh_gid()),
+                                               permissions=0o640)
+
+        # DB does not exist. A new one will be initialized
+        fresh_in_memory_db.check_database_integrity()
+        db_mock.assert_has_calls([
+            call.connect(fresh_in_memory_db.DB_FILE),
+            call.create_database(fresh_in_memory_db.DB_FILE),
+            call.insert_default_resources(fresh_in_memory_db.DB_FILE),
+            call.set_database_version(fresh_in_memory_db.DB_FILE, fresh_in_memory_db.CURRENT_ORM_VERSION),
+            call.close_sessions()
+        ], any_order=True)
+
+
+@pytest.mark.parametrize("exception", [ValueError, Exception])
+@patch("wazuh.rbac.orm.DatabaseManager.close_sessions")
+@patch("wazuh.rbac.orm.os.remove")
+def test_check_database_integrity_exceptions(remove_mock, close_sessions_mock, exception, fresh_in_memory_db):
+    """Test `check_database_integrity` function exceptions briefly.
+
+    NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
+    def mocked_exists(path: str):
+        return path == fresh_in_memory_db.DB_FILE_TMP
+
+    with patch("wazuh.rbac.orm.os.path.exists", side_effect=mocked_exists) as mock_exists:
+        with patch("wazuh.rbac.orm.DatabaseManager.connect", side_effect=exception) as db_manager_mock:
+            with pytest.raises(exception):
+                fresh_in_memory_db.check_database_integrity()
+
+            close_sessions_mock.assert_called_once()
+            mock_exists.assert_called_with(fresh_in_memory_db.DB_FILE_TMP)
+            remove_mock.assert_called_with(fresh_in_memory_db.DB_FILE_TMP)

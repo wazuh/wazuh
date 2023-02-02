@@ -1028,7 +1028,7 @@ $(EXTERNAL_CURL)Makefile:
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
 ifeq (${uname_S},Linux)
-	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2 --without-libpsl --without-brotli
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2 --without-libpsl --without-brotli --without-nghttp2
 else
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --disable-ldap --without-libidn2
 endif
@@ -1071,7 +1071,7 @@ ${LIBARCHIVE_LIB}: $(EXTERNAL_LIBARCHIVE)Makefile
 	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE)
 
 $(EXTERNAL_LIBARCHIVE)Makefile:
-	cd ${EXTERNAL_LIBARCHIVE} && CPPFLAGS=-fPIC ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl
+	cd ${EXTERNAL_LIBARCHIVE} && CPPFLAGS=-fPIC ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl --without-libb2
 endif
 endif
 

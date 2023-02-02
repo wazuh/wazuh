@@ -106,7 +106,6 @@ int restore_audit_policies();
 int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 void notify_SACL_change(char *dir);
 int whodata_path_filter(char **path);
-void whodata_adapt_path(char **path);
 int whodata_check_arch();
 /**
  * @brief Release all whodata allocated resources. Frees all data stored in the structure, not the structure.
@@ -741,6 +740,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     unsigned long mask = 0;
     directory_t *configuration;
 
+    Wow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
 
@@ -1103,6 +1103,8 @@ error:
 }
 
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
+    Wow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
+
     int exists;
     whodata_dir_status *d_status;
     int interval;
@@ -1641,31 +1643,7 @@ int whodata_path_filter(char **path) {
         return 1;
     }
 
-    if (sys_64) {
-        whodata_adapt_path(path);
-    }
-
     return 0;
-}
-
-void whodata_adapt_path(char **path) {
-    const char *system_32 = ":\\windows\\system32";
-    const char *system_wow64 = ":\\windows\\syswow64";
-    const char *system_native = ":\\windows\\sysnative";
-    char *new_path = NULL;
-
-    if (strstr(*path, system_32)) {
-        new_path = wstr_replace(*path, system_32, system_native);
-
-    } else if (strstr(*path, system_wow64)) {
-        new_path = wstr_replace(*path, system_wow64, system_32);
-    }
-
-    if (new_path) {
-        mdebug2(FIM_WHODATA_CONVERT_PATH, *path, new_path);
-        free(*path);
-        *path = new_path;
-    }
 }
 
 int whodata_check_arch() {

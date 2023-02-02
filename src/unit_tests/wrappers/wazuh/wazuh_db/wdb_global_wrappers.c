@@ -344,3 +344,10 @@ int __wrap_wdb_remove_group_db(const char *name,
     check_expected(name);
     return mock();
 }
+
+cJSON* __wrap_wdb_global_get_distinct_agent_groups(   __attribute__((unused)) wdb_t *wdb, char *group_hash,
+                                                wdbc_result* status) {
+    check_expected(group_hash);
+    *status = mock();
+    return mock_ptr_type(cJSON*);
+}

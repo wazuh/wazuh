@@ -835,37 +835,13 @@ end:
 }
 
 
-int MergeAppendFile(const char *finalpath, const char *files, const char *tag, int path_offset)
+int MergeAppendFile(FILE *finalfp, const char *files, int path_offset)
 {
     size_t n = 0;
     long files_size = 0;
     long files_final_size = 0;
     char buf[2048 + 1];
     FILE *fp = NULL;
-    FILE *finalfp = NULL;
-
-    /* Create a new entry */
-
-    if (files == NULL) {
-        finalfp = fopen(finalpath, "w");
-        if (finalfp == NULL) {
-            merror("Unable to create merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
-            return (0);
-        }
-
-        if (tag != NULL) {
-            fprintf(finalfp, "#%s\n", tag);
-        }
-
-        fclose(finalfp);
-
-        if (chmod(finalpath, 0660) < 0) {
-            merror(CHMOD_ERROR, finalpath, errno, strerror(errno));
-            return 0;
-        }
-
-        return (1);
-    }
 
     if (path_offset < 0) {
         char filename[PATH_MAX];
@@ -883,20 +859,13 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
         }
     }
 
-    if (finalfp = fopen(finalpath, "a"), finalfp == NULL) {
-        merror("Unable to open file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
-        return (0);
-    }
-
     if (fp = fopen(files, "r"), fp == NULL) {
         merror("Unable to open file: '%s' due to [(%d)-(%s)].", files, errno, strerror(errno));
-        fclose(finalfp);
         return (0);
     }
 
     if (fseek(fp, 0, SEEK_END) != 0) {
         merror("Unable to set EOF offset in file: '%s', due to [(%d)-(%s)].", files, errno, strerror(errno));
-        fclose(finalfp);
         fclose(fp);
         return (0);
     }
@@ -906,15 +875,10 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
         mwarn("File '%s' is empty.", files);
     }
 
-    if (tag != NULL) {
-        fprintf(finalfp, "#%s\n", tag);
-    }
-
     fprintf(finalfp, "!%ld %s\n", files_size, files + path_offset);
 
     if (fseek(fp, 0, SEEK_SET) != 0) {
         merror("Unable to set the offset in file: '%s', due to [(%d)-(%s)].", files, errno, strerror(errno));
-        fclose(finalfp);
         fclose(fp);
         return (0);
     }
@@ -927,7 +891,6 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
     files_final_size = ftell(fp);
 
     fclose(fp);
-    fclose(finalfp);
 
     if (files_size != files_final_size) {
         merror("File '%s' was modified after getting its size.", files);

@@ -78,7 +78,8 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,w_inc_global_agent_reset_agents_connection_time -Wl,--wrap,w_inc_global_agent_get_agents_by_connection_status \
                              -Wl,--wrap,w_inc_global_agent_get_agents_by_connection_status_time -Wl,--wrap,w_inc_global_backup -Wl,--wrap,w_inc_global_backup_time \
                              -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_vacuum -Wl,--wrap,wdb_get_db_state -Wl,--wrap,wdb_finalize_all_statements \
-                             -Wl,--wrap,wdb_update_last_vacuum_data -Wl,--wrap,wdb_get_db_free_pages_percentage \
+                             -Wl,--wrap,wdb_update_last_vacuum_data -Wl,--wrap,wdb_get_db_free_pages_percentage -Wl,--wrap,wdb_global_get_distinct_agent_groups \
+                             -Wl,--wrap,w_inc_global_agent_get_distinct_groups -Wl,--wrap,w_inc_global_agent_get_distinct_groups_time \
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global")

@@ -266,6 +266,7 @@ All notable changes to this project will be documented in this file.
 - Prevented the Ruleset test suite from restarting the manager. ([#10773](https://github.com/wazuh/wazuh/pull/10773))
 - The pthread's rwlock has been replaced with a FIFO-queueing read-write lock. ([#14839](https://github.com/wazuh/wazuh/pull/14839))
 - Updated python dependency certifi to 2022.12.7. ([#15809](https://github.com/wazuh/wazuh/pull/15809))
+- Updated python dependency future to 0.18.3. ([#15896](https://github.com/wazuh/wazuh/pull/15896))
 
 #### Fixed
 
