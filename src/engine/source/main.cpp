@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
         "The Wazuh engine analyzes all the events received from agents, remote devices "
         "and Wazuh integrations. This integrated console application allows to manage "
         "all the engine components.");
-    // app->require_subcommand(1);
+    app->require_subcommand(1);
 
     // Configuratin file
     app->set_config("--config", CONF_PATH);
