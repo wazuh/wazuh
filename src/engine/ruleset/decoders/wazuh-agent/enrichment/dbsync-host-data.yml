@@ -15,7 +15,7 @@ metadata:
     author:
         name: Wazuh, Inc.
         url: https://wazuh.com
-        date: 2022/01/11
+        date: 2023/01/02
 
 check:
   - ~json.type: +s_eq/state
@@ -28,53 +28,25 @@ normalize:
       - host.name: $~json.data.attributes.hostname
       - host.architecture: $~json.data.attributes.architecture
 
-  - check: +ef_exists/host.mac AND +ef_exists/~json.data.attributes.mac AND +ef_exists/~json.data.attributes.iface
+  - check: +ef_exists/host.mac AND +ef_exists/~json.data.attributes.mac AND +ef_exists/~json.data.attributes.name
     map:
+      - ~do_update_kvdb: true
       - ~mac_aux: +a_append/$~json.data.attributes.mac
       - host.mac: +ef_merge/$~mac_aux
-  - check: +ef_not_exists/host.mac AND +ef_exists/~json.data.attributes.mac AND +ef_exists/~json.data.attributes.iface
+  - check: +ef_not_exists/host.mac AND +ef_exists/~json.data.attributes.mac AND +ef_exists/~json.data.attributes.name
     map:
+      - ~do_update_kvdb: true
       - host.mac: +a_append/$~json.data.attributes.mac
 
   - check: +ef_exists/host.address AND +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface
     map:
+      - ~do_update_kvdb: true
       - ~address_aux: +a_append/$~json.data.attributes.address
       - host.address: +ef_merge/$~address_aux
   - check: +ef_not_exists/host.address AND +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface
     map:
+      - ~do_update_kvdb: true
       - host.address: +a_append/$~json.data.attributes.address
-
-  - check: +ef_not_exists/host.tx_bytes
-    map:
-      - host.tx_bytes: 0
-  - check: +ef_exists/~json.data.attributes.tx_bytes AND +ef_exists/~json.data.attributes.name
-    map:
-      - ~do_update_kvdb: true
-      - host.tx_bytes: +i_calc/sum/$~json.data.attributes.tx_bytes
-
-  - check: +ef_not_exists/host.rx_bytes
-    map:
-      - host.rx_bytes: 0
-  - check: +ef_exists/~json.data.attributes.rx_bytes AND +ef_exists/~json.data.attributes.name
-    map:
-      - ~do_update_kvdb: true
-      - host.rx_bytes: +i_calc/sum/$~json.data.attributes.rx_bytes
-
-  - check: +ef_not_exists/host.tx_packets
-    map:
-      - host.tx_packets: 0
-  - check: +ef_exists/~json.data.attributes.tx_packets AND +ef_exists/~json.data.attributes.name
-    map:
-      - ~do_update_kvdb: true
-      - host.tx_packets: +i_calc/sum/$~json.data.attributes.tx_packets
-
-  - check: +ef_not_exists/host.rx_packets
-    map:
-      - host.rx_packets: 0
-  - check: +ef_exists/~json.data.attributes.rx_packets AND +ef_exists/~json.data.attributes.name
-    map:
-      - ~do_update_kvdb: true
-      - host.rx_packets: +i_calc/sum/$~json.data.attributes.rx_packets
 
   - map:
       - host_aux: +ef_delete

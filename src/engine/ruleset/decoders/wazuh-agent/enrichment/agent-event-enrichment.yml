@@ -8,7 +8,7 @@ metadata:
     This decoder has been tested on Wazuh version 4.3
   author:
     name: Wazuh, Inc.
-    date: 2022/01/09
+    date: 2023/01/02
 
 normalize:
   - check:
