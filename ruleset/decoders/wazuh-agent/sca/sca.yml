@@ -1,11 +1,6 @@
 ---
 name: decoder/sca/0
 
-sources:
-  - decoder/agent-event-enrichment/0
-  # TODO: is this necessary? Can a log come through the SCA queue withouth having an agent id?
-  - decoder/queue-sca/0
-
 metadata:
     module: wazuh-agent/sca/sca
     title: SCA Decoder
@@ -21,6 +16,9 @@ metadata:
         - https://documentation.wazuh.com/current/user-manual/capabilities/sec-config-assessment/index.html
         - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/sca.html
         - https://github.com/wazuh/wazuh/issues/13522
+
+sources:
+  - decoder/queue-sca/0
 
 check:
   - event.original: +s_starts/{

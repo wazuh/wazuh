@@ -1,7 +1,11 @@
+---
 name: decoder/queue-fim/0
 
 metadata:
   description: Exclusive parent decoder for Wazuh-File Integrity Monitoring server (FIM_MQ)
+
+sources:
+  - decoder/agent-event-enrichment/0
 
 check:
   - wazuh.queue: 56 # FIM_MQ '8'
