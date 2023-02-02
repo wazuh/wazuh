@@ -6,7 +6,7 @@ metadata:
   title: F5 APM Decoder for own providers
   description: Decodes HEADER F5 BIG-IP Access Policy Manager logs of own providers.
   compatibility: >
-    New Wazuh Engine
+    TBD
   author:
     name: Wazuh, Inc.
     date: 2023/01/10

@@ -15,13 +15,13 @@ decoders:
 
   # Internal decoders
   - decoder/dbsync/0
+  - decoder/f5-afm/0
+  - decoder/f5-apm-own/0
+  - decoder/f5-apm-third/0
   - decoder/fim/0
   - decoder/fim-event/0
   - decoder/fim-scan/0
   - decoder/redis/0
-  - decoder/f5-afm/0
-  - decoder/f5-apm-own/0
-  - decoder/f5-apm-third/0
   - decoder/rootcheck/0
   - decoder/sca/0
   - decoder/syscollector-base/0
