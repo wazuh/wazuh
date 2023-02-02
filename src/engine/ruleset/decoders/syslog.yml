@@ -21,14 +21,14 @@ sources:
 parse:
   logpar:
     # BSD Syslog RFC 3164 standard
-    - event.original: "<event.start/Jun 14 15:16:01> <host.hostname> <process.name>[<process.pid>]: <~/ignore/ ><message>"
+    - event.original: "<event.start/Jun 14 15:16:01> <host.hostname> <~TAG/alphanumeric>[<process.pid>]:<~/ignore/ ><message>"
     # BSD Syslog RFC 3164 no pid
-    - event.original: "<event.start/Jun 14 15:16:01> <host.hostname> <process.name>: <~/ignore/ ><message>"
+    - event.original: "<event.start/Jun 14 15:16:01> <host.hostname> <~TAG/alphanumeric>:<~/ignore/ ><message>"
 
     # BSD Syslog RFC 3164 standard ISO8601
-    - event.original: "<event.start/2018-08-14T14:30:02.203151+02:00> <host.hostname> <process.name>[<process.pid>]: <message>"
+    - event.original: "<event.start/2018-08-14T14:30:02.203151+02:00> <host.hostname> <~TAG/alphanumeric>[<process.pid>]: <message>"
     # BSD Syslog RFC 3164 no pid ISO8601
-    - event.original: "<event.start/2018-08-14T14:30:02.203151+02:00> <host.hostname> <process.name>: <message>"
+    - event.original: "<event.start/2018-08-14T14:30:02.203151+02:00> <host.hostname> <~TAG/alphanumeric>: <message>"
 
     # RFC3164 example 2 section 5.2.3
     - event.original: <event.start/%b %d %T> <host.hostname> <message>
@@ -37,3 +37,5 @@ normalize:
   - map:
       - event.kind: event
       - related.hosts: +a_append/$host.hostname
+      - process.name: $~TAG
+
