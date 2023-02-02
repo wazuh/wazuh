@@ -80,9 +80,7 @@ TEST(CliConfTest, PutBadValue)
 {
     CLI::App_p app = std::make_shared<CLI::App>("Test");
     std::string testVar;
-    app->add_option("--test", testVar, "Test option")
-        ->default_val("good")
-        ->check(CLI::IsMember({"good"}));
+    app->add_option("--test", testVar, "Test option")->default_val("good")->check(CLI::IsMember({"good"}));
     conf::CliConf confManager(app);
     ASSERT_THROW(confManager.put("test", "bad"), std::runtime_error);
 }
@@ -90,8 +88,7 @@ TEST(CliConfTest, PutBadValue)
 TEST(CliConfTest, SaveConfigDefLocation)
 {
     std::FILE* tmpf = std::tmpfile();
-    auto tmpPath = std::filesystem::read_symlink(std::filesystem::path("/proc/self/fd")
-                                                 / std::to_string(fileno(tmpf)));
+    auto tmpPath = std::filesystem::read_symlink(std::filesystem::path("/proc/self/fd") / std::to_string(fileno(tmpf)));
 
     CLI::App_p app = std::make_shared<CLI::App>("Test");
     auto sub = app->add_subcommand("server", "Server subcommand");
@@ -106,8 +103,7 @@ TEST(CliConfTest, SaveConfigDefLocation)
     ASSERT_NO_THROW(confManager.saveConfiguration());
 
     std::ifstream ifs(tmpPath);
-    std::string got((std::istreambuf_iterator<char>(ifs)),
-                    (std::istreambuf_iterator<char>()));
+    std::string got((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 
     ifs.close();
     std::fclose(tmpf);
@@ -115,12 +111,10 @@ TEST(CliConfTest, SaveConfigDefLocation)
     ASSERT_EQ(got, expected);
 }
 
-
 TEST(CliConfTest, SaveConfigCustomLocation)
 {
     std::FILE* tmpf = std::tmpfile();
-    auto tmpPath = std::filesystem::read_symlink(std::filesystem::path("/proc/self/fd")
-                                                 / std::to_string(fileno(tmpf)));
+    auto tmpPath = std::filesystem::read_symlink(std::filesystem::path("/proc/self/fd") / std::to_string(fileno(tmpf)));
 
     CLI::App_p app = std::make_shared<CLI::App>("Test");
     auto sub = app->add_subcommand("server", "Server subcommand");
@@ -135,8 +129,7 @@ TEST(CliConfTest, SaveConfigCustomLocation)
     ASSERT_NO_THROW(confManager.saveConfiguration(tmpPath));
 
     std::ifstream ifs(tmpPath);
-    std::string got((std::istreambuf_iterator<char>(ifs)),
-                    (std::istreambuf_iterator<char>()));
+    std::string got((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 
     ifs.close();
     std::fclose(tmpf);

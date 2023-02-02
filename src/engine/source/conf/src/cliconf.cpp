@@ -1,5 +1,7 @@
 #include <conf/cliconf.hpp>
 
+#include <fmt/format.h>
+
 namespace conf
 {
 
@@ -37,8 +39,23 @@ void CliConf::saveConfiguration(const std::string& path) const
 
     auto savePath = std::filesystem::path(pathStr);
 
+    // Create the directory if it does not exist
+    if (!std::filesystem::exists(savePath.parent_path()))
+    {
+        std::error_code ec;
+        if (!std::filesystem::create_directories(savePath.parent_path(), ec))
+        {
+            throw std::runtime_error(
+                fmt::format("Cannot create directory tree '{}': {}", savePath.parent_path().string(), ec.message()));
+        }
+    }
+
     std::ofstream ofs;
     ofs.open(savePath, std::ios::out | std::ios::trunc);
+    if (!ofs.is_open())
+    {
+        throw std::runtime_error(fmt::format("Cannot open file '{}': {}", savePath.string(), strerror(errno)));
+    }
     ofs << getConfiguration() << std::endl;
     ofs.close();
 }
@@ -57,9 +74,8 @@ void CliConf::put(const std::string& key, const std::string& value)
     // Only options with capture variable return the callback
     if (opt->get_name() == "--config")
     {
-        throw std::runtime_error(
-            "Cannot modify config file path, restart the application specifying a "
-            "new path with --config 'path'");
+        throw std::runtime_error("Cannot modify config file path, restart the application specifying a "
+                                 "new path with --config 'path'");
     }
 
     auto callback = opt->get_callback();
@@ -80,8 +96,7 @@ void CliConf::put(const std::string& key, const std::string& value)
     }
     else
     {
-        throw std::runtime_error("Invalid value '" + value + "' for option '" + key
-                                 + "'");
+        throw std::runtime_error("Invalid value '" + value + "' for option '" + key + "'");
     }
 }
 
