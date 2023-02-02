@@ -22,15 +22,15 @@ parse:
   logpar:
     # <30>device="SFW" date=2020-05-18 time=14:39:20 timezone="CEST" device_name="XG230" device_id=1234567890123457 log_id=062910617703 log_type="Event" log_component="Firewall Authentication" log_subtype="Authentication" status="Successful" priority=Information user_name="elastic.user@elastic.test.com" usergroupname="VPN.SSL.Users.elastic" auth_client="IPSec" auth_mechanism="N/A" reason="" src_ip=10.84.234.38 src_mac="" start_time=1591086575 sent_bytes=0 recv_bytes=0 message="User elastic.user@elastic.test.com was logged out of firewall" name="elastic.user@elastic.test.com" timestamp=1591086576
     # <30>device="SFW" date=2020-05-18 time=14:38:58 timezone="CEST" device_name="XG230" device_id=1234567890123456 log_id=062511418055 log_type="Event" log_component="IPSec" log_subtype="System" status="Failed" priority=Warning user_name="elastic.user@elastic.test.com" connectionname="Location-1" connectiontype="0" localinterfaceip=214.167.51.66 localgateway="" localnetwork="172.17.32.0/19" remoteinterfaceip=89.160.20.112 remotenetwork="10.84.234.5/32" message="location-1 - IKE message retransmission timed out (Remote: 89.160.20.112)"
-    - event.original: \<<~log.head_message>><~log.payload_message>
+    - event.original: \<<~tmp.head_message>><~tmp.payload_message>
 
 normalize:
   - check:
-      - ~log.payload_message: +ef_exists
+      - ~tmp.payload_message: +ef_exists
     map:
-      - ~log.payload_message: +s_replace/=""/=" "
+      - ~tmp.payload_message: +s_replace/=""/=" "
     logpar:
-      - ~log.payload_message: <~tmp/kv/=/ /"/'>
+      - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
   - map:
       - destination.ip: $~tmp.localinterfaceip
       - event.action: +s_lo/$~tmp.log_subtype
@@ -103,6 +103,5 @@ normalize:
       - tags: [forwarded, preserve_original_event, sophos-xg]
       - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time
       - related.ip: [$~tmp.destination.ip, $source.ip]
-      - ~log: +ef_delete
       - ~tmp: +ef_delete
 
