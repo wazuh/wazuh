@@ -24,7 +24,7 @@ BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeBraces: Allman
 BreakConstructorInitializers: BeforeComma
 BreakInheritanceList: BeforeComma
-ColumnLimit: 90
+ColumnLimit: 120
 Cpp11BracedListStyle: 'true'
 FixNamespaceComments: 'true'
 IncludeBlocks: Preserve

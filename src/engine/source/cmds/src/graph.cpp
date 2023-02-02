@@ -44,11 +44,10 @@ void run(const Options& options)
     auto hlpParsers = store->get(hlpConfigFileName);
     if (std::holds_alternative<base::Error>(hlpParsers))
     {
-        WAZUH_LOG_ERROR(
-            "Engine \"graph\" command: Configuration file \"{}\" needed by the "
-            "parsing module could not be obtained: {}",
-            hlpConfigFileName.fullName(),
-            std::get<base::Error>(hlpParsers).message);
+        WAZUH_LOG_ERROR("Engine \"graph\" command: Configuration file \"{}\" needed by the "
+                        "parsing module could not be obtained: {}",
+                        hlpConfigFileName.fullName(),
+                        std::get<base::Error>(hlpParsers).message);
         g_exitHanlder.execute();
         return;
     }
@@ -109,14 +108,12 @@ void run(const Options& options)
 
     graphFile.open(envGraph.string());
     graphFile << env.getGraphivzStr();
-    std::cout << std::endl
-              << "Environment graph saved to " << envGraph.string() << std::endl;
+    std::cout << std::endl << "Environment graph saved to " << envGraph.string() << std::endl;
     graphFile.close();
 
     graphFile.open(envExprGraph.string());
     graphFile << base::toGraphvizStr(envExpression);
-    std::cout << "Environment expression graph saved to " << envExprGraph.string()
-              << std::endl;
+    std::cout << "Environment expression graph saved to " << envExprGraph.string() << std::endl;
     graphFile.close();
 
     g_exitHanlder.execute();
@@ -126,13 +123,10 @@ void configure(CLI::App_p app)
 {
     auto options = std::make_shared<Options>();
 
-    auto graphApp =
-        app->add_subcommand("graph", "Generate a dot description of an environment.");
+    auto graphApp = app->add_subcommand("graph", "Generate a dot description of an environment.");
 
     // KVDB path
-    graphApp
-        ->add_option(
-            "-k, --kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
+    graphApp->add_option("-k, --kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
         ->default_val(ENGINE_KVDB_PATH)
         ->check(CLI::ExistingDirectory);
 
@@ -145,16 +139,11 @@ void configure(CLI::App_p app)
         ->check(CLI::ExistingDirectory);
 
     // Environment
-    graphApp
-        ->add_option(
-            "--environment", options->environment, "Name of the environment to be used.")
+    graphApp->add_option("--environment", options->environment, "Name of the environment to be used.")
         ->default_val(ENGINE_ENVIRONMENT);
 
     // Graph dir
-    graphApp
-        ->add_option("-o, --output_dir",
-                     options->graphOutDir,
-                     "Directory to save the graph files.")
+    graphApp->add_option("-o, --output_dir", options->graphOutDir, "Directory to save the graph files.")
         ->default_val("./")
         ->check(CLI::ExistingDirectory);
 
