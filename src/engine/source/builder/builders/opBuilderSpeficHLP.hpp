@@ -183,6 +183,15 @@ base::Expression opBuilderSpecificHLPQuotedParse(const std::any& definition);
  */
 base::Expression opBuilderSpecificHLPBetweenParse(const std::any& definition);
 
+/**
+ * @brief Helper function of alphanumeric parser from HLP
+ *
+ * @param definition Definition of the operation
+ * @return base::Expression Expression of the operation
+ * @throw std::runtime_error If the number of parameters is not 1 (source)
+ */
+base::Expression opBuilderSpecificHLPAlphanumericParse(const std::any& definition);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_SPECIFIC_HLP_H

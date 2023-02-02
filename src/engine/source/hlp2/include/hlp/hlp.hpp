@@ -304,5 +304,15 @@ parsec::Parser<json::Json> getIgnoreParser(std::string name, Stop endTokens, Opt
  * @return parsec::Parser<json::Json>
  */
 parsec::Parser<json::Json> getQuotedParser(std::string name, Stop endTokens, Options lst);
+
+/**
+ * @brief Get the alphanumeric parser, which will parse a string and return the alphanumeric content
+ *
+ * @param endTokens unused
+ * @param lst Option[0] is the quote character, Option[1] is the escape character. If not
+ * provided, the default is " and \
+ * @return parsec::Parser<json::Json>
+ */
+parsec::Parser<json::Json> getAlphanumericParser(std::string name, Stop endTokens, Options lst);
 } // namespace hlp
 #endif // _HLP_HPP
