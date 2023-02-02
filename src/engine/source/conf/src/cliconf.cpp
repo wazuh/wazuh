@@ -80,7 +80,8 @@ void CliConf::put(const std::string& key, const std::string& value)
     }
     else
     {
-        throw std::runtime_error("Invalid value '" + value + "'for option '" + key + "'");
+        throw std::runtime_error("Invalid value '" + value + "' for option '" + key
+                                 + "'");
     }
 }
 
