@@ -1,0 +1,45 @@
+<decoder name="macOS_tccd">
+ <program_name>tccd</program_name>
+</decoder>
+
+<decoder name="macOS_tccd_updated">
+  <parent>macOS_tccd</parent>
+  <regex>[com.apple.TCC:access] Update Access Record: (\S+) for (\S+) to (\S+) at \d+ \p\d+-\d+-\d+ (\d+:\d+:\d+) +\d+\p</regex>
+  <order>service, application, status, time</order>
+</decoder>
+
+<decoder name="macOS_loginwindow">
+  <program_name>loginwindow</program_name>
+</decoder>
+
+<decoder name="macOS_loginwindow_1">
+  <parent>macOS_loginwindow</parent>
+  <regex>[com.apple.loginwindow.logging:Standard] -[.+] | \w+: \w+.\w+.\w+.(\w+), with userID:(\d+)||loginIsComplete</regex>
+  <order>data, userID</order>
+</decoder>
+
+<decoder name="macOS_screensharingd">
+  <program_name>screensharingd</program_name>
+</decoder>
+  
+<decoder name="macOS_screensharingd_failure">
+  <parent>macOS_screensharingd</parent>
+  <regex>Authentication: (\S+) :: User Name: (\S+) :: Viewer Address: (\d+.\d+.\d+.\d+) :: Type: (\S+)</regex>
+  <order>action, dstuser, ip_address, type</order>
+</decoder>
+
+<decoder name="macOS_securityd_process">
+  <program_name>securityd</program_name>
+</decoder>
+
+<decoder name="macOS_securityd_process1">
+  <parent>macOS_securityd_process</parent>
+  <regex>[com.apple.securityd:SecServer] \S+ Session \d+ created, uid:-(\d+) sessionId:(\d+)</regex>
+  <order>uid, sessionId</order>
+</decoder>
+
+<decoder name="macOS_securityd_process1">
+  <parent>macOS_securityd_process</parent>
+  <regex>[com.apple.securityd:SecServer] \S+ Session (\d+) destroyed</regex>
+  <order>sessionId</order>
+</decoder>
