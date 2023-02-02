@@ -11,7 +11,7 @@
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 
-#include "apiclnt/sendReceive.hpp"
+#include "apiclnt/client.hpp"
 #include "base/utils/getExceptionStack.hpp"
 #include "defaultSettings.hpp"
 
@@ -119,7 +119,8 @@ void singleRequest(const api::WazuhRequest& request, const std::string& socketPa
 {
     try
     {
-        const auto response = apiclnt::sendReceive(socketPath, request);
+        apiclnt::Client client {socketPath};
+        const auto response = client.send(request);
         details::processResponse(response);
     }
     catch (const std::exception& e)
