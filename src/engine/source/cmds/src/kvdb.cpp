@@ -48,8 +48,7 @@ json::Json getParameters(const std::string& action, const std::string& name, boo
     return data;
 }
 
-json::Json
-getParameters(const std::string& action, const std::string& name, const std::string& path)
+json::Json getParameters(const std::string& action, const std::string& name, const std::string& path)
 {
     json::Json data {};
     data.setObject();
@@ -68,9 +67,7 @@ json::Json getParameters(const std::string& action, const std::string& name)
     return data;
 }
 
-json::Json getParametersKey(const std::string& action,
-                            const std::string& name,
-                            const std::string& key)
+json::Json getParametersKey(const std::string& action, const std::string& name, const std::string& key)
 {
     json::Json data {};
     data.setObject();
@@ -136,55 +133,47 @@ void singleRequest(const api::WazuhRequest& request, const std::string& socketPa
 
 void runList(const std::string& socketPath, const std::string& kvdbName, bool loaded)
 {
-    auto req = api::WazuhRequest::create(
-        details::commandName(details::API_KVDB_LIST_SUBCOMMAND),
-        details::ORIGIN_NAME,
-        details::getParameters(details::API_KVDB_LIST_SUBCOMMAND, kvdbName, loaded));
+    auto req = api::WazuhRequest::create(details::commandName(details::API_KVDB_LIST_SUBCOMMAND),
+                                         details::ORIGIN_NAME,
+                                         details::getParameters(details::API_KVDB_LIST_SUBCOMMAND, kvdbName, loaded));
 
     details::singleRequest(req, socketPath);
 }
 
-void runCreate(const std::string& socketPath,
-               const std::string& kvdbName,
-               const std::string& kvdbInputFilePath)
+void runCreate(const std::string& socketPath, const std::string& kvdbName, const std::string& kvdbInputFilePath)
 {
     auto req = api::WazuhRequest::create(
         details::commandName(details::API_KVDB_CREATE_SUBCOMMAND),
         details::ORIGIN_NAME,
-        details::getParameters(
-            details::API_KVDB_CREATE_SUBCOMMAND, kvdbName, kvdbInputFilePath));
+        details::getParameters(details::API_KVDB_CREATE_SUBCOMMAND, kvdbName, kvdbInputFilePath));
 
     details::singleRequest(req, socketPath);
 }
 
 void runDump(const std::string& socketPath, const std::string& kvdbName)
 {
-    auto req = api::WazuhRequest::create(
-        details::commandName(details::API_KVDB_DUMP_SUBCOMMAND),
-        details::ORIGIN_NAME,
-        details::getParameters(details::API_KVDB_DUMP_SUBCOMMAND, kvdbName));
+    auto req = api::WazuhRequest::create(details::commandName(details::API_KVDB_DUMP_SUBCOMMAND),
+                                         details::ORIGIN_NAME,
+                                         details::getParameters(details::API_KVDB_DUMP_SUBCOMMAND, kvdbName));
 
     details::singleRequest(req, socketPath);
 }
 
 void runDelete(const std::string& socketPath, const std::string& kvdbName)
 {
-    auto req = api::WazuhRequest::create(
-        details::commandName(details::API_KVDB_DELETE_SUBCOMMAND),
-        details::ORIGIN_NAME,
-        details::getParameters(details::API_KVDB_DELETE_SUBCOMMAND, kvdbName));
+    auto req = api::WazuhRequest::create(details::commandName(details::API_KVDB_DELETE_SUBCOMMAND),
+                                         details::ORIGIN_NAME,
+                                         details::getParameters(details::API_KVDB_DELETE_SUBCOMMAND, kvdbName));
 
     details::singleRequest(req, socketPath);
 }
 
-void runGetKV(const std::string& socketPath,
-              const std::string& kvdbName,
-              const std::string& kvdbKey)
+void runGetKV(const std::string& socketPath, const std::string& kvdbName, const std::string& kvdbKey)
 {
-    auto req = api::WazuhRequest::create(
-        details::commandName(details::API_KVDB_GET_SUBCOMMAND),
-        details::ORIGIN_NAME,
-        details::getParametersKey(details::API_KVDB_GET_SUBCOMMAND, kvdbName, kvdbKey));
+    auto req =
+        api::WazuhRequest::create(details::commandName(details::API_KVDB_GET_SUBCOMMAND),
+                                  details::ORIGIN_NAME,
+                                  details::getParametersKey(details::API_KVDB_GET_SUBCOMMAND, kvdbName, kvdbKey));
 
     details::singleRequest(req, socketPath);
 }
@@ -197,21 +186,17 @@ void runInsertKV(const std::string& socketPath,
     auto req = api::WazuhRequest::create(
         details::commandName(details::API_KVDB_INSERT_SUBCOMMAND),
         details::ORIGIN_NAME,
-        details::getParametersKeyValue(
-            details::API_KVDB_INSERT_SUBCOMMAND, kvdbName, kvdbKey, kvdbValue));
+        details::getParametersKeyValue(details::API_KVDB_INSERT_SUBCOMMAND, kvdbName, kvdbKey, kvdbValue));
 
     details::singleRequest(req, socketPath);
 }
 
-void runRemoveKV(const std::string& socketPath,
-                 const std::string& kvdbName,
-                 const std::string& kvdbKey)
+void runRemoveKV(const std::string& socketPath, const std::string& kvdbName, const std::string& kvdbKey)
 {
-    auto req = api::WazuhRequest::create(
-        details::commandName(details::API_KVDB_REMOVE_SUBCOMMAND),
-        details::ORIGIN_NAME,
-        details::getParametersKey(
-            details::API_KVDB_REMOVE_SUBCOMMAND, kvdbName, kvdbKey));
+    auto req =
+        api::WazuhRequest::create(details::commandName(details::API_KVDB_REMOVE_SUBCOMMAND),
+                                  details::ORIGIN_NAME,
+                                  details::getParametersKey(details::API_KVDB_REMOVE_SUBCOMMAND, kvdbName, kvdbKey));
 
     details::singleRequest(req, socketPath);
 }
@@ -223,119 +208,76 @@ void configure(CLI::App_p app)
     auto options = std::make_shared<Options>();
 
     // Endpoint
-    kvdbApp->add_option("-a, --api_socket", options->socketPath, "engine api address")
-        ->default_val(ENGINE_API_SOCK);
+    kvdbApp->add_option("-a, --api_socket", options->socketPath, "engine api address")->default_val(ENGINE_API_SOCK);
 
     // KVDB list subcommand
-    auto list_subcommand = kvdbApp->add_subcommand(details::API_KVDB_LIST_SUBCOMMAND,
-                                                   "List all KVDB availables.");
-    list_subcommand->add_flag(
-        "--loaded", options->loaded, "List only KVDBs loaded on memory.");
+    auto list_subcommand = kvdbApp->add_subcommand(details::API_KVDB_LIST_SUBCOMMAND, "List all KVDB availables.");
+    list_subcommand->add_flag("--loaded", options->loaded, "List only KVDBs loaded on memory.");
     list_subcommand
-        ->add_option("-n, --name",
-                     options->kvdbName,
-                     "KVDB name to match the start of the name of the available ones.")
+        ->add_option("-n, --name", options->kvdbName, "KVDB name to match the start of the name of the available ones.")
         ->default_val("");
-    list_subcommand->callback(
-        [options]()
-        { runList(options->socketPath, options->kvdbName, options->loaded); });
+    list_subcommand->callback([options]() { runList(options->socketPath, options->kvdbName, options->loaded); });
 
     // KVDB create subcommand
-    auto create_subcommand = kvdbApp->add_subcommand(
-        details::API_KVDB_CREATE_SUBCOMMAND, "Creates a KeyValueDB named db-name.");
+    auto create_subcommand =
+        kvdbApp->add_subcommand(details::API_KVDB_CREATE_SUBCOMMAND, "Creates a KeyValueDB named db-name.");
     // create kvdb name
-    create_subcommand
-        ->add_option("-n, --name", options->kvdbName, "KVDB name to be added.")
-        ->required();
+    create_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be added.")->required();
     // create kvdb from file with path
     create_subcommand
-        ->add_option(
-            "-p, --path",
-            options->kvdbInputFilePath,
-            "Path to the file to be used as input to create the KVDB. If not provided,"
-            "the KVDB will be created empty.\n"
-            "The file must be a JSON file with the following format: {\"key\": VALUE} "
-            "where VALUE can be any JSON type.")
+        ->add_option("-p, --path",
+                     options->kvdbInputFilePath,
+                     "Path to the file to be used as input to create the KVDB. If not provided,"
+                     "the KVDB will be created empty.\n"
+                     "The file must be a JSON file with the following format: {\"key\": VALUE} "
+                     "where VALUE can be any JSON type.")
         ->check(CLI::ExistingFile);
-    create_subcommand->callback(
-        [options]() {
-            runCreate(options->socketPath, options->kvdbName, options->kvdbInputFilePath);
-        });
+    create_subcommand->callback([options]()
+                                { runCreate(options->socketPath, options->kvdbName, options->kvdbInputFilePath); });
 
     // KVDB dump subcommand
-    auto dump_subcommand = kvdbApp->add_subcommand(
-        details::API_KVDB_DUMP_SUBCOMMAND,
-        "Dumps the full content of a DB named db-name to a JSON.");
+    auto dump_subcommand = kvdbApp->add_subcommand(details::API_KVDB_DUMP_SUBCOMMAND,
+                                                   "Dumps the full content of a DB named db-name to a JSON.");
     // dump kvdb name
-    dump_subcommand
-        ->add_option("-n, --name", options->kvdbName, "KVDB name to be dumped.")
-        ->required();
-    dump_subcommand->callback([options]()
-                              { runDump(options->socketPath, options->kvdbName); });
+    dump_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be dumped.")->required();
+    dump_subcommand->callback([options]() { runDump(options->socketPath, options->kvdbName); });
 
     // KVDB delete subcommand
-    auto delete_subcommand = kvdbApp->add_subcommand(
-        details::API_KVDB_DELETE_SUBCOMMAND, "Deletes a KeyValueDB named db-name.");
+    auto delete_subcommand =
+        kvdbApp->add_subcommand(details::API_KVDB_DELETE_SUBCOMMAND, "Deletes a KeyValueDB named db-name.");
     // delete KVDB name
-    delete_subcommand
-        ->add_option("-n, --name", options->kvdbName, "KVDB name to be deleted.")
-        ->required();
-    delete_subcommand->callback([options]()
-                                { runDelete(options->socketPath, options->kvdbName); });
+    delete_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be deleted.")->required();
+    delete_subcommand->callback([options]() { runDelete(options->socketPath, options->kvdbName); });
 
     // KVDB get subcommand
-    auto get_subcommand = kvdbApp->add_subcommand(
-        details::API_KVDB_GET_SUBCOMMAND,
-        "Gets key or key and value (if possible) of a DB named db-name.");
+    auto get_subcommand = kvdbApp->add_subcommand(details::API_KVDB_GET_SUBCOMMAND,
+                                                  "Gets key or key and value (if possible) of a DB named db-name.");
     // get kvdb name
-    get_subcommand
-        ->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")
-        ->required();
+    get_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
     // get key
-    get_subcommand->add_option("-k, --key", options->kvdbKey, "key name to be obtained.")
-        ->required();
-    get_subcommand->callback(
-        [options]()
-        { runGetKV(options->socketPath, options->kvdbName, options->kvdbKey); });
+    get_subcommand->add_option("-k, --key", options->kvdbKey, "key name to be obtained.")->required();
+    get_subcommand->callback([options]() { runGetKV(options->socketPath, options->kvdbName, options->kvdbKey); });
 
     // KVDB insert subcommand
-    auto insert_subcommand = kvdbApp->add_subcommand(
-        details::API_KVDB_INSERT_SUBCOMMAND, "Inserts key or key value into db-name.");
+    auto insert_subcommand =
+        kvdbApp->add_subcommand(details::API_KVDB_INSERT_SUBCOMMAND, "Inserts key or key value into db-name.");
     // insert kvdb name
-    insert_subcommand
-        ->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")
-        ->required();
+    insert_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
     // insert key
-    insert_subcommand
-        ->add_option("-k, --key", options->kvdbKey, "key name to be inserted.")
-        ->required();
+    insert_subcommand->add_option("-k, --key", options->kvdbKey, "key name to be inserted.")->required();
     // insert value
-    insert_subcommand
-        ->add_option("-v, --value", options->kvdbValue, "value to be inserted on key.")
+    insert_subcommand->add_option("-v, --value", options->kvdbValue, "value to be inserted on key.")
         ->default_val("null");
     insert_subcommand->callback(
-        [options]()
-        {
-            runInsertKV(options->socketPath,
-                        options->kvdbName,
-                        options->kvdbKey,
-                        options->kvdbValue);
-        });
+        [options]() { runInsertKV(options->socketPath, options->kvdbName, options->kvdbKey, options->kvdbValue); });
 
     // KVDB remove subcommand
-    auto remove_subcommand =
-        kvdbApp->add_subcommand("remove", "Removes key from db-name.");
+    auto remove_subcommand = kvdbApp->add_subcommand("remove", "Removes key from db-name.");
     // remove kvdb name
-    remove_subcommand
-        ->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")
-        ->required();
+    remove_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
     // remove key
-    auto key = remove_subcommand
-                   ->add_option("-k, --key", options->kvdbKey, "key name to be removed.")
-                   ->required();
-    remove_subcommand->callback(
-        [options]()
-        { runRemoveKV(options->socketPath, options->kvdbName, options->kvdbKey); });
+    auto key = remove_subcommand->add_option("-k, --key", options->kvdbKey, "key name to be removed.")->required();
+    remove_subcommand->callback([options]() { runRemoveKV(options->socketPath, options->kvdbName, options->kvdbKey); });
 }
 
 } // namespace cmd::kvdb
