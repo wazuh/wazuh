@@ -1,6 +1,6 @@
 #include <cmds/config.hpp>
 
-#include "apiclnt/sendReceive.hpp"
+#include "apiclnt/client.hpp"
 #include "defaultSettings.hpp"
 
 namespace
@@ -33,8 +33,16 @@ void processResponse(const api::WazuhResponse& response)
 
 void singleRequest(const api::WazuhRequest& request, const std::string& socketPath)
 {
-    const auto response = apiclnt::sendReceive(socketPath, request);
-    processResponse(response);
+    apiclnt::Client client(socketPath);
+    try
+    {
+        const auto response = client.send(request);
+        processResponse(response);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
 }
 } // namespace details
 
