@@ -340,6 +340,30 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         upd->dist_ref = FEED_ARCH;
         upd->json_format = 1;
 
+    } else if (strcasestr(feed, vu_feed_tag[FEED_ALMA])) {
+        if (!version) {
+            retval = OS_INVALID;
+            goto end;
+        }
+        // ALMA9
+        if (!strcmp(version, "9")) {
+            os_index = CVE_ALMA9;
+            upd->dist_tag_ref = FEED_ALMA9;
+            os_strdup(version, upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_ALMA9];
+        // ALMA8
+        } else if (!strcmp(version, "8")) {
+            os_index = CVE_ALMA8;
+            upd->dist_tag_ref = FEED_ALMA8;
+            os_strdup(version, upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_ALMA8];
+        } else {
+            merror("Invalid AlmaLinux version '%s'", version);
+            retval = OS_INVALID;
+            goto end;
+        }
+        upd->dist_ref = FEED_ALMA;
+
     } else if (strcasestr(feed, vu_feed_tag[FEED_MSU])) {
         os_index = CVE_MSU;
         upd->dist_tag_ref = FEED_MSU;
@@ -1067,7 +1091,8 @@ int wm_vuldet_provider_type(char *pr_name) {
         strcasestr(pr_name, vu_feed_tag[FEED_DEBIAN]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_ALAS]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_SUSE]) ||
-        strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
+        strcasestr(pr_name, vu_feed_tag[FEED_REDHAT]) ||
+        strcasestr(pr_name, vu_feed_tag[FEED_ALMA])) {
         return 0;
     } else if (strcasestr(pr_name, vu_feed_tag[FEED_NVD]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_MSU]) ||
