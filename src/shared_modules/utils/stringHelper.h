@@ -304,7 +304,11 @@ namespace Utils
 
     static bool isNumber(const std::string& str)
     {
-        return !str.empty() && std::string::npos == str.find_first_not_of("0123456789");
+        std::string::const_iterator it = str.begin();
+
+        while (it != str.end() && std::isdigit(*it)) ++it;
+
+        return !str.empty() && it == str.end();
     }
 }
 

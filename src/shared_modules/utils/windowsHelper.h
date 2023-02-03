@@ -200,7 +200,7 @@ namespace Utils
         {
             if (isNumber(timestamp1))
             {
-                size_t pos = timestamp2.find(" ");
+                size_t pos = timestamp2.find(' ');
 
                 if (pos != std::string::npos)
                 {
@@ -219,16 +219,14 @@ namespace Utils
                         }
                         else
                         {
-                            std::unique_ptr<tm> local_time_s { std::make_unique<tm>() };
-
-                            local_time_s->tm_year = std::stoi(timestamp1.substr(0, 4)) - REFERENCE_YEAR;
-                            local_time_s->tm_mon = std::stoi(timestamp1.substr(4, 2)) - 1;
-                            local_time_s->tm_mday = std::stoi(timestamp1.substr(6, 2));
-                            local_time_s->tm_hour = 0;
-                            local_time_s->tm_min = 0;
-                            local_time_s->tm_sec = 0;
-
-                            time_t local_time = mktime(local_time_s.get());
+                            tm local_time_s { 0 };
+                            local_time_s.tm_year = std::stoi(timestamp1.substr(0, 4)) - REFERENCE_YEAR;
+                            local_time_s.tm_mon = std::stoi(timestamp1.substr(4, 2)) - 1;
+                            local_time_s.tm_mday = std::stoi(timestamp1.substr(6, 2));
+                            local_time_s.tm_hour = 0;
+                            local_time_s.tm_min = 0;
+                            local_time_s.tm_sec = 0;
+                            time_t local_time = mktime(&local_time_s);
 
                             normalizedTimestamp = Utils::getTimestamp(local_time, false);
                         }
