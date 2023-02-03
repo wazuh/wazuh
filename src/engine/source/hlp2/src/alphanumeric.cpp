@@ -10,11 +10,10 @@
 #include <hlp/hlp.hpp>
 #include <hlp/parsec.hpp>
 #include <json/json.hpp>
-#include <utils/stringUtils.hpp>
-#include <iostream>
+
 namespace hlp
 {
-parsec::Parser<json::Json> getAlphanumericParser(std::string name, Stop, Options lst)
+parsec::Parser<json::Json> getAlphanumericParser(const std::string& name, Stop, Options lst)
 {
     if (!lst.empty())
     {

@@ -23,31 +23,31 @@ parse:
   logpar:
     # undeom id=emullamc sn=tec time="2019/04/15 07:40:49" fw=10.29.118.7 pri=medium c=mveleum m=537 msg="accept1" f=exercita n=sBonorum src= 10.132.171.15 dst= 10.107.216.138:3147:lo5057:ugitsedq5067.internal.test proto=rdp sent=5943 rcvd=1635
     - event.original: >-
-        <~log.start_message> <~log.fill> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~log.fill> m=<event.code> msg="<~log.msg_action>" <~log.fill>
+        <~log.start_message> <~> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" <~>
         src=<~/ignore/ ><source.ip> dst=<~/ignore/ ><destination.ip>:<destination.port>:<observer.egress.interface.name>:<destination.address>
         proto=<network.protocol> sent=<source.bytes> rcvd=<destination.bytes>
     # idi id=pexe sn=nes time="2016/02/12 13:12:33" fw=10.254.41.82 pri=low c=Ute m=914 msg="lupt" n=dolore src=10.92.136.230:6437:eth7178:nostrud4819.mail.test dst=10.49.111.67:884:eth3598:oreetdol1714.internal.corp
     - event.original: >-
-        <~log.start_message> id=<~log.id> sn=<~rsa.misc.serial_number> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~log.fill> m=<event.code> msg="<~log.msg_action>" <~log.fill>
+        <~log.start_message> id=<~log.id> sn=<~rsa.misc.serial_number> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" <~>
         src=<~/ignore/ ><source.nat.ip>:<source.nat.port>:<observer.ingress.interface.name>:<host.name> dst=<~/ignore/ ><destination.nat.ip>:<destination.nat.port>:<observer.egress.interface.name>:<source.address>
     # id=uaturve sn=amquisno time="2019/05/13 21:45:57" fw=10.123.74.66 pri=very-high c=mquiad m=351 msg="CSe" n=lors src=10.135.70.159 dst=10.195.223.82
     - event.original: >-
-        <~log.fill> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~log.fill> m=<event.code> msg="<~log.msg_action>" <~log.fill>
+        <~> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" <~>
         src=<~/ignore/ ><source.ip> dst=<~/ignore/ ><destination.ip>
     # id=quaea sn=ametcons time="2018/05/07 06:39:06" fw=10.74.46.22 pri=very-high c=tetur m=7 Log full; deactivating SonicWALL
     - event.original: >-
-        <~log.fill> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~log.fill> m=<event.code> <~log.fill>
+        <~> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~> m=<event.code> <~>
     # id=ritin sn=temporin time="2018-4-22 11:36:32" fw=10.122.76.148 pri=high c=tdol m=794 msg="upt" sid=mex spycat=tatem spypri=untutlab pktdatId=amcor n=ica src=10.13.66.97:2000:enp0s5411 dst=10.176.209.227:6362:eth7037 proto=ipv6/siu fw_action="allow"
     - event.original: >-
-        <~log.fill> time="<@timestamp/%Y-%m-%d %H:%M:%S>" <~log.fill> m=<event.code> msg="<~log.msg_action>" sid=<~rsa.identity.user_sid_dst> <~log.fill>
+        <~> time="<@timestamp/%Y-%m-%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" sid=<~rsa.identity.user_sid_dst> <~>
         src=<~/ignore/ ><source.ip>:<source.port>:<observer.ingress.interface.name> dst=<~/ignore/ ><destination.ip>:<destination.port>:<observer.egress.interface.name>
-        proto=<network.protocol>/<~log.fill> fw_action="<~log.fw_action>"
+        proto=<network.protocol>/<~> fw_action="<~log.fw_action>"
     # oluptate id=lit sn=santi time="2019/12/14 07:24:31" fw=10.211.112.194 pri=low c=uis m=1079 msg="Clientamcis assigned IP:10.221.220.148" n=apar
     - event.original: >-
-        <~log.start_message> id=<~log.id> sn=<~rsa.misc.serial_number> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~log.fill> m=<event.code> msg="<~log.msg_action>" <~log.fill>
+        <~log.start_message> id=<~log.id> sn=<~rsa.misc.serial_number> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" <~>
     # id=nnumqua sn=eacommod time="2016/01/29 06:09:59" fw=10.208.232.8 pri=very-high c=tur m=1197 msg="itv" sess=odoco n=ria src=10.20.234.169:1001:eth5722 dst=10.208.15.216:4257:lo6125 note= "ntsunti Protocol:udp" npcs=ciade
     - event.original: >-
-        id=<~log.id> sn=<~rsa.misc.serial_number> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~log.fill> m=<event.code> msg="<~log.msg_action>" <~log.fill>
+        id=<~log.id> sn=<~rsa.misc.serial_number> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" <~>
         src=<~/ignore/ ><source.ip>:<source.port>:<observer.ingress.interface.name> dst=<~/ignore/ ><destination.ip>:<destination.port>:<observer.egress.interface.name>
         note=<~/ignore/ >"<~log.note>" npcs=<~rsa.db.index>
     # id=ntutlabo sn=iusmodte time="2018-6-19 3:46:49" fw=10.108.84.24 pri=low c=iosamnis m=606 msg="volupt" n=rem src=10.113.100.237:3887:eth163 dst=10.251.248.228:6909 srcMac= 01:00:5e:8b:c1:b4 dstMac=01:00:5e:c3:ed:55proto=udp fw_action="deny"
@@ -56,7 +56,7 @@ parse:
         id=<event.code> sn=<~rsa.misc.serial_number> time="<@timestamp/%Y-%m-%d %H:%M:%S>"(? )fw=(? )<host.ip>(? )pri=(? )<log.level>(? )c=(? )<~rsa.misc.category>(? )m=(? )<event.code>(? )msg=(? )"<~log.msg_action>"(? )n=(? )<~rsa.misc.ntype>(? )src=(? )<source.ip>:<source.port>(?:)<?observer.ingress.interface.name>(? )dst=(? )<destination.ip>:<destination.port>(?:)<?observer.egress.interface.name>(? )srcMac=(? )<source.mac>(? )dstMac=(? )<destination.mac>proto=<network.protocol>(? )fw_action=(? )"<~log.fw_action>"
     # id=undeo sn=loremip time="2016-8-16 8:45:59" fw=10.134.0.141 pri=very-high c=uis m=1149 msg="idolore" n=onse fw_action="cancel"
     - event.original: >-
-        <~log.fill> time="<@timestamp/%Y-%m-%d %H:%M:%S>" <~log.fill> m=<event.code> msg="<~log.msg_action>" <~log.fill> fw_action="<~log.fw_action>"
+        <~> time="<@timestamp/%Y-%m-%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" <~> fw_action="<~log.fw_action>"
 
 normalize:
   - map:
@@ -77,29 +77,44 @@ normalize:
       - rsa.identity.user_sid_dst: $~rsa.identity.user_sid_dst
   - check:
       - host.name: +ef_exists
+    map:
+      - related.hosts: +a_append/$host.name
+  - check:
       - source.address: +ef_exists
     map:
-      - related.hosts: +a_append/$host.name/$source.address
+      - related.hosts: +a_append/$source.address
   - check:
       - destination.address: +ef_exists
     map:
       - related.hosts: +a_append/$destination.address
       - rsa.network.host_dst: $destination.address
+      # TODO: These checks are necessary since the following cannot be done:
+      # +a_append/$source.ip/$destination.ip .
+      # For some reason if source.ip doesn't exist and destination.ip does exist, neither will be added.
+      # Refactor this decoder when that issue is resolved.
   - check:
       - source.ip: +ef_exists
+    map:
+      - related.ip: +a_append/$source.ip
+  - check:
       - destination.ip: +ef_exists
     map:
-      - related.ip: +a_append/$source.ip/$destination.ip
+      - related.ip: +a_append/$destination.ip
   - check:
       - source.nat.ip: +ef_exists
+    map:
+      - related.ip: +a_append/$source.nat.ip
+  - check:
       - destination.nat.ip: +ef_exists
     map:
-      - related.ip: +a_append/$source.nat.ip/$destination.nat.ip
+      - related.ip: +a_append/$destination.nat.ip
   - check:
       - ~log.start_message: +ef_not_exists
     logpar:
-      - rsa.time.event_time: <~log.year>-<~log.mounth>-<~log.day>T<~log.fill>
+      - rsa.time.event_time: <~log.year>-<~log.mounth>-<~log.day>T<~>
     map:
+      # TODO: It is not yet possible to include escaped characters in auxiliary arguments.
+      # When this functionality is implemented, add it to the decoder
       - aux_slash: '/'
       - rsa.time.date: +s_concat/$~log.year/$aux_slash/$~log.mounth/$aux_slash/$~log.day
       - aux_slash: +ef_delete
@@ -109,6 +124,10 @@ normalize:
       - ~log.note: <~log.note.header> <~log.note.protocol.header>:<~log.note.protocol.payload>
     map:
       - network.protocol: $~log.note.protocol.payload
+      # If the "fw_action" field is present in the log event, then event.action is mapped to the same value of "fw_action".
+      # If fw_action is not present in the log event, the content of the "msg" field is examined and it is verified that
+      # it is equal to some of the allowed values (cancel, deny, allow, accept or block).
+      # If it doesn't match any of those values and also fw_action doesn't exist, then event.action doesn't get mapped.
   - check:
       - ~log.fw_action: +ef_exists
     map:
