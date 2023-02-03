@@ -19,11 +19,13 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     int s = 0;
     int tries = 0;
     int temp_file_created = 0;
+    int opt_file_created = 0;
     unsigned int alert_level = 0;
     unsigned int rule_id = 0;
     char integration_path[2048 + 1];
     char exec_tmp_file[2048 + 1];
     char exec_full_cmd[4096 + 1];
+    char opt_tmp_file[2048 + 1];
     FILE *fp;
 
     file_queue jfileq;
@@ -391,13 +393,40 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 }
             }
 
+            /* Create temp file for integration options. */
+            if(integrator_config[s]->options != NULL){
+                snprintf(opt_tmp_file, 2048, "/tmp/%s-%d-%ld.options",
+                            integrator_config[s]->name, (int)time(0), (long int)os_random());
+
+                fp = fopen(opt_tmp_file, "w");
+                if(!fp)
+                {
+                    mdebug2("File %s couldn't be created.", opt_tmp_file);
+                    opt_tmp_file[0] = '\0';
+                }
+                else
+                {
+                    fprintf(fp, "%s\n", integrator_config[s]->options);
+                    opt_file_created = 1;
+                    mdebug2("file %s was written.", opt_tmp_file);
+                    fclose(fp);
+                }
+            }
+
             int dbg_lvl = isDebug();
-            os_snprintf(exec_full_cmd, 4095, "%s %s %s %s %s", INTEGRATORDIR, exec_tmp_file, integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey, integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
+            os_snprintf(exec_full_cmd, 4095, "%s %s %s %s %s %s", 
+                INTEGRATORDIR,
+                exec_tmp_file, 
+                integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey, 
+                integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl, 
+                dbg_lvl <= 0 ? "" : "debug", 
+                opt_file_created == 0 ? "" : opt_tmp_file);
+
             if (dbg_lvl <= 0) strcat(exec_full_cmd, " > /dev/null 2>&1");
 
             mdebug1("Running: %s", exec_full_cmd);
 
-            char **cmd = OS_StrBreak(' ', exec_full_cmd, 5);
+            char **cmd = OS_StrBreak(' ', exec_full_cmd, 7);
 
             if(cmd) {
                 wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
@@ -434,6 +463,10 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(temp_file_created == 1) {
                 unlink(exec_tmp_file);
                 temp_file_created = 0;
+            }
+            if(opt_file_created == 1) {
+                unlink(opt_tmp_file);
+                opt_file_created = 0;
             }
 
         }
