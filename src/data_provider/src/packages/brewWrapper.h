@@ -47,6 +47,9 @@ class BrewWrapper final : public IPackageWrapper
                     break;
                 }
             }
+
+            // Some brew packages have the version in the name separated by a '@'
+            m_name = Utils::substrOnLastOccurrence(m_name, "@");
         }
 
         ~BrewWrapper() = default;
