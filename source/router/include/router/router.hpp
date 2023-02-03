@@ -24,6 +24,9 @@ constexpr auto JSON_PATH_NAME = "/name";                      ///< Json path for
 constexpr auto JSON_PATH_PRIORITY = "/priority";              ///< Json path for the priority of the route
 constexpr auto JSON_PATH_TARGET = "/target";                  ///< Json path for the target of the route
 
+constexpr auto JSON_PATH_EVENT = "/event"; ///< Json path for the event for enqueue
+
+
 /**
  * @brief Router class to manage routes and events
  *
@@ -113,7 +116,7 @@ private:
      * @param params Parameters for event push ("/event")
      * @return api::WazuhResponse with the result of the operation
      */
-    api::WazuhResponse apiPushEvent(const json::Json& params);
+    api::WazuhResponse apiEnqueueEvent(const json::Json& params);
 
 public:
     Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store, std::size_t threads = 1)
@@ -211,10 +214,10 @@ public:
     /**
      * @brief Push an event to the queue of the router
      *
-     * @param event event to push
+     * @param event event to push to the queue
      * @return std::optional<base::Error> A error with description if the event can't be pushed
      */
-    // std::optional<base::Error> pushEvent(base::Event event);
+    std::optional<base::Error> enqueueEvent(base::Event event);
 
     /**
      * @brief Delete a route from the router
