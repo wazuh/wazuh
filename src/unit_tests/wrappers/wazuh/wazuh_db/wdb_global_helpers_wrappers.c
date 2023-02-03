@@ -129,7 +129,9 @@ int __wrap_wdb_insert_agent(int id, const char *name, __attribute__((unused)) co
     check_expected(name);
     check_expected(register_ip);
     check_expected(internal_key);
-    check_expected(group);
+    if (group) {
+        check_expected(group);
+    }
     check_expected(keep_date);
     return mock();
 }

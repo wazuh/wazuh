@@ -369,7 +369,6 @@ void test_sync_keys_with_wdb_insert(void **state) {
     rb_tree *tree = NULL;
     os_calloc(1, sizeof(rb_tree), tree);
 
-    char *test_group = strdup("TESTGROUP");
     char *test_ip = "1.1.1.1";
 
     char **ids = NULL;
@@ -381,9 +380,6 @@ void test_sync_keys_with_wdb_insert(void **state) {
     expect_value(__wrap_rbtree_get, tree, tree);
     expect_string(__wrap_rbtree_get, key, keys.keyentries[0]->id);
     will_return(__wrap_rbtree_get, NULL);
-
-    expect_value(__wrap_wdb_get_agent_group, id, 1);
-    will_return(__wrap_wdb_get_agent_group, test_group);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:database");
     expect_string(__wrap__mtdebug2, formatted_msg, "Synchronizing agent 001 'agent1'.");
@@ -397,7 +393,6 @@ void test_sync_keys_with_wdb_insert(void **state) {
     expect_string(__wrap_wdb_insert_agent, name, keys.keyentries[0]->name);
     expect_string(__wrap_wdb_insert_agent, register_ip, test_ip);
     expect_string(__wrap_wdb_insert_agent, internal_key, keys.keyentries[0]->raw_key);
-    expect_string(__wrap_wdb_insert_agent, group, test_group);
     expect_value(__wrap_wdb_insert_agent, keep_date, 1);
     will_return(__wrap_wdb_insert_agent, 1);
 
@@ -455,7 +450,6 @@ void test_sync_keys_with_wdb_insert_delete(void **state) {
     rb_tree *tree = NULL;
     os_calloc(1, sizeof(rb_tree), tree);
 
-    char *test_group = strdup("TESTGROUP");
     char *test_ip = "1.1.1.1";
     char *test_name = strdup("TESTNAME");
 
@@ -469,9 +463,6 @@ void test_sync_keys_with_wdb_insert_delete(void **state) {
     expect_string(__wrap_rbtree_get, key, keys.keyentries[0]->id);
     will_return(__wrap_rbtree_get, NULL);
 
-    expect_value(__wrap_wdb_get_agent_group, id, 1);
-    will_return(__wrap_wdb_get_agent_group, test_group);
-
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:database");
     expect_string(__wrap__mtdebug2, formatted_msg, "Synchronizing agent 001 'agent1'.");
 
@@ -484,7 +475,6 @@ void test_sync_keys_with_wdb_insert_delete(void **state) {
     expect_string(__wrap_wdb_insert_agent, name, keys.keyentries[0]->name);
     expect_string(__wrap_wdb_insert_agent, register_ip, test_ip);
     expect_string(__wrap_wdb_insert_agent, internal_key, keys.keyentries[0]->raw_key);
-    expect_string(__wrap_wdb_insert_agent, group, test_group);
     expect_value(__wrap_wdb_insert_agent, keep_date, 1);
     will_return(__wrap_wdb_insert_agent, 0);
 
