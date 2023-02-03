@@ -491,7 +491,7 @@ InstallCommon(){
         INSTALL="ginstall"
     elif [ ${DIST_NAME} = "HP-UX" ]; then
         INSTALL="/usr/local/coreutils/bin/install"
-    elif [ ${NUNAME} = "AIX" ]; then
+    elif [ ${DIST_NAME} = "AIX" ]; then
 	      INSTALL="/opt/freeware/bin/install"
     fi
 
@@ -693,6 +693,12 @@ InstallServer(){
 
     InstallLocal
 
+    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-groups
+
+    if [ ! -f ${PREFIX}/queue/agents-timestamp ]; then
+        ${INSTALL} -m 0600 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/queue/agents-timestamp
+    fi
+
     if [ "X$BUILDCLUSTERD" = "Xyes"   ]; then
         ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/cluster.log
     fi
@@ -707,13 +713,6 @@ InstallServer(){
         ${INSTALL} -m 0750 -o root -g 0 ossec-remoted ${PREFIX}/bin
         ${INSTALL} -m 0750 -o root -g 0 ossec-authd ${PREFIX}/bin
 
-
-        ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
-        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-groups
-
-        if [ ! -f ${PREFIX}/queue/agents-timestamp ]; then
-            ${INSTALL} -m 0600 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/queue/agents-timestamp
-        fi
 
         ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
         ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
