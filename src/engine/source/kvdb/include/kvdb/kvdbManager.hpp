@@ -130,13 +130,11 @@ public:
      *
      * @param name of the KVDB where to write the key
      * @param key to write.
-     * @param value to fill corresponding to the key. If it's empty, it will write a null
-     * value.
+     * @param value to fill corresponding to the key. If it's empty, it will write a null value.
      * @return std::optional<base::Error> error message or std::nullopt if no error
      */
-    std::optional<base::Error> writeKey(const std::string& name,
-                                               const std::string& key,
-                                               const std::string& value = "null");
+    std::optional<base::Error>
+    writeKey(const std::string& name, const std::string& key, const std::string& value = "null");
 
     /**
      * @brief Writes a key or a key value to the KVDB named name.
