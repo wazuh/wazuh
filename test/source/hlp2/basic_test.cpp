@@ -324,7 +324,19 @@ TEST(HLP2, AlphanumericParser)
                 {},
                 Options(),
                 fn("id98A:69"),
-                0}
+                0},
+        TestCase {"idARGbyu",
+                true,
+                {},
+                Options(),
+                fn("idARGbyu"),
+                8},
+        TestCase {"0123456789",
+                true,
+                {},
+                Options(),
+                fn("0123456789"),
+                10}
     };
 
     for (auto t : testCases)

@@ -32,6 +32,7 @@ parse:
 
 normalize:
   - map:
+      - event.action: $~tmp.msg
       - event.code: $~tmp.m
       - event.dataset: sonicwall.firewall
       - event.kind: event
@@ -56,10 +57,10 @@ normalize:
       - source.ip: $~tmp.src.ip
       - source.port: $~tmp.src.port
       - related.ip: +a_append/$~tmp.src.ip
-  - map:
-      - ~tmp.proto: +s_trim/end/\/
-  - check:
-      - ~tmp.proto: 50000
+  - logpar:
+      - ~tmp.proto: <~tmp.protocol>/<~tmp.port/long>
+    check:
+      - ~tmp.port: 50000
     map:
       - rsa.internal.event_desc: $~tmp.msg
       - rsa.internal.msg: $~tmp.msg
