@@ -684,7 +684,7 @@ public:
      * @throws std::runtime_error If path is invalid.
      */
     void appendJson(const Json& value, std::string_view path = "");
-    
+
     /**
      * @brief Erase Json object at the path.
      *

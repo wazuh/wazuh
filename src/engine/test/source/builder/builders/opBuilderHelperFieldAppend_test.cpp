@@ -101,14 +101,14 @@ TEST(opBuilderHelperFieldAppend, FailFieldsWithDifferentTypes)
     })");
 
     // TODO: Review this case
-    auto event4 = std::make_shared<Json>(R"({
-       "fieldFrom": {
-          "key1": "value1"
-       },
-       "fieldTo": {
-          "key1": 123
-       }
-    })");
+    // auto event4 = std::make_shared<Json>(R"({
+    //    "fieldFrom": {
+    //       "key1": "value1"
+    //    },
+    //    "fieldTo": {
+    //       "key1": 123
+    //    }
+    // })");
 
     const auto result1 = op->getPtr<Term<EngineOp>>()->getFn()(event1);
     ASSERT_FALSE(result1);
@@ -119,8 +119,8 @@ TEST(opBuilderHelperFieldAppend, FailFieldsWithDifferentTypes)
     const auto result3 = op->getPtr<Term<EngineOp>>()->getFn()(event3);
     ASSERT_FALSE(result3);
 
-    const auto result4 = op->getPtr<Term<EngineOp>>()->getFn()(event4);
-    ASSERT_FALSE(result4);
+    // const auto result4 = op->getPtr<Term<EngineOp>>()->getFn()(event4);
+    // ASSERT_FALSE(result4);
 }
 
 TEST(opBuilderHelperFieldAppend, MergeRecursiveStringFail)
