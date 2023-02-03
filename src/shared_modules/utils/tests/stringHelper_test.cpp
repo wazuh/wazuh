@@ -216,7 +216,8 @@ TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrectEscapeCharacterEmptyResult
 
 /* Utils::substrOnLastOccurrence() tests */
 
-TEST_F(StringUtilsTest, substrOnLastOccurrenceCorrect) {
+TEST_F(StringUtilsTest, substrOnLastOccurrenceCorrect)
+{
     EXPECT_EQ(Utils::substrOnLastOccurrence("hello         world", "         "), "hello");
 }
 
