@@ -72,7 +72,7 @@ public:
 
     /**
      * @brief Construct a new Wazuh Response object
-     * 
+     *
      * The error code will be set to 0 and the data will be an empty json object.
      * @param message Messsage to be sent as a response
      */

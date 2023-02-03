@@ -29,14 +29,6 @@ public:
     validateEnvironment(const json::Json& json) const = 0;
 
     /**
-     * @brief Validate a route.
-     *
-     * @param json Route Json definition.
-     * @return std::optional<base::Error> An error if the Route is not valid. (Invalid definition)
-     */
-    virtual std::optional<base::Error> validateRoute(const json::Json& json) const = 0;
-
-    /**
      * @brief Validate an Asset.
      *
      * @param json Asset Json definition.
