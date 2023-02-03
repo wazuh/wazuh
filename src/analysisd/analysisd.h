@@ -37,7 +37,6 @@ extern OSDecoderInfo *NULL_Decoder;
 extern rlim_t nofile;
 extern int sys_debug_level;
 extern OSDecoderInfo *fim_decoder;
-extern time_t current_time;
 
 /**
  * @brief Structure to save all CDB lists.
@@ -107,5 +106,24 @@ extern int num_rule_matching_threads;
 #define FIM_MAX_WAZUH_DB_ATTEMPS 5
 #define SYS_MAX_WAZUH_DB_ATTEMPS 5
 #define PM_MAX_WAZUH_DB_ATTEMPS 5
+
+/**
+ * @brief mutex for any condition passed as an argument
+ * @return none
+ * */
+#define w_guard_mutex_variable(mutex, AnyVariable)              \
+    w_mutex_lock(&mutex);                                       \
+    (void)(AnyVariable);                                        \
+    w_mutex_unlock(&mutex)
+
+/**
+ * @breif mutex for any condition passed as an argument
+ * @return condition the evaluated condition
+ * */
+#define w_guard_mutex_conditioned_variable(mutex, AnyVariable)  \
+    ({w_mutex_lock(&mutex);                                     \
+    bool condition = (AnyVariable);                             \
+    w_mutex_unlock(&mutex);                                     \
+    condition;})
 
 #endif /* LOGAUDIT_H */

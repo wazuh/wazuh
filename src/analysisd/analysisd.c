@@ -213,6 +213,9 @@ static pthread_mutex_t hourly_firewall_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* Accumulate mutex */
 static pthread_mutex_t accumulate_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+static pthread_mutex_t current_time_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t time_ignored_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Reported variables */
 static int reported_syscheck = 0;
 static int reported_syscollector = 0;
@@ -231,6 +234,8 @@ static int reported_eps_drop_hourly = 0;
 pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_check_hour_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
+/* Hourly alerts mutex */
+pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -242,6 +247,9 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 
 /* CPU Info*/
 static int cpu_cores;
+
+time_t w_get_current_time(void);
+static time_t current_time ;
 
 /* Print help statement */
 __attribute__((noreturn))
@@ -490,11 +498,11 @@ int main_analysisd(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    /* Chroot */
+    /* Chroot 
     if (Privsep_Chroot(home_path) < 0) {
         merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
-    nowChroot();
+    nowChroot();*/
 
     /* Set the user */
     if (Privsep_SetUser(uid) < 0) {
@@ -1146,7 +1154,7 @@ static void DumpLogstats()
     fprintf(flog, "%d--%d--%d--%d--%d\n\n",
             thishour,
             hourly_alerts, hourly_events, hourly_syscheck, hourly_firewall);
-    hourly_alerts = 0;
+    w_guard_mutex_variable(hourly_alert_mutex, (hourly_alerts = 0));
     hourly_events = 0;
     hourly_syscheck = 0;
     hourly_firewall = 0;
@@ -2045,24 +2053,26 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             }
 
             /* Check ignore time */
-            if (t_currently_rule->ignore_time) {
-                if (t_currently_rule->time_ignored == 0) {
-                    t_currently_rule->time_ignored = lf->generate_time;
+            if (w_guard_mutex_conditioned_variable(time_ignored_mutex, (t_currently_rule->ignore_time))) {
+                if (w_guard_mutex_conditioned_variable(time_ignored_mutex, (t_currently_rule->time_ignored == 0))) {
+                    w_guard_mutex_variable(time_ignored_mutex,(t_currently_rule->time_ignored = lf->generate_time));
                 }
                 /* If the current time - the time the rule was ignored
                     * is less than the time it should be ignored,
                     * alert about the parent one instead
                     */
-                else if ((lf->generate_time - t_currently_rule->time_ignored)
-                            < t_currently_rule->ignore_time) {
-                    if (t_currently_rule->prev_rule) {
-                        t_currently_rule = (RuleInfo*)t_currently_rule->prev_rule;
+                else if (w_guard_mutex_conditioned_variable(time_ignored_mutex,
+                 ((lf->generate_time - t_currently_rule->time_ignored) < t_currently_rule->ignore_time))) {
+
+                    if (lf->prev_rule) {
+                        t_currently_rule = (RuleInfo*)lf->prev_rule;
                         w_FreeArray(lf->last_events);
                     } else {
                         break;
                     }
                 } else {
-                    t_currently_rule->time_ignored = lf->generate_time;
+                    w_guard_mutex_conditioned_variable(time_ignored_mutex,
+                     (t_currently_rule->time_ignored = lf->generate_time));
                 }
             }
 
@@ -2185,7 +2195,7 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
     char mon[4] = {0};
 
     while(1){
-        time(&current_time);
+        w_guard_mutex_variable(current_time_mutex, (current_time = time(NULL)));
         localtime_r(&c_time, &tm_result);
         day = tm_result.tm_mday;
         year = tm_result.tm_year + 1900;
@@ -2372,4 +2382,10 @@ void w_init_queues(){
 
     /* Initialize upgrade module message queue */
     upgrade_module_input = queue_init(getDefine_Int("analysisd", "upgrade_queue_size", 128, 2000000));
+}
+
+time_t w_get_current_time(void) {
+    time_t _current_time;
+    w_guard_mutex_variable(current_time_mutex, (_current_time = current_time));
+    return _current_time;
 }
