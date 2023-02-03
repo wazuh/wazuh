@@ -2,6 +2,7 @@ add_library(router STATIC
     src/runtimeEnvironment.cpp
     src/environmentManager.cpp
     src/router.cpp
+    src/route.cpp
 )
 
 target_link_libraries(router
@@ -10,6 +11,7 @@ target_link_libraries(router
     base
     json
     rxbk
+    store::istore
 )
 
 target_include_directories(router

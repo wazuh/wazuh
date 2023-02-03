@@ -100,7 +100,7 @@ void runStart(ConfHandler confManager)
         case 3: logConfig.logLevel = logging::LogLevel::Error; break;
         default: logging::LogLevel::Error;
     }
-    logConfig.header = "{YmdHMSe} {t} {l}: ";
+    logConfig.header = "{YmdHMSe} {t} {l}: "; // On debug mode, add the thread id, file, function and line
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
     WAZUH_LOG_INFO("Logging initialized");
@@ -178,8 +178,7 @@ void runStart(ConfHandler confManager)
         api::catalog::cmds::registerAllCmds(catalog, server->getRegistry());
         WAZUH_LOG_DEBUG("Catalog API registered.")
 
-        // TODO Change everithing of default environment to a mechanism to create load a last configuration of route
-        router = std::make_shared<router::Router>(builder, threads);
+        router = std::make_shared<router::Router>(builder, store, threads);
         router->run(server->getEventQueue());
         g_exitHanlder.add([router]() { router->stop(); });
         WAZUH_LOG_INFO("Router initialized.");
@@ -192,15 +191,6 @@ void runStart(ConfHandler confManager)
         api::config::cmds::registerCommands(server->getRegistry(), confManager);
         WAZUH_LOG_DEBUG("Configuration manager API registered.");
 
-        // Up default environment
-        auto error = router->addRoute(environment);
-        if (error)
-        {
-            WAZUH_LOG_WARN("An error occurred while creating the default environment \"{}\": {}.",
-                           environment,
-                           error.value().message);
-            WAZUH_LOG_WARN("Engine running without active environment.")
-        }
     }
     catch (const std::exception& e)
     {
