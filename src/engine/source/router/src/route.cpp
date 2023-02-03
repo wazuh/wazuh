@@ -1,53 +1,22 @@
-#include "route.hpp"
+#include <router/route.hpp>
 
-namespace builder
+namespace router
 {
 
 namespace
 {
-constexpr auto PATH_TARGET = "target";
-constexpr auto PATH_PRIORITY = "priority";
+
 constexpr int MAX_PRIORITY = 255L;
 constexpr int MIN_PRIORITY = 0L;
+
 } // namespace
 
-Route::Route(json::Json jsonDefinition, std::shared_ptr<builder::internals::Registry> registry)
+Route::Route(builder::Asset assetRoute, const std::string& target, int priority)
+    : m_filter {assetRoute.getExpression()}
+    , m_name {assetRoute.m_name}
+    , m_target {target}
 {
-    // Get the target
-    auto targetPath = json::Json::formatJsonPath(PATH_TARGET);
-    if (auto target = jsonDefinition.getString(targetPath))
-    {
-        m_target = target.value();
-    }
-    else
-    {
-        throw std::runtime_error("Route has no target or target is not a string.");
-    }
-
-    if (m_target.empty())
-    {
-        throw std::runtime_error(fmt::format("Route '{}' has an empty target.", m_name));
-    }
-    jsonDefinition.erase(targetPath);
-
-    // Get the priority
-    auto priorityPath = json::Json::formatJsonPath(PATH_PRIORITY);
-    if (auto priority = jsonDefinition.getInt(priorityPath))
-    {
-        setPriority(priority.value());
-    }
-    else
-    {
-        throw std::runtime_error(R"(Route has no "priority" or "priority" is not an integer.)");
-    }
-    jsonDefinition.erase(priorityPath);
-
-    // Get the expression
-    auto assetRoute = std::make_shared<builder::Asset>(jsonDefinition, builder::Asset::Type::ROUTE, registry);
-    m_expr = assetRoute->getExpression();
-
-    // Get the name
-    m_name = assetRoute->m_name;
+    setPriority(priority);
 }
 
 void Route::setPriority(int priority)
@@ -59,7 +28,7 @@ void Route::setPriority(int priority)
                                              MIN_PRIORITY,
                                              MAX_PRIORITY));
     }
-    m_priority = priority;
+    m_priority = static_cast<std::size_t>(priority);
 }
 
 bool Route::executeExpression(base::Expression expression, base::Event event) const
@@ -127,4 +96,4 @@ bool Route::executeExpression(base::Expression expression, base::Event event) co
     }
 }
 
-} // namespace builder
+} // namespace router

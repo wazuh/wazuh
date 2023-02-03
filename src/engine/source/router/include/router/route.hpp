@@ -1,5 +1,5 @@
-#ifndef _BUILDER_ROUTE_H
-#define _BUILDER_ROUTE_H
+#ifndef _ROUTER_ROUTE_H
+#define _ROUTER_ROUTE_H
 
 #include <memory>
 #include <string>
@@ -9,26 +9,24 @@
 #include <baseTypes.hpp>
 #include <json/json.hpp>
 
-#include "asset.hpp"
-#include "expression.hpp"
-#include "registry.hpp"
+#include <expression.hpp>
+#include <asset.hpp>
 
-namespace builder
+namespace router
 {
 
 /**
- * @brief Represents a route asset, it is used to route events to a destination ("target")
+ * @brief Represents a route, it is used to route events to a destination ("target")
  *
- * The route is defined by a name, a target and a priority and the expression to match the event.
+ * The route is defined by a name, a target, a priority and the expression to match the event.
  */
 class Route
 {
 private:
-    std::string m_name;     ///< Name of the route
-    std::string m_target;   ///< Target of the route
-    std::size_t m_priority; ///< Priority of the route, the lower the higher priority
-
-    base::Expression m_expr; ///< Expression to match the event
+    std::string m_name;      ///< Name of the route
+    std::string m_target;    ///< Target of the route
+    std::size_t m_priority;  ///< Priority of the route, the lower the higher priority
+    base::Expression m_filter; ///< Expression to match the event
 
     /**
      * @brief Execute an expression
@@ -45,15 +43,12 @@ public:
     /**
      * @brief Construct a new Route object
      *
-     * The json definition must have the following fields:
-     * - name: Name of the route
-     * - target: Target of the route (Destination environment)
-     * - priority: Priority of the route
-     * - check: Optional, expression to match the event, if not present the route will match all events
-     * @param jsonDefinition Json definition of the route
-     * @param registry Registry to get the helpers and check stage
+     * @param assetRoute Route asset (Contains the name and expression)
+     * @param target Target of the route (Destination environment of the event)
+     * @param priority Priority of the route
+     * @throw std::runtime_error if the priority is out of range
      */
-    Route(json::Json jsonDefinition, std::shared_ptr<builder::internals::Registry> registry);
+    Route(builder::Asset assetRoute, const std::string& target, int priority);
 
     /**
      * @brief Get the Name of the route
@@ -76,7 +71,7 @@ public:
     /**
      * @brief Set the Priority of the route
      * @param priority Priority of the route
-     * @throw std::runtime_error if the priority is out of range ( < 0 or > 255)
+     * @throw std::runtime_error if the priority is out of range
      */
     void setPriority(int priority);
 
@@ -86,9 +81,9 @@ public:
      * @param event Event to check
      * @return true if the route accept the event, false otherwise
      */
-    bool accept(base::Event event) const { return executeExpression(m_expr, event); }
+    bool accept(base::Event event) const { return executeExpression(m_filter, event); }
 };
 
 } // namespace builder
 
-#endif // _BUILDER_ROUTE_H
+#endif // _ROUTER_ROUTE_H

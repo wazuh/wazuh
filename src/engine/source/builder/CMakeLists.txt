@@ -53,7 +53,6 @@ add_library(builders OBJECT
   builders/stageBuilderParse.cpp
   definitions.cpp
   environment.cpp
-  route.cpp
   registry.cpp
 )
 

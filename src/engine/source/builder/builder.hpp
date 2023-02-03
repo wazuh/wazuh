@@ -15,7 +15,6 @@
 #include "asset.hpp"
 #include "environment.hpp"
 #include "registry.hpp"
-#include "route.hpp"
 
 namespace builder
 {
@@ -52,14 +51,14 @@ public:
     }
 
     /**
-     * @brief Build a route from the store.
+     * @brief Build a asset route from the store.
      *
      * @param name Name of the route.
      * @return The route.
      * @throws std::runtime_error if the route could not be obtained from the store or if the route definition is
      * invalid.
      */
-    Route buildRoute(const base::Name& name) const
+    Asset buildRoute(const base::Name& name) const
     {
         auto routeJson = m_storeRead->get(name);
         if (std::holds_alternative<base::Error>(routeJson))
@@ -69,7 +68,7 @@ public:
                                                  name.fullName(),
                                                  std::get<base::Error>(routeJson).message));
         }
-        return Route {std::get<json::Json>(routeJson), m_registry};
+        return Asset {std::get<json::Json>(routeJson), Asset::Type::ROUTE, m_registry};
     }
 
     std::optional<base::Error> validateEnvironment(const json::Json& json) const override
@@ -78,23 +77,6 @@ public:
         {
             Environment env {json, m_storeRead, m_registry};
             env.getExpression();
-        }
-        catch (const std::exception& e)
-        {
-            return base::Error {utils::getExceptionStack(e)};
-        }
-
-        return std::nullopt;
-    }
-
-    /**
-     * @copydoc IValidator::validateRoute
-     */
-    std::optional<base::Error> validateRoute(const json::Json& json) const override
-    {
-        try
-        {
-            Route route {json, m_registry};
         }
         catch (const std::exception& e)
         {

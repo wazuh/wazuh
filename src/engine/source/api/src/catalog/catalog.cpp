@@ -420,17 +420,14 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
     // Builder validator
     std::optional<base::Error> validationError;
     if (item.m_type == Resource::Type::DECODER || item.m_type == Resource::Type::RULE
-        || item.m_type == Resource::Type::FILTER || item.m_type == Resource::Type::OUTPUT)
+        || item.m_type == Resource::Type::FILTER || item.m_type == Resource::Type::OUTPUT
+        || item.m_type == Resource::Type::ROUTE)
     {
         validationError = m_validator->validateAsset(content);
     }
     else if (item.m_type == Resource::Type::ENVIRONMENT)
     {
         validationError = m_validator->validateEnvironment(content);
-    }
-    else if (item.m_type == Resource::Type::ROUTE)
-    {
-        validationError = m_validator->validateRoute(content);
     }
     else
     {

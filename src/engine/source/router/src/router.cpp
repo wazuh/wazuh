@@ -9,28 +9,20 @@ namespace router
 {
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
 
-std::optional<base::Error> Router::addRoute(const std::string& name, std::optional<int> optPriority)
+std::optional<base::Error> Router::addRoute(const std::string& name, const std::string& envName, int priority)
 {
     try
     {
         // Build the same route for each thread
-        std::vector<builder::Route> routeInstances {};
+        std::vector<Route> routeInstances {};
         routeInstances.reserve(m_numThreads);
         for (std::size_t i = 0; i < m_numThreads; ++i)
         {
             // routeInstances[i] = builder::Route {jsonDefinition, m_registry};
-            auto r = m_builder->buildRoute(name);
-            if (optPriority)
-            {
-                r.setPriority(optPriority.value());
-            }
-            routeInstances.push_back(r);
-        }
+            auto filter = m_builder->buildRoute(name);
 
-        // Get the route name, target and priority
-        const auto routeName = routeInstances.front().getName();
-        const auto envName = routeInstances.front().getTarget();
-        const auto priority = routeInstances.front().getPriority();
+            routeInstances.emplace_back(Route {filter, envName, priority});
+        }
 
         // Add the environment
         auto err = m_environmentManager->addEnvironment(envName);
@@ -44,9 +36,9 @@ std::optional<base::Error> Router::addRoute(const std::string& name, std::option
             std::unique_lock lock {m_mutexRoutes};
             std::optional<base::Error> err = std::nullopt;
             // Check if the route already exists, should we update it?
-            if (m_namePriority.find(routeName) != m_namePriority.end())
+            if (m_namePriority.find(name) != m_namePriority.end())
             {
-                err = base::Error {fmt::format("Route '{}' already exists", routeName)};
+                err = base::Error {fmt::format("Route '{}' already exists", name)};
             }
             // Check if the priority is already taken
             if (m_priorityRoute.find(priority) != m_priorityRoute.end())
@@ -60,7 +52,7 @@ std::optional<base::Error> Router::addRoute(const std::string& name, std::option
                 m_environmentManager->deleteEnvironment(envName);
                 return err;
             }
-            m_namePriority.insert(std::make_pair(routeName, priority));
+            m_namePriority.insert(std::make_pair(name, priority));
             m_priorityRoute.insert(std::make_pair(priority, std::move(routeInstances)));
         }
     }
@@ -68,6 +60,7 @@ std::optional<base::Error> Router::addRoute(const std::string& name, std::option
     {
         return base::Error {e.what()};
     }
+    dumpTableToStorage();
     return std::nullopt;
 }
 
@@ -93,6 +86,7 @@ std::optional<base::Error> Router::removeRoute(const std::string& routeName)
     m_priorityRoute.erase(it2);
     lock.unlock();
 
+    dumpTableToStorage();
     return m_environmentManager->deleteEnvironment(envName);
 }
 
@@ -168,9 +162,26 @@ std::optional<base::Error> Router::changeRoutePriority(const std::string& name, 
     it->second = priority;
     m_priorityRoute.insert(std::make_pair(priority, std::move(it2->second)));
     m_priorityRoute.erase(it2);
+    lock.unlock();
 
+    dumpTableToStorage();
     return std::nullopt;
 }
+
+// std::optional<base::Error> Router::pushEvent(base::Event event)
+// {
+//     if (!m_isRunning.load() || !m_queue)
+//     {
+//         return base::Error {"The router queue is not initialized"};
+//     }
+//
+//     if (m_queue->try_enqueue(std::move(event)))
+//     {
+//         return std::nullopt;
+//     }
+//     return base::Error {"The router queue is in high load"};
+//
+// }
 
 std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
 {
@@ -260,6 +271,10 @@ api::CommandFn Router::apiCallbacks()
         {
             response = apiChangeRoutePriority(params);
         }
+        // else if(action.value() == "push_event")
+        // {
+        //     response = apiPushEvent(params);
+        // }
         else
         {
             response.message(fmt::format("Invalid action '{}'", action.value()));
@@ -275,19 +290,26 @@ api::CommandFn Router::apiCallbacks()
 api::WazuhResponse Router::apiSetRoute(const json::Json& params)
 {
     api::WazuhResponse response {};
-    const auto name = params.getString("/name");
-    const auto priority = params.getInt("/priority");
+    const auto name = params.getString(JSON_PATH_NAME);
+    const auto priority = params.getInt(JSON_PATH_PRIORITY);
+    const auto target = params.getString(JSON_PATH_TARGET);
     if (!name)
     {
+        response.message(R"(Error: Error: Missing "name" parameter)");
+    } else if (!priority)
+    {
         response.message(R"(Error: Error: Missing "priority" parameter)");
+    } else if (!target)
+    {
+        response.message(R"(Error: Error: Missing "target" parameter)");
     }
     else
     {
 
-        const auto err = addRoute(name.value(), priority);
+        const auto err = addRoute(name.value(), target.value(), priority.value());
         if (err)
         {
-            response.message(std::string{"Error: "} + err.value().message);
+            response.message(std::string {"Error: "} + err.value().message);
         }
         else
         {
@@ -299,29 +321,14 @@ api::WazuhResponse Router::apiSetRoute(const json::Json& params)
 
 api::WazuhResponse Router::apiGetRoutes(const json::Json& params)
 {
-    json::Json data {};
-    data.setArray();
-
-    const std::string pathName {json::Json::formatJsonPath("name")};
-    const std::string pathPriority {json::Json::formatJsonPath("priority")};
-    const std::string pathTarget {json::Json::formatJsonPath("target")};
-
-    const auto table = getRouteTable();
-    for (const auto& [name, priority, envName] : table)
-    {
-        json::Json entry {};
-        entry.setString(name, pathName);
-        entry.setInt(priority, pathPriority);
-        entry.setString(envName, pathTarget);
-        data.appendJson(entry);
-    }
+    auto data = tableToJson();
     return api::WazuhResponse {data, "Ok"};
 }
 
 api::WazuhResponse Router::apiDeleteRoute(const json::Json& params)
 {
     api::WazuhResponse response {};
-    const auto name = params.getString("/name");
+    const auto name = params.getString(JSON_PATH_NAME);
     if (!name)
     {
         response.message(R"(Error: Error: Missing "priority" parameter)");
@@ -331,7 +338,7 @@ api::WazuhResponse Router::apiDeleteRoute(const json::Json& params)
         const auto err = removeRoute(name.value());
         if (err)
         {
-            response.message(std::string{"Error: "} + err.value().message);
+            response.message(std::string {"Error: "} + err.value().message);
         }
         else
         {
@@ -344,8 +351,8 @@ api::WazuhResponse Router::apiDeleteRoute(const json::Json& params)
 api::WazuhResponse Router::apiChangeRoutePriority(const json::Json& params)
 {
     api::WazuhResponse response {};
-    const auto name = params.getString("/name");
-    const auto priority = params.getInt("/priority");
+    const auto name = params.getString(JSON_PATH_NAME);
+    const auto priority = params.getInt(JSON_PATH_PRIORITY);
 
     if (!name)
     {
@@ -370,4 +377,56 @@ api::WazuhResponse Router::apiChangeRoutePriority(const json::Json& params)
 
     return response;
 }
+
+// api::WazuhResponse Router::apiPushEvent(const json::Json& params)
+// {
+//     api::WazuhResponse response {};
+//     const auto event = params.getString("/event");
+//     if (!event)
+//     {
+//         response.message(R"(Error: Error: Missing "event" parameter)");
+//     }
+//     else
+//     {
+//         const auto err = pushEvent(event);
+//         if (err)
+//         {
+//             response.message(err.value().message);
+//         }
+//         else
+//         {
+//             response.message(fmt::format("Event '{}' pushed to '{}'", event.value(), name.value()));
+//         }
+//     }
+//     return response;
+// }
+
+json::Json Router::tableToJson()
+{
+    json::Json data {};
+    data.setArray();
+
+    const auto table = getRouteTable();
+    for (const auto& [name, priority, envName] : table)
+    {
+        json::Json entry {};
+        entry.setString(name, JSON_PATH_NAME);
+        entry.setInt(priority, JSON_PATH_PRIORITY);
+        entry.setString(envName, JSON_PATH_TARGET);
+        data.appendJson(entry);
+    }
+    return data;
+}
+
+void Router::dumpTableToStorage()
+{
+    const auto err = m_store->update(ROUTES_TABLE_NAME, tableToJson());
+    if (err)
+    {
+        WAZUH_LOG_ERROR("Error updating routes table: {}", err.value().message);
+        exit(10);
+        // TODO: throw exception and exit program (Review when the exit policy is implemented)
+    }
+}
+
 } // namespace router
