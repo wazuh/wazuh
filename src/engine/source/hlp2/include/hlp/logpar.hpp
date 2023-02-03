@@ -105,68 +105,67 @@ constexpr auto strToSchemaType(std::string_view str)
  */
 enum class ParserType
 {
-    // Numeric
-    P_LONG,
-    P_DOUBLE,
-    P_FLOAT,
-    P_SCALED_FLOAT,
-    P_BYTE,
-    // String
-    P_TEXT,
-    P_LITERAL,
-    P_QUOTED,
-    P_BETWEEN,
     // Enconding
     P_BINARY,
+    // Error type
+    ERROR_TYPE,
     // Format
     P_CSV,
     P_DSV,
     P_JSON,
-    P_XML,
     P_KV,
+    P_XML,
+    // Numeric
+    P_BYTE,
+    P_DOUBLE,
+    P_FLOAT,
+    P_LONG,
+    P_SCALED_FLOAT,
     // Other types
+    P_ALPHANUMERIC,
     P_BOOL,
-    P_USER_AGENT,
-    P_IP,
     P_DATE,
-    P_URI,
-    P_FQDN,
     P_FILE,
+    P_FQDN,
     P_IGNORE,
-    // Error type
-    ERROR_TYPE,
-    // Alphanumeric type
-    P_ALPHANUMERIC
+    P_IP,
+    P_URI,
+    P_USER_AGENT,
+    // String
+    P_BETWEEN,
+    P_LITERAL,
+    P_QUOTED,
+    P_TEXT
 };
 
 constexpr auto parserTypeToStr(ParserType type)
 {
     switch (type)
     {
-        case ParserType::P_LONG: return "long";
-        case ParserType::P_DOUBLE: return "double";
-        case ParserType::P_FLOAT: return "float";
-        case ParserType::P_SCALED_FLOAT: return "scaled_float";
-        case ParserType::P_BYTE: return "byte";
-        case ParserType::P_TEXT: return "text";
-        case ParserType::P_LITERAL: return "literal";
-        case ParserType::P_QUOTED: return "quoted";
+        case ParserType::P_ALPHANUMERIC: return "alphanumeric";
         case ParserType::P_BETWEEN: return "between";
         case ParserType::P_BINARY: return "binary";
-        case ParserType::P_CSV: return "csv";
-        case ParserType::P_DSV: return "dsv";
-        case ParserType::P_JSON: return "json";
-        case ParserType::P_XML: return "xml";
-        case ParserType::P_KV: return "kv";
         case ParserType::P_BOOL: return "bool";
-        case ParserType::P_USER_AGENT: return "useragent";
-        case ParserType::P_IP: return "ip";
+        case ParserType::P_BYTE: return "byte";
+        case ParserType::P_CSV: return "csv";
         case ParserType::P_DATE: return "date";
-        case ParserType::P_URI: return "uri";
-        case ParserType::P_FQDN: return "fqdn";
+        case ParserType::P_DOUBLE: return "double";
+        case ParserType::P_DSV: return "dsv";
         case ParserType::P_FILE: return "file";
+        case ParserType::P_FLOAT: return "float";
+        case ParserType::P_FQDN: return "fqdn";
         case ParserType::P_IGNORE: return "ignore";
-        case ParserType::P_ALPHANUMERIC: return "alphanumeric";
+        case ParserType::P_IP: return "ip";
+        case ParserType::P_JSON: return "json";
+        case ParserType::P_KV: return "kv";
+        case ParserType::P_LITERAL: return "literal";
+        case ParserType::P_LONG: return "long";
+        case ParserType::P_QUOTED: return "quoted";
+        case ParserType::P_SCALED_FLOAT: return "scaled_float";
+        case ParserType::P_TEXT: return "text";
+        case ParserType::P_URI: return "uri";
+        case ParserType::P_USER_AGENT: return "useragent";
+        case ParserType::P_XML: return "xml";
         default: return "error_type";
     }
 }
