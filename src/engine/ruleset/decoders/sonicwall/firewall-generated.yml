@@ -79,9 +79,6 @@ normalize:
       - related.hosts: +a_append/$source.address
       - related.hosts: +a_append/$destination.address
       - rsa.network.host_dst: $destination.address
-      # TODO: problem found here +a_append/$source.ip/$destination.ip
-      # For some reason if source.ip doesn't exist and destination.ip does exist, neither will be added.
-      # Refactor this decoder when that issue is resolved.
       - related.ip: +a_append/$source.ip
       - related.ip: +a_append/$destination.ip
       - related.ip: +a_append/$source.nat.ip
@@ -143,10 +140,6 @@ normalize:
     map:
       - event.action: +ef_delete
   - check:
-      - event.action: +ef_exists
-    map:
-      - rsa.misc.action: +a_append/$event.action
-  - check:
       - event.action: +ef_not_exists
     map:
       - rsa.internal.msg: $~log.msg_action
@@ -158,5 +151,6 @@ normalize:
       - rsa.misc.serial_number: $~rsa.misc.serial_number
       - rsa.misc.severity: $log.level
   - map:
+      - rsa.misc.action: +a_append/$event.action
       - ~rsa: +ef_delete
       - ~log: +ef_delete
