@@ -75,38 +75,16 @@ normalize:
       - rsa.db.index: $~rsa.db.index
       - tags: +a_append/forwarded/sonicwall.firewall
       - rsa.identity.user_sid_dst: $~rsa.identity.user_sid_dst
-  - check:
-      - host.name: +ef_exists
-    map:
       - related.hosts: +a_append/$host.name
-  - check:
-      - source.address: +ef_exists
-    map:
       - related.hosts: +a_append/$source.address
-  - check:
-      - destination.address: +ef_exists
-    map:
       - related.hosts: +a_append/$destination.address
       - rsa.network.host_dst: $destination.address
-      # TODO: These checks are necessary since the following cannot be done:
-      # +a_append/$source.ip/$destination.ip .
+      # TODO: problem found here +a_append/$source.ip/$destination.ip
       # For some reason if source.ip doesn't exist and destination.ip does exist, neither will be added.
       # Refactor this decoder when that issue is resolved.
-  - check:
-      - source.ip: +ef_exists
-    map:
       - related.ip: +a_append/$source.ip
-  - check:
-      - destination.ip: +ef_exists
-    map:
       - related.ip: +a_append/$destination.ip
-  - check:
-      - source.nat.ip: +ef_exists
-    map:
       - related.ip: +a_append/$source.nat.ip
-  - check:
-      - destination.nat.ip: +ef_exists
-    map:
       - related.ip: +a_append/$destination.nat.ip
   - check:
       - ~log.start_message: +ef_not_exists
