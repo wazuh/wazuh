@@ -322,6 +322,9 @@ ifeq (${TARGET},agent)
 	DEFINES+=-DCLIENT
 endif
 
+ifeq (${TARGET},local)
+$(error The target 'local' is not supported, use 'TARGET=server')
+endif
 
 .PHONY: build
 build: ${TARGET}
