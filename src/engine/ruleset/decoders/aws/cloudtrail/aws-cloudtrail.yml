@@ -29,20 +29,6 @@ normalize:
       - file.hash.sha256: $~json.aws.previousDigestSignature
 
   - map:
-      - cloud.account.id: $~json.aws.userIdentity.accountId
-  - check:
-      - ~json.aws.awsAccountId: +ef_exists
-    map:
-      - cloud.account.id: $~json.aws.awsAccountId
-
-  - map:
-      - user.name: $~json.aws.userIdentity.sessionContext.sessionIssuer.userName
-  - check:
-      - ~json.aws.userIdentity.userName: +ef_exists
-    map:
-      - user.name: $~json.aws.userIdentity.userName
-
-  - map:
       - aws.cloudtrail.additional_eventdata: $~json.aws.additionalEventData
       - aws.cloudtrail.api_version: $~json.aws.apiVersion
       - aws.cloudtrail.digest.end_time: $~json.aws.digestEndTime
@@ -84,6 +70,11 @@ normalize:
       - aws.cloudtrail.user_identity.type: $~json.aws.userIdentity.type
       - aws.cloudtrail.vpc_endpoint_id: $~json.aws.vpcEndpointId
 
+      - cloud.account.id: $~json.aws.userIdentity.accountId
+      - cloud.account.id: $~json.aws.awsAccountId
+      - user.name: $~json.aws.userIdentity.sessionContext.sessionIssuer.userName
+      - user.name: $~json.aws.userIdentity.userName
+
       - cloud.region: $~json.aws.awsRegion
 
       - event.action: $~json.aws.eventName
@@ -112,9 +103,8 @@ normalize:
       - user_agent.original: $~json.aws.userAgent
       - user.id: $~json.aws.userIdentity.principalId
 
-  # Flattened
   - check:
-      # TODO: actually here we should check for each field if it size is less than 32766
+      # TODO: need a HF to check a string length, used by flattened should be less than 32766
       - aws.cloudtrail.request_parameters: +ef_exists
     map:
       - aws.cloudtrail.flattened.requestParameters: $~json.aws.requestParameters
