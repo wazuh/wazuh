@@ -38,8 +38,8 @@ checks:
   ############################################################
 
   # 4.1.1.1 Ensure auditd is installed (Automated)
-  - id: 3119
-    title: "Ensure auditd is installed (Automated)"
+  - id: 3098
+    title: "Ensure auditd is installed"
     description: "auditd is the userspace component to the Linux Auditing System. It's responsible for writing audit records to the disk."
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
     remediation: "Run the following command to Install auditd # apt install auditd audispd-plugins" 
@@ -52,43 +52,42 @@ checks:
       - pci_dss_4.0: ["9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)","AU-7"]
       - soc_2: ["CC5.2","CC7.2"]
-      - mitre_techniques: ["T1562, T1562.001"]
+      - mitre_techniques: ["T1562","T1562.001"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' auditd audispd-plugins ->r: install ok installed"
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' auditd audispd-plugins -> r: install ok installed"
 
   # 4.1.1.2 Ensure auditd service is enabled and active (Automated)
-  - id: 3120
-    title: "Ensure auditd service is enabled and active (Automated)"
+  - id: 3099
+    title: "Ensure auditd service is enabled and active"
     description: "Turn on the auditd daemon to record system events."
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
     remediation: "Run the following command to enable and start auditd: # systemctl --now enable auditd" 
     compliance:
       - cis: ["4.1.1.2"]
       - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2, 6.3"]
+      - cis_csc_v7: ["6.2","6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
       - pci_dss_3.2.1: ["10.2","10.3"]
       - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1562, T1562.001"]
+      - mitre_techniques: ["T1562","T1562.001"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
-      - "c:systemctl is-enabled auditd ->r:enabled"
-      - "c:systemctl is-active auditd ->r:active"
+      - "c:systemctl is-enabled auditd -> r:enabled"
+      - "c:systemctl is-active auditd -> r:^active"
 
   # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled (Automated)
-  - id: 3121
-    title: "Ensure auditing for processes that start prior to auditd is enabled (Automated)"
+  - id: 3100
+    title: "Ensure auditing for processes that start prior to auditd is enabled"
     description: "Configure grub2 so that processes that are capable of being audited can be audited even if they start up prior to auditd startup."
     rationale: "Audit events need to be captured on processes that start up prior to auditd , so that potential malicious activity cannot go undetected."
     remediation: 'Edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: Example: GRUB_CMDLINE_LINUX="audit=1" .Run the following command to update the grub2 configuration: # update-grub' 
+    additional information: "This recommendation is designed around the grub2 bootloader, if another bootloader is in use in your environment enact equivalent settings."
     compliance:
       - cis: ["4.1.1.3"]
       - cis_csc_v8: ["8.2"]
@@ -99,46 +98,47 @@ checks:
       - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1562, T1562.001"]
+      - mitre_techniques: ["T1562","T1562.001"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: none
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:audit=1'
 
   # 4.1.1.4 Ensure audit_backlog_limit is sufficient (Automated)
-#  - id: 3122
-#    title: "Ensure audit_backlog_limit is sufficient (Automated)"
-#    description: "In the kernel-level audit subsystem, a socket buffer queue is used to hold audit events. Whenever a new audit event is received, it is logged and prepared to be added to this queue. The kernel boot parameter audit_backlog_limit=N, with N representing the amount of messages, will ensure that a queue cannot grow beyond a certain size. If an audit event is logged which would grow the queue beyond this limit, then a failure occurs and is handled according to the system configuration."
-#    rationale: "If an audit event is logged which would grow the queue beyond the audit_backlog_limit, then a failure occurs, auditd records will be lost, and potential malicious activity could go undetected."
-#    remediation: 'Edit /etc/default/grub and add audit_backlog_limit=N to GRUB_CMDLINE_LINUX. The recommended size for N is 8192 or larger. Example: GRUB_CMDLINE_LINUX="audit_backlog_limit=8192" Run the following command to update the grub2 configuration: # update-grub' 
-#    compliance:
-#      - cis: ["4.1.1.4"]
-#      - cis_csc_v8: ["8.2"]
-#      - cis_csc_v7: ["6.2, 6.3"]
-#      - cmmc_v2.0: ["AU.L2-3.3.1"]
-#      - hipaa: ["164.312(b)"]
-#      - pci_dss_3.2.1: ["10.2","10.3"]
-#      - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
-#      - nist_sp_800-53: ["AU-7"]
-#      - iso_27001-2013: ["A.12.4.1"]
-#      - mitre_techniques: ["T1562, T1562.001"]
-#      - mitre_tactics: ["TA0005"]
-#      - mitre_mitigations: [""]
-#    condition: none
-#    rules:
-#      - "c:find /boot -type f -name 'grub.cfg' -exec grep -Ph -- '^\h*linux' {} + | grep -Pv 'audit_backlog_limit=\d+\b'"
+  - id: 3101
+    title: "Ensure audit_backlog_limit is sufficient"
+    description: "In the kernel-level audit subsystem, a socket buffer queue is used to hold audit events. Whenever a new audit event is received, it is logged and prepared to be added to this queue. The kernel boot parameter audit_backlog_limit=N, with N representing the amount of messages, will ensure that a queue cannot grow beyond a certain size. If an audit event is logged which would grow the queue beyond this limit, then a failure occurs and is handled according to the system configuration."
+    rationale: "If an audit event is logged which would grow the queue beyond the audit_backlog_limit, then a failure occurs, auditd records will be lost, and potential malicious activity could go undetected."
+    remediation: 'Edit /etc/default/grub and add audit_backlog_limit=N to GRUB_CMDLINE_LINUX. The recommended size for N is 8192 or larger. Example: GRUB_CMDLINE_LINUX="audit_backlog_limit=8192" Run the following command to update the grub2 configuration: # update-grub' 
+    default value: "If audit_backlog_limit is not set, the system defaults to audit_backlog_limit=64"
+    compliance:
+      - cis: ["4.1.1.4"]
+      - cis_csc_v8: ["8.2"]
+      - cis_csc_v7: ["6.2","6.3"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - hipaa: ["164.312(b)"]
+      - pci_dss_3.2.1: ["10.2","10.3"]
+      - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
+      - nist_sp_800-53: ["AU-7"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - mitre_techniques: ["T1562","T1562.001"]
+      - mitre_tactics: ["TA0005"]
+    condition: none
+    rules:
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:audit_backlog_limit'
 
   ############################################################
   # 4.1.2 Configure Data Retention
   ############################################################
 
   # 4.1.2.1 Ensure audit log storage size is configured (Automated)
-  - id: 3123
-    title: "Ensure audit log storage size is configured (Automated)"
+  - id: 3102
+    title: "Ensure audit log storage size is configured"
     description: "Configure the maximum size of the audit log file. Once the log reaches the maximum size, it will be rotated and a new log file will be started."
     rationale: "It is important that an appropriate size is determined for log files so that they do not impact the system and audit data is not lost."
     remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB>" 
+    additional information: "The max_log_file parameter is measured in megabytes. Other methods of log rotation may be appropriate based on site policy. One example is time-based rotation strategies which don't have native support in auditd configurations. Manual audit of custom configurations should be evaluated for effectiveness and completeness."
+    default value: "max_log_file = 8"
     compliance:
       - cis: ["4.1.2.1"]
       - cis_csc_v8: ["8.3"]
@@ -146,7 +146,7 @@ checks:
       - pci_dss_3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1562, T1562.006"]
+      - mitre_techniques: ["T1562","T1562.006"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1053"]
     condition: all
@@ -156,8 +156,8 @@ checks:
       - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file\s*\t*=\s*\t*\d+'
 
   # 4.1.2.2 Ensure audit logs are not automatically deleted (Automated)
-  - id: 3124
-    title: "Ensure audit logs are not automatically deleted (Automated)"
+  - id: 3103
+    title: "Ensure audit logs are not automatically deleted"
     description: "The max_log_file_action setting determines how to handle the audit log file reaching the max file size. A value of keep_logs will rotate the logs but never delete old logs."
     rationale: "In high security contexts, the benefits of maintaining a long audit history exceed the cost of storing the audit history."
     remediation: "Set the following parameter in /etc/audit/auditd.conf: max_log_file_action = keep_logs" 
@@ -168,7 +168,7 @@ checks:
       - pci_dss_3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1562, T1562.006"]
+      - mitre_techniques: ["T1562","T1562.006"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1053"]
     condition: all
@@ -178,11 +178,12 @@ checks:
       - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file_action\s*\t*=\s*\t*keep_logs'
 
   # 4.1.2.3 Ensure system is disabled when audit logs are full (Automated)
-  - id: 3125
-    title: "Ensure system is disabled when audit logs are full (Automated)"
+  - id: 3104
+    title: "Ensure system is disabled when audit logs are full"
     description: "The auditd daemon can be configured to halt the system when the audit logs are full. The admin_space_left_action parameter tells the system what action to take when the system has detected that it is low on disk space. Valid values are ignore, syslog, suspend, single, and halt. ignore, the audit daemon does nothing .Syslog, the audit daemon will issue a warning to syslog .Suspend, the audit daemon will stop writing records to the disk single, the audit daemon will put the computer system in single user mode halt, the audit daemon will shutdown the system"
     rationale: "In high security contexts, the risk of detecting unauthorized access or nonrepudiation exceeds the benefit of the system's availability."
     remediation: "Set the following parameters in /etc/audit/auditd.conf: space_left_action = email action_mail_acct = root .set admin_space_left_action to either halt or single in /etc/audit/auditd.conf. Example: admin_space_left_action = halt" 
+    impact: "If the admin_space_left_action parameter is set to halt the audit daemon will shutdown the system when the disk partition containing the audit logs becomes full."
     compliance:
       - cis: ["4.1.2.3"]
       - cis_csc_v8: ["8.2, 8.3"]
@@ -194,9 +195,8 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - soc_2: ["A1.1"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1562, T1562.006"]
+      - mitre_techniques: ["T1562","T1562.006"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - "d:/etc/audit"
@@ -210,11 +210,12 @@ checks:
   ############################################################
 
   # 4.1.3.1 Ensure changes to system administration scope (sudoers) is collected (Automated)
-  - id: 3126
-    title: "Ensure changes to system administration scope (sudoers) is collected (Automated)"
+  - id: 3105
+    title: "Ensure changes to system administration scope (sudoers) is collected"
     description: 'Monitor scope changes for system administrators. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers, or files in /etc/sudoers.d, will be written to when the file(s) or related attributes have changed. The audit records will be tagged with the identifier "scope".'
     rationale: "Changes in the /etc/sudoers and /etc/sudoers.d files can indicate that an unauthorized change has been made to the scope of system administrator activity."
     remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor scope changes for system administrators. Example: # printf " -w /etc/sudoers -p wa -k scope -w /etc/sudoers.d -p wa -k scope " >> /etc/audit/rules.d/50-scope.rules .Merge and load the rules into active configuration: # augenrules --load .Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n";'
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.1"]
       - cis_csc_v8: ["8.5"]
@@ -225,7 +226,7 @@ checks:
       - nist_sp_800-53: ["AU-3(1)","AU-7"]
       - soc_2: ["CC5.2","CC7.2"]
       - iso_27001-2013: ["A.12.4.3"]
-      - mitre_techniques: ["T1562, T1562.006"]
+      - mitre_techniques: ["T1562","T1562.006"]
       - mitre_tactics: ["TA0004"]
       - mitre_mitigations: ["M1047"]
     condition: all
@@ -233,14 +234,15 @@ checks:
       - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d/ && r:-p wa && r:-k scope' 
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope' 
 
   # 4.1.3.2 Ensure actions as another user are always logged (Automated)
-  - id: 3127
-    title: "Ensure actions as another user are always logged (Automated)"
+  - id: 3106
+    title: "Ensure actions as another user are always logged"
     description: "sudo provides users with temporary elevated privileges to perform operations, either as the superuser or another user."
     rationale: "Creating an audit log of users with temporary elevated privileges and the operation(s) they performed is essential to reporting. Administrators will want to correlate the events written to the audit trail with the records written to sudo's logfile to verify if unauthorized commands have been executed."
     remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor elevated privileges. 64 Bit systems .Example: # printf " -a always,exit -F arch=b64 -C euid!=uid -F auid!=unset -S execve -k user_emulation -a always,exit -F arch=b32 -C euid!=uid -F auid!=unset -S execve -k user_emulation " >> /etc/audit/rules.d/50-user_emulation.rules Load audit rules .Merge and load the rules into active configuration: # augenrules --load .Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi .32 Bit systems:Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.2"]
       - cis_csc_v8: ["8.5"]
@@ -251,7 +253,7 @@ checks:
       - nist_sp_800-53: ["AU-3(1)","AU-7"]
       - soc_2: ["CC5.2","CC7.2"]
       - iso_27001-2013: ["A.9.4.2"]
-      - mitre_techniques: ["T1562, T1562.006"]
+      - mitre_techniques: ["T1562","T1562.006"]
       - mitre_tactics: ["TA0004"]
       - mitre_mitigations: ["M1047"]
     condition: all
@@ -264,11 +266,12 @@ checks:
   # 4.1.3.3 Ensure events that modify the sudo log file are collected (Automated) - Not Implemented
 
   # 4.1.3.4 Ensure events that modify date and time information are collected (Automated)
-  - id: 2128
-    title: "Ensure events that modify date and time information are collected (Automated)"
+  - id: 2107
+    title: "Ensure events that modify date and time information are collected"
     description: 'Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the; adjtimex - tune kernel clock settimeofday - set time using timeval and timezone structures stime - using seconds since 1/1/1970 clock_settime - allows for the setting of several internal clocks and timers system calls have been executed. Further, ensure to write an audit record to the configured audit log file upon exit, tagging the records with a unique identifier such as "time-change".'
     rationale: "Unexpected changes in system date and/or time could be a sign of malicious activity on the system."
     remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify date and time information. 64 Bit systems .Example: # printf "-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time-change -a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime -k time-change -w /etc/localtime -p wa -k time-change " >> /etc/audit/rules.d/50-time-change.rules .Load audit rules .Merge and load the rules into active configuration:# augenrules --load .Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi 32 Bit systems .Follow the same procedures as for 64 bit systems and ignore any entries with b64. In addition, add stime to the system call audit. Example:-a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime,stime -k time-change'
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.4"]
       - cis_csc_v8: ["8.5"]
@@ -279,9 +282,8 @@ checks:
       - nist_sp_800-53: ["AU-3(1)","AU-7"]
       - soc_2: ["CC5.2","CC7.2"]
       - iso_27001-2013: ["A.12.1.2"]
-      - mitre_techniques: ["T1562, T1562.006"]
+      - mitre_techniques: ["T1562","T1562.006"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - "d:/etc/audit"
@@ -291,11 +293,12 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change'
 
   # 4.1.3.5 Ensure events that modify the system's network environment are collected (Automated)
-  - id: 3129
-    title: "Ensure events that modify the system's network environment are collected (Automated)"
+  - id: 3108
+    title: "Ensure events that modify the system's network environment are collected"
     description: "Record changes to network environment files or system calls. The below parameters monitors the following system calls, and write an audit event on system call exit: sethostname - set the systems host name setdomainname - set the systems domain name .The files being monitored are: /etc/issue and /etc/issue.net - messages displayed pre-login . /etc/hosts - file containing host names and associated IP addresses . /etc/networks - symbolic names for networks . /etc/network/ - directory containing network interface scripts and configurations files"
     rationale: "Monitoring sethostname and setdomainname will identify potential unauthorized changes to host and domainname of a system. The changing of these names could potentially break security parameters that are set based on those names. The /etc/hosts file is monitored for changes that can indicate an unauthorized intruder is trying to change machine associations with IP addresses and trick users and processes into connecting to unintended machines. Monitoring /etc/issue and /etc/issue.net is important, as intruders could put disinformation into those files and trick users into providing information to the intruder. Monitoring /etc/network is important as it can show if network interfaces or scripts are being modified in a way that can lead to the machine becoming unavailable or compromised. All audit records should have a relevant tag associated with them."
     remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify the systems network environment. 64 Bit systems .Example: # printf " -a always,exit -F arch=b64 -S sethostname,setdomainname -k system-locale -a always,exit -F arch=b32 -S sethostname,setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/networks -p wa -k system-locale -w /etc/network/ -p wa -k system-locale " >> /etc/audit/rules.d/50-system_local.rules .Load audit rules .Merge and load the rules into active configuration: # augenrules --load .Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi .32 Bit systems .Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
+    additional information: "Potential reboot required;If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.5"]
       - cis_csc_v8: ["8.5"]
@@ -306,7 +309,7 @@ checks:
       - nist_sp_800-53: ["AU-3(1)","AU-7"]
       - soc_2: ["CC5.2","CC7.2"]
       - iso_27001-2013: ["A.12.1.2"]
-      - mitre_techniques: ["T1562, T1562.006"]
+      - mitre_techniques: ["T1562","T1562.006"]
       - mitre_tactics: ["TA0003"]
       - mitre_mitigations: ["M1047"]
     condition: all
@@ -324,11 +327,12 @@ checks:
   # 4.1.3.7 Ensure unsuccessful file access attempts are collected (Automated) - Not Implemented
 
   # 4.1.3.8 Ensure events that modify user/group information are collected (Automated)
-  - id: 3130
-    title: "Ensure events that modify user/group information are collected (Automated)"
+  - id: 3109
+    title: "Ensure events that modify user/group information are collected"
     description: 'Record events affecting the modification of user or group information, including that of passwords and old passwords if in use. /etc/group - system groups /etc/passwd - system users /etc/gshadow - encrypted password for each group /etc/shadow - system user passwords /etc/security/opasswd - storage of old passwords if the relevant PAM module is in use .The parameters in this section will watch the files to see if they have been opened for write or have had attribute changes (e.g. permissions) and tag them with the identifier "identity" in the audit log file.'
     rationale: "Unexpected changes to these files could be an indication that the system has been compromised and that an unauthorized user is attempting to hide their activities or compromise additional accounts."
     remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify user/group information. Example: # printf "-w /etc/group -p wa -k identity -w /etc/passwd -p wa -k identity -w /etc/gshadow -p wa -k identity -w /etc/shadow -p wa -k identity -w /etc/security/opasswd -p wa -k identity " >> /etc/audit/rules.d/50-identity.rules .Merge and load the rules into active configuration: # augenrules --load .Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.8"]
       - cis_csc_v8: ["8.5"]
@@ -339,7 +343,7 @@ checks:
       - nist_sp_800-53: ["AU-3(1)","AU-7"]
       - soc_2: ["CC5.2","CC7.2"]
       - iso_27001-2013: ["A.12.4.3"]
-      - mitre_techniques: ["T1562, T1562.006"]
+      - mitre_techniques: ["T1562","T1562.006"]
       - mitre_tactics: ["TA0004"]
       - mitre_mitigations: ["M1047"]
     condition: all
@@ -352,39 +356,15 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity'
 
-  # 4.1.3.9 Ensure discretionary access control permission modification events are collected (Automated)
-  - id: 3131
-    title: "Ensure discretionary access control permission modification events are collected (Automated)"
-    description: 'Monitor changes to file permissions, attributes, ownership and group. The parameters in this section track changes for system calls that affect file permissions and attributes. The following commands and system calls effect the permissions, ownership and various attributes of files. chmod, fchmod, fchmodat, chown, fchown, fchownat, lchown, setxattr, lsetxattr, fsetxattr, removexattr, lremovexattr, fremovexattr'
-    rationale: "Monitoring for changes in file attributes could alert a system administrator to activity that could indicate intruder activity or policy violation."
-    remediation: "For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod. Notes: Reloading the auditd config to set active settings may require a system reboot." 
-    compliance:
-      - cis: ["4.1.3.9"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["5.5"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1","10.2.2","10.2.4","10.2.5","10.3"]
-      - pci_dss_4.0: ["9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5"]
-      - nist_sp_800-53: ["AU-3(1)","AU-7"]
-      - soc_2: ["CC5.2","CC7.2"]
-      - iso_27001-2013: ["A.12.1.2"]
-      - mitre_techniques: ["T1562, T1562.006"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: ["M1022"]
-    condition: all
-    rules:
-      - "d:/etc/audit"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chown && r:-S fchown && r:-S fchownat && r:-S lchown && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S setxattr && r:-S lsetxattr && r:-S fsetxattr && r:-S removexattr && r:-S lremovexattr && r:-S fremovexattr && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+  # 4.1.3.9 Ensure discretionary access control permission modification events are collected (Automated) - Not Implemented
 
   # 4.1.3.10 Ensure successful file system mounts are collected (Automated)
-  - id: 3132
-    title: "Ensure successful file system mounts are collected (Automated)"
+  - id: 3110
+    title: "Ensure successful file system mounts are collected"
     description: "Monitor the use of the mount system call. The mount (and umount ) system call controls the mounting and unmounting of file systems. The parameters below configure the system to create an audit record when the mount system call is used by a non- privileged user"
     rationale: "It is highly unusual for a non privileged user to mount file systems to the system. While tracking mount commands gives the system administrator evidence that external media may have been mounted (based on a review of the source of the mount and confirming it's an external media type), it does not conclusively indicate that data was exported to the media. System administrators who wish to determine if data were exported, would also have to track successful open, creat and truncate system calls requiring write access to a file under the mount point of the external media file system. This could give a fair indication that a write occurred. The only way to truly prove it, would be to track successful writes to the external media. Tracking write system calls could quickly fill up the audit log and is not recommended. Recommendations on configuration options to track data export to media is beyond the scope of this document."
     remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful file system mounts. 64 Bit systems .Example: # { UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F arch=b32 -S mount -F auid>=$UID_MIN -F auid!=unset -k mounts -a always,exit -F arch=b64 -S mount -F auid>=$UID_MIN -F auid!=unset -k mounts " >> /etc/audit/rules.d/50-mounts.rules || printf "ERROR: Variable "UID_MIN" is unset.\n"}Load audit rules .Merge and load the rules into active configuration:# augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi .32 Bit systems .Follow the same procedures as for 64 bit systems and ignore any entries with b64.' 
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.10"]
       - cis_csc_v8: ["8.5"]
@@ -395,7 +375,7 @@ checks:
       - nist_sp_800-53 Rev. 5: ["CM-6"]
       - soc_2: ["CC5.2","CC7.2"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1562, T1562.006"]
+      - mitre_techniques: ["T1562","T1562.006"]
       - mitre_tactics: ["TA0010"]
       - mitre_mitigations: ["M1034"]
     condition: all
@@ -405,23 +385,23 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
 
   # 4.1.3.11 Ensure session initiation information is collected (Automated)
-  - id: 3133
-    title: "Ensure session initiation information is collected (Automated)"
+  - id: 3111
+    title: "Ensure session initiation information is collected"
     description: 'Monitor session initiation events. The parameters in this section track changes to the files associated with session events./var/run/utmp - tracks all currently logged in users. /var/log/wtmp - file tracks logins, logouts, shutdown, and reboot events. /var/log/btmp - keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp. All audit records will be tagged with the identifier "session".'
     rationale: "Monitoring these files for changes could alert a system administrator to logins occurring at unusual hours, which could indicate intruder activity (i.e. a user logging in at a time when they do not normally log in)."
     remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor session initiation information. Example: # printf "-w /var/run/utmp -p wa -k session -w /var/log/wtmp -p wa -k session -w /var/log/btmp -p wa -k session " >> /etc/audit/rules.d/50-session.rules .Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi' 
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.11"]
       - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["4.9", "16.13"]
+      - cis_csc_v7: ["4.9","16.13"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - pci_dss_3.2.1: ["10.1","10.2.2","10.2.4","10.2.5","10.3"]
       - pci_dss_4.0: ["9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5"]
       - nist_sp_800-53 Rev 5: ["AU-3(1)","AU-3"]
       - soc_2: ["CC5.2","CC7.2"]
-      - mitre_techniques: ["T1562, T1562.006"]
+      - mitre_techniques: ["T1562","T1562.006"]
       - mitre_tactics: ["TA0001"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - "d:/etc/audit"
@@ -431,24 +411,24 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k logins'
 
   # 4.1.3.12 Ensure login and logout events are collected (Automated)
-  - id: 3134
-    title: "Ensure login and logout events are collected (Automated)"
+  - id: 3112
+    title: "Ensure login and logout events are collected"
     description: "Monitor login and logout events. The parameters below track changes to files associated with login/logout events. /var/log/lastlog - maintain records of the last time a user successfully logged in. /var/run/faillock - directory maintains records of login failures via the pam_faillock module."
     rationale: "Monitoring login/logout events could provide a system administrator with information associated with brute force attacks against user logins."
     remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor login and logout events. Example: # printf " -w /var/log/lastlog -p wa -k logins -w /var/run/faillock -p wa -k logins " >> /etc/audit/rules.d/50-login.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.12"]
       - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["4.9", "16.11", "16.13"]
+      - cis_csc_v7: ["4.9","16.11","16.13"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - pci_dss_3.2.1: ["10.1","10.2.2","10.2.4","10.2.5","10.3"]
       - pci_dss_4.0: ["9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)","AU-7"]
       - soc_2: ["CC5.2","CC7.2"]
-      - iso_27001-2013: ["A.9.4.2", "A.8.1.3"]
-      - mitre_techniques: ["T1562, T1562.006"]
+      - iso_27001-2013: ["A.9.4.2","A.8.1.3"]
+      - mitre_techniques: ["T1562","T1562.006"]
       - mitre_tactics: ["TA0001"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - "d:/etc/audit"
@@ -458,11 +438,12 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/tallylog && r:-p wa && r:-k logins'
 
   # 4.1.3.13 Ensure file deletion events by users are collected (Automated)
-  - id: 3135
-    title: "Ensure file deletion events by users are collected (Automated)"
+  - id: 3113
+    title: "Ensure file deletion events by users are collected"
     description: 'Monitor the use of system calls associated with the deletion or renaming of files and file attributes. This configuration statement sets up monitoring for: unlink - remove a file .unlinkat - remove a file attribute .rename - rename a file .renameat rename a file attribute system calls and tags them with the identifier "delete".'
     rationale: "Monitoring these calls from non-privileged users could provide a system administrator with evidence that inappropriate removal of files and file attributes associated with protected files is occurring. While this audit option will look at all events, system administrators will want to look for specific privileged files that are being deleted or altered."
     remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete | -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete. Notes: At a minimum, configure the audit system to collect file deletion events for all users and root. Reloading the auditd config to set active settings may require a system reboot." 
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.13"]
       - cis_csc_v8: ["8.5"]
@@ -473,9 +454,6 @@ checks:
       - nist_sp_800-53: ["AU-3(1)","AU-7"]
       - soc_2: ["CC5.2","CC7.2"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - "d:/etc/audit"
@@ -483,11 +461,12 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
 
   # 4.1.3.14 Ensure events that modify the system's Mandatory Access Controls are collected (Automated)
-  - id: 3136
-    title: "Ensure events that modify the system's Mandatory Access Controls are collected (Automated)"
+  - id: 3114
+    title: "Ensure events that modify the system's Mandatory Access Controls are collected"
     description: "Monitor AppArmor, an implementation of mandatory access controls. The parameters below monitor any write access (potential additional, deletion or modification of files in the directory) or attribute changes to the /etc/apparmor/ and /etc/apparmor.d/ directories."
     rationale: "Changes to files in the /etc/apparmor/ and /etc/apparmor.d/ directories could indicate that an unauthorized user is attempting to modify access controls and change security contexts, leading to a compromise of the system."
     remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify the systems Mandatory Access Controls. Example:#printf " -w /etc/apparmor/ -p wa -k MAC-policy -w /etc/apparmor.d/ -p wa -k MAC-policy " >> /etc/audit/rules.d/50-MAC-policy.rules .Merge and load the rules into active configuration: # augenrules --load .Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.14"]
       - cis_csc_v8: ["8.5"]
@@ -498,7 +477,7 @@ checks:
       - nist_sp_800-53: ["AU-3(1)","AU-7"]
       - soc_2: ["CC5.2","CC7.2"]
       - iso_27001-2013: ["A.12.1.2"]
-      - mitre_techniques: ["T1562, T1562.006"]
+      - mitre_techniques: ["T1562","T1562.006"]
       - mitre_tactics: ["TA0004"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -509,11 +488,12 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy'
 
   # 4.1.3.15 Ensure successful and unsuccessful attempts to use the chcon command are recorded (Automated)
-  - id: 3137
-    title: "Ensure successful and unsuccessful attempts to use the chcon command are recorded (Automated)"
+  - id: 3115
+    title: "Ensure successful and unsuccessful attempts to use the chcon command are recorded"
     description: "The operating system must generate audit records for successful/unsuccessful uses of the chcon command."
     rationale: "The chcon command is used to change file security context. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one. Audit records can be generated from various components within the information system (e.g., module or policy filter)."
     remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the chcon command.64 Bit systems Example:# {UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k perm_chng">> /etc/audit/rules.d/50-perm_chng.rules || printf "ERROR:Variable "UID_MIN" is unset.\n" } .Load audit rules .Merge and load the rules into active configuration:# augenrules --load .Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi .32 Bit systems .Follow the same procedures as for 64 bit systems and ignore any entries with b64.' 
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.15"]
       - cis_csc_v8: ["8.2"]
@@ -526,7 +506,6 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - mitre_techniques: ["8.2"]
       - mitre_tactics: ["6.2"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - "d:/etc/audit"
@@ -534,11 +513,12 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=1000 && r:-F auid!=unset && r:-k perm_chng'
 
   # 4.1.3.16 Ensure successful and unsuccessful attempts to use the setfacl command are recorded (Automated)
-  - id: 3138
-    title: "Ensure successful and unsuccessful attempts to use the setfacl command are recorded (Automated)"
+  - id: 3116
+    title: "Ensure successful and unsuccessful attempts to use the setfacl command are recorded"
     description: "The operating system must generate audit records for successful/unsuccessful uses of the setfacl command"
     rationale: "This utility sets Access Control Lists (ACLs) of files and directories. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one. Audit records can be generated from various components within the information system (e.g., module or policy filter)."
     remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the setfacl command. 64 Bit systems Example: { UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k perm_chng " >> /etc/audit/rules.d/50-perm_chng.rules || printf "ERROR:Variable "UID_MIN" is unset.\n" } Load audit rules .Merge and load the rules into active configuration:# augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi 32 Bit systems. Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
+    additional information: "If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.16"]
       - cis_csc_v8: ["8.2"]
@@ -556,11 +536,12 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=1000 && r:-F auid!=unset && r:-k perm_chng'
 
   # 4.1.3.17 Ensure successful and unsuccessful attempts to use the chacl command are recorded (Automated)
-  - id: 3139
-    title: "Ensure successful and unsuccessful attempts to use the chacl command are recorded (Automated)"
+  - id: 3117
+    title: "Ensure successful and unsuccessful attempts to use the chacl command are recorded"
     description: "The operating system must generate audit records for successful/unsuccessful uses of the chacl command. chacl is an IRIX-compatibility command, and is maintained for those users who are familiar with its use from either XFS or IRIX."
     rationale: "chacl changes the ACL(s) for a file or directory. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one. Audit records can be generated from various components within the information system (e.g., module or policy filter)."
     remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the chacl command.64 Bit systems Example:# {UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs)[ -n "${UID_MIN}" ] && printf "-a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k perm_chng" >> /etc/audit/rules.d/50-perm_chng.rules || printf "ERROR:Variable "UID_MIN" is unset.\n" } Load audit rules Merge and load the rules into active configuration:# augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi 32 Bit systems Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.17"]
       - cis_csc_v8: ["8.2"]
@@ -571,9 +552,6 @@ checks:
       - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - "d:/etc/audit"
@@ -581,11 +559,12 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=1000 && r:-F auid!=unset && r:-k priv_cmd'
 
   # 4.1.3.18 Ensure successful and unsuccessful attempts to use the usermod command are recorded (Automated)
-  - id: 3140
-    title: "Ensure successful and unsuccessful attempts to use the usermod command are recorded (Automated)"
+  - id: 3118
+    title: "Ensure successful and unsuccessful attempts to use the usermod command are recorded"
     description: "The operating system must generate audit records for successful/unsuccessful uses of the usermod command."
     rationale: "The usermod command modifies the system account files to reflect the changes that are specified on the command line. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one.Audit records can be generated from various components within the information system (e.g., module or policy filter)."
     remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the usermod command.64 Bit systems Example:# {UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf "-a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k usermod " >> /etc/audit/rules.d/50-usermod.rules || printf "ERROR:Variable "UID_MIN" is unset.\n"}Load audit rules .Merge and load the rules into active configuration:# augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.18"]
       - cis_csc_v8: ["8.2"]
@@ -603,11 +582,12 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=1000 && r:-F auid!=unset && r:-k usermod'
 
   # 4.1.3.19 Ensure kernel module loading unloading and modification is collected (Automated)
-  - id: 3141
-    title: "Ensure kernel module loading unloading and modification is collected (Automated)"
+  - id: 3119
+    title: "Ensure kernel module loading unloading and modification is collected"
     description: 'Monitor the loading and unloading of kernel modules. All the loading / listing / dependency checking of modules is done by kmod via symbolic links. The following system calls control loading and unloading of modules: init_module - load a module .finit_module - load a module (used when the overhead of using. cryptographically signed modules to determine the authenticity of a module can be avoided) .delete_module - delete a module .create_module - create a loadable module entry .query_module - query the kernel for various bits pertaining to modules .Any execution of the loading and unloading module programs and system calls will trigger an audit record with an identifier of modules.'
     rationale: "Monitoring the use of all the various ways to manipulate kernel modules could provide system administrators with evidence that an unauthorized change was made to a kernel module, possibly compromising the security of the system."
     remediation: 'Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor kernel module modification. 64 Bit systemsExample:# {UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F arch=b64 -S init_module,finit_module,delete_module,create_module,query_module -F auid>=${UID_MIN} -F auid!=unset -k kernel_modules -a always,exit -F path=/usr/bin/kmod -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k kernel_modules" >> /etc/audit/rules.d/50-kernel_modules.rules || printf "ERROR:Variable"UID_MIN" is unset.\n"}Load audit rules .Merge and load the rules into active configuration:# augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration. System call structure For performance (man 7 audit.rules) reasons it is preferable to have all the system calls on one line. However, your configuration may have them on one line each or some other combination. This is important to understand for both the auditing and remediation sections as the examples given are optimized for performance as per the man page."
     compliance:
       - cis: ["4.1.3.19"]
       - cis_csc_v8: ["8.5"]
@@ -618,7 +598,7 @@ checks:
       - nist_sp_800-53: ["AU-3(1)","AU-7"]
       - soc_2: ["CC5.2","CC7.2"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1562, T1562.006"]
+      - mitre_techniques: ["T1562","T1562.006"]
       - mitre_tactics: ["TA0004"]
       - mitre_mitigations: ["M1047"]
     condition: all
@@ -629,8 +609,8 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=1000 && r:-F auid!=unset && r:-k kernel_modules'
 
   # 4.1.3.20 Ensure the audit configuration is immutable (Automated)
-  - id: 3142
-    title: "Ensure the audit configuration is immutable (Automated)"
+  - id: 3120
+    title: "Ensure the audit configuration is immutable"
     description: 'Set system audit so that audit rules cannot be modified with auditctl . Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note:This setting will require the system to be rebooted to update the active auditd configuration settings.'
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
     remediation: 'Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file: Example:# printf -- "-e 2 " >> /etc/audit/rules.d/99-finalize.rules Load audit rules Merge and load the rules into active configuration:# augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
@@ -644,9 +624,8 @@ checks:
       - pci_dss_4.0: ["1.3.1","7.1","9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5"]
       - nist_sp_800-53: ["AC-5","AC-6","AU-3(1)","AU-7"]
       - soc_2: ["CC5.2","CC6.1","CC7.2"]
-      - mitre_techniques: ["T1562, T1562.001"]
+      - mitre_techniques: ["T1562","T1562.001"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - "d:/etc/audit"
@@ -654,11 +633,12 @@ checks:
       - 'd:/etc/audit/rules.d -> r:^99-finalize.rules$ -> r:^\s*\t*-e 2$'
 
   # 4.1.3.21 Ensure the running and on disk configuration is the same (Manual)
-  - id: 3143
-    title: "Ensure the running and on disk configuration is the same (Manual)"
+  - id: 3121
+    title: "Ensure the running and on disk configuration is the same"
     description: "The Audit system have both on disk and running configuration. It is possible for these configuration settings to differ. Note: Due to the limitations of augenrules and auditctl, it is not absolutely guaranteed that loading the rule sets via augenrules --load will result in all rules being loaded or even that the user will be informed if there was a problem loading the rules."
     rationale: "Configuration differences between what is currently running and what is on disk could cause unexpected problems or may give a false impression of compliance requirements."
     remediation: 'If the rules are not aligned across all three () areas, run the following command to merge and load all rules:# augenrules --load Check if reboot is required. if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then echo "Reboot required to load rules"; fi' 
+    additional information: "Potential reboot required If the auditing configuration is locked (-e 2), then augenrules will not warn in any way that rules could not be loaded into the running configuration. A system reboot will be required to load the rules into the running configuration."
     compliance:
       - cis: ["4.1.3.21"]
       - cis_csc_v8: ["8.5"]
@@ -671,191 +651,147 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
     condition: all
     rules:
-      - "c:augenrules --check -> r:/usr/sbin/augenrules: && r:No change"
+      - "c:augenrules --check -> r:/usr/sbin/augenrules && r:No change"
 
   ############################################################
   # 4.1.4 Configure auditd file access
   ############################################################
 
-  # 4.1.4.1 Ensure audit log files are mode 0640 or less permissive (Automated)
-#  - id: 3144
-#    title: "Ensure audit log files are mode 0640 or less permissive (Automated)"
-#    description: "Audit log files contain information about the system and system activity."
-#    rationale: "Access to audit records can reveal system and configuration data to attackers, potentially compromising its confidentiality."
-#    remediation: "Run the following command to remove more permissive mode than 0640 from audit log files:# [ -f /etc/audit/auditd.conf ] && find '$(dirname $(awk -F '=''/^\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs))' -type f \( ! -perm 600 -a ! -perm 0400 -a ! -perm 0200 -a ! -perm 0000 -a ! -perm 0640 -a !-perm 0440 -a ! -perm 0040 \) -exec chmod u-x,g-wx,o-rwx {} +" 
-#    compliance:
-#      - cis: ["4.1.4.1"]
-#      - cis_csc_v8: ["3.3"]
-#      - cis_csc_v7: ["14.6"]
-#      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-#      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-#      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-#      - pci_dss_4.0: ["1.3.1","7.1"]
-#      - nist_sp_800-53: ["AC-5","AC-6"]
-#      - soc_2: ["CC5.2","CC6.1"]
-#      - iso_27001-2013: ["A.9.1.1"]
-#      - mitre_techniques: ["T1070, T1070.002, T1083, T1083.000"]
-#      - mitre_tactics: ["TA0007"]
-#      - mitre_mitigations: [""]
-#    condition: none
-#    rules:
-#      - "c:[ -f /etc/audit/auditd.conf ] && find "$(dirname $(awk -F "=" '/^\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs))" -type f \( ! -perm 600 -a ! -perm 0400 -a ! -perm 0200 -a ! -perm 0000 -a ! -perm 0640 -a ! -perm 0440 -a ! -perm 0040 \) -exec stat -Lc "%n %#a" {} +"
-#
-  # 4.1.4.2 Ensure only authorized users own audit log files (Automated)
-#  - id: 3145
-#    title: "Ensure only authorized users own audit log files (Automated)"
-#    description: "Audit log files contain information about the system and system activity."
-#    rationale: "Access to audit records can reveal system and configuration data to attackers, potentially compromising its confidentiality."
-#    remediation: "Run the following command to configure the audit log files to be owned by the root user: # [ -f /etc/audit/auditd.conf ] && find "$(dirname $(awk -F "=" '/^\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs))" -type f ! -user root -exec chown root {} +" 
-#    compliance:
-#      - cis: ["4.1.4.2"]
-#      - cis_csc_v8: ["3.3"]
-#      - cis_csc_v7: ["14.6"]
-#      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-#      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-#      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-#      - pci_dss_4.0: ["1.3.1","7.1"]
-#      - nist_sp_800-53: ["AC-5","AC-6"]
-#      - soc_2: ["CC5.2","CC6.1"]
-#      - iso_27001-2013: ["A.9.1.1"]
-#      - mitre_techniques: ["T1070, T1070.002, T1083, T1083.000"]
-#      - mitre_tactics: ["TA0007"]
-#      - mitre_mitigations: [""]
-#    condition: none
-#    rules:
-#      - "c:[ -f /etc/audit/auditd.conf ] && find "$(dirname $(awk -F "=" '/^\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs))" -type f ! -user root -exec stat -Lc "%n %U" {} +"
-#
+  # 4.1.4.1 Ensure audit log files are mode 0640 or less permissive (Automated) - Not Implemented
+
+  # 4.1.4.2 Ensure only authorized users own audit log files (Automated) - Not Implemented
+
   # 4.1.4.3 Ensure only authorized groups are assigned ownership of audit log files (Automated)
-#  - id: 3146
-#    title: "Ensure only authorized groups are assigned ownership of audit log files (Automated)"
-#    description: "Audit log files contain information about the system and system activity."
-#    rationale: "Access to audit records can reveal system and configuration data to attackers, potentially compromising its confidentiality."
-#    remediation: "Run the following command to configure the audit log files to be owned by adm group: # find $(dirname $(awk -F'=' '/^\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs)) -type f \( ! -group adm -a ! -group root \) -exec chgrp adm {} + Run the following command to configure the audit log files to be owned by the adm group:# chgrp adm /var/log/audit/ Run the following command to set the log_group parameter in the audit configuration file to log_group = adm:# sed -ri 's/^\s*#?\s*log_group\s*=\s*\S+(\s*#.*)?.*$/log_group = adm\1/' /etc/audit/auditd.conf Run the following command to restart the audit daemon to reload the configuration file:# systemctl restart auditd"
-#    compliance:
-#      - cis: ["4.1.4.3"]
-#      - cis_csc_v8: ["3.3"]
-#      - cis_csc_v7: ["14.6"]
-#      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-#      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-#      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-#      - pci_dss_4.0: ["1.3.1","7.1"]
-#      - nist_sp_800-53: ["AC-5","AC-6"]
-#      - soc_2: ["CC5.2","CC6.1"]
-#      - iso_27001-2013: ["A.9.1.1"]
-#      - mitre_techniques: ["T1070, T1070.002, T1083, T1083.000"]
-#      - mitre_tactics: ["TA0007"]
-#      - mitre_mitigations: [""]
-#    condition: all
-#    rules:
-#      - "c:grep -Rh ^*.* /etc/audit/auditd.conf -> r:^\h*log_group\h*=\h*(adm|root)\b"
-#
+  - id: 3122
+    title: "Ensure only authorized groups are assigned ownership of audit log files"
+    description: "Audit log files contain information about the system and system activity."
+    rationale: "Access to audit records can reveal system and configuration data to attackers, potentially compromising its confidentiality."
+    remediation: "Run the following command to configure the audit log files to be owned by adm group: # find $(dirname $(awk -F'=s*log_file/ {print $2} /etc/audit/auditd.conf | xargs)) -type f \\( ! -group adm -a ! -group root \\) -exec chgrp adm {} + Run the following command to configure the audit log files to be owned by the adm group:# chgrp adm /var/log/audit/ Run the following command to set the log_group parameter in the audit configuration file to log_group = adm:# sed -ri 's/^\\s*#?\\s*log_group\\s*=\\s*\\S+(\\s*#.*)?.*$/log_group = adm\\1/' /etc/audit/auditd.conf Run the following command to restart the audit daemon to reload the configuration file:# systemctl restart auditd"
+    compliance:
+      - cis: ["4.1.4.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - nist_sp_800-53: ["AC-5","AC-6"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1070","T1070.002","T1083","T1083.000"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
+    rules:
+      - "f:/etc/audit/auditd.conf -> r:log_group = adm"
+      - "f:/etc/audit/auditd.conf -> r:log_group = root"
+
   # 4.1.4.4 Ensure the audit log directory is 0750 or more restrictive (Automated)
-#  - id: 3147
-#    title: "Ensure the audit log directory is 0750 or more restrictive (Automated)"
-#    description: "The audit log directory contains audit log files."
-#    rationale: "Audit information includes all information including: audit records, audit settings and audit reports. This information is needed to successfully audit system activity. This information must be protected from unauthorized modification or deletion. If this information were to be compromised, forensic analysis and discovery of the true source of potentially malicious system activity is impossible to achieve."
-#    remediation: "Run the following command to configure the audit log directory to have a mode of '0750' or less permissive:# chmod g-w,o-rwx '$(dirname $(awk -F'=' '/^\s*log_file/ {print $2}' /etc/audit/auditd.conf))'" 
-#    compliance:
-#      - cis: ["4.1.4.4"]
-#      - cis_csc_v8: ["3.3"]
-#      - cis_csc_v7: ["14.6"]
-#      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-#      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-#      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-#      - pci_dss_4.0: ["1.3.1","7.1"]
-#      - nist_sp_800-53: ["AC-5","AC-6"]
-#      - soc_2: ["CC5.2","CC6.1"]
-#      - iso_27001-2013: ["A.9.1.1"]
-#      - mitre_techniques: ["T1070, T1070.002, T1083, T1083.000"]
-#      - mitre_tactics: ["TA0007"]
-#      - mitre_mitigations: [""]
-#    condition: none
-#    rules:
-#      - 'f:/etc/audit/auditd.conf -> r:^\h*\H+\h+([0,5,7][0,5]0)'
-#
-  # 4.1.4.5 nsure audit configuration files are 640 or more restrictive (Automated)
-#  - id: 3148
-#    title: "Ensure audit configuration files are 640 or more restrictive (Automated)"
-#    description: "Audit configuration files control auditd and what events are audited."
-#    rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
-#    remediation: "Run the following command to remove more permissive mode than 0640 from the audit configuration files:# find /etc/audit/ -type f \( -name '*.conf' -o -name '*.rules' \) -execchmod u-x,g-wx,o-rwx {} +" 
-#    compliance:
-#      - cis: ["4.1.4.5"]
-#      - cis_csc_v8: ["3.3"]
-#      - cis_csc_v7: ["14.6"]
-#      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-#      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-#      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-#      - pci_dss_4.0: ["1.3.1","7.1"]
-#      - nist_sp_800-53: ["AC-5","AC-6"]
-#      - soc_2: ["CC5.2","CC6.1"]
-#      - iso_27001-2013: ["A.9.1.1"]
-#      - mitre_techniques: ["T1070, T1070.002, T1083, T1083.000"]
-#      - mitre_tactics: ["TA0007"]
-#      - mitre_mitigations: [""]
-#    condition: none
-#    rules:
-#      - "d:/etc/audit"
-#      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-#      - 'd:/etc/audit/rules.d -> r:\.+.conf$'
-#      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^\h*\H+\h*([0,2,4,6][0,4]0)\h*$'
-#      - 'd:/etc/audit/rules.d -> r:\.+.conf$ -> r:^\h*\H+\h*([0,2,4,6][0,4]0)\h*$'
-#
+  - id: 3123
+    title: "Ensure the audit log directory is 0750 or more restrictive"
+    description: "The audit log directory contains audit log files."
+    rationale: "Audit information includes all information including: audit records, audit settings and audit reports. This information is needed to successfully audit system activity. This information must be protected from unauthorized modification or deletion. If this information were to be compromised, forensic analysis and discovery of the true source of potentially malicious system activity is impossible to achieve."
+    remediation: "Run the following command to configure the audit log directory to have a mode of '0750' or less permissive:# chmod g-w,o-rwx '$(dirname $(awk -F'=' '/^\\s*log_file/ {print $2}' /etc/audit/auditd.conf))'" 
+    compliance:
+      - cis: ["4.1.4.4"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - nist_sp_800-53: ["AC-5","AC-6"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1070","T1070.002","T1083","T1083.000"]
+      - mitre_tactics: ["TA0007"]
+    condition: none
+    rules:
+      - 'f:/etc/audit/auditd.conf -> r:^\\h*\\H+\\h+([0,5,7][0,5]0)'
+
+  # 4.1.4.5 Ensure audit configuration files are 640 or more restrictive (Automated)
+  - id: 3124
+    title: "Ensure audit configuration files are 640 or more restrictive"
+    description: "Audit configuration files control auditd and what events are audited."
+    rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
+    remediation: "Run the following command to remove more permissive mode than 0640 from the audit configuration files:# find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -execchmod u-x,g-wx,o-rwx {} +" 
+    compliance:
+      - cis: ["4.1.4.5"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - nist_sp_800-53: ["AC-5","AC-6"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1070","T1070.002","T1083","T1083.000"]
+      - mitre_tactics: ["TA0007"]
+    condition: none
+    rules:
+      - "d:/etc/audit"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.conf$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^\\h*\\H+\\h*([0,2,4,6][0,4]0)\\h*$'
+      - 'd:/etc/audit/rules.d -> r:\.+.conf$ -> r:^\\h*\\H+\\h*([0,2,4,6][0,4]0)\\h*$'
+
   # 4.1.4.6 Ensure audit configuration files are owned by root (Automated)
-#  - id: 3149
-#    title: "Ensure audit configuration files are owned by root (Automated)"
-#    description: "Audit configuration files control auditd and what events are audited."
-#    rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
-#    remediation: "Run the following command to change ownership to root user: # find /etc/audit/ -type f \( -name '*.conf' -o -name '*.rules' \) ! -user root -exec chown root {} +" 
-#    compliance:
-#      - cis: ["4.1.4.6"]
-#      - cis_csc_v8: ["3.3"]
-#      - cis_csc_v7: ["14.6"]
-#      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-#      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-#      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-#      - pci_dss_4.0: ["1.3.1","7.1"]
-#      - nist_sp_800-53: ["AC-5","AC-6"]
-#      - soc_2: ["CC5.2","CC6.1"]
-#      - iso_27001-2013: ["A.9.1.1"]
-#      - mitre_techniques: ["T1070, T1070.002, T1083, T1083.000"]
-#      - mitre_tactics: ["TA0007"]
-#      - mitre_mitigations: [""]
-#    condition: none
-#    rules:
-#      - "d:/etc/audit"
-#      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-#      - 'd:/etc/audit/rules.d -> r:\.+.conf$'
-#      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:root'
-#      - 'd:/etc/audit/rules.d -> r:\.+.conf$ -> r:root'
-#
+  - id: 3125
+    title: "Ensure audit configuration files are owned by root"
+    description: "Audit configuration files control auditd and what events are audited."
+    rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
+    remediation: "Run the following command to change ownership to root user: # find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) ! -user root -exec chown root {} +" 
+    compliance:
+      - cis: ["4.1.4.6"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - nist_sp_800-53: ["AC-5","AC-6"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1070","T1070.002","T1083","T1083.000"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
+    rules:
+      - "d:/etc/audit"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.conf$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:root'
+      - 'd:/etc/audit/rules.d -> r:\.+.conf$ -> r:root'
+
   # 4.1.4.7 Ensure audit configuration files belong to group root (Automated)
-#  - id: 3150
-#    title: "Ensure audit configuration files belong to group root (Automated)"
-#    description: "Audit configuration files control auditd and what events are audited."
-#    rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
-#    remediation: "Run the following command to change group to root: # find /etc/audit/ -type f \( -name '*.conf' -o -name '*.rules' \) ! -group root -exec chgrp root {} +"
-#    compliance:
-#      - cis: ["4.1.4.7"]
-#      - cis_csc_v8: ["3.3"]
-#      - cis_csc_v7: ["14.6"]
-#      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-#      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-#      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-#      - pci_dss_4.0: ["1.3.1","7.1"]
-#      - nist_sp_800-53: ["AC-5","AC-6"]
-#      - soc_2: ["CC5.2","CC6.1"]
-#      - iso_27001-2013: ["A.9.1.1"]
-#      - mitre_techniques: ["T1070, T1070.002, T1083, T1083.000"]
-#      - mitre_tactics: ["TA0007"]
-#      - mitre_mitigations: [""]
-#    condition: all
-#    rules:
-#      - "c:find /etc/audit/ -type f \( -name '*.conf' -o -name '*.rules' \) ! -group root"
+  - id: 3126
+    title: "Ensure audit configuration files belong to group root"
+    description: "Audit configuration files control auditd and what events are audited."
+    rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
+    remediation: "Run the following command to change group to root: # find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) ! -group root -exec chgrp root {} +"
+    compliance:
+      - cis: ["4.1.4.7"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - nist_sp_800-53: ["AC-5","AC-6"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1070","T1070.002","T1083","T1083.000"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
+    rules:
+      - "d:/etc/audit"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.conf$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:root'
+      - 'd:/etc/audit/rules.d -> r:\.+.conf$ -> r:root'
 
   # 4.1.4.8 Ensure audit tools are 755 or more restrictive (Automated)
-  - id: 3151
-    title: "Ensure audit tools are 755 or more restrictive (Automated)"
+  - id: 3127
+    title: "Ensure audit tools are 755 or more restrictive"
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
     remediation: "Run the following command to remove more permissive mode from the audit tools:# chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace/sbin/auditd /sbin/augenrules" 
@@ -870,16 +806,15 @@ checks:
       - nist_sp_800-53: ["AC-5","AC-6"]
       - soc_2: ["CC5.2","CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1070, T1070.002, T1083, T1083.000"]
+      - mitre_techniques: ["T1070","T1070.002","T1083","T1083.000"]
       - mitre_tactics: ["TA0007"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - 'c:stat -c "%n %a" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace/sbin/auditd /sbin/augenrules -> r:^\h*\H+\h+([0-7][0,1,4,5][0,1,4,5])\h*$'
 
   # 4.1.4.9 Ensure audit tools are owned by root (Automated)
-  - id: 3152
-    title: "Ensure audit tools are owned by root (Automated)"
+  - id: 3128
+    title: "Ensure audit tools are owned by root"
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
     remediation: "Run the following command to change the owner of the audit tools to the root user: # chown root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace/sbin/auditd /sbin/augenrules" 
@@ -894,16 +829,15 @@ checks:
       - nist_sp_800-53: ["AC-5","AC-6"]
       - soc_2: ["CC5.2","CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1070, T1070.002, T1083, T1083.000"]
+      - mitre_techniques: ["T1070","T1070.002","T1083","T1083.000"]
       - mitre_tactics: ["TA0007"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - 'c:stat -c "%n %U" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace/sbin/auditd /sbin/augenrules -> r:^\h*\H+\h+root\h*$'
 
   # 4.1.4.10 Ensure audit tools belong to group root (Automated)
-  - id: 3153
-    title: "Ensure audit tools belong to group root (Automated)"
+  - id: 3129
+    title: "Ensure audit tools belong to group root"
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
     remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules .Run the following command to change owner and group of the audit tools to root user and group:# chown root:root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace/sbin/auditd /sbin/augenrules" 
@@ -918,42 +852,39 @@ checks:
       - nist_sp_800-53: ["AC-5","AC-6"]
       - soc_2: ["CC5.2","CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1070, T1070.002, T1083, T1083.000"]
+      - mitre_techniques: ["T1070","T1070.002","T1083","T1083.000"]
       - mitre_tactics: ["TA0007"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - 'c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch/sbin/autrace /sbin/auditd /sbin/augenrules -> r:^\h*\H+\h+([0-7][0,1,4,5][0,1,4,5])\h+root\h+root\h*$'
 
   # 4.1.4.1.11 Ensure cryptographic mechanisms are used to protect the integrity of audit tools (Automated)
-#  - id: 3154
-#    title: "Ensure cryptographic mechanisms are used to protect the integrity of audit tools (Automated)"
-#    description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
-#    rationale: "Protecting the integrity of the tools used for auditing purposes is a critical step toward ensuring the integrity of audit information. Audit information includes all information (e.g., audit records, audit settings, and audit reports) needed to successfully audit information system activity. Attackers may replace the audit tools or inject code into the existing tools with the purpose of providing the capability to hide or erase system activity from the audit logs. Audit tools should be cryptographically signed in order to provide the capability to identify when the audit tools have been modified, manipulated, or replaced. An example is a checksum hash of the file or files."
-#    remediation: "Add or update the following selection lines for to a file ending in .conf in the /etc/aide/aide.conf.d/ or to /etc/aide/aide.conf to protect the integrity of the audit tools:# Audit Tools /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512" 
-#    compliance:
-#      - cis: ["4.1.4.11"]
-#      - cis_csc_v8: ["4.1"]
-#      - cis_csc_v7: ["5.1"]
-#      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7"]
-#      - pci_dss_3.2.1: ["2.2","11.5"]
-#      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1"]
-#      - nist_sp_800-53: ["CM-7(1)","CM-9","SA-10"]
-#      - soc_2: ["CC7.1","CC8.1"]
-#      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
-#      - mitre_techniques: ["T1070, T1070.002, T1083, T1083.000"]
-#      - mitre_tactics: [""]
-#      - mitre_mitigations: [""]
-#    condition: all
-#    rules:
-#      - "d:/etc/aide/aide.conf"
-#      - 'd:/etc/aide/aide.conf -> r:\.+.conf$'
-#      - 'd:/etc/aide/aide.conf -> r:\.+.conf$ -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512'
-#      - 'd:/etc/aide/aide.conf -> r:\.+.conf$ -> r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512'
-#      - 'd:/etc/aide/aide.conf -> r:\.+.conf$ -> r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512'
-#      - 'd:/etc/aide/aide.conf -> r:\.+.conf$ -> r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512'
-#      - 'd:/etc/aide/aide.conf -> r:\.+.conf$ -> r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512'
-#      - 'd:/etc/aide/aide.conf -> r:\.+.conf$ -> r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512'
+  - id: 3130
+    title: "Ensure cryptographic mechanisms are used to protect the integrity of audit tools"
+    description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
+    rationale: "Protecting the integrity of the tools used for auditing purposes is a critical step toward ensuring the integrity of audit information. Audit information includes all information (e.g., audit records, audit settings, and audit reports) needed to successfully audit information system activity. Attackers may replace the audit tools or inject code into the existing tools with the purpose of providing the capability to hide or erase system activity from the audit logs. Audit tools should be cryptographically signed in order to provide the capability to identify when the audit tools have been modified, manipulated, or replaced. An example is a checksum hash of the file or files."
+    remediation: "Add or update the following selection lines for to a file ending in .conf in the /etc/aide/aide.conf.d/ or to /etc/aide/aide.conf to protect the integrity of the audit tools:# Audit Tools /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512" 
+    compliance:
+      - cis: ["4.1.4.11"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2","11.5"]
+      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)","CM-9","SA-10"]
+      - soc_2: ["CC7.1","CC8.1"]
+      - iso_27001-2013: ["A.8.1.3","A.14.2.5"]
+      - mitre_techniques: ["T1070","T1070.002","T1083","T1083.000"]
+    condition: all
+    rules:
+      - "d:/etc/aide/aide.conf"
+      - 'd:/etc/aide/aide.conf -> r:\.+.conf$'
+      - 'd:/etc/aide/aide.conf -> r:\.+.conf$ -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512'
+      - 'd:/etc/aide/aide.conf -> r:\.+.conf$ -> r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512'
+      - 'd:/etc/aide/aide.conf -> r:\.+.conf$ -> r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512'
+      - 'd:/etc/aide/aide.conf -> r:\.+.conf$ -> r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512'
+      - 'd:/etc/aide/aide.conf -> r:\.+.conf$ -> r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512'
+      - 'd:/etc/aide/aide.conf -> r:\.+.conf$ -> r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512'
 
 
   ############################################################
@@ -965,8 +896,8 @@ checks:
   ############################################################
 
   # 4.2.1.1 Ensure journald is configured to send logs to a remote log host
-  - id: 3155
-    title: "Ensure systemd-journal-remote is installed (Automated)"
+  - id: 3131
+    title: "Ensure systemd-journal-remote is installed"
     description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Run the following command to install systemd-journal-remote: # apt install systemd-journal-remote" 
@@ -980,16 +911,16 @@ checks:
       - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1070, T1070.002, T1562, T1562.006"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1029"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' systemd-journal-remote ->r:install ok installed"
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' systemd-journal-remote -> r:install ok installed"
 
   # 4.2.1.1.2 Ensure systemd-journal-remote is configured (Manual)
-  - id: 3156
-    title: "Ensure systemd-journal-remote is configured (Manual)"
+  - id: 3132
+    title: "Ensure systemd-journal-remote is configured"
     description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Edit the /etc/systemd/journal-upload.conf file and ensure the following lines are set per your environment: URL=192.168.50.42 ServerKeyFile=/etc/ssl/private/journal-upload.pem ServerCertificateFile=/etc/ssl/certs/journal-upload.pem TrustedCertificateFile=/etc/ssl/ca/trusted.pem" 
@@ -1003,7 +934,7 @@ checks:
       - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1070, T1070.002, T1562, T1562.006"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1029"]
     condition: all
@@ -1014,8 +945,8 @@ checks:
       - "f:/etc/systemd/journal-upload.conf -> r:TrustedCertificateFile="  
 
   # 4.2.1.1.3 Ensure systemd-journal-remote is enabled (Manual)
-  - id: 3157
-    title: "Ensure systemd-journal-remote is enabled (Manual)"
+  - id: 3133
+    title: "Ensure systemd-journal-remote is enabled"
     description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Run the following command to enable systemd-journal-remote: # systemctl --now enable systemd-journal-upload.service" 
@@ -1029,16 +960,16 @@ checks:
       - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1070, T1070.002, T1562, T1562.006"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1029"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled systemd-journal-upload.service ->r:enabled'
+      - 'c:systemctl is-enabled systemd-journal-upload.service -> r:enabled'
 
   # 4.2.1.1.3 Ensure journald is not configured to recieve logs from a remote client (Automated)
-  - id: 3158
-    title: "Ensure journald is not configured to recieve logs from a remote client (Automated)"
+  - id: 3134
+    title: "Ensure journald is not configured to recieve logs from a remote client"
     description: "Journald supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts. NOTE: The same package, systemd-journal-remote, is used for both sending logs to remote hosts and receiving incoming logs.With regards to receiving logs, there are two services; systemd-journal-remote.socket and systemd-journal-remote.service."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
     remediation: "Run the following command to disable systemd-journal-remote.socket:# systemctl --now disable systemd-journal-remote.socket" 
@@ -1053,16 +984,16 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1","A.13.1.3"]
       - soc_2: ["CC6.3","CC6.6"]
-      - mitre_techniques: ["T1070, T1070.002, T1562, T1562.006"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1029"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled systemd-journal-remote.socket ->r:disabled'
+      - 'c:systemctl is-enabled systemd-journal-remote.socket -> r:disabled'
 
   # 4.2.1.2 Ensure journald service is enabled (Automated)
-  - id: 3159
-    title: "Ensure journald service is enabled (Automated)"
+  - id: 3135
+    title: "Ensure journald service is enabled"
     description: "Ensure that the systemd-journald service is enabled to allow capturing of logging events."
     rationale: "If the systemd-journald service is not enabled to start on boot, the system will not capture logging events."
     remediation: "By default the systemd-journald service does not have an [Install] section and thus cannot be enabled / disabled. It is meant to be referenced as Requires or Wants by other unit files. As such, if the status of systemd-journald is not static, investigate why." 
@@ -1076,16 +1007,15 @@ checks:
       - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1070, T1070.002, T1562, T1562.006"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - 'c:systemctl is-enabled systemd-journald.service -> r:static'
 
   # 4.2.1.3 Ensure journald is configured to compress large log files (Automated)
-  - id: 3160
-    title: "Ensure journald is configured to compress large log files (Automated)"
+  - id: 3136
+    title: "Ensure journald is configured to compress large log files"
     description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large."
     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes Restart the service: # systemctl restart systemd-journald" 
@@ -1100,16 +1030,16 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - soc_2: ["A1.1"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1562, T1562.002"]
+      - mitre_techniques: ["T1562","T1562.002"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1053"]
     condition: all
     rules:
-      - "f:/etc/systemd/journald.conf ->r:Compress=yes"
+      - "f:/etc/systemd/journald.conf -> r:Compress=yes"
 
   # 4.2.1.4 Ensure journald is configured to write logfiles to persistent disk (Automated)
-  - id: 3161
-    title: "Ensure journald is configured to write logfiles to persistent disk (Automated)"
+  - id: 3137
+    title: "Ensure journald is configured to write logfiles to persistent disk"
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss due to a reboot."
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent Restart the service: # systemctl restart systemd-journald" 
@@ -1123,7 +1053,7 @@ checks:
       - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1070, T1070.002, T1562, T1562.006"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -1131,8 +1061,8 @@ checks:
       - "f:/etc/systemd/journald.conf -> r:Storage=persistent"
 
   # 4.2.1.5 Ensure journald is not configured to send logs to rsyslog (Manual)
-  - id: 3162
-    title: "Ensure journald is not configured to send logs to rsyslog (Manual)"
+  - id: 3138
+    title: "Ensure journald is not configured to send logs to rsyslog"
     description: "Data from journald should be kept in the confines of the service and not forwarded on to other services."
     rationale: "IF journald is the method for capturing logs, all logs of the system should be handled by journald and not forwarded to other logging mechanisms."
     remediation: "Edit the /etc/systemd/journald.conf file and ensure that ForwardToSyslog=yes is removed. Restart the service: # systemctl restart systemd-journald" 
@@ -1147,7 +1077,7 @@ checks:
       - nist_sp_800-53: ["AU-7","AU-6(3)"]
       - soc_2: ["PL1.4"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1070, T1070.002, T1562, T1562.006"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1029"]
     condition: all
@@ -1155,11 +1085,12 @@ checks:
       - 'not f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
   # 4.2.1.6 Ensure journald log rotation is configured per site policy (Manual)
-  - id: 3163
-    title: "Ensure journald log rotation is configured per site policy (Manual)"
+  - id: 3139
+    title: "Ensure journald log rotation is configured per site policy"
     description: "Journald includes the capability of rotating log files regularly to avoid filling up the system with logs or making the logs unmanageably large. The file /etc/systemd/journald.conf is the configuration file used to specify how logs generated by Journald should be rotated."
     rationale: "By keeping the log files smaller and more manageable, a system administrator can easily archive these files to another system and spend less time looking through inordinately large log files."
     remediation: "Review /etc/systemd/journald.conf and verify logs are rotated according to site policy. The settings should be carefully understood as there are specific edge cases and prioritisation of parameters. The specific parameters for log rotation are: .SystemMaxUse= .SystemKeepFree= .RuntimeMaxUse=.  RuntimeKeepFree= .MaxFileSec=" 
+    additional information: "See man 5 journald.conf for detailed information regarding the parameters in use."
     compliance:
       - cis: ["4.2.1.6"]
       - cis_csc_v8: ["8.2"]
@@ -1170,7 +1101,7 @@ checks:
       - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1070, T1070.002"]
+      - mitre_techniques: ["T1070","T1070.002"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -1188,8 +1119,8 @@ checks:
   ############################################################
 
   # 4.2.2.1 Ensure rsyslog is installed (Automated)
-  - id: 3164
-    title: "Ensure rsyslog is installed (Automated)"
+  - id: 3140
+    title: "Ensure rsyslog is installed"
     description: "The rsyslog software is recommended in environments where journald does not meet operation requirements."
     rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
     remediation: "Run the following command to install rsyslog: # apt install rsyslog" 
@@ -1203,16 +1134,15 @@ checks:
       - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1005, T1005.000, T1070, T1070.002"]
+      - mitre_techniques: ["T1005","T1005.000","T1070","T1070.002"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' rsyslog -> r:install ok installed"
 
   # 4.2.2.2 Ensure rsyslog service is enabled (Automated)
-  - id: 3165
-    title: "Ensure rsyslog service is enabled (Automated)"
+  - id: 3141
+    title: "Ensure rsyslog service is enabled"
     description: "Once the rsyslog package is installed, ensure that the service is enabled."
     rationale: "If the rsyslog service is not enabled to start on boot, the system will not capture logging events."
     remediation: "Run the following command to enable rsyslog: # systemctl --now enable rsyslog" 
@@ -1226,19 +1156,19 @@ checks:
       - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1070, T1070.002, T1562, T1562.001"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.001"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
       - "c:systemctl is-enabled rsyslog -> r:enabled"
 
   # 4.2.2.3 Ensure journald is configured to send logs to rsyslog (Manual)
-  - id: 3166
-    title: "Ensure journald is configured to send logs to rsyslog (Manual)"
+  - id: 3142
+    title: "Ensure journald is configured to send logs to rsyslog"
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of journald logs, however, use of the RSyslog service provides a consistent means of log collection and export."
     rationale: "IF RSyslog is the preferred method for capturing logs, all logs of the system should be sent to it for further processing."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes Restart the service: # systemctl restart rsyslog" 
+    additional information: "As noted in the journald man pages, journald logs may be exported to rsyslog either through the process mentioned here, or through a facility like systemd- journald.service. There are trade-offs involved in each implementation, where ForwardToSyslog will immediately capture all events (and forward to an external log server, if properly configured), but may not capture all boot-up activities. Mechanisms such as systemd-journald.service, on the other hand, will record bootup events, but may delay sending the information to rsyslog, leading to the potential for log manipulation prior to export. Be aware of the limitations of all tools employed to secure a system. The main configuration file /etc/systemd/journald.conf is read before any of the custom *.conf files. If there are custom configurations present, they override the main configuration parameters"
     compliance:
       - cis: ["4.2.2.3"]
       - cis_csc_v8: ["8.2","8.9"]
@@ -1255,11 +1185,14 @@ checks:
       - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
   # 4.2.2.4 Ensure rsyslog default file permissions are configured (Automated)
-  - id: 3167
-    title: "Ensure rsyslog default file permissions are configured (Automated)"
+  - id: 3143
+    title: "Ensure rsyslog default file permissions are configured"
     description: "RSyslog will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
     remediation: "Edit either /etc/rsyslog.conf or a dedicated .conf file in /etc/rsyslog.d/ and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640 Restart the service: # systemctl restart rsyslog" 
+    impact: "The systems global umask could override, but only making the file permissions stricter, what is configured in RSyslog with the FileCreateMode directive. RSyslog also has it's own $umask directive that can alter the intended file creation mode. In addition, consideration should be given to how FileCreateMode is used. Thus it is critical to ensure that the intended file creation mode is not overridden with less restrictive settings in /etc/rsyslog.conf, /etc/rsyslog.d/*conf files and that FileCreateMode is set before any file is created."
+    references:
+      - See the rsyslog.conf(5) man page for more information.
     compliance:
       - cis: ["4.2.2.4"]
       - cis_csc_v8: ["3.3","8.2"]
@@ -1271,11 +1204,8 @@ checks:
       - nist_sp_800-53: ["AC-5","AC-6","AU-7"]
       - soc_2: ["CC5.2","CC6.1"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5", "A.12.4.1"]
-      - mitre_techniques: ["T1070, T1070.002, T1083, T1083.000"]
+      - mitre_techniques: ["T1070","T1070.002","T1083","T1083.000"]
       - mitre_tactics: ["TA0007"]
-      - mitre_mitigations: [""]
-    references:
-      - See the rsyslog.conf(5) man page for more information.
     condition: all
     rules:
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
@@ -1286,8 +1216,8 @@ checks:
   # 4.2.2.6 Ensure rsyslog is configured to send logs to a remote log host (Manual) - Not Implemented
 
   # 4.2.2.7 Ensure rsyslog is not configured to receive logs from a remote client (Automated)
-  - id: 3168
-    title: "Ensure rsyslog is not configured to receive logs from a remote client (Automated)"
+  - id: 3144
+    title: "Ensure rsyslog is not configured to receive logs from a remote client"
     description: "RSyslog supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
     remediation: "Should there be any active log server configuration found in the auditing section, modify those file and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf." 
@@ -1302,12 +1232,12 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1","A.13.1.3"]
       - soc_2: ["CC6.3","CC6.6"]
-      - mitre_techniques: ["T1070, T1070.002, T1562, T1562.006"]
+      - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: [""]
     condition: all
     rules:
-      - 'c:grep -Rh ^*.* /etc/rsyslog.conf /etc/rsyslog.d/*.conf -> r:^\h*module\(load="imtcp"\)'
-      - 'c:grep -Rh ^*.* /etc/rsyslog.conf /etc/rsyslog.d/*.conf -> r:^\h*input\(type="imtcp" port="514"\)'
+      - "d:/etc/rsyslog.conf"
+      - 'd:/etc/rsyslog.conf -> r:\.+.conf$ -> r:^\h*module\(load="imtcp"\)'
+      - 'd:/etc/rsyslog.conf -> r:\.+.conf$ -> r:^\h*input\(type="imtcp" port="514"\)'
 
   # 4.2.2.5 Ensure all logfiles have appropriate permissions and ownership (Automated) - Not Implemented
