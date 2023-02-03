@@ -56,8 +56,8 @@ public:
     explicit EngineServer(const std::string& apiEndpointPath,
                           std::shared_ptr<api::Registry> registry,
                           const std::string& eventEndpointPath,
-                          std::optional<std::string> pathFloodedFile = std::nullopt,
-                          const int bufferSize = DEFAULT_QUEUE_SIZE);
+                          std::optional<std::string> pathFloodedFile,
+                          const int bufferSize);
 
     /**
      * @brief Start server.
