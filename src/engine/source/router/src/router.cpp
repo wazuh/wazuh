@@ -5,6 +5,8 @@
 
 #include <builder.hpp>
 
+#include <parseEvent.hpp>
+
 namespace router
 {
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
@@ -168,20 +170,18 @@ std::optional<base::Error> Router::changeRoutePriority(const std::string& name, 
     return std::nullopt;
 }
 
-// std::optional<base::Error> Router::pushEvent(base::Event event)
-// {
-//     if (!m_isRunning.load() || !m_queue)
-//     {
-//         return base::Error {"The router queue is not initialized"};
-//     }
-//
-//     if (m_queue->try_enqueue(std::move(event)))
-//     {
-//         return std::nullopt;
-//     }
-//     return base::Error {"The router queue is in high load"};
-//
-// }
+std::optional<base::Error> Router::enqueueEvent(base::Event event)
+{
+    if (!m_isRunning.load() || !m_queue)
+    {
+        return base::Error {"The router queue is not initialized"};
+    }
+    if (m_queue->try_enqueue(std::move(event)))
+    {
+        return std::nullopt;
+    }
+    return base::Error {"The router queue is in high load"};
+}
 
 std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
 {
@@ -271,10 +271,10 @@ api::CommandFn Router::apiCallbacks()
         {
             response = apiChangeRoutePriority(params);
         }
-        // else if(action.value() == "push_event")
-        // {
-        //     response = apiPushEvent(params);
-        // }
+        else if(action.value() == "enqueue_event")
+        {
+            response = apiEnqueueEvent(params);
+        }
         else
         {
             response.message(fmt::format("Invalid action '{}'", action.value()));
@@ -378,28 +378,33 @@ api::WazuhResponse Router::apiChangeRoutePriority(const json::Json& params)
     return response;
 }
 
-// api::WazuhResponse Router::apiPushEvent(const json::Json& params)
-// {
-//     api::WazuhResponse response {};
-//     const auto event = params.getString("/event");
-//     if (!event)
-//     {
-//         response.message(R"(Error: Error: Missing "event" parameter)");
-//     }
-//     else
-//     {
-//         const auto err = pushEvent(event);
-//         if (err)
-//         {
-//             response.message(err.value().message);
-//         }
-//         else
-//         {
-//             response.message(fmt::format("Event '{}' pushed to '{}'", event.value(), name.value()));
-//         }
-//     }
-//     return response;
-// }
+api::WazuhResponse Router::apiEnqueueEvent(const json::Json& params)
+{
+    api::WazuhResponse response {};
+    const auto event = params.getString(JSON_PATH_EVENT);
+    if (!event)
+    {
+        response.message(R"(Error: Missing "event" parameter)");
+    }
+    else
+    {
+        try {
+            base::Event ev = base::parseEvent::parseOssecEvent(event.value());
+            auto err = enqueueEvent(ev);
+            if (err)
+            {
+                response.message(err.value().message);
+            }
+            else
+            {
+                response.message("Ok");
+            }
+        } catch (const std::exception& e) {
+            response.message(fmt::format("Error: {} ", e.what()));
+        }
+    }
+    return response;
+}
 
 json::Json Router::tableToJson()
 {
