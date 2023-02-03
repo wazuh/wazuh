@@ -49,6 +49,13 @@
   <order>audit.key</order>
 </decoder>
 
+<!-- SYSCALL - AUID - only with ENRICHED auditd Logs -->
+<decoder name="auditd-syscall">
+  <parent>auditd</parent>
+  <regex offset="after_regex">AUID=\((\S+)\)|AUID="(\S+)"|AUID=(\S+)</regex>
+  <order>audit.e_auid</order>
+</decoder>
+
 <!-- EXECVE -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
