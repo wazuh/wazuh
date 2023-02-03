@@ -21,7 +21,7 @@
 #include <hlp/registerParsers.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
-#include <router/environmentManager.hpp>
+#include <router/router.hpp>
 #include <rxbk/rxFactory.hpp>
 #include <server/engineServer.hpp>
 #include <store/drivers/fileDriver.hpp>
@@ -112,7 +112,7 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<api::catalog::Catalog> catalog;
     std::shared_ptr<engineserver::EngineServer> server;
-    std::shared_ptr<router::EnvironmentManager> envManager;
+    std::shared_ptr<router::Router> router;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdb_manager::KVDBManager> kvdb;
 
@@ -120,7 +120,10 @@ void runStart(ConfHandler confManager)
     {
         const auto bufferSize {static_cast<size_t>(queueSize)};
 
-        server = std::make_shared<engineserver::EngineServer>(apiEndpoint, nullptr, eventEndpoint, bufferSize);
+        // TODO Add the option to configure the flooded file
+        // TODO Change the default buffer size to a multiple of 1024
+        server =
+            std::make_shared<engineserver::EngineServer>(apiEndpoint, nullptr, eventEndpoint, std::nullopt, bufferSize);
         g_exitHanlder.add([server]() { server->close(); });
         WAZUH_LOG_DEBUG("Server configured.");
 
@@ -175,25 +178,23 @@ void runStart(ConfHandler confManager)
         api::catalog::cmds::registerAllCmds(catalog, server->getRegistry());
         WAZUH_LOG_DEBUG("Catalog API registered.")
 
-        envManager = std::make_shared<router::EnvironmentManager>(builder, server->getEventQueue(), threads);
-        g_exitHanlder.add([envManager]() { envManager->delAllEnvironments(); });
-        WAZUH_LOG_INFO("Environment manager initialized.");
+        // TODO Change everithing of default environment to a mechanism to create load a last configuration of route
+        router = std::make_shared<router::Router>(builder, threads);
+        router->run(server->getEventQueue());
+        g_exitHanlder.add([router]() { router->stop(); });
+        WAZUH_LOG_INFO("Router initialized.");
 
         // Register the API command
-        server->getRegistry()->registerCommand("env", envManager->apiCallback());
-        WAZUH_LOG_DEBUG("Environment manager API registered.")
+        server->getRegistry()->registerCommand("router", router->apiCallbacks());
+        WAZUH_LOG_DEBUG("Router API registered.")
 
         // Register Configuration API commands
         api::config::cmds::registerCommands(server->getRegistry(), confManager);
         WAZUH_LOG_DEBUG("Configuration manager API registered.");
 
         // Up default environment
-        auto error = envManager->addEnvironment(environment);
-        if (!error)
-        {
-            envManager->startEnvironment(environment);
-        }
-        else
+        auto error = router->addRoute(environment);
+        if (error)
         {
             WAZUH_LOG_WARN("An error occurred while creating the default environment \"{}\": {}.",
                            environment,
