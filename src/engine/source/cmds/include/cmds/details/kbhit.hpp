@@ -8,7 +8,7 @@
 
 namespace cmd::details
 {
-
+// Check if stdin has data available to read
 inline int kbhit()
 {
     // timeout structure passed into select

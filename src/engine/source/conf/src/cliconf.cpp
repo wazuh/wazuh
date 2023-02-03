@@ -72,7 +72,7 @@ void CliConf::put(const std::string& key, const std::string& value)
     auto prev = opt->as<std::string>();
     // Config option does not behave like the rest
     // Only options with capture variable return the callback
-    if (opt->get_name() == "--config")
+    if ("--config" == opt->get_name())
     {
         throw std::runtime_error("Cannot modify config file path, restart the application specifying a "
                                  "new path with --config 'path'");
