@@ -91,8 +91,7 @@ api::CommandFn configPutCmd(ConfHandler<ConfDriver> confHandler)
 }
 
 template<typename ConfDriver>
-bool registerCommands(std::shared_ptr<api::Registry> registry,
-                      ConfHandler<ConfDriver> confHandler)
+bool registerCommands(std::shared_ptr<api::Registry> registry, ConfHandler<ConfDriver> confHandler)
 {
     return registry->registerCommand("config_get", configGetCmd(confHandler))
            && registry->registerCommand("config_save", configSaveCmd(confHandler))

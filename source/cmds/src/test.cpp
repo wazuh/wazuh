@@ -7,7 +7,6 @@
 
 #include <re2/re2.h>
 
-#include <cmds/details/kbhit.hpp>
 #include <cmds/details/stackExecutor.hpp>
 #include <hlp/logpar.hpp>
 #include <hlp/registerParsers.hpp>
@@ -126,7 +125,7 @@ void run(const Options& options)
 
         std::variant<json::Json, base::Error> get(const base::Name& name) const
         {
-            if (name.parts()[0] == "environment")
+            if ("environment" == name.parts()[0])
             {
                 return testEnvironment;
             }
@@ -256,7 +255,7 @@ void run(const Options& options)
                 std::string indent = "  ";
                 for (auto& [asset, condition] : history)
                 {
-                    if (env.assets()[asset]->m_type == builder::Asset::Type::DECODER)
+                    if (builder::Asset::Type::DECODER == env.assets()[asset]->m_type)
                     {
                         std::cerr << fmt::format("{}{}  ->  {}", indent, asset, condition) << std::endl;
                         if (traceBuffer.find(asset) != traceBuffer.end())
@@ -270,7 +269,7 @@ void run(const Options& options)
                         // Clear trace buffer
                         traceBuffer[asset].str("");
                         traceBuffer[asset].clear();
-                        if (condition == "success")
+                        if ("success" == condition)
                         {
                             indent += indent;
                         }
@@ -281,7 +280,7 @@ void run(const Options& options)
                 indent = "  ";
                 for (auto& [asset, condition] : history)
                 {
-                    if (env.assets()[asset]->m_type == builder::Asset::Type::RULE)
+                    if (builder::Asset::Type::RULE == env.assets()[asset]->m_type)
                     {
                         std::cerr << fmt::format("{}{}  ->  {}", indent, asset, condition) << std::endl;
                         if (traceBuffer.find(asset) != traceBuffer.end())
@@ -296,7 +295,7 @@ void run(const Options& options)
                         // Clear trace buffer
                         traceBuffer[asset].str("");
                         traceBuffer[asset].clear();
-                        if (condition == "success")
+                        if ("success" == condition)
                         {
                             indent += indent;
                         }
