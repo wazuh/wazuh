@@ -817,29 +817,25 @@ int wdb_global_delete_tuple_belong(wdb_t *wdb, int id_group, int id_agent) {
     return wdb_exec_stmt_silent(stmt);
 }
 
-bool wdb_is_group_empty(wdb_t *wdb, char* group_name) {
+cJSON* wdb_is_group_empty(wdb_t *wdb, char* group_name) {
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
     if (stmt == NULL) {
-        return false;
+        return NULL;
     }
 
     sqlite3_bind_text(stmt, 1, group_name, -1, NULL);
-    switch (wdb_step(stmt)) {
-    case SQLITE_DONE:
-        return true;
-    case SQLITE_ROW:
-        return false;
-    default:
-        mdebug1("SQL statement execution failed");
-        return false;
+
+    cJSON* sql_agents_id = wdb_exec_stmt(stmt);
+
+    if (!sql_agents_id) {
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
+
+    return sql_agents_id;
 }
 
 int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
-    if (!wdb_is_group_empty(wdb, group_name)) {
-        mdebug1("Unable to delete group '%s', the group isn't empty", group_name);
-        return OS_INVALID;
-    }
+    cJSON* sql_agents_id = wdb_is_group_empty(wdb, group_name);
 
     sqlite3_stmt *stmt = NULL;
 
@@ -863,6 +859,16 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
+        if (!sql_agents_id) {
+            int result;
+            cJSON* agent_id;
+            cJSON_ArrayForEach(agent_id,sql_agents_id) {
+                result = recalculate_agent_groups_hash(wdb, agent_id->valueint, wconfig.is_worker?"synced":"syncreq");
+                if (result == WDBC_ERROR) {
+                    merror("Couldn't recalculate hash group for agent: '%d'", agent_id->valueint);
+                }
+            }
+        }
         return OS_SUCCESS;
         break;
     default:
@@ -1389,19 +1395,10 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                 }
             }
             if (OS_SUCCESS == valid_groups) {
-                char* agent_groups_csv = wdb_global_calculate_agent_group_csv(wdb, agent_id);
-                if (agent_groups_csv) {
-                    char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
-                    OS_SHA256_String_sized(agent_groups_csv, groups_hash, WDB_GROUP_HASH_SIZE);
-                    if (WDBC_ERROR == wdb_global_set_agent_group_context(wdb, agent_id, agent_groups_csv, groups_hash, sync_status)) {
-                        ret = WDBC_ERROR;
-                        merror("There was an error assigning the groups context to agent '%03d'", agent_id);
-                    }
-                    os_free(agent_groups_csv);
-                    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
-                } else {
+                int result = recalculate_agent_groups_hash(wdb, agent_id, sync_status);
+                if (result == WDBC_ERROR) {
                     ret = WDBC_ERROR;
-                    mdebug1("The agent groups where empty right after the set");
+                    merror("Couldn't recalculate hash group for agent: '%d'", agent_id);
                 }
             }
         } else {
@@ -1411,6 +1408,25 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
         }
     }
     return ret;
+}
+
+int recalculate_agent_groups_hash(wdb_t* wdb, int agent_id, char* sync_status) {
+    int result = WDBC_OK;
+    char* agent_groups_csv = wdb_global_calculate_agent_group_csv(wdb, agent_id);
+    if (agent_groups_csv) {
+        char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
+        OS_SHA256_String_sized(agent_groups_csv, groups_hash, WDB_GROUP_HASH_SIZE);
+        if (WDBC_ERROR == wdb_global_set_agent_group_context(wdb, agent_id, agent_groups_csv, groups_hash, sync_status)) {
+            result = WDBC_ERROR;
+            merror("There was an error assigning the groups context to agent '%03d'", agent_id);
+        }
+        os_free(agent_groups_csv);
+        wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
+    } else {
+        result = WDBC_ERROR;
+        mdebug1("The agent groups where empty right after the set");
+    }
+    return result;
 }
 
 int wdb_global_set_agent_groups_sync_status(wdb_t *wdb, int id, const char* sync_status) {

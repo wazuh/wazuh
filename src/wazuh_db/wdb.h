@@ -372,6 +372,7 @@ typedef struct wdb_config {
     int free_pages_percentage;
     int max_fragmentation;
     int check_fragmentation_interval;
+    int is_worker;
     wdb_backup_settings_node** wdb_backup_settings;
 } wdb_config;
 
@@ -1304,6 +1305,17 @@ int wdb_parse_global_get_group_agents(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output);
 
 /**
+ * @brief Function to recalculate the agent group hash.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] agent_id Int with the agent id.
+ * @param [in] sync_status String with the sync_status to be set.
+ * @return WDBC_OK Success.
+ *         WDBC_ERROR On error.
+ */
+int recalculate_agent_groups_hash(wdb_t* wdb, int agent_id, char* sync_status);
+
+/**
  * @brief Function to parse sync-agent-info-get params and set next ID to iterate on further calls.
  *        If no last_id is provided. Last obtained ID is used.
  *
@@ -1920,9 +1932,9 @@ int wdb_global_delete_tuple_belong(wdb_t *wdb, int id_group, int id_agent);
  *
  * @param [in] wdb The Global struct database.
  * @param [in] group_name The group name.
- * @return Returns true if the group is empty, false if it isn´t empty or error.
+ * @return Returns cJSON* with agents id.
  */
-bool wdb_is_group_empty(wdb_t *wdb, char* group_name);
+cJSON* wdb_is_group_empty(wdb_t *wdb, char* group_name);
 
 /**
  * @brief Function to delete a group by using the name.
