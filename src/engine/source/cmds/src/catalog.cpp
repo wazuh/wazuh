@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <system_error>
 
@@ -30,6 +31,20 @@ struct Options
     std::string path;
     bool recursive;
 };
+
+void readCinIfEmpty(std::string& content)
+{
+    if (content.empty() && cmd::details::kbhit())
+    {
+        std::stringstream ss;
+        std::string line;
+        while (std::getline(std::cin, line))
+        {
+            ss << line << std::endl;
+        }
+        content = ss.str();
+    }
+}
 
 } // namespace
 
@@ -287,10 +302,7 @@ void configure(CLI::App_p app)
     update_subcommand->callback(
         [options]()
         {
-            if (options->content.empty() && cmd::details::kbhit() != 0)
-            {
-                std::getline(std::cin, options->content);
-            }
+            readCinIfEmpty(options->content);
             runUpdate(options->apiEndpoint, options->format, options->name, options->content);
         });
 
@@ -303,10 +315,7 @@ void configure(CLI::App_p app)
     create_subcommand->callback(
         [options]()
         {
-            if (options->content.empty() && cmd::details::kbhit() != 0)
-            {
-                std::getline(std::cin, options->content);
-            }
+            readCinIfEmpty(options->content);
             runCreate(options->apiEndpoint, options->format, options->name, options->content);
         });
 
@@ -327,10 +336,7 @@ void configure(CLI::App_p app)
     validate_subcommand->callback(
         [options]()
         {
-            if (options->content.empty() && cmd::details::kbhit() != 0)
-            {
-                std::getline(std::cin, options->content);
-            }
+            readCinIfEmpty(options->content);
             runValidate(options->apiEndpoint, options->format, options->name, options->content);
         });
 
