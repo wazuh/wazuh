@@ -250,10 +250,10 @@ namespace Utils
         // Format of value is 18-digit LDAP/FILETIME timestamps.
         // 18-digit LDAP/FILETIME timestamps -> Epoch/Unix time
         // (value/10000000ULL) - 11644473600ULL
-        const time_t epochTIme { static_cast<long int> ((time / 10000000ULL) - WINDOWS_UNIX_EPOCH_DIFF_SECONDS) };
+        const time_t epochTime { static_cast<long int> ((time / 10000000ULL) - WINDOWS_UNIX_EPOCH_DIFF_SECONDS) };
         char formatString[20] = {0};
 
-        std::strftime(formatString, sizeof(formatString), "%Y/%m/%d %H:%M:%S", std::localtime(&epochTIme));
+        std::strftime(formatString, sizeof(formatString), "%Y/%m/%d %H:%M:%S", std::localtime(&epochTime));
         return formatString;
     }
 
