@@ -17,9 +17,6 @@ metadata:
 sources:
   - decoder/queue-localfile/0
 
-check:
-  - event.original: +ef_exists
-
 definitions:
   ELBTIMESTAMP: <@timestamp/%FT%TZ>?<@timestamp/%FT%T>
   ELBNAME: <aws.elb.name>
