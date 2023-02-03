@@ -4,6 +4,7 @@ name: decoder/sophos-sandstorn/0
 metadata:
   module: sophos
   title: Sophos logs decoder
+  version: [17.5.x, 18.0.x]
   description: Decoder for sophos logs
   author:
     name: Wazuh Inc. info@wazuh.com
