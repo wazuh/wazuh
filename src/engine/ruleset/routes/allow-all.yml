@@ -1,5 +1,1 @@
 name: route/allow-all/0
-
-priority: 10
-
-target: environment/wazuh/0
