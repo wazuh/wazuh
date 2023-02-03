@@ -114,7 +114,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
     const std::string failureTrace1 {fmt::format(
         "[{}] -> Failure: Trying to get command name value, '{}' reference not found", name, parameters[0].m_value)};
     std::string failureTrace2 {};
-    if (paramsQtty >= 3)
+    if (3 <= paramsQtty)
     {
         failureTrace2 = fmt::format(
             "[{}] -> Failure: Trying to get timeout value, '{}' reference not found", name, parameters[2].m_value);

@@ -27,12 +27,14 @@ check:
   - ~json.operation: +s_ne/DELETED
 
 normalize:
-  - check: +ef_exists/~json.data.hostname
+  - check:
+      - ~json.data.hostname: +ef_exists
     map:
       - host.hostname: $~json.data.hostname
       - host.name: $~json.data.hostname
 
-  - check: +ef_exists/~json.data.architecture
+  - check:
+      - ~json.data.architecture: +ef_exists
     map:
       - host.architecture: $~json.data.architecture
 
