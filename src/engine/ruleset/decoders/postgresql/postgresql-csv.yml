@@ -19,9 +19,6 @@ metadata:
 sources:
   - decoder/queue-localfile/0
 
-check:
-  - event.original: +ef_exists
-
 parse:
   logpar:
       # 1992-07-10 01:07:24.374 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"CHECKPOINT",1992-07-10 01:06:20 UTC,3/0,0,LOG,00000,"duration: 15.136 ms  statement: checkpoint;",,,,,,,,,"psql","client backend"
