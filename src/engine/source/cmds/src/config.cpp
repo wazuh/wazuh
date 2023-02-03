@@ -101,7 +101,8 @@ void configure(CLI::App_p app)
         ->default_val("");
     get_subcommand->callback([options]() { runGet(options->socketPath, options->name); });
 
-    auto save_subcommand = configApp->add_subcommand("save", "Persist the current configuration");
+    auto save_subcommand =
+        configApp->add_subcommand("save", "Persist the current configuration, to take effect restart the engine");
     save_subcommand
         ->add_option("path", options->path, "Path to save the configuration, empty to save in the default path")
         ->default_val("");
