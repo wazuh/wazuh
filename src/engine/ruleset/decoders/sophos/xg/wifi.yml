@@ -4,6 +4,7 @@ name: decoder/sophos-wifi/0
 metadata:
   module: sophos
   title: Sophos logs decoder
+  version: [17.5.x, 18.0.x]
   description: Decoder for sophos logs
   author:
     name: Wazuh Inc. info@wazuh.com
@@ -22,7 +23,7 @@ parse:
   logpar:
     # <30>device="SFW" date=2017-02-01 time=14:17:35 timezone="IST" device_name="SG115" device_id=S110016E28BA631 log_id=106025618011 log_type="Wireless Protection" log_component="Wireless Protection" log_subtype="Information" priority=Information ap=A40024A636F7862 ssid=SPIDIGO2015 clients_conn_SSID=2
     # <30>device="SFW" date=2017-02-01 time=14:19:47 timezone="IST" device_name="SG115" device_id=S110016E28BA631 log_id=106025618011 log_type="Wireless Protection" log_component="Wireless Protection" log_subtype="Information" priority=Information ap=A40024A636F7862 ssid=SPIDIGO2015 clients_conn_SSID=3
-    - event.original: \<<~tmp.head_message>><~tmp.payload_messge>
+    - event.original: \<<~tmp.head_message>><~tmp.payload_message>
 
 normalize:
   - check:
