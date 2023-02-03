@@ -336,7 +336,13 @@ TEST(HLP2, AlphanumericParser)
                 {},
                 Options(),
                 fn("0123456789"),
-                10}
+                10},
+        TestCase {"Hello#@$%&/()[]{}!:-+*",
+                false,
+                {},
+                Options(),
+                fn("Hello#@$%&/()[]{}!:-+*"),
+                0}
     };
 
     for (auto t : testCases)
