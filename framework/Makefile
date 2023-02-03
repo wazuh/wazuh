@@ -17,9 +17,15 @@ CC           = gcc
 CFLAGS       = -pipe -Wall -Wextra
 THREAD_FLAGS = -pthread
 RM_FILE      = rm -f
-INSTALL_DIR  = install -o root -g ${OSSEC_GROUP} -m 0750  -d
-INSTALL_EXEC = install -o root -g ${OSSEC_GROUP} -m 0750
-INSTALL_FILE = install -o root -g ${OSSEC_GROUP} -m 0640
+INSTALL      = install
+
+ifeq (${uname_S},AIX)
+	INSTALL  = "/opt/freeware/bin/install"
+endif
+
+INSTALL_DIR  = $(INSTALL) -o root -g ${OSSEC_GROUP} -m 0750  -d
+INSTALL_EXEC = $(INSTALL) -o root -g ${OSSEC_GROUP} -m 0750
+INSTALL_FILE = $(INSTALL) -o root -g ${OSSEC_GROUP} -m 0640
 
 SQLITE_DIR       = ../src/external/sqlite
 JSON_DIR         = ../src/external/cJSON
