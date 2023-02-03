@@ -243,10 +243,10 @@ void configure(CLI::App_p app)
 
     // Server
     // Endpoints
-    serverApp->add_option("--event_endpoint", options->eventEndpoint, "Sets the events server socket address.")
+    serverApp->add_option("--event_socket", options->eventEndpoint, "Sets the events server socket address.")
         ->default_val(ENGINE_EVENT_SOCK)
         ->envname(ENGINE_EVENT_SOCK_ENV);
-    serverApp->add_option("--api_endpoint", options->apiEndpoint, "Sets the API server socket address.")
+    serverApp->add_option("--api_socket", options->apiEndpoint, "Sets the API server socket address.")
         ->default_val(ENGINE_API_SOCK)
         ->envname(ENGINE_API_SOCK_ENV);
     // Threads
