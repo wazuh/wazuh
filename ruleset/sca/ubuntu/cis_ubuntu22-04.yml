@@ -1056,7 +1056,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*\(\s*Gid:\s*\(\s*0/\s*root\)'
 
   # 1.8 GNOME Display Manager
   # 1.8.1 Ensure GNOME Display Manager is removed (Automated)
