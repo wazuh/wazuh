@@ -92,10 +92,10 @@ std::optional<base::Error> Router::removeRoute(const std::string& routeName)
     return m_environmentManager->deleteEnvironment(envName);
 }
 
-std::vector<std::tuple<std::string, std::size_t, std::string>> Router::getRouteTable()
+std::vector<Router::Entry> Router::getRouteTable()
 {
     std::shared_lock lock {m_mutexRoutes};
-    std::vector<std::tuple<std::string, std::size_t, std::string>> table {};
+    std::vector<Entry> table {};
     table.reserve(m_namePriority.size());
     try
     {
@@ -117,6 +117,20 @@ std::vector<std::tuple<std::string, std::size_t, std::string>> Router::getRouteT
     std::sort(table.begin(), table.end(), [](const auto& a, const auto& b) { return std::get<1>(a) < std::get<1>(b); });
 
     return table;
+}
+
+std::optional<Router::Entry> Router::getEntry(const std::string& name)
+{
+    std::shared_lock lock {m_mutexRoutes};
+    auto it = m_namePriority.find(name);
+    if (it == m_namePriority.end())
+    {
+        return std::nullopt;
+    }
+    const auto& priority = it->second;
+    const auto& envName = m_priorityRoute.at(priority).front().getTarget();
+
+    return Entry {name, priority, envName};
 }
 
 std::optional<base::Error> Router::changeRoutePriority(const std::string& name, int priority)
@@ -321,7 +335,26 @@ api::WazuhResponse Router::apiSetRoute(const json::Json& params)
 
 api::WazuhResponse Router::apiGetRoutes(const json::Json& params)
 {
-    auto data = tableToJson();
+    json::Json data {};
+    // Filter by name
+    const auto name = params.getString(JSON_PATH_NAME);
+    if (name)
+    {
+        auto entry = getEntry(name.value());
+        if (entry)
+        {
+            data.setString(std::get<0>(entry.value()), JSON_PATH_NAME);
+            data.setInt(std::get<1>(entry.value()), JSON_PATH_PRIORITY);
+            data.setString(std::get<2>(entry.value()), JSON_PATH_TARGET);
+        } else {
+            data.setObject();
+        }
+    }
+    else
+    {
+        data = tableToJson();
+    }
+
     return api::WazuhResponse {data, "Ok"};
 }
 
