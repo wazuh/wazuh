@@ -119,6 +119,9 @@ private:
     api::WazuhResponse apiEnqueueEvent(const json::Json& params);
 
 public:
+    using Entry = std::tuple<std::string, std::size_t, std::string>; ///< Entry of the routes table (name, priority,
+                                                                     ///< target)
+
     Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store, std::size_t threads = 1)
         : m_mutexRoutes {}
         , m_namePriority {}
@@ -188,7 +191,16 @@ public:
      *
      * @return std::unordered_set<std::string>
      */
-    std::vector<std::tuple<std::string, std::size_t, std::string>> getRouteTable();
+    std::vector<Entry> getRouteTable();
+
+    /**
+     * @brief Get the Entry of a route by name
+     *
+     * @param name name of the route
+     * @return std::optional<entry> A tuple with the name, priority and target of the route or nullopt if the route
+     * doesn't exist
+     */
+    std::optional<Entry> getEntry(const std::string& name);
 
     /**
      * @brief Change the priority of a route

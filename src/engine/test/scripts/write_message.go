@@ -55,7 +55,7 @@ func sockQuery(conn net.Conn, message string, agentid int) {
 	agentStr := strconv.Itoa(agentid)
 	//ret := '\r'
 	//payload = []byte( "1:[" + agentStr + "] (hostname" + agentStr + ") any->/var/cosas:" + message + string(ret))
-	payload = []byte( "1:[" + agentStr + "] (hostname" + agentStr + ") any->/var/cosas:" + message)
+	payload = []byte( "2:[" + agentStr + "] (hostname" + agentStr + ") any->/var/cosas:" + message)
 
 	if _, err := conn.Write(payload); err != nil {
 		fmt.Printf("Error: %v\n", err)
