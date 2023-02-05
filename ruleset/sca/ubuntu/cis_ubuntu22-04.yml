@@ -1009,7 +1009,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
     rules:
-      - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*\(\s*Gid:\s*\(\s*0/\s*root\)'
       - "not f:/etc/motd"
 
   # 1.7.5 Ensure permissions on /etc/issue are configured (Automated)
@@ -1033,7 +1033,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*\(\s*Gid:\s*\(\s*0/\s*root\)'
 
   # 1.7.6 Ensure permissions on /etc/issue.net are configured (Automated)
   - id: 28542
@@ -1056,7 +1056,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*\(\s*Gid:\s*\(\s*0/\s*root\)'
 
   # 1.8 GNOME Display Manager
   # 1.8.1 Ensure GNOME Display Manager is removed (Automated)
