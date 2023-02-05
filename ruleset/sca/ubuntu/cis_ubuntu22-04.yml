@@ -1009,7 +1009,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
     rules:
-      - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*\(\s*Gid:\s*\(\s*0/\s*root\)'
       - "not f:/etc/motd"
 
   # 1.7.5 Ensure permissions on /etc/issue are configured (Automated)
