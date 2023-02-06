@@ -859,16 +859,26 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
-        if (!sql_agents_id) {
+        if (cJSON_GetArraySize(sql_agents_id)) {
             int result;
-            cJSON* agent_id;
-            cJSON_ArrayForEach(agent_id,sql_agents_id) {
-                result = recalculate_agent_groups_hash(wdb, agent_id->valueint, wconfig.is_worker?"synced":"syncreq");
-                if (result == WDBC_ERROR) {
-                    merror("Couldn't recalculate hash group for agent: '%d'", agent_id->valueint);
+            cJSON* agent_id_item = NULL;
+            cJSON_ArrayForEach(agent_id_item,sql_agents_id) {
+                cJSON* agent_id = cJSON_GetObjectItem(agent_id_item, "id_agent");
+                if (cJSON_IsNumber(agent_id)) {
+                    if (WDBC_ERROR == wdb_set_default_agent_group (wdb, agent_id->valueint)) {
+                            result = WDBC_ERROR;
+                    } else {
+                        result = recalculate_agent_groups_hash(wdb, agent_id->valueint, wconfig.is_worker?"synced":"syncreq");
+                    }
+                    if (result == WDBC_ERROR) {
+                        merror("Couldn't recalculate hash group for agent: '%d'", agent_id->valueint);
+                    }
                 }
             }
         }
+
+        cJSON_Delete(sql_agents_id);
+
         return OS_SUCCESS;
         break;
     default:
@@ -1240,16 +1250,8 @@ wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups)
                 cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child, "id");
                 if (cJSON_IsNumber(j_group_id)) {
                     if (OS_SUCCESS == wdb_global_delete_tuple_belong(wdb, j_group_id->valueint, id)) {
-                        if (OS_INVALID == wdb_global_get_agent_max_group_priority(wdb, id)) {
-                            cJSON* j_default_group = cJSON_CreateArray();
-                            cJSON_AddItemToArray(j_default_group, cJSON_CreateString("default"));
-                            if (WDBC_OK == wdb_global_assign_agent_group(wdb, id, j_default_group, 0)) {
-                                mdebug1("Agent '%03d' reassigned to 'default' group", id);
-                            } else {
-                                merror("There was an error assigning the agent '%03d' to default group", id);
-                                result = WDBC_ERROR;
-                            }
-                            cJSON_Delete(j_default_group);
+                        if (WDBC_ERROR == wdb_set_default_agent_group (wdb, id)) {
+                            result = WDBC_ERROR;
                         }
                     } else {
                         mdebug1("Unable to delete group '%s' for agent '%d'", group_name, id);
@@ -1269,6 +1271,22 @@ wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups)
         }
     }
 
+    return result;
+}
+
+int wdb_set_default_agent_group(wdb_t *wdb, int id) {
+    int result = WDBC_OK;
+    if (OS_INVALID == wdb_global_get_agent_max_group_priority(wdb, id)) {
+        cJSON* j_default_group = cJSON_CreateArray();
+        cJSON_AddItemToArray(j_default_group, cJSON_CreateString("default"));
+        if (WDBC_OK == wdb_global_assign_agent_group(wdb, id, j_default_group, 0)) {
+            mdebug1("Agent '%03d' reassigned to 'default' group", id);
+        } else {
+            merror("There was an error assigning the agent '%03d' to default group", id);
+            result = WDBC_ERROR;
+        }
+        cJSON_Delete(j_default_group);
+    }
     return result;
 }
 

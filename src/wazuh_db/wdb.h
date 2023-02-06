@@ -2095,6 +2095,15 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
 wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups);
 
 /**
+ * @brief Sets default group to an agent.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to set default group.
+ * @return wdbc_result representing the status of the command.
+ */
+int wdb_set_default_agent_group(wdb_t *wdb, int id);
+
+/**
  * @brief Returns the number of groups that are assigned to an agent.
  *
  * @param [in] wdb The Global struct database.
