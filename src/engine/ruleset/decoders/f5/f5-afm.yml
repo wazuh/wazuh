@@ -52,9 +52,9 @@ normalize:
     - related.ip : +a_append/$~tmp.kvMap.translated_source_ip
     - related.user : +a_append/$~tmp.kvMap.source_user
     - rsa.internal.messageid: BIGIP_AFM
-    - rsa.investigations.ec_activity: "Disable"
-    - rsa.investigations.ec_subject: "NetworkComm"
-    - rsa.investigations.ec_theme: "Communication"
+    - rsa.investigations.ec_activity: Disable
+    - rsa.investigations.ec_subject: NetworkComm
+    - rsa.investigations.ec_theme: Communication
     - rsa.misc.action : +a_append/$~tmp.kvMap.action
     - rsa.misc.context : $~tmp.kvMap.context_name
     - rsa.misc.event_type : $~tmp.kvMap.errdefs_msg_name
