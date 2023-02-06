@@ -51,7 +51,8 @@ struct Options
     std::string fileStorage;
     int logLevel;
     std::string logOutput;
-    std::string environment;
+    std::vector<std::string> environment;
+    bool forceRouterConfig;
 };
 
 } // namespace
@@ -78,7 +79,11 @@ void runStart(ConfHandler confManager)
     auto fileStorage = confManager->get<std::string>("server.store_path");
 
     // Start environment
-    auto environment = confManager->get<std::string>("server.start.environment");
+    auto environment = confManager->get<std::vector<std::string>>("server.start.environment");
+    auto routeName = environment[0];
+    int routePriority = std::stoi(environment[1]);
+    auto routeEnvironment = environment[2];
+    auto forceRouterConfig = confManager->get<bool>("server.start.force_router_config");
 
     // Set Crt+C handler
     {
@@ -187,10 +192,15 @@ void runStart(ConfHandler confManager)
         server->getRegistry()->registerCommand("router", router->apiCallbacks());
         WAZUH_LOG_DEBUG("Router API registered.")
 
+        // If the router table is empty, load from the command line
+        if (router->getRouteTable().empty() && !forceRouterConfig)
+        {
+            router->addRoute(routeName, routeEnvironment, routePriority);
+        }
+
         // Register Configuration API commands
         api::config::cmds::registerCommands(server->getRegistry(), confManager);
         WAZUH_LOG_DEBUG("Configuration manager API registered.");
-
     }
     catch (const std::exception& e)
     {
@@ -270,9 +280,16 @@ void configure(CLI::App_p app)
 
     // Start subcommand
     auto startApp = serverApp->add_subcommand("start", "Start a Wazuh engine instance");
-    startApp->add_option("--environment", options->environment, "Name of the environment to be used.")
+    startApp
+        ->add_option("--environment",
+                     options->environment,
+                     "Sets the environment to be used the first time an engine instance is started.")
         ->default_val(ENGINE_ENVIRONMENT)
+        ->expected(3)
+        ->delimiter(':')
         ->envname(ENGINE_ENVIRONMENT_ENV);
+    startApp
+        ->add_flag("--force_router_config", options->forceRouterConfig, "Use the router configuration, even if it is empty.")->default_val(false);
 
     // Register callback
     startApp->callback(

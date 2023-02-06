@@ -7,6 +7,7 @@
 #include <cmds/env.hpp>
 #include <cmds/graph.hpp>
 #include <cmds/kvdb.hpp>
+#include <cmds/router.hpp>
 #include <cmds/start.hpp>
 #include <cmds/test.hpp>
 
@@ -20,10 +21,10 @@ constexpr auto CONF_PATH = "/var/ossec/etc/engine.conf";
 
 int main(int argc, char* argv[])
 {
-    CLI::App_p app = std::make_shared<CLI::App>(
-        "The Wazuh engine analyzes all the events received from agents, remote devices "
-        "and Wazuh integrations. This integrated console application allows to manage "
-        "all the engine components.");
+    CLI::App_p app =
+        std::make_shared<CLI::App>("The Wazuh engine analyzes all the events received from agents, remote devices "
+                                   "and Wazuh integrations. This integrated console application allows to manage "
+                                   "all the engine components.");
     app->require_subcommand(1);
 
     // Configuratin file
@@ -33,7 +34,6 @@ int main(int argc, char* argv[])
     // TODO: Use cmake to set the version
     app->set_version_flag("-v, --version", "Wazuh Engine v0.0.1");
 
-
     // Configure each subcommand
     cmd::server::configure(app);
     cmd::test::configure(app);
@@ -42,6 +42,7 @@ int main(int argc, char* argv[])
     cmd::env::configure(app);
     cmd::catalog::configure(app);
     cmd::config::configure(app);
+    cmd::router::configure(app);
 
     try
     {
