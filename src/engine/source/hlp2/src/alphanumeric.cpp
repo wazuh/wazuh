@@ -31,9 +31,7 @@ parsec::Parser<json::Json> getAlphanumericParser(const std::string& name, Stop, 
         auto begin {text.begin()};
         std::advance(begin, index);
 
-        auto it = std::find_if(begin, text.end(), [](char const &c) {
-            return !std::isalnum(c);
-        });
+        auto it = std::find_if(begin, text.end(), [](char const& c) { return !std::isalnum(c); });
 
         if (it == text.end())
         {
@@ -46,8 +44,7 @@ parsec::Parser<json::Json> getAlphanumericParser(const std::string& name, Stop, 
         }
         else
         {
-            return parsec::makeError<json::Json>(
-                fmt::format("{}: Expected alphanumeric input", name), index);
+            return parsec::makeError<json::Json>(fmt::format("{}: Expected alphanumeric input", name), index);
         }
     };
 }
