@@ -132,9 +132,9 @@ public:
         , m_threads {}
         , m_builder {builder}
     {
-        if (threads == 0)
+        if (threads == 0 || threads > 128)
         {
-            throw std::runtime_error("Router: The number of threads must be greater than 0.");
+            throw std::runtime_error("Router: The number of threads must be between 1 and 128.");
         }
 
         if (builder == nullptr)
