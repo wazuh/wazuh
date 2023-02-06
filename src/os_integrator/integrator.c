@@ -278,7 +278,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             snprintf(exec_tmp_file, 2048, "/tmp/%s-%d-%ld.alert",
                         integrator_config[s]->name, (int)time(0), (long int)os_random());
 
-            fp = fopen(exec_tmp_file, "w");
+            fp = wfopen(exec_tmp_file, "w");
             if(!fp)
             {
                 mdebug2("File %s couldn't be created.", exec_tmp_file);

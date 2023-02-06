@@ -27,7 +27,7 @@ int OS_SHA256_File(const char *fname, os_sha256 output, int mode)
     memset(output, 0, sizeof(os_sha256));
     buf[2049] = '\0';
 
-    fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
+    fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
     if (!fp) {
         return (-1);
     }

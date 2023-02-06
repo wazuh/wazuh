@@ -292,7 +292,7 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
         snprintf(file_url, OS_SIZE_4096, "%s%s", task->wpk_repository, task->wpk_file);
         snprintf(file_path, OS_SIZE_4096, "%s%s", WM_UPGRADE_WPK_DEFAULT_PATH, task->wpk_file);
 
-        if (wpk_file = fopen(file_path, "rb"), wpk_file) {
+        if (wpk_file = wfopen(file_path, "rb"), wpk_file) {
             if (!OS_SHA1_File(file_path, file_sha1, OS_BINARY) && !strcasecmp(file_sha1, task->wpk_sha1)) {
                 // WPK already downloaded
                 exist = 1;
@@ -336,7 +336,7 @@ int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task) {
     FILE *wpk_file = NULL;
 
     if (task->custom_file_path) {
-        if (wpk_file = fopen(task->custom_file_path, "rb"), !wpk_file) {
+        if (wpk_file = wfopen(task->custom_file_path, "rb"), !wpk_file) {
             return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
         } else {
             // WPK file exists

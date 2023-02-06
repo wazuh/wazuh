@@ -16,7 +16,7 @@ static int _add2last(const char *str, size_t strsize, const char *file)
 {
     FILE *fp;
 
-    fp = fopen(file, "w");
+    fp = wfopen(file, "w");
     if (!fp) {
         /* Try to create the directories */
         char *dirrule = NULL;
@@ -53,7 +53,7 @@ static int _add2last(const char *str, size_t strsize, const char *file)
         }
         *dirrule = '/';
 
-        fp = fopen(file, "w");
+        fp = wfopen(file, "w");
         if (!fp) {
             merror(FOPEN_ERROR, file, errno, strerror(errno));
             return (0);
@@ -117,7 +117,7 @@ int doDiff(RuleInfo *rule, struct _Eventinfo *lf)
     } else {
         FILE *fp;
         size_t n;
-        fp = fopen(flastfile, "r");
+        fp = wfopen(flastfile, "r");
         if (!fp) {
             merror(FOPEN_ERROR, flastfile, errno, strerror(errno));
             return (0);

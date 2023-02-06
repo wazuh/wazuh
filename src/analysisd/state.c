@@ -285,7 +285,7 @@ int w_analysisd_write_state() {
     snprintf(path, sizeof(path), OS_PIDFILE "/%s.state", __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
-    if (fp = fopen(path_temp, "w"), !fp) {
+    if (fp = wfopen(path_temp, "w"), !fp) {
         merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
         return -1;
     }

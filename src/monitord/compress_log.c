@@ -35,7 +35,7 @@ void OS_CompressLog(const char *logfile)
     snprintf(logfileGZ, OS_FLSIZE, "%s.gz", logfile);
 
     /* Read log file */
-    log = fopen(logfile, "r");
+    log = wfopen(logfile, "r");
     if (!log) {
         /* Do not warn in here, since the alert file may not exist */
         return;

@@ -83,7 +83,7 @@ static void print_totals(void)
              "totals",
              today);
 
-    flog = fopen(logfile, "a");
+    flog = wfopen(logfile, "a");
     if (!flog) {
         merror(FOPEN_ERROR, logfile, errno, strerror(errno));
         return;
@@ -165,7 +165,7 @@ void Update_Hour()
         }
 
         snprintf(_hourly, 128, "%s/%d", STATQUEUE, i);
-        fp = fopen(_hourly, "w");
+        fp = wfopen(_hourly, "w");
         if (fp) {
             fprintf(fp, "%d", _RHour[i]);
             fclose(fp);
@@ -209,7 +209,7 @@ void Update_Hour()
             }
 
             snprintf(_weekly, 128, "%s/%d/%d", STATWQUEUE, i, j);
-            fp = fopen(_weekly, "w");
+            fp = wfopen(_weekly, "w");
             if (fp) {
                 fprintf(fp, "%d", _RWHour[i][j]);
                 fclose(fp);
@@ -331,7 +331,7 @@ int Init_Stats_Directories(){
 
         else {
             FILE *fp;
-            fp = fopen(_hourly, "r");
+            fp = wfopen(_hourly, "r");
             if (!fp) {
                 _RHour[i] = 0;
             } else {
@@ -364,7 +364,7 @@ int Init_Stats_Directories(){
                 _RWHour[i][j] = 0;
             } else {
                 FILE *fp;
-                fp = fopen(_weekly, "r");
+                fp = wfopen(_weekly, "r");
                 if (!fp) {
                     _RWHour[i][j] = 0;
                 } else {

@@ -116,7 +116,7 @@ STATIC void w_logcollector_state_dump() {
 
     FILE * lc_state_file = NULL;
 
-    if (lc_state_file = fopen(LOGCOLLECTOR_STATE, "w"), lc_state_file != NULL) {
+    if (lc_state_file = wfopen(LOGCOLLECTOR_STATE, "w"), lc_state_file != NULL) {
         if (fwrite(lc_state_str, sizeof(char), len + 1, lc_state_file) < 1) {
             merror(FWRITE_ERROR, LOGCOLLECTOR_STATE, errno, strerror(errno));
         }

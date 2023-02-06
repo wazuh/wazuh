@@ -89,7 +89,7 @@ int OS_RemoveAgent(const char *u_id) {
     if (!id_exist)
         return 0;
 
-    fp = fopen(KEYS_FILE, "r");
+    fp = wfopen(KEYS_FILE, "r");
 
     if (!fp)
         return 0;
@@ -236,7 +236,7 @@ char *getNameById(const char *id)
         return (NULL);
     }
 
-    fp = fopen(KEYS_FILE, "r");
+    fp = wfopen(KEYS_FILE, "r");
     if (!fp) {
         return (NULL);
     }
@@ -296,7 +296,7 @@ int IDExist(const char *id, int discard_removed)
         return (0);
     }
 
-    fp = fopen(KEYS_FILE, "r");
+    fp = wfopen(KEYS_FILE, "r");
 
     if (!fp) {
         return (0);
@@ -380,7 +380,7 @@ int NameExist(const char *u_name)
         return (0);
     }
 
-    fp = fopen(KEYS_FILE, "r");
+    fp = wfopen(KEYS_FILE, "r");
 
     if (!fp) {
         return (0);
@@ -432,7 +432,7 @@ char *IPExist(const char *u_ip)
     if (!(u_ip && strncmp(u_ip, "any", 3)) || strchr(u_ip, '/'))
         return NULL;
 
-    fp = fopen(KEYS_FILE, "r");
+    fp = wfopen(KEYS_FILE, "r");
 
     if (!fp)
         return NULL;
@@ -484,7 +484,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     char line_read[FILE_SIZE + 1];
     line_read[FILE_SIZE] = '\0';
 
-    fp = fopen(KEYS_FILE, "r");
+    fp = wfopen(KEYS_FILE, "r");
     if (!fp) {
         return (0);
     }
@@ -634,7 +634,7 @@ void OS_RemoveAgentTimestamp(const char *id)
     char line[OS_BUFFER_SIZE];
     char * sep;
 
-    fp = fopen(TIMESTAMP_FILE, "r");
+    fp = wfopen(TIMESTAMP_FILE, "r");
 
     if (!fp) {
         return;

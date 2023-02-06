@@ -265,7 +265,7 @@ error:
 }
 
 int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_group) {
-    FILE *fh = fopen(yaml_file, "r");
+    FILE *fh = wfopen(yaml_file, "r");
     yaml_parser_t parser;
     yaml_event_t  event;
     int retval = W_PARSER_ERROR;

@@ -22,7 +22,7 @@ void os_setwait()
 
     /* For same threads */
     __wait_lock = 1;
-    fp = fopen(WAIT_FILE, "w");
+    fp = wfopen(WAIT_FILE, "w");
 
     if (fp) {
         fprintf(fp, "l");

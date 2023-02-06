@@ -315,7 +315,7 @@ void InstallAuthKeys(char *msg)
             !OS_IsValidName(entry[2]) || !OS_IsValidName(entry[3]))
             merror_exit("Invalid key received (2). Closing connection.");
 
-        fp = fopen(KEYS_FILE, "w");
+        fp = wfopen(KEYS_FILE, "w");
 
         if (!fp) {
             merror_exit("Unable to open key file: %s", KEYS_FILE);
@@ -459,7 +459,7 @@ int main(int argc, char **argv)
     /* Checking if there is a custom password file */
     if (authpass == NULL) {
         FILE *fp;
-        fp = fopen(AUTHD_PASS, "r");
+        fp = wfopen(AUTHD_PASS, "r");
         buf[0] = '\0';
 
         if (fp) {

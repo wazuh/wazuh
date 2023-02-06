@@ -1300,7 +1300,7 @@ void test_wm_office365_get_access_token_with_auth_secret_path(void **state) {
 
     const char *filename = "test_client_secret_path";
     FILE *outfile;
-    outfile = fopen(filename, "wb");
+    outfile = wfopen(filename, "wb");
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);

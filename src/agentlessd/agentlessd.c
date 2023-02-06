@@ -38,7 +38,7 @@ static int save_agentless_entry(const char *host, const char *script, const char
     snprintf(sys_location, 1024, "%s/(%s) %s",
              AGENTLESS_ENTRYDIR, script, host);
 
-    fp = fopen(sys_location, "w");
+    fp = wfopen(sys_location, "w");
     if (fp) {
         fprintf(fp, "type: %s\n", agttype);
         fclose(fp);
@@ -105,7 +105,7 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
     snprintf(buf, 2048, "%s/%s->%s/diff.%d",
              DIFF_DIR, host, script, (int)alert_diff_time);
 
-    fp = fopen(buf, "r");
+    fp = wfopen(buf, "r");
     if (!fp) {
         merror("Unable to generate diff alert.");
         return (0);
@@ -221,7 +221,7 @@ static int check_diff_file(const char *host, const char *script)
 
     snprintf(diff_location, sizeof(diff_location), DIFF_DIR "/%s->%s/diff.%d", host, script, (int)date_of_change);
 
-    if (fp = fopen(diff_location, "wb"), !fp) {
+    if (fp = wfopen(diff_location, "wb"), !fp) {
         merror("Unable to open diff file '%s': %s (%d)", diff_location, strerror(errno), errno);
         wpclose(wfd);
         return 0;
@@ -258,7 +258,7 @@ static FILE *open_diff_file(const char *host, const char *script)
     snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR, host, script,
              DIFF_NEW_FILE);
 
-    fp = fopen(sys_location, "w");
+    fp = wfopen(sys_location, "w");
 
     /* If we can't open, try creating the directory */
     if (!fp) {
@@ -272,7 +272,7 @@ static FILE *open_diff_file(const char *host, const char *script)
 
         snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR, host,
                  script, DIFF_NEW_FILE);
-        fp = fopen(sys_location, "w");
+        fp = wfopen(sys_location, "w");
         if (!fp) {
             merror(FOPEN_ERROR, sys_location, errno, strerror(errno));
             return (NULL);

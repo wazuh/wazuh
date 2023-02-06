@@ -962,7 +962,7 @@ void test_gen_diff_str_wfropen_fail(void **state) {
 
     expect_wfopen(diff->diff_file, "rb", NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(6665): Unable to generate diff alert (fopen)'/path/to/diff/file'.");
+    expect_string(__wrap__merror, formatted_msg, "(6665): Unable to generate diff alert (wfopen)'/path/to/diff/file'.");
 
     char *diff_str = gen_diff_str(diff);
     assert_ptr_equal(diff_str, NULL);

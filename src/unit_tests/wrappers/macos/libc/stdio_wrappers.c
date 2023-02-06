@@ -168,6 +168,6 @@ FILE * wrap_fopen (const char* path, const char* mode) {
 
         return ret;
     } else {
-        return fopen(path, mode);
+        return wfopen(path, mode);
     }
 }

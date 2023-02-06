@@ -140,7 +140,7 @@ int main (int argc, char **argv) {
         snprintf(cmd, OS_MAXSTR, "%%WINDIR%%\\system32\\ipconfig.exe | %%WINDIR%%\\system32\\findstr.exe /R /C:\"%s\" > %s", regex, tmp_file);
         system(cmd);
 
-        FILE *fp = fopen(tmp_file, "r");
+        FILE *fp = wfopen(tmp_file, "r");
         if(fp != NULL) {
             char output_buf[OS_MAXSTR];
             while (fgets(output_buf, OS_MAXSTR, fp)) {

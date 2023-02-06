@@ -37,7 +37,7 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
 
     // Read signed file
 
-    if (filein = fopen(source, "rb"), !filein) {
+    if (filein = wfopen(source, "rb"), !filein) {
         merror("opening input file: %s", strerror(errno));
         goto cleanup;
     }
@@ -130,7 +130,7 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
 
     // Extract file
 
-    if (fileout = fopen(target, "wb"), !fileout) {
+    if (fileout = wfopen(target, "wb"), !fileout) {
         merror("Opening output file: %s", strerror(errno));
         goto cleanup;
     }

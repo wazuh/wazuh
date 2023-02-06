@@ -109,7 +109,7 @@ int OS_HMAC_SHA1_File(const char *key, const char *file_path, os_sha1 output, in
         i_key_pad[i] ^= 0x36;
     }
 
-    fp = fopen(file_path, mode == OS_BINARY ? "rb" : "r");
+    fp = wfopen(file_path, mode == OS_BINARY ? "rb" : "r");
     if (!fp) {
         return -1;
     }

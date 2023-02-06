@@ -274,7 +274,7 @@ int main(int argc, char **argv)
     w_ch_exec_dir();
 
     /* Check permissions */
-    fp = fopen(OSSECCONF, "r");
+    fp = wfopen(OSSECCONF, "r");
     if (fp) {
         fclose(fp);
     } else {

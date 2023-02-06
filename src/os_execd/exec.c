@@ -39,7 +39,7 @@ int ReadExecConfig()
     exec_size = 0;
 
     /* Open file */
-    fp = fopen(DEFAULTAR, "r");
+    fp = wfopen(DEFAULTAR, "r");
     if (!fp) {
         merror(FOPEN_ERROR, DEFAULTAR, errno, strerror(errno));
         return (0);
@@ -99,7 +99,7 @@ int ReadExecConfig()
                      "%s/%s",
                      AR_BINDIR,
                      str_pt);
-            process_file = fopen(exec_cmd[exec_size], "r");
+            process_file = wfopen(exec_cmd[exec_size], "r");
             if (!process_file) {
                 if (f_time_reading) {
                     minfo("Active response command not present: '%s'. "
