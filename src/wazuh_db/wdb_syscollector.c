@@ -1359,9 +1359,6 @@ int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * 
     {
         result = wdb_syscollector_osinfo_save2(wdb, attributes);
     }
-    if(data)
-    {
-        cJSON_Delete(data);
-    }
+    cJSON_Delete(data);
     return result;
 }
