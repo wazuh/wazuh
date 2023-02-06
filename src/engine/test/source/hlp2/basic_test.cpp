@@ -313,37 +313,11 @@ TEST(HLP2, AlphanumericParser)
         return doc;
     };
     std::vector<TestCase> testCases {
-        TestCase {"id98A",
-                true,
-                {},
-                Options(),
-                fn("id98A"),
-                5},
-        TestCase {"id98A:69",
-                false,
-                {},
-                Options(),
-                fn("id98A:69"),
-                0},
-        TestCase {"idARGbyu",
-                true,
-                {},
-                Options(),
-                fn("idARGbyu"),
-                8},
-        TestCase {"0123456789",
-                true,
-                {},
-                Options(),
-                fn("0123456789"),
-                10},
-        TestCase {"Hello#@$%&/()[]{}!:-+*",
-                false,
-                {},
-                Options(),
-                fn("Hello#@$%&/()[]{}!:-+*"),
-                0}
-    };
+        TestCase {"id98A", true, {}, Options(), fn("id98A"), 5},
+        TestCase {"id98A:69", false, {}, Options(), fn("id98A:69"), 0},
+        TestCase {"idARGbyu", true, {}, Options(), fn("idARGbyu"), 8},
+        TestCase {"0123456789", true, {}, Options(), fn("0123456789"), 10},
+        TestCase {"Hello#@$%&/()[]{}!:-+*", false, {}, Options(), fn("Hello#@$%&/()[]{}!:-+*"), 0}};
 
     for (auto t : testCases)
     {
