@@ -2,6 +2,7 @@
 #include <register.hpp>
 #include <store/drivers/fileDriver.hpp>
 #include <builders/baseHelper.hpp>
+#include <router/router.hpp>
 
 namespace aux
 {
@@ -52,4 +53,12 @@ base::Event createFakeMessage(std::optional<std::string> msgOpt)
     return base::parseEvent::parseOssecEvent(msgStr);
 }
 
+
+std::shared_ptr<store::IStore> getFakeStore()
+{
+    auto store = std::make_shared<store::FileDriver>(STORE_PATH_TEST);
+    // Clean internal store
+    store->del(router::ROUTES_TABLE_NAME);
+    return store;
+}
 } // namespace aux
