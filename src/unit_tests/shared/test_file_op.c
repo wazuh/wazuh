@@ -435,7 +435,7 @@ void test_w_compress_gzfile_wfopen_fail(void **state){
     expect_string(__wrap_fopen, mode, "rb");
     will_return(__wrap_fopen, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "in w_compress_gzfile(): fopen error testfilesrc (0):'Success'");
+    expect_string(__wrap__merror, formatted_msg, "in w_compress_gzfile(): wfopen error testfilesrc (0):'Success'");
 
     ret = w_compress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, -1);
@@ -564,7 +564,7 @@ void test_w_uncompress_gzfile_fopen_fail(void **state) {
     expect_string(__wrap_fopen, mode, "wb");
     will_return(__wrap_fopen, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "in w_uncompress_gzfile(): fopen error testfiledst (0):'Success'");
+    expect_string(__wrap__merror, formatted_msg, "in w_uncompress_gzfile(): wfopen error testfiledst (0):'Success'");
 
     ret = w_uncompress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, -1);

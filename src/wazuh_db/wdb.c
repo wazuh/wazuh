@@ -613,7 +613,7 @@ int wdb_create_agent_db2(const char * agent_id) {
 
     snprintf(path, OS_FLSIZE, "%s/%s", WDB2_DIR, WDB_PROF_NAME);
 
-    if (!(source = fopen(path, "r"))) {
+    if (!(source = wfopen(path, "r"))) {
         mdebug1("Profile database not found, creating.");
 
         if (wdb_create_profile(path) < 0)
@@ -621,7 +621,7 @@ int wdb_create_agent_db2(const char * agent_id) {
 
         // Retry to open
 
-        if (!(source = fopen(path, "r"))) {
+        if (!(source = wfopen(path, "r"))) {
             merror("Couldn't open profile '%s'.", path);
             return -1;
         }
@@ -629,7 +629,7 @@ int wdb_create_agent_db2(const char * agent_id) {
 
     snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, agent_id);
 
-    if (!(dest = fopen(path, "w"))) {
+    if (!(dest = wfopen(path, "w"))) {
         merror("Couldn't create database '%s': %s (%d)", path, strerror(errno), errno);
         fclose(source);
         return -1;
