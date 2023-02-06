@@ -52,8 +52,11 @@ class BrewWrapper final : public IPackageWrapper
               but we'll only remove the last occurrence if it matches with a version
               in case there is a '@' in the package name */
             const auto pos { m_name.rfind('@') };
-            if(pos != std::string::npos) {
-                if(std::isdigit(m_name[pos + 1])){
+
+            if (pos != std::string::npos)
+            {
+                if (std::isdigit(m_name[pos + 1]))
+                {
                     m_name.resize(pos);
                 }
             }
