@@ -6,6 +6,7 @@ add_library(cmds STATIC
     src/catalog.cpp
     src/env.cpp
     src/config.cpp
+    src/router.cpp
 )
 
 target_link_libraries(cmds
