@@ -134,6 +134,14 @@ class HpUxOsParser : public ISysOsParser
         bool parseUname(const std::string& in, nlohmann::json& output) override;
 };
 
+class AlpineOsParser : public ISysOsParser
+{
+    public:
+        AlpineOsParser() = default;
+        ~AlpineOsParser() = default;
+        bool parseFile(std::istream& in, nlohmann::json& output) override;
+};
+
 class MacOsParser
 {
     public:
@@ -212,6 +220,11 @@ class FactorySysOsParser final
             if (platform == "hp-ux")
             {
                 return std::make_unique<HpUxOsParser>();
+            }
+
+            if (platform == "alpine")
+            {
+                return std::make_unique<AlpineOsParser>();
             }
 
             throw std::runtime_error

@@ -93,6 +93,35 @@ namespace Utils
         return ret;
     }
 
+    static std::string leftTrim(const std::string& str, const std::string& args = " ")
+    {
+        const auto pos{ str.find_first_not_of(args) };
+
+        if (pos != std::string::npos)
+        {
+            return str.substr(pos);
+        }
+
+        return str;
+    }
+
+    static std::string rightTrim(const std::string& str, const std::string& args = " ")
+    {
+        const auto pos{ str.find_last_not_of(args) };
+
+        if (pos != std::string::npos)
+        {
+            return str.substr(0, pos + 1);
+        }
+
+        return str;
+    }
+
+    static std::string trim(const std::string& str, const std::string& args = " ")
+    {
+        return leftTrim(rightTrim(str, args), args);
+    }
+    
     static std::vector<std::string> split(const std::string& str,
                                           const char delimiter)
     {
@@ -147,6 +176,29 @@ namespace Utils
         return ret;
     }
 
+    static void splitMapKeyValue(const std::string& str,
+                                 const char delimiter,
+                                 std::map<std::string, std::string>& mapResult)
+    {
+        constexpr auto NEWLINE_DELIMITER {'\n'};
+        std::string line;
+        std::vector<std::string> lineKeyValue;
+        std::istringstream strStream{ str };
+
+        mapResult.clear();
+        while (std::getline(strStream, line, NEWLINE_DELIMITER))
+        {
+            size_t delimiterPos = line.find_first_of(delimiter);
+            if(delimiterPos == std::string::npos) {
+                continue;
+            }
+            mapResult.insert(std::pair<std::string, std::string>(
+                trim(line.substr(0, delimiterPos), " \"\t"), 
+                trim(line.substr(delimiterPos + 1), " \"\t")
+            ));
+        }
+    }
+
     static std::string asciiToHex(const std::vector<unsigned char>& asciiData)
     {
         std::string ret;
@@ -179,35 +231,6 @@ namespace Utils
 
         // LCOV_EXCL_STOP
         return ret;
-    }
-
-    static std::string leftTrim(const std::string& str, const std::string& args = " ")
-    {
-        const auto pos{ str.find_first_not_of(args) };
-
-        if (pos != std::string::npos)
-        {
-            return str.substr(pos);
-        }
-
-        return str;
-    }
-
-    static std::string rightTrim(const std::string& str, const std::string& args = " ")
-    {
-        const auto pos{ str.find_last_not_of(args) };
-
-        if (pos != std::string::npos)
-        {
-            return str.substr(0, pos + 1);
-        }
-
-        return str;
-    }
-
-    static std::string trim(const std::string& str, const std::string& args = " ")
-    {
-        return leftTrim(rightTrim(str, args), args);
     }
 
     static std::string toUpperCase(const std::string& str)
