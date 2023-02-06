@@ -21,7 +21,7 @@ std::optional<base::Error> Router::addRoute(const std::string& name, const std::
         for (std::size_t i = 0; i < m_numThreads; ++i)
         {
             // routeInstances[i] = builder::Route {jsonDefinition, m_registry};
-            auto filter = m_builder->buildRoute(name);
+            auto filter = m_builder->buildFilter(name);
 
             routeInstances.emplace_back(Route {filter, envName, priority});
         }

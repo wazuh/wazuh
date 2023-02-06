@@ -1,5 +1,0 @@
-{
-    "name": "route/allow_all_B2/0",
-    "priority": 102,
-    "target": "environment/env_B2/0"
-}
