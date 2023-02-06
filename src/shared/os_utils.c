@@ -119,10 +119,12 @@ OSList *w_os_get_process_list()
 
 #endif
 /* Check if a file exists */
-int w_is_file(const char * const file) {
-    FILE *fp = fopen(file, "r");
+int w_is_file(const char * const file)
+{
+    FILE *fp;
+    fp = wfopen(file, "r");
     int is_exist = 0;
-    if (fp != NULL) {
+    if (fp) {
         is_exist = 1;
         fclose(fp);
     }
@@ -325,7 +327,7 @@ OSList *w_os_get_process_list()
 }
 
 typedef BOOL (WINAPI *LPFN_WOW64DISABLEWOW64FSREDIRECTION)(PVOID *OldValue);
- 
+
 void SafeWow64DisableWow64FsRedirection(PVOID *oldValue) {
     LPFN_WOW64DISABLEWOW64FSREDIRECTION Wow64DisableWow64FsRedirection = NULL;
     HMODULE kernel32 = GetModuleHandle(TEXT("kernel32.dll"));

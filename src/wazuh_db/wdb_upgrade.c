@@ -248,14 +248,14 @@ int wdb_create_backup(const char * agent_id, int version) {
 
     snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, agent_id);
 
-    if (!(source = fopen(path, "r"))) {
+    if (!(source = wfopen(path, "r"))) {
         merror("Couldn't open source '%s': %s (%d)", path, strerror(errno), errno);
         return -1;
     }
 
     snprintf(path, OS_FLSIZE, "%s/%s.db-oldv%d-%lu", WDB2_DIR, agent_id, version, (unsigned long)time(NULL));
 
-    if (!(dest = fopen(path, "w"))) {
+    if (!(dest = wfopen(path, "w"))) {
         merror("Couldn't open dest '%s': %s (%d)", path, strerror(errno), errno);
         fclose(source);
         return -1;

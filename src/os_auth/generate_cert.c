@@ -154,7 +154,7 @@ void add_x509_ext(X509* cert, X509V3_CTX *ctx, int ext_nid, const char *value) {
 }
 
 int dump_key_cert(EVP_PKEY* key, X509* x509, const char* key_name, const char* cert_name) {
-    FILE* key_file = fopen(key_name, "wb");
+    FILE* key_file = wfopen(key_name, "wb");
 
     if(!key_file)
     {
@@ -171,7 +171,7 @@ int dump_key_cert(EVP_PKEY* key, X509* x509, const char* key_name, const char* c
 
     fclose(key_file);
 
-    FILE* x509_file = fopen(cert_name, "wb");
+    FILE* x509_file = wfopen(cert_name, "wb");
     if(!x509_file)
     {
         merror("Cannot open %s.", cert_name);

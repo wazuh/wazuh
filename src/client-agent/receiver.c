@@ -243,7 +243,7 @@ int receive_msg()
                          SHAREDCFG_DIR,
                          tmp_msg);
 
-                fp = fopen(file, "w");
+                fp = wfopen(file, "w");
                 if (!fp) {
                     merror(FOPEN_ERROR, file, errno, strerror(errno));
                 }

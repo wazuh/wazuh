@@ -132,10 +132,10 @@ static void _log_function(int level, const char *tag, const char * file, int lin
         logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {
-            fp = fopen(logfile, "a");
+            fp = wfopen(logfile, "a");
         } else {
             oldmask = umask(0006);
-            fp = fopen(logfile, "w");
+            fp = wfopen(logfile, "w");
             umask(oldmask);
 
             // Make sure that the group is ossec
@@ -153,7 +153,7 @@ static void _log_function(int level, const char *tag, const char * file, int lin
 #else
         strncpy(logfile, LOGJSONFILE, sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';
-        fp = fopen(logfile, "a");
+        fp = wfopen(logfile, "a");
 #endif
 
         if (fp) {
@@ -198,10 +198,10 @@ static void _log_function(int level, const char *tag, const char * file, int lin
         logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {
-            fp = fopen(logfile, "a");
+            fp = wfopen(logfile, "a");
         } else {
             oldmask = umask(0006);
-            fp = fopen(logfile, "w");
+            fp = wfopen(logfile, "w");
             umask(oldmask);
 
             // Make sure that the group is ossec
@@ -219,7 +219,7 @@ static void _log_function(int level, const char *tag, const char * file, int lin
 #else
         strncpy(logfile, LOGFILE, sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';
-        fp = fopen(logfile, "a");
+        fp = wfopen(logfile, "a");
 #endif
 
         /* Maybe log to syslog if the log file is not available */

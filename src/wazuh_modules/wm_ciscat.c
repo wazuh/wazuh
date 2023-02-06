@@ -689,9 +689,9 @@ char * wm_ciscat_get_profile() {
 
 
 #ifdef WIN32
-    if ((fp = fopen(file, "rb"))) {
+    if ((fp = wfopen(file, "rb"))) {
 #else
-    if ((fp = fopen(file, "r"))) {
+    if ((fp = wfopen(file, "r"))) {
 #endif
 
         do{
@@ -739,7 +739,7 @@ wm_scan_data* wm_ciscat_txt_parser(){
     snprintf(file, OS_MAXSTR - 1, "%s%s", WM_CISCAT_REPORTS, "/ciscat-report.txt");
 #endif
 
-    if ((fp = fopen(file, "r"))){
+    if ((fp = wfopen(file, "r"))){
 
         os_calloc(1, sizeof(wm_scan_data), info);
         os_calloc(1, sizeof(wm_rule_data), rule);
@@ -947,9 +947,9 @@ void wm_ciscat_preparser(){
 #endif
 
 #ifdef WIN32
-    if ((in_fp = fopen(in_file, "rb"))) {
+    if ((in_fp = wfopen(in_file, "rb"))) {
 #else
-    if ((in_fp = fopen(in_file, "r"))) {
+    if ((in_fp = wfopen(in_file, "r"))) {
 #endif
 
         os_calloc(OS_MAXSTR, sizeof(char), readbuff);
@@ -959,7 +959,7 @@ void wm_ciscat_preparser(){
             if (fgets(readbuff, OS_MAXSTR, in_fp)){}     // We want to ignore this part
         } while (!strstr(readbuff, WM_CISCAT_GROUP_START) && !strstr(readbuff, WM_CISCAT_GROUP_START2));
 
-        if ((out_fp = fopen(out_file, "w")) == NULL) {
+        if ((out_fp = wfopen(out_file, "w")) == NULL) {
 
             mterror(WM_CISCAT_LOGTAG, "Unable to open '%s' for writing: %s", in_file, strerror(errno));
             ciscat->flags.error = 1;

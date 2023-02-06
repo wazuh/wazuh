@@ -685,7 +685,7 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
     if ((!r_group || !r_group->merged_is_downloaded) && (!is_multigroup || create_merged)) {
         if (create_merged) {
             if (disk_storage) {
-                if (finalfp = fopen(merged_tmp, "w"), finalfp == NULL) {
+                if (finalfp = wfopen(merged_tmp, "w"), finalfp == NULL) {
                     merror("Unable to create merged file: '%s' due to [(%d)-(%s)].", merged_tmp, errno, strerror(errno));
                     return;
                 }
@@ -743,7 +743,7 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
                 if (disk_storage) {
                     OS_MoveFile(merged_tmp, merged);
                 } else {
-                    if (finalfp = fopen(merged, "w"), finalfp == NULL) {
+                    if (finalfp = wfopen(merged, "w"), finalfp == NULL) {
                         merror("Unable to open file: '%s' due to [(%d)-(%s)].", merged, errno, strerror(errno));
                         os_free(finalbuf);
                         return;
@@ -1587,7 +1587,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
         snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, group, name);
     }
 
-    fp = fopen(file, "r");
+    fp = wfopen(file, "r");
     if (!fp) {
         mdebug1(FOPEN_ERROR, file, errno, strerror(errno));
         return OS_INVALID;

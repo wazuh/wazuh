@@ -216,13 +216,13 @@ EVT_HANDLE read_bookmark(os_channel *channel)
     wchar_t bookmark_xml[OS_MAXSTR];
 
     /* If we have a stored bookmark, start from it */
-    if ((fp = fopen(channel->bookmark_filename, "r")) == NULL) {
+    if ((fp = wfopen(channel->bookmark_filename, "r")) == NULL) {
         /* Check if the error was not because the
          * file did not exist which should be logged
          */
         if (errno != ENOENT) {
             merror(
-                "Could not fopen() existing bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+                "Could not wfopen() existing bookmark (%s) for (%s) which returned [(%d)-(%s)]",
                 channel->bookmark_filename,
                 channel->evt_log,
                 errno,
@@ -336,9 +336,9 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
-    if ((fp = fopen(channel->bookmark_filename, "w")) == NULL) {
+    if ((fp = wfopen(channel->bookmark_filename, "w")) == NULL) {
         mwarn(
-            "Could not fopen() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+            "Could not wfopen() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             channel->bookmark_filename,
             channel->evt_log,
             errno,

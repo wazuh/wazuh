@@ -1269,11 +1269,11 @@ int set_policies() {
         goto end;
     }
 
-    if (f_backup = fopen (WPOL_BACKUP_FILE, "r"), !f_backup) {
+    if (f_backup = wfopen (WPOL_BACKUP_FILE, "r"), !f_backup) {
         merror(FIM_ERROR_WPOL_BACKUP_FILE_OPEN, WPOL_BACKUP_FILE, strerror(errno), errno);
         goto end;
     }
-    if (f_new = fopen (WPOL_NEW_FILE, "w"), !f_new) {
+    if (f_new = wfopen (WPOL_NEW_FILE, "w"), !f_new) {
         merror(FIM_ERROR_WPOL_BACKUP_FILE_OPEN, WPOL_NEW_FILE, strerror(errno), errno);
         goto end;
     }

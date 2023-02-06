@@ -250,7 +250,7 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
 cJSON * readFile() {
 
     // Open the file
-    FILE * fp = fopen(JSON_PATH_TEST, "r");
+    FILE * fp = wfopen(JSON_PATH_TEST, "r");
     if (fp == NULL) {
         printf("Error: cannot open file  '%s'\n", JSON_PATH_TEST);
     }
