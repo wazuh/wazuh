@@ -204,7 +204,8 @@ void runStart(ConfHandler confManager)
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("While initializing modules: ", utils::getExceptionStack(e));
+        const auto msg = utils::getExceptionStack(e);
+        WAZUH_LOG_ERROR("While initializing modules: {}", msg);
         g_exitHanlder.execute();
         return;
     }
