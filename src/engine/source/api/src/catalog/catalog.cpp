@@ -136,7 +136,6 @@ Catalog::Catalog(const Config& config)
     m_schemas[Resource::Type::RULE] = std::get<json::Json>(assetSchemaJson);
     m_schemas[Resource::Type::OUTPUT] = std::get<json::Json>(assetSchemaJson);
     m_schemas[Resource::Type::FILTER] = std::get<json::Json>(assetSchemaJson);
-    m_schemas[Resource::Type::ROUTE] = std::get<json::Json>(assetSchemaJson);
 
     const auto environmentSchemaJson = m_store->get(environmentSchemaName);
     if (std::holds_alternative<base::Error>(environmentSchemaJson))
@@ -263,7 +262,7 @@ std::optional<base::Error> Catalog::putResource(const Resource& item,
     if (Resource::Type::ENVIRONMENT != item.m_type
         && Resource::Type::SCHEMA != item.m_type && Resource::Type::DECODER != item.m_type
         && Resource::Type::RULE != item.m_type && Resource::Type::FILTER != item.m_type
-        && Resource::Type::OUTPUT != item.m_type && Resource::Type::ROUTE != item.m_type)
+        && Resource::Type::OUTPUT != item.m_type)
     {
         return base::Error {fmt::format("Invalid resource type \"{}\" for PUT operation",
                                         Resource::typeToStr(item.m_type))};
@@ -392,7 +391,7 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
     // Assert resource type is Asset or Environment
     if (Resource::Type::DECODER != item.m_type && Resource::Type::RULE != item.m_type
         && Resource::Type::FILTER != item.m_type && Resource::Type::OUTPUT != item.m_type
-        && Resource::Type::ENVIRONMENT != item.m_type && Resource::Type::ROUTE != item.m_type)
+        && Resource::Type::ENVIRONMENT != item.m_type)
     {
         return base::Error {fmt::format("Invalid resource type \"{}\"", Resource::typeToStr(item.m_type))};
     }
@@ -420,8 +419,7 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
     // Builder validator
     std::optional<base::Error> validationError;
     if (item.m_type == Resource::Type::DECODER || item.m_type == Resource::Type::RULE
-        || item.m_type == Resource::Type::FILTER || item.m_type == Resource::Type::OUTPUT
-        || item.m_type == Resource::Type::ROUTE)
+        || item.m_type == Resource::Type::FILTER || item.m_type == Resource::Type::OUTPUT)
     {
         validationError = m_validator->validateAsset(content);
     }

@@ -142,6 +142,11 @@ public:
             throw std::runtime_error("Router: Builder can't be null.");
         }
 
+        if (store == nullptr)
+        {
+            throw std::runtime_error("Router: Store can't be null.");
+        }
+
         m_environmentManager = std::make_shared<EnvironmentManager>(builder, threads);
 
         auto result = m_store->get(ROUTES_TABLE_NAME);
