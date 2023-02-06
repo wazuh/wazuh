@@ -121,7 +121,7 @@ namespace Utils
     {
         return leftTrim(rightTrim(str, args), args);
     }
-    
+
     static std::vector<std::string> split(const std::string& str,
                                           const char delimiter)
     {
@@ -186,16 +186,17 @@ namespace Utils
         std::istringstream strStream{ str };
 
         mapResult.clear();
+
         while (std::getline(strStream, line, NEWLINE_DELIMITER))
         {
             size_t delimiterPos = line.find_first_of(delimiter);
-            if(delimiterPos == std::string::npos) {
+
+            if (delimiterPos == std::string::npos)
+            {
                 continue;
             }
-            mapResult.insert(std::pair<std::string, std::string>(
-                trim(line.substr(0, delimiterPos), " \"\t"), 
-                trim(line.substr(delimiterPos + 1), " \"\t")
-            ));
+
+            mapResult.insert(std::pair<std::string, std::string>(trim(line.substr(0, delimiterPos), " \"\t"), trim(line.substr(delimiterPos + 1), " \"\t")));
         }
     }
 
