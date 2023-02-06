@@ -259,7 +259,12 @@ getStringCmpFunction(const std::string& targetField,
         case Operator::CN:
             cmpFunction = [](const std::string& l, const std::string& r)
             {
-                return l.find(r) != std::string::npos;
+                if(!r.empty())
+                {
+                    return l.find(r) != std::string::npos;
+                }
+                return false;
+
             };
             break;
 
