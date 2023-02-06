@@ -256,19 +256,6 @@ namespace Utils
 
         return str;
     }
-
-    static std::string substrOnLastOccurrence(const std::string& str, const std::string& args = " ")
-    {
-        const auto pos{ str.rfind(args) };
-
-        if (pos != std::string::npos)
-        {
-            return str.substr(0, pos);
-        }
-
-        return str;
-    }
-
     static bool findRegexInString(const std::string& in,
                                   std::string& match,
                                   const std::regex& pattern,

@@ -213,59 +213,6 @@ TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrectEscapeCharacterEmptyResult
     EXPECT_EQ(Utils::substrOnFirstOccurrence("\n", "\n"), "");
 }
 
-
-/* Utils::substrOnLastOccurrence() tests */
-
-TEST_F(StringUtilsTest, substrOnLastOccurrenceCorrect)
-{
-    EXPECT_EQ(Utils::substrOnLastOccurrence("hello         world", "         "), "hello");
-}
-
-TEST_F(StringUtilsTest, substrOnLastOccurrenceCorrectEmpty)
-{
-    EXPECT_EQ(Utils::substrOnLastOccurrence("", " "), "");
-}
-
-TEST_F(StringUtilsTest, substrOnLastOccurrenceNoOccurrences)
-{
-    EXPECT_EQ(Utils::substrOnLastOccurrence("hello         world", "bye"), "hello         world");
-}
-
-TEST_F(StringUtilsTest, substrOnLastOccurrenceCorrectEndText)
-{
-    EXPECT_EQ(Utils::substrOnLastOccurrence("hello         world", "world"), "hello         ");
-}
-
-TEST_F(StringUtilsTest, substrOnLastOccurrenceCorrectFirstText)
-{
-    EXPECT_EQ(Utils::substrOnLastOccurrence("hello         world", "hello"), "");
-}
-
-TEST_F(StringUtilsTest, substrOnLastOccurrenceCorrectEscapeCharacter)
-{
-    EXPECT_EQ(Utils::substrOnLastOccurrence("hello\nworld", "\n"), "hello");
-}
-
-TEST_F(StringUtilsTest, substrOnLastOccurrenceCorrectEscapeCharacterEmptyResult)
-{
-    EXPECT_EQ(Utils::substrOnLastOccurrence("\n", "\n"), "");
-}
-
-TEST_F(StringUtilsTest, substrOnLastOccurrenceCorrectManyOccurrences)
-{
-    EXPECT_EQ(Utils::substrOnLastOccurrence("hello         world         hello", "         "), "hello         world");
-}
-
-TEST_F(StringUtilsTest, substrOnLastOccurrenceCorrectManyOccurrencesNewLine)
-{
-    EXPECT_EQ(Utils::substrOnLastOccurrence("hello\nworld\nbye", "\n"), "hello\nworld");
-}
-
-TEST_F(StringUtilsTest, substrOnLastOccurrenceCorrectManyOccurrencesAt)
-{
-    EXPECT_EQ(Utils::substrOnLastOccurrence("package@test@1.23", "@"), "package@test");
-}
-
 TEST_F(StringUtilsTest, findRegexInStringNotStartWith)
 {
     std::string matchedValue;
