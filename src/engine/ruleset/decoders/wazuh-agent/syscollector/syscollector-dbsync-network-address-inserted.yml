@@ -49,8 +49,6 @@ normalize:
   - check: +ef_exists/~json.data.address
     map:
       - ~do_update_kvdb: true
-
-  - map:
       - ~json.data.tmp.address: $~json.data.address
   - check:
       - ~json.data.address: +ef_not_exists
