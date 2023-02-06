@@ -35,17 +35,6 @@ TEST(opBuilderHelperStringContains, BuildManyParametersError)
     ASSERT_THROW(bld::opBuilderHelperStringContains(tuple), std::runtime_error);
 }
 
-// Build without source but with 2 parameters
-// check real usage!
-TEST(opBuilderHelperStringContains, UsageWithSourceInFirstParameter)
-{
-    auto tuple = std::make_tuple(std::string {""},
-                                 std::string {"s_contains"},
-                                 std::vector<std::string> {"sourceField","test_value"});
-
-    ASSERT_NO_THROW(bld::opBuilderHelperStringContains(tuple));
-}
-
 // Failed Empty
 TEST(opBuilderHelperStringContains, FailedEmptyStringValueOrReference)
 {
@@ -56,10 +45,10 @@ TEST(opBuilderHelperStringContains, FailedEmptyStringValueOrReference)
     auto op = bld::opBuilderHelperStringContains(tuple)->getPtr<Term<EngineOp>>()->getFn();
     auto event = std::make_shared<json::Json>(
         R"({"sourceField":"sample_test_value",
-        "reference":"test"})");
+        "reference":""})");
 
     result::Result<Event> result = op(event);
-    //TODO: this should fail, in the building proccess
+    //TODO: should this fail in the building proccess?
     ASSERT_FALSE(result);
 
     // reference
@@ -296,5 +285,53 @@ TEST(opBuilderHelperStringContains, NestedReferencedStrings)
 
 }
 
-//find a not scaped char (?)
-// number vs string
+// Check different types not string
+TEST(opBuilderHelperStringContains, NotFoundDifferentTypes)
+{
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"s_contains"},
+                                 std::vector<std::string> {"$reference"});
+
+    auto op =
+        bld::opBuilderHelperStringContains(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    // Bool
+    auto event = std::make_shared<json::Json>(
+        R"({"sourceField":true,
+        "reference":"AAA"})");
+    auto result = op(event);
+    ASSERT_FALSE(result);
+
+    // Number
+    event = std::make_shared<json::Json>(
+        R"({"sourceField":1234,
+        "reference":"AAA"})");
+    result = op(event);
+    ASSERT_FALSE(result);
+
+    // Null
+    event = std::make_shared<json::Json>(
+        R"({"sourceField":null,
+        "reference":"AAA"})");
+    result = op(event);
+    ASSERT_FALSE(result);
+
+    // Array
+    event = std::make_shared<json::Json>(
+        R"({"sourceField": [
+            "valueAAA",
+            "valueB"
+        ],
+        "reference":"AAA"})");
+    result = op(event);
+    ASSERT_FALSE(result);
+
+    // Object
+    event = std::make_shared<json::Json>(
+        R"({"sourceField":{
+            "name": "AAA"
+        },
+        "reference":"AAA"})");
+    result = op(event);
+    ASSERT_FALSE(result);
+}
