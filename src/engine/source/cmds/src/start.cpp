@@ -67,8 +67,8 @@ void runStart(ConfHandler confManager)
 
     // Server config
     auto queueSize = confManager->get<int>("server.queue_size");
-    auto eventEndpoint = confManager->get<std::string>("server.event_endpoint");
-    auto apiEndpoint = confManager->get<std::string>("server.api_endpoint");
+    auto eventEndpoint = confManager->get<std::string>("server.event_socket");
+    auto apiEndpoint = confManager->get<std::string>("server.api_socket");
     auto threads = confManager->get<int>("server.threads");
 
     // KVDB config
