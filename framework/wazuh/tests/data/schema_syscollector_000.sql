@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS sys_hwinfo (
 CREATE TABLE IF NOT EXISTS sys_programs (
     scan_id INTEGER,
     scan_time TEXT,
-    format TEXT NOT NULL CHECK (format IN ('deb', 'rpm', 'win', 'pkg')),
+    format TEXT NOT NULL CHECK (format IN ('deb', 'rpm', 'win', 'pkg', 'apk')),
     name TEXT,
     priority TEXT,
     section TEXT,
