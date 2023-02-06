@@ -57,10 +57,8 @@ normalize:
       - source.ip: $~tmp.src.ip
       - source.port: $~tmp.src.port
       - related.ip: +a_append/$~tmp.src.ip
-  - logpar:
-      - ~tmp.proto: <~tmp.protocol>/<~tmp.port/long>
-    check:
-      - ~tmp.port: 50000
+  - check:
+      - ~tmp.msg: Connection Opened
     map:
       - rsa.internal.event_desc: $~tmp.msg
       - rsa.internal.msg: $~tmp.msg
