@@ -33,6 +33,13 @@ void Route::setPriority(int priority)
 
 bool Route::executeExpression(base::Expression expression, base::Event event) const
 {
+    // TODO: This is a temporary solution. It should be in the expression itself (Filters should be able to be executed
+    // without the check stage)
+    if (expression == nullptr)
+    {
+        return true;
+    }
+
     if (expression->isTerm())
     {
         auto term = expression->getPtr<base::Term<base::EngineOp>>();

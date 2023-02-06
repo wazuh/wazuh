@@ -1,6 +1,5 @@
 {
-    "name": "route/e_wazuh_queue/0",
-    "priority": 2,
+    "name": "filter/e_wazuh_queue/0",
     "check": [
         {
             "wazuh.queue": "+ef_exists"
@@ -8,6 +7,5 @@
         {
             "wazuh.no_queue": "+ef_exists"
         }
-    ],
-    "target": "environment/env_1/0"
+    ]
 }

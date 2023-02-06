@@ -58,17 +58,17 @@ public:
      * @throws std::runtime_error if the route could not be obtained from the store or if the route definition is
      * invalid.
      */
-    Asset buildRoute(const base::Name& name) const
+    Asset buildFilter(const base::Name& name) const
     {
         auto routeJson = m_storeRead->get(name);
         if (std::holds_alternative<base::Error>(routeJson))
         {
-            throw std::runtime_error(fmt::format("Engine builder: Route '{}' could not be obtained from the "
+            throw std::runtime_error(fmt::format("Engine builder: Filter '{}' could not be obtained from the "
                                                  "store: {}.",
                                                  name.fullName(),
                                                  std::get<base::Error>(routeJson).message));
         }
-        return Asset {std::get<json::Json>(routeJson), Asset::Type::ROUTE, m_registry};
+        return Asset {std::get<json::Json>(routeJson), Asset::Type::FILTER, m_registry};
     }
 
     std::optional<base::Error> validateEnvironment(const json::Json& json) const override

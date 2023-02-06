@@ -12,6 +12,7 @@
 namespace aux
 {
 std::shared_ptr<builder::Builder> getFakeBuilder();
+std::shared_ptr<store::IStore> getFakeStore();
 
 const std::vector<std::string> sampleEventsStr {
     R"(2:10.0.0.1:Test Event - deco_1 )", R"(4:10.0.0.1:Test Event - deco_2 )", R"(8:10.0.0.1:Test Event - deco_3 )"};

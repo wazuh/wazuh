@@ -76,7 +76,6 @@ public:
         FILTER,
         OUTPUT,
         ENVIRONMENT,
-        ROUTE,
         SCHEMA,
         COLLECTION,
         ERROR_TYPE
@@ -97,7 +96,6 @@ public:
             case Type::FILTER: return "filter";
             case Type::OUTPUT: return "output";
             case Type::ENVIRONMENT: return "environment";
-            case Type::ROUTE: return "route";
             case Type::SCHEMA: return "schema";
             case Type::COLLECTION: return "collection";
             default: return "error_type";
@@ -127,10 +125,6 @@ public:
         else if (std::strcmp(type, typeToStr(Type::OUTPUT)) == 0)
         {
             return Type::OUTPUT;
-        }
-        else if(std::strcmp(type, typeToStr(Type::ROUTE)) == 0)
-        {
-            return Type::ROUTE;
         }
         else if (std::strcmp(type, typeToStr(Type::ENVIRONMENT)) == 0)
         {
@@ -212,7 +206,7 @@ public:
 
             // Assets and Environments needs validation
             if (Type::ENVIRONMENT == m_type || Type::DECODER == m_type || Type::RULE == m_type
-                || Type::FILTER == m_type || Type::OUTPUT == m_type || Type::ROUTE == m_type)
+                || Type::FILTER == m_type || Type::OUTPUT == m_type)
             {
                 m_validation = true;
             }
