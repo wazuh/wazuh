@@ -38,15 +38,15 @@ normalize:
       - ~do_update_kvdb: true
       - host.mac: +a_append/$~json.data.attributes.mac
 
-  - check: +ef_exists/host.address AND +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface
+  - check: +ef_exists/host.ip AND +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface
     map:
       - ~do_update_kvdb: true
       - ~address_aux: +a_append/$~json.data.attributes.address
-      - host.address: +ef_merge/$~address_aux
-  - check: +ef_not_exists/host.address AND +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface
+      - host.ip: +ef_merge/$~address_aux
+  - check: +ef_not_exists/host.ip AND +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface
     map:
       - ~do_update_kvdb: true
-      - host.address: +a_append/$~json.data.attributes.address
+      - host.ip: +a_append/$~json.data.attributes.address
 
   - map:
       - host_aux: +ef_delete
