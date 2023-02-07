@@ -179,7 +179,8 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
  * @brief Tranform the int in `field` path in the base::Event `e` according to the
  * `op` definition and the `value` or the `refValue`
  *
- * @param definition The transformation definition. i.e : +i_calc/[+|-|*|/]/val|$ref/
+ * @param definition The transformation definition. i.e :
+ * +i_calc/[+|-|*|/]/<val1|$ref1>/<.../valN|$refN>/
  * @param op The operator to use:
  * - `SUM`: Sum
  * - `SUB`: Subtract
@@ -280,7 +281,7 @@ opBuilderHelperIntTransformation(const std::string& targetField,
     const std::string failureTrace2 {
         fmt::format(R"([{}] -> Failure: Reference not found: )", name)};
     const std::string failureTrace3 {
-        fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "integer: ", name)};
+        fmt::format(R"([{}] -> Failure: Parameter is not integer: )", name)};
     const std::string failureTrace4 =
         fmt::format(R"([{}] -> Failure: Parameter value makes division by zero: )", name);
 
@@ -293,8 +294,7 @@ opBuilderHelperIntTransformation(const std::string& targetField,
          targetField = std::move(targetField)](
             base::Event event) mutable -> base::result::Result<base::Event>
         {
-            // TODO: in order to avoid copying rValueVector the lambda was changed to
-            // mutable
+            // In order to avoid copying rValueVector the lambda was changed to mutable
 
             const auto lValue {event->getInt(targetField)};
             if (!lValue.has_value())
@@ -878,7 +878,7 @@ base::Expression opBuilderHelperStringReplace(const std::any& definition)
 //*           Int tranform                        *
 //*************************************************
 
-// field: +i_calc/[+|-|*|/]/val|$ref/
+// field: +i_calc/[+|-|*|/]/<val1|$ref1>/.../<valN|$refN>
 base::Expression opBuilderHelperIntCalc(const std::any& definition)
 {
     // Extract parameters from any
@@ -891,7 +891,7 @@ base::Expression opBuilderHelperIntCalc(const std::any& definition)
     name = helper::base::formatHelperName(name, targetField, parameters);
     const auto op {strToOp(parameters.at(0))};
     //TODO: check if there's a better way to do this
-    // remove operation parameter
+    // remove operation parameter in order to handle all the params equally
     parameters.erase(parameters.begin());
 
     auto expression {
