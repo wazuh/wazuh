@@ -40,13 +40,13 @@ normalize:
     map:
       - host.mac: +a_append/$~json.data.mac
 
-  - check: +ef_exists/host.address AND +ef_exists/~json.data.address AND +ef_exists/~json.data.iface
+  - check: +ef_exists/host.ip AND +ef_exists/~json.data.address AND +ef_exists/~json.data.iface
     map:
       - ~address_aux: +a_append/$~json.data.address
-      - host.address: +ef_merge/$~address_aux
-  - check: +ef_not_exists/host.address AND +ef_exists/~json.data.address AND +ef_exists/~json.data.iface
+      - host.ip: +ef_merge/$~address_aux
+  - check: +ef_not_exists/host.ip AND +ef_exists/~json.data.address AND +ef_exists/~json.data.iface
     map:
-      - host.address: +a_append/$~json.data.address
+      - host.ip: +a_append/$~json.data.address
 
   - map:
       - ~host_aux: +ef_delete
