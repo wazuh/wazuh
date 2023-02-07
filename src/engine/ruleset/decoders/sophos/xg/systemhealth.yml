@@ -3,14 +3,14 @@ name: decoder/sophos-systemhealth/0
 
 metadata:
   module: sophos
-  title: Sophos logs decoder
+  title: Sophos-Systemhealth logs decoder
   version: [17.5.x, 18.0.x]
-  description: Decoder for sophos logs
+  description: Decoder for Sophos Systemhealth
   author:
     name: Wazuh Inc. info@wazuh.com
     date: 2023-01-12
   references:
-    - documentation link
+    - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
 
 check:
   - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="System Health"
@@ -26,12 +26,10 @@ parse:
     # <30>device="SFW" date=2018-06-05 time=15:10:00 timezone="CEST" device_name="SF01V" device_id=SFDemo-fe75a9f log_id=123526618031 log_type="System Health" log_component="Interface" log_subtype="Usage" priority=Information interface=Port1 receivedkbits=4.55 transmittedkbits=2.03 receivederrors=0.00 transmitteddrops=0.00 collisions=0.00 transmittederrors=0.00 receiveddrops=0.00
     # <30>device="SFW" date=2018-06-05 time=15:10:00 timezone="CEST" device_name="SF01V" device_id=SFDemo-fe75a9f log_id=127826618031 log_type="System Health" log_component="Disk" log_subtype="Usage" priority=Information Configuration=13.00% Reports=11.00% Signature=11.00% Temp=4.00%
     # <30>device="SFW" date=2018-06-05 time=15:10:00 timezone="CEST" device_name="SF01V" device_id=SFDemo-fe75a9f log_id=127926618031 log_type="System Health" log_component="Live User" log_subtype="Usage" priority=Information users=0
-    - event.original: \<<~tmp.head_message>><~tmp.payload_message>
+    - event.original: \<<~>><~tmp.payload_message>
 
 normalize:
-  - check:
-      - ~tmp.payload_message: +ef_exists
-    map:
+  - map:
       - ~tmp.payload_message: +s_replace/=""/=" "
     logpar:
       - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
