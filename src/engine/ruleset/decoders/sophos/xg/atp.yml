@@ -2,15 +2,15 @@
 name: decoder/sophos-atp/0
 
 metadata:
-  module: sophos
-  title: Sophos logs decoder
+  module: Sophos
+  title: Sophos-Atp logs decoder
   version: [17.5.x, 18.0.x]
-  description: Decoder for sophos logs
+  description: Decoder for Sophos Atp
   author:
     name: Wazuh Inc. info@wazuh.com
     date: 2023-01-12
   references:
-    - documentation link
+    - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
 
 check:
   - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="ATP"
@@ -22,12 +22,10 @@ sources:
 parse:
   logpar:
     # <30>device="SFW" date=2020-05-18 time=14:38:34 timezone="CEST" device_name="XG230" device_id=1234567890123456 log_id=086504418010 log_type="ATP" log_component="Web" log_subtype="Drop" priority=Warning user_name="" protocol="TCP" src_port=57579 dst_port=80 sourceip=172.16.34.24 destinationip=13.226.155.22 url=http://sophostest.com/callhome/index.html threatname=C2/Generic-A eventid=E91DAD80-BDE4-4682-B7E8-FE394B70A36C eventtype="Standard" login_user="" process_user="" ep_uuid="" execution_path=""
-    - event.original: \<<~tmp.head_message>><~tmp.payload_message>
+    - event.original: \<<~>><~tmp.payload_message>
 
 normalize:
-  - check:
-      - ~tmp.payload_message: +ef_exists
-    map:
+  - map:
       - ~tmp.payload_message: +s_replace/=""/=" "
     logpar:
       - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
