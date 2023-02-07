@@ -1007,7 +1007,7 @@ void Json::merge(const bool isRecursive, rapidjson::Value& source, std::string_v
                 }
                 else
                 {
-                    throw std::runtime_error("JSON elements must be either objects or arrays to be merged");
+                    throw std::runtime_error("JSON elements must be both either objects or arrays to be merged");
                 }
 
                 return;
