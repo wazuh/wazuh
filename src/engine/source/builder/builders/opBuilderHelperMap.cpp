@@ -190,38 +190,50 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
 base::Expression
 opBuilderHelperIntTransformation(const std::string& targetField,
                                  IntOperator op,
-                                 const helper::base::Parameter& rightParameter,
+                                 const std::vector<helper::base::Parameter>& parameters,
                                  const std::string& name)
 {
-    // Depending on rValue type we store the reference or the integer value
-    std::variant<std::string, int> rValue {};
-    auto rValueType {rightParameter.m_type};
-    switch (rightParameter.m_type)
+    std::vector<int> rValueVector {};
+    std::vector<std::string> rReferenceVector {};
+
+    // Depending on rValue type we store the reference or the integer value, avoiding
+    // iterating again through values in lambda
+    for (const auto& param : parameters)
     {
-        case helper::base::Parameter::Type::VALUE:
-            try
-            {
-                rValue = std::stoi(rightParameter.m_value);
-            }
-            catch (const std::exception& e)
-            {
-                throw std::runtime_error(fmt::format(
-                    "'{}' function: Could not convert parameter '{}' to int", name, rightParameter.m_value));
-            }
-            if (IntOperator::DIV == op && 0 == std::get<int>(rValue))
-            {
-                throw std::runtime_error(fmt::format("'{}' function: Division by zero", name));
-            }
+        int rValue {};
+        switch (param.m_type)
+        {
+            case helper::base::Parameter::Type::VALUE:
+                try
+                {
+                    rValue = std::stoi(param.m_value);
+                }
+                catch (const std::exception& e)
+                {
+                    throw std::runtime_error(fmt::format(
+                        "\"{}\" function: Could not convert parameter \"{}\" to int",
+                        name,
+                        param.m_value));
+                }
+                if (IntOperator::DIV == op && 0 == rValue)
+                {
+                    throw std::runtime_error(
+                        fmt::format("\"{}\" function: Division by zero", name));
+                }
 
-            break;
+                rValueVector.emplace_back(rValue);
+                break;
 
-        case helper::base::Parameter::Type::REFERENCE:
-            rValue = rightParameter.m_value;
-            break;
+            case helper::base::Parameter::Type::REFERENCE:
+                rReferenceVector.emplace_back(param.m_value);
+                break;
 
-        default:
-            throw std::runtime_error(
-                fmt::format("'{}' function: Invalid parameter type of '{}'", name, rightParameter.m_value));
+            default:
+                throw std::runtime_error(
+                    fmt::format("\"{}\" function: Invalid parameter type of \"{}\"",
+                                name,
+                                param.m_value));
+        }
     }
 
     // Depending on the operator we return the correct function
@@ -263,21 +275,26 @@ opBuilderHelperIntTransformation(const std::string& targetField,
     // Tracing messages
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
 
-    const std::string failureTrace1 {fmt::format(TRACE_TARGET_NOT_FOUND, name, targetField)};
+    const std::string failureTrace1 {
+        fmt::format(TRACE_TARGET_NOT_FOUND, name, targetField)};
     const std::string failureTrace2 {
-        fmt::format("[{}] -> Failure: Reference '{}' not found", name, rightParameter.m_value)};
-    const std::string failureTrace3 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "integer", name, rightParameter.m_value)};
+        fmt::format(R"([{}] -> Failure: Reference not found: )", name)};
+    const std::string failureTrace3 {
+        fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "integer: ", name)};
     const std::string failureTrace4 =
-        fmt::format("[{}] -> Failure: Parameter '{}' value makes division by zero", name, rightParameter.m_value);
+        fmt::format(R"([{}] -> Failure: Parameter value makes division by zero: )", name);
 
     // Function that implements the helper
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
+        [=,
+         rValueVector = std::move(rValueVector),
+         rReferenceVector = std::move(rReferenceVector),
+         targetField = std::move(targetField)](
+            base::Event event) mutable -> base::result::Result<base::Event>
         {
-            // We assert that references exists, checking if the optional from Json getter
-            // is empty ot not. Then if is a reference we get the value from the event,
-            // otherwise we get the value from the parameter
+            // TODO: in order to avoid copying rValueVector the lambda was changed to
+            // mutable
 
             const auto lValue {event->getInt(targetField)};
             if (!lValue.has_value())
@@ -285,35 +302,36 @@ opBuilderHelperIntTransformation(const std::string& targetField,
                 return base::result::makeFailure(event, failureTrace1);
             }
 
-            if (helper::base::Parameter::Type::REFERENCE == rValueType)
+            // Iterate throug all references and append them values to the value vector
+            for (const auto& rValueItem : rReferenceVector)
             {
-                const auto resolvedRValue {event->getInt(std::get<std::string>(rValue))};
+                const auto resolvedRValue {event->getInt(rValueItem)};
                 if (!resolvedRValue.has_value())
                 {
-                    return base::result::makeFailure(
-                        event,
-                        (!event->exists(std::get<std::string>(rValue))) ? failureTrace2
-                                                                        : failureTrace3);
+                    return base::result::makeFailure(event,
+                                                     (!event->exists(rValueItem))
+                                                         ? (failureTrace2 + rValueItem)
+                                                         : (failureTrace3 + rValueItem));
                 }
                 else
                 {
-                    if (IntOperator::DIV == op && 0 == resolvedRValue)
+                    if (IntOperator::DIV == op && 0 == resolvedRValue.value())
                     {
-                        return base::result::makeFailure(event, failureTrace4);
+                        return base::result::makeFailure(event,
+                                                         failureTrace4 + rValueItem);
                     }
-                    // TODO: should we check the result?
-                    auto res {transformFunction(lValue.value(), resolvedRValue.value())};
-                    event->setInt(res, targetField);
-                    return base::result::makeSuccess(event, successTrace);
+
+                    rValueVector.emplace_back(resolvedRValue.value());
                 }
             }
-            else
-            {
-                // TODO: should we check the result?
-                const auto res {transformFunction(lValue.value(), std::get<int>(rValue))};
-                event->setInt(res, targetField);
-                return base::result::makeSuccess(event, successTrace);
-            }
+
+            // TODO: should we check the result?
+            auto res {std::accumulate(rValueVector.begin(),
+                                      rValueVector.end(),
+                                      lValue.value(),
+                                      transformFunction)};
+            event->setInt(res, targetField);
+            return base::result::makeSuccess(event, successTrace);
         });
 }
 
@@ -867,13 +885,16 @@ base::Expression opBuilderHelperIntCalc(const std::any& definition)
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(name, rawParameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 2);
+    checkParametersMinSize(name, parameters, 2);
     // Format name for the tracer
     name = helper::base::formatHelperName(name, targetField, parameters);
-    const auto op {strToOp(parameters[0])};
+    const auto op {strToOp(parameters.at(0))};
+    //TODO: check if there's a better way to do this
+    // remove operation parameter
+    parameters.erase(parameters.begin());
 
     auto expression {
-        opBuilderHelperIntTransformation(targetField, op, parameters[1], name)};
+        opBuilderHelperIntTransformation(targetField, op, parameters, name)};
     return expression;
 }
 
