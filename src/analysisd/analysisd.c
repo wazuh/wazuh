@@ -498,11 +498,11 @@ int main_analysisd(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    /* Chroot 
+    /* Chroot */
     if (Privsep_Chroot(home_path) < 0) {
         merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
-    nowChroot();*/
+    nowChroot();
 
     /* Set the user */
     if (Privsep_SetUser(uid) < 0) {
