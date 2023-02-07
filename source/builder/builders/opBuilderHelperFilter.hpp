@@ -127,7 +127,15 @@ base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition);
  */
 base::Expression opBuilderHelperStringStarts(const std::any& definition);
 
-// TODO: documentation
+/**
+ * @brief Create the `s_contains` helper function that allows to check if a field string
+ * contains another one.
+ *
+ * The filter passes if the first one contains all of the seccond one.
+ * @param definition The filter definition.
+ * @return xpression The lifter with the `s_contains` filter.
+ * @throw std::runtime_error if the parameter is not a string.
+ */
 base::Expression opBuilderHelperStringContains(const std::any& definition);
 
 //*************************************************

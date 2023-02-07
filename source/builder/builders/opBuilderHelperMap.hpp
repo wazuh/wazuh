@@ -119,10 +119,11 @@ base::Expression opBuilderHelperStringReplace(const std::any& definition);
 //*************************************************
 
 /**
- * @brief Transforms an integer. Performs a mathematical operation on an event field.
+ * @brief Transforms an integer. Stores the result of a mathematical operation
+ * of a single or a set of values or references into the target field.
  *
  * @param definition The transformation definition.
- * i.e : `<field>: +i_calc/[sum|sub|mul|div]/[value|$<ref>]`
+ * i.e : `<field>: +i_calc/[sum|sub|mul|div]/[value1|$<ref1>]/.../[valueN|$<refN>]`
  * @return base::Expression The lifter with the `mathematical operation` transformation.
  * @throw std::runtime_error if the parameter is not a integer.
  */
