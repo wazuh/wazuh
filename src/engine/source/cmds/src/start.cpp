@@ -113,6 +113,7 @@ void runStart(ConfHandler confManager)
         default: logging::LogLevel::Error;
     }
     logConfig.header = "{YmdHMSe} {t} {l}: "; // On debug mode, add the thread id, file, function and line
+    logConfig.filePath = logOutput.c_str();
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
     WAZUH_LOG_INFO("Logging initialized");
@@ -252,7 +253,6 @@ void configure(CLI::App_p app)
     // Log output
     serverApp->add_option("--log_output", options->logOutput, "Sets the logging output")
         ->default_val(ENGINE_LOG_OUTPUT)
-        ->check(CLI::ExistingFile)
         ->envname(ENGINE_LOG_OUTPUT_ENV);
 
     // Server

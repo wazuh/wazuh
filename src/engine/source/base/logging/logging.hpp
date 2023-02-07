@@ -18,17 +18,30 @@ enum class LogLevel
 // Not great but avoiding having a cpp file for this
 struct LoggingConfig
 {
-    const char *filePath = nullptr;
-    const char *header = nullptr;
+    const char* filePath = nullptr;
+    const char* header = nullptr;
     LogLevel logLevel = LogLevel::Info;
     int pollInterval = 5000 /*ns*/;
 };
 
-static inline void loggingInit(LoggingConfig const &cfg)
+static inline void loggingInit(LoggingConfig const& cfg)
 {
     if (cfg.filePath)
     {
-        fmtlog::setLogFile(cfg.filePath, false);
+        std::string path = cfg.filePath;
+        // TODO: check portability issues
+        if ("/dev/stdout" == path)
+        {
+            fmtlog::setLogFile(stdout, false);
+        }
+        else if ("/dev/stderr" == path)
+        {
+            fmtlog::setLogFile(stderr, false);
+        }
+        else
+        {
+            fmtlog::setLogFile(cfg.filePath, false);
+        }
     }
     else
     {
