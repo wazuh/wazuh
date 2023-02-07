@@ -275,9 +275,8 @@ int receive_msg()
                         if (final_file) {
                             if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
                                 const char **IGNORE_LIST;
-                                os_malloc(2 * sizeof(char *), IGNORE_LIST);
+                                os_calloc(2, sizeof(char *), IGNORE_LIST);
                                 os_strdup(SHAREDCFG_FILENAME, *IGNORE_LIST);
-                                *(IGNORE_LIST + 1) = NULL;
                                 if (!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT, &IGNORE_LIST)) {
                                     char msg_output[OS_MAXSTR];
 
