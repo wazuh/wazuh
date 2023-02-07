@@ -2,15 +2,15 @@
 name: decoder/sophos-utm/0
 
 metadata:
-  module: sophos
-  title: Sophos logs decoder
+  module: Sophos
+  title: Sophos-Utm logs decoder
   version: [17.5.x, 18.0.x]
-  description: Decoder for sophos logs
+  description: Decoder for Sophos Utm
   author:
     name: Wazuh Inc. info@wazuh.com
     date: 2023-01-12
   references:
-    - documentation link
+    - https://www.sophos.com/en-us/support/documentation/sophos-utm
 
 sources:
   - decoder/queue-syslog/0
@@ -31,7 +31,6 @@ parse:
 
     # 2016:3:12-03:17:42 data4478.api.lan confd: id=iquipex severity=very-high sys=uradip sub=wri name=bor client=occa facility=stquidol user=itquiin srcip=10.106.239.55 version=1.3129 storage=atevel object=nsecte class=itame type=eumfug attributes=litcount=asun node=estia account=eaq
     - event.original: <@timestamp/%Y:%m:%d-%H:%M:%S> <host.hostname> <event.code>:<~/ignore/ ><~tmp.message>
-
 
 normalize:
 
@@ -59,7 +58,7 @@ normalize:
       - user.name : $~tmp.user
 
   - check:
-    - event.code: astarosg_TVM
+      - event.code==astarosg_TVM OR event.code==httpd OR event.code==ulogd
     logpar:
       - ~tmp.message: <~tmp/kv/=/ /'/'>
     map:
@@ -85,6 +84,7 @@ normalize:
       - rsa.db.index: $~tmp.extra
       - rsa.identity.logon_type: $~tmp.facility
       - rsa.internal.event_desc: $~tmp.name
+      - rsa.internal.messageid: $~tmp.event.code
       - rsa.investigations.event_cat: 1901000000,
       - rsa.investigations.event_cat_name: Other.Default
       - rsa.misc.action: +a_append/$~tmp.function/method
@@ -120,8 +120,10 @@ normalize:
       - url.scheme: $~tmp.url.scheme
       - user.name: $~tmp.user
 
-  - check:
-    - event.code: smtpd
+  - check: >-
+        event.code==smtpd OR event.code==barnyard OR event.code==exim OR
+        event.code==frox event.code==ipsec_starter OR event.code==pluto OR
+        event.code==pop3proxy  OR event.code==xl2tpd
     map:
       - rsa.internal.messageid: $event.code
       - process.pid: $~tmp.process_pid
@@ -131,7 +133,7 @@ normalize:
       - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
 
   - check:
-    - event.code: reverseproxy
+      - event.code: reverseproxy
     map:
       - rsa.internal.messageid: $event.code
       - process.pid: $~tmp.process_pid
@@ -141,7 +143,7 @@ normalize:
       - rsa.misc.severity: $~tmp.severity
 
   - check:
-    - event.code: httpproxy
+      - event.code: httpproxy
     map:
       - rsa.internal.messageid: $event.code
       - process.pid: $~tmp.process_pid
@@ -150,85 +152,28 @@ normalize:
       - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
 
   - check:
-    - event.code: afcd
+      - event.code: afcd
     map:
       - rsa.internal.messageid: $event.code
       - rsa.time.event_time: $@timestamp
       - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
 
   - check:
-    - event.code: sshd
+      - event.code: sshd
     map:
       - rsa.internal.messageid: $event.code
       - rsa.time.event_time: $@timestamp
       - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
       - rsa.network.alias_host: +a_append/$host.hostname
 
-# TODO following decoders
   - check:
-    - event.code: barnyard
+      - event.code: confd-sync
     map:
+      - process.pid: $~tmp.process_pid
       - rsa.internal.messageid: $event.code
-
-  - check:
-    - event.code: confd-sync
-    map:
-      - rsa.internal.messageid: $event.code
-
-  - check:
-    - event.code: exim
-    map:
-      - rsa.internal.messageid: $event.code
-
-  - check:
-    - event.code: frox
-    map:
-      - rsa.internal.messageid: $event.code
-
-  - check:
-    - event.code: httpd
-    map:
-      - rsa.internal.messageid: $event.code
-
-  - check:
-    - event.code: ipsec_starter
-    map:
-      - rsa.internal.messageid: $event.code
-
-  - check:
-    - event.code: named
-    map:
-      - rsa.internal.messageid: $event.code
-
-  - check:
-    - event.code: pluto
-    map:
-      - rsa.internal.messageid: $event.code
-
-  - check:
-    - event.code: pop3proxy
-    map:
-      - rsa.internal.messageid: $event.code
-
-  - check:
-    - event.code: sockd
-    map:
-      - rsa.internal.messageid: $event.code
-
-  - check:
-    - event.code: ulogd
-    map:
-      - rsa.internal.messageid: $event.code
-
-  - check:
-    - event.code: URID
-    map:
-      - rsa.internal.messageid: $event.code
-
-  - check:
-    - event.code: xl2tpd
-    map:
-      - rsa.internal.messageid: $event.code
+      - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
+      - rsa.misc.severity : $~tmp.severity
+      - rsa.time.event_time: $@timestamp
 
   - map:
       - event.dataset: sophos.utm

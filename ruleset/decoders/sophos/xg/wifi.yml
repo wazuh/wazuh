@@ -2,15 +2,15 @@
 name: decoder/sophos-wifi/0
 
 metadata:
-  module: sophos
-  title: Sophos logs decoder
+  module: Sophos
+  title: Sophos-Wifi logs decoder
   version: [17.5.x, 18.0.x]
-  description: Decoder for sophos logs
+  description: Decoder for Sophos Wifi
   author:
     name: Wazuh Inc. info@wazuh.com
     date: 2023-01-12
   references:
-    - documentation link
+    - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
 
 check:
   - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="Wireless Protection"
@@ -23,12 +23,10 @@ parse:
   logpar:
     # <30>device="SFW" date=2017-02-01 time=14:17:35 timezone="IST" device_name="SG115" device_id=S110016E28BA631 log_id=106025618011 log_type="Wireless Protection" log_component="Wireless Protection" log_subtype="Information" priority=Information ap=A40024A636F7862 ssid=SPIDIGO2015 clients_conn_SSID=2
     # <30>device="SFW" date=2017-02-01 time=14:19:47 timezone="IST" device_name="SG115" device_id=S110016E28BA631 log_id=106025618011 log_type="Wireless Protection" log_component="Wireless Protection" log_subtype="Information" priority=Information ap=A40024A636F7862 ssid=SPIDIGO2015 clients_conn_SSID=3
-    - event.original: \<<~tmp.head_message>><~tmp.payload_message>
+    - event.original: \<<~>><~tmp.payload_message>
 
 normalize:
-  - check:
-      - ~tmp.payload_message: +ef_exists
-    map:
+  - map:
       - ~tmp.payload_message: +s_replace/=""/=" "
     logpar:
       - ~tmp.payload_message: <~tmp/kv/=/ /"/'>

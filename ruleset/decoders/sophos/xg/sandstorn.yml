@@ -2,15 +2,15 @@
 name: decoder/sophos-sandstorn/0
 
 metadata:
-  module: sophos
-  title: Sophos logs decoder
+  module: Sophos
+  title: Sophos-Sandstorn logs decoder
   version: [17.5.x, 18.0.x]
-  description: Decoder for sophos logs
+  description: Decoder for Sophos Sandstorn
   author:
     name: Wazuh Inc. info@wazuh.com
     date: 2023-01-12
   references:
-    - documentation link
+    - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
 
 check:
   - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="Sandbox"
@@ -27,12 +27,10 @@ parse:
     # <30>device="SFW" date=2017-01-31 time=15:28:25 timezone="IST" device_name="CR750iNG-XP" device_id=C44310050024-P29PUA log_id=136528618043 log_type="Sandbox" log_component="Web" log_subtype="Pending" priority=Information user_name="jsmith" src_ip=10.198.47.112 filename="19.exe" filetype="application/octet-stream" filesize=153010 sha1sum="3ce799580908df9ca0dc649aa8c2d06ab267e8c8" source="10.198.241.50" reason="pending" destination="" subject=""
     # <30>device="SFW" date=2017-01-31 time=15:28:25 timezone="IST" device_name="CR750iNG-XP" device_id=C44310050024-P29PUA log_id=136502218042 log_type="Sandbox" log_component="Web" log_subtype="Denied" priority=Critical user_name="jsmith" src_ip=10.198.47.112 filename="19.exe" filetype="application/octet-stream" filesize=153010 sha1sum="3ce799580908df9ca0dc649aa8c2d06ab267e8c8" source="10.198.241.50" reason="cloud malicious" destination="" subject="
     # <30>device="SFW" date=2020-05-18 time=14:38:36 timezone="IST" device_name="CR750iNG-XP" device_id=C44310050024-P29PUA log_id=136502218042 log_type="Sandbox" log_component="Web" log_subtype="Denied" priority=Critical user_name="" src_ip=172.16.34.24 filename="SBTestFile1.pdf" filetype="application/pdf" filesize=1124 sha1sum="d910c4a81122c360fe57f67a04999425a65249db" source="sophostest.com" reason="cached malicious" destination="" subject=""
-    - event.original: \<<~tmp.head_message>><~tmp.payload_message>
+    - event.original: \<<~>><~tmp.payload_message>
 
 normalize:
-  - check:
-      - ~tmp.payload_message: +ef_exists
-    map:
+  - map:
       - ~tmp.payload_message: +s_replace/=""/=" "
     logpar:
       - ~tmp.payload_message: <~tmp/kv/=/ /"/'>

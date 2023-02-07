@@ -2,15 +2,15 @@
 name: decoder/sophos-antispam/0
 
 metadata:
-  module: sophos
-  title: Sophos logs decoder
+  module: Sophos
+  title: Sophos-Antispam logs decoder
   version: [17.5.x, 18.0.x]
-  description: Decoder for sophos logs
+  description: Decoder for Sophos Antispam
   author:
     name: Wazuh Inc. info@wazuh.com
     date: 2023-01-31
   references:
-    - documentation link
+    - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
 
 sources:
   - decoder/queue-syslog/0
@@ -35,9 +35,7 @@ parse:
     - event.original: \<<~>><~tmp.payload_message>
 
 normalize:
-  - check:
-      - ~tmp.payload_message: +ef_exists
-    map:
+  - map:
       - ~tmp.payload_message: +s_replace/=""/=" "
     logpar:
       - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
