@@ -42,12 +42,11 @@ getParameters(const std::string& action, const std::string& name, int priority, 
     return params;
 }
 
-json::Json getIngestParameters(const std::string& action, const std::string& name, const std::string& event)
+json::Json getIngestParameters(const std::string& action, const std::string& event)
 {
     json::Json params;
     params.setObject();
     params.setString(action, "/action");
-    params.setString(name, "/name");
     params.setString(event, "/event");
     return params;
 }
@@ -109,9 +108,9 @@ void runUpdate(const std::string& socketPath, const std::string& nameStr, int pr
     details::singleRequest(request, socketPath);
 }
 
-void runIngest(const std::string& socketPath, const std::string& nameStr, const std::string& event)
+void runIngest(const std::string& socketPath, const std::string& event)
 {
-    json::Json params = details::getIngestParameters("enqueue_event", nameStr, event);
+    json::Json params = details::getIngestParameters("enqueue_event", event);
     auto request = api::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
     details::singleRequest(request, socketPath);
 }
@@ -161,7 +160,7 @@ void configure(CLI::App_p app)
 
     // Ingest
     auto ingestSubcommand = routerApp->add_subcommand("ingest", "Ingest an event on the specified route.");
-    ingestSubcommand->add_option("name", options->name, "Name of the route to ingest the event.")->required();
     ingestSubcommand->add_option("event", options->event, "Event to ingest.")->required();
+    ingestSubcommand->callback([options]() { runIngest(options->apiEndpoint, options->event); });
 }
 } // namespace cmd::router

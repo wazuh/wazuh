@@ -26,7 +26,6 @@ constexpr auto JSON_PATH_TARGET = "/target";                  ///< Json path for
 
 constexpr auto JSON_PATH_EVENT = "/event"; ///< Json path for the event for enqueue
 
-
 /**
  * @brief Router class to manage routes and events
  *
@@ -262,6 +261,12 @@ public:
      * @return api::CommandFn
      */
     api::CommandFn apiCallbacks();
+
+    /**
+     * @brief Clear the router table
+     *
+     */
+    void clear();
 };
 } // namespace router
 #endif // _ROUTER_ROUTER_HPP

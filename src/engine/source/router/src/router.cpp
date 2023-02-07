@@ -285,7 +285,7 @@ api::CommandFn Router::apiCallbacks()
         {
             response = apiChangeRoutePriority(params);
         }
-        else if(action.value() == "enqueue_event")
+        else if (action.value() == "enqueue_event")
         {
             response = apiEnqueueEvent(params);
         }
@@ -310,10 +310,12 @@ api::WazuhResponse Router::apiSetRoute(const json::Json& params)
     if (!name)
     {
         response.message(R"(Error: Error: Missing "name" parameter)");
-    } else if (!priority)
+    }
+    else if (!priority)
     {
         response.message(R"(Error: Error: Missing "priority" parameter)");
-    } else if (!target)
+    }
+    else if (!target)
     {
         response.message(R"(Error: Error: Missing "target" parameter)");
     }
@@ -346,7 +348,9 @@ api::WazuhResponse Router::apiGetRoutes(const json::Json& params)
             data.setString(std::get<0>(entry.value()), JSON_PATH_NAME);
             data.setInt(std::get<1>(entry.value()), JSON_PATH_PRIORITY);
             data.setString(std::get<2>(entry.value()), JSON_PATH_TARGET);
-        } else {
+        }
+        else
+        {
             data.setObject();
         }
     }
@@ -421,7 +425,8 @@ api::WazuhResponse Router::apiEnqueueEvent(const json::Json& params)
     }
     else
     {
-        try {
+        try
+        {
             base::Event ev = base::parseEvent::parseOssecEvent(event.value());
             auto err = enqueueEvent(ev);
             if (err)
@@ -432,7 +437,9 @@ api::WazuhResponse Router::apiEnqueueEvent(const json::Json& params)
             {
                 response.message("Ok");
             }
-        } catch (const std::exception& e) {
+        }
+        catch (const std::exception& e)
+        {
             response.message(fmt::format("Error: {} ", e.what()));
         }
     }
@@ -465,6 +472,18 @@ void Router::dumpTableToStorage()
         exit(10);
         // TODO: throw exception and exit program (Review when the exit policy is implemented)
     }
+}
+
+void Router::clear()
+{
+    {
+        std::unique_lock lock {m_mutexRoutes};
+        m_namePriority.clear();
+        m_priorityRoute.clear();
+    }
+
+    dumpTableToStorage();
+    m_environmentManager->delAllEnvironments();
 }
 
 } // namespace router
