@@ -4,7 +4,6 @@ add_library(cmds STATIC
     src/test.cpp
     src/kvdb.cpp
     src/catalog.cpp
-    src/env.cpp
     src/config.cpp
     src/router.cpp
 )
