@@ -88,8 +88,18 @@ void runStart(ConfHandler confManager)
     // Start environment
     auto environment = confManager->get<std::vector<std::string>>("server.start.environment");
     auto routeName = environment[0];
-    int routePriority = std::stoi(environment[1]);
-    auto routeEnvironment = environment[2];
+    int routePriority;
+    try
+    {
+        routePriority = std::stoi(environment[1]);
+    }
+    catch (const std::exception& e)
+    {
+        WAZUH_LOG_ERROR("Invalid route priority '{}'", environment[1]);
+        exit(EXIT_FAILURE); // TODO Change whens add the LOG_CRITICAL / LOG_FATAL
+    }
+    auto routeFilter = environment[2];
+    auto routeEnvironment = environment[3];
     auto forceRouterArg = confManager->get<bool>("server.start.force_router_arg");
 
     // Set Crt+C handler
@@ -203,12 +213,12 @@ void runStart(ConfHandler confManager)
         // If the router table is empty or the force flag is passed, load from the command line
         if (router->getRouteTable().empty())
         {
-            router->addRoute(routeName, routeEnvironment, routePriority);
+            router->addRoute(routeName, routePriority, routeFilter, routeEnvironment);
         }
         else if (forceRouterArg)
         {
             router->clear();
-            router->addRoute(routeName, routeEnvironment, routePriority);
+            router->addRoute(routeName, routePriority, routeFilter, routeEnvironment);
         }
 
         // Register Configuration API commands
@@ -304,7 +314,7 @@ void configure(CLI::App_p app)
                      options->environment,
                      "Sets the environment to be used the first time an engine instance is started.")
         ->default_val(ENGINE_ENVIRONMENT)
-        ->expected(3)
+        ->expected(4)
         ->delimiter(':')
         ->envname(ENGINE_ENVIRONMENT_ENV);
     startApp
