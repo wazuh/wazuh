@@ -4,7 +4,6 @@
 
 #include <cmds/catalog.hpp>
 #include <cmds/config.hpp>
-#include <cmds/env.hpp>
 #include <cmds/graph.hpp>
 #include <cmds/kvdb.hpp>
 #include <cmds/router.hpp>
@@ -39,7 +38,6 @@ int main(int argc, char* argv[])
     cmd::test::configure(app);
     cmd::graph::configure(app);
     cmd::kvdb::configure(app);
-    cmd::env::configure(app);
     cmd::catalog::configure(app);
     cmd::config::configure(app);
     cmd::router::configure(app);
