@@ -999,8 +999,8 @@ base::Expression opBuilderHelperAppend(const std::any& definition)
         });
 }
 
-// field: +ef_append/$field
-base::Expression opBuilderHelperFieldAppend(const std::any& definition)
+// field: +ef_merge_r/$field
+base::Expression opBuilderHelperMergeRecursively(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     auto parameters = helper::base::processParameters(name, rawParameters);
