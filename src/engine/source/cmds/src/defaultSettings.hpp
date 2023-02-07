@@ -31,6 +31,9 @@ constexpr auto ENGINE_LOG_OUTPUT_ENV = "WZE_LOG_OUTPUT";
 constexpr auto ENGINE_THREADS = 1;
 constexpr auto ENGINE_THREADS_ENV = "WZE_THREADS";
 
+constexpr auto ENGINE_FLOOD_FILE = "/var/ossec/logs/engine-flood.log";
+constexpr auto ENGINE_FLOOD_FILE_ENV = "WZE_FLOOD_FILE";
+
 // Test
 constexpr auto ENGINE_KVDB_TEST_PATH = "/var/ossec/etc/kvdb_test/";
 constexpr auto ENGINE_PROTOCOL_QUEUE = 1;

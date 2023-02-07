@@ -20,7 +20,7 @@ json::Json getParameters(const std::string& action,
                          const std::string& name = "",
                          int priority = -1,
                          const std::string& environment = "");
-json::Json getIngestParameters(const std::string& action, const std::string& name, const std::string& event);
+json::Json getIngestParameters(const std::string& action, const std::string& event);
 void processResponse(const api::WazuhResponse& response);
 void singleRequest(const api::WazuhRequest& request, const std::string& socketPath);
 } // namespace details
@@ -29,7 +29,7 @@ void runGet(const std::string& socketPath, const std::string& nameStr);
 void runAdd(const std::string& socketPath, const std::string& nameStr, int priority, const std::string& environment);
 void runDelete(const std::string& socketPath, const std::string& nameStr);
 void runUpdate(const std::string& socketPath, const std::string& nameStr, int priority);
-void runIngest(const std::string& socketPath, const std::string& nameStr, const std::string& event);
+void runIngest(const std::string& socketPath, const std::string& event);
 
 void configure(CLI::App_p app);
 } // namespace cmd::router
