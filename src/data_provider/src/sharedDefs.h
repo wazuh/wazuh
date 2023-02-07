@@ -81,7 +81,8 @@ enum IPVersion
 enum MacOsPackageTypes
 {
     PKG,
-    BREW
+    BREW,
+    MACPORTS
 };
 
 enum RPMFields
