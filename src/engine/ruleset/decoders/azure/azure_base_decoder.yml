@@ -2,7 +2,7 @@
 name: decoder/azure_base_decoder/0
 
 sources: 
-  - decoder/queue-localfile/0
+  - decoder/json/0
 
 metadata:
   description: Parent decoder for Azure events
@@ -19,10 +19,13 @@ metadata:
 check:
    - wazuh.origin: Azure
 
+
+
 normalize:
   - map:
      - cloud.provider: azure
      
+
      # Split in two decoders?
      - event.outcome: $~json.result
      - azure.auditlogs.properties.operation_type: $~json.operationType
@@ -33,3 +36,6 @@ normalize:
      - azure.auditlogs.properties.correlation_id: $~json.correlationId
      - azure.auditlogs.properties.logged_by_service: $~json.loggedByService
      - azure.auditlogs.properties.target_resources: $~json.targetResources
+
+  - logpar:
+    - ~json.ResourceId: /subscriptions/<azure.subscription_id>/reourceGroups/<azure.resource.group>/providers/<azure.resource.provider>

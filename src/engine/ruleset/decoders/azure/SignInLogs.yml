@@ -1,0 +1,35 @@
+name: decoder/SignInLogs/0
+
+sources: 
+  - decoder/azure_base_decoder/0
+
+metadata:
+  description: Decoder for Azure SignInLogs events
+  module: Azure
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2023/02/01
+  title: This decoder normalizes field from Azure SignInLogs
+  references:
+    - https://learn.microsoft.com/en-us/azure/active-directory/reports-monitoring/concept-sign-ins
+
+check:
+   - ~json.category: SignInLogs 
+
+normalize:
+  - map:
+    - event.category: authentication
+    - azure.resource_id: $~json.ResourceId
+    - source.address: $~json.IPAddress
+    - source.ip: $source.address
+    - related.ip: $source.ip
+    - client.ip: $source.ip
+    - log.level: $~json.level
+    - event.duration: $~json.DurationMs
+    - event.duration: +i_calc/mul/1000000
+    - geo.country_iso_code: $~json.Location
+    - event.action: $~json.OperationName
+    - azure.tenant_id: $~json.TenantId
+    - azure.correlation_id: $~json.CorrelationId
