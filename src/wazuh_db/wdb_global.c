@@ -868,10 +868,10 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
                     if (WDBC_ERROR == wdb_set_default_agent_group (wdb, agent_id->valueint)) {
                             result = WDBC_ERROR;
                     } else {
-                        result = recalculate_agent_groups_hash(wdb, agent_id->valueint, wconfig.is_worker?"synced":"syncreq");
+                        result = recalculate_agent_groups_hash(wdb, agent_id->valueint, "syncreq");
                     }
                     if (result == WDBC_ERROR) {
-                        merror("Couldn't recalculate hash group for agent: '%d'", agent_id->valueint);
+                        merror("Couldn't recalculate hash group for agent: '%03d'", agent_id->valueint);
                     }
                 }
             }
@@ -1416,7 +1416,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                 int result = recalculate_agent_groups_hash(wdb, agent_id, sync_status);
                 if (result == WDBC_ERROR) {
                     ret = WDBC_ERROR;
-                    merror("Couldn't recalculate hash group for agent: '%d'", agent_id);
+                    merror("Couldn't recalculate hash group for agent: '%03d'", agent_id);
                 }
             }
         } else {
