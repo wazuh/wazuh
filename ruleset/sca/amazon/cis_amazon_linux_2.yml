@@ -664,8 +664,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:getenforce -> r:Enforcing|Permisive"
-      - "f:/etc/selinux/config -> r:^SELINUX=enforcing|^SELINUX=Permisive"
+      - "c:getenforce -> r:Enforcing|Permissive"
+      - "f:/etc/selinux/config -> r:^SELINUX=enforcing|^SELINUX=permissive"
 
   # 1.6.1.5 Ensure the SELinux mode is enforcing.
   - id: 20536
@@ -1706,7 +1706,7 @@ checks:
     condition: all
     rules:
       - "c:systemctl is-enabled firewalld -> r:enabled"
-      - "c:firewalld --state -> r:running"
+      - "c:firewall-cmd --state -> r:running"
 
   # 3.5.1.6 Ensure network interfaces are assigned to appropriate zone - Not implemented, requires manual operation.
   # 3.5.1.7 Ensure firewalld drops unnecessary services and ports - Not implemented, requires manual operation.
@@ -2036,7 +2036,7 @@ checks:
       - pci_dss: ["10.7"]
     condition: all
     rules:
-      - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file_action\s*=\s*keep_logs'
+      - 'f:/etc/audit/auditd.conf -> r:^max_log_file_action\s*=\s*keep_logs'
 
   # 4.1.2.3 Ensure system is disabled when audit logs are full.
   - id: 20609
@@ -2050,9 +2050,9 @@ checks:
       - pci_dss: ["10.7"]
     condition: all
     rules:
-      - 'f:/boot/grub2/grub.cfg -> r:^\s*space_left_action\s*=\s*email'
-      - 'f:/etc/audit/auditd.conf -> r:^\s*action_mail_acct\s*=\s*root'
-      - 'f:/etc/audit/auditd.conf -> r:^\s*admin_space_left_action\s*=\s*halt'
+      - 'f:/etc/audit/auditd.conf -> r:^space_left_action\s*=\s*email'
+      - 'f:/etc/audit/auditd.conf -> r:^action_mail_acct\s*=\s*root'
+      - 'f:/etc/audit/auditd.conf -> r:^admin_space_left_action\s*=\s*halt'
 
   # 4.1.2.4 Ensure audit_backlog_limit is sufficient - Not implmented, SCA limitation.
 
@@ -2659,7 +2659,7 @@ checks:
     title: "Ensure permissions on SSH private host key files are configured."
     description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, The possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
     rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated"
-    remediation: "Run the following commands to set ownership and permissions on the private SSH host key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod 0640 {} \\;  # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:root {} \\;"
+    remediation: "Run the following commands to set ownership and permissions on the private SSH host key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod 0600 {} \\;  # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:root {} \\;"
     compliance:
       - cis: ["5.3.2"]
       - cis_csc: ["5.1"]
@@ -2707,8 +2707,8 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: any
     rules:
-      - 'f:$sshd_file -> r:^# && r:LogLevel\s*\t*INFO'
-      - 'f:$sshd_file -> r:^# && r:LogLevel\s*\t*VERBOSE'
+      - 'f:$sshd_file -> r:^LogLevel\s*\t*INFO'
+      - 'f:$sshd_file -> r:^LogLevel\s*\t*VERBOSE'
 
   # 5.3.6 Ensure SSH X11 forwarding is disabled.
   - id: 20646
@@ -3017,8 +3017,8 @@ checks:
       - tsc: ["CC6.1", "CC6.7"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/password-auth -> r:^password\s*sufficient\s*pam_unix.so\s*sha512'
-      - 'f:/etc/pam.d/system-auth -> r:^password\s*sufficient\s*pam_unix.so\s*sha512'
+      - 'f:/etc/pam.d/password-auth -> r:^password\s*sufficient\s*pam_unix.so\s*sha512\s*'
+      - 'f:/etc/pam.d/system-auth -> r:^password\s*sufficient\s*pam_unix.so\s*sha512\s*'
 
   # 5.4.4 Ensure password reuse is limited.
   - id: 20665
