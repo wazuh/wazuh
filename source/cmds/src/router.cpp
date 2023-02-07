@@ -9,6 +9,7 @@ struct Options
 {
     std::string apiEndpoint;
     std::string name;
+    std::string filterName;
     int priority;
     std::string environment;
     std::string event;
@@ -21,7 +22,7 @@ namespace cmd::router
 namespace details
 {
 json::Json
-getParameters(const std::string& action, const std::string& name, int priority, const std::string& environment)
+getParameters(const std::string& action, const std::string& name, int priority, const std::string& filterName, const std::string& environment)
 {
     json::Json params;
     params.setObject();
@@ -33,6 +34,10 @@ getParameters(const std::string& action, const std::string& name, int priority, 
     if (priority != -1)
     {
         params.setInt(priority, "/priority");
+    }
+    if(!filterName.empty())
+    {
+        params.setString(filterName, "/filter");
     }
     if (!environment.empty())
     {
@@ -87,9 +92,9 @@ void runGet(const std::string& socketPath, const std::string& nameStr)
     details::singleRequest(request, socketPath);
 }
 
-void runAdd(const std::string& socketPath, const std::string& nameStr, int priority, const std::string& environment)
+void runAdd(const std::string& socketPath, const std::string& nameStr, int priority, const std::string& filterName, const std::string& environment)
 {
-    json::Json params = details::getParameters("set", nameStr, priority, environment);
+    json::Json params = details::getParameters("set", nameStr, priority, filterName, environment);
     auto request = api::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
     details::singleRequest(request, socketPath);
 }
@@ -137,13 +142,14 @@ void configure(CLI::App_p app)
     // Add
     auto addSubcommand =
         routerApp->add_subcommand("add", "Activate a new route, route asset must exist in the catalog");
-    addSubcommand->add_option("name", options->name, "Name of the route to add.")->required();
+    addSubcommand->add_option("name", options->name, "Name or identifier of the route.")->required();
+    addSubcommand->add_option("filter", options->filterName, "Name of the filter to use.")->required();
     addSubcommand->add_option("priority", options->priority, "Priority of the route.")
         ->required()
         ->check(CLI::Range(0, 255));
     addSubcommand->add_option("environment", options->environment, "Target environment of the route.")->required();
     addSubcommand->callback([options]()
-                            { runAdd(options->apiEndpoint, options->name, options->priority, options->environment); });
+                            { runAdd(options->apiEndpoint, options->name, options->priority, options->filterName, options->environment); });
 
     // Delete
     auto deleteSubcommand = routerApp->add_subcommand("delete", "Deactivate a route.");

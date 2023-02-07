@@ -19,6 +19,7 @@ constexpr auto ROUTER_COMMAND = "router";
 json::Json getParameters(const std::string& action,
                          const std::string& name = "",
                          int priority = -1,
+                         const std::string& filterName = "",
                          const std::string& environment = "");
 json::Json getIngestParameters(const std::string& action, const std::string& event);
 void processResponse(const api::WazuhResponse& response);

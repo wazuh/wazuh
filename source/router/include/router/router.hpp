@@ -21,6 +21,7 @@ namespace router
 {
 constexpr auto ROUTES_TABLE_NAME = "internal/router_table/0"; ///< Name of the routes table in the store
 constexpr auto JSON_PATH_NAME = "/name";                      ///< Json path for the name of the route
+constexpr auto JSON_PATH_FILTER = "/filter";                  ///< Json path for the filter of the route
 constexpr auto JSON_PATH_PRIORITY = "/priority";              ///< Json path for the priority of the route
 constexpr auto JSON_PATH_TARGET = "/target";                  ///< Json path for the target of the route
 
@@ -43,9 +44,13 @@ private:
 
     /* Status */
     /**
-     * @brief Map of routes, each route is a vector of expressions, each expression for each thread
+     * @brief Map of routes, each route is a tuple with the priority and the filter name
      */
-    std::unordered_map<std::string, std::size_t> m_namePriority;
+    std::unordered_map<std::string, std::tuple<std::size_t, std::string>> m_namePriorityFilter;
+    /**
+     * @brief Map of routes, each route (priority) is a vector of expressions, each expression for each thread
+     * The map is sorted by priority
+     */
     std::map<std::size_t, std::vector<Route>> m_priorityRoute;
     std::shared_mutex m_mutexRoutes;    ///< Mutex to protect the routes map
     std::atomic_bool m_isRunning;       ///< Flag to know if the router is running
@@ -118,12 +123,12 @@ private:
     api::WazuhResponse apiEnqueueEvent(const json::Json& params);
 
 public:
-    using Entry = std::tuple<std::string, std::size_t, std::string>; ///< Entry of the routes table (name, priority,
-                                                                     ///< target)
+    using Entry = std::tuple<std::string, std::size_t, std::string, std::string>; ///< Entry of the routes table (name,
+                                                                                  ///< priority, filter, target)
 
     Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store, std::size_t threads = 1)
         : m_mutexRoutes {}
-        , m_namePriority {}
+        , m_namePriorityFilter {}
         , m_priorityRoute {}
         , m_isRunning {false}
         , m_numThreads {threads}
@@ -168,13 +173,14 @@ public:
             {
                 const auto name = jRoute.getString(JSON_PATH_NAME);
                 const auto priority = jRoute.getInt(JSON_PATH_PRIORITY);
+                const auto filter = jRoute.getString(JSON_PATH_FILTER);
                 const auto target = jRoute.getString(JSON_PATH_TARGET);
-                if (!name.has_value() || !priority.has_value() || !target.has_value())
+                if (!name.has_value() || !priority.has_value() || !target.has_value() || !filter.has_value())
                 {
                     throw std::runtime_error("Router: Can't get routes table from store. Invalid table format");
                 }
 
-                const auto err = addRoute(name.value(), target.value(), priority.value());
+                const auto err = addRoute(name.value(), priority.value(), filter.value(), target.value());
                 if (err.has_value())
                 {
                     WAZUH_LOG_WARN("Router: couldn't add route " + name.value() + " to the router: {}",
@@ -223,9 +229,10 @@ public:
      * added.
      * @param name name of the route
      * @return A error with description if the route can't be added
-     * // TODO: FIX ALL DOC
+     * // TODO: FIX ALL DOC --
      */
-    std::optional<base::Error> addRoute(const std::string& routeName, const std::string& envName, int priority);
+    std::optional<base::Error>
+    addRoute(const std::string& routeName, int priority, const std::string& filterName, const std::string& envName);
 
     /**
      * @brief Push an event to the queue of the router
