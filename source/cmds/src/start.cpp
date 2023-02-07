@@ -52,7 +52,8 @@ struct Options
     int logLevel;
     std::string logOutput;
     std::vector<std::string> environment;
-    bool forceRouterConfig;
+    bool forceRouterArg;
+    std::string floodFilePath;
 };
 
 } // namespace
@@ -71,6 +72,12 @@ void runStart(ConfHandler confManager)
     auto eventEndpoint = confManager->get<std::string>("server.event_socket");
     auto apiEndpoint = confManager->get<std::string>("server.api_socket");
     auto threads = confManager->get<int>("server.threads");
+    auto floodFilePath = confManager->get<std::string>("server.flood_file");
+    std::optional<std::string> floodFile = std::nullopt;
+    if (!floodFilePath.empty())
+    {
+        floodFile = floodFilePath;
+    }
 
     // KVDB config
     auto kvdbPath = confManager->get<std::string>("server.kvdb_path");
@@ -83,7 +90,7 @@ void runStart(ConfHandler confManager)
     auto routeName = environment[0];
     int routePriority = std::stoi(environment[1]);
     auto routeEnvironment = environment[2];
-    auto forceRouterConfig = confManager->get<bool>("server.start.force_router_config");
+    auto forceRouterArg = confManager->get<bool>("server.start.force_router_arg");
 
     // Set Crt+C handler
     {
@@ -128,7 +135,7 @@ void runStart(ConfHandler confManager)
         // TODO Add the option to configure the flooded file
         // TODO Change the default buffer size to a multiple of 1024
         server =
-            std::make_shared<engineserver::EngineServer>(apiEndpoint, nullptr, eventEndpoint, std::nullopt, bufferSize);
+            std::make_shared<engineserver::EngineServer>(apiEndpoint, nullptr, eventEndpoint, floodFile, bufferSize);
         g_exitHanlder.add([server]() { server->close(); });
         WAZUH_LOG_DEBUG("Server configured.");
 
@@ -192,9 +199,14 @@ void runStart(ConfHandler confManager)
         server->getRegistry()->registerCommand("router", router->apiCallbacks());
         WAZUH_LOG_DEBUG("Router API registered.")
 
-        // If the router table is empty, load from the command line
-        if (router->getRouteTable().empty() && !forceRouterConfig)
+        // If the router table is empty or the force flag is passed, load from the command line
+        if (router->getRouteTable().empty())
         {
+            router->addRoute(routeName, routeEnvironment, routePriority);
+        }
+        else if (forceRouterArg)
+        {
+            router->clear();
             router->addRoute(routeName, routeEnvironment, routePriority);
         }
 
@@ -262,6 +274,12 @@ void configure(CLI::App_p app)
             "--queue_size", options->queueSize, "Sets the number of events that can be queued to be processed.")
         ->default_val(ENGINE_QUEUE_SIZE)
         ->envname(ENGINE_QUEUE_SIZE_ENV);
+    // Flood file
+    serverApp
+        ->add_option(
+            "--flood_file", options->floodFilePath, "Sets the path to the file where the flood events will be stored.")
+        ->default_val(ENGINE_FLOOD_FILE)
+        ->envname(ENGINE_FLOOD_FILE_ENV);
 
     // Store
     // Path
@@ -290,7 +308,10 @@ void configure(CLI::App_p app)
         ->delimiter(':')
         ->envname(ENGINE_ENVIRONMENT_ENV);
     startApp
-        ->add_flag("--force_router_config", options->forceRouterConfig, "Use the router configuration, even if it is empty.")->default_val(false);
+        ->add_flag("--force_router_arg",
+                   options->forceRouterArg,
+                   "Use the router parameter, even if there is previous configuration.")
+        ->default_val(false);
 
     // Register callback
     startApp->callback(
