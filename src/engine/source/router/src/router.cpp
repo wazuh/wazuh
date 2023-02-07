@@ -11,7 +11,8 @@ namespace router
 {
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
 
-std::optional<base::Error> Router::addRoute(const std::string& name, const std::string& envName, int priority)
+std::optional<base::Error>
+Router::addRoute(const std::string& routeName, int priority, const std::string& filterName, const std::string& envName)
 {
     try
     {
@@ -20,10 +21,8 @@ std::optional<base::Error> Router::addRoute(const std::string& name, const std::
         routeInstances.reserve(m_numThreads);
         for (std::size_t i = 0; i < m_numThreads; ++i)
         {
-            // routeInstances[i] = builder::Route {jsonDefinition, m_registry};
-            auto filter = m_builder->buildFilter(name);
-
-            routeInstances.emplace_back(Route {filter, envName, priority});
+            auto filter = m_builder->buildFilter(filterName);
+            routeInstances.emplace_back(Route {routeName, filter, envName, priority});
         }
 
         // Add the environment
@@ -38,9 +37,9 @@ std::optional<base::Error> Router::addRoute(const std::string& name, const std::
             std::unique_lock lock {m_mutexRoutes};
             std::optional<base::Error> err = std::nullopt;
             // Check if the route already exists, should we update it?
-            if (m_namePriority.find(name) != m_namePriority.end())
+            if (m_namePriorityFilter.find(routeName) != m_namePriorityFilter.end())
             {
-                err = base::Error {fmt::format("Route '{}' already exists", name)};
+                err = base::Error {fmt::format("Route '{}' already exists", routeName)};
             }
             // Check if the priority is already taken
             if (m_priorityRoute.find(priority) != m_priorityRoute.end())
@@ -54,7 +53,7 @@ std::optional<base::Error> Router::addRoute(const std::string& name, const std::
                 m_environmentManager->deleteEnvironment(envName);
                 return err;
             }
-            m_namePriority.insert(std::make_pair(name, priority));
+            m_namePriorityFilter.insert(std::make_pair(routeName, std::make_tuple(priority, filterName)));
             m_priorityRoute.insert(std::make_pair(priority, std::move(routeInstances)));
         }
     }
@@ -70,12 +69,12 @@ std::optional<base::Error> Router::removeRoute(const std::string& routeName)
 {
     std::unique_lock lock {m_mutexRoutes};
 
-    auto it = m_namePriority.find(routeName);
-    if (it == m_namePriority.end())
+    auto it = m_namePriorityFilter.find(routeName);
+    if (it == m_namePriorityFilter.end())
     {
         return base::Error {fmt::format("Route '{}' not found", routeName)};
     }
-    const auto priority = it->second;
+    const auto priority = std::get<0>(it->second);
 
     auto it2 = m_priorityRoute.find(priority);
     if (it2 == m_priorityRoute.end())
@@ -84,7 +83,7 @@ std::optional<base::Error> Router::removeRoute(const std::string& routeName)
     }
     const auto envName = it2->second.front().getTarget();
     // Remove from maps
-    m_namePriority.erase(it);
+    m_namePriorityFilter.erase(it);
     m_priorityRoute.erase(it2);
     lock.unlock();
 
@@ -96,15 +95,16 @@ std::vector<Router::Entry> Router::getRouteTable()
 {
     std::shared_lock lock {m_mutexRoutes};
     std::vector<Entry> table {};
-    table.reserve(m_namePriority.size());
+    table.reserve(m_namePriorityFilter.size());
     try
     {
-        for (const auto& route : m_namePriority)
+        for (const auto& route : m_namePriorityFilter)
         {
             const auto& name = route.first;
-            const auto& priority = route.second;
+            const auto& priority = std::get<0>(route.second);
+            const auto& filterName = std::get<1>(route.second);
             const auto& envName = m_priorityRoute.at(priority).front().getTarget();
-            table.emplace_back(name, priority, envName);
+            table.emplace_back(name, priority, filterName, envName);
         }
     }
     catch (const std::exception& e)
@@ -122,27 +122,27 @@ std::vector<Router::Entry> Router::getRouteTable()
 std::optional<Router::Entry> Router::getEntry(const std::string& name)
 {
     std::shared_lock lock {m_mutexRoutes};
-    auto it = m_namePriority.find(name);
-    if (it == m_namePriority.end())
+    auto it = m_namePriorityFilter.find(name);
+    if (it == m_namePriorityFilter.end())
     {
         return std::nullopt;
     }
-    const auto& priority = it->second;
+    const auto& [priority, filterName] = it->second;
     const auto& envName = m_priorityRoute.at(priority).front().getTarget();
 
-    return Entry {name, priority, envName};
+    return Entry {name, priority, filterName, envName};
 }
 
 std::optional<base::Error> Router::changeRoutePriority(const std::string& name, int priority)
 {
     std::unique_lock lock {m_mutexRoutes};
 
-    auto it = m_namePriority.find(name);
-    if (it == m_namePriority.end())
+    auto it = m_namePriorityFilter.find(name);
+    if (it == m_namePriorityFilter.end())
     {
         return base::Error {fmt::format("Route '{}' not found", name)};
     }
-    const auto oldPriority = it->second;
+    const auto oldPriority = std::get<0>(it->second);
 
     if (oldPriority == priority)
     {
@@ -175,7 +175,7 @@ std::optional<base::Error> Router::changeRoutePriority(const std::string& name, 
     }
 
     // Update maps
-    it->second = priority;
+    std::get<0>(it->second) = priority;
     m_priorityRoute.insert(std::make_pair(priority, std::move(it2->second)));
     m_priorityRoute.erase(it2);
     lock.unlock();
@@ -305,6 +305,7 @@ api::WazuhResponse Router::apiSetRoute(const json::Json& params)
 {
     api::WazuhResponse response {};
     const auto name = params.getString(JSON_PATH_NAME);
+    const auto filter = params.getString(JSON_PATH_FILTER);
     const auto priority = params.getInt(JSON_PATH_PRIORITY);
     const auto target = params.getString(JSON_PATH_TARGET);
     if (!name)
@@ -319,10 +320,14 @@ api::WazuhResponse Router::apiSetRoute(const json::Json& params)
     {
         response.message(R"(Error: Error: Missing "target" parameter)");
     }
+    else if (!filter)
+    {
+        response.message(R"(Error: Error: Missing "filter" parameter)");
+    }
     else
     {
 
-        const auto err = addRoute(name.value(), target.value(), priority.value());
+        const auto err = addRoute(name.value(), priority.value(), filter.value(), target.value());
         if (err)
         {
             response.message(std::string {"Error: "} + err.value().message);
@@ -347,7 +352,8 @@ api::WazuhResponse Router::apiGetRoutes(const json::Json& params)
         {
             data.setString(std::get<0>(entry.value()), JSON_PATH_NAME);
             data.setInt(std::get<1>(entry.value()), JSON_PATH_PRIORITY);
-            data.setString(std::get<2>(entry.value()), JSON_PATH_TARGET);
+            data.setString(std::get<2>(entry.value()), JSON_PATH_FILTER);
+            data.setString(std::get<3>(entry.value()), JSON_PATH_TARGET);
         }
         else
         {
@@ -452,11 +458,12 @@ json::Json Router::tableToJson()
     data.setArray();
 
     const auto table = getRouteTable();
-    for (const auto& [name, priority, envName] : table)
+    for (const auto& [name, priority, filterName, envName] : table)
     {
         json::Json entry {};
         entry.setString(name, JSON_PATH_NAME);
         entry.setInt(priority, JSON_PATH_PRIORITY);
+        entry.setString(filterName, JSON_PATH_FILTER);
         entry.setString(envName, JSON_PATH_TARGET);
         data.appendJson(entry);
     }
@@ -478,7 +485,7 @@ void Router::clear()
 {
     {
         std::unique_lock lock {m_mutexRoutes};
-        m_namePriority.clear();
+        m_namePriorityFilter.clear();
         m_priorityRoute.clear();
     }
 

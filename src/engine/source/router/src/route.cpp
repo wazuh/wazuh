@@ -11,11 +11,13 @@ constexpr int MIN_PRIORITY = 0L;
 
 } // namespace
 
-Route::Route(builder::Asset assetRoute, const std::string& target, int priority)
-    : m_filter {assetRoute.getExpression()}
-    , m_name {assetRoute.m_name}
+Route::Route(const std::string& name, builder::Asset assetRoute, const std::string& target, int priority)
+    : m_name {name}
+    , m_filter {assetRoute.getExpression()}
+    , m_filterName {assetRoute.m_name}
     , m_target {target}
 {
+    // TODO Add a check for the name of the route (it should be alfanumeric) when the asset also has a check name
     setPriority(priority);
 }
 
@@ -24,7 +26,7 @@ void Route::setPriority(int priority)
     if (priority < MIN_PRIORITY || priority > MAX_PRIORITY)
     {
         throw std::runtime_error(fmt::format("Route '{}' has an invalid priority. Priority must be between {} and {}.",
-                                             m_name,
+                                             m_filterName,
                                              MIN_PRIORITY,
                                              MAX_PRIORITY));
     }
