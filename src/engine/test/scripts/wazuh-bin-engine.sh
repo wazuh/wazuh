@@ -11,6 +11,12 @@ export WZE_KVDB_PATH=$WAZUH_DIR/etc/kvdb/
 export WZE_STORE_PATH=$ENGINE_DIR/store/
 export WZE_EVENT_SOCK=$WAZUH_DIR/queue/sockets/queue
 export WZE_API_SOCK=$WAZUH_DIR/queue/sockets/engine-api
+export WZE_FLOOD_FILE=/tmp/engine-flood.log
+
+# Create flood file if it does not exist
+if [ ! -e "$WZE_FLOOD_FILE" ] ; then
+    touch "$WZE_FLOOD_FILE"
+fi
 
 # TODO: improve the config testing section
 if [ "$1" = "-t" ]; then
