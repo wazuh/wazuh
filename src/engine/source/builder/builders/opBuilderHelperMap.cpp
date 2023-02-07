@@ -103,7 +103,7 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
     // Depending on rValue type we store the reference or the string value, string in both
     // cases
     std::string rValue {};
-    const helper::base::Parameter rightParameter {parameters[0]};
+    const helper::base::Parameter rightParameter {parameters.at(0)};
     const auto rValueType {rightParameter.m_type};
     rValue = rightParameter.m_value;
 
@@ -414,24 +414,25 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     helper::base::checkParametersSize(name, parameters, 2);
     // Parameter type check
     helper::base::checkParameterType(
-        name, parameters[0], helper::base::Parameter::Type::VALUE);
+        name, parameters.at(0), helper::base::Parameter::Type::VALUE);
     helper::base::checkParameterType(
-        name, parameters[1], helper::base::Parameter::Type::VALUE);
+        name, parameters.at(1), helper::base::Parameter::Type::VALUE);
     // Format name for the tracer
     name = helper::base::formatHelperName(name, targetField, parameters);
 
     // Get trim type
-    const char trimType = parameters[0].m_value == "begin"  ? 's'
-                          : parameters[0].m_value == "end"  ? 'e'
-                          : parameters[0].m_value == "both" ? 'b'
+    const char trimType = parameters.at(0).m_value == "begin"  ? 's'
+                          : parameters.at(0).m_value == "end"  ? 'e'
+                          : parameters.at(0).m_value == "both" ? 'b'
                                                             : '\0';
     if ('\0' == trimType)
     {
-        throw std::runtime_error(fmt::format("'{}' function: Invalid trim type '{}'", name, parameters[0].m_value));
+        throw std::runtime_error(fmt::format(
+            "\"{}\" function: Invalid trim type \"{}\"", name, parameters.at(0).m_value));
     }
 
     // get trim char
-    std::string trimChar {parameters[1].m_value};
+    std::string trimChar {parameters.at(1).m_value};
     if (trimChar.size() != 1)
     {
         throw std::runtime_error(fmt::format("'{}' function: Invalid trim char '{}'", name, trimChar));
@@ -574,12 +575,12 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
 
     // Check Array reference parameter
     helper::base::checkParameterType(
-        name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+        name, parameters.at(0), helper::base::Parameter::Type::REFERENCE);
     const auto arrayName = parameters.at(0);
 
     // Check separator parameter
     helper::base::checkParameterType(
-        name, parameters[1], helper::base::Parameter::Type::VALUE);
+        name, parameters.at(1), helper::base::Parameter::Type::VALUE);
     const auto separator = parameters.at(1);
 
     const std::string traceName {
@@ -643,7 +644,7 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
     helper::base::checkParametersSize(name, parameters, 1);
 
     helper::base::checkParameterType(
-        name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+        name, parameters.at(0), helper::base::Parameter::Type::REFERENCE);
 
     const auto sourceField = parameters.at(0);
 
@@ -719,7 +720,7 @@ base::Expression opBuilderHelperHexToNumber(const std::any& definition)
     const auto parameters = helper::base::processParameters(name, rawParameters);
     helper::base::checkParametersSize(name, parameters, 1);
     helper::base::checkParameterType(
-        name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+        name, parameters.at(0), helper::base::Parameter::Type::REFERENCE);
     const auto sourceField = parameters.at(0);
 
     const std::string traceName {
@@ -913,19 +914,22 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
     helper::base::checkParametersSize(name, parameters, 2);
     // Parameter type check
     helper::base::checkParameterType(
-        name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+        name, parameters.at(0), helper::base::Parameter::Type::REFERENCE);
     helper::base::checkParameterType(
-        name, parameters[1], helper::base::Parameter::Type::VALUE);
+        name, parameters.at(1), helper::base::Parameter::Type::VALUE);
     // Format name for the tracer
     name = helper::base::formatHelperName(name, targetField, parameters);
 
-    std::string map_field {parameters[0].m_value};
+    std::string map_field {parameters.at(0).m_value};
 
-    auto regex_ptr = std::make_shared<RE2>(parameters[1].m_value);
+    auto regex_ptr = std::make_shared<RE2>(parameters.at(1).m_value);
     if (!regex_ptr->ok())
     {
-        throw std::runtime_error(fmt::format(
-            "'{}' function: Error compiling regex '{}': {}", name, parameters[1].m_value, regex_ptr->error()));
+        throw std::runtime_error(
+            fmt::format("\"{}\" function: Error compiling regex \"{}\": {}",
+                        name,
+                        parameters.at(1).m_value,
+                        regex_ptr->error()));
     }
 
     // Tracing
@@ -1080,13 +1084,15 @@ base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
     auto parameters = helper::base::processParameters(name, rawParameters);
     helper::base::checkParametersSize(name, parameters, 2);
     helper::base::checkParameterType(
-        name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+        name, parameters.at(0), helper::base::Parameter::Type::REFERENCE);
     helper::base::checkParameterType(
-        name, parameters[1], helper::base::Parameter::Type::VALUE);
-    if (parameters[1].m_value.size() != 1)
+        name, parameters.at(1), helper::base::Parameter::Type::VALUE);
+    if (parameters.at(1).m_value.size() != 1)
     {
-        throw std::runtime_error(fmt::format(
-            "'{}' function: Separator '{}' should be one character long", name, parameters[1].m_value.size()));
+        throw std::runtime_error(
+            fmt::format("\"{}\" function: Separator \"{}\" should be one character long",
+                        name,
+                        parameters.at(1).m_value.size()));
     }
 
     name = helper::base::formatHelperName(name, targetField, parameters);
@@ -1094,16 +1100,19 @@ base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
 
-    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters[0].m_value)};
-    const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters[0].m_value)};
+    const std::string failureTrace1 {
+        fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters.at(0).m_value)};
+    const std::string failureTrace2 {
+        fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters.at(0).m_value)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=,
          targetField = std::move(targetField),
-         fieldReference = std::move(parameters[0].m_value),
-         separator = std::move(parameters[1].m_value[0])](base::Event event) -> base::result::Result<base::Event>
+         fieldReference = std::move(parameters.at(0).m_value),
+         separator = std::move(parameters.at(1).m_value[0])](
+            base::Event event) -> base::result::Result<base::Event>
         {
             const auto resolvedReference = event->getString(fieldReference);
             if (!resolvedReference.has_value())
@@ -1131,22 +1140,28 @@ base::Expression opBuilderHelperMerge(const std::any& definition)
     auto parameters = helper::base::processParameters(name, rawParameters);
     helper::base::checkParametersSize(name, parameters, 1);
     helper::base::checkParameterType(
-        name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+        name, parameters.at(0), helper::base::Parameter::Type::REFERENCE);
 
     name = helper::base::formatHelperName(name, targetField, parameters);
 
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
 
-    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters[0].m_value)};
-    const std::string failureTrace2 {fmt::format(TRACE_TARGET_NOT_FOUND, name, targetField)};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Fields type do not match", name)};
-    const std::string failureTrace4 {fmt::format("[{}] -> Failure: Fields type not supported", name)};
+    const std::string failureTrace1 {
+        fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters.at(0).m_value)};
+    const std::string failureTrace2 {
+        fmt::format(TRACE_TARGET_NOT_FOUND, name, targetField)};
+    const std::string failureTrace3 {
+        fmt::format("[{}] -> Failure: Fields type do not match", name)};
+    const std::string failureTrace4 {
+        fmt::format("[{}] -> Failure: Fields type not supported", name)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField), fieldReference = std::move(parameters[0].m_value)](
+        [=,
+         targetField = std::move(targetField),
+         fieldReference = std::move(parameters.at(0).m_value)](
             base::Event event) -> base::result::Result<base::Event>
         {
             // Check target and reference field exists
@@ -1237,7 +1252,7 @@ base::Expression opBuilderHelperRenameField(const std::any& definition)
     auto parameters {helper::base::processParameters(name, rawParameters)};
     // Assert expected number and type of parameters
     helper::base::checkParametersSize(name, parameters, 1);
-    auto sourceField = parameters[0];
+    auto sourceField = parameters.at(0);
     helper::base::checkParameterType(
         name, sourceField, helper::base::Parameter::Type::REFERENCE);
     // Format name for the tracer
@@ -1307,21 +1322,27 @@ base::Expression opBuilderHelperIPVersionFromIPStr(const std::any& definition)
     // Check parameters
     helper::base::checkParametersSize(name, parameters, 1);
     helper::base::checkParameterType(
-        name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+        name, parameters.at(0), helper::base::Parameter::Type::REFERENCE);
 
     // Tracing
     name = helper::base::formatHelperName(name, targetField, parameters);
 
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
 
-    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters[0].m_value)};
-    const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters[0].m_value)};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: ", name)};
+    const std::string failureTrace1 {
+        fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters.at(0).m_value)};
+    const std::string failureTrace2 {
+        fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters.at(0).m_value)};
+    const std::string failureTrace3 {fmt::format("[{}] -> Failure: ", name)
+                                     + "The string \"{}\" is not a valid IP address"};
 
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField), name = std::move(name), ipStrPath = std::move(parameters[0].m_value)](
+        [=,
+         targetField = std::move(targetField),
+         name = std::move(name),
+         ipStrPath = std::move(parameters.at(0).m_value)](
             base::Event event) -> base::result::Result<base::Event>
         {
             const auto strIP = event->getString(ipStrPath);
@@ -1404,9 +1425,12 @@ base::Expression opBuilderHelperHashSHA1(const std::any& definition)
 
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters[0].m_value)};
-    const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters[0].m_value)};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Couldn't create HASH from string", name)};
+    const std::string failureTrace1 {
+        fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters.at(0).m_value)};
+    const std::string failureTrace2 {
+        fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters.at(0).m_value)};
+    const std::string failureTrace3 {
+        fmt::format("[{}] -> Failure: Couldn't create HASH from string", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
