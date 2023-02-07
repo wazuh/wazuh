@@ -15,7 +15,8 @@ metadata:
 sources:
   - decoder/queue-localfile/0
 
-check: (+s_starts/event.original/logver=) OR (+s_starts/event.original/date=)
+check:
+  - event.original: +r_match/(?i)logver=
 
 parse:
   logpar:
