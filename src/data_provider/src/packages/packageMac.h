@@ -14,6 +14,7 @@
 
 #include "ipackageInterface.h"
 #include "ipackageWrapper.h"
+#include "sqlite_wrapper.h"
 
 struct PackageContext
 {
@@ -26,6 +27,7 @@ class FactoryBSDPackage
 {
     public:
         static std::shared_ptr<IPackage>create(const std::pair<PackageContext, int>& ctx);
+        static std::shared_ptr<IPackage>create(std::pair<SQLite::Statement, int>& ctx);
 };
 
 class BSDPackageImpl final : public IPackage
