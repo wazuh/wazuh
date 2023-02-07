@@ -6,12 +6,12 @@ metadata:
   title: F5 AFM Decoder
   description: Decodes F5 BIG-IP Advanced Firewall Manager logs
   compatibility: >
-    TBD
+    This module has been tested against F5 BIG-IP version 16.1.0
   author:
     name: Wazuh, Inc.
     date: 2023/01/10
   references:
-    - TBD
+    - https://support.f5.com/csp/article/K05327372
 
 sources:
   - decoder/queue-syslog/0
@@ -34,7 +34,6 @@ normalize:
     - event.code : $~tmp.kvMap.errdefs_msgno
     - event.dataset : f5.bigipafm
     - event.module : f5
-    - event.provider: +ef_delete
     - fileset.name : bigipafm
     - host.ip : $~tmp.kvMap.bigip_mgmt_ip
     - host.name : $~tmp.kvMap.hostname
@@ -73,8 +72,6 @@ normalize:
     - source.nat.ip : $~tmp.kvMap.translated_source_ip
     - source.nat.port : $~tmp.kvMap.translated_source_port
     - source.port : $~tmp.kvMap.source_port
-    - tags : +a_append/$event.dataset
-    - tags : +a_append/forwarded
+    - tags : [f5.bigipafm, forwarded]
     - user.name : $~tmp.kvMap.source_user
     - ~tmp: +ef_delete
-    - ~payload : +ef_delete
