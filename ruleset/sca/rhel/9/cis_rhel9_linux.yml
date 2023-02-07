@@ -157,7 +157,7 @@ checks:
   - id: 28004 
     title: "Ensure separate partition exists for /var."
     description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
-    rationale: "The reasoning for mounting /var on a separate partition is as follows. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. Fine grained control over the mount Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection from exploitation An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    rationale: "The reasoning for mounting /var on a separate partition is as follows. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
@@ -196,7 +196,7 @@ checks:
       - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
       - pci_dss_4.0: ["1.3.1","7.1"]
       - soc_2: ["CC5.2","CC6.1"]
-      - mitre_techniques: ["T1200","T1200.000"]
+      - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -235,7 +235,7 @@ checks:
   - id: 28007 
     title: "Ensure separate partition exists for /var/tmp."
     description: "The /var/tmp directory is a world-writable directory used for temporary storage by all users and some applications. Temporary files residing in /var/tmp are to be preserved between reboots."
-    rationale: "The reasoning for mounting /var/tmp on a separate partition is as follows. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var/tmp directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var/tmp and cause potential disruption to daemons as the disk is full. Fine grained control over the mount Configuring /var/tmp as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection from exploitation An example of exploiting /var/tmp may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    rationale: "The reasoning for mounting /var/tmp on a separate partition is as follows. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var/tmp directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var/tmp and cause potential disruption to daemons as the disk is full. - Fine grained control over the mount: Configuring /var/tmp as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var/tmp may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
@@ -337,8 +337,8 @@ checks:
   - id: 28011 
     title: "Ensure separate partition exists for /var/log."
     description: "The /var/log directory is used by system services to store log data ."
+    rationale: "The reasoning for mounting /var/log on a separate partition is as follows. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var/log directory contains log files which can grow quite large, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. - Fine grained control over the mount: Configuring /var/log as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection of log data: As /var/log contains log files, care should be taken to ensure the security and integrity of the data and mount point."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
-    rationale: "The reasoning for mounting /var/log on a separate partition is as follows. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var/log directory contains log files which can grow quite large, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. Fine grained control over the mount Configuring /var/log as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection of log data As /var/log contains log files, care should be taken to ensure the security and integrity of the data and mount point."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.5.1"]
@@ -373,7 +373,7 @@ checks:
       - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
       - pci_dss_4.0: ["1.3.1","7.1"]
       - soc_2: ["CC5.2","CC6.1"]
-      - mitre_techniques: ["T1200","T1200.000"]
+      - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1038"]
     condition: all
@@ -436,7 +436,7 @@ checks:
   - id: 28015 
     title: "Ensure separate partition exists for /var/log/audit."
     description: "The auditing daemon, auditd, stores log data in the /var/log/audit directory."
-    rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker's ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
@@ -533,7 +533,7 @@ checks:
   - id: 28019 
     title: "Ensure separate partition exists for /home."
     description: "The /home directory is used to support disk storage needs of local users."
-    rationale: "The reasoning for mounting /home on a separate partition is as follows. Protection from resource exhaustion The default installation only creates a single / partition. Since the /home directory contains user generated data, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /home and impact all local users. Fine grained control over the mount Configuring /home as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker's ability to create exploits on the system. In the case of /home options such as usrquota/grpquota may be considered to limit the impact that users can have on each other with regards to disk resource exhaustion. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection of user data As /home contains user data, care should be taken to ensure the security and integrity of the data and mount point."
+    rationale: "The reasoning for mounting /home on a separate partition is as follows. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /home directory contains user generated data, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /home and impact all local users. - Fine grained control over the mount: Configuring /home as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker's ability to create exploits on the system. In the case of /home options such as usrquota/grpquota may be considered to limit the impact that users can have on each other with regards to disk resource exhaustion. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection of user data: As /home contains user data, care should be taken to ensure the security and integrity of the data and mount point."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
@@ -548,7 +548,7 @@ checks:
       - soc_2: ["CC5.2","CC6.1"]
       - mitre_techniques: ["T1499","T1499.001"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: ["M1022"]
+      - mitre_mitigations: ["M1038"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -572,9 +572,9 @@ checks:
       - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
       - pci_dss_4.0: ["1.3.1","7.1"]
       - soc_2: ["CC5.2","CC6.1"]
-      - mitre_techniques: ["T1200","T1200.000"]
+      - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: ["M1022"]
+      - mitre_mitigations: ["M1038"]
     condition: all
     rules:
       - "c:findmnt --kernel /home -> r:nodev"
@@ -616,6 +616,9 @@ checks:
     rationale: "Making /dev/shm its own file system allows an administrator to set additional mount options such as the noexec option on the mount, making /dev/shm useless for an attacker to install executable code. It would also prevent an attacker from establishing a hard link to a system setuid program and wait for it to be updated. Once the program was updated, the hard link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by mounting tmpfs to /dev/shm."
     impact: "Since the /dev/shm directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. /dev/shm utilizing tmpfs can be resized using the size={size} parameter in the relevant entry in /etc/fstab."
     remediation: "For specific configuration requirements of the /dev/shm mount for your environment, modify /etc/fstab. Example of using tmpfs with specific mount options: tmpfs /dev/shm tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 0."
+    references:
+     - https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/
+      - https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html
     compliance:
       - cis: ["1.1.8.1"]
       - cis_csc_v8: ["4.8"]
@@ -650,7 +653,7 @@ checks:
       - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
       - pci_dss_4.0: ["1.3.1","7.1"]
       - soc_2: ["CC5.2","CC6.1"]
-      - mitre_techniques: ["T1200","T1200.000"]
+      - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -698,27 +701,27 @@ checks:
       - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
       - pci_dss_4.0: ["1.3.1","7.1"]
       - soc_2: ["CC5.2","CC6.1"]
-      - mitre_techniques: ["T1204","T1204.002"]
+      - mitre_techniques: ["T1548, T1548.001"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: ["M1022"]
+      - mitre_mitigations: ["M1038"]
     condition: all
     rules:
       - "c:findmnt --kernel /dev/shm -> r:nosuid"
 
-  # 1.1.10 Disable USB Storage (Automated) - Not Implemented
+  # 1.1.9 Disable USB Storage (Automated) - Not Implemented
   
   ###############################################
   # 1.2 Configure Software Updates
   ###############################################
 
-  # 1.2.1 Ensure Red Hat Subscription Manager connection is configured (Manual) - Not implemented
+  # 1.2.1 Ensure GPG keys are configured (Manual) - Not implemented
 
   # 1.2.2 Ensure gpgcheck is globally activated (Automated)
   - id: 28026 
     title: "Ensure gpgcheck is globally activated."
     description: "The gpgcheck option, found in the main section of the /etc/dnf/dnf.conf and individual /etc/yum.repos.d/* files, determines if an RPM package's signature is checked prior to its installation."
     rationale: "It is important to ensure that an RPM's package signature is always checked prior to installation to ensure that the software is obtained from a trusted source."
-    remediation: 'Edit /etc/dnf/dnf.conf and set gpgcheck=1 in the [main] section. Example: # sed -i ''s/^gpgcheck\s*=\s*.*/gpgcheck=1/'' /etc/dnf/dnf.conf Edit any failing files in /etc/yum.repos.d/* and set all instances starting with gpgcheck to 1. Example: # find /etc/yum.repos.d/ -name "*.repo" -exec echo "Checking:" {} \; -exec sed -i ''s/^gpgcheck\s*=\s*.*/gpgcheck=1/'' {} \; '
+    remediation: 'Edit /etc/dnf/dnf.conf and set gpgcheck=1 in the [main] section. Example: # sed -i ''s/^gpgcheck\s*=\s*.*/gpgcheck=1/'' /etc/dnf/dnf.conf. Edit any failing files in /etc/yum.repos.d/* and set all instances starting with gpgcheck to 1. Example: # find /etc/yum.repos.d/ -name "*.repo" -exec echo "Checking:" {} \; -exec sed -i ''s/^gpgcheck\s*=\s*.*/gpgcheck=1/'' {} \; '
     compliance:
       - cis: ["1.2.2"]
       - cis_csc_v8: ["7.3"]
@@ -748,7 +751,7 @@ checks:
     title: "Ensure AIDE is installed."
     description: "Advanced Intrusion Detection Environment (AIDE) is a intrusion detection tool that uses predefined rules to check the integrity of files and directories in the Linux operating system. AIDE has its own database to check the integrity of files and directories. AIDE takes a snapshot of files and directories including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
     rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
-    remediation: "Run the following command to install AIDE: # dnf install aide Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Initialize AIDE: Run the following commands # aide --init # mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz."
+    remediation: "Run the following command to install AIDE: # dnf install aide. Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Initialize AIDE: Run the following commands: # aide --init # mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz."
     compliance:
       - cis: ["1.3.1"]
       - cis_csc_v8: ["3.14"]
@@ -769,10 +772,10 @@ checks:
 
   # 1.3.2 Ensure filesystem integrity is regularly checked (Automated)
   - id: 28028 
-    title: "Ensure filesystem integrity is regularly checked (A)."
+    title: "Ensure filesystem integrity is regularly checked."
     description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
     rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
-    remediation: "If cron will be used to schedule and run aide check. Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/sbin/aide --check OR if aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/sbin/aide --check [Install] WantedBy=multi-user.target. Create or edit the file /etc/systemd/system/aidecheck.timer: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target. Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer."
+    remediation: "If cron will be used to schedule and run aide check. Run the following command: # crontab -u root -e. Add the following line to the crontab: 0 5 * * * /usr/sbin/aide --check. OR if aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/sbin/aide --check [Install] WantedBy=multi-user.target. Create or edit the file /etc/systemd/system/aidecheck.timer: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target. Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer."
     compliance:
       - cis: ["1.3.2"]
       - cis_csc_v8: ["3.14"]
@@ -833,7 +836,7 @@ checks:
     compliance:
       - cis: ["1.5.2"]
       - nist_sp_800-53: ["CM-6b"]
-      - mitre_techniques: ["T1005","T1005.000"]
+      - mitre_techniques: ["T1005"]
       - mitre_tactics: ["TA0007"]
     references:
       - "https://www.freedesktop.org/software/systemd/man/coredump.conf.html"
@@ -867,12 +870,12 @@ checks:
       - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
       - pci_dss_4.0: ["1.3.1","7.1"]
       - soc_2: ["CC5.2","CC6.1"]
-      - mitre_techniques: ["T1068","T1068.000"]
+      - mitre_techniques: ["T1068"]
       - mitre_tactics: ["TA0003"]
       - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - "c:rpm -q libselinux -> r:libselinux-"
+      - "c:rpm -q libselinux -> r:^libselinux-"
 
   # 1.6.1.2 Ensure SELinux is not disabled in bootloader configuration (Automated)
   - id: 28032 
@@ -880,7 +883,7 @@ checks:
     description: "Configure SELINUX to be enabled at boot time and verify that it has not been overwritten by the grub boot parameters."
     rationale: "SELinux must be enabled at boot time in your grub configuration to ensure that the controls it provides are not overridden."
     impact: "Files created while SELinux is disabled are not labeled at all. This behavior causes problems when changing to enforcing mode because files are labeled incorrectly or are not labeled at all. To prevent incorrectly labeled and unlabeled files from causing problems, file systems are automatically relabeled when changing from the disabled state to permissive or enforcing mode. This can be a long running process that should be accounted for as it may extend downtime during initial re-boot."
-    remediation: "Run the following command to remove all instances of selinux=0 and enforcing=0 from all CMDLINE_LINUX parameters: grubby --update-kernel ALL --remove-args 'selinux=0 enforcing=0'."
+    remediation: 'Run the following command to remove the selinux=0 and enforcing=0 parameters:grubby --update-kernel ALL --remove-args "selinux=0 enforcing=0" Run the following command to remove the selinux=0 and enforcing=0 parameters if they were created by the deprecated grub2-mkconfig command: # grep -Prsq -- "\h\*(\[^#\n\r]+\h+)?kernelopts=([^#\n\r]+\h+)?(selinux|enforcing)=0\b" /boot/grub2 /boot/efi && grub2-mkconfig -o "$(grep -Prl -- "\h*([^#\n\r]+\h+)?kernelopts=([^#\n\r]+\h+)?(selinux|enforcing)=0\b" /boot/grub2 /boot/efi) Additional Information: This recommendation is designed around the grub 2 bootloader, if another bootloader is in use in your environment enact equivalent settings. grubby is a command line tool for updating and displaying information about the configuration files for the grub2 and zipl boot loaders. It is primarily designed to be used from scripts which install new kernels and need to find information about the current boot environment. All bootloaders define the boot entries as individual configuration fragments that are stored by default in /boot/loader/entries. The format for the config files is specified at https://systemd.io/BOOT_LOADER_SPECIFICATION. The grubby tool is used to update and display the configuration defined in the BootLoaderSpec fragment files. There are a number of ways to specify the kernel used for --info, --remove-kernel, and --update-kernel. Specifying DEFAULT or ALL selects the default entry and all of the entries, respectively. Also, the title of a boot entry may be specified by using TITLE=title as the argument; all entries with that title are used.'
     compliance:
       - cis: ["1.6.1.2"]
       - cis_csc_v8: ["3.3"]
@@ -917,9 +920,8 @@ checks:
       - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
       - pci_dss_4.0: ["1.3.1","7.1"]
       - soc_2: ["CC5.2","CC6.1"]
-      - mitre_techniques: ["T1068","T1068.000"]
-      - mitre_tactics: ["TA0003"]
-      - mitre_mitigations: ["M1026"]
+      - mitre_techniques: ["T1068"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
       - 'c:sestatus -> r:^Loaded policy name:\s+targeted$|^Loaded policy name:\s+mls$'
@@ -942,7 +944,7 @@ checks:
       - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
       - pci_dss_4.0: ["1.3.1","7.1"]
       - soc_2: ["CC5.2","CC6.1"]
-      - mitre_techniques: ["T1068","T1068.000","T1565","T1565.001","T1565.003"]
+      - mitre_techniques: ["T1068","T1565","T1565.001","T1565.003"]
       - mitre_tactics: ["TA0003"]
       - mitre_mitigations: ["M1026"]
     references:
@@ -968,8 +970,8 @@ checks:
       - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
       - pci_dss_4.0: ["1.3.1","7.1"]
       - soc_2: ["CC5.2","CC6.1"]
-      - mitre_techniques: ["T1068","T1068.000","T1565","T1565.001","T1565.003"]
-      - mitre_tactics: ["TA0003"]
+      - mitre_techniques: ["T1068","T1565","T1565.001","T1565.003"]
+      - mitre_tactics: ["TA0005"]
     references:
       - "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/sect-security-enhanced_linux-introduction-selinux_modes"
       - "CCI-002165: The information system enforces organization-defined discretionary access control policies over defined subjects and objects."
@@ -985,7 +987,7 @@ checks:
   - id: 28036 
     title: "Ensure no unconfined services exist."
     description: "Unconfined processes run in unconfined domains."
-    rationale: "For unconfined processes, SELinux policy rules are applied, but policy rules exist that allow processes running in unconfined domains almost all access. Processes running in unconfined domains fall back to using DAC rules exclusively. If an unconfined process is compromised, SELinux does not prevent an attacker from gaining access to system resources and data, but of course, DAC rules are still used. SELinux is a security enhancement on top of DAC rules – it does not replace them."
+    rationale: "For unconfined processes, SELinux policy rules are applied, but policy rules exist that allow processes running in unconfined domains almost all access. Processes running in unconfined domains fall back to using DAC rules exclusively. If an unconfined process is compromised, SELinux does not prevent an attacker from gaining access to system resources and data, but of course, DAC rules are still used. SELinux is a security enhancement on top of DAC rules - it does not replace them."
     remediation: "Investigate any unconfined processes found during the audit action. They may need to have an existing security context assigned to them or a policy built for them."
     compliance:
       - cis: ["1.6.1.6"]
@@ -998,9 +1000,9 @@ checks:
       - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
       - pci_dss_4.0: ["1.3.1","7.1"]
       - soc_2: ["CC5.2","CC6.1"]
-      - mitre_techniques: ["T1068","T1068.000","T1565","T1565.001","T1565.003"]
+      - mitre_techniques: ["T1068","T1565","T1565.001","T1565.003"]
       - mitre_tactics: ["TA0004"]
-      - mitre_mitigations: ["M1026"]
+      - mitre_mitigations: ["M1022"]
     condition: none
     rules:
       - "c:ps -eZ -> r:unconfined_service_t"
@@ -1055,12 +1057,12 @@ checks:
   # 1.7.1 Ensure message of the day is configured properly (Automated)
   - id: 28039 
     title: "Ensure message of the day is configured properly."
-    description: "The contents of the /etc/motd file are displayed to users after login and function as a  message of the day for authenticated users.  Unix-based systems have typically displayed information about the OS release and  patch level upon logging in to the system. This information can be useful to developers  who are developing software for a particular OS platform. If mingetty(8) supports the  following options, they display operating system information: \\m - machine architecture  \\r - operating system release \\s - operating system name \\v - operating system version."
-    rationale: 'Warning messages inform users who are attempting to login to the system of their legal  status regarding the system and must include the name of the organization that owns  the system and any monitoring policies that are in place. Displaying OS and patch level  information in login banners also has the side effect of providing detailed system  information to attackers attempting to target specific exploits of a system. Authorized  users can easily get this information by running the " uname -a " command once they  have logged in.'
-    remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\n , \\s , \\v or references to the OS platform OR If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd."
+    description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and  patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture  \\r - operating system release \\s - operating system name \\v - operating system version."
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the "uname -a" command once they have logged in.'
+    remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd."
     compliance:
       - cis: ["1.7.1"]
-      - mitre_techniques: ["T1082","T1082.000","T1592","T1592.004"]
+      - mitre_techniques: ["T1082","T1592","T1592.004"]
       - mitre_tactics: ["TA0007"]
     condition: none
     rules:
@@ -1074,7 +1076,7 @@ checks:
     remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue."
     compliance:
       - cis: ["1.7.2"]
-      - mitre_techniques: ["T1082","T1082.000","T1592","T1592.004"]
+      - mitre_techniques: ["T1082","T1592","T1592.004"]
       - mitre_tactics: ["TA0007"]
     condition: none
     rules:
@@ -1088,7 +1090,7 @@ checks:
     remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net."
     compliance:
       - cis: ["1.7.3"]
-      - mitre_techniques: ["T1018","T1018.000","T1082","T1082.000","T1592","T1592.004"]
+      - mitre_techniques: ["T1018","T1082","T1592","T1592.004"]
       - mitre_tactics: ["TA0007"]
     condition: none
     rules:
@@ -1112,8 +1114,8 @@ checks:
       - pci_dss_4.0: ["1.3.1","7.1"]
       - soc_2: ["CC5.2","CC6.1"]
       - mitre_techniques: ["T1122","T1122.002"]
-      - mitre_tactics: ["TA0003"]
-      - mitre_mitigations: ["M1026"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -1210,15 +1212,14 @@ checks:
 
   # 1.8.9 Ensure GDM autorun-never is not overridden (Automated) - Not implemented
 
-  # 1.8.10  Ensure XDCMP is not enabled (Automated) - Not implemented
-
+  # 1.8.10  Ensure XDCMP is not enabled (Automated)
   - id: 28046 
     title: "Ensure XDCMP is not enabled."
-    description: "X Display Manager Control Protocol (XDMCP) is designed to provide authenticated  access to display management services for remote displays."
-    rationale: "XDMCP is inherently insecure.  - XDMCP is not a ciphered protocol. This may allow an attacker to capture  keystrokes entered by a user  - XDMCP is vulnerable to man-in-the-middle attacks. This may allow an attacker to  steal the credentials of legitimate users by impersonating the XDMCP server."
-    remediation: "Edit the file /etc/gdm/custom.conf and remove the line:  Enable=true."
+    description: "X Display Manager Control Protocol (XDMCP) is designed to provide authenticated access to display management services for remote displays."
+    rationale: "XDMCP is inherently insecure. - XDMCP is not a ciphered protocol. This may allow an attacker to capture keystrokes entered by a user - XDMCP is vulnerable to man-in-the-middle attacks. This may allow an attacker to steal the credentials of legitimate users by impersonating the XDMCP server."
+    remediation: "Edit the file /etc/gdm/custom.conf and remove the line: Enable=true."
     compliance:
-      - cis: ["1.9"]
+      - cis: ["1.8.10"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - iso_27001-2013: ["A.13.1.3"]
@@ -1226,7 +1227,7 @@ checks:
       - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
       - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
       - soc_2: ["CC6.3","CC6.6"]
-      - mitre_techniques: ["T1040","T1040.000","T1056","T1056.001","T1557","T1557.000"]
+      - mitre_techniques: ["T1040","T1056","T1056.001","T1557"]
       - mitre_tactics: ["TA0002"]
       - mitre_mitigations: ["M1050"]
     condition: none
@@ -1250,7 +1251,7 @@ checks:
       - pci_dss_3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
       - soc_2: ["CC7.1"]
-      - mitre_techniques: ["T1211","T1211.000"]
+      - mitre_techniques: ["T1211"]
       - mitre_tactics: ["TA0004","TA0008"]
       - mitre_mitigations: ["M1051"]
     condition: all
@@ -1263,7 +1264,10 @@ checks:
     description: "The system-wide crypto-policies followed by the crypto core components allow consistently deprecating and disabling algorithms system-wide. The individual policy levels (DEFAULT, LEGACY, FUTURE, and FIPS) are included in the crypto-policies(7) package."
     rationale: "If the Legacy system-wide crypto policy is selected, it includes support for TLS 1.0, TLS 1.1, and SSH2 protocols or later. The algorithms DSA, 3DES, and RC4 are allowed, while RSA and Diffie-Hellman parameters are accepted if larger than 1023-bits. These legacy protocols and algorithms can make the system vulnerable to attacks, including those listed in RFC 7457."
     impact: "Environments that require compatibility with older insecure protocols may require the use of the less secure LEGACY policy level."
-    remediation: "Run the following command to change the system-wide crypto policy # update-crypto-policies --set <CRYPTO POLICY> Example: # update-crypto-policies --set DEFAULT Run the following to make the updated system-wide crypto policy active # update-crypto-policies."
+    remediation: "Run the following command to change the system-wide crypto policy # update-crypto-policies --set <CRYPTO POLICY> Example: # update-crypto-policies --set DEFAULT Run the following to make the updated system-wide crypto policy active # update-crypto-policies. Additional Information: To switch the system to FIPS mode, run the following command: fips-mode-setup --enable NIST SP 800-53 Rev. 5: SC-8."
+    references:
+     - CRYPTO-POLICIES(7)
+     - https://access.redhat.com/articles/3642912#what-polices-are-provided-1
     compliance:
       - cis: ["1.10"]
       - cis_csc_v8: ["3.10"]
@@ -1275,9 +1279,6 @@ checks:
       - pci_dss_3.2.1: ["2.1.1","4.1","4.1.1","8.2.1"]
       - pci_dss_4.0: ["2.2.7","4.1.1","4.2.1","4.2.1.2","4.2.2","8.3.2"]
       - nist_sp_800-53: ["AC-17(2)","SC-8","SC-8(1)"]
-    references:
-      - "CRYPTO-POLICIES(7)"
-      - "https://access.redhat.com/articles/3642912#what-polices-are-provided-1"
     condition: none
     rules:
       - 'f:/etc/crypto-policies/config -> r:^\s*LEGACY'
