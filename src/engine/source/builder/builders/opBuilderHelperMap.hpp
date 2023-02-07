@@ -151,6 +151,36 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition);
  */
 base::Expression opBuilderHelperRenameField(const std::any& definition);
 
+
+/**
+ * @brief Merge two arrays or objects.
+ * Accepts one reference parameter. Fail cases:
+ * - If target or source not exists
+ * - If source and target, are not the same type
+ * - If source or target are not arrays or objects
+ *
+ * @param definition Definition of the operation to be built
+ * @return base::Expression The lifter with the `ef_merge` transformation.
+ *
+ * @throw std::runtime_error if the parameters size is not 1 or is not a reference.
+ */
+base::Expression opBuilderHelperMerge(const std::any& definition);
+
+/**
+ * @brief Merge recursively two arrays or two objects.
+ * Accepts one reference parameter. Fail cases:
+ * - If target or source not exists
+ * - If source and target, are not the same type
+ * - If source or target are not arrays or objects
+ *
+ * @param definition Definition of the operation to be built
+ * @return base::Expression The lifter with the `ef_merge` transformation.
+ *
+ * @throw std::runtime_error if the parameters size is not 1 or is not a reference.
+ */
+
+base::Expression opBuilderHelperMergeRecursively(const std::any& definition);
+
 //*************************************************
 //*           Regex tranform                      *
 //*************************************************
@@ -180,35 +210,7 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition);
  */
 base::Expression opBuilderHelperAppend(const std::any& definition);
 
-/**
- * @brief Append splitted strings to array field.
- * Accepts one parameter with a reference and another with seprator char. If reference not
- * exists, is not a string or split operation fails it will fail.
- *
- * @param definition Definition of the operation to be built
- * @return base::Expression The lifter with the `append splitted strings to array`
- * transformation.
- * @throw std::runtime_error if the parameters size is not 2 or character separator is not
- * valid.
- */
-
-base::Expression opBuilderHelperFieldAppend(const std::any& definition);
-
 base::Expression opBuilderHelperAppendSplitString(const std::any& definition);
-
-/**
- * @brief Merge two arrays or objects.
- * Accepts one reference parameter. Fail cases:
- * - If target or source not exists
- * - If source and target, are not the same type
- * - If source or target are not arrays or objects
- *
- * @param definition Definition of the operation to be built
- * @return base::Expression The lifter with the `ef_merge` transformation.
- *
- * @throw std::runtime_error if the parameters size is not 1 or is not a reference.
- */
-base::Expression opBuilderHelperMerge(const std::any& definition);
 
 //*************************************************
 //*              IP tranform                      *

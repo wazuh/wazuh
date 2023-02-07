@@ -8,44 +8,44 @@
 
 using namespace base;
 
-using builder::internals::builders::opBuilderHelperFieldAppend;
+using builder::internals::builders::opBuilderHelperMergeRecursively;
 using json::Json;
 using std::string;
 using std::vector;
 
 #define GTEST_COUT std::cout << "[          ] [ INFO ] "
 
-string helperFunctionName {"ef_append"};
+string helperFunctionName {"ef_merge_r"};
 string sourceField {"fieldFrom"};
 string sourceFieldRef {string("$") + sourceField};
 string targetField {"/fieldTo"};
 
-TEST(opBuilderHelperFieldAppend, Builds)
+TEST(opBuilderHelperMergeRecursively, Builds)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
 
-    ASSERT_NO_THROW(opBuilderHelperFieldAppend(tuple));
+    ASSERT_NO_THROW(opBuilderHelperMergeRecursively(tuple));
 }
 
-TEST(opBuilderHelperFieldAppend, WrongSizeParameters)
+TEST(opBuilderHelperMergeRecursively, WrongSizeParameters)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {sourceFieldRef, "dummy_param"});
 
-    ASSERT_THROW(opBuilderHelperFieldAppend(tuple), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperMergeRecursively(tuple), std::runtime_error);
 }
 
-TEST(opBuilderHelperFieldAppend, WrongTypeParameter)
+TEST(opBuilderHelperMergeRecursively, WrongTypeParameter)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {sourceField});
 
-    ASSERT_THROW(opBuilderHelperFieldAppend(tuple), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperMergeRecursively(tuple), std::runtime_error);
 }
 
-TEST(opBuilderHelperFieldAppend, FailTargetNotFound)
+TEST(opBuilderHelperMergeRecursively, FailTargetNotFound)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
 
-    const auto op = opBuilderHelperFieldAppend(tuple);
+    const auto op = opBuilderHelperMergeRecursively(tuple);
     auto event = std::make_shared<Json>(R"({
        "fieldFrom": {
           "key1": "value1",
@@ -57,11 +57,11 @@ TEST(opBuilderHelperFieldAppend, FailTargetNotFound)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperFieldAppend, FailReferenceNotFound)
+TEST(opBuilderHelperMergeRecursively, FailReferenceNotFound)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
 
-    const auto op = opBuilderHelperFieldAppend(tuple);
+    const auto op = opBuilderHelperMergeRecursively(tuple);
     auto event = std::make_shared<Json>(R"({
        "fieldTo": {
           "key1": "value1",
@@ -73,11 +73,11 @@ TEST(opBuilderHelperFieldAppend, FailReferenceNotFound)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperFieldAppend, FailFieldsWithDifferentTypes)
+TEST(opBuilderHelperMergeRecursively, FailFieldsWithDifferentTypes)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
 
-    const auto op = opBuilderHelperFieldAppend(tuple);
+    const auto op = opBuilderHelperMergeRecursively(tuple);
 
     auto event1 = std::make_shared<Json>(R"({
        "fieldFrom": {
@@ -123,10 +123,10 @@ TEST(opBuilderHelperFieldAppend, FailFieldsWithDifferentTypes)
     // ASSERT_FALSE(result4);
 }
 
-TEST(opBuilderHelperFieldAppend, MergeRecursiveStringFail)
+TEST(opBuilderHelperMergeRecursively, MergeRecursiveStringFail)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
-    const auto op = opBuilderHelperFieldAppend(tuple);
+    const auto op = opBuilderHelperMergeRecursively(tuple);
 
     auto event = std::make_shared<Json>(R"({
         "fieldTo": "value",
@@ -137,10 +137,10 @@ TEST(opBuilderHelperFieldAppend, MergeRecursiveStringFail)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperFieldAppend, MergeRecursiveIntFail)
+TEST(opBuilderHelperMergeRecursively, MergeRecursiveIntFail)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
-    const auto op = opBuilderHelperFieldAppend(tuple);
+    const auto op = opBuilderHelperMergeRecursively(tuple);
 
     auto event = std::make_shared<Json>(R"({
         "fieldTo": 404,
@@ -151,10 +151,10 @@ TEST(opBuilderHelperFieldAppend, MergeRecursiveIntFail)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperFieldAppend, MergeRecursiveFloatFail)
+TEST(opBuilderHelperMergeRecursively, MergeRecursiveFloatFail)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
-    const auto op = opBuilderHelperFieldAppend(tuple);
+    const auto op = opBuilderHelperMergeRecursively(tuple);
 
     auto event = std::make_shared<Json>(R"({
         "fieldTo": 404.69,
@@ -165,10 +165,10 @@ TEST(opBuilderHelperFieldAppend, MergeRecursiveFloatFail)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperFieldAppend, MergeRecursiveBooleanFail)
+TEST(opBuilderHelperMergeRecursively, MergeRecursiveBooleanFail)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
-    const auto op = opBuilderHelperFieldAppend(tuple);
+    const auto op = opBuilderHelperMergeRecursively(tuple);
 
     auto event = std::make_shared<Json>(R"({
         "fieldTo": false,
@@ -179,10 +179,10 @@ TEST(opBuilderHelperFieldAppend, MergeRecursiveBooleanFail)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperFieldAppend, MergeRecursiveNullFail)
+TEST(opBuilderHelperMergeRecursively, MergeRecursiveNullFail)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
-    const auto op = opBuilderHelperFieldAppend(tuple);
+    const auto op = opBuilderHelperMergeRecursively(tuple);
 
     auto event = std::make_shared<Json>(R"({
         "fieldTo": null,
@@ -193,10 +193,10 @@ TEST(opBuilderHelperFieldAppend, MergeRecursiveNullFail)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperFieldAppend, MergeRecursiveToArray)
+TEST(opBuilderHelperMergeRecursively, MergeRecursiveToArray)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
-    const auto op = opBuilderHelperFieldAppend(tuple);
+    const auto op = opBuilderHelperMergeRecursively(tuple);
 
     auto event = std::make_shared<Json>(R"({
         "fieldTo": {
@@ -217,10 +217,10 @@ TEST(opBuilderHelperFieldAppend, MergeRecursiveToArray)
     ASSERT_EQ(expected, *result.payload());
 }
 
-TEST(opBuilderHelperFieldAppend, MergeRecursiveToJson)
+TEST(opBuilderHelperMergeRecursively, MergeRecursiveToJson)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
-    const auto op = opBuilderHelperFieldAppend(tuple);
+    const auto op = opBuilderHelperMergeRecursively(tuple);
 
     auto event = std::make_shared<Json>(R"({
         "fieldTo": {
@@ -248,11 +248,11 @@ TEST(opBuilderHelperFieldAppend, MergeRecursiveToJson)
     ASSERT_EQ(expected, *result.payload());
 }
 
-TEST(opBuilderHelperFieldAppend, MergeRecursiveObjectsNestedMixedTypes)
+TEST(opBuilderHelperMergeRecursively, MergeRecursiveObjectsNestedMixedTypes)
 {
     auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
 
-    const auto op = opBuilderHelperFieldAppend(tuple);
+    const auto op = opBuilderHelperMergeRecursively(tuple);
     auto event = std::make_shared<Json>(R"({
         "fieldTo": {
             "field1": {
