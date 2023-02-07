@@ -21,6 +21,8 @@ check:
 normalize:
   - map:
     - event.category: authentication
+    - event.kind: event
+    - event.type: info
     - azure.resource_id: $~json.ResourceId
     - source.address: $~json.IPAddress
     - source.ip: $source.address
@@ -33,3 +35,18 @@ normalize:
     - event.action: $~json.OperationName
     - azure.tenant_id: $~json.TenantId
     - azure.correlation_id: $~json.CorrelationId
+    - azure.signinlogs.properties.created_at: $~json.CreatedDateTime
+    - azure.signinlogs.properties.processing_time_ms: $~json.ProcessingTimeInMilliseconds
+    - azure.signinlogs.properties.risk_level_during_signin: $~json.RiskLevelDuringSignIn
+    - message: $~json.FailureReason
+    # TODO: Parse json.Status as azure.signinlogs.properties.status use kv parser
+    #- message: $~json.
+    # TODO: parse json.LocationDetails
+    #- geo.city_name: 
+    #- geo.country_name
+    #- geo.location.lat:
+    #- geo.location.lon
+    # TODO: parse AuthenticationProcessingDetails
+    
+    - 
+

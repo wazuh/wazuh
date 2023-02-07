@@ -1,0 +1,1800 @@
+{
+  "name": "azure fields schema",
+  "type": "object",
+  "properties": {
+    "azure": {
+      "type": [
+        "object"
+      ],
+      "properties": {
+        "activitylogs": {
+          "description": "Fields for Azure activity logs.\n",
+          "type": [
+            "object"
+          ],
+          "properties": {
+            "category": {
+              "$ref": "#/definitions/azure.activitylogs.category"
+            },
+            "event_category": {
+              "$ref": "#/definitions/azure.activitylogs.event_category"
+            },
+            "identity": {
+              "description": "Identity\n",
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "authorization": {
+                  "description": "Authorization\n",
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "action": {
+                      "$ref": "#/definitions/azure.activitylogs.identity.authorization.action"
+                    },
+                    "evidence": {
+                      "description": "Evidence\n",
+                      "type": [
+                        "object"
+                      ],
+                      "properties": {
+                        "principal_id": {
+                          "$ref": "#/definitions/azure.activitylogs.identity.authorization.evidence.principal_id"
+                        },
+                        "principal_type": {
+                          "$ref": "#/definitions/azure.activitylogs.identity.authorization.evidence.principal_type"
+                        },
+                        "role": {
+                          "$ref": "#/definitions/azure.activitylogs.identity.authorization.evidence.role"
+                        },
+                        "role_assignment_id": {
+                          "$ref": "#/definitions/azure.activitylogs.identity.authorization.evidence.role_assignment_id"
+                        },
+                        "role_assignment_scope": {
+                          "$ref": "#/definitions/azure.activitylogs.identity.authorization.evidence.role_assignment_scope"
+                        },
+                        "role_definition_id": {
+                          "$ref": "#/definitions/azure.activitylogs.identity.authorization.evidence.role_definition_id"
+                        }
+                      }
+                    },
+                    "scope": {
+                      "$ref": "#/definitions/azure.activitylogs.identity.authorization.scope"
+                    }
+                  }
+                },
+                "claims.*": {
+                  "$ref": "#/definitions/azure.activitylogs.identity.claims.*"
+                },
+                "claims_initiated_by_user": {
+                  "description": "Claims initiated by user\n",
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "fullname": {
+                      "$ref": "#/definitions/azure.activitylogs.identity.claims_initiated_by_user.fullname"
+                    },
+                    "givenname": {
+                      "$ref": "#/definitions/azure.activitylogs.identity.claims_initiated_by_user.givenname"
+                    },
+                    "name": {
+                      "$ref": "#/definitions/azure.activitylogs.identity.claims_initiated_by_user.name"
+                    },
+                    "schema": {
+                      "$ref": "#/definitions/azure.activitylogs.identity.claims_initiated_by_user.schema"
+                    },
+                    "surname": {
+                      "$ref": "#/definitions/azure.activitylogs.identity.claims_initiated_by_user.surname"
+                    }
+                  }
+                }
+              }
+            },
+            "identity_name": {
+              "$ref": "#/definitions/azure.activitylogs.identity_name"
+            },
+            "level": {
+              "$ref": "#/definitions/azure.activitylogs.level"
+            },
+            "operation_name": {
+              "$ref": "#/definitions/azure.activitylogs.operation_name"
+            },
+            "operation_version": {
+              "$ref": "#/definitions/azure.activitylogs.operation_version"
+            },
+            "properties": {
+              "$ref": "#/definitions/azure.activitylogs.properties"
+            },
+            "result_signature": {
+              "$ref": "#/definitions/azure.activitylogs.result_signature"
+            },
+            "result_type": {
+              "$ref": "#/definitions/azure.activitylogs.result_type"
+            },
+            "tenant_id": {
+              "$ref": "#/definitions/azure.activitylogs.tenant_id"
+            }
+          }
+        },
+        "auditlogs": {
+          "description": "Fields for Azure audit logs.\n",
+          "type": [
+            "object"
+          ],
+          "properties": {
+            "category": {
+              "$ref": "#/definitions/azure.auditlogs.category"
+            },
+            "identity": {
+              "$ref": "#/definitions/azure.auditlogs.identity"
+            },
+            "operation_name": {
+              "$ref": "#/definitions/azure.auditlogs.operation_name"
+            },
+            "operation_version": {
+              "$ref": "#/definitions/azure.auditlogs.operation_version"
+            },
+            "properties": {
+              "description": "The audit log properties\n",
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "activity_datetime": {
+                  "$ref": "#/definitions/azure.auditlogs.properties.activity_datetime"
+                },
+                "activity_display_name": {
+                  "$ref": "#/definitions/azure.auditlogs.properties.activity_display_name"
+                },
+                "category": {
+                  "$ref": "#/definitions/azure.auditlogs.properties.category"
+                },
+                "correlation_id": {
+                  "$ref": "#/definitions/azure.auditlogs.properties.correlation_id"
+                },
+                "id": {
+                  "$ref": "#/definitions/azure.auditlogs.properties.id"
+                },
+                "initiated_by": {
+                  "description": "Information regarding the initiator\n",
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "app": {
+                      "description": "App\n",
+                      "type": [
+                        "object"
+                      ],
+                      "properties": {
+                        "appId": {
+                          "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.app.appId"
+                        },
+                        "displayName": {
+                          "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.app.displayName"
+                        },
+                        "servicePrincipalId": {
+                          "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.app.servicePrincipalId"
+                        },
+                        "servicePrincipalName": {
+                          "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.app.servicePrincipalName"
+                        }
+                      }
+                    },
+                    "user": {
+                      "description": "User\n",
+                      "type": [
+                        "object"
+                      ],
+                      "properties": {
+                        "displayName": {
+                          "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.user.displayName"
+                        },
+                        "id": {
+                          "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.user.id"
+                        },
+                        "ipAddress": {
+                          "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.user.ipAddress"
+                        },
+                        "userPrincipalName": {
+                          "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.user.userPrincipalName"
+                        }
+                      }
+                    }
+                  }
+                },
+                "logged_by_service": {
+                  "$ref": "#/definitions/azure.auditlogs.properties.logged_by_service"
+                },
+                "operation_type": {
+                  "$ref": "#/definitions/azure.auditlogs.properties.operation_type"
+                },
+                "result": {
+                  "$ref": "#/definitions/azure.auditlogs.properties.result"
+                },
+                "result_reason": {
+                  "$ref": "#/definitions/azure.auditlogs.properties.result_reason"
+                },
+                "target_resources.*": {
+                  "description": "Target resources\n",
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "display_name": {
+                      "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.display_name"
+                    },
+                    "id": {
+                      "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.id"
+                    },
+                    "ip_address": {
+                      "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.ip_address"
+                    },
+                    "modified_properties.*": {
+                      "description": "Modified properties\n",
+                      "type": [
+                        "object"
+                      ],
+                      "properties": {
+                        "display_name": {
+                          "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.modified_properties.*.display_name"
+                        },
+                        "new_value": {
+                          "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.modified_properties.*.new_value"
+                        },
+                        "old_value": {
+                          "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.modified_properties.*.old_value"
+                        }
+                      }
+                    },
+                    "type": {
+                      "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.type"
+                    },
+                    "user_principal_name": {
+                      "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.user_principal_name"
+                    }
+                  }
+                }
+              }
+            },
+            "result_signature": {
+              "$ref": "#/definitions/azure.auditlogs.result_signature"
+            },
+            "tenant_id": {
+              "$ref": "#/definitions/azure.auditlogs.tenant_id"
+            }
+          }
+        },
+        "correlation_id": {
+          "$ref": "#/definitions/azure.correlation_id"
+        },
+        "platformlogs": {
+          "description": "Fields for Azure platform logs.\n",
+          "type": [
+            "object"
+          ],
+          "properties": {
+            "ActivityId": {
+              "$ref": "#/definitions/azure.platformlogs.ActivityId"
+            },
+            "Caller": {
+              "$ref": "#/definitions/azure.platformlogs.Caller"
+            },
+            "Cloud": {
+              "$ref": "#/definitions/azure.platformlogs.Cloud"
+            },
+            "Environment": {
+              "$ref": "#/definitions/azure.platformlogs.Environment"
+            },
+            "EventTimeString": {
+              "$ref": "#/definitions/azure.platformlogs.EventTimeString"
+            },
+            "ScaleUnit": {
+              "$ref": "#/definitions/azure.platformlogs.ScaleUnit"
+            },
+            "category": {
+              "$ref": "#/definitions/azure.platformlogs.category"
+            },
+            "ccpNamespace": {
+              "$ref": "#/definitions/azure.platformlogs.ccpNamespace"
+            },
+            "event_category": {
+              "$ref": "#/definitions/azure.platformlogs.event_category"
+            },
+            "identity_name": {
+              "$ref": "#/definitions/azure.platformlogs.identity_name"
+            },
+            "operation_name": {
+              "$ref": "#/definitions/azure.platformlogs.operation_name"
+            },
+            "properties": {
+              "$ref": "#/definitions/azure.platformlogs.properties"
+            },
+            "result_signature": {
+              "$ref": "#/definitions/azure.platformlogs.result_signature"
+            },
+            "result_type": {
+              "$ref": "#/definitions/azure.platformlogs.result_type"
+            },
+            "status": {
+              "$ref": "#/definitions/azure.platformlogs.status"
+            }
+          }
+        },
+        "resource": {
+          "description": "Resource\n",
+          "type": [
+            "object"
+          ],
+          "properties": {
+            "authorization_rule": {
+              "$ref": "#/definitions/azure.resource.authorization_rule"
+            },
+            "group": {
+              "$ref": "#/definitions/azure.resource.group"
+            },
+            "id": {
+              "$ref": "#/definitions/azure.resource.id"
+            },
+            "name": {
+              "$ref": "#/definitions/azure.resource.name"
+            },
+            "namespace": {
+              "$ref": "#/definitions/azure.resource.namespace"
+            },
+            "provider": {
+              "$ref": "#/definitions/azure.resource.provider"
+            }
+          }
+        },
+        "signinlogs": {
+          "description": "Fields for Azure sign-in logs.\n",
+          "type": [
+            "object"
+          ],
+          "properties": {
+            "category": {
+              "$ref": "#/definitions/azure.signinlogs.category"
+            },
+            "identity": {
+              "$ref": "#/definitions/azure.signinlogs.identity"
+            },
+            "operation_name": {
+              "$ref": "#/definitions/azure.signinlogs.operation_name"
+            },
+            "operation_version": {
+              "$ref": "#/definitions/azure.signinlogs.operation_version"
+            },
+            "properties": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "app_display_name": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.app_display_name"
+                },
+                "app_id": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.app_id"
+                },
+                "applied_conditional_access_policies": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.applied_conditional_access_policies"
+                },
+                "authentication_details": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.authentication_details"
+                },
+                "authentication_processing_details": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.authentication_processing_details"
+                },
+                "authentication_protocol": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.authentication_protocol"
+                },
+                "authentication_requirement": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.authentication_requirement"
+                },
+                "authentication_requirement_policies": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.authentication_requirement_policies"
+                },
+                "autonomous_system_number": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.autonomous_system_number"
+                },
+                "client_app_used": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.client_app_used"
+                },
+                "conditional_access_status": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.conditional_access_status"
+                },
+                "correlation_id": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.correlation_id"
+                },
+                "created_at": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.created_at"
+                },
+                "cross_tenant_access_type": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.cross_tenant_access_type"
+                },
+                "device_detail": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "browser": {
+                      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.browser"
+                    },
+                    "device_id": {
+                      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.device_id"
+                    },
+                    "display_name": {
+                      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.display_name"
+                    },
+                    "is_compliant": {
+                      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.is_compliant"
+                    },
+                    "is_managed": {
+                      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.is_managed"
+                    },
+                    "operating_system": {
+                      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.operating_system"
+                    },
+                    "trust_type": {
+                      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.trust_type"
+                    }
+                  }
+                },
+                "flagged_for_review": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.flagged_for_review"
+                },
+                "home_tenant_id": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.home_tenant_id"
+                },
+                "id": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.id"
+                },
+                "incoming_token_type": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.incoming_token_type"
+                },
+                "is_interactive": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.is_interactive"
+                },
+                "is_tenant_restricted": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.is_tenant_restricted"
+                },
+                "network_location_details": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.network_location_details"
+                },
+                "original_request_id": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.original_request_id"
+                },
+                "processing_time_ms": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.processing_time_ms"
+                },
+                "resource_display_name": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.resource_display_name"
+                },
+                "resource_id": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.resource_id"
+                },
+                "resource_tenant_id": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.resource_tenant_id"
+                },
+                "risk_detail": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.risk_detail"
+                },
+                "risk_event_types": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.risk_event_types"
+                },
+                "risk_event_types_v2": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.risk_event_types_v2"
+                },
+                "risk_level_aggregated": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.risk_level_aggregated"
+                },
+                "risk_level_during_signin": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.risk_level_during_signin"
+                },
+                "risk_state": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.risk_state"
+                },
+                "service_principal_id": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.service_principal_id"
+                },
+                "service_principal_name": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.service_principal_name"
+                },
+                "sso_extension_version": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.sso_extension_version"
+                },
+                "status": {
+                  "type": [
+                    "object"
+                  ],
+                  "properties": {
+                    "error_code": {
+                      "$ref": "#/definitions/azure.signinlogs.properties.status.error_code"
+                    }
+                  }
+                },
+                "token_issuer_name": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.token_issuer_name"
+                },
+                "token_issuer_type": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.token_issuer_type"
+                },
+                "unique_token_identifier": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.unique_token_identifier"
+                },
+                "user_display_name": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.user_display_name"
+                },
+                "user_id": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.user_id"
+                },
+                "user_principal_name": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.user_principal_name"
+                },
+                "user_type": {
+                  "$ref": "#/definitions/azure.signinlogs.properties.user_type"
+                }
+              }
+            },
+            "result_description": {
+              "$ref": "#/definitions/azure.signinlogs.result_description"
+            },
+            "result_signature": {
+              "$ref": "#/definitions/azure.signinlogs.result_signature"
+            },
+            "result_type": {
+              "$ref": "#/definitions/azure.signinlogs.result_type"
+            },
+            "tenant_id": {
+              "$ref": "#/definitions/azure.signinlogs.tenant_id"
+            }
+          }
+        },
+        "subscription_id": {
+          "$ref": "#/definitions/azure.subscription_id"
+        },
+        "tenant_id": {
+          "$ref": "#/definitions/azure.tenant_id"
+        }
+      }
+    },
+    "azure.activitylogs.category": {
+      "$ref": "#/definitions/azure.activitylogs.category"
+    },
+    "azure.activitylogs.event_category": {
+      "$ref": "#/definitions/azure.activitylogs.event_category"
+    },
+    "azure.activitylogs.identity.authorization.action": {
+      "$ref": "#/definitions/azure.activitylogs.identity.authorization.action"
+    },
+    "azure.activitylogs.identity.authorization.evidence.principal_id": {
+      "$ref": "#/definitions/azure.activitylogs.identity.authorization.evidence.principal_id"
+    },
+    "azure.activitylogs.identity.authorization.evidence.principal_type": {
+      "$ref": "#/definitions/azure.activitylogs.identity.authorization.evidence.principal_type"
+    },
+    "azure.activitylogs.identity.authorization.evidence.role": {
+      "$ref": "#/definitions/azure.activitylogs.identity.authorization.evidence.role"
+    },
+    "azure.activitylogs.identity.authorization.evidence.role_assignment_id": {
+      "$ref": "#/definitions/azure.activitylogs.identity.authorization.evidence.role_assignment_id"
+    },
+    "azure.activitylogs.identity.authorization.evidence.role_assignment_scope": {
+      "$ref": "#/definitions/azure.activitylogs.identity.authorization.evidence.role_assignment_scope"
+    },
+    "azure.activitylogs.identity.authorization.evidence.role_definition_id": {
+      "$ref": "#/definitions/azure.activitylogs.identity.authorization.evidence.role_definition_id"
+    },
+    "azure.activitylogs.identity.authorization.scope": {
+      "$ref": "#/definitions/azure.activitylogs.identity.authorization.scope"
+    },
+    "azure.activitylogs.identity.claims.*": {
+      "$ref": "#/definitions/azure.activitylogs.identity.claims.*"
+    },
+    "azure.activitylogs.identity.claims_initiated_by_user.fullname": {
+      "$ref": "#/definitions/azure.activitylogs.identity.claims_initiated_by_user.fullname"
+    },
+    "azure.activitylogs.identity.claims_initiated_by_user.givenname": {
+      "$ref": "#/definitions/azure.activitylogs.identity.claims_initiated_by_user.givenname"
+    },
+    "azure.activitylogs.identity.claims_initiated_by_user.name": {
+      "$ref": "#/definitions/azure.activitylogs.identity.claims_initiated_by_user.name"
+    },
+    "azure.activitylogs.identity.claims_initiated_by_user.schema": {
+      "$ref": "#/definitions/azure.activitylogs.identity.claims_initiated_by_user.schema"
+    },
+    "azure.activitylogs.identity.claims_initiated_by_user.surname": {
+      "$ref": "#/definitions/azure.activitylogs.identity.claims_initiated_by_user.surname"
+    },
+    "azure.activitylogs.identity_name": {
+      "$ref": "#/definitions/azure.activitylogs.identity_name"
+    },
+    "azure.activitylogs.level": {
+      "$ref": "#/definitions/azure.activitylogs.level"
+    },
+    "azure.activitylogs.operation_name": {
+      "$ref": "#/definitions/azure.activitylogs.operation_name"
+    },
+    "azure.activitylogs.operation_version": {
+      "$ref": "#/definitions/azure.activitylogs.operation_version"
+    },
+    "azure.activitylogs.properties": {
+      "$ref": "#/definitions/azure.activitylogs.properties"
+    },
+    "azure.activitylogs.result_signature": {
+      "$ref": "#/definitions/azure.activitylogs.result_signature"
+    },
+    "azure.activitylogs.result_type": {
+      "$ref": "#/definitions/azure.activitylogs.result_type"
+    },
+    "azure.activitylogs.tenant_id": {
+      "$ref": "#/definitions/azure.activitylogs.tenant_id"
+    },
+    "azure.auditlogs.category": {
+      "$ref": "#/definitions/azure.auditlogs.category"
+    },
+    "azure.auditlogs.identity": {
+      "$ref": "#/definitions/azure.auditlogs.identity"
+    },
+    "azure.auditlogs.operation_name": {
+      "$ref": "#/definitions/azure.auditlogs.operation_name"
+    },
+    "azure.auditlogs.operation_version": {
+      "$ref": "#/definitions/azure.auditlogs.operation_version"
+    },
+    "azure.auditlogs.properties.activity_datetime": {
+      "$ref": "#/definitions/azure.auditlogs.properties.activity_datetime"
+    },
+    "azure.auditlogs.properties.activity_display_name": {
+      "$ref": "#/definitions/azure.auditlogs.properties.activity_display_name"
+    },
+    "azure.auditlogs.properties.category": {
+      "$ref": "#/definitions/azure.auditlogs.properties.category"
+    },
+    "azure.auditlogs.properties.correlation_id": {
+      "$ref": "#/definitions/azure.auditlogs.properties.correlation_id"
+    },
+    "azure.auditlogs.properties.id": {
+      "$ref": "#/definitions/azure.auditlogs.properties.id"
+    },
+    "azure.auditlogs.properties.initiated_by.app.appId": {
+      "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.app.appId"
+    },
+    "azure.auditlogs.properties.initiated_by.app.displayName": {
+      "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.app.displayName"
+    },
+    "azure.auditlogs.properties.initiated_by.app.servicePrincipalId": {
+      "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.app.servicePrincipalId"
+    },
+    "azure.auditlogs.properties.initiated_by.app.servicePrincipalName": {
+      "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.app.servicePrincipalName"
+    },
+    "azure.auditlogs.properties.initiated_by.user.displayName": {
+      "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.user.displayName"
+    },
+    "azure.auditlogs.properties.initiated_by.user.id": {
+      "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.user.id"
+    },
+    "azure.auditlogs.properties.initiated_by.user.ipAddress": {
+      "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.user.ipAddress"
+    },
+    "azure.auditlogs.properties.initiated_by.user.userPrincipalName": {
+      "$ref": "#/definitions/azure.auditlogs.properties.initiated_by.user.userPrincipalName"
+    },
+    "azure.auditlogs.properties.logged_by_service": {
+      "$ref": "#/definitions/azure.auditlogs.properties.logged_by_service"
+    },
+    "azure.auditlogs.properties.operation_type": {
+      "$ref": "#/definitions/azure.auditlogs.properties.operation_type"
+    },
+    "azure.auditlogs.properties.result": {
+      "$ref": "#/definitions/azure.auditlogs.properties.result"
+    },
+    "azure.auditlogs.properties.result_reason": {
+      "$ref": "#/definitions/azure.auditlogs.properties.result_reason"
+    },
+    "azure.auditlogs.properties.target_resources.*.display_name": {
+      "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.display_name"
+    },
+    "azure.auditlogs.properties.target_resources.*.id": {
+      "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.id"
+    },
+    "azure.auditlogs.properties.target_resources.*.ip_address": {
+      "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.ip_address"
+    },
+    "azure.auditlogs.properties.target_resources.*.modified_properties.*.display_name": {
+      "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.modified_properties.*.display_name"
+    },
+    "azure.auditlogs.properties.target_resources.*.modified_properties.*.new_value": {
+      "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.modified_properties.*.new_value"
+    },
+    "azure.auditlogs.properties.target_resources.*.modified_properties.*.old_value": {
+      "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.modified_properties.*.old_value"
+    },
+    "azure.auditlogs.properties.target_resources.*.type": {
+      "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.type"
+    },
+    "azure.auditlogs.properties.target_resources.*.user_principal_name": {
+      "$ref": "#/definitions/azure.auditlogs.properties.target_resources.*.user_principal_name"
+    },
+    "azure.auditlogs.result_signature": {
+      "$ref": "#/definitions/azure.auditlogs.result_signature"
+    },
+    "azure.auditlogs.tenant_id": {
+      "$ref": "#/definitions/azure.auditlogs.tenant_id"
+    },
+    "azure.correlation_id": {
+      "$ref": "#/definitions/azure.correlation_id"
+    },
+    "azure.platformlogs.ActivityId": {
+      "$ref": "#/definitions/azure.platformlogs.ActivityId"
+    },
+    "azure.platformlogs.Caller": {
+      "$ref": "#/definitions/azure.platformlogs.Caller"
+    },
+    "azure.platformlogs.Cloud": {
+      "$ref": "#/definitions/azure.platformlogs.Cloud"
+    },
+    "azure.platformlogs.Environment": {
+      "$ref": "#/definitions/azure.platformlogs.Environment"
+    },
+    "azure.platformlogs.EventTimeString": {
+      "$ref": "#/definitions/azure.platformlogs.EventTimeString"
+    },
+    "azure.platformlogs.ScaleUnit": {
+      "$ref": "#/definitions/azure.platformlogs.ScaleUnit"
+    },
+    "azure.platformlogs.category": {
+      "$ref": "#/definitions/azure.platformlogs.category"
+    },
+    "azure.platformlogs.ccpNamespace": {
+      "$ref": "#/definitions/azure.platformlogs.ccpNamespace"
+    },
+    "azure.platformlogs.event_category": {
+      "$ref": "#/definitions/azure.platformlogs.event_category"
+    },
+    "azure.platformlogs.identity_name": {
+      "$ref": "#/definitions/azure.platformlogs.identity_name"
+    },
+    "azure.platformlogs.operation_name": {
+      "$ref": "#/definitions/azure.platformlogs.operation_name"
+    },
+    "azure.platformlogs.properties": {
+      "$ref": "#/definitions/azure.platformlogs.properties"
+    },
+    "azure.platformlogs.result_signature": {
+      "$ref": "#/definitions/azure.platformlogs.result_signature"
+    },
+    "azure.platformlogs.result_type": {
+      "$ref": "#/definitions/azure.platformlogs.result_type"
+    },
+    "azure.platformlogs.status": {
+      "$ref": "#/definitions/azure.platformlogs.status"
+    },
+    "azure.resource.authorization_rule": {
+      "$ref": "#/definitions/azure.resource.authorization_rule"
+    },
+    "azure.resource.group": {
+      "$ref": "#/definitions/azure.resource.group"
+    },
+    "azure.resource.id": {
+      "$ref": "#/definitions/azure.resource.id"
+    },
+    "azure.resource.name": {
+      "$ref": "#/definitions/azure.resource.name"
+    },
+    "azure.resource.namespace": {
+      "$ref": "#/definitions/azure.resource.namespace"
+    },
+    "azure.resource.provider": {
+      "$ref": "#/definitions/azure.resource.provider"
+    },
+    "azure.signinlogs.category": {
+      "$ref": "#/definitions/azure.signinlogs.category"
+    },
+    "azure.signinlogs.identity": {
+      "$ref": "#/definitions/azure.signinlogs.identity"
+    },
+    "azure.signinlogs.operation_name": {
+      "$ref": "#/definitions/azure.signinlogs.operation_name"
+    },
+    "azure.signinlogs.operation_version": {
+      "$ref": "#/definitions/azure.signinlogs.operation_version"
+    },
+    "azure.signinlogs.properties.app_display_name": {
+      "$ref": "#/definitions/azure.signinlogs.properties.app_display_name"
+    },
+    "azure.signinlogs.properties.app_id": {
+      "$ref": "#/definitions/azure.signinlogs.properties.app_id"
+    },
+    "azure.signinlogs.properties.applied_conditional_access_policies": {
+      "$ref": "#/definitions/azure.signinlogs.properties.applied_conditional_access_policies"
+    },
+    "azure.signinlogs.properties.authentication_details": {
+      "$ref": "#/definitions/azure.signinlogs.properties.authentication_details"
+    },
+    "azure.signinlogs.properties.authentication_processing_details": {
+      "$ref": "#/definitions/azure.signinlogs.properties.authentication_processing_details"
+    },
+    "azure.signinlogs.properties.authentication_protocol": {
+      "$ref": "#/definitions/azure.signinlogs.properties.authentication_protocol"
+    },
+    "azure.signinlogs.properties.authentication_requirement": {
+      "$ref": "#/definitions/azure.signinlogs.properties.authentication_requirement"
+    },
+    "azure.signinlogs.properties.authentication_requirement_policies": {
+      "$ref": "#/definitions/azure.signinlogs.properties.authentication_requirement_policies"
+    },
+    "azure.signinlogs.properties.autonomous_system_number": {
+      "$ref": "#/definitions/azure.signinlogs.properties.autonomous_system_number"
+    },
+    "azure.signinlogs.properties.client_app_used": {
+      "$ref": "#/definitions/azure.signinlogs.properties.client_app_used"
+    },
+    "azure.signinlogs.properties.conditional_access_status": {
+      "$ref": "#/definitions/azure.signinlogs.properties.conditional_access_status"
+    },
+    "azure.signinlogs.properties.correlation_id": {
+      "$ref": "#/definitions/azure.signinlogs.properties.correlation_id"
+    },
+    "azure.signinlogs.properties.created_at": {
+      "$ref": "#/definitions/azure.signinlogs.properties.created_at"
+    },
+    "azure.signinlogs.properties.cross_tenant_access_type": {
+      "$ref": "#/definitions/azure.signinlogs.properties.cross_tenant_access_type"
+    },
+    "azure.signinlogs.properties.device_detail.browser": {
+      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.browser"
+    },
+    "azure.signinlogs.properties.device_detail.device_id": {
+      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.device_id"
+    },
+    "azure.signinlogs.properties.device_detail.display_name": {
+      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.display_name"
+    },
+    "azure.signinlogs.properties.device_detail.is_compliant": {
+      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.is_compliant"
+    },
+    "azure.signinlogs.properties.device_detail.is_managed": {
+      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.is_managed"
+    },
+    "azure.signinlogs.properties.device_detail.operating_system": {
+      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.operating_system"
+    },
+    "azure.signinlogs.properties.device_detail.trust_type": {
+      "$ref": "#/definitions/azure.signinlogs.properties.device_detail.trust_type"
+    },
+    "azure.signinlogs.properties.flagged_for_review": {
+      "$ref": "#/definitions/azure.signinlogs.properties.flagged_for_review"
+    },
+    "azure.signinlogs.properties.home_tenant_id": {
+      "$ref": "#/definitions/azure.signinlogs.properties.home_tenant_id"
+    },
+    "azure.signinlogs.properties.id": {
+      "$ref": "#/definitions/azure.signinlogs.properties.id"
+    },
+    "azure.signinlogs.properties.incoming_token_type": {
+      "$ref": "#/definitions/azure.signinlogs.properties.incoming_token_type"
+    },
+    "azure.signinlogs.properties.is_interactive": {
+      "$ref": "#/definitions/azure.signinlogs.properties.is_interactive"
+    },
+    "azure.signinlogs.properties.is_tenant_restricted": {
+      "$ref": "#/definitions/azure.signinlogs.properties.is_tenant_restricted"
+    },
+    "azure.signinlogs.properties.network_location_details": {
+      "$ref": "#/definitions/azure.signinlogs.properties.network_location_details"
+    },
+    "azure.signinlogs.properties.original_request_id": {
+      "$ref": "#/definitions/azure.signinlogs.properties.original_request_id"
+    },
+    "azure.signinlogs.properties.processing_time_ms": {
+      "$ref": "#/definitions/azure.signinlogs.properties.processing_time_ms"
+    },
+    "azure.signinlogs.properties.resource_display_name": {
+      "$ref": "#/definitions/azure.signinlogs.properties.resource_display_name"
+    },
+    "azure.signinlogs.properties.resource_id": {
+      "$ref": "#/definitions/azure.signinlogs.properties.resource_id"
+    },
+    "azure.signinlogs.properties.resource_tenant_id": {
+      "$ref": "#/definitions/azure.signinlogs.properties.resource_tenant_id"
+    },
+    "azure.signinlogs.properties.risk_detail": {
+      "$ref": "#/definitions/azure.signinlogs.properties.risk_detail"
+    },
+    "azure.signinlogs.properties.risk_event_types": {
+      "$ref": "#/definitions/azure.signinlogs.properties.risk_event_types"
+    },
+    "azure.signinlogs.properties.risk_event_types_v2": {
+      "$ref": "#/definitions/azure.signinlogs.properties.risk_event_types_v2"
+    },
+    "azure.signinlogs.properties.risk_level_aggregated": {
+      "$ref": "#/definitions/azure.signinlogs.properties.risk_level_aggregated"
+    },
+    "azure.signinlogs.properties.risk_level_during_signin": {
+      "$ref": "#/definitions/azure.signinlogs.properties.risk_level_during_signin"
+    },
+    "azure.signinlogs.properties.risk_state": {
+      "$ref": "#/definitions/azure.signinlogs.properties.risk_state"
+    },
+    "azure.signinlogs.properties.service_principal_id": {
+      "$ref": "#/definitions/azure.signinlogs.properties.service_principal_id"
+    },
+    "azure.signinlogs.properties.service_principal_name": {
+      "$ref": "#/definitions/azure.signinlogs.properties.service_principal_name"
+    },
+    "azure.signinlogs.properties.sso_extension_version": {
+      "$ref": "#/definitions/azure.signinlogs.properties.sso_extension_version"
+    },
+    "azure.signinlogs.properties.status.error_code": {
+      "$ref": "#/definitions/azure.signinlogs.properties.status.error_code"
+    },
+    "azure.signinlogs.properties.token_issuer_name": {
+      "$ref": "#/definitions/azure.signinlogs.properties.token_issuer_name"
+    },
+    "azure.signinlogs.properties.token_issuer_type": {
+      "$ref": "#/definitions/azure.signinlogs.properties.token_issuer_type"
+    },
+    "azure.signinlogs.properties.unique_token_identifier": {
+      "$ref": "#/definitions/azure.signinlogs.properties.unique_token_identifier"
+    },
+    "azure.signinlogs.properties.user_display_name": {
+      "$ref": "#/definitions/azure.signinlogs.properties.user_display_name"
+    },
+    "azure.signinlogs.properties.user_id": {
+      "$ref": "#/definitions/azure.signinlogs.properties.user_id"
+    },
+    "azure.signinlogs.properties.user_principal_name": {
+      "$ref": "#/definitions/azure.signinlogs.properties.user_principal_name"
+    },
+    "azure.signinlogs.properties.user_type": {
+      "$ref": "#/definitions/azure.signinlogs.properties.user_type"
+    },
+    "azure.signinlogs.result_description": {
+      "$ref": "#/definitions/azure.signinlogs.result_description"
+    },
+    "azure.signinlogs.result_signature": {
+      "$ref": "#/definitions/azure.signinlogs.result_signature"
+    },
+    "azure.signinlogs.result_type": {
+      "$ref": "#/definitions/azure.signinlogs.result_type"
+    },
+    "azure.signinlogs.tenant_id": {
+      "$ref": "#/definitions/azure.signinlogs.tenant_id"
+    },
+    "azure.subscription_id": {
+      "$ref": "#/definitions/azure.subscription_id"
+    },
+    "azure.tenant_id": {
+      "$ref": "#/definitions/azure.tenant_id"
+    }
+  },
+  "definitions": {
+    "azure.activitylogs.category": {
+      "description": "Category\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.event_category": {
+      "description": "Event Category\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity.authorization.action": {
+      "description": "Action\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity.authorization.evidence.principal_id": {
+      "description": "Principal ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity.authorization.evidence.principal_type": {
+      "description": "Principal type\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity.authorization.evidence.role": {
+      "description": "Role\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity.authorization.evidence.role_assignment_id": {
+      "description": "Role assignment ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity.authorization.evidence.role_assignment_scope": {
+      "description": "Role assignment scope\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity.authorization.evidence.role_definition_id": {
+      "description": "Role definition ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity.authorization.scope": {
+      "description": "Scope\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity.claims.*": {
+      "description": "Claims\n",
+      "type": [
+        "object"
+      ]
+    },
+    "azure.activitylogs.identity.claims_initiated_by_user.fullname": {
+      "description": "Fullname\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity.claims_initiated_by_user.givenname": {
+      "description": "Givenname\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity.claims_initiated_by_user.name": {
+      "description": "Name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity.claims_initiated_by_user.schema": {
+      "description": "Schema\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity.claims_initiated_by_user.surname": {
+      "description": "Surname\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.identity_name": {
+      "description": "identity name",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.level": {
+      "description": "Level\n",
+      "type": [
+        "integer"
+      ]
+    },
+    "azure.activitylogs.operation_name": {
+      "description": "Operation name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.operation_version": {
+      "description": "Operation version\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.properties": {
+      "description": "Properties\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.result_signature": {
+      "description": "Result signature\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.result_type": {
+      "description": "Result type\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.activitylogs.tenant_id": {
+      "description": "Tenant ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.category": {
+      "description": "The category of the operation.  Currently, Audit is the only supported value.\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.identity": {
+      "description": "Identity\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.operation_name": {
+      "description": "The operation name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.operation_version": {
+      "description": "The operation version\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.activity_datetime": {
+      "description": "Activity timestamp\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.activity_display_name": {
+      "description": "Activity display name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.category": {
+      "description": "category\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.correlation_id": {
+      "description": "Correlation ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.id": {
+      "description": "ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.initiated_by.app.appId": {
+      "description": "App ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.initiated_by.app.displayName": {
+      "description": "Display name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.initiated_by.app.servicePrincipalId": {
+      "description": "Service principal ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.initiated_by.app.servicePrincipalName": {
+      "description": "Service principal name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.initiated_by.user.displayName": {
+      "description": "Display name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.initiated_by.user.id": {
+      "description": "ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.initiated_by.user.ipAddress": {
+      "description": "ip Address\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.initiated_by.user.userPrincipalName": {
+      "description": "User principal name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.logged_by_service": {
+      "description": "Logged by service\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.operation_type": {
+      "description": "Operation type\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.result": {
+      "description": "Log result\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.result_reason": {
+      "description": "Reason for the log result\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.target_resources.*.display_name": {
+      "description": "Display name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.target_resources.*.id": {
+      "description": "ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.target_resources.*.ip_address": {
+      "description": "ip Address\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.target_resources.*.modified_properties.*.display_name": {
+      "description": "Display value\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.target_resources.*.modified_properties.*.new_value": {
+      "description": "New value\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.target_resources.*.modified_properties.*.old_value": {
+      "description": "Old value\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.target_resources.*.type": {
+      "description": "Type\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.properties.target_resources.*.user_principal_name": {
+      "description": "User principal name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.result_signature": {
+      "description": "Result signature\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.auditlogs.tenant_id": {
+      "description": "Tenant ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.correlation_id": {
+      "description": "Correlation ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.ActivityId": {
+      "description": "ActivityId\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.Caller": {
+      "description": "Caller\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.Cloud": {
+      "description": "Cloud\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.Environment": {
+      "description": "Environment\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.EventTimeString": {
+      "description": "EventTimeString\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.ScaleUnit": {
+      "description": "ScaleUnit\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.category": {
+      "description": "Category\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.ccpNamespace": {
+      "description": "ccpNamespace\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.event_category": {
+      "description": "Event Category\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.identity_name": {
+      "description": "Identity name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.operation_name": {
+      "description": "Operation name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.properties": {
+      "description": "Event inner properties\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.result_signature": {
+      "description": "Result signature\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.result_type": {
+      "description": "Result type\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.platformlogs.status": {
+      "description": "Status\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.resource.authorization_rule": {
+      "description": "Authorization rule\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.resource.group": {
+      "description": "Resource group\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.resource.id": {
+      "description": "Resource ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.resource.name": {
+      "description": "Name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.resource.namespace": {
+      "description": "Resource type/namespace\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.resource.provider": {
+      "description": "Resource type/namespace\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.category": {
+      "description": "Category\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.identity": {
+      "description": "Identity\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.operation_name": {
+      "description": "The operation name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.operation_version": {
+      "description": "The operation version\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.app_display_name": {
+      "description": "App display name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.app_id": {
+      "description": "App ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.applied_conditional_access_policies": {
+      "description": "A list of conditional access policies that are triggered by the corresponding sign-in activity.\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.authentication_details": {
+      "description": "The result of the authentication attempt and additional details on the authentication method.\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.authentication_processing_details": {
+      "description": "Additional authentication processing details, such as the agent name in case of PTA/PHS or Server/farm name in case of federated authentication.\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.authentication_protocol": {
+      "description": "Authentication protocol type.\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.authentication_requirement": {
+      "description": "This holds the highest level of authentication needed through all the sign-in steps, for sign-in to succeed.\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.authentication_requirement_policies": {
+      "description": "Set of CA policies that apply to this sign-in, each as CA: policy name, and/or MFA: Per-user\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.autonomous_system_number": {
+      "description": "Autonomous system number.",
+      "type": [
+        "integer"
+      ]
+    },
+    "azure.signinlogs.properties.client_app_used": {
+      "description": "Client app used\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.conditional_access_status": {
+      "description": "Conditional access status\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.correlation_id": {
+      "description": "Correlation ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.created_at": {
+      "description": "Date and time (UTC) the sign-in was initiated.\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.cross_tenant_access_type": {
+      "description": "cisco field",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.device_detail.browser": {
+      "description": "Browser\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.device_detail.device_id": {
+      "description": "Device ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.device_detail.display_name": {
+      "description": "Display name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.device_detail.is_compliant": {
+      "description": "If the device is compliant\n",
+      "type": [
+        "boolean"
+      ]
+    },
+    "azure.signinlogs.properties.device_detail.is_managed": {
+      "description": "If the device is managed\n",
+      "type": [
+        "boolean"
+      ]
+    },
+    "azure.signinlogs.properties.device_detail.operating_system": {
+      "description": "Operating system\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.device_detail.trust_type": {
+      "description": "Trust type\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.flagged_for_review": {
+      "description": "cisco field",
+      "type": [
+        "boolean"
+      ]
+    },
+    "azure.signinlogs.properties.home_tenant_id": {
+      "description": "cisco field",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.id": {
+      "description": "Unique ID representing the sign-in activity.\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.incoming_token_type": {
+      "description": "Incoming token type.\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.is_interactive": {
+      "description": "Is interactive\n",
+      "type": [
+        "boolean"
+      ]
+    },
+    "azure.signinlogs.properties.is_tenant_restricted": {
+      "description": "cisco field",
+      "type": [
+        "boolean"
+      ]
+    },
+    "azure.signinlogs.properties.network_location_details": {
+      "description": "The network location details including the type of network used and its names.",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.original_request_id": {
+      "description": "Original request ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.processing_time_ms": {
+      "description": "Processing time in milliseconds\n",
+      "type": [
+        "number"
+      ]
+    },
+    "azure.signinlogs.properties.resource_display_name": {
+      "description": "Resource display name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.resource_id": {
+      "description": "The identifier of the resource that the user signed in to.",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.resource_tenant_id": {
+      "description": "cisco field",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.risk_detail": {
+      "description": "Risk detail\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.risk_event_types": {
+      "description": "The list of risk event types associated with the sign-in. Possible values: unlikelyTravel, anonymizedIPAddress, maliciousIPAddress, unfamiliarFeatures, malwareInfectedIPAddress, suspiciousIPAddress, leakedCredentials, investigationsThreatIntelligence, generic, or unknownFutureValue.\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.risk_event_types_v2": {
+      "description": "The list of risk event types associated with the sign-in. Possible values: unlikelyTravel, anonymizedIPAddress, maliciousIPAddress, unfamiliarFeatures, malwareInfectedIPAddress, suspiciousIPAddress, leakedCredentials, investigationsThreatIntelligence, generic, or unknownFutureValue.\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.risk_level_aggregated": {
+      "description": "Risk level aggregated\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.risk_level_during_signin": {
+      "description": "Risk level during signIn\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.risk_state": {
+      "description": "Risk state\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.service_principal_id": {
+      "description": "The application identifier used for sign-in. This field is populated when you are signing in using an application.\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.service_principal_name": {
+      "description": "The application name used for sign-in. This field is populated when you are signing in using an application.\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.sso_extension_version": {
+      "description": "cisco field",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.status.error_code": {
+      "description": "Error code\n",
+      "type": [
+        "integer"
+      ]
+    },
+    "azure.signinlogs.properties.token_issuer_name": {
+      "description": "Token issuer name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.token_issuer_type": {
+      "description": "Token issuer type\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.unique_token_identifier": {
+      "description": "Unique token identifier for the request.",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.user_display_name": {
+      "description": "User display name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.user_id": {
+      "description": "User ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.user_principal_name": {
+      "description": "User principal name\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.properties.user_type": {
+      "description": "cisco field",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.result_description": {
+      "description": "Result description\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.result_signature": {
+      "description": "Result signature\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.result_type": {
+      "description": "Result type\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.signinlogs.tenant_id": {
+      "description": "Tenant ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.subscription_id": {
+      "description": "Azure subscription ID\n",
+      "type": [
+        "string"
+      ]
+    },
+    "azure.tenant_id": {
+      "description": "tenant ID\n",
+      "type": [
+        "string"
+      ]
+    }
+  }
+}

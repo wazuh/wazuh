@@ -1,0 +1,10 @@
+{
+    "anyOf": [
+      {
+        "$ref": "custom-ecs-field.json#"
+      },
+      {
+        "$ref": "azure-fields.json"
+      }
+    ]
+}
