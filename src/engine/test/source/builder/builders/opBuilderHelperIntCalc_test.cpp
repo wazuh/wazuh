@@ -507,3 +507,240 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_div)
 
     ASSERT_EQ(1, result.payload()->getInt("/parentObjt_1/field2check").value());
 }
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_multiple_parameters)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sum", "10", "20", "30"});
+
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 1})");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ((1 + 10 + 20 + 30), result.payload()->getInt("/field2check").value());
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_sub_multiple_parameters)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sub", "10", "20", "30"});
+
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 1})");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ((1 - 10 - 20 - 30), result.payload()->getInt("/field2check").value());
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_multiple_parameters)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"mul", "10", "20", "30"});
+
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 1})");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ((1 * 10 * 20 * 30), result.payload()->getInt("/field2check").value());
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_div_multiple_parameters)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"div", "10", "20", "30"});
+
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 1})");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ((1 / 10 / 20 / 30), result.payload()->getInt("/field2check").value());
+}
+
+// Division by zero by value and reference with multiple arguments
+TEST(opBuilderHelperIntCalc, Exec_int_calc_div_by_zero_multiple_parameters)
+{
+    // by value
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"div", "10", "0", "30"});
+
+    ASSERT_THROW(bld::opBuilderHelperIntCalc(tuple), std::runtime_error);
+
+    // by reference
+    tuple = std::make_tuple(
+        std::string {"/field2check"},
+        std::string {"i_calc"},
+        std::vector<std::string> {"div", "$Object.A", "$Object.B", "$Object.C"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                        "field2check": 10,
+                        "Object":
+                        {
+                            "A": 10,
+                            "B": 11,
+                            "C": 0
+                        }
+                    })");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    auto result = op(event1);
+
+    ASSERT_FALSE(result);
+
+    // both
+    tuple =
+        std::make_tuple(std::string {"/field2check"},
+                        std::string {"i_calc"},
+                        std::vector<std::string> {"div", "$Object.A", "0", "$Object.C"});
+
+    auto event2 = std::make_shared<json::Json>(R"({
+                    "field2check": 10,
+                    "Object": {
+                        "A": 10,
+                        "B": 11,
+                        "C": 0
+                    }
+                    })");
+
+    ASSERT_THROW(bld::opBuilderHelperIntCalc(tuple), std::runtime_error);
+}
+
+// Division by zero by reference with multiple arguments and multilevel fields
+TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_division_by_zero_several_params)
+{
+    auto tuple = std::make_tuple(
+        std::string {"/parentObjt_1/field2check"},
+        std::string {"i_calc"},
+        std::vector<std::string> {
+            "div", "$parentObjt_2.firstReference", "$parentObjt_2.seccondReference"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "seccondReference": 0,
+                        "firstReference": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
+}
+
+//Succesfully using both values and references
+TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_multiple_parameters_values_and_references)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sum", "10", "$Object.A", "30"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "field2check": 10,
+                    "Object": {
+                        "A": 10,
+                        "B": 11,
+                        "C": 0
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ((10 + 10 + 10 + 30), result.payload()->getInt("/field2check").value());
+}
+
+//Failing on several non existing references
+TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_several_non_existing_references)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"mul", "$Object.C", "$Object.Z"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt": {
+                        "field2check": 15
+                    },
+                    "Object": {
+                        "A": 10,
+                        "B": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
+}
+
+// Failing on several wrong type references
+TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_several_different_types_references)
+{
+    auto tuple =
+        std::make_tuple(std::string {"/parentObjt/field2check"},
+                        std::string {"i_calc"},
+                        std::vector<std::string> {
+                            "mul", "$Object.A", "$Object.B", "$Object.C", "$Object.D"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt": {
+                        "field2check": 1
+                    },
+                    "Object": {
+                        "A": null,
+                        "B": "string",
+                        "C": { "field":"value"},
+                        "D": ["fieldA","fieldB"]
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
+}
+
+//Failing on several empty values
+TEST(opBuilderHelperIntCalc, Exec_int_calc_several_empty_params)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"mul", "10", "", ""});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_1": {
+                        "field2check": 15
+                    }})");
+
+    ASSERT_THROW(bld::opBuilderHelperIntCalc(tuple), std::runtime_error);
+}
