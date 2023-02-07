@@ -22,9 +22,9 @@ add_library(metrics STATIC
     src/metrics.cpp
 )
 
-target_link_libraries(metrics PUBLIC opentelemetry_api PRIVATE base)
+target_link_libraries(metrics PUBLIC opentelemetry_api opentelemetry_sdk opentelemetry_exporter_ostream_span PRIVATE base)
 
 target_include_directories(metrics
-    PUBLIC 
+    PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/include
 )
