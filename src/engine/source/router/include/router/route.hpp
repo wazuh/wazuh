@@ -9,8 +9,8 @@
 #include <baseTypes.hpp>
 #include <json/json.hpp>
 
-#include <expression.hpp>
 #include <asset.hpp>
+#include <expression.hpp>
 
 namespace router
 {
@@ -23,9 +23,10 @@ namespace router
 class Route
 {
 private:
-    std::string m_name;      ///< Name of the route
-    std::string m_target;    ///< Target of the route
-    std::size_t m_priority;  ///< Priority of the route, the lower the higher priority
+    std::string m_name;        ///< Name of the route
+    std::string m_target;      ///< Target of the route
+    std::size_t m_priority;    ///< Priority of the route, the lower the higher priority
+    std::string m_filterName;  ///< Name of the filter
     base::Expression m_filter; ///< Expression to match the event
 
     /**
@@ -39,22 +40,27 @@ private:
     bool executeExpression(base::Expression expression, base::Event event) const;
 
 public:
-
     /**
      * @brief Construct a new Route object
      *
+     * @param name Name of the route
      * @param assetRoute Route asset (Contains the name and expression)
      * @param target Target of the route (Destination environment of the event)
      * @param priority Priority of the route
      * @throw std::runtime_error if the priority is out of range
      */
-    Route(builder::Asset assetRoute, const std::string& target, int priority);
+    Route(const std::string& name, builder::Asset assetRoute, const std::string& target, int priority);
+
+    /**
+     * @brief Get the Name of the route
+     */
+    const std::string& getName() const { return m_name; }
 
     /**
      * @brief Get the Name of the route
      * @return const std::string& Name of the route
      */
-    const std::string& getName() const { return m_name; }
+    const std::string& getFilterName() const { return m_filterName; }
 
     /**
      * @brief Get the Target of the route
@@ -84,6 +90,6 @@ public:
     bool accept(base::Event event) const { return executeExpression(m_filter, event); }
 };
 
-} // namespace builder
+} // namespace router
 
 #endif // _ROUTER_ROUTE_H
