@@ -1,5 +1,5 @@
 # Security Configuration Assessment
-# CIS Checks for Apple macOS 13.0 Ventura
+# CIS Checks for Apple macOS 13.x Ventura
 # Copyright (C) 2023, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
@@ -8,27 +8,26 @@
 # Foundation
 #
 # Based on:
-# SCA policy for Apple macOS 13.0 Ventura based on Center for Internet Security Apple macOS 13.0 Ventura Benchmark v1.0.0 - 11-14-2022
+# SCA policy for Apple macOS 13.x Ventura based on Center for Internet Security Apple macOS 13.x Ventura Benchmark v1.0.0 - 11-14-2022
 
 policy:
-  id: "cis_macOS13"
-  file: "cis_macOS13.yml"
-  name: "SCA policy for Apple macOS 13.0 Ventura based on CIS benchmark for Apple macOS 13.0 Ventura."
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Apple macOS 13.0. This guide was tested against Apple macOS 13.0."
+  id: "cis_macOS_13"
+  file: "cis_apple_macOS_13.x.yml"
+  name: "SCA policy for Apple macOS 13.x Ventura based on CIS benchmark for Apple macOS 13.x Ventura. 11-14-2022"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Apple macOS 13.x. This guide was tested against Apple macOS 13.x."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
   title: "Check Apple macOS version."
-  description: "Requirements for running the SCA scan against Apple macOS 13.0 Ventura."
+  description: "Requirements for running the SCA scan against Apple macOS 13.x Ventura."
   condition: any
   rules:
-    - 'c:sw_vers -> r:^ProductVersion:\t*\s*13\p0'
-    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*13\p0'
-    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\s*13\p0'
+    - 'c:sw_vers -> r:^ProductVersion:\t*\s*13\p'
+    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*13\p'
+    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\s*13\p'
 
 checks:
-
   ##########################################################################
   # 1 Install Updates, Patches and Additional Security Software
   ##########################################################################
@@ -42,8 +41,8 @@ checks:
     remediation: "Graphical Method: Perform the following to install all available software updates: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select Update All Terminal Method: Run the following command to verify what packages need to be installed: $ /usr/bin/sudo /usr/sbin/softwareupdate -l The output will include the following: Software Update found the following new or updated software: Run the following command to install all the packages that need to be updated: $ /usr/bin/sudo /usr/sbin/softwareupdate -i -a -R Or run the following command to install individual packages: $ /usr/bin/sudo /usr/sbin/softwareupdate -i '<package name>' example: $ /usr/bin/sudo /usr/sbin/softwareupdate -l Software Update Tool Finding available software Software Update found the following new or updated software: * iTunesX-12.8.2 iTunes (12.8.2), 273614K [recommended] $ /usr/bin/sudo /usr/sbin/softwareupdate -i 'iTunesX-12.8.2' Software Update Tool Downloaded iTunes Installing iTunes Done with iTunes Done."
     compliance:
       - cis: ["1.1"]
-      - cis_csc_v8: ["7.3","7.4"]
-      - cis_csc_v7: ["3.4","3.5"]
+      - cis_csc_v8: ["7.3", "7.4"]
+      - cis_csc_v7: ["3.4", "3.5"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
       - pci_dss_3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
@@ -65,8 +64,8 @@ checks:
       - https://derflounder.wordpress.com/2014/12/17/forcing-xprotect-blacklist-updates-on-mavericks-and-yosemite/
     compliance:
       - cis: ["1.2"]
-      - cis_csc_v8: ["7.3","7.4"]
-      - cis_csc_v7: ["3.4","3.5"]
+      - cis_csc_v8: ["7.3", "7.4"]
+      - cis_csc_v7: ["3.4", "3.5"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
       - pci_dss_3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
@@ -83,10 +82,10 @@ checks:
     rationale: "It is important that a system has the newest updates downloaded so that they can be applied."
     impact: "If 'Download new updates when available' is not selected, updates may not be made in a timely manner and the system will be exposed to additional risk."
     remediation: "Perform the following to enable the system to automatically check for updates: Graphical Method: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Download new updates when available to enabled 6. Select Done. Terminal Method: Run the following command to enable auto update: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticDownload 3. The key must be set to <true/>."
-    compliance: 
+    compliance:
       - cis: ["1.3"]
-      - cis_csc_v8: ["7.3","7.4"]
-      - cis_csc_v7: ["3.4","3.5"]
+      - cis_csc_v8: ["7.3", "7.4"]
+      - cis_csc_v7: ["3.4", "3.5"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
       - pci_dss_3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
@@ -105,8 +104,8 @@ checks:
     remediation: "Graphical Method: Perform the following steps to enable macOS updates to run automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install macOS updates to enabled 6. Select Done. Terminal Method: Run the following command to to enable automatic checking and installing of macOS updates: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool TRUE Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticallyInstallMacOSUpdates 3. The key must be set to <true/>."
     compliance:
       - cis: ["1.4"]
-      - cis_csc_v8: ["7.3","7.4"]
-      - cis_csc_v7: ["3.4","3.5"]
+      - cis_csc_v8: ["7.3", "7.4"]
+      - cis_csc_v7: ["3.4", "3.5"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
       - pci_dss_3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
@@ -123,10 +122,10 @@ checks:
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
     impact: "Unpatched software may be exploited."
     remediation: "Graphical Method: Perform the following steps to enable App Store updates to install automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install application updates from the App Store to enabled 6. Select Done. Terminal Method: Run the following command to turn on App Store auto updating: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool TRUE Note: This remediation requires a log out and log in to show in the GUI. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticallyInstallAppUpdates 3. The key must be set to <true/>."
-    compliance: 
+    compliance:
       - cis: ["1.5"]
-      - cis_csc_v8: ["7.3","7.4"]
-      - cis_csc_v7: ["3.4","3.5"]
+      - cis_csc_v8: ["7.3", "7.4"]
+      - cis_csc_v7: ["3.4", "3.5"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
       - pci_dss_3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
@@ -139,22 +138,22 @@ checks:
   # 1.6 Ensure Install Security Responses and System Files Is Enabled (Automated)
   - id: 30005
     title: "Ensure Install Security Responses and System Files Is Enabled."
-    description: "Ensure that system and security updates are installed after they are available from Apple. This setting enables definition updates for XProtect and Gatekeeper. With this setting in place, new malware and adware that Apple has added to the list of malware or untrusted software will not execute. These updates do not require reboots or end user admin rights." 
+    description: "Ensure that system and security updates are installed after they are available from Apple. This setting enables definition updates for XProtect and Gatekeeper. With this setting in place, new malware and adware that Apple has added to the list of malware or untrusted software will not execute. These updates do not require reboots or end user admin rights."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
     impact: "Unpatched software may be exploited."
     remediation: "Graphical Method: Perform the following steps to enable system data files and security updates to install automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install Security Responses and System files to enabled 6. Select Done. Terminal Method: Run the following commands to enable automatic checking of system data files and security updates: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is ConfigDataInstall 3. The key must be set to <true/> 4. The key to also include is CriticalUpdateInstall 5. The key must be set to <true/>."
     references:
-      - https://eclecticlight.co/2021/10/27/silently-updated-security-data-files-inmonterey/
+      - https://eclecticlight.co/2021/10/27/silently-updated-security-data-files-in-monterey/
       - https://support.apple.com/en-us/HT202491
-      - https://support.apple.com/guide/security/protecting-against-malwaresec469d47bd8/web
-      - https://support.apple.com/guide/deployment/rapid-security-responsesdep93ff7ea78/1/web/1.0
-    compliance: 
+      - https://support.apple.com/guide/security/protecting-against-malware-sec469d47bd8/web
+      - https://support.apple.com/guide/deployment/rapid-security-responses-dep93ff7ea78/1/web/1.0
+    compliance:
       - cis: ["1.6"]
-      - cis_csc_v8: ["7.3","7.4","7.7"]
-      - cis_csc_v7: ["3.4","3.5"]
-      - cmmc_v2.0: ["RA.L2-3.11.3","CA.L2-3.12.2","SI.L1-3.14.1"]
+      - cis_csc_v8: ["7.3", "7.4", "7.7"]
+      - cis_csc_v7: ["3.4", "3.5"]
+      - cmmc_v2.0: ["RA.L2-3.11.3", "CA.L2-3.12.2", "SI.L1-3.14.1"]
       - pci_dss_3.2.1: ["6.2"]
-      - pci_dss_4.0: ["11.3.1","11.3.2","11.3.2.1"]
+      - pci_dss_4.0: ["11.3.1", "11.3.2", "11.3.2.1"]
       - nist_sp_800-53: ["SI-2(2)"]
       - soc_2: ["CC7.1"]
       - mitre_techniques: ["T1103", "T1017", "T1138", "T1189", "T1190", "T1212", "T1211", "T1068", "T1210", "T1495", "T1137", "T1075", "T1195", "T1019", "T1072", "T1100", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
@@ -171,11 +170,11 @@ checks:
     impact: "Some organizations may need more than 30 days to evaluate the impact of software updates."
     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is enforcedSoftwareUpdateDelay 3. The key must be set to <integer><1-30></integer>."
     references:
-      - https://support.apple.com/guide/deployment/manage-software-updatesdepc4c80847a/web
+      - https://support.apple.com/guide/deployment/manage-software-updates-depc4c80847a/web
     compliance:
       - cis: ["1.7"]
-      - cis_csc_v8: ["7.3","7.4"]
-      - cis_csc_v7: ["3.4","3.5"]
+      - cis_csc_v8: ["7.3", "7.4"]
+      - cis_csc_v7: ["3.4", "3.5"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
       - pci_dss_3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
@@ -183,7 +182,7 @@ checks:
       - mitre_techniques: ["T1103", "T1017", "T1138", "T1189", "T1190", "T1212", "T1211", "T1068", "T1210", "T1495", "T1137", "T1075", "T1195", "T1019", "T1072", "T1100", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
-      - 'f:/Librbary/Preferences/com.apple.SoftwareUpdate.plist'
+      - "f:/Librbary/Preferences/com.apple.SoftwareUpdate.plist"
 
   ############################################################
   # 2 System Settings
@@ -211,18 +210,18 @@ checks:
     references:
       - https://support.apple.com/en-us/guide/security/seca0e83763f/web
       - http://support.apple.com/en-us/HT201642
-    compliance: 
+    compliance:
       - cis: ["2.2.1"]
       - cis_csc_v8: ["4.1", "4.5", "13.1"]
-      - cis_csc_v7: ["5.1", "9.4", "9.5"] 
-      - cmmc_v2.0: ["AC.1.002","AC.L1-3.1.1","AC.L1-3.1.2","AC.L1-3.1.20","AU.L2-3.3.5","AU.L2-3.3.6","CM.3.068","CM.2.061","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","SC.5.208","SC.L1-3.13.1","SC.L2-3.13.6","SI.2.217","SI.L2-3.14.3","SI.L2-3.14.7","SC.3.180"]
+      - cis_csc_v7: ["5.1", "9.4", "9.5"]
+      - cmmc_v2.0: ["AC.1.002", "AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L1-3.1.20", "AU.L2-3.3.5", "AU.L2-3.3.6", "CM.3.068", "CM.2.061", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "SC.5.208", "SC.L1-3.13.1", "SC.L2-3.13.6", "SI.2.217", "SI.L2-3.14.3", "SI.L2-3.14.7", "SC.3.180"]
       - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.8.1.3","A.13.1.1","A.14.2.5"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.1", "A.14.2.5"]
       - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
-      - nist_sp_800-53: ["AU-2","AU-6(1)","AU-7","CM-1","CM-2","CM-6","CM-7","CM-7(1)","CM-9","IA-6","IR-4(1)","SA-10","SC-7(5)","SC-20","SC-21","SI-4(2)","SI-4(5)"]
-      - pci_dss_3.2.1: ["1.2","1.4","1.1.4","2.2","6.6","11.5","10.5.3","10.6.1"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","10.7","10.7.1","10.7.2","10.7.3","11.5"]
-      - soc_2: ["CC6.6","CC7.1","CC7.2","CC8.1"]
+      - nist_sp_800-53: ["AU-2", "AU-6(1)", "AU-7", "CM-1", "CM-2", "CM-6", "CM-7", "CM-7(1)", "CM-9", "IA-6", "IR-4(1)", "SA-10", "SC-7(5)", "SC-20", "SC-21", "SI-4(2)", "SI-4(5)"]
+      - pci_dss_3.2.1: ["1.2", "1.4", "1.1.4", "2.2", "6.6", "11.5", "10.5.3", "10.6.1"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "10.7", "10.7.1", "10.7.2", "10.7.3", "11.5"]
+      - soc_2: ["CC6.6", "CC7.1", "CC7.2", "CC8.1"]
     condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.alf globalstate -> r:^1$|^2$"
@@ -237,21 +236,21 @@ checks:
     remediation: "Graphical Method: Perform the following steps to enable firewall stealth mode: Open System Settings. Select Network. Select Firewall. Set Enabled stealth mode to enabled. Terminal Method: Run the following command to enable stealth mode: $ /usr/bin/sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on. Stealth mode enabled Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.security.firewall. The key to include is EnableStealthMode. The key must be set to <true/>. Note: This key must be set in the same configuration profile with EnableFirewall set to <true/>. If it is set in its own configuration profile, it will fail."
     references:
       - http://support.apple.com/en-us/HT201642
-    compliance: 
+    compliance:
       - cis: ["2.2.1"]
       - cis_csc_v8: ["4.1", "4.5", "4.8"]
-      - cis_csc_v7: ["5.1", "9.4"] 
-      - cmmc_v2.0: ["AC.1.002","AC.L1-3.1.1","AC.L1-3.1.2","AC.L1-3.1.20","CM.3.068","CM.2.061","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","CM.L2-3.4.8","SC.L1-3.13.1","SC.L2-3.13.6","SC.3.180"]
-      - iso_27001-2013: ["A.8.1.3","A.12.4.3","A.13.1.1","A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","AU-3","CM-1","CM-2","CM-6","CM-7","CM-7(1)","CM-9","IA-6","IR-4(1)","SA-10","SC-7(5)","SC-20","SC-21"]
-      - pci_dss_3.2.1: ["1.4","1.1.4","2.2","10.2.5","11.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1"]
-      - soc_2: ["CC7.1","CC8.1","CC6.3","CC6.6"]
+      - cis_csc_v7: ["5.1", "9.4"]
+      - cmmc_v2.0: ["AC.1.002", "AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L1-3.1.20", "CM.3.068", "CM.2.061", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L1-3.13.1", "SC.L2-3.13.6", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.12.4.3", "A.13.1.1", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "AU-3", "CM-1", "CM-2", "CM-6", "CM-7", "CM-7(1)", "CM-9", "IA-6", "IR-4(1)", "SA-10", "SC-7(5)", "SC-20", "SC-21"]
+      - pci_dss_3.2.1: ["1.4", "1.1.4", "2.2", "10.2.5", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - soc_2: ["CC7.1", "CC8.1", "CC6.3", "CC6.6"]
     condition: any
     rules:
       - "c:/usr/sbin/system_profiler SPFirewallDataType -> r:Stealth Mode: Yes"
-      - 'c:sh -c "profiles -P -o stdout | grep EnableStealthMode" -> r:EnableStealthMode\s*=\s*1' 
+      - 'c:sh -c "profiles -P -o stdout | grep EnableStealthMode" -> r:EnableStealthMode\s*=\s*1'
 
   # 2.3 General
 
@@ -272,12 +271,12 @@ checks:
       - cis: ["2.3.2.1"]
       - cis_csc_v8: ["6.1"]
       - cis_csc_v7: ["8.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","IA.L1-3.5.2","SI.1.213"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "IA.L1-3.5.2", "SI.1.213"]
       - hipaa: ["164.312(a)(2)(i)"]
       - iso_27001-2013: ["A.12.2.1"]
-      - mitre_techniques: ["T1215","T1027","T1045","T1193","T1194","T1221","T1200","T1091"]
-      - nist_sp_800-53: ["AC-2(1)","SI-3"]
-      - pci_dss_4.0: ["7.2.1","7.2.3","8.1","8.1.1","8.2.1","8.2.4"]
+      - mitre_techniques: ["T1215", "T1027", "T1045", "T1193", "T1194", "T1221", "T1200", "T1091"]
+      - nist_sp_800-53: ["AC-2(1)", "SI-3"]
+      - pci_dss_4.0: ["7.2.1", "7.2.3", "8.1", "8.1.1", "8.2.1", "8.2.4"]
       - soc_2: ["CC6.2"]
     condition: all
     rules:
@@ -294,12 +293,12 @@ checks:
       - cis: ["2.3.2.1"]
       - cis_csc_v8: ["6.1"]
       - cis_csc_v7: ["8.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","IA.L1-3.5.2","SI.1.213"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "IA.L1-3.5.2", "SI.1.213"]
       - hipaa: ["164.312(a)(2)(i)"]
       - iso_27001-2013: ["A.12.2.1"]
-      - mitre_techniques: ["T1215","T1027","T1045","T1193","T1194","T1221","T1200","T1091"]
-      - nist_sp_800-53: ["AC-2(1)","SI-3"]
-      - pci_dss_4.0: ["7.2.1","7.2.3","8.1","8.1.1","8.2.1","8.2.4"]
+      - mitre_techniques: ["T1215", "T1027", "T1045", "T1193", "T1194", "T1221", "T1200", "T1091"]
+      - nist_sp_800-53: ["AC-2(1)", "SI-3"]
+      - pci_dss_4.0: ["7.2.1", "7.2.3", "8.1", "8.1.1", "8.2.1", "8.2.4"]
       - soc_2: ["CC6.2"]
     condition: all
     rules:
@@ -319,13 +318,13 @@ checks:
       - cis: ["2.3.3.1"]
       - cis_csc_v8: ["4.1", "4.8"]
       - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230"]
-      - iso_27001-2013: ["A.8.1.3","A.13.1.3","A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SC-20","SC-21","SI-4","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_3.2.1: ["2.2","11.5","1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.ODSAgent" -> r:^0$'
@@ -342,14 +341,14 @@ checks:
     compliance:
       - cis: ["2.3.3.2"]
       - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"] 
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230"]
-      - iso_27001-2013: ["A.8.1.3","A.13.1.3","A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SC-20","SC-21","SI-4","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_3.2.1: ["2.2","11.5","1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.screensharing" -> r:^0$'
@@ -365,13 +364,13 @@ checks:
       - cis: ["2.3.3.3"]
       - cis_csc_v8: ["4.1", "4.8", "5.4"]
       - cis_csc_v7: ["4.3", "5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230","AC.2.008","IA.1.076","IA.1.077","SC.3.181"]
-      - iso_27001-2013: ["A.8.1.3","A.13.1.3","A.14.2.5","A.9.2.3"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","AC-6(2)","AC-6(5)","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SC-20","SC-21","SI-4","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_3.2.1: ["2.2","11.5","1.1.6","1.2.1","2.2.2","2.2.5","7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.1","CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230", "AC.2.008", "IA.1.076", "IA.1.077", "SC.3.181"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5", "A.9.2.3"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "AC-6(2)", "AC-6(5)", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.1", "CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.smbd" -> r:^0$'
@@ -385,14 +384,14 @@ checks:
     compliance:
       - cis: ["2.3.3.4"]
       - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"] 
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230"]
-      - iso_27001-2013: ["A.8.1.3","A.13.1.3","A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SC-20","SC-21","SI-4","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_3.2.1: ["2.2","11.5","1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'c:sh -c "cupsctl | grep _share_printers | cut -d ''='' -f2" -> r:^0$'
@@ -407,14 +406,14 @@ checks:
     compliance:
       - cis: ["2.3.3.5"]
       - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"] 
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230"]
-      - iso_27001-2013: ["A.8.1.3","A.13.1.3","A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SC-20","SC-21","SI-4","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_3.2.1: ["2.2","11.5","1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'c:systemsetup -getremotelogin -> r:Remote Login:\s*\t*Off'
@@ -430,13 +429,13 @@ checks:
       - cis: ["2.3.3.6"]
       - cis_csc_v8: ["4.1", "4.8", "5.4"]
       - cis_csc_v7: ["4.3", "9.2", "14.3"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3","CM.3.068","SC.5.230"]
-      - iso_27001-2013: ["A.9.2.3","A.13.1.1","A.13.1.3"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - pci_dss_3.2.1: ["2.2","11.5","1.1.6","1.2.1","2.2.2","2.2.5","AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3","7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - nist_sp_800-53: ["AC-6(2)","AC-6(5)","CM-7(1)","CM-9","SA-10","SI-4"]
-      - soc_2: ["CC6.1","CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3", "CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.9.2.3", "A.13.1.1", "A.13.1.3"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5", "AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)", "CM-7(1)", "CM-9", "SA-10", "SI-4"]
+      - soc_2: ["CC6.1", "CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
       - "not p:/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent"
@@ -452,13 +451,13 @@ checks:
       - cis: ["2.3.3.7"]
       - cis_csc_v8: ["4.1", "4.8"]
       - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230"]
-      - iso_27001-2013: ["A.8.1.3","A.13.1.3","A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SC-20","SC-21","SI-4","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_3.2.1: ["2.2","11.5","1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'c:systemsetup -getremoteappleevents -> r:Remote Apple Events:\s*\t*Off'
@@ -476,13 +475,13 @@ checks:
       - cis: ["2.3.3.8"]
       - cis_csc_v8: ["4.1", "4.8"]
       - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230"]
-      - iso_27001-2013: ["A.8.1.3","A.13.1.3","A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SC-20","SC-21","SI-4","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_3.2.1: ["2.2","11.5","1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: none
     rules:
       - 'c:defaults read /Library/Preferences/SystemConfiguration/com.apple.nat -> r:Enabled\s*\t*=\s*\t*1'
@@ -502,13 +501,13 @@ checks:
       - cis: ["2.3.3.9"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","CM.3.068","SC.5.230"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
-      - mitre_techniques: ["T1015","T1133","T1200","T1076","T1051"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
       - nist_sp_800-53: ["SI-4"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.AssetCache.plist Activated -> r:^0$"
@@ -525,13 +524,13 @@ checks:
       - cis: ["2.3.3.10"]
       - cis_csc_v8: ["4.1", "4.8"]
       - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230"]
-      - iso_27001-2013: ["A.8.1.3","A.13.1.3","A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SC-20","SC-21","SI-4","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_3.2.1: ["2.2","11.5","1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: any
     rules:
       - "c:defaults read com.apple.amp.mediasharingd home-sharing-enabled -> r:^0$|does not exist"
@@ -545,19 +544,19 @@ checks:
     description: "Bluetooth Sharing allows files to be exchanged with Bluetooth-enabled devices."
     rationale: "Disabling Bluetooth Sharing minimizes the risk of an attacker using Bluetooth to remotely attack the system."
     impact: "Control 2.1.1 discusses disabling Bluetooth if no paired devices exist. There is a general expectation that Bluetooth peripherals will be used by most users in Apple's ecosystem. It is possible that sharing is required and Bluetooth peripherals are not. Bluetooth must be enabled if sharing is an acceptable use case."
-    remediation: "Graphical Method: Perform the following steps to disable Bluetooth Sharing: Open System Settings. Select General. Select Sharing. Set Bluetooth Sharing to disabled. Terminal Method: Run the following command to disable Bluetooth Sharing is disabled: $ /usr/bin/sudo -u <username> /usr/bin/defaults -currentHost write com.apple.Bluetooth PrefKeyServicesEnabled -bool false $ /usr/bin/sudo -u firstuser /usr/bin/defaults -currentHost write com.apple.Bluetooth PrefKeyServicesEnabled -bool false" 
+    remediation: "Graphical Method: Perform the following steps to disable Bluetooth Sharing: Open System Settings. Select General. Select Sharing. Set Bluetooth Sharing to disabled. Terminal Method: Run the following command to disable Bluetooth Sharing is disabled: $ /usr/bin/sudo -u <username> /usr/bin/defaults -currentHost write com.apple.Bluetooth PrefKeyServicesEnabled -bool false $ /usr/bin/sudo -u firstuser /usr/bin/defaults -currentHost write com.apple.Bluetooth PrefKeyServicesEnabled -bool false"
     compliance:
       - cis: ["2.3.3.11"]
-      - cis_csc_v8: ["3.3","4.1", "4.8"]
+      - cis_csc_v8: ["3.3", "4.1", "4.8"]
       - cis_csc_v7: ["5.1", "9.2", "14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230","AC.2.007","MP.2.120","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - iso_27001-2013: ["A.8.1.3","A.9.1.1","A.13.1.3","A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AC-3","AC-5","AC-6","AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SC-20","SC-21","SI-4","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_3.2.1: ["2.2","11.5","1.1.6","1.2.1","2.2.2","2.2.5","7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.3.1","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC5.2","CC6.1","CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230", "AC.2.007", "MP.2.120", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.8.1.3", "A.9.1.1", "A.13.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AC-3", "AC-5", "AC-6", "AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.3.1", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC5.2", "CC6.1", "CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
       - "c:defaults -currentHost read com.apple.Bluetooth PrefKeyServicesEnabled -> r:^0$"
@@ -568,7 +567,7 @@ checks:
   # 2.3.4.1 Ensure Backup Automatically is Enabled If Time Machine Is Enabled (Automated)
   - id: 30022
     title: "Ensure Backup Automatically is Enabled If Time Machine Is Enabled."
-    description: "Backup solutions are only effective if the backups run on a regular basis. The time to check for backups is before the hard drive fails or the computer goes missing. In order to simplify the user experience so that backups are more likely to occur, Time Machine should be on and set to Back Up Automatically whenever the target volume is available. Operational staff should ensure that backups complete on a regular basis and the backups are tested to ensure that file restoration from backup is possible when needed. Backup dates are available even when the target volume is not available in the Time Machine plist. SnapshotDates = (\"2012-08-20 12:10:22 +0000\",\"2013-02-03 23:43:22 +0000\",\"2014-02-19 21:37:21 +0000\",\"2015-02-22 13:07:25 +0000\", \"2016-08-20 14:07:14 +0000\" When the backup volume is connected to the computer more extensive information is available through tmutil. See man tmutil."
+    description: 'Backup solutions are only effective if the backups run on a regular basis. The time to check for backups is before the hard drive fails or the computer goes missing. In order to simplify the user experience so that backups are more likely to occur, Time Machine should be on and set to Back Up Automatically whenever the target volume is available. Operational staff should ensure that backups complete on a regular basis and the backups are tested to ensure that file restoration from backup is possible when needed. Backup dates are available even when the target volume is not available in the Time Machine plist. SnapshotDates = ("2012-08-20 12:10:22 +0000","2013-02-03 23:43:22 +0000","2014-02-19 21:37:21 +0000","2015-02-22 13:07:25 +0000", "2016-08-20 14:07:14 +0000" When the backup volume is connected to the computer more extensive information is available through tmutil. See man tmutil.'
     rationale: "Backups should automatically run whenever the backup drive is available."
     impact: "The backup will run periodically in the background and could have user impact while running."
     remediation: "Graphical Method: Perform the following steps to enable Time Machine automatic backup: Open System Settings. Select General. Select Time Machine. Select Options... Set Back up frequency to Automatically <every hour/every day/every week> Terminal Method: Run the following command to enable automatic backups if Time Machine is enabled: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.TimeMachine.plist AutoBackup -bool true Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.TimeMachine The key to include is Forced. The key must be set to: <array> <dict> <key>mcx_preference_settings</key> <dict> <key>AutoBackup</key> <true/> </dict> </dict> </array"
@@ -576,11 +575,11 @@ checks:
       - cis: ["2.3.4.1"]
       - cis_csc_v8: ["10.1"]
       - cis_csc_v7: ["11.2"]
-      - cmmc_v2.0: ["RM.5.152","SI.L1-3.14.2"]
+      - cmmc_v2.0: ["RM.5.152", "SI.L1-3.14.2"]
       - hipaa: ["164.308(a)(5)(ii)(B)"]
-      - nist_sp_800-53: ["CA-3","CA-9"]
-      - pci_dss_3.2.1: ["1.1.6","5.1"]
-      - pci_dss_4.0: ["5.1.1","5.2.1","5.2.2","5.3.2"]
+      - nist_sp_800-53: ["CA-3", "CA-9"]
+      - pci_dss_3.2.1: ["1.1.6", "5.1"]
+      - pci_dss_4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.2"]
       - soc_2: ["CC6.8"]
     condition: any
     rules:
@@ -597,14 +596,14 @@ checks:
       - cis: ["2.3.4.2"]
       - cis_csc_v8: ["3.6", "3.11", "11.3"]
       - cis_csc_v7: ["10.4", "13.6", "14.8"]
-      - cmmc_v2.0: ["AC.L2-3.1.19","AC.3.020","AC.3.022","IA.L2-3.5.10","MP.L2-3.8.1","MP.L2-3.8.9","SC.L2-3.13.11","SC.L2-3.13.16","RE.2.138"]
-      - hipaa: ["164.312(a)(2)(iv)","164.312(e)(2)(ii)"]
-      - iso_27001-2013: ["A.6.2.1","A.10.1.1","A.12.3.1"]
-      - mitre_techniques: ["T1485","T1486","T1491","T1488","T1487","T1490","T1527","T1119","T1530","T1114","T1070","T1208","T1040","T1145","T1492","T1493","T1072"]
-      - nist_sp_800-53: ["SC-28","SC-28(1)","CP-9","CP-9(8)"]
-      - pci_dss_3.2.1: ["3.4","3.4.1","8.2.1","9.5","9.5.1"]
-      - pci_dss_4.0: ["3.1.1","3.3.2","3.3.3","3.5.1","3.5.1.2","3.5.1.3","8.3.2"]
-      - soc_2: ["CC6.1","CC6.4","CC6.7","A1.2"]
+      - cmmc_v2.0: ["AC.L2-3.1.19", "AC.3.020", "AC.3.022", "IA.L2-3.5.10", "MP.L2-3.8.1", "MP.L2-3.8.9", "SC.L2-3.13.11", "SC.L2-3.13.16", "RE.2.138"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
+      - iso_27001-2013: ["A.6.2.1", "A.10.1.1", "A.12.3.1"]
+      - mitre_techniques: ["T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1527", "T1119", "T1530", "T1114", "T1070", "T1208", "T1040", "T1145", "T1492", "T1493", "T1072"]
+      - nist_sp_800-53: ["SC-28", "SC-28(1)", "CP-9", "CP-9(8)"]
+      - pci_dss_3.2.1: ["3.4", "3.4.1", "8.2.1", "9.5", "9.5.1"]
+      - pci_dss_4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
+      - soc_2: ["CC6.1", "CC6.4", "CC6.7", "A1.2"]
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.TimeMachine.plist | grep -c NotEncrypted -> r:^0$"
@@ -615,18 +614,18 @@ checks:
   - id: 30024
     title: "Ensure Show Wi-Fi status in Menu Bar Is Enabled."
     description: "The Wi-Fi status in the menu bar indicates if the system's wireless internet capabilities are enabled. If so, the system will scan for available wireless networks in order to connect. At the time of this revision, all computers Apple builds have wireless network capability, which has not always been the case. This control only pertains to systems that have a wireless NIC available. Operating systems running in a virtual environment may not score as expected, either."
-    rationale: "Enabling \"Show Wi-Fi status in menu bar\" is a security awareness method that helps mitigate public area wireless exploits by making the user aware of their wireless connectivity status."
+    rationale: 'Enabling "Show Wi-Fi status in menu bar" is a security awareness method that helps mitigate public area wireless exploits by making the user aware of their wireless connectivity status.'
     impact: "The user of the system should have a quick check on their wireless network status available."
-    remediation: "Graphical Method: Perform the following steps to enable Wi-Fi status in the menu bar: Open System Settings. Select Control Center. Set Wi-Fi to Show in Menu Bar. Terminal Method: For each user, run the following command to enable Wi-Fi status in the menu bar: $ /usr/bin/sudo -u <username> /usr/bin/defaults -currentHost write com.apple.controlcenter.plist WiFi -int 2 example: $ /usr/bin/sudo -u firstuser /usr/bin/defaults -currentHost write com.apple.controlcenter.plist WiFi -int 2 Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.controlcenter. The key to include is WiFi. The key must be set to <integer>18</integer> Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user. Additional Information: AirPort is Apple’s marketing name for its 802.11x based wireless network interfaces. Option-click the Wifi icon in the menu bar to find out more information about the connected wireless network." 
-    compliance: 
+    remediation: "Graphical Method: Perform the following steps to enable Wi-Fi status in the menu bar: Open System Settings. Select Control Center. Set Wi-Fi to Show in Menu Bar. Terminal Method: For each user, run the following command to enable Wi-Fi status in the menu bar: $ /usr/bin/sudo -u <username> /usr/bin/defaults -currentHost write com.apple.controlcenter.plist WiFi -int 2 example: $ /usr/bin/sudo -u firstuser /usr/bin/defaults -currentHost write com.apple.controlcenter.plist WiFi -int 2 Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.controlcenter. The key to include is WiFi. The key must be set to <integer>18</integer> Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user. Additional Information: AirPort is Apple’s marketing name for its 802.11x based wireless network interfaces. Option-click the Wifi icon in the menu bar to find out more information about the connected wireless network."
+    compliance:
       - cis: ["2.4.1"]
       - cis_csc_v8: ["4.8", "12.6"]
       - cis_csc_v7: ["15.4", "15.5"]
-      - cmmc_v2.0: ["AC.2.015","AC.L2-3.1.17","AC.L2-3.1.13","IA.L1-3.5.2","SC.L1-3.13.1","SC.L2-3.13.15","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
+      - cmmc_v2.0: ["AC.2.015", "AC.L2-3.1.17", "AC.L2-3.1.13", "IA.L1-3.5.2", "SC.L1-3.13.1", "SC.L2-3.13.15", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - iso_27001-2013: ["A.8.1.3"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","2.1.1","4.1.1","6.4.1"]
-      - soc_2: ["CC6.1","CC6.3","CC6.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "2.1.1", "4.1.1", "6.4.1"]
+      - soc_2: ["CC6.1", "CC6.3", "CC6.6"]
     condition: any
     rules:
       - "c:defaults -currentHost read com.apple.controlcenter.plist WiFi -> r:^2$"
@@ -636,24 +635,24 @@ checks:
   - id: 30025
     title: "Ensure Show Bluetooth Status in Menu Bar Is Enabled."
     description: "By showing the Bluetooth status in the menu bar, a small Bluetooth icon is placed in the menu bar. This icon quickly shows the status of Bluetooth, and can allow the user to quickly turn Bluetooth on or off."
-    rationale: "Enabling \"Show Bluetooth status in menu bar\" is a security awareness method that helps understand the current state of Bluetooth, including whether it is enabled, discoverable, what paired devices exist, and what paired devices are currently active."
+    rationale: 'Enabling "Show Bluetooth status in menu bar" is a security awareness method that helps understand the current state of Bluetooth, including whether it is enabled, discoverable, what paired devices exist, and what paired devices are currently active.'
     impact: "Bluetooth is a useful wireless tool that has been widely exploited when configured improperly. The user should have insight into the Bluetooth status."
     remediation: "Graphical Method: Perform the following steps to enable Bluetooth status in the menu bar: Open System Settings. Select Control Center. Set Bluetooth to Show in Menu Bar. Terminal Method: For each user, run the following command to enable Bluetooth status in the menu bar: $ /usr/bin/sudo -u <username> /usr/bin/defaults -currentHost write com.apple.controlcenter.plist Bluetooth -int 18 example: $ /usr/bin/sudo -u firstuser /usr/bin/defaults -currentHost write com.apple.controlcenter.plist Bluetooth -int 18 Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.controlcenter. The key to include is Bluetooth. The key must be set to <integer>18</integer>. Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
     references:
-      - 
+      -
     compliance:
       - cis: ["2.4.1"]
       - cis_csc_v8: ["4.8", "13.9"]
       - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.20","CM.L2-3.4.7","CM.L2-3.4.8","CM.3.068","SC.5.230","SC.L2-3.13.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "CM.L2-3.4.8", "CM.3.068", "SC.5.230", "SC.L2-3.13.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - mitre_techniques: ["T1015","T1133","T1200","T1076","T1051"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
       - nist_sp_800-53: ["SI-4"]
-      - pci_dss_3.2.1: ["1.1.6","1.2","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.1","1.2.5","1.2.6","2.2.4","2.2.2","2.2.5","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.1", "1.2.5", "1.2.6", "2.2.4", "2.2.2", "2.2.5", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
     condition: any
-    rules: 
+    rules:
       - "c:defaults -currentHost read com.apple.controlcenter.plist Bluetooth -> r:^1$8"
       - 'c:sh -c "profiles -P -o stdout | grep Bluetooth" -> r:Bluetooth\s*=\s*1'
 
@@ -676,13 +675,13 @@ checks:
       - cis: ["2.6.1.1"]
       - cis_csc_v8: ["4.1", "4.8"]
       - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","AC.1.002","CM.2.061","CM.L2-3.4.8","SC.L2-3.13.6","SC.3.180"]
-      - iso_27001-2013: ["A.8.1.3","A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","CM-7(1)","CM-9","SA-10","SC-20","SC-21"]
-      - pci_dss_v3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5","2.2","11.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "AC.1.002", "CM.2.061", "CM.L2-3.4.8", "SC.L2-3.13.6", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "CM-7(1)", "CM-9", "SA-10", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5", "2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.locationd" -> r:^1$'
@@ -691,24 +690,23 @@ checks:
   - id: 30027
     title: "Ensure Location Services Is in the Menu Bar."
     description: "This setting provides the user to understand the current status of Location Services and which applications are using it."
-    rationale: "Apple has fully integrated location services into macOS. Where the computer is currently located is used for Timezones, weather, travel times, geolocation, \"Find my Mac\" and advertising services. This benchmark recommends that location services are enabled for most users. Many users may have occasions when they do not want to share their current locations, some users may need to rarely share their locations. The immediate availability of Location Services in the menu bar provides easy access to the current status, which applications are using the service and a quick shortcut to making changes. This setting provides better user control in managing user privacy."
+    rationale: 'Apple has fully integrated location services into macOS. Where the computer is currently located is used for Timezones, weather, travel times, geolocation, "Find my Mac" and advertising services. This benchmark recommends that location services are enabled for most users. Many users may have occasions when they do not want to share their current locations, some users may need to rarely share their locations. The immediate availability of Location Services in the menu bar provides easy access to the current status, which applications are using the service and a quick shortcut to making changes. This setting provides better user control in managing user privacy.'
     impact: "Users may be provided visibility to a setting they cannot control if organizations control Location Services globally by policy."
     remediation: "Perform the following steps to set whether the location services icon is in the menu bar: Open System Settings. Select Privacy & Security. Select Location Services. Select Details... Set Show location icon in menu bar when System Services request your location to your organization's parameters. Terminal Method: Run the following commands to set the option of the location services icon being in the menu bar: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.locationmenu.plist ShowSystemServices -bool <true/false>"
-    compliance: 
+    compliance:
       - cis: ["2.6.1.2"]
       - cis_csc_v8: ["4.1", "4.8"]
       - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","AC.1.002","CM.2.061","CM.L2-3.4.8","SC.L2-3.13.6","SC.3.180"]
-      - iso_27001-2013: ["A.8.1.3","A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","CM-7(1)","CM-9","SA-10","SC-20","SC-21"]
-      - pci_dss_v3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5","2.2","11.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "AC.1.002", "CM.2.061", "CM.L2-3.4.8", "SC.L2-3.13.6", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "CM-7(1)", "CM-9", "SA-10", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5", "2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
-    rules: 
+    rules:
       - "c:defaults read /Library/Preferences/com.apple.locationmenu.plist ShowSystemServices -> r:true"
-      
 
   # 2.6.1.3 Audit Location Services Access (Manual) - Not Implemented
 
@@ -718,19 +716,19 @@ checks:
     description: "Apple provides a mechanism to send diagnostic and analytics data back to Apple to help them improve the platform. Information sent to Apple may contain internal organizational information that should be controlled and not available for processing by Apple. Turn off all Analytics and Improvements sharing. Share Mac Analytics (Share with App Developers dependent on Mac Analytic sharing) Includes diagnostics, usage and location data. Share iCloud Analytics Includes iCloud data and usage information."
     rationale: "Organizations should have knowledge of what is shared with the vendor and that this setting automatically forwards information to Apple."
     remediation: "Perform the following steps to disable diagnostic data being sent to Apple: Open System Settings. Select Privacy & Security. Select Analytics & Improvements. Select Analytics & Improvements. Set Share Mac Analytics to disabled. Set Share with App Developers to disabled. Set Improve Siri & Dictation to disabled. Terminal Method: Run the following commands to disable the sending of diagnostic data to Apple: $ /usr/bin/sudo /usr/bin/defaults write /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist AutoSubmit -bool false /usr/bin/sudo /usr/bin/defaults write /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist ThirdPartyDataSubmit -bool false $ /usr/bin/sudo /bin/chmod 644 /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist $ /usr/bin/sudo /usr/sbin/chgrp admin /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Preferences/com.apple.assistant.support \"Siri Data Sharing Opt-In Status\" -int 2 example: $ /usr/bin/sudo -u seconduser /usr/bin/defaults write /Users/seconduser/Library/Preferences/com.apple.assistant.support \"Siri Data Sharing Opt-In Status\" -int 2 Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.applicationaccess. The key to include is allowDiagnosticSubmission. The key must be set to <false/>. The key to also include is Siri Data Sharing Opt-In Status. The key must be set to <integer>2<integer/>. There must also be a second PayloadType string of com.apple.SubmitDiagInfo. The key to include is AutoSubmit. The key must be set to <false/>. Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-    references: 
+    references:
       - https://support.apple.com/en-ca/guide/mac-help/mh27990/mac
     compliance:
       - cis: ["2.6.2"]
       - cis_csc_v8: ["4.1", "4.8"]
       - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230"]
-      - iso_27001-2013: ["A.8.1.3","A.13.1.3","A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SC-20","SC-21","SI-4","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_3.2.1: ["2.2","11.5","1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: any
     rules:
       - 'c:defaults read /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist AutoSubmit -> r:^0$'
@@ -748,13 +746,13 @@ checks:
       - cis: ["2.6.4"]
       - cis_csc_v8: ["10.1", "10.2", "10.5"]
       - cis_csc_v7: ["8.2", "8.4"]
-      - cmmc_v2.0: ["SI.1.212","SI.1.213","SI.L1-3.14.2","SI.L1-3.14.4"]
+      - cmmc_v2.0: ["SI.1.212", "SI.1.213", "SI.L1-3.14.2", "SI.L1-3.14.4"]
       - hipaa: ["164.308(a)(5)(ii)(B)"]
       - iso_27001-2013: ["A.12.2.1"]
-      - mitre_techniques: ["T1215","T1027","T1045","T1193","T1194","T1221","T1200","T1091","T1103","T1017","T1138","T1073","T1189","T1190","T1212","T1211","T1068","T1210","T1495","T1137","T1075","T1195","T1019","T1072","T1100"]
-      - nist_sp_800-53: ["SI-3","SI-16"]
-      - pci_dss_3.2.1: ["5.1.1","5.2","11.4","5.1"]
-      - pci_dss_4.0: ["5.1.1","5.2.1","5.2.2","5.3.1","5.3.2"]
+      - mitre_techniques: ["T1215", "T1027", "T1045", "T1193", "T1194", "T1221", "T1200", "T1091", "T1103", "T1017", "T1138", "T1073", "T1189", "T1190", "T1212", "T1211", "T1068", "T1210", "T1495", "T1137", "T1075", "T1195", "T1019", "T1072", "T1100"]
+      - nist_sp_800-53: ["SI-3", "SI-16"]
+      - pci_dss_3.2.1: ["5.1.1", "5.2", "11.4", "5.1"]
+      - pci_dss_4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.1", "5.3.2"]
       - soc_2: ["CC6.8"]
     condition: all
     rules:
@@ -771,17 +769,17 @@ checks:
       - https://derflounder.wordpress.com/2015/02/02/managing-yosemites-filevault-2-with-fdesetup/
       - https://derflounder.wordpress.com/2019/01/15/unlock-or-decrypt-your-filevault-encrypted-boot-drive-from-the-command-line-on-macos-mojave/
       - https://derflounder.wordpress.com/2021/10/29/use-of-filevault-institutional-recovery-keys-no-longer-recommended-by-apple/
-    compliance: 
+    compliance:
       - cis: ["2.6.5"]
       - cis_csc_v8: ["3.6", "3.11"]
       - cis_csc_v7: ["13.6", "14.8"]
-      - cmmc_v2.0: ["AC.3.020","AC.3.022","AC.L2-3.1.19","IA.L2-3.5.10","MP.L2-3.8.1","SC.L2-3.13.11","SC.3.177","SC.3.191","SC.L2-3.13.16"]
-      - hipaa: ["164.312(a)(2)(iv)","164.312(e)(2)(ii)"]
-      - iso_27001-2013: ["A.6.2.1","A.10.1.1"]
-      - mitre_techniques: ["T1527","T1119","T1530","T1114","T1070","T1208","T1040","T1145","T1492","T1493","T1072"]
-      - nist_sp_800-53: ["SC-28","SC-28(1)"]
-      - pci_dss_3.2.1: ["3.4","3.4.1","8.2.1"]
-      - pci_dss_4.0: ["3.1.1","3.3.2","3.3.3","3.5.1","3.5.1.2","3.5.1.3","8.3.2"]
+      - cmmc_v2.0: ["AC.3.020", "AC.3.022", "AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.3.177", "SC.3.191", "SC.L2-3.13.16"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
+      - iso_27001-2013: ["A.6.2.1", "A.10.1.1"]
+      - mitre_techniques: ["T1527", "T1119", "T1530", "T1114", "T1070", "T1208", "T1040", "T1145", "T1492", "T1493", "T1072"]
+      - nist_sp_800-53: ["SC-28", "SC-28(1)"]
+      - pci_dss_3.2.1: ["3.4", "3.4.1", "8.2.1"]
+      - pci_dss_4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
     condition: all
     rules:
@@ -797,18 +795,18 @@ checks:
     title: "Ensure Screen Saver Corners Are Secure (Automated)."
     description: "Hot Corners can be configured to disable the screen saver by moving the mouse cursor to a corner of the screen."
     rationale: "Setting a hot corner to disable the screen saver poses a potential security risk since an unauthorized person could use this to bypass the login screen and gain access to the system."
-    remediation: "Graphical Method: Perform the following steps to disable a Hot Corner set to Disable Screen Saver: Open System Settings. Select Desktop & Dock. Select `Hot Corners... Set any corners set to Disable Screen Saver to any other selection to meets your organization's parameters. Select Done. Terminal Method: Run the following command to turn off Disable Screen Saver for a Hot Corner: $ /usr/bin/sudo -u <username> /usr/bin/defaults write com.apple.dock <corner that is set to '6'> -int 0 example: $ /usr/bin/sudo -u seconduser /usr/bin/defaults write com.apple.dock wvous-tl-corner -int 0 $ /usr/bin/sudo -u seconduser /usr/bin/defaults read com.apple.dock wvous-tl-corner 0 Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.dock. The key to include is Forced. The key must be set to the following: <array> <dict> <key>mcx_preference_settings</key> <dict> <key>wvous-bl-corner</key> <integer><≠6></integer> <key>wvous-br-corner</key> <integer><≠6></integer> <key>wvous-tl-corner</key> <integer><≠6></integer> <key>wvous-tr-corner</key> <integer><≠6></integer> </dict> </dict> </array>" 
+    remediation: "Graphical Method: Perform the following steps to disable a Hot Corner set to Disable Screen Saver: Open System Settings. Select Desktop & Dock. Select `Hot Corners... Set any corners set to Disable Screen Saver to any other selection to meets your organization's parameters. Select Done. Terminal Method: Run the following command to turn off Disable Screen Saver for a Hot Corner: $ /usr/bin/sudo -u <username> /usr/bin/defaults write com.apple.dock <corner that is set to '6'> -int 0 example: $ /usr/bin/sudo -u seconduser /usr/bin/defaults write com.apple.dock wvous-tl-corner -int 0 $ /usr/bin/sudo -u seconduser /usr/bin/defaults read com.apple.dock wvous-tl-corner 0 Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.dock. The key to include is Forced. The key must be set to the following: <array> <dict> <key>mcx_preference_settings</key> <dict> <key>wvous-bl-corner</key> <integer><≠6></integer> <key>wvous-br-corner</key> <integer><≠6></integer> <key>wvous-tl-corner</key> <integer><≠6></integer> <key>wvous-tr-corner</key> <integer><≠6></integer> </dict> </dict> </array>"
     compliance:
       - cis: ["2.7.1"]
       - cis_csc_v8: ["4.3"]
       - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.2.010","AC.3.019","IA.3.086","AC.L2-3.1.10","AC.L2-3.1.11"]
+      - cmmc_v2.0: ["AC.2.010", "AC.3.019", "IA.3.086", "AC.L2-3.1.10", "AC.L2-3.1.11"]
       - hipaa: ["164.312(a)(2)(iii)"]
       - iso_27001-2013: ["A.8.1.3"]
-      - mitre_techniques: ["T1110","T1527","T1176","T1088","T1081","T1214","T1530","T1213","T1038","T1073","T1482","T1114","T1044","T1484","T1525","T1161","T1031","T1034","T1145","T1076","T1053","T1505","T1528","T1078"]
-      - pci_dss_3.2.1: ["8.1.8","10.2.5"]
+      - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
+      - pci_dss_3.2.1: ["8.1.8", "10.2.5"]
       - pci_dss_4.0: ["8.2.8"]
-      - nist_sp_800-53: ["AC-2(5)","AC-11","AC-11(1)","AC-12"] 
+      - nist_sp_800-53: ["AC-2(5)", "AC-11", "AC-11(1)", "AC-12"]
     condition: all
     rules:
       - "c:defaults read com.apple.dock wvous-tl-corner -> !r:^6$"
@@ -828,18 +826,18 @@ checks:
     description: "Power Nap allows the system to stay in low power mode, especially while on battery power, and periodically connect to previously known networks with stored credentials for user applications to phone home and get updates. This capability requires FileVault to remain unlocked and the use of previously joined networks to be risk accepted based on the SSID without user input. This control has been updated to check the status on both battery and AC Power. The presence of an electrical outlet does not completely correlate with logical and physical security of the device or available networks."
     rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access. The use of Power Nap adds to the risk of compromised physical and logical security. The user should be able to decrypt FileVault and have the applications download what is required when the computer is actively used. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs."
     impact: "Power Nap exists for unattended user application updates like email and social media clients. With Power Nap disabled, the computer will not wake and reconnect to known wireless SSIDs intermittently when slept."
-    remediation: "Graphical Method: Perform the following steps to disable Power Nap: Desktop Instructions: Open System Settings. Select Energy Saver. Set Power Nap to disabled. Select UPS (if applicable). Set Power Nap to disabled. Laptop Instructions: Open System Settings. Select Battery. Select Power Adapter (for laptops only). Set Power Nap to disabled. Select Battery. Set Power Nap to disabled. Select UPS (if applicable). Set Power Nap to disabled. Terminal Method: Run the following command to disable Power Nap: $ /usr/bin/sudo /usr/bin/pmset -a powernap 0 Additional Information: /usr/bin/man pmset" 
-    compliance: 
+    remediation: "Graphical Method: Perform the following steps to disable Power Nap: Desktop Instructions: Open System Settings. Select Energy Saver. Set Power Nap to disabled. Select UPS (if applicable). Set Power Nap to disabled. Laptop Instructions: Open System Settings. Select Battery. Select Power Adapter (for laptops only). Set Power Nap to disabled. Select Battery. Set Power Nap to disabled. Select UPS (if applicable). Set Power Nap to disabled. Terminal Method: Run the following command to disable Power Nap: $ /usr/bin/sudo /usr/bin/pmset -a powernap 0 Additional Information: /usr/bin/man pmset"
+    compliance:
       - cis: ["2.9.1"]
       - cis_csc_v8: ["4.1", "4.8"]
       - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230"]
-      - iso_27001-2013: ["A.8.1.3","A.13.1.3","A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SC-20","SC-21","SI-4","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_3.2.1: ["2.2","11.5","1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1","1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'c:sh -c "pmset -g everything | grep powernap | grep -c 1" -> r:^0$'
@@ -851,17 +849,17 @@ checks:
     rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
     impact: "Management programs like Apple Remote Desktop Administrator use wake-on-LAN to connect with computers. If turned off, such management programs will not be able to wake a computer over the LAN. If the wake-on-LAN feature is needed, do not turn off this feature. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs."
     remediation: "Graphical Method: Perform the following steps to disable Wake for network access: Desktop Instructions: Open System Settings. Select Energy Saver. Set Wake for network access to disabled. Laptop Instructions: Open System Settings. Select Battery. Select Options... Set Wake for network access to Never. Terminal Method: Run the following command to disable Wake for network access: $ /usr/bin/sudo /usr/bin/pmset -a womp 0 Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.MCX. The key to include is com.apple.EnergySaver.desktop.ACPower. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict>. The key to also include is com.apple.EnergySaver.portable.ACPower. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict>. The key to also include is com.apple.EnergySaver.portable.BatteryPower. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict>. Note: Both Wake on LAN and Wake on Modem Ring need to be set. Only setting Wake On LAN will allow the profile to install but not set any settings. This profile will only apply the setting at installation and is not sticky. Additional Information: /usr/bin/man pmset"
-    compliance: 
+    compliance:
       - cis: ["2.9.2"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","CM.3.068","SC.5.230"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
-      - mitre_techniques: ["T1015","T1133","T1200","T1076","T1051"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
       - nist_sp_800-53: ["SI-4"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
       - 'c:sh -c "pmset -g | grep -e womp" -> r:0'
@@ -881,22 +879,22 @@ checks:
       - cis: ["2.10.1"]
       - cis_csc_v8: ["4.3"]
       - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10","AC.L2-3.1.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
       - cmmc_v2.0: ["AC.2.010", "AC.3.019", "IA.3.086"]
       - iso_27001-2013: ["A.8.1.3"]
       - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
       - hipaa: ["164.312(a)(2)(iii)"]
-      - pci_dss_3.2.1: ["8.1.8","10.2.5"]
+      - pci_dss_3.2.1: ["8.1.8", "10.2.5"]
       - pci_dss_4.0: ["8.2.8"]
-      - nist_sp_800-53: ["AC-2(5)","AC-11","AC-11(1)","AC-12"]
+      - nist_sp_800-53: ["AC-2(5)", "AC-11", "AC-11(1)", "AC-12"]
     condition: any
     rules:
       - "not c:defaults -currentHost read com.apple.screensaver idleTime -> r:does not exist"
       - 'c:defaults -currentHost read com.apple.screensaver idleTime -> n:^(\d+)$ compare <= 1200'
       - 'c:sh -c "profiles -P -o stdout | grep idleTime" -> n:idleTime\s*=\s*(\d+) compare <= 1200'
-  
+
   # 2.10.2 Ensure a Password is Required to Wake the Computer From Sleep or Screen Saver Is Enabled (Automated) - Not Implemented
-    
+
   # 2.10.3 Ensure a Custom Message for the Login Screen Is Enabled (Automated)
   - id: 30035
     title: "Ensure a Custom Message for the Login Screen Is Enabled."
@@ -904,18 +902,18 @@ checks:
     rationale: "An access warning may reduce a casual attacker's tendency to target the system. Access warnings may also aid in the prosecution of an attacker by evincing the attacker's knowledge of the system's private status, acceptable use policy, and authorization requirements."
     impact: "If users are not informed of their responsibilities, unapproved activities may occur. Users that are not approved for access may take the lack of a warning banner as implied consent to access."
     remediation: "Graphical Method: Perform the following steps to enable a login banner set to your organization's required text: 1. Open System Settings 2. Select Lock Screen 3. Set Show message when locked to enabled 4. Select Set 5. Insert text in the Set a message to appear on the lock screen that matches your organization's required text 6. Select Done. Terminal Method: Run the following command to enable a custom login screen message: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText '<custom message>' example: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText 'Center for Internet Security Test Message' Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is LoginwindowText 3. The key must be set to <string><Your organization's required text></string>."
-    compliance: 
+    compliance:
       - cis: ["2.10.3"]
       - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"] 
+      - cis_csc_v7: ["5.1"]
       - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2","11.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
       - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
       - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "CM-7(1)", "CM-9", "SA-10"]
-      - soc_2: ["CC7.1","CC8.1"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: any
     rules:
       - "not c:defaults read /Library/Preferences/com.apple.loginwindow.plist LoginwindowText -> r:does not exist"
@@ -932,13 +930,13 @@ checks:
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
       - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2","11.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
       - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
       - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "CM-7(1)", "CM-9", "SA-10"]
-      - soc_2: ["CC7.1","CC8.1"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -> r:^1$"
@@ -952,17 +950,17 @@ checks:
     impact: "The user can set the hint to any value, including the password itself or clues that allow trivial social engineering attacks."
     remediation: "Graphical Method: Perform the following steps to disable password hints from being shown: 1. Open System Settings 2. Select Lock Screen 3. Set 'Show password hints` to disabled Terminal Method: Run the following command to disable password hints: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow RetriesUntilHint -int 0 ; Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is RetriesUntilHint 3. The key must be set to <integer>0</integer>."
     compliance:
-    - cis: ["2.10.5"]
-    - cis_csc_v8: ["4.1"]
-    - cis_csc_v7: ["5.1"]
-    - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
-    - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7"]
-    - pci_dss_3.2.1: ["2.2","11.5"]
-    - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1"]
-    - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
-    - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
-    - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "CM-7(1)", "CM-9", "SA-10"]
-    - soc_2: ["CC7.1","CC8.1"]
+      - cis: ["2.10.5"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow RetriesUntilHint -> r:^0$|does not exist"
@@ -985,16 +983,16 @@ checks:
     remediation: "Graphical Method: Perform the following steps to disable guest account availability: 1. Open System Settings 2. Select Users & Groups 3. Select the i next to the Guest User 4. Set Allow guests to log in to this computer to disabled Terminal Method: Run the following command to disable the guest account: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled -bool false ; Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.MCX 2. The key to include is DisableGuestAccount 3. The key must be set to <true/> ; Additional Information: By default, the guest account is enabled for access to sharing services but is not allowed to log into the computer. The guest account does not need a password when it is enabled to log into the computer."
     compliance:
       - cis: ["2.12.1"]
-      - cis_csc_v8: ["5.2","6.2","6.8"]
+      - cis_csc_v8: ["5.2", "6.2", "6.8"]
       - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.4","IA.L2-3.5.7","SC.L2-3.13.3","IA.2.078","IA.2.079"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.4", "IA.L2-3.5.7", "SC.L2-3.13.3", "IA.2.078", "IA.2.079"]
       - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
-      - hipaa: ["164.308(a)(3)(ii)(B)","164.308(a)(4)(i)","164.308(a)(4)(ii)(C)"]
+      - hipaa: ["164.308(a)(3)(ii)(B)", "164.308(a)(4)(i)", "164.308(a)(4)(ii)(C)"]
       - pci_dss_3.2.1: ["8.1.3"]
-      - pci_dss_4.0: ["2.2.2","7.1","7.1.1","7.2","7.2.1","7.2.2","7.2.4","7.2.6","7.3","7.3.1","7.3.2","8.2.4","8.2.5","8.3.5","8.3.6","8.6.3","10.3.1"]
-      - nist_sp_800-53: ["AC-2(1)","AC-5","AC-6","AC-6(1)","AC-6(7)","AU-9(4)","IA-5 (1)"]
-      - soc_2: ["CC6.2","CC6.3","CC5.2"]
+      - pci_dss_4.0: ["2.2.2", "7.1", "7.1.1", "7.2", "7.2.1", "7.2.2", "7.2.4", "7.2.6", "7.3", "7.3.1", "7.3.2", "8.2.4", "8.2.5", "8.3.5", "8.3.6", "8.6.3", "10.3.1"]
+      - nist_sp_800-53: ["AC-2(1)", "AC-5", "AC-6", "AC-6(1)", "AC-6(7)", "AU-9(4)", "IA-5 (1)"]
+      - soc_2: ["CC6.2", "CC6.3", "CC5.2"]
     condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow.plist GuestEnabled -> r:^0$"
@@ -1012,14 +1010,14 @@ checks:
       - cis: ["2.12.2"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2","AC.2.007","MP.2.120"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2", "AC.2.007", "MP.2.120"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1015","T1133","T1200","T1076","T1051","T1156","T1146","T1196","T1081","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1145","T1494","T1035","T1489","T1198","T1184","T1165","T1492","T1169","T1501","T1080","T1209","T1134","T1197","T1538","T1213","T1044","T1484","T1159","T1160","T1152","T1168","T1162","T1185","T1031","T1050","T1075","T1097","T1163","T1021","T1053","T1023","T1528","T1072","T1537","T1078","T1047","T1084","T1004"]
-      - nist_sp_800-53: ["AC-3","AC-5","AC-6"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_v3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
-      - soc_2: ["CC5.2","CC6.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3", "AC-5", "AC-6"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
       - "c:sysadminctl -smbGuestAccess status -> r:^SMB guest access disabled"
@@ -1037,10 +1035,10 @@ checks:
       - cis_csc_v7: ["4.2"]
       - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
       - iso_27001-2013: ["A.9.4.3"]
-      - mitre_techniques: ["T1134","T1098","T1017","T1067","T1088","T1175","T1136","T1003","T1214", "T1190","T1210","T1495","T1525","T1208","T1215","T1075","T1097","T1086","T1055","T1076","T1053","T1505","T1035","T1051","T1218","T1184","T1169","T1206","T1019","T1501","T1072","T1078","T1100","T1077","T1047","T1084","T1028"]
+      - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
       - nist_sp_800-53: ["IA-5"]
       - pci_dss_v3.2.1: ["2.1", "2.1.1"]
-      - pci_dss_4.0: ["2.2.2","2.3.1"]
+      - pci_dss_4.0: ["2.2.2", "2.3.1"]
       - soc_2: ["CC6.3"]
     condition: any
     rules:
@@ -1064,23 +1062,23 @@ checks:
   - id: 30041
     title: "Ensure Security Auditing Is Enabled."
     description: "macOS's audit facility, auditd, receives notifications from the kernel when certain system calls, such as open, fork, and exit, are made. These notifications are captured and written to an audit log."
-    rationale: "Logs generated by auditd may be useful when investigating a security incident as they may help reveal the vulnerable application and the actions taken by a malicious actor." 
+    rationale: "Logs generated by auditd may be useful when investigating a security incident as they may help reveal the vulnerable application and the actions taken by a malicious actor."
     remediation: "Terminal Method: Perform the following to enable security auditing: Run the following command to load auditd: $ /usr/bin/sudo /bin/launchctl load -w /System/Library/LaunchDaemons/com.apple.auditd.plist"
     compliance:
       - cis: ["3.1"]
-      - cis_csc_v8: ["8.2","8.5"]
-      - cis_csc_v7: ["4.9","6.2"]
+      - cis_csc_v8: ["8.2", "8.5"]
+      - cis_csc_v7: ["4.9", "6.2"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2","10.3","10.1","10.2.2","10.2.4","10.2.5"]
-      - pci_dss_4.0: ["9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5","5.3.4","6.4.1","6.4.2","10.2.1.1","10.2.1.3","10.2.1.4","10.2.1.6","10.2.1.7","10.2.2"]
-      - iso_27001-2013: ["A.9.4.2","A.12.4.1"]
-      - nist_sp_800-53: ["AU-3(1)","AU-7"]
-      - soc_2: ["CC5.2","CC7.2"]
+      - pci_dss_3.2.1: ["10.2", "10.3", "10.1", "10.2.2", "10.2.4", "10.2.5"]
+      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "5.3.4", "6.4.1", "6.4.2", "10.2.1.1", "10.2.1.3", "10.2.1.4", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - iso_27001-2013: ["A.9.4.2", "A.12.4.1"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
+      - soc_2: ["CC5.2", "CC7.2"]
       - mitre_techniques: ["T1110", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209"]
     condition: all
-    rules: 
-      - 'c:launchctl list -> r:com.apple.auditd'
+    rules:
+      - "c:launchctl list -> r:com.apple.auditd"
 
   # 3.2 Ensure Security Auditing Flags For User-Attributable Events Are Configured Per Local Organizational Requirements (Automated)
   - id: 30042
@@ -1096,18 +1094,18 @@ checks:
       - https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-31-Improvingthe-Federal-Governments-Investigative-and-Remediation-Capabilities-Relatedto-Cybersecurity-Incidents.pdf
     compliance:
       - cis: ["3.2"]
-      - cis_csc_v8: ["3.14","8.2","8.5"]
-      - cis_csc_v7: ["6.2","14.9"]
-      - cmmc_v2.0: ["AC.L2-3.1.7","AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.1","A.12.4.3"]
-      - hipaa: ["164.312(b)","164.312(c)(1)","164.312(c)(2)"]
-      - pci_dss_3.2.1: ["10.1","10.2","10.2.1","10.2.2","10.2.4","10.2.5","10.3","11.5"]
-      - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","9.4.5","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
-      - nist_sp_800-53: ["AU-3(1)","AC-6(9)","AU-7"]
-      - soc_2: ["CC5.2","CC6.1","CC7.2"] 
+      - cis_csc_v8: ["3.14", "8.2", "8.5"]
+      - cis_csc_v7: ["6.2", "14.9"]
+      - cmmc_v2.0: ["AC.L2-3.1.7", "AU.L2-3.3.1"]
+      - iso_27001-2013: ["A.12.4.1", "A.12.4.3"]
+      - hipaa: ["164.312(b)", "164.312(c)(1)", "164.312(c)(2)"]
+      - pci_dss_3.2.1: ["10.1", "10.2", "10.2.1", "10.2.2", "10.2.4", "10.2.5", "10.3", "11.5"]
+      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "9.4.5", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - nist_sp_800-53: ["AU-3(1)", "AC-6(9)", "AU-7"]
+      - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
     condition: all
     rules:
-      - 'f:/etc/security/audit_control -> r:^flags && r:ad && r:aa && r:lo && r:-all'
+      - "f:/etc/security/audit_control -> r:^flags && r:ad && r:aa && r:lo && r:-all"
 
   # 3.3 Ensure install.log Is Retained for 365 or More Days and No Maximum Size (Automated)
   - id: 30043
@@ -1118,18 +1116,18 @@ checks:
     remediation: "Terminal Method: Perform the following to ensure that install logs are retained for at least 365 days: Edit the /etc/asl/com.apple.install file and add or modify the ttl value to 365 or greater on the file line. Also, remove the all_max= setting and value from the file line."
     compliance:
       - cis: ["3.3"]
-      - cis_csc_v8: ["8.1","8.3"]
-      - cis_csc_v7: ["6.4","6.7"]
+      - cis_csc_v8: ["8.1", "8.3"]
+      - cis_csc_v7: ["6.4", "6.7"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.1","A.12.4.3"]
+      - iso_27001-2013: ["A.12.4.1", "A.12.4.3"]
       - hipaa: ["164.312(b)"]
       - pci_dss_3.2.1: ["10.7"]
-      - pci_dss_4.0: ["10.1","10.1.1"]
+      - pci_dss_4.0: ["10.1", "10.1.1"]
       - soc_2: ["A1.1"]
     condition: all
-    rules: 
+    rules:
       - 'c:grep -i ttl /etc/asl/com.apple.install -> n:ttl=(\d+) compare > 364'
-      - 'not c:grep -i all_max= /etc/asl/com.apple.install -> r:all_max='
+      - "not c:grep -i all_max= /etc/asl/com.apple.install -> r:all_max="
 
   # 3.4 Ensure Security Auditing Retention Is Enabled (Automated)
   - id: 30044
@@ -1140,17 +1138,17 @@ checks:
     remediation: "Terminal Method: Perform the following to set the audit retention length: Edit the /etc/security/audit_control file so that expire-after: is at least 60d OR 5G. Default Value: More info in the man page. To reference the man page use the command $ /usr/bin/man audit_control"
     compliance:
       - cis: ["3.4"]
-      - cis_csc_v8: ["8.1","8.3"]
-      - cis_csc_v7: ["6.4","6.7"]
+      - cis_csc_v8: ["8.1", "8.3"]
+      - cis_csc_v7: ["6.4", "6.7"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.1","A.12.4.3"]
+      - iso_27001-2013: ["A.12.4.1", "A.12.4.3"]
       - hipaa: ["164.312(b)"]
       - pci_dss_3.2.1: ["10.7"]
-      - pci_dss_4.0: ["10.1","10.1.1"]
+      - pci_dss_4.0: ["10.1", "10.1.1"]
       - soc_2: ["A1.1"]
     condition: all
     rules:
-      - 'f:/etc/security/audit_control -> r:^expire-after:60d'
+      - "f:/etc/security/audit_control -> r:^expire-after:60d"
 
   # 3.5 Ensure Access to Audit Records Is Controlled (Automated)
   - id: 30045
@@ -1166,13 +1164,13 @@ checks:
       - cis: ["3.5"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - iso_27001-2013: ["A.9.1.1"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
-      - nist_sp_800-53: ["AC-5","AC-6"]
-      - soc_2: ["CC5.2","CC6.1"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
       - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
     condition: all
     rules:
@@ -1191,17 +1189,17 @@ checks:
     references:
       - https://developer.apple.com/documentation/devicemanagement/firewall?language=objc
       - https://www.mandiant.com/resources/blog/reviewing-macos-unified-logs
-    compliance: 
+    compliance:
       - cis: ["3.6"]
-      - cis_csc_v8: ["4.5","8.2","8.5"]
-      - cis_csc_v7: ["6.2","6.3","9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.20","AU.L2-3.3.1","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.12.4.1","A.13.1.3"]
+      - cis_csc_v8: ["4.5", "8.2", "8.5"]
+      - cis_csc_v7: ["6.2", "6.3", "9.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.20", "AU.L2-3.3.1", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.12.4.1", "A.13.1.3"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["1.4","1.1.4","10.1","10.2","10.2.2","10.2.4","10.2.5","10.3"]
-      - pci_dss_4.0: ["1.2.1","5.3.4","6.4.1","6.4.2","9.4.5","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
-      - nist_sp_800-53: ["AU-3(1)","AU-7","SC-7(5)"]
-      - soc_2: ["CC5.2","CC6.6","CC7.2"]
+      - pci_dss_3.2.1: ["1.4", "1.1.4", "10.1", "10.2", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_4.0: ["1.2.1", "5.3.4", "6.4.1", "6.4.2", "9.4.5", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7", "SC-7(5)"]
+      - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
       - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
     condition: any
     rules:
@@ -1209,7 +1207,7 @@ checks:
       - "c:defaults read read /Library/Preferences/com.apple.alf.plist loggingoption -> r:^2$"
       - 'c:sh -c "profiles -P -o stdout | grep EnableLogging" -> r:EnableLogging\s*=\s*1'
       - 'c:sh -c "profiles -P -o stdout | grep LoggingOption" -> r:LoggingOption\s*=\s*detail'
-  
+
   # 3.7 Audit Software Inventory (Manual) - Not Implemented
 
   ##########################################################################
@@ -1225,15 +1223,15 @@ checks:
     remediation: "Terminal Method: Run the following command to disable Bonjour Advertising services: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements -bool true. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mDNSResponder 2. The key to include is NoMulticastAdvertisements. Additional Information: Anything Bonjour discovers is already available on the network and probably discoverable with network scanning tools. The security benefit of disabling Bonjour for that reason is minimal."
     compliance:
       - cis: ["4.1"]
-      - cis_csc_v8: ["4.1","4.8"]
-      - cis_csc_v7: ["5.1","9.2"]
-      - cmmc_v2.0: ["AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230","AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7"]
+      - cis_csc_v8: ["4.1", "4.8"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230", "AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SI-4","SC-20","SC-21","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_v3.2.1: ["1.2.1","2.2.2","2.2.5","2.2"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1","1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SI-4", "SC-20", "SC-21", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5", "2.2"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1", "1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements -> r:^1$"
@@ -1248,17 +1246,17 @@ checks:
     remediation: "Run the following command to disable the HTTP server services: $ sudo /usr/bin/sudo /bin/launchctl unload -w /System/Library/LaunchDaemons/org.apache.httpd.plist"
     references:
       - https://www.stigviewer.com/stig/apple_macos_11_big_sur/2021-06-16/finding/V230793
-    compliance: 
+    compliance:
       - cis: ["4.2"]
-      - cis_csc_v8: ["4.1","4.8"]
-      - cis_csc_v7: ["5.1","9.2"]
-      - cmmc_v2.0: ["AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230","AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7"]
+      - cis_csc_v8: ["4.1", "4.8"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230", "AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SI-4","SC-20","SC-21","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_v3.2.1: ["1.2.1","2.2.2","2.2.5","2.2"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1","1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SI-4", "SC-20", "SC-21", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5", "2.2"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1", "1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
       - "c:launchctl list | grep -c org.apache.httpd -> r:^0$"
@@ -1270,17 +1268,17 @@ checks:
     rationale: "File serving should not be done from a user desktop. Dedicated servers should be used. Open ports make it easier to exploit the computer."
     impact: "The nfs server is both a point of attack for the system and a means for unauthorized file transfers."
     remediation: "Run the following command to disable the nfsd fileserver services: $ /usr/bin/sudo /bin/launchctl disable system/com.apple.nfsd , Remove the exported Directory listing: $ /usr/bin/sudo /bin/rm /etc/exports"
-    compliance: 
+    compliance:
       - cis: ["4.2"]
-      - cis_csc_v8: ["4.1","9.2"]
-      - cis_csc_v7: ["5.1","9.2"]
-      - cmmc_v2.0: ["AC.1.002","CM.2.061","SC.3.180","CM.3.068","SC.5.230","AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7"]
+      - cis_csc_v8: ["4.1", "9.2"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230", "AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SI-4","SC-20","SC-21","CM-7(1)","CM-9","SA-10"]
-      - pci_dss_v3.2.1: ["1.2.1","2.2.2","2.2.5","2.2"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1","1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1"]
-      - soc_2: ["CC6.3","CC6.6","CC7.1","CC8.1"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SI-4", "SC-20", "SC-21", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5", "2.2"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1", "1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
       - "c:launchctl list | grep -c com.apple.nfsd -> r:^0$"
@@ -1306,18 +1304,18 @@ checks:
       - https://support.apple.com/en-us/HT204899
     compliance:
       - cis: ["5.1.2"]
-      - cis_csc_v8: ["2.3","2.6","10.5"]
+      - cis_csc_v8: ["2.3", "2.6", "10.5"]
       - cis_csc_v7: ["2.6"]
-      - cmmc_v2.0: ["CM.L2-3.4.9","CM.L2-3.4.7"]
+      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.7"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
       - pci_dss_3.2.1: ["1.4"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","12.3.4"]
-      - nist_sp_800-53: ["CM-7(1)","CM-7(2)","CM-8(3)","CM-10","SI-16"]
-      - soc_2: ["CC5.2","CC6.8","CC7.1"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "12.3.4"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-7(2)", "CM-8(3)", "CM-10", "SI-16"]
+      - soc_2: ["CC5.2", "CC6.8", "CC7.1"]
       - mitre_techniques: ["T1191", "T1092", "T1175", "T1173", "T1519", "T1052", "T1210", "T1133", "T1118", "T1171", "T1170", "T1046", "T1137", "T1086", "T1164", "T1121", "T1076", "T1091", "T1180", "T1064", "T1184", "T1221", "T1127", "T1028"]
     condition: all
     rules:
-      - 'c:csrutil status -> r:^System Integrity Protection status: enabled.'
+      - "c:csrutil status -> r:^System Integrity Protection status: enabled."
 
   # 5.1.3 Ensure Apple Mobile File Integrity (AMFI) Is Enabled (Automated)
   - id: 30051
@@ -1331,15 +1329,15 @@ checks:
       - https://github.com/usnistgov/macos_security/issues/39
       - https://github.com/usnistgov/macos_security/issues/40
       - https://www.naut.ca/blog/2020/11/13/forbidden-commands-to-liberate-macos/
-    compliance: 
+    compliance:
       - cis: ["5.1.3"]
-      - cis_csc_v8: ["2.3","2.6"]
+      - cis_csc_v8: ["2.3", "2.6"]
       - cis_csc_v7: ["2.6"]
-      - cmmc_v2.0: ["CM.L2-3.4.9","CM.L2-3.4.7"]
+      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.7"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","12.3.4"]
-      - nist_sp_800-53: ["CM-7(1)","CM-7(2)","CM-8(3)","CM-10"]
-      - soc_2: ["CC5.2","CC7.1"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "12.3.4"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-7(2)", "CM-8(3)", "CM-10"]
+      - soc_2: ["CC5.2", "CC7.1"]
       - mitre_techniques: ["T1191", "T1092", "T1175", "T1173", "T1519", "T1052", "T1210", "T1133", "T1118", "T1171", "T1170", "T1046", "T1137", "T1086", "T1164", "T1121", "T1076", "T1091", "T1180", "T1064", "T1184", "T1221", "T1127", "T1028"]
     condition: all
     rules:
@@ -1357,21 +1355,21 @@ checks:
       - https://eclecticlight.co/2020/11/30/is-big-surs-system-volume-sealed/
       - https://eclecticlight.co/2020/06/25/big-surs-signed-system-volume-addedsecurity-protection/
       - https://support.apple.com/guide/security/signed-system-volume-securitysecd698747c9/web
-    compliance: 
+    compliance:
       - cis: ["5.1.4"]
-      - cis_csc_v8: ["3.6","3.11"]
-      - cis_csc_v7: ["13.6","14.8"]
-      - cmmc_v2.0: ["AC.L2-3.1.19","IA.L2-3.5.10","MP.L2-3.8.1","SC.L2-3.13.11","SC.L2-3.13.16"]
-      - iso_27001-2013: ["A.6.2.1","A.10.1.1"]
-      - hipaa: ["164.312(a)(2)(iv)","164.312(e)(2)(ii)"]
-      - pci_dss_3.2.1: ["3.4","3.4.1","8.2.1"]
-      - pci_dss_4.0: ["3.1.1","3.3.2","3.3.3","3.5.1","3.5.1.2","3.5.1.3","8.3.2"]
-      - nist_sp_800-53: ["SC-28","SC-28(1)"]
+      - cis_csc_v8: ["3.6", "3.11"]
+      - cis_csc_v7: ["13.6", "14.8"]
+      - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
+      - iso_27001-2013: ["A.6.2.1", "A.10.1.1"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
+      - pci_dss_3.2.1: ["3.4", "3.4.1", "8.2.1"]
+      - pci_dss_4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
+      - nist_sp_800-53: ["SC-28", "SC-28(1)"]
       - soc_2: ["CC6.1"]
       - mitre_techniques: ["T1527", "T1119", "T1530", "T1114", "T1070", "T1208", "T1040", "T1145", "T1492", "T1493", "T1072"]
     condition: all
     rules:
-      - 'c:csrutil authenticated-root status -> r:^Authenticated Root status: enabled'
+      - "c:csrutil authenticated-root status -> r:^Authenticated Root status: enabled"
 
   # 5.1.5 Ensure Appropriate Permissions Are Enabled for System Wide Applications (Automated)
   - id: 30053
@@ -1384,14 +1382,14 @@ checks:
       - cis: ["5.1.5"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - iso_27001-2013: ["A.9.1.1"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
-      - nist_sp_800-53: ["AC-5","AC-6"]
-      - soc_2: ["CC5.2","CC6.1"]
-      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]    
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
     condition: all
     rules:
       - 'not c:find /Applications -iname "*.app" -type d -perm -2 -ls -> r:/Applications/'
@@ -1403,17 +1401,17 @@ checks:
     rationale: "Folders in /System/Volumes/Data/System should not be world-writable. The audit check excludes the 'Drop Box' folder that is part of Apple's default user template."
     impact: "Changing file permissions could disrupt the use of applications that rely on files in the System Folder with vulnerable permissions."
     remediation: "Run the following command to set permissions so that folders are not world-writable in the /System folder: $ /usr/bin/sudo IFS=$' for sysPermissions in $( /usr/bin/find /System/Volumes/Data/System -type d - perm -2 | /usr/bin/grep -v 'Drop Box' ); do /bin/chmod -R o-w '$sysPermissions' done"
-    compliance: 
+    compliance:
       - cis: ["5.1.6"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - iso_27001-2013: ["A.9.1.1"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
-      - nist_sp_800-53: ["AC-5","AC-6"]
-      - soc_2: ["CC5.2","CC6.1"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
       - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
     condition: all
     rules:
@@ -1429,13 +1427,13 @@ checks:
       - cis: ["5.1.7"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - iso_27001-2013: ["A.9.1.1"]
-      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - pci_dss_4.0: ["1.3.1","7.1"]
-      - nist_sp_800-53: ["AC-5","AC-6"]
-      - soc_2: ["CC5.2","CC6.1"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
       - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
     condition: all
     rules:
@@ -1452,7 +1450,7 @@ checks:
     remediation: "Terminal Method: Run the following command to set the maximum number of failed login attempts to less than or equal to 5: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'maxFailedLoginAttempts=<value≤5>' Note: When the account lockout threshold is set with pwpolicy, it will also set a reset value to policyAttributeMinutesUntilFailedAuthenticationReset that defaults to 1 minute. You can change this value with the command: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'policyAttributeMinutesUntilFailedAuthenticationReset=<value in minutes>' example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'maxFailedLoginAttempts=5' /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'policyAttributeMinutesUntilFailedAuthenticationReset=10' Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is maxFailedAttempts 3. The key must be set to <integer><value≤5></integer> Note: When setting the lockout threshold with a mobile configuration profile there is no default reset to the lockout. To set the reset value use the key autoEnableInSeconds and set the key to <integer><value in seconds></integer>. Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release."
     references:
       - CIS Password Policy - https://workbench.cisecurity.org/communities/113
-    compliance: 
+    compliance:
       - cis: ["5.2.1"]
       - cis_csc_v8: ["6.2"]
       - cis_csc_v7: ["16.7"]
@@ -1460,14 +1458,14 @@ checks:
       - iso_27001-2013: ["A.9.2.6"]
       - hipaa: ["164.308(a)(3)(ii)(C)"]
       - pci_dss_3.2.1: ["8.1.3"]
-      - pci_dss_4.0: ["8.2.4","8.2.5"]
+      - pci_dss_4.0: ["8.2.4", "8.2.5"]
       - nist_sp_800-53: ["AC-2(1)"]
-      - soc_2: ["CC6.2","CC6.3"]
+      - soc_2: ["CC6.2", "CC6.3"]
       - mitre_techniques: ["T1134", "T1197", "T1538", "T1530", "T1213", "T1089", "T1157", "T1044", "T1484", "T1054", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1034", "T1163", "T1076", "T1021", "T1053", "T1489", "T1051", "T1023", "T1165", "T1528", "T1501", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxFailedLoginAttempts=(\d+) compare < 6'
-  
+
   # 5.2.2 Ensure Password Minimum Length Is Configured (Automated)
   - id: 30057
     title: "Ensure Password Minimum Length Is Configured."
@@ -1481,7 +1479,7 @@ checks:
       - cis_csc_v7: ["4.4"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
       - iso_27001-2013: ["A.9.4.3"]
-      - pci_dss_4.0: ["2.2.2","8.3.5","8.3.6","8.6.3"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
       - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
     condition: all
@@ -1523,13 +1521,13 @@ checks:
     rationale: "Old passwords should not be reused."
     impact: "Required password changes will lead to some locked computers requiring admin assistance."
     remediation: "Terminal Method: Run the following command to require that the password must to be different from at least the last 15 passwords: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'usingHistory=<value≥15>' example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'usingHistory=15' Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is pinHistory 3. The key must be set to <integer><value≥15></integer> Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release."
-    compliance: 
+    compliance:
       - cis: ["5.2.8"]
       - cis_csc_v8: ["5.2"]
       - cis_csc_v7: ["4.4"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
       - iso_27001-2013: ["A.9.4.3"]
-      - pci_dss_4.0: ["2.2.2","8.3.5","8.3.6","8.6.3"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
       - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
     condition: all
@@ -1549,16 +1547,16 @@ checks:
     rationale: "The sudo command stays logged in as the root user for five minutes before timing out and re-requesting a password. This five-minute window should be eliminated since it leaves the system extremely vulnerable. This is especially true if an exploit were to gain access to the system, since they would be able to make changes as a root user."
     impact: "This control has a serious impact where users often have to use sudo. It is even more of an impact where users have to use sudo multiple times in quick succession as part of normal work processes. Organizations with that common use case will likely find this control too onerous and are better to accept the risk of not requiring a 0 grace period. In some ways the use of sudo -s, which is undesirable, is better than a long grace period since that use does change the hash to show that it is a root shell rather than a normal shell where sudo commands will be implemented without a password."
     remediation: "Run the following command to edit the sudo settings: $ /usr/bin/sudo /usr/sbin/visudo -f /etc/sudoers.d/<configuration file name>. Note: Unlike other Unix and/or Linux distros, macOS will ignore configuration files in the sudoers.d folder that contain a . so do not add a file extension to the configuration file. Add the line Defaults timestamp_timeout=0 to the configuration file. If /etc/sudoers.d/ is not owned by root or in the wheel group, run the following to change ownership and group: $ /usr/bin/sudo /usr/sbin/chown -R root:wheel /etc/security/sudoers.d/ Additional Information: In previous iterations and OS versions of the macOS Benchmark, the guidance was to edit the sudoers file directly. While this would properly configure the OS, any update would change the settings back to the default configuration. Creating a configuration file in the /etc/sudoers.d/ folder will not be modified on an OS update and will keep the proper configuration."
-    compliance: 
+    compliance:
       - cis: ["5.4"]
       - cis_csc_v8: ["4.3"]
       - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10","AC.L2-3.1.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
       - iso_27001-2013: ["A.8.1.3"]
       - hipaa: ["164.312(a)(2)(iii)"]
       - pci_dss_3.2.1: ["8.1.8"]
       - pci_dss_4.0: ["8.2.8"]
-      - nist_sp_800-53: ["AC-2(5)","AC-11","AC-11(1)","AC-12"]
+      - nist_sp_800-53: ["AC-2(5)", "AC-11", "AC-11(1)", "AC-12"]
       - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
@@ -1571,18 +1569,18 @@ checks:
     rationale: "In combination with removing the sudo timeout grace period, a further mitigation should be in place to reduce the possibility of a background process using elevated rights when a user elevates to root in an explicit context or tty. Additional mitigation should be in place to reduce the risk of privilege escalation of background processes."
     impact: "This control should have no user impact. Developers or installers may have issues if background processes are spawned with different interfaces than where sudo was executed."
     remediation: "Run the following command to edit the sudo settings: $ /usr/bin/sudo /usr/sbin/visudo -f /etc/sudoers.d/<configuration file name>. example: $ /usr/bin/sudo /usr/sbin/visudo -f /etc/sudoers.d/10_cissudoconfiguration ; Note: Unlike other Unix and/or Linux distros, macOS will ignore configuration files in the sudoers.d folder that contain a . so do not add a file extension to the configuration file. Add the line Defaults timestamp_type=tty to the configuration file. Note: The Defaults timestamp_type=tty line can be added to an existing configuration file or a new one. That will depend on your organization's preference and works either way. Default Value: If no value is set, the default value of tty_tickets enabled will be used. Additional Information: In previous iterations and OS versions of the macOS Benchmark, the guidance was to edit the sudoers file directly. While this would properly configure the OS, any update would change the settings back to the default configuration. Creating a configuration file in the /etc/sudoers.d/ folder will not be modified on an OS update and will keep the proper configuration. With the configuration file, there is no need to remove the Defaults !tty_tickets line from the visudo settings. The configuration file will take precedent."
-    references: 
+    references:
       - https://github.com/jorangreef/sudo-prompt/issues/33
     compliance:
       - cis: ["5.5"]
       - cis_csc_v8: ["4.3"]
       - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10","AC.L2-3.1.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
       - iso_27001-2013: ["A.8.1.3"]
       - hipaa: ["164.312(a)(2)(iii)"]
       - pci_dss_3.2.1: ["8.1.8"]
       - pci_dss_4.0: ["8.2.8"]
-      - nist_sp_800-53: ["AC-2(5)","AC-11","AC-11(1)","AC-12"]
+      - nist_sp_800-53: ["AC-2(5)", "AC-11", "AC-11(1)", "AC-12"]
       - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
@@ -1592,7 +1590,7 @@ checks:
       - 'not d:/etc/sudoers.d -> r:\.* -> r:timestamp_type=ppid'
       - "not f:/etc/sudoers -> r:timestamp_type=global"
       - 'not d:/etc/sudoers.d -> r:\.* -> r:timestamp_type=global'
-  
+
   # 5.6 Ensure the "root" Account Is Disabled (Automated)
   - id: 30062
     title: "Ensure the 'root' Account Is Disabled."
@@ -1604,11 +1602,11 @@ checks:
       - cis: ["5.6"]
       - cis_csc_v8: ["5.4"]
       - cis_csc_v7: ["4.3"]
-      - cmmc_v2.0: ["AC.L2-3.1.5","AC.L2-3.1.6","AC.L2-3.1.7","SC.L2-3.13.3"]
+      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
       - iso_27001-2013: ["A.9.2.3"]
-      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
-      - nist_sp_800-53: ["AC-6(2)","AC-6(5)"]
-      - soc_2: ["CC6.1","CC6.3"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - soc_2: ["CC6.1", "CC6.3"]
       - mitre_techniques: ["T1176", "T1501", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
     condition: all
     rules:
@@ -1628,12 +1626,12 @@ checks:
       - cis: ["5.7"]
       - cis_csc_v8: ["4.3"]
       - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10","AC.L2-3.1.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
       - iso_27001-2013: ["A.8.1.3"]
       - hipaa: ["164.312(a)(2)(iii)"]
       - pci_dss_3.2.1: ["8.1.8"]
       - pci_dss_4.0: ["8.2.8"]
-      - nist_sp_800-53: ["AC-2(5)","AC-11","AC-11(1)","AC-12"]
+      - nist_sp_800-53: ["AC-2(5)", "AC-11", "AC-11(1)", "AC-12"]
       - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
@@ -1648,21 +1646,21 @@ checks:
     remediation: "Run the following commands to create or edit the login window text and set the proper permissions: Edit (or create) a PolicyBanner.txt or PolicyBanner.rtf file, in the /Library/Security/ folder, to include the required login window banner text. Perform the following to set permissions on the policy banner file: $ /usr/bin/sudo /usr/sbin/chown o+r /Library/Security/PolicyBanner.txt , $ /usr/bin/sudo /usr/sbin/chown o+r /Library/Security/PolicyBanner.rtf Note: If your organization uses an .rtfd file to set the policy banner, run $ /usr/bin/sudo /usr/sbin/chown -R o+rx /Library/Security/PolicyBanner.rtfd to update the permissions."
     references:
       - https://support.apple.com/en-au/HT202277
-    compliance: 
+    compliance:
       - cis: ["5.8"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
-      - pci_dss_3.2.1: ["2.2","11.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1"]
-      - nist_sp_800-53: ["CM-7(1)","CM-9","SA-10"]
-      - soc_2: ["CC7.1","CC8.1"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
       - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
     condition: all
     rules:
       - "d:/Library/Security -> r:^PolicyBanner"
-  
+
   # 5.9 Ensure Legacy EFI Is Valid and Updating (Automated)
   - id: 30065
     title: "Ensure Legacy EFI Is Valid and Updating."
@@ -1674,7 +1672,7 @@ checks:
       - cis_csc_v8: ["2.2"]
       - cis_csc_v7: ["2.2"]
       - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073", "RM.3.147"]
-      - pci_dss_4.0: ["2.2.5","12.3.4"]
+      - pci_dss_4.0: ["2.2.5", "12.3.4"]
     condition: any
     rules:
       - "c:/usr/libexec/firmwarecheckers/eficheck/eficheck --integrity-check -> r:No changes detected in primary hashes"
@@ -1693,12 +1691,12 @@ checks:
       - cis: ["5.10"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","CM.L2-3.4.1","CM.L2-3.4.6","CM.L2-3.4.2","CM.L2-3.4.7"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
-      - pci_dss_3.2.1: ["2.2","11.5"]
-      - pci_dss_4.0: ["1.1.1","1.2.1","1.2.6","1.5.1","1.2.7","2.1.1","2.2.1"]
-      - nist_sp_800-53: ["CM-7(1)","CM-9","SA-10"]
-      - soc_2: ["CC7.1","CC8.1"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
       - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
     condition: all
     rules:
@@ -1721,16 +1719,16 @@ checks:
       - cis: ["6.1.1"]
       - cis_csc_v8: ["2.3"]
       - cis_csc_v7: ["2.6"]
-      - cmmc_v2.0: ["CM.L2-3.4.9","CM.L2-3.4.7","CM.2.063","CM.3.069","CM.4.073"]
-      - iso_27001-2013: ["A.12.5.1","A.12.6.2"]
-      - mitre_techniques: ["T1191","T1092","T1175","T1173","T1519","T1052","T1210","T1133","T1118","T1171","T1170","T1046","T1137","T1086","T1164","T1121","T1076","T1091","T1180","T1064","T1184","T1221","T1127","T1028"]
-      - nist_sp_800-53: ["CM-11","CM-7(2)","CM-8(3)","CM-10"]
+      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.7", "CM.2.063", "CM.3.069", "CM.4.073"]
+      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+      - mitre_techniques: ["T1191", "T1092", "T1175", "T1173", "T1519", "T1052", "T1210", "T1133", "T1118", "T1171", "T1170", "T1046", "T1137", "T1086", "T1164", "T1121", "T1076", "T1091", "T1180", "T1064", "T1184", "T1221", "T1127", "T1028"]
+      - nist_sp_800-53: ["CM-11", "CM-7(2)", "CM-8(3)", "CM-10"]
       - pci_dss_4.0: ["12.3.4"]
       - soc_2: ["CC7.1"]
     condition: all
     rules:
       - "c:defaults read NSGlobalDomain AppleShowAllExtensions -> r:^1$"
-  
+
   # 6.2 Mail
 
   # 6.2.1 Ensure Protect Mail Activity in Mail Is Enabled (Manual) - Not Implemented
@@ -1746,13 +1744,13 @@ checks:
     remediation: "Graphical Method: Perform the following steps to set safe files to not open after downloading in Safari: 1. Open Safari 2. Select Safari from the menu bar 3. Select Settings 4. Select General 5. Set Open 'safe' files after downloading to disabled. Terminal Method: Run the following command to disable safe files from not opening when downloaded in Safari: $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari AutoOpenSafeDownloads -bool false example:$ /usr/bin/sudo -u firstuser /usr/bin/defaults write /Users/firstuser/Library/Containers/com.apple.Safari/Data/Library/Preferences /com.apple.Safari AutoOpenSafeDownloads -bool false Note: To run the Terminal commands, Terminal must be granted Full Disk Access in the Security & Privacy pane in System Preferences. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.Safari 2. The key to include is AutoOpenSafeDownloads 3. The key must be set to: <false/> Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
     compliance:
       - cis: ["6.3.1"]
-      - cis_csc_v8: ["9.1","9.6"]
-      - cis_csc_v7: ["7.1","7.9","8.5"]
-      - cmmc_v2.0: ["CM.L2-3.4.9","CM.L2-3.4.2","SC.L2-3.13.13","SI.L1-3.14.2"]
+      - cis_csc_v8: ["9.1", "9.6"]
+      - cis_csc_v7: ["7.1", "7.9", "8.5"]
+      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.2", "SC.L2-3.13.13", "SI.L1-3.14.2"]
       - pci_dss_4.0: ["5.4.1"]
       - nist_sp_800-53: ["SI-8"]
-      - iso_27001-2013: ["A.8.1.3", "A.12.2.1" , "A.13.1.1"]
-      - mitre_techniques: ["T1527","T1223","T1483","T1189","T1193","T1192","T1194","T1528","T1204","T1102"]
+      - iso_27001-2013: ["A.8.1.3", "A.12.2.1", "A.13.1.1"]
+      - mitre_techniques: ["T1527", "T1223", "T1483", "T1189", "T1193", "T1192", "T1194", "T1528", "T1204", "T1102"]
     condition: any
     rules:
       - "c:defaults read com.apple.Safari AutoOpenSafeDownloads -> r:^0$"
@@ -1761,7 +1759,7 @@ checks:
   # 6.3.2 Audit History and Remove History Items (Manual)
 
   # 6.3.3 Ensure Warn When Visiting A Fraudulent Website in Safari Is Enabled (Automated) - Not Implemented
-  
+
   # 6.3.4 Ensure Prevent Cross-site Tracking in Safari Is Enabled (Automated)
   - id: 30069
     title: "Ensure Prevent Cross-site Tracking in Safari Is Enabled."
@@ -1769,14 +1767,14 @@ checks:
     rationale: "Cross-tracking allows data-brokers to follow you across the Internet to enable their business model of selling personal data. Users should protect their data and not volunteer it to marketing companies."
     impact: "Marketing companies will be unable to target you as effectively."
     remediation: "Graphical Method: Perform the following steps to set prevent cross-site tracking in Safari to enabled: 1. Open Safari 2. Select Safari from the menu bar 3. Select Settings 4. Select Privacy 5. Set Prevent cross-site tracking is enable. Terminal Method: Run the following command to enable Safari to prevent cross-site tracking: $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari BlockStoragePolicy -int 2 $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari WebKitPreferences.storageBlockingPolicy -int 1 $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Containers/com.apple.Safari/Data/Library/Preference s/com.apple.Safari WebKitStorageBlockingPolicy -int 1 example: $ /usr/bin/sudo -u firstuser /usr/bin/defaults write /Users/firstuser/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari BlockStoragePolicy -int 2 $ /usr/bin/sudo -u firstuser /usr/bin/defaults write /Users/firstuser/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari WebKitPreferences.storageBlockingPolicy -int 1 $ /usr/bin/sudo -u firstuser /usr/bin/defaults write /Users/firstuser/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari WebKitStorageBlockingPolicy -int 1 Note: To run the Terminal commands, Terminal must be granted Full Disk Access in the Security & Privacy pane in System Preferences. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.Safari 2. The key to include is BlockStoragePolicy 3. The key must be set to: 2 4. The key to also include is WebKitPreferences.storageBlockingPolicy 5. The key must be set to: 1 6. The key to also include is WebKitStorageBlockingPolicy 7. The key must be set to: 1 Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-    references: 
+    references:
       - https://support.apple.com/guide/safari/prevent-cross-site-tracking-sfri40732/mac
-    compliance: 
+    compliance:
       - cis: ["6.3.4"]
       - cis_csc_v8: ["9.1"]
       - cis_csc_v7: ["7.1"]
-      - cmmc_v2.0: ["CM.L2-3.4.9","CM.L2-3.4.2"]
-      - iso_27001-2013: ["A.8.1.3","A.12.2.1"]
+      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.2"]
+      - iso_27001-2013: ["A.8.1.3", "A.12.2.1"]
     condition: any
     rules:
       - "c:defaults read com.apple.Safari BlockStoragePolicy -> r:^2$"
@@ -1798,9 +1796,9 @@ checks:
     compliance:
       - cis: ["6.3.6"]
       - cis_csc_v8: ["9.1"]
-      - cis_csc_v7: ["7.1"] 
-      - cmmc_v2.0: ["CM.L2-3.4.9","CM.L2-3.4.2"]
-      - iso_27001-2013: ["A.8.1.3","A.12.2.1"]
+      - cis_csc_v7: ["7.1"]
+      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.2"]
+      - iso_27001-2013: ["A.8.1.3", "A.12.2.1"]
     condition: all
     rules:
       - "c:defaults read com.apple.Safari WebKitPreferences.privateClickMeasurementEnabled -> r:^1$"
@@ -1814,12 +1812,12 @@ checks:
     remediation: "Graphical Method: Perform the following steps to set Safari to show full website addresses: 1. Open Safari 2. Select Safari from the menu bar 3. Select Settings 4. Select Security 5. Set Show full website address to enabled Terminal Method: Run the following command to enable showing full website addresses in Safari: $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari ShowFullURLInSmartSearchField -bool true example: $ /usr/bin/sudo -u firstuser /usr/bin/defaults write /Users/firstuser/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari ShowFullURLInSmartSearchField -bool true Note: To run the Terminal commands, Terminal must be granted Full Disk Access in the Security & Privacy pane in System Preferences. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.Safari 2. The key to include is ShowFullURLInSmartSearchField 3. The key must be set to: <true/> Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
     references:
       - https://apple.stackexchange.com/questions/371473/always-show-full-url-insafari-address-bar
-    compliance: 
+    compliance:
       - cis: ["6.3.7"]
       - cis_csc_v8: ["9.1"]
       - cis_csc_v7: ["7.1"]
-      - cmmc_v2.0: ["CM.L2-3.4.9","CM.L2-3.4.2"]
-      - iso_27001-2013: ["A.8.1.3","A.12.2.1"]
+      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.2"]
+      - iso_27001-2013: ["A.8.1.3", "A.12.2.1"]
     condition: any
     rules:
       - "c:defaults read com.apple.Safari ShowFullURLInSmartSearchField -> r:^1$"
@@ -1834,23 +1832,22 @@ checks:
     rationale: "Enabling Secure Keyboard Entry minimizes the risk of a key logger from detecting what is entered in Terminal."
     impact: "Enabling this in Terminal would prevent an application that is otherwise validly intercepting keyboard input from intercepting that input in Terminal.app. This could impact productivity tools."
     remediation: "Graphical Method: Perform the following steps to enable secure keyboard entries in Terminal: 1. Open the Applications folder 2. Open the Utilities folder 3. Open Terminal 4. Select Terminal in the Menu Bar 5. Set Secure Keyboard Entry to enabled. Terminal Method: $ /usr/bin/sudo -u <username> /usr/bin/defaults write -app Terminal SecureKeyboardEntry -bool true example: $ /usr/bin/sudo -u firstuser /usr/bin/defaults write -app Terminal SecureKeyboardEntry -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.Terminal 2. The key to include is SecureKeyboardEntry 3. The key must be set to <true/> Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-    references: 
+    references:
       - https://support.apple.com/en-ca/guide/terminal/trml109/mac
       - https://developer.apple.com/library/archive/technotes/tn2150/_index.html
       - https://krypted.com/mac-os-x/secure-keyboard-entry-on-macos/
     compliance:
       - cis: ["6.4.1"]
       - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["4.1","5.1","9.2"]
-      - cmmc_v2.0: ["CM.3.068","SC.5.230","AC.3.018","AC.1.002","CM.2.061","SC.3.180","CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.9.2.3","A.8.1.3","A.14.2.5","A.13.1.3"]
-      - mitre_techniques: ["T1110","T1003","T1081","T1097","T1178","T1072","T1067","T1495","T1019","T1177","T1485","T1486","T1491","T1488","T1487","T1490","T1146","T1148","T1015","T1133","T1200","T1076","T1051","T1176","T1501","T1087","T1098","T1139","T1197","T1092","T1136","T1011","T1147","T1130","T1174","T1053","T1166","T1206","T1503","T1214","T1187","T1208","T1142","T1075","T1201","T1145","T1184","T1537","T1078","T1077","T1134","T1017","T1088","T1175","T1190","T1210","T1525","T1215","T1086","T1055","T1505","T1035","T1218","T1169","T1100","T1047","T1084","T1028","T1156","T1196","T1530","T1089","T1073","T1157","T1054","T1070","T1037","T1036","T1096","T1034","T1150","T1504","T1494","T1489","T1198","T1165","T1492","T1080","T1209","T1112","T1058","T1173","T1137","T1539","T1535","T1506","T1138","T1044","T1199"]
-      - nist_sp_800-53: ["SI-4","AU-2","CM-1","CM-2","CM-6","CM-7","IA-5","IA-6","SC-20","SC-21"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
-      - soc_2: ["CC6.3","CC6.6"]
+      - cis_csc_v7: ["4.1", "5.1", "9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230", "AC.3.018", "AC.1.002", "CM.2.061", "SC.3.180", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.9.2.3", "A.8.1.3", "A.14.2.5", "A.13.1.3"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["SI-4", "AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
       - "c:defaults read -app Terminal SecureKeyboardEntry -> r:^1$|does not exist"
       - 'c:sh -c "profiles -P -o stdout | grep SecureKeyboardEntry" -> r:SecureKeyboardEntry\s*=\s*1'
-      
