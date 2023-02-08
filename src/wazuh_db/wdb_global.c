@@ -838,6 +838,7 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
     cJSON* sql_agents_id = wdb_is_group_empty(wdb, group_name);
 
     sqlite3_stmt *stmt = NULL;
+    cJSON* agent_id_item = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
@@ -862,7 +863,6 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
-        cJSON* agent_id_item = NULL;
         cJSON_ArrayForEach(agent_id_item,sql_agents_id) {
             cJSON* agent_id = cJSON_GetObjectItem(agent_id_item, "id_agent");
             if (cJSON_IsNumber(agent_id)) {
