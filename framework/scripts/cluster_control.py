@@ -120,7 +120,6 @@ async def print_health(config, more, filter_node):
                         f"Integrity check: {node_info['status']['last_check_integrity']['date_end_master']} | " \
                         f"Integrity sync: {node_info['status']['last_sync_integrity']['date_end_master']} | " \
                         f"Agents-info: {node_info['status']['last_sync_agentinfo']['date_end_master']} | " \
-                        f"Agents-groups: {node_info['status']['last_sync_agentgroups']['date_end_master']} | " \
                         f"Last keep alive: {node_info['status']['last_keep_alive']}.\n"
 
             msg2 += "        Status:\n"
@@ -163,18 +162,6 @@ async def print_health(config, more, filter_node):
                     f"{node_info['status']['last_sync_agentinfo']['n_synced_chunks']}.\n"
             msg2 += f"                Permission to synchronize agent-info: " \
                     f"{node_info['status']['sync_agent_info_free']}.\n"
-
-            # Agent groups
-            total = calculate_seconds(node_info['status']['last_sync_agentgroups']['date_start_master'],
-                                      node_info['status']['last_sync_agentgroups']['date_end_master'])
-            msg2 += "            Agent-groups:\n"
-            msg2 += f"                Last synchronization: {total} " \
-                    f"({node_info['status']['last_sync_agentgroups']['date_start_master']} - " \
-                    f"{node_info['status']['last_sync_agentgroups']['date_end_master']}).\n"
-            msg2 += f"                Number of synchronized chunks: " \
-                    f"{node_info['status']['last_sync_agentgroups']['n_synced_chunks']}.\n"
-            msg2 += f"                Permission to synchronize agent-groups: " \
-                    f"{node_info['status']['sync_agent_groups_free']}.\n"
 
     print(msg1)
     more and print(msg2)

@@ -73,10 +73,6 @@ cJSON* __wrap_wm_agent_upgrade_parse_data_response(int error_id, const char* mes
 
 cJSON* __wrap_wm_agent_upgrade_parse_response(int error_id, cJSON *data);
 
-cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, cJSON *message);
-
-int __wrap_w_send_clustered_message(const char* command, const char* payload, char* response);
-
 bool __wrap_wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *agent_id, int *task_id, char** data);
 
 char* __wrap_wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size);
