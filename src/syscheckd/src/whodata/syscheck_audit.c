@@ -37,6 +37,8 @@ unsigned int count_reload_retries;
 static const char *const AUDISP_CONFIGURATION = "active = yes\ndirection = out\npath = builtin_af_unix\n"
                                                 "type = builtin\nargs = 0640 %s\nformat = string\n";
 
+w_queue_t * audit_queue;
+
 //This variable controls if the the modification of the rule is made by syscheck.
 
 volatile int audit_db_consistency_flag = 0;
@@ -54,6 +56,8 @@ typedef struct _audit_data_s {
  * @param [out] audit_data Struct that saves the audit socket to read the events from and the audit mode.
  */
 static void *audit_main(audit_data_t *audit_data);
+
+static void *audit_parse_thread();
 
 int check_auditd_enabled(void) {
     PROCTAB *proc = openproc(PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM );
@@ -359,6 +363,10 @@ int audit_init(void) {
         return -1;
     }
 
+    // Initialize audit queue
+    audit_queue = queue_init(1024 * 1024);
+    w_create_thread(audit_parse_thread, NULL);
+
     // Perform Audit healthcheck
     if (syscheck.audit_healthcheck) {
         if(audit_health_check(audit_data.socket)) {
@@ -503,6 +511,17 @@ void *audit_main(audit_data_t *audit_data) {
 }
 // LCOV_EXCL_STOP
 
+void *audit_parse_thread() {
+    char * audit_logs;
+
+    while (1) {
+        audit_logs = queue_pop_ex(audit_queue);
+        audit_parse(audit_logs);
+        os_free(audit_logs);
+    }
+
+    return NULL;
+}
 
 void audit_read_events(int *audit_sock, atomic_int_t *running) {
     size_t byteRead;
@@ -539,7 +558,7 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
         case 0:
             if (cache_i) {
                 // Flush cache
-                audit_parse(cache);
+                queue_push_ex(audit_queue, strdup(cache));
                 cache_i = 0;
             }
 
@@ -602,7 +621,7 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
 
                 if (cache_id && strcmp(cache_id, id) && cache_i) {
                     if (!event_too_long_id) {
-                        audit_parse(cache);
+                        queue_push_ex(audit_queue, strdup(cache));
                     }
                     cache_i = 0;
                 }
@@ -631,7 +650,7 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
 
         // If some audit log remains in the cache and it is complet (line "end of event" is found), flush cache
         if (eoe_found && !event_too_long_id){
-            audit_parse(cache);
+            queue_push_ex(audit_queue, strdup(cache));
             cache_i = 0;
         }
 
