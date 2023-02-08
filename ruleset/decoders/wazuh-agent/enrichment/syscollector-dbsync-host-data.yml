@@ -48,5 +48,3 @@ normalize:
     map:
       - host.ip: +a_append/$~json.data.address
 
-  - map:
-      - ~host_aux: +ef_delete
