@@ -277,12 +277,14 @@ void configure(CLI::App_p app)
     serverApp
         ->add_option("--threads", options->threads, "Sets the number of threads to be used by the engine environment.")
         ->default_val(ENGINE_THREADS)
+        ->check(CLI::PositiveNumber)
         ->envname(ENGINE_THREADS_ENV);
     // Queue size
     serverApp
         ->add_option(
             "--queue_size", options->queueSize, "Sets the number of events that can be queued to be processed.")
         ->default_val(ENGINE_QUEUE_SIZE)
+        ->check(CLI::PositiveNumber)
         ->envname(ENGINE_QUEUE_SIZE_ENV);
     // Flood file
     serverApp
