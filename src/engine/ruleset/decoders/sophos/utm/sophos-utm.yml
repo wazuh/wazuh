@@ -57,8 +57,7 @@ normalize:
       - source.ip : $~tmp.srcip
       - user.name : $~tmp.user
 
-  - check:
-      - event.code==astarosg_TVM OR event.code==httpd OR event.code==ulogd
+  - check: event.code==astarosg_TVM OR event.code==httpd OR event.code==ulogd
     logpar:
       - ~tmp.message: <~tmp/kv/=/ /'/'>
     map:
@@ -122,8 +121,8 @@ normalize:
 
   - check: >-
         event.code==smtpd OR event.code==barnyard OR event.code==exim OR
-        event.code==frox event.code==ipsec_starter OR event.code==pluto OR
-        event.code==pop3proxy  OR event.code==xl2tpd
+        event.code==frox OR event.code==ipsec_starter OR event.code==pluto OR
+        event.code==pop3proxy OR event.code==xl2tpd
     map:
       - rsa.internal.messageid: $event.code
       - process.pid: $~tmp.process_pid
