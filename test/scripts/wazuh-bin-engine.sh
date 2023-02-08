@@ -23,6 +23,10 @@ if [ "$1" = "-t" ]; then
     exit 0
 fi
 
+# Configure code dump
+ulimit -S -c unlimited
+sysctl -w kernel.core_pattern=/coredumps/core-%e-%E-%t-%s-%p
+
 # Start Engine daemon
 nohup $ENGINE_DIR/wazuh-engine server start >> $OUTPUT_FILE_PATH 2>&1 &
 
