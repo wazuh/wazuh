@@ -1,32 +1,42 @@
-
 ---
 name: decoder/dbsync-host-data/0
 
+metadata:
+  module: wazuh-agent/event-enrichment/dbsync
+  title: Host data from DBSync events
+  description: Extracts host data from DBSync events
+  compatibility: This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    url: https://wazuh.com
+    date: 2023/01/02
+  references:
+    - https://github.com/wazuh/wazuh/issues/15500
+
 sources:
   - decoder/dbsync/0
-
-metadata:
-    module: wazuh-agent/enrichment/dbsync-host-data
-    title: Host data from DBSync events
-    description: >
-        Extracts host data from DBSync events
-    compatibility: >
-        This decoder has been tested on Wazuh version 4.3
-    author:
-        name: Wazuh, Inc.
-        url: https://wazuh.com
-        date: 2023/01/02
 
 check:
   - ~json.type: +s_eq/state
 
 normalize:
-  - check: +ef_exists/~json.data.attributes.hostname OR +ef_exists/~json.data.attributes.architecture
+  - check:
+      - ~json.component: +r_match/osinfo$
     map:
       - ~do_update_kvdb: true
+      - host.architecture: $~json.data.attributes.architecture
       - host.hostname: $~json.data.attributes.hostname
       - host.name: $~json.data.attributes.hostname
-      - host.architecture: $~json.data.attributes.architecture
+      - host.os.kernel: $~json.data.attributes.release
+      - host.os.name: $~json.data.attributes.os_name
+      - host.os.platform: $~json.data.attributes.os_platform
+      # TODO: check if sysname is one of the accepted values
+      - host.os.type: +s_lo/$~json.data.attributes.sysname
+      - host.os.version: $~json.data.attributes.os_version
+  - check:
+      - $~json.data.attributes.os_display_version: +ef_exists
+    map:
+      - host.os.type: windows
 
   - check: +ef_exists/host.mac AND +ef_exists/~json.data.attributes.mac AND +ef_exists/~json.data.attributes.name
     map:

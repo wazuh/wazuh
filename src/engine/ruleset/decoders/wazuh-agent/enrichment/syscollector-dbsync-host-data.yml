@@ -1,6 +1,18 @@
 ---
 name: decoder/syscollector-dbsync-host-data/0
 
+metadata:
+  module: wazuh-agent/event-enrichment/syscollector
+  title: Host data from Syscollector DBSync events
+  description: Extracts host data from Syscollector DBSync events
+  compatibility: This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    url: https://wazuh.com
+    date: 2023/01/02
+  references:
+    - https://github.com/wazuh/wazuh/issues/15500
+
 sources:
   - decoder/syscollector-dbsync-network-address-inserted/0
   - decoder/syscollector-dbsync-network-address/0
@@ -9,18 +21,6 @@ sources:
   - decoder/syscollector-dbsync-osinfo-inserted/0
   - decoder/syscollector-dbsync-osinfo/0
 
-metadata:
-    module: wazuh-agent/enrichment/syscollector-dbsync-host-data
-    title: Host data from Syscollector DBSync events
-    description: >
-        Extracts host data from Syscollector DBSync events
-    compatibility: >
-        This decoder has been tested on Wazuh version 4.3
-    author:
-        name: Wazuh, Inc.
-        url: https://wazuh.com
-        date: 2023/01/02
-
 check:
   - ~do_update_kvdb: +t_is_true
   # TODO: Delete operation are not yet implemented
@@ -28,9 +28,19 @@ check:
 
 normalize:
   - map:
+      - host.architecture: $~json.data.architecture
       - host.hostname: $~json.data.hostname
       - host.name: $~json.data.hostname
-      - host.architecture: $~json.data.architecture
+      - host.os.kernel: $~json.data.release
+      - host.os.name: $~json.data.os_name
+      - host.os.platform: $~json.data.os_platform
+      # TODO: check if sysname is one of the accepted values
+      - host.os.type: +s_lo/$~json.data.sysname
+      - host.os.version: $~json.data.os_version
+  - check:
+      - $~json.data.os_display_version: +ef_exists
+    map:
+      - host.os.type: windows
 
   - check: +ef_exists/host.mac AND +ef_exists/~json.data.mac AND +ef_exists/~json.data.name
     map:
