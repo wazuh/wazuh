@@ -34,7 +34,7 @@ async def test_async_open_connection(open_unix_connection_mock):
     await async_wdb.open_connection()
     assert async_wdb._reader is not None
     assert async_wdb._writer is not None
-    open_unix_connection_mock.assert_called_once_with(path=common.WDB_SOCKET, loop='test_loop')
+    open_unix_connection_mock.assert_called_once_with(path=common.WDB_SOCKET)
 
 
 def test_async_close():
