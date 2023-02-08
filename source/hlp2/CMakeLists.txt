@@ -11,7 +11,8 @@ CPMAddPackage(
 
 CPMAddPackage(
         NAME date
-        # In order to avoid STDOFF errors apply this commit
+        # Using specific commit hash from master to avoid STDOFF errors,
+        # if a version (newer than 3.0.1) is released update this.
         GITHUB_REPOSITORY HowardHinnant/date
         GIT_TAG 22ceabf205d8d678710a43154da5a06b701c5830
         OPTIONS

@@ -2,12 +2,12 @@
 name: decoder/aws-cloudtrail/0
 
 metadata:
-  title: AWS Cloudtrail Decoder
-  description: Decoder for AWS CloudTrail Logs
+  title: Wazuh integration of AWS Cloudtrail Decoder
+  description: Decoder for wazuh integration of AWS CloudTrail Logs
   references:
     - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference-record-contents.html
     - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-examples.html
-  product.name: AWS CloudTrail
+  product.name: Wazuh integration AWS CloudTrail
   author:
       name: Wazuh, Inc.
       url: https://wazuh.com

@@ -23,7 +23,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/msg=audit
+  - event.original: +r_match/^(?:node=.*)?type=\w+ msg=audit
 
 parse:
   logpar:
