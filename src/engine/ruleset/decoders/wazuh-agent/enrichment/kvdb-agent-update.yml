@@ -1,18 +1,21 @@
 ---
 name: decoder/kvdb-agent-update/0
 
+metadata:
+  module: wazuh-agent/event-enrichment/syscollector/dbsync
+  title: Wazuh agent kvdb data update
+  description: It updates the Wazuh agent data stored on the KVDB which is then used to enrich the events
+  compatibility: This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    url: https://wazuh.com
+    date: 2023/01/02
+  references:
+    - https://github.com/wazuh/wazuh/issues/15500
+
 sources:
   - decoder/dbsync-host-data/0
   - decoder/syscollector-dbsync-host-data/0
-
-metadata:
-  title: Wazuh agent kvdb data update
-  description: It updates the Wazuh agent data stored on the KVDB which is then used to enrich the events
-  compatibility: >
-    This decoder has been tested on Wazuh version 4.3
-  author:
-    name: Wazuh, Inc.
-    date: 2023/01/02
 
 check:
   - ~do_update_kvdb: +t_is_true

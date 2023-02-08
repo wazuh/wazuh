@@ -1,7 +1,5 @@
+---
 name: decoder/syscollector-dbsync-osinfo/0
-
-sources:
-  - decoder/syscollector-dbsync-base/0
 
 metadata:
     module: wazuh-agent/syscollector/syscollector-dbsync-osinfo
@@ -21,6 +19,10 @@ metadata:
         - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/wodle-syscollector.html
         - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html#syscollector-tables
         - https://github.com/wazuh/wazuh/issues/13521
+        - https://github.com/wazuh/wazuh/issues/15500
+
+sources:
+  - decoder/syscollector-dbsync-base/0
 
 check:
   - ~json.type: +s_eq/dbsync_osinfo
@@ -66,24 +68,33 @@ normalize:
     map:
       - ~json.data.tmp.architecture: "NULL"
 
+  - map:
+      - ~json.data.tmp.os_name: ~json.data.os_name
   - check:
       - ~json.data.os_name: +s_ne//
     map:
-      - ~json.data.os_name: +s_replace/|/$~escaped_pipe_char
-      - ~json.data.os_name: +s_replace/NULL/_NULL_
+      - ~json.data.tmp.os_name: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.tmp.os_name: +s_replace/NULL/_NULL_
+      - ~do_update_kvdb: true
   - check:
       - ~json.data.os_name: +s_eq//
     map:
-      - ~json.data.os_name: "NULL"
+      - ~json.data.tmp.os_name: "NULL"
   - check:
       - ~json.data.os_name: +ef_not_exists
     map:
-      - ~json.data.os_name: "NULL"
+      - ~json.data.tmp.os_name: "NULL"
 
+  - map:
+      - ~json.data.tmp.os_version: ~json.data.os_version
+  - check:
+      - ~json.data.os_version: +ef_exists
+    map:
+      - ~do_update_kvdb: true
   - check:
       - ~json.data.os_version: +ef_not_exists
     map:
-      - ~json.data.os_version: "NULL"
+      - ~json.data.tmp.os_version: "NULL"
 
   - check:
       - ~json.data.os_codename: +s_ne//
@@ -128,38 +139,50 @@ normalize:
     map:
       - ~json.data.os_build: "NULL"
 
+  - map:
+      - ~json.data.tmp.os_platform: ~json.data.os_platform
   - check:
       - ~json.data.os_platform: +s_ne//
     map:
-      - ~json.data.os_platform: +s_replace/|/$~escaped_pipe_char
-      - ~json.data.os_platform: +s_replace/NULL/_NULL_
+      - ~json.data.tmp.os_platform: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.tmp.os_platform: +s_replace/NULL/_NULL_
+      - ~do_update_kvdb: true
   - check:
       - ~json.data.os_platform: +s_eq//
     map:
-      - ~json.data.os_platform: "NULL"
+      - ~json.data.tmp.os_platform: "NULL"
   - check:
       - ~json.data.os_platform: +ef_not_exists
     map:
-      - ~json.data.os_platform: "NULL"
+      - ~json.data.tmp.os_platform: "NULL"
 
+  - map:
+      - ~json.data.tmp.sysname: ~json.data.sysname
   - check:
       - ~json.data.sysname: +s_ne//
     map:
-      - ~json.data.sysname: +s_replace/|/$~escaped_pipe_char
-      - ~json.data.sysname: +s_replace/NULL/_NULL_
+      - ~json.data.tmp.sysname: +s_replace/|/$~escaped_pipe_char
+      - ~json.data.tmp.sysname: +s_replace/NULL/_NULL_
+      - ~do_update_kvdb: true
   - check:
       - ~json.data.sysname: +s_eq//
     map:
-      - ~json.data.sysname: "NULL"
+      - ~json.data.tmp.sysname: "NULL"
   - check:
       - ~json.data.sysname: +ef_not_exists
     map:
-      - ~json.data.sysname: "NULL"
+      - ~json.data.tmp.sysname: "NULL"
 
+  - map:
+      - ~json.data.tmp.release: ~json.data.release
+  - check:
+      - ~json.data.release: +ef_exists
+    map:
+      - ~do_update_kvdb: true
   - check:
       - ~json.data.release: +ef_not_exists
     map:
-      - ~json.data.release: "NULL"
+      - ~json.data.tmp.release: "NULL"
 
   - check:
       - ~json.data.version: +ef_not_exists
@@ -210,7 +233,7 @@ normalize:
       - ~json.data.reference: "NULL"
 
   - map:
-      - ~query: +s_concat/agent /$agent.id/ dbsync osinfo /$~json.operation/ /$~json.data.scan_time/|/$~json.data.tmp.hostname/|/$~json.data.tmp.architecture/|/$~json.data.os_name/|/$~json.data.os_version/|/$~json.data.os_codename/|/$~json.data.os_major/|/$~json.data.os_minor/|/$~json.data.os_patch/|/$~json.data.os_build/|/$~json.data.os_platform/|/$~json.data.sysname/|/$~json.data.release/|/$~json.data.version/|/$~json.data.os_release/|/$~json.data.checksum/|/$~json.data.os_display_version/|/$~json.data.triaged/|/$~json.data.reference/|
+      - ~query: +s_concat/agent /$agent.id/ dbsync osinfo /$~json.operation/ /$~json.data.scan_time/|/$~json.data.tmp.hostname/|/$~json.data.tmp.architecture/|/$~json.data.tmp.os_name/|/$~json.data.tmp.os_version/|/$~json.data.os_codename/|/$~json.data.os_major/|/$~json.data.os_minor/|/$~json.data.os_patch/|/$~json.data.os_build/|/$~json.data.tmp.os_platform/|/$~json.data.tmp.sysname/|/$~json.data.tmp.release/|/$~json.data.version/|/$~json.data.os_release/|/$~json.data.checksum/|/$~json.data.os_display_version/|/$~json.data.triaged/|/$~json.data.reference/|
       - ~query: +s_replace/||/|NULL|
       - ~query_response: +wdb_query/$~query
 
@@ -254,4 +277,3 @@ normalize:
 
   - map:
       - ~json.data.tmp: +ef_delete
-
