@@ -8,7 +8,7 @@ import sys
 from grp import getgrnam
 from json import dumps
 from pwd import getpwnam
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 
 import pytest
 
@@ -667,6 +667,7 @@ def test_agent_delete_groups(socket_mock, send_mock, mock_delete, mock_remove_ag
         assert affected_item[key] == ['000']
 
     assert group_set == set()
+    mock_delete.assert_has_calls([call(group) for group in group_list])
 
     # Check failed items
     assert result.total_failed_items == 0
@@ -687,7 +688,7 @@ def test_agent_delete_groups_permission_exception(socket_mock, send_mock, mock_g
         Name of the group to be deleted.
     """
 
-    def remove(agent_list=None, group_list=None):
+    def remove(call_func=True, agent_list=None, group_list=None):
         result = AffectedItemsWazuhResult()
         result.add_failed_item()
         return result

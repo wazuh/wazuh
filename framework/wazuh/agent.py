@@ -672,7 +672,8 @@ def delete_groups(group_list=None):
                 agent_list = [agent['id'] for agent in db_query.run()['items']]
 
             try:
-                affected_agents_result = remove_agents_from_group(agent_list=agent_list, group_list=[group_id])
+                affected_agents_result = remove_agents_from_group(call_func=False, agent_list=agent_list,
+                                                                  group_list=[group_id])
                 if affected_agents_result.total_failed_items != 0:
                     raise WazuhError(4015)
             except WazuhError:
