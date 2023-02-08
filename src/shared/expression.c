@@ -31,6 +31,7 @@ void w_calloc_expression_t(w_expression_t ** var, w_exp_type_t type) {
 
         case EXP_TYPE_PCRE2:
             os_calloc(1, sizeof(w_pcre2_code_t), (*var)->pcre2);
+            break;
 
         default:
             break;
