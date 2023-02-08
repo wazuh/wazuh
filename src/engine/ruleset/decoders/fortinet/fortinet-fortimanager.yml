@@ -31,20 +31,20 @@ normalize:
   - check:
     - ~kvMap.signature_id: +ef_exists
     map:
-      - destination.bytes : $~kvMap.rcvdbyte
-      - destination.ip : $~kvMap.dst
-      - destination.port : $~kvMap.dst_port
+      - destination.bytes: $~kvMap.rcvdbyte
+      - destination.ip: $~kvMap.dst
+      - destination.port: $~kvMap.dst_port
       - event.code: $~kvMap.log_id
-      - event.timezone : $~kvMap.timezone
-      - host.name : $~kvMap.hostname
-      - http.request.referrer : $~kvMap.http_refer
+      - event.timezone: $~kvMap.timezone
+      - host.hostname: $~kvMap.hostname
+      - http.request.referrer: $~kvMap.http_refer
       - log.level: $~kvMap.pri
-      - network.bytes : $~kvMap.sentbyte
-      - network.bytes : +i_calc/sum/$~kvMap.rcvdbyte
-      - observer.egress.interface.name : $~kvMap.dstintf
-      - observer.ingress.interface.name : $~kvMap.srcintf
+      - network.bytes: $~kvMap.sentbyte
+      - network.bytes: +i_calc/sum/$~kvMap.rcvdbyte
+      - observer.egress.interface.name: $~kvMap.dstintf
+      - observer.ingress.interface.name: $~kvMap.srcintf
       - observer.serial_number: $~kvMap.device_id
-      - observer.version : $~kvMap.osversion
+      - observer.version: $~kvMap.osversion
       - related.hosts: +a_append/$~kvMap.devname
       - related.hosts: +a_append/$~kvMap.hostname
       - related.hosts: +a_append/$~kvMap.http_host
@@ -54,7 +54,7 @@ normalize:
       - rsa.internal.event_desc: $~kvMap.msg
       - rsa.internal.messageid: generic_fortinetmgr
       - rsa.investigations.event_vcat: $~kvMap.eventtype
-      - rsa.misc.OS : $~kvMap.osname
+      - rsa.misc.OS: $~kvMap.osname
       - rsa.misc.action: +a_append/$~kvMap.action
       - rsa.misc.action: +a_append/$~kvMap.http_method
       - rsa.misc.client: $~kvMap.http_agent
@@ -65,15 +65,15 @@ normalize:
       - rsa.misc.policy_name: $~kvMap.policy
       - rsa.misc.reference_id: $~kvMap.log_id
       - rsa.misc.rule_name: $~kvMap.profile
-      - rsa.misc.sig_id : $~kvMap.signature_id
-      - rsa.misc.version : $~kvMap.osversion
-      - rsa.misc.vsys : $~kvMap.vd
-      - rsa.network.alias_host : +a_append/$~kvMap.hostname
-      - rsa.network.interface : $~kvMap.dstintf
-      - rsa.network.network_service : $~kvMap.service
-      - rsa.network.sinterface : $~kvMap.srcintf
-      - rsa.threat.threat_desc : $~kvMap.threat_level
-      - rsa.time.duration_time : $~kvMap.duration
+      - rsa.misc.sig_id: $~kvMap.signature_id
+      - rsa.misc.version: $~kvMap.osversion
+      - rsa.misc.vsys: $~kvMap.vd
+      - rsa.network.alias_host: +a_append/$~kvMap.hostname
+      - rsa.network.interface: $~kvMap.dstintf
+      - rsa.network.network_service: $~kvMap.service
+      - rsa.network.sinterface: $~kvMap.srcintf
+      - rsa.threat.threat_desc: $~kvMap.threat_level
+      - rsa.time.duration_time: $~kvMap.duration
       - rsa.time.timezone: $~kvMap.timezone
       - rsa.web.reputation_num: $~kvMap.crscore
       - rsa.web.web_ref_domain: $~kvMap.http_host
@@ -83,26 +83,26 @@ normalize:
       - source.mac: $~kvMap.srcmac
       - source.port: $~kvMap.srcport
       - url: +parse_uri/$~kvMap.url
-      - user.name : $~kvMap.user_name
+      - user.name: $~kvMap.user_name
 
   # generic_fortinetmgr_1 (hasn't signature_id and has vd)
   - check:
     - ~kvMap.signature_id: +ef_not_exists
     - ~kvMap.vd: +ef_exists
     map:
-      - destination.bytes : $~kvMap.rcvdbyte
+      - destination.bytes: $~kvMap.rcvdbyte
       - destination.geo.country_name: $~kvMap.dstcountry
-      - destination.ip : $~kvMap.dstip
-      - destination.nat.ip : $~kvMap.tranip
-      - destination.nat.port : $~kvMap.tranport
-      - destination.port : $~kvMap.dstport
+      - destination.ip: $~kvMap.dstip
+      - destination.nat.ip: $~kvMap.tranip
+      - destination.nat.port: $~kvMap.tranport
+      - destination.port: $~kvMap.dstport
       - event.code: $~kvMap.logid
       - log.level: $~kvMap.level
-      - network.bytes : $~kvMap.sentbyte
-      - network.bytes : +i_calc/sum/$~kvMap.rcvdbyte
-      - network.direction : $~kvMap.direction
-      - observer.egress.interface.name : $~kvMap.dstintf
-      - observer.ingress.interface.name : $~kvMap.srcintf
+      - network.bytes: $~kvMap.sentbyte
+      - network.bytes: +i_calc/sum/$~kvMap.rcvdbyte
+      - network.direction: $~kvMap.direction
+      - observer.egress.interface.name: $~kvMap.dstintf
+      - observer.ingress.interface.name: $~kvMap.srcintf
       - observer.serial_number: $~kvMap.devid
       - related.hosts: +a_append/$~kvMap.devname
       - related.ip: +a_append/$~kvMap.dstip
@@ -118,16 +118,16 @@ normalize:
       - rsa.misc.obj_name: $~kvMap.app
       - rsa.misc.policy_id: $~kvMap.policyid
       - rsa.misc.reference_id: $~kvMap.logid
-      - rsa.misc.vsys : $~kvMap.vd
-      - rsa.network.interface : $~kvMap.dstintf
-      - rsa.network.network_service : $~kvMap.service
-      - rsa.network.sinterface : $~kvMap.srcintf
-      - rsa.time.duration_time : $~kvMap.duration
+      - rsa.misc.vsys: $~kvMap.vd
+      - rsa.network.interface: $~kvMap.dstintf
+      - rsa.network.network_service: $~kvMap.service
+      - rsa.network.sinterface: $~kvMap.srcintf
+      - rsa.time.duration_time: $~kvMap.duration
       - rsa.time.event_time_str: $~kvMap.eventtime
       - rsa.web.reputation_num: $~kvMap.crscore
       - source.bytes: $~kvMap.sentbyte
       - source.geo.country_name: $~kvMap.srccountry
-      - source.ip : $~kvMap.srcip
+      - source.ip: $~kvMap.srcip
       - source.port: $~kvMap.srcport
 
   # event_fortinetmgr  (hasn't signature_id and hasn't vd)
@@ -148,8 +148,8 @@ normalize:
       - rsa.misc.hardware_id: $~kvMap.device_id
       - rsa.misc.log_session_id: $~kvMap.session_id
       - rsa.misc.reference_id: $~kvMap.log_id
-      - server.domain : $~kvMap.adom
-      - user.name : $~kvMap.user
+      - server.domain: $~kvMap.adom
+      - user.name: $~kvMap.user
       - rsa.network.domain: $server.domain
 
   # Checks if a valid fortinet log was found
@@ -166,7 +166,7 @@ normalize:
       - observer.type: Configuration
       - observer.vendor: Fortinet
       - rsa.misc.category: $~kvMap.subtype
-      - rsa.misc.event_source : $~kvMap.devname
+      - rsa.misc.event_source: $~kvMap.devname
       - rsa.misc.event_source: $~kvMap.devname
       - rsa.misc.event_type: $~kvMap.type
       - rsa.misc.severity: $~kvMap.pri
