@@ -5254,6 +5254,7 @@ void test_wdb_global_delete_group_transaction_fail(void **state)
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+    expect_function_call(__wrap_cJSON_Delete);
 
     result = wdb_global_delete_group(data->wdb, group_name);
 
@@ -5276,6 +5277,7 @@ void test_wdb_global_delete_group_cache_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+    expect_function_call(__wrap_cJSON_Delete);
 
     result = wdb_global_delete_group(data->wdb, group_name);
 
@@ -5304,6 +5306,7 @@ void test_wdb_global_delete_group_bind_fail(void **state)
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+    expect_function_call(__wrap_cJSON_Delete);
 
     result = wdb_global_delete_group(data->wdb, group_name);
 
@@ -5334,6 +5337,7 @@ void test_wdb_global_delete_group_step_fail(void **state)
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
+    expect_function_call(__wrap_cJSON_Delete);
 
     result = wdb_global_delete_group(data->wdb, group_name);
 
