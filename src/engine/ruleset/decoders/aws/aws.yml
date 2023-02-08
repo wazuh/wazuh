@@ -2,14 +2,14 @@
 name: decoder/aws/0
 
 metadata:
-  description: Decoder for AWS Logs
-  product.name: AWS
+  description: Decoder for wazuh AWS itegration Logs
+  product.name: wazuh AWS integration
 
 sources:
   - decoder/json/0
 
 check:
-  - ~json.integration: +s_starts/aws
+  - ~json.integration: aws
 
 normalize:
   - map:

@@ -2,11 +2,15 @@ name: decoder/nginx-error/0
 
 metadata:
   title: NGINX Error Decoder
+  description: Nginx error log decoder
+  references: "https://docs.nginx.com/nginx/admin-guide/monitoring/logging/"
+  product.name: ngingx
+  product.versions:
+    - nginx-1.23.2
   author:
       name: Wazuh, Inc.
       url: https://wazuh.com
       date: 2023/01/13
-  description: Nginx error log decoder
 
 sources:
   - decoder/queue-localfile/0

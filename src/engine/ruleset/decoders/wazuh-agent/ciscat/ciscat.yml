@@ -1,9 +1,6 @@
 ---
 name: decoder/ciscat/0
 
-sources:
-  - decoder/json/0
-
 metadata:
     module: wazuh-agent/ciscat/ciscat
     title: Ciscat Decoder
@@ -23,11 +20,18 @@ metadata:
 # {"type":"scan_info","scan_id":1886296483,"cis":{"benchmark":"CIS Ubuntu Linux 16.04 LTS Benchmark","profile":"xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server","hostname":"10-206-u20-agent4","timestamp":"2022-09-16T15:09:53.048Z","pass":90,"fail":93,"error":0,"unknown":1,"notchecked":36,"score":"49.5%"}}
 
 check:
-  - wazuh.origin: "wodle_cis-cat"
-  - ~json.cis: +ef_exists
-  - ~json.type: +s_eq/scan_info
+  - event.original: +s_starts/{
+
+parse:
+  logpar:
+    - event.original: <~json/json>
 
 normalize:
+  - check:
+      - wazuh.origin: "wodle_cis-cat"
+      - ~json.cis: +ef_exists
+      - ~json.type: +s_eq/scan_info
+
   - check:
       - ~json.scan_id: +ef_not_exists
     map:

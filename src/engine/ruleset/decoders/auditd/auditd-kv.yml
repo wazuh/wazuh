@@ -48,8 +48,6 @@ normalize:
       - auditd.log.exe: +ef_delete
   - map:
       - auditd.log.exe: +s_from_hexa/$auditd.log.exe
-  - check: +s_starts/auditd.log.exe/" OR +s_starts/auditd.log.exe/'
-    map:
       - auditd.log.exe: +s_trim/both/"
       - auditd.log.exe: +s_trim/both/'
 
@@ -58,8 +56,6 @@ normalize:
       - auditd.log.cmd: +ef_delete
   - map:
       - auditd.log.cmd: +s_from_hexa/$auditd.log.cmd
-  - check: +s_starts/auditd.log.cmd/" OR +s_starts/auditd.log.cmd/'
-    map:
       - auditd.log.cmd: +s_trim/both/"
       - auditd.log.cmd: +s_trim/both/'
 
@@ -68,8 +64,6 @@ normalize:
       - auditd.log.data: +ef_delete
   - map:
       - auditd.log.data: +s_from_hexa/$auditd.log.data
-  - check: +s_starts/auditd.log.data/" OR +s_starts/auditd.log.data/'
-    map:
       - auditd.log.data: +s_trim/both/"
       - auditd.log.data: +s_trim/both/'
 
@@ -78,8 +72,6 @@ normalize:
       - auditd.log.path: +ef_delete
   - map:
       - auditd.log.path: +s_from_hexa/$auditd.log.path
-  - check: +s_starts/auditd.log.path/" OR +s_starts/auditd.log.path/'
-    map:
       - auditd.log.path: +s_trim/both/"
       - auditd.log.path: +s_trim/both/'
 
@@ -88,8 +80,6 @@ normalize:
       - auditd.log.comm: +ef_delete
   - map:
       - auditd.log.comm: +s_from_hexa/$auditd.log.comm
-  - check: +s_starts/auditd.log.comm/" OR +s_starts/auditd.log.comm/'
-    map:
       - auditd.log.comm: +s_trim/both/"
       - auditd.log.comm: +s_trim/both/'
 
@@ -98,8 +88,6 @@ normalize:
       - auditd.log.file: +ef_delete
   - map:
       - auditd.log.file: +s_from_hexa/$auditd.log.file
-  - check: +s_starts/auditd.log.file/" OR +s_starts/auditd.log.file/'
-    map:
       - auditd.log.file: +s_trim/both/"
       - auditd.log.file: +s_trim/both/'
 
@@ -108,8 +96,6 @@ normalize:
       - auditd.log.name: +ef_delete
   - map:
       - auditd.log.name: +s_from_hexa/$auditd.log.name
-  - check: +s_starts/auditd.log.name/" OR +s_starts/auditd.log.name/'
-    map:
       - auditd.log.name: +s_trim/both/"
       - auditd.log.name: +s_trim/both/'
 
@@ -118,8 +104,6 @@ normalize:
       - auditd.log.watch: +ef_delete
   - map:
       - auditd.log.watch: +s_from_hexa/$auditd.log.watch
-  - check: +s_starts/auditd.log.watch/" OR +s_starts/auditd.log.watch/'
-    map:
       - auditd.log.watch: +s_trim/both/"
       - auditd.log.watch: +s_trim/both/'
 
@@ -128,8 +112,6 @@ normalize:
       - auditd.log.cwd: +ef_delete
   - map:
       - auditd.log.cwd: +s_from_hexa/$auditd.log.cwd
-  - check: +s_starts/auditd.log.cwd/" OR +s_starts/auditd.log.cwd/'
-    map:
       - auditd.log.cwd: +s_trim/both/"
       - auditd.log.cwd: +s_trim/both/'
 
@@ -138,8 +120,6 @@ normalize:
       - auditd.log.acct: +ef_delete
   - map:
       - auditd.log.acct: +s_from_hexa/$auditd.log.acct
-  - check: +s_starts/auditd.log.acct/" OR +s_starts/auditd.log.acct/'
-    map:
       - auditd.log.acct: +s_trim/both/"
       - auditd.log.acct: +s_trim/both/'
 
@@ -148,8 +128,6 @@ normalize:
       - auditd.log.dir: +ef_delete
   - map:
       - auditd.log.dir: +s_from_hexa/$auditd.log.dir
-  - check: +s_starts/auditd.log.dir/" OR +s_starts/auditd.log.dir/'
-    map:
       - auditd.log.dir: +s_trim/both/"
       - auditd.log.dir: +s_trim/both/'
 
@@ -158,8 +136,6 @@ normalize:
       - auditd.log.vm: +ef_delete
   - map:
       - auditd.log.vm: +s_from_hexa/$auditd.log.vm
-  - check: +s_starts/auditd.log.vm/" OR +s_starts/auditd.log.vm/'
-    map:
       - auditd.log.vm: +s_trim/both/"
       - auditd.log.vm: +s_trim/both/'
 
@@ -168,8 +144,6 @@ normalize:
       - auditd.log.old-chardev: +ef_delete
   - map:
       - auditd.log.old-chardev: +s_from_hexa/$auditd.log.old-chardev
-  - check: +s_starts/auditd.log.old-chardev/" OR +s_starts/auditd.log.old-chardev/'
-    map:
       - auditd.log.old-chardev: +s_trim/both/"
       - auditd.log.old-chardev: +s_trim/both/'
 
@@ -178,8 +152,6 @@ normalize:
       - auditd.log.new-chardev: +ef_delete
   - map:
       - auditd.log.new-chardev: +s_from_hexa/$auditd.log.new-chardev
-  - check: +s_starts/auditd.log.new-chardev/" OR +s_starts/auditd.log.new-chardev/'
-    map:
       - auditd.log.new-chardev: +s_trim/both/"
       - auditd.log.new-chardev: +s_trim/both/'
 
@@ -188,8 +160,6 @@ normalize:
       - auditd.log.old-disk: +ef_delete
   - map:
       - auditd.log.old-disk: +s_from_hexa/$auditd.log.old-disk
-  - check: +s_starts/auditd.log.old-disk/" OR +s_starts/auditd.log.old-disk/'
-    map:
       - auditd.log.old-disk: +s_trim/both/"
       - auditd.log.old-disk: +s_trim/both/'
 
@@ -198,8 +168,6 @@ normalize:
       - auditd.log.new-disk: +ef_delete
   - map:
       - auditd.log.new-disk: +s_from_hexa/$auditd.log.new-disk
-  - check: +s_starts/auditd.log.new-disk/" OR +s_starts/auditd.log.new-disk/'
-    map:
       - auditd.log.new-disk: +s_trim/both/"
       - auditd.log.new-disk: +s_trim/both/'
 
@@ -208,8 +176,6 @@ normalize:
       - auditd.log.old-fs: +ef_delete
   - map:
       - auditd.log.old-fs: +s_from_hexa/$auditd.log.old-fs
-  - check: +s_starts/auditd.log.old-fs/" OR +s_starts/auditd.log.old-fs/'
-    map:
       - auditd.log.old-fs: +s_trim/both/"
       - auditd.log.old-fs: +s_trim/both/'
 
@@ -218,8 +184,6 @@ normalize:
       - auditd.log.new-fs: +ef_delete
   - map:
       - auditd.log.new-fs: +s_from_hexa/$auditd.log.new-fs
-  - check: +s_starts/auditd.log.new-fs/" OR +s_starts/auditd.log.new-fs/'
-    map:
       - auditd.log.new-fs: +s_trim/both/"
       - auditd.log.new-fs: +s_trim/both/'
 
@@ -228,8 +192,6 @@ normalize:
       - auditd.log.old-net: +ef_delete
   - map:
       - auditd.log.old-net: +s_from_hexa/$auditd.log.old-net
-  - check: +s_starts/auditd.log.old-net/" OR +s_starts/auditd.log.old-net/'
-    map:
       - auditd.log.old-net: +s_trim/both/"
       - auditd.log.old-net: +s_trim/both/'
 
@@ -238,8 +200,6 @@ normalize:
       - auditd.log.new-net: +ef_delete
   - map:
       - auditd.log.new-net: +s_from_hexa/$auditd.log.new-net
-  - check: +s_starts/auditd.log.new-net/" OR +s_starts/auditd.log.new-net/'
-    map:
       - auditd.log.new-net: +s_trim/both/"
       - auditd.log.new-net: +s_trim/both/'
 
@@ -248,8 +208,6 @@ normalize:
       - auditd.log.device: +ef_delete
   - map:
       - auditd.log.device: +s_from_hexa/$auditd.log.device
-  - check: +s_starts/auditd.log.device/" OR +s_starts/auditd.log.device/'
-    map:
       - auditd.log.device: +s_trim/both/"
       - auditd.log.device: +s_trim/both/'
 
@@ -258,8 +216,6 @@ normalize:
       - auditd.log.cgroup: +ef_delete
   - map:
       - auditd.log.cgroup: +s_from_hexa/$auditd.log.cgroup
-  - check: +s_starts/auditd.log.cgroup/" OR +s_starts/auditd.log.cgroup/'
-    map:
       - auditd.log.cgroup: +s_trim/both/"
       - auditd.log.cgroup: +s_trim/both/'
 
@@ -268,8 +224,6 @@ normalize:
       - auditd.log.apparmor: +ef_delete
   - map:
       - auditd.log.apparmor: +s_from_hexa/$auditd.log.apparmor
-  - check: +s_starts/auditd.log.apparmor/" OR +s_starts/auditd.log.apparmor/'
-    map:
       - auditd.log.apparmor: +s_trim/both/"
       - auditd.log.apparmor: +s_trim/both/'
 
@@ -278,8 +232,6 @@ normalize:
       - auditd.log.operation: +ef_delete
   - map:
       - auditd.log.operation: +s_from_hexa/$auditd.log.operation
-  - check: +s_starts/auditd.log.operation/" OR +s_starts/auditd.log.operation/'
-    map:
       - auditd.log.operation: +s_trim/both/"
       - auditd.log.operation: +s_trim/both/'
 
@@ -288,8 +240,6 @@ normalize:
       - auditd.log.denied_mask: +ef_delete
   - map:
       - auditd.log.denied_mask: +s_from_hexa/$auditd.log.denied_mask
-  - check: +s_starts/auditd.log.denied_mask/" OR +s_starts/auditd.log.denied_mask/'
-    map:
       - auditd.log.denied_mask: +s_trim/both/"
       - auditd.log.denied_mask: +s_trim/both/'
 
@@ -298,8 +248,6 @@ normalize:
       - auditd.log.info: +ef_delete
   - map:
       - auditd.log.info: +s_from_hexa/$auditd.log.info
-  - check: +s_starts/auditd.log.info/" OR +s_starts/auditd.log.info/'
-    map:
       - auditd.log.info: +s_trim/both/"
       - auditd.log.info: +s_trim/both/'
 
@@ -308,8 +256,6 @@ normalize:
       - auditd.log.profile: +ef_delete
   - map:
       - auditd.log.profile: +s_from_hexa/$auditd.log.profile
-  - check: +s_starts/auditd.log.profile/" OR +s_starts/auditd.log.profile/'
-    map:
       - auditd.log.profile: +s_trim/both/"
       - auditd.log.profile: +s_trim/both/'
 
@@ -318,8 +264,6 @@ normalize:
       - auditd.log.requested_mask: +ef_delete
   - map:
       - auditd.log.requested_mask: +s_from_hexa/$auditd.log.requested_mask
-  - check: +s_starts/auditd.log.requested_mask/" OR +s_starts/auditd.log.requested_mask/'
-    map:
       - auditd.log.requested_mask: +s_trim/both/"
       - auditd.log.requested_mask: +s_trim/both/'
 
@@ -328,8 +272,6 @@ normalize:
       - auditd.log.old-rng: +ef_delete
   - map:
       - auditd.log.old-rng: +s_from_hexa/$auditd.log.old-rng
-  - check: +s_starts/auditd.log.old-rng/" OR +s_starts/auditd.log.old-rng/'
-    map:
       - auditd.log.old-rng: +s_trim/both/"
       - auditd.log.old-rng: +s_trim/both/'
 
@@ -338,8 +280,6 @@ normalize:
       - auditd.log.new-rng: +ef_delete
   - map:
       - auditd.log.new-rng: +s_from_hexa/$auditd.log.new-rng
-  - check: +s_starts/auditd.log.new-rng/" OR +s_starts/auditd.log.new-rng/'
-    map:
       - auditd.log.new-rng: +s_trim/both/"
       - auditd.log.new-rng: +s_trim/both/'
 
@@ -348,8 +288,6 @@ normalize:
       - auditd.log.ocomm: +ef_delete
   - map:
       - auditd.log.ocomm: +s_from_hexa/$auditd.log.ocomm
-  - check: +s_starts/auditd.log.ocomm/" OR +s_starts/auditd.log.ocomm/'
-    map:
       - auditd.log.ocomm: +s_trim/both/"
       - auditd.log.ocomm: +s_trim/both/'
 
@@ -358,8 +296,6 @@ normalize:
       - auditd.log.grp: +ef_delete
   - map:
       - auditd.log.grp: +s_from_hexa/$auditd.log.grp
-  - check: +s_starts/auditd.log.grp/" OR +s_starts/auditd.log.grp/'
-    map:
       - auditd.log.grp: +s_trim/both/"
       - auditd.log.grp: +s_trim/both/'
 
@@ -368,8 +304,6 @@ normalize:
       - auditd.log.new_group: +ef_delete
   - map:
       - auditd.log.new_group: +s_from_hexa/$auditd.log.new_group
-  - check: +s_starts/auditd.log.new_group/" OR +s_starts/auditd.log.new_group/'
-    map:
       - auditd.log.new_group: +s_trim/both/"
       - auditd.log.new_group: +s_trim/both/'
 
@@ -378,8 +312,6 @@ normalize:
       - auditd.log.invalid_context: +ef_delete
   - map:
       - auditd.log.invalid_context: +s_from_hexa/$auditd.log.invalid_context
-  - check: +s_starts/auditd.log.invalid_context/" OR +s_starts/auditd.log.invalid_context/'
-    map:
       - auditd.log.invalid_context: +s_trim/both/"
       - auditd.log.invalid_context: +s_trim/both/'
 
@@ -388,8 +320,6 @@ normalize:
       - auditd.log.sw: +ef_delete
   - map:
       - auditd.log.sw: +s_from_hexa/$auditd.log.sw
-  - check: +s_starts/auditd.log.sw/" OR +s_starts/auditd.log.sw/'
-    map:
       - auditd.log.sw: +s_trim/both/"
       - auditd.log.sw: +s_trim/both/'
 
@@ -398,8 +328,6 @@ normalize:
       - auditd.log.root_dir: +ef_delete
   - map:
       - auditd.log.root_dir: +s_from_hexa/$auditd.log.root_dir
-  - check: +s_starts/auditd.log.root_dir/" OR +s_starts/auditd.log.root_dir/'
-    map:
       - auditd.log.root_dir: +s_trim/both/"
       - auditd.log.root_dir: +s_trim/both/'
 
@@ -408,8 +336,6 @@ normalize:
       - auditd.log.proctitle: +ef_delete
   - map:
       - auditd.log.proctitle: +s_from_hexa/$auditd.log.proctitle
-  - check: +s_starts/auditd.log.proctitle/" OR +s_starts/auditd.log.proctitle/'
-    map:
       - auditd.log.proctitle: +s_trim/both/"
       - auditd.log.proctitle: +s_trim/both/'
 
@@ -450,7 +376,7 @@ normalize:
       - ~event: +ef_merge/$~temp_event.event
 
   #TODO: pending auditd KVDBs copy fields mapping
-  # * iterations throug copy objects
+  # * iterations through copy objects
   # * mapping values to an specific dynamic field (dependent on event)
 
   - check: auditd.log.syscall==execve AND auditd.log.record_type==SYSCALL
