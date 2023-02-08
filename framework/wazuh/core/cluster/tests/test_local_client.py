@@ -4,7 +4,7 @@
 
 from asyncio import Event, Transport
 from asyncio.transports import BaseTransport
-from collections import Callable
+from collections.abc import Callable
 from unittest.mock import patch, AsyncMock, call
 
 import pytest
