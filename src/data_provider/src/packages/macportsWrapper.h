@@ -17,7 +17,8 @@
 
 const std::string VALID_STATE {"installed"};
 
-const std::map<std::string, int> columnIndexes {
+const std::map<std::string, int> columnIndexes
+{
     {"state", 0},
     {"name", 1},
     {"version", 2},
@@ -113,6 +114,7 @@ class MacportsWrapper final : public IPackageWrapper
         void getPkgData(SQLite::Statement& stmt)
         {
             const int& columnsNumber = columnIndexes.size();
+
             if (stmt.columnsCount() == columnsNumber)
             {
                 const auto& state {stmt.column(columnIndexes.at("state"))};
@@ -129,10 +131,12 @@ class MacportsWrapper final : public IPackageWrapper
                     {
                         m_name = name->value(std::string {});
                     }
+
                     if (version->hasValue())
                     {
                         m_version = version->value(std::string {});
                     }
+
                     if (date->hasValue())
                     {
                         char formattedTime[20] {0};
@@ -140,10 +144,12 @@ class MacportsWrapper final : public IPackageWrapper
                         std::strftime(formattedTime, sizeof(formattedTime), "%Y/%m/%d %H:%M:%S", std::localtime(&epochTime));
                         m_installTime = formattedTime;
                     }
+
                     if (location->hasValue())
                     {
                         m_location = location->value(std::string {});
                     }
+
                     if (archs->hasValue())
                     {
                         m_architecture = archs->value(std::string {});
