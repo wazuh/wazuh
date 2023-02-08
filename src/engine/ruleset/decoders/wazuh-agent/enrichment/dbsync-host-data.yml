@@ -47,4 +47,3 @@ normalize:
     map:
       - ~do_update_kvdb: true
       - host.ip: +a_append/$~json.data.attributes.address
-
