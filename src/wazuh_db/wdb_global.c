@@ -1390,19 +1390,18 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
             }
             if (OS_SUCCESS == valid_groups) {
                 char* agent_groups_csv = wdb_global_calculate_agent_group_csv(wdb, agent_id);
+                char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
                 if (agent_groups_csv) {
-                    char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
                     OS_SHA256_String_sized(agent_groups_csv, groups_hash, WDB_GROUP_HASH_SIZE);
-                    if (WDBC_ERROR == wdb_global_set_agent_group_context(wdb, agent_id, agent_groups_csv, groups_hash, sync_status)) {
-                        ret = WDBC_ERROR;
-                        merror("There was an error assigning the groups context to agent '%03d'", agent_id);
-                    }
-                    os_free(agent_groups_csv);
-                    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
                 } else {
-                    ret = WDBC_ERROR;
-                    mdebug1("The agent groups where empty right after the set");
+                    mwarn("The groups were empty right after the set for agent '%03d'", agent_id);
                 }
+                if (WDBC_ERROR == wdb_global_set_agent_group_context(wdb, agent_id, agent_groups_csv, agent_groups_csv ? groups_hash : NULL, sync_status)) {
+                    ret = WDBC_ERROR;
+                    merror("There was an error assigning the groups context to agent '%03d'", agent_id);
+                }
+                os_free(agent_groups_csv);
+                wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
             }
         } else {
             ret = WDBC_ERROR;
@@ -1490,30 +1489,32 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
             if (cJSON_IsNumber(j_id)) {
                 //Get agent ID
                 last_agent_id = j_id->valueint;
+
                 //Get the groups of the agent
                 cJSON* j_groups = wdb_global_select_group_belong(wdb, last_agent_id);
-                if (j_groups) {
-                    if (j_groups->child) {
-                        cJSON_AddItemToObject(j_agent, "groups", j_groups);
-                        //Print Agent groups
-                        char *agent_str = cJSON_PrintUnformatted(j_agent);
-                        unsigned agent_len = strlen(agent_str);
-
-                        //Check if new agent fits in response
-                        if (response_size+agent_len+1 < WDB_MAX_RESPONSE_SIZE) {
-                            //Add new agent
-                            cJSON_AddItemToArray(j_data, cJSON_Duplicate(j_agent, true));
-                            //Save size
-                            response_size += agent_len+1;
-                        } else {
-                            //Pending agents but buffer is full
-                            status = WDBC_DUE;
-                        }
-                        os_free(agent_str);
-                    } else {
-                        cJSON_Delete(j_groups);
-                    }
+                if (j_groups && j_groups->child) {
+                    cJSON_AddItemToObject(j_agent, "groups", j_groups);
+                } else {
+                    cJSON_Delete(j_groups);
+                    cJSON_AddItemToObject(j_agent, "groups", cJSON_CreateArray());
                 }
+
+                //Print Agent groups
+                char *agent_str = cJSON_PrintUnformatted(j_agent);
+                unsigned agent_len = strlen(agent_str);
+
+                //Check if new agent fits in response
+                if (response_size+agent_len+1 < WDB_MAX_RESPONSE_SIZE) {
+                    //Add new agent
+                    cJSON_AddItemToArray(j_data, cJSON_Duplicate(j_agent, true));
+                    //Save size
+                    response_size += agent_len+1;
+                } else {
+                    //Pending agents but buffer is full
+                    status = WDBC_DUE;
+                }
+                os_free(agent_str);
+
                 if (set_synced) {
                     //Set groups sync status as synced
                     if (OS_SUCCESS != wdb_global_set_agent_groups_sync_status(wdb, last_agent_id, "synced")) {

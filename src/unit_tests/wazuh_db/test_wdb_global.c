@@ -1175,7 +1175,7 @@ void test_wdb_global_sync_agent_groups_get_no_agents_get_hash_false(void **state
     expect_function_call(__wrap_cJSON_Delete);
 
     /* wdb_global_select_group_belong */
-    cJSON *j_groups = __real_cJSON_CreateArray();
+    cJSON *j_groups = NULL;
     will_return(__wrap_wdb_begin2, OS_SUCCESS);
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
@@ -1184,6 +1184,7 @@ void test_wdb_global_sync_agent_groups_get_no_agents_get_hash_false(void **state
     /* wdb_exec_stmt_sized */
     wrap_wdb_exec_stmt_sized_success_call(j_groups, STMT_SINGLE_COLUMN);
     expect_function_call(__wrap_cJSON_Delete);
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
     /* Next agent */
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
@@ -1199,7 +1200,7 @@ void test_wdb_global_sync_agent_groups_get_no_agents_get_hash_false(void **state
     result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, agent_registration_delta, &j_output);
 
     char *output = cJSON_PrintUnformatted(j_output);
-    assert_string_equal(output, "[{\"data\":[]}]");
+    assert_string_equal(output, "[{\"data\":[{\"id\":1,\"groups\":[]}]}]");
     os_free(output);
     assert_int_equal(result, WDBC_OK);
     __real_cJSON_Delete(j_exec_response);
@@ -8042,10 +8043,14 @@ void create_wdb_global_set_agent_group_context_success_call(int agent_id, char* 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CTX_SET);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, csv);
+    if (csv) {
+        expect_string(__wrap_sqlite3_bind_text, buffer, csv);
+    }
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, hash);
+    if (hash) {
+        expect_string(__wrap_sqlite3_bind_text, buffer, hash);
+    }
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
@@ -8426,7 +8431,7 @@ void test_wdb_global_set_agent_groups_invalid_json(void **state) {
     __real_cJSON_Delete(j_agents_group_info);
 }
 
-void test_wdb_global_set_agent_groups_calculate_csv_error(void **state) {
+void test_wdb_global_set_agent_groups_calculate_csv_empty(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int group_id = 1;
@@ -8455,12 +8460,15 @@ void test_wdb_global_set_agent_groups_calculate_csv_error(void **state) {
         will_return(__wrap_wdb_begin2, -1);
         expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
         expect_string(__wrap__mdebug1, formatted_msg, "Unable to get groups of agent '001'");
-        expect_string(__wrap__mdebug1, formatted_msg, "The agent groups where empty right after the set");
+        expect_string(__wrap__mwarn, formatted_msg, "The groups were empty right after the set for agent '001'");
+
+        /* wdb_global_set_agent_group_context */
+        create_wdb_global_set_agent_group_context_success_call(agent_id, NULL, NULL, sync_status);
     }
 
     wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
 
-    assert_int_equal(result, WDBC_ERROR);
+    assert_int_equal(result, WDBC_OK);
     __real_cJSON_Delete(j_agents_group_info);
     __real_cJSON_Delete(j_find_group_resp);
     __real_cJSON_Delete(j_group_array);
@@ -9118,7 +9126,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_remove_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_remove_unassign_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_invalid_json, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_calculate_csv_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_calculate_csv_empty, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_set_group_ctx_error, test_setup, test_teardown),
         /* Tests wdb_global_set_agent_groups_sync_status*/
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_sync_status_invalid_stmt, test_setup, test_teardown),
