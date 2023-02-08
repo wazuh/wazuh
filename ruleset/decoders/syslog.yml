@@ -9,6 +9,7 @@ metadata:
     This decoder has been tested on Wazuh version 4.3
   author:
     name: Wazuh, Inc.
+    url: https://wazuh.com
     date: 2022/11/08
   references:
     - https://datatracker.ietf.org/doc/html/rfc3164
