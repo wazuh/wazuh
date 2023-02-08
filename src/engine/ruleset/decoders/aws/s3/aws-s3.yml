@@ -2,11 +2,13 @@
 name: decoder/aws-s3/0
 
 metadata:
-  title: AWS S3 Decoder
-  description: Decoder for Amazon S3 server access logs
+  title: Wazuh integration of AWS S3 Decoder
+  description: Decoder for Wazuh integration of Amazon S3 server access logs
   references:
     - https://docs.aws.amazon.com/AmazonS3/latest/userguide/LogFormat.html
-  product.name: Amazon S3 server access
+  product.name: Wazuh integration Amazon S3 server access
+  product.versions:
+    - 4.3
   author:
       name: Wazuh, Inc.
       url: https://wazuh.com
