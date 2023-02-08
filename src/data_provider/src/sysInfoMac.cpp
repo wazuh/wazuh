@@ -29,7 +29,7 @@
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
 const std::string MACPORTS_DB_NAME {"registry.db"};
-const std::string MACPORTS_QUERY {"SELECT name, version, date, location, archs FROM ports;"};
+const std::string MACPORTS_QUERY {"SELECT state, name, version, date, location, archs FROM ports;"};
 constexpr auto MAC_ROSETTA_DEFAULT_ARCH {"arm64"};
 
 using ProcessTaskInfo = struct proc_taskallinfo;

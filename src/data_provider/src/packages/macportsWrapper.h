@@ -15,6 +15,17 @@
 #include "ipackageWrapper.h"
 #include "sqlite_wrapper.h"
 
+const std::string VALID_STATE {"installed"};
+
+const std::map<std::string, int> columnIndexes {
+    {"state", 0},
+    {"name", 1},
+    {"version", 2},
+    {"date", 3},
+    {"location", 4},
+    {"archs", 5}
+};
+
 class MacportsWrapper final : public IPackageWrapper
 {
     public:
@@ -101,39 +112,41 @@ class MacportsWrapper final : public IPackageWrapper
     private:
         void getPkgData(SQLite::Statement& stmt)
         {
-            for (int index = 0; index < stmt.columnsCount(); ++index)
+            const int& columnsNumber = columnIndexes.size();
+            if (stmt.columnsCount() == columnsNumber)
             {
-                const auto& column {stmt.column(index)};
-                const auto& columnName {column->name()};
+                const auto& state {stmt.column(columnIndexes.at("state"))};
 
-                if (column->hasValue())
+                if (state->hasValue() && state->value(std::string {}).compare(VALID_STATE) == 0)
                 {
-                    if (columnName.compare("name") == 0)
-                    {
-                        m_name = column->value(std::string {});
-                    }
+                    const auto& name {stmt.column(columnIndexes.at("name"))};
+                    const auto& version {stmt.column(columnIndexes.at("version"))};
+                    const auto& date {stmt.column(columnIndexes.at("date"))};
+                    const auto& location {stmt.column(columnIndexes.at("location"))};
+                    const auto& archs {stmt.column(columnIndexes.at("archs"))};
 
-                    if (columnName.compare("version") == 0)
+                    if (name->hasValue())
                     {
-                        m_version = column->value(std::string {});
+                        m_name = name->value(std::string {});
                     }
-
-                    if (columnName.compare("archs") == 0)
+                    if (version->hasValue())
                     {
-                        m_architecture = column->value(std::string {});
+                        m_version = version->value(std::string {});
                     }
-
-                    if (columnName.compare("location") == 0)
-                    {
-                        m_location = column->value(std::string {});
-                    }
-
-                    if (columnName.compare("date") == 0)
+                    if (date->hasValue())
                     {
                         char formattedTime[20] {0};
-                        const long epochTime = column->value(std::int64_t {});
+                        const long epochTime = date->value(std::int64_t {});
                         std::strftime(formattedTime, sizeof(formattedTime), "%Y/%m/%d %H:%M:%S", std::localtime(&epochTime));
                         m_installTime = formattedTime;
+                    }
+                    if (location->hasValue())
+                    {
+                        m_location = location->value(std::string {});
+                    }
+                    if (archs->hasValue())
+                    {
+                        m_architecture = archs->value(std::string {});
                     }
                 }
             }
