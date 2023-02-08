@@ -24,54 +24,54 @@ parse:
 
 normalize:
   - map:
-    - ~tmp.kv : +s_concat/$~tmp.kv1/ /$~tmp.kv2
-    - ~tmp.kvMap : +parse_kv/$~tmp.kv/=/ /'/'
-    - destination.geo.country_name : $~tmp.kvMap.dst_geo
-    - destination.nat.ip : $~tmp.kvMap.translated_dest_ip
-    - destination.nat.port : $~tmp.kvMap.translated_dest_port
-    - destination.port : $~tmp.kvMap.dest_port
-    - event.action : $~tmp.kvMap.action
-    - event.code : $~tmp.kvMap.errdefs_msgno
-    - event.dataset : f5.bigipafm
-    - event.module : f5
-    - fileset.name : bigipafm
-    - host.ip : $~tmp.kvMap.bigip_mgmt_ip
-    - host.name : $~tmp.kvMap.hostname
-    - input.type : log
-    - log.level : $~tmp.kvMap.severity
-    - network.protocol : $~tmp.kvMap.ip_protocol
-    - observer.product : $~tmp.kvMap.device_product
-    - observer.type : Firewall
-    - observer.vendor : F5
-    - observer.version : $~tmp.kvMap.device_version
-    - related.hosts : +a_append/$~tmp.kvMap.hostname
-    - related.ip : +a_append/$~tmp.kvMap.bigip_mgmt_ip
-    - related.ip : +a_append/$~tmp.kvMap.source_ip
-    - related.ip : +a_append/$~tmp.kvMap.translated_dest_ip
-    - related.ip : +a_append/$~tmp.kvMap.translated_source_ip
-    - related.user : +a_append/$~tmp.kvMap.source_user
+    - ~tmp.kv: +s_concat/$~tmp.kv1/ /$~tmp.kv2
+    - ~tmp.kvMap: +parse_kv/$~tmp.kv/=/ /'/'
+    - destination.geo.country_name: $~tmp.kvMap.dst_geo
+    - destination.nat.ip: $~tmp.kvMap.translated_dest_ip
+    - destination.nat.port: $~tmp.kvMap.translated_dest_port
+    - destination.port: $~tmp.kvMap.dest_port
+    - event.action: $~tmp.kvMap.action
+    - event.code: $~tmp.kvMap.errdefs_msgno
+    - event.dataset: f5.bigipafm
+    - event.module: f5
+    - fileset.name: bigipafm
+    - host.ip: $~tmp.kvMap.bigip_mgmt_ip
+    - host.name: $~tmp.kvMap.hostname
+    - input.type: log
+    - log.level: $~tmp.kvMap.severity
+    - network.protocol: $~tmp.kvMap.ip_protocol
+    - observer.product: $~tmp.kvMap.device_product
+    - observer.type: Firewall
+    - observer.vendor: F5
+    - observer.version: $~tmp.kvMap.device_version
+    - related.hosts: +a_append/$~tmp.kvMap.hostname
+    - related.ip: +a_append/$~tmp.kvMap.bigip_mgmt_ip
+    - related.ip: +a_append/$~tmp.kvMap.source_ip
+    - related.ip: +a_append/$~tmp.kvMap.translated_dest_ip
+    - related.ip: +a_append/$~tmp.kvMap.translated_source_ip
+    - related.user: +a_append/$~tmp.kvMap.source_user
     - rsa.internal.messageid: BIGIP_AFM
     - rsa.investigations.ec_activity: Disable
     - rsa.investigations.ec_subject: NetworkComm
     - rsa.investigations.ec_theme: Communication
-    - rsa.misc.action : +a_append/$~tmp.kvMap.action
-    - rsa.misc.context : $~tmp.kvMap.context_name
-    - rsa.misc.event_type : $~tmp.kvMap.errdefs_msg_name
+    - rsa.misc.action: +a_append/$~tmp.kvMap.action
+    - rsa.misc.context: $~tmp.kvMap.context_name
+    - rsa.misc.event_type: $~tmp.kvMap.errdefs_msg_name
     - rsa.misc.obj_name: $~tmp.rsa_obj_name
-    - rsa.misc.policy_name : $~tmp.kvMap.acl_policy_name
-    - rsa.misc.rule_name : $~tmp.kvMap.acl_rule_name
-    - rsa.misc.severity : $~tmp.kvMap.severity
-    - rsa.misc.version : $~tmp.kvMap.device_version
+    - rsa.misc.policy_name: $~tmp.kvMap.acl_policy_name
+    - rsa.misc.rule_name: $~tmp.kvMap.acl_rule_name
+    - rsa.misc.severity: $~tmp.kvMap.severity
+    - rsa.misc.version: $~tmp.kvMap.device_version
     - rsa.network.alias_host: +a_append/$~tmp.kvMap.hostname
-    - rsa.network.vlan : $~tmp.kvMap.vlan
-    - rsa.time.event_time_str : $@timestamp
+    - rsa.network.vlan: $~tmp.kvMap.vlan
+    - rsa.time.event_time_str: $@timestamp
     - rule.name: $~tmp.kvMap.acl_rule_name
-    - service.type : f5
-    - source.geo.country_name : $~tmp.kvMap.src_geo
-    - source.ip : $~tmp.kvMap.source_ip
-    - source.nat.ip : $~tmp.kvMap.translated_source_ip
-    - source.nat.port : $~tmp.kvMap.translated_source_port
-    - source.port : $~tmp.kvMap.source_port
-    - tags : [f5.bigipafm, forwarded]
-    - user.name : $~tmp.kvMap.source_user
+    - service.type: f5
+    - source.geo.country_name: $~tmp.kvMap.src_geo
+    - source.ip: $~tmp.kvMap.source_ip
+    - source.nat.ip: $~tmp.kvMap.translated_source_ip
+    - source.nat.port: $~tmp.kvMap.translated_source_port
+    - source.port: $~tmp.kvMap.source_port
+    - tags: [f5.bigipafm, forwarded]
+    - user.name: $~tmp.kvMap.source_user
     - ~tmp: +ef_delete
