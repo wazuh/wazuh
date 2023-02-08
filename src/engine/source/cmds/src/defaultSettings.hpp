@@ -19,6 +19,9 @@ constexpr auto ENGINE_KVDB_PATH_ENV = "WZE_KVDB_PATH";
 constexpr auto ENGINE_ENVIRONMENT = "default:255:filter/allow-all/0:environment/wazuh/0";
 constexpr auto ENGINE_ENVIRONMENT_ENV = "WZE_ENVIRONMENT";
 
+constexpr auto ENGINE_ENVIRONMENT_TEST = "environment/wazuh/0";
+constexpr auto ENGINE_ENVIRONMENT_TEST_ENV = "WZE_ENVIRONMENT_TEST";
+
 constexpr auto ENGINE_QUEUE_SIZE = 1000000;
 constexpr auto ENGINE_QUEUE_SIZE_ENV = "WZE_QUEUE_SIZE";
 
