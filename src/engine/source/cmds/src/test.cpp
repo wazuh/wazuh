@@ -336,7 +336,7 @@ void configure(CLI::App_p app)
 
     // Environment
     logtestApp->add_option("--environment", options->environment, "Name of the environment to be used.")
-        ->default_val(ENGINE_ENVIRONMENT);
+        ->default_val(ENGINE_ENVIRONMENT_TEST);
 
     // Protocol queue
     logtestApp

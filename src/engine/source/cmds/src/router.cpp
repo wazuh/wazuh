@@ -141,7 +141,7 @@ void configure(CLI::App_p app)
 
     // Add
     auto addSubcommand =
-        routerApp->add_subcommand("add", "Activate a new route, route asset must exist in the catalog");
+        routerApp->add_subcommand("add", "Activate a new route, filter and environment asset must exist in the catalog");
     addSubcommand->add_option("name", options->name, "Name or identifier of the route.")->required();
     addSubcommand->add_option("filter", options->filterName, "Name of the filter to use.")->required();
     addSubcommand->add_option("priority", options->priority, "Priority of the route.")
