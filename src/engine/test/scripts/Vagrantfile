@@ -118,8 +118,11 @@ Vagrant.configure("2") do |config|
         $ENGINE_DIR/wazuh-engine catalog load --recursive output $ENGINE_SRC_DIR/ruleset/outputs/
         $ENGINE_DIR/wazuh-engine catalog load --recursive environment $ENGINE_SRC_DIR/ruleset/environments/
         $ENGINE_DIR/wazuh-engine catalog load --recursive filter $ENGINE_SRC_DIR/ruleset/filters/
-        $ENGINE_DIR/wazuh-engine router add filter/allow-all/0 255 environment/wazuh/0
+        $ENGINE_DIR/wazuh-engine router add default filter/allow-all/0 255 environment/wazuh/0
         echo
+
+        # Create folder for engine core dumps
+        mkdir -p /coredumps
 
         # Create index pattern
         echo "--- Setting up dashboards index pattern  ---"
