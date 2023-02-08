@@ -29,7 +29,7 @@ normalize:
 
   # generic_fortinetmgr (has signature_id)
   - check:
-    - ~kvMap.signature_id: +ef_exists
+      - ~kvMap.signature_id: +ef_exists
     map:
       - destination.bytes: $~kvMap.rcvdbyte
       - destination.ip: $~kvMap.dst
