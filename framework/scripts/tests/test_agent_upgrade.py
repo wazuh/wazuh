@@ -105,11 +105,11 @@ def test_send_command(mock_raise_if_exc, mock_concurrent, mock_distributed_api):
 
 
 @pytest.mark.parametrize('agents_versions, failed_agents, expected_output', [
-    ({'001': {'prev_version': '4.2.0', 'new_version': '4.3.0'}}, {'001': 'test_error'},
-     '\nUpgraded agents:\n\tAgent 001 upgraded: 4.2.0 -> 4.3.0\n\nFailed upgrades:\n\tAgent 001 status: test_error\n'),
+    ({'001': {'prev_version': '4.2.0', 'new_version': '4.4.0'}}, {'001': 'test_error'},
+     '\nUpgraded agents:\n\tAgent 001 upgraded: 4.2.0 -> 4.4.0\n\nFailed upgrades:\n\tAgent 001 status: test_error\n'),
     ({}, {}, ''),
-    ({'001': {'prev_version': '4.2.0', 'new_version': '4.3.0'}}, {},
-     '\nUpgraded agents:\n\tAgent 001 upgraded: 4.2.0 -> 4.3.0\n'),
+    ({'001': {'prev_version': '4.2.0', 'new_version': '4.4.0'}}, {},
+     '\nUpgraded agents:\n\tAgent 001 upgraded: 4.2.0 -> 4.4.0\n'),
     ({}, {'001': 'test_error'}, '\nFailed upgrades:\n\tAgent 001 status: test_error\n')
 ])
 def test_print_result(capfd, agents_versions, failed_agents, expected_output):
@@ -151,7 +151,7 @@ def test_check_status(mock_agent, mock_sleep, mock_print_result, silent):
     agent_upgrade.args.version = '4.2.0'
     with patch('scripts.agent_upgrade.send_command', return_value=task_results) as mock_send_command:
         agent_upgrade.check_status(affected_agents=['001', '002'],
-                                   result_dict={'001': {'new_version': '4.3.0'}, '002': {'new_version': '4.3.0'}},
+                                   result_dict={'001': {'new_version': '4.4.0'}, '002': {'new_version': '4.4.0'}},
                                    failed_agents={}, silent=silent)
 
         mock_send_command.assert_called_once_with(function=agent_upgrade.get_upgrade_result,
