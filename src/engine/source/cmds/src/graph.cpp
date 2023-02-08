@@ -140,7 +140,7 @@ void configure(CLI::App_p app)
 
     // Environment
     graphApp->add_option("--environment", options->environment, "Name of the environment to be used.")
-        ->default_val(ENGINE_ENVIRONMENT);
+        ->default_val(ENGINE_ENVIRONMENT_TEST);
 
     // Graph dir
     graphApp->add_option("-o, --output_dir", options->graphOutDir, "Directory to save the graph files.")
