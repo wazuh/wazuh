@@ -95,6 +95,7 @@ normalize:
     - event.timezone: $~tmp.tz
     - event.code: $~tmp.logid
     - event.duration: $~tmp.duration
+    - event.duration: +i_calc/mul/100000000
     - event.reference: $~tmp.ref
     - event.reason: $~tmp.reason
     - event.action: $~tmp.action
@@ -460,16 +461,8 @@ normalize:
       - fortinet.firewall.quarskip: $~tmp.quarskip
 
   # Clean variables
-  - map:
-    - ~tmp: +ef_delete
-  #
-  # TODO
-  #
-  # TODO: can't multiply by 100000000
-  # - check:
-  #   - event.duration: +ef_exists
-  #   map:
-  #   - event.duration: +i_calc/mul/100000000
+  # - map:
+  #  - ~tmp: +ef_delete
   #
   # TODO: Failed to assign the fields 'network.community id' and 'network.transport' because value not found in event
   #
