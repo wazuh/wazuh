@@ -12,12 +12,12 @@ metadata:
   references:
     - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
 
-check:
-  - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="Wireless Protection"
-
 sources:
   - decoder/queue-syslog/0
   - decoder/queue-localfile/0
+
+check:
+  - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="Wireless Protection"
 
 parse:
   logpar:
@@ -30,7 +30,7 @@ normalize:
       - ~tmp.payload_message: +s_replace/=""/=" "
     logpar:
       - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
-    map:
+  - map:
       - event.kind: event
       - event.module: sophos
       - event.dataset: sophos.xg
