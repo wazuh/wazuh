@@ -87,8 +87,8 @@ normalize:
 
   # generic_fortinetmgr_1 (hasn't signature_id and has vd)
   - check:
-    - ~kvMap.signature_id: +ef_not_exists
-    - ~kvMap.vd: +ef_exists
+      - ~kvMap.signature_id: +ef_not_exists
+      - ~kvMap.vd: +ef_exists
     map:
       - destination.bytes: $~kvMap.rcvdbyte
       - destination.geo.country_name: $~kvMap.dstcountry
@@ -132,8 +132,8 @@ normalize:
 
   # event_fortinetmgr  (hasn't signature_id and hasn't vd)
   - check:
-    - ~kvMap.signature_id: +ef_not_exists
-    - ~kvMap.vd: +ef_not_exists
+      - ~kvMap.signature_id: +ef_not_exists
+      - ~kvMap.vd: +ef_not_exists
     map:
       - event.code: $~kvMap.log_id
       - log.level: $~kvMap.pri
