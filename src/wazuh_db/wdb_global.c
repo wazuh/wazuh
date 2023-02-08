@@ -1208,7 +1208,7 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
         if (cJSON_IsString(j_group_name)){
             char* group_name = j_group_name->valuestring;
             cJSON* j_find_response = wdb_global_find_group(wdb, group_name);
-            if (j_find_response) {
+            if (j_find_response && cJSON_GetArraySize(j_find_response) > 0) {
                 cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child, "id");
                 if (cJSON_IsNumber(j_group_id)) {
                     if (OS_INVALID == wdb_global_insert_agent_belong(wdb, j_group_id->valueint, id, priority)) {
@@ -1218,13 +1218,14 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
                         priority++;
                     }
                 } else {
-                    mwarn("The group '%s' does not exist", group_name);
+                    mwarn("Invalid response from wdb_global_find_group.");
+                    result = WDBC_ERROR;
                 }
-                cJSON_Delete(j_find_response);
             } else {
-                mdebug1("Unable to find the id of the group '%s'", group_name);
+                mwarn("Unable to find the id of the group '%s'", group_name);
                 result = WDBC_ERROR;
             }
+            cJSON_Delete(j_find_response);
         } else {
             mdebug1("Invalid groups set information");
             result = WDBC_ERROR;
@@ -1240,7 +1241,7 @@ wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups)
         if (cJSON_IsString(j_group_name)) {
             char* group_name = j_group_name->valuestring;
             cJSON* j_find_response = wdb_global_find_group(wdb, group_name);
-            if (j_find_response) {
+            if (j_find_response && cJSON_GetArraySize(j_find_response) > 0) {
                 cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child, "id");
                 if (cJSON_IsNumber(j_group_id)) {
                     if (OS_SUCCESS == wdb_global_delete_tuple_belong(wdb, j_group_id->valueint, id)) {
@@ -1252,13 +1253,14 @@ wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups)
                         result = WDBC_ERROR;
                     }
                 } else {
-                    mwarn("The group '%s' does not exist", group_name);
+                    mwarn("Invalid response from wdb_global_find_group.");
+                    result = WDBC_ERROR;
                 }
-                cJSON_Delete(j_find_response);
             } else {
-                mdebug1("Unable to find the id of the group '%s'", group_name);
+                mwarn("Unable to find the id of the group '%s'", group_name);
                 result = WDBC_ERROR;
             }
+            cJSON_Delete(j_find_response);
         } else {
             mdebug1("Invalid groups remove information");
             result = WDBC_ERROR;

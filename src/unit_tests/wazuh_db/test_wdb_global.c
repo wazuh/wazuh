@@ -7443,7 +7443,7 @@ void test_wdb_global_assign_agent_group_find_error(void **state) {
     int agent_id = 1;
     int initial_priority = 0;
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    char debug_message[GROUPS_SIZE][OS_MAXSTR] = {0};
+    char warn_message[GROUPS_SIZE][OS_MAXSTR] = {0};
     char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
     cJSON* j_groups = __real_cJSON_CreateArray();
 
@@ -7454,8 +7454,9 @@ void test_wdb_global_assign_agent_group_find_error(void **state) {
         // wdb_global_find_group
         will_return(__wrap_wdb_begin2, OS_INVALID);
         expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
-        snprintf(debug_message[i], OS_MAXSTR, "Unable to find the id of the group '%s'", group_name[i]);
-        expect_string(__wrap__mdebug1, formatted_msg, debug_message[i]);
+        snprintf(warn_message[i], OS_MAXSTR, "Unable to find the id of the group '%s'", group_name[i]);
+        expect_string(__wrap__mwarn, formatted_msg, warn_message[i]);
+        expect_function_call(__wrap_cJSON_Delete);
     }
 
     wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority);
@@ -7656,7 +7657,7 @@ void test_wdb_global_unassign_agent_group_find_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    char debug_message[GROUPS_SIZE][OS_MAXSTR] = {0};
+    char warn_message[GROUPS_SIZE][OS_MAXSTR] = {0};
     char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
     cJSON* j_groups = __real_cJSON_CreateArray();
 
@@ -7667,8 +7668,9 @@ void test_wdb_global_unassign_agent_group_find_error(void **state) {
         // wdb_global_find_group
         will_return(__wrap_wdb_begin2, OS_INVALID);
         expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
-        snprintf(debug_message[i], OS_MAXSTR, "Unable to find the id of the group '%s'", group_name[i]);
-        expect_string(__wrap__mdebug1, formatted_msg, debug_message[i]);
+        snprintf(warn_message[i], OS_MAXSTR, "Unable to find the id of the group '%s'", group_name[i]);
+        expect_string(__wrap__mwarn, formatted_msg, warn_message[i]);
+        expect_function_call(__wrap_cJSON_Delete);
     }
 
     wdbc_result result = wdb_global_unassign_agent_group(data->wdb, agent_id, j_groups);
