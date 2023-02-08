@@ -1,0 +1,68 @@
+---
+name: decoder/fortinet-client-endpoint/0
+
+metadata:
+  module: fortinet
+  title: Decoder for Fortinet FortiClient Endpoint Security
+  description: Decoder for Fortinet FortiClient Endpoint Security
+  version: [6.0.x, 6.2.x]
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/09
+  references:
+    - https://docs.fortinet.com/document/forticlient/7.0.2/log-message-reference/327109
+
+sources:
+  - decoder/queue-localfile/0
+
+parse:
+  logpar:
+    # January 29 06:09:59 boNemoe4402.www.invalid proto=udp service=http status=deny src=10.150.92.220 dst=10.102.123.34 src_port=7178 dst_port=3994 server_app=reeufugi pid=7880 app_name=enderitq traff_direct=external block_count=5286 logon_user=sumdo@litesse6379.api.domain msg=failure
+    - event.original: <event.created/%B %d %T> <host.hostname> <~log.payload_msg>
+
+normalize:
+  - logpar:
+      - ~log.payload_msg: <~tmp/kv/=/ /"/'>
+  - logpar:
+      - ~tmp.logon_user: <~tmp.user>@<~tmp.domain>
+  - map:
+      - destination.ip: $~tmp.dst
+      - destination.port: $~tmp.dst_port
+      - event.action: $~tmp.status
+      - event.code: $~tmp.service
+      - event.dataset: fortinet.clientendpoint
+      - event.module: fortinet
+      - event.outcome: $~tmp.msg
+      - fileset.name: clientendpoint
+      - input.type: log
+      - network.direction: $~tmp.traff_direct
+      - network.protocol: $~tmp.proto
+      - observer.product: FortiClient
+      - observer.type: Anti-Virus
+      - observer.vendor: Fortinet
+      - process.pid: $~tmp.pid
+      - related.hosts: +a_append/$host.hostname/$~tmp.domain
+      - related.ip: +a_append/$~tmp.src/$~tmp.dst
+      - related.user: [$~tmp.user]
+      - rsa.counters.dclass_c1: $~tmp.block_count
+      - rsa.counters.dclass_c1_str: block_count
+      - rsa.internal.messageid: $~tmp.service
+      - rsa.investigations.ec_outcome: $~tmp.msg
+      - rsa.investigations.ec_subject: NetworkComm
+      - rsa.investigations.ec_theme: ALM
+      - rsa.misc.action: [$~tmp.status]
+      - rsa.misc.result: $~tmp.msg
+      - rsa.network.alias_host: [$host.hostname]
+      - rsa.network.domain: $~tmp.domain
+      - rsa.network.network_service: $~tmp.service
+      - server.domain: $~tmp.domain
+      - service.type: fortinet
+      - source.ip: $~tmp.src
+      - source.port: $~tmp.src_port
+      - tags: [fortinet.clientendpoint, forwarded]
+      - user.name: $~tmp.user
+      - ~log: +ef_delete
+      - ~tmp: +ef_delete
+
+# TODO: Could not map field 'log.offset' due to inability to persist values into different events.
+# Also, there is no helper that allows obtaining the size of an event.
