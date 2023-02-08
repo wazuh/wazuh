@@ -839,6 +839,7 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
 
     sqlite3_stmt *stmt = NULL;
     cJSON* agent_id_item = NULL;
+    int result = OS_INVALID;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
@@ -872,16 +873,15 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
                 }
             }
         }
-
-        cJSON_Delete(sql_agents_id);
-
-        return OS_SUCCESS;
+        result = OS_SUCCESS;
         break;
     default:
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        cJSON_Delete(sql_agents_id);
-        return OS_INVALID;
+        break;
     }
+
+    cJSON_Delete(sql_agents_id);
+    return result;
 }
 
 cJSON* wdb_global_select_groups(wdb_t *wdb) {
@@ -1407,8 +1407,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                 }
             }
             if (OS_SUCCESS == valid_groups) {
-                int result = wdb_global_recalculate_agent_groups_hash(wdb, agent_id, sync_status);
-                if (result == WDBC_ERROR) {
+                if (WDBC_ERROR == wdb_global_recalculate_agent_groups_hash(wdb, agent_id, sync_status)) {
                     ret = WDBC_ERROR;
                     merror("Couldn't recalculate hash group for agent: '%03d'", agent_id);
                 }
