@@ -887,9 +887,6 @@ void test_c_multi_group_call_copy_directory(void **state)
 
     expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
 
-    expect_string(__wrap_wdb_remove_group_db, name, "multi_group_test");
-    will_return(__wrap_wdb_remove_group_db, OS_SUCCESS);
-
     /* Open the multi-group files and generate merged */
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
@@ -1053,9 +1050,6 @@ void test_c_multi_group_call_c_group(void **state)
 
     errno = 1;
     expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
-
-    expect_string(__wrap_wdb_remove_group_db, name, "multi_group_test");
-    will_return(__wrap_wdb_remove_group_db, OS_SUCCESS);
 
     // End copy_directory function
 
@@ -3050,7 +3044,7 @@ void test_validate_shared_files_sub_subfolder_valid_file(void **state)
     assert_int_equal(f_size, 1);
 }
 
-void test_copy_directory_files_null_initial(void **state)
+void test_copy_directory_files_null(void **state)
 {
     expect_string(__wrap_wreaddir, name, "src_path");
     will_return(__wrap_wreaddir, NULL);
@@ -3058,23 +3052,7 @@ void test_copy_directory_files_null_initial(void **state)
     errno = 1;
     expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'src_path'. Group folder was deleted.");
 
-    expect_string(__wrap_wdb_remove_group_db, name, "group_test");
-    will_return(__wrap_wdb_remove_group_db, OS_SUCCESS);
-
-    copy_directory("src_path", "dst_path", "group_test", true);
-
-}
-
-void test_copy_directory_files_null_not_initial(void **state)
-{
-    expect_string(__wrap_wreaddir, name, "src_path");
-    will_return(__wrap_wreaddir, NULL);
-
-    errno = 1;
-    will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__mdebug2, formatted_msg, "Could not open directory 'src_path': ERROR (1)");
-
-    copy_directory("src_path", "dst_path", "group_test", false);
+    copy_directory("src_path", "dst_path", "group_test");
 
 }
 
@@ -3089,7 +3067,7 @@ void test_copy_directory_hidden_file(void **state)
     expect_string(__wrap_wreaddir, name, "src_path");
     will_return(__wrap_wreaddir, files);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 }
 
 void test_copy_directory_merged_file(void **state)
@@ -3103,7 +3081,7 @@ void test_copy_directory_merged_file(void **state)
     expect_string(__wrap_wreaddir, name, "src_path");
     will_return(__wrap_wreaddir, files);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 }
 
 void test_copy_directory_source_path_too_long_warning(void **state)
@@ -3124,7 +3102,7 @@ void test_copy_directory_source_path_too_long_warning(void **state)
 
     reported_path_size_exceeded = 0;
 
-    copy_directory(LONG_PATH, "dst_path", "group_test", true);
+    copy_directory(LONG_PATH, "dst_path", "group_test");
 }
 
 void test_copy_directory_source_path_too_long_debug(void **state)
@@ -3145,7 +3123,7 @@ void test_copy_directory_source_path_too_long_debug(void **state)
 
     reported_path_size_exceeded = 1;
 
-    copy_directory(LONG_PATH, "dst_path", "group_test", true);
+    copy_directory(LONG_PATH, "dst_path", "group_test");
 
     reported_path_size_exceeded = 0;
 }
@@ -3168,7 +3146,7 @@ void test_copy_directory_destination_path_too_long_warning(void **state)
 
     reported_path_size_exceeded = 0;
 
-    copy_directory("src_path", LONG_PATH, "group_test", true);
+    copy_directory("src_path", LONG_PATH, "group_test");
 }
 
 void test_copy_directory_destination_path_too_long_debug(void **state)
@@ -3189,7 +3167,7 @@ void test_copy_directory_destination_path_too_long_debug(void **state)
 
     reported_path_size_exceeded = 1;
 
-    copy_directory("src_path", LONG_PATH, "group_test", true);
+    copy_directory("src_path", LONG_PATH, "group_test");
 
     reported_path_size_exceeded = 0;
 }
@@ -3219,7 +3197,7 @@ void test_copy_directory_invalid_file(void **state)
     expect_string(__wrap_OSHash_Get, key, "src_path/test-file");
     will_return(__wrap_OSHash_Get, last_modify);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 
     os_free(last_modify);
 }
@@ -3251,7 +3229,7 @@ void test_copy_directory_agent_conf_file(void **state)
     expect_value(__wrap_w_copy_file, silent, 1);
     will_return(__wrap_w_copy_file, 0);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 }
 
 void test_copy_directory_valid_file(void **state)
@@ -3281,7 +3259,7 @@ void test_copy_directory_valid_file(void **state)
     expect_value(__wrap_w_copy_file, silent, 1);
     will_return(__wrap_w_copy_file, 0);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 }
 
 void test_copy_directory_valid_file_subfolder_file(void **state)
@@ -3345,7 +3323,7 @@ void test_copy_directory_valid_file_subfolder_file(void **state)
     expect_value(__wrap_w_copy_file, silent, 1);
     will_return(__wrap_w_copy_file, 0);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 }
 
 void test_copy_directory_mkdir_fail(void **state)
@@ -3371,7 +3349,7 @@ void test_copy_directory_mkdir_fail(void **state)
     will_return(__wrap_strerror, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Cannot create directory 'dst_path/subfolder': ERROR (10)");
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
     errno = 0;
 }
 
@@ -3398,10 +3376,9 @@ void test_copy_directory_mkdir_exist(void **state)
     expect_string(__wrap_wreaddir, name, "src_path/subfolder");
     will_return(__wrap_wreaddir, NULL);
 
-    will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__mdebug2, formatted_msg, "Could not open directory 'src_path/subfolder': ERROR (17)");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'src_path/subfolder'. Group folder was deleted.");
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
     errno = 0;
 }
 
@@ -3479,7 +3456,7 @@ void test_copy_directory_file_subfolder_file(void **state)
     expect_value(__wrap_w_copy_file, silent, 1);
     will_return(__wrap_w_copy_file, 0);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 }
 
 void test_save_controlmsg_request_error(void **state)
@@ -4147,8 +4124,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_validate_shared_files_valid_file_subfolder_valid_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_sub_subfolder_valid_file, test_c_group_setup, test_c_group_teardown),
         // Test copy_directory
-        cmocka_unit_test(test_copy_directory_files_null_initial),
-        cmocka_unit_test(test_copy_directory_files_null_not_initial),
+        cmocka_unit_test(test_copy_directory_files_null),
         cmocka_unit_test(test_copy_directory_hidden_file),
         cmocka_unit_test(test_copy_directory_merged_file),
         cmocka_unit_test(test_copy_directory_source_path_too_long_warning),

@@ -1207,9 +1207,6 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
     cJSON_ArrayForEach (j_group_name, j_groups) {
         if (cJSON_IsString(j_group_name)){
             char* group_name = j_group_name->valuestring;
-            if (OS_INVALID == wdb_global_insert_agent_group(wdb, group_name)) {
-                result = WDBC_ERROR;
-            }
             cJSON* j_find_response = wdb_global_find_group(wdb, group_name);
             if (j_find_response) {
                 cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child, "id");
