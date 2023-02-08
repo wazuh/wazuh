@@ -244,10 +244,7 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
     // Return Expression
     return base::Term<base::EngineOp>::create(
         name,
-        [=,
-         kvdb = std::get<kvdb_manager::KVDBHandle>(result),
-         dbName = std::move(dbName),
-         targetField = std::move(targetField)](base::Event event)
+        [=, dbName = std::move(dbName), targetField = std::move(targetField)](base::Event event)
         {
             event->setBool(false, targetField);
 
