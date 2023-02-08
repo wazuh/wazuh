@@ -12,12 +12,12 @@ metadata:
   references:
     - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
 
-check:
-  - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="IDP"
-
 sources:
   - decoder/queue-syslog/0
   - decoder/queue-localfile/0
+
+check:
+  - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="IDP"
 
 parse:
   logpar:
@@ -32,7 +32,7 @@ normalize:
       - ~tmp.payload_message: +s_replace/=""/=" "
     logpar:
       - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
-    map:
+  - map:
       - destination.ip: $~tmp.dst_ip
       - destination.port: $~tmp.dst_port
       - event.action: $~tmp.log_subtype

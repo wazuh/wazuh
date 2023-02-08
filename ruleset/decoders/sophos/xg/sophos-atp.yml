@@ -1,27 +1,27 @@
 ---
-name: decoder/sophos-cfilter/0
+name: decoder/sophos-atp/0
 
 metadata:
   module: Sophos
-  title: Sophos-Cfilter logs decoder
+  title: Sophos-Atp logs decoder
   version: [17.5.x, 18.0.x]
-  description: Decoder for Sophos Cfilter
+  description: Decoder for Sophos Atp
   author:
     name: Wazuh Inc. info@wazuh.com
     date: 2023-01-12
   references:
     - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
 
-check:
-  - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="Content Filtering"
-
 sources:
   - decoder/queue-syslog/0
   - decoder/queue-localfile/0
 
+check:
+  - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="ATP"
+
 parse:
   logpar:
-    # <30>device="SFW" date=2020-05-18 time=14:38:53 timezone="CEST" device_name="XG230" device_id=1234567890123456 log_id=050901616001 log_type="Content Filtering" log_component="HTTP" log_subtype="Allowed" status="" priority=Information fw_rule_id=2 user_name="" user_gp="" iap=13 category="Information Technology" category_type="Acceptable" url="http://update.eset.com/eset_upd/ep7/dll/update.ver.signed" contenttype="" override_token="" httpresponsecode="" src_ip=1.128.3.4 dst_ip=91.228.167.133 protocol="TCP" src_port=65391 dst_port=80 sent_bytes=980 recv_bytes=295 domain=update.eset.com exceptions=av,https,sandstorm activityname="" reason="" user_agent="EFSW Update (Windows; U; 64bit; BPC 7.1.12010.0; OS: 10.0.17763 SP 0.0 NT; TDB 45511; CL 1.1.1; x64s; APP efsw; PX 1; PUA 1; CD 1; RA 1; PEV 0; UNS 1; UBR 1158; HVCI 0; SHA256 1; WU 3; HWF: 01009DAA-757A-D666-EFD2-92DD0D501284; PLOC de_de; PCODE 211.0.0; " status_code="304" transactionid="" referer="" download_file_name="" download_file_type="" upload_file_name="" upload_file_type="" con_id=248426360 application="" app_is_cloud=0 override_name="" override_authorizer=""
+    # <30>device="SFW" date=2020-05-18 time=14:38:34 timezone="CEST" device_name="XG230" device_id=1234567890123456 log_id=086504418010 log_type="ATP" log_component="Web" log_subtype="Drop" priority=Warning user_name="" protocol="TCP" src_port=57579 dst_port=80 sourceip=172.16.34.24 destinationip=13.226.155.22 url=http://sophostest.com/callhome/index.html threatname=C2/Generic-A eventid=E91DAD80-BDE4-4682-B7E8-FE394B70A36C eventtype="Standard" login_user="" process_user="" ep_uuid="" execution_path=""
     - event.original: \<<~>><~tmp.payload_message>
 
 normalize:
@@ -30,14 +30,12 @@ normalize:
     logpar:
       - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
   - map:
-      - destination.bytes: $~tmp.recv_bytes
-      - destination.ip: $~tmp.dst_ip
+      - destination.ip: $~tmp.destinationip
       - destination.port: $~tmp.dst_port
       - event.action: +s_lo/$~tmp.log_subtype
       - event.code: $~tmp.log_id
       - event.dataset: sophos.xg
-      - event.duration: $~tmp.duration
-      - event.end: +s_concat/$~tmp.date/T/$~tmp.time
+      - event.id: $~tmp.eventid
       - event.kind: event
       - event.module: sophos
       - event.outcome: success
@@ -70,54 +68,39 @@ normalize:
     map:
       - event.severity: 6
   - map:
-      - event.start: +s_concat/$~tmp.date/T/$~tmp.time
       - event.timezone: $~tmp.timezone
       - fileset.name: xg
-      - http.response.status_code: $~tmp.status_code
       - input.type: log
       - log.level: $~tmp.priority
-      - message: +s_lo/$~tmp.protocol
       - observer.product: XG
       - observer.serial_number: $~tmp.device_id
       - observer.type: firewall
       - observer.vendor: Sophos
-      - network.protocol: +s_lo/$~tmp.log_component
       - network.transport: +s_lo/$~tmp.protocol
       - service.type: sophos
-      - sophos.xg.app_is_cloud: $~tmp.app_is_cloud
-      - sophos.xg.category: $~tmp.category
-      - sophos.xg.category_type: $~tmp.category_type
-      - sophos.xg.con_id: $~tmp.con_id
       - sophos.xg.device: $~tmp.device
       - sophos.xg.device_name: $~tmp.device_name
-      - sophos.xg.exceptions: $~tmp.exceptions
-      - sophos.xg.fw_rule_id: $~tmp.fw_rule_id
-      - sophos.xg.iap: $~tmp.iap
+      - sophos.xg.eventtype: $~tmp.eventtype
       - sophos.xg.log_component: $~tmp.log_component
       - sophos.xg.log_id: $~tmp.log_id
       - sophos.xg.log_subtype: $~tmp.log_subtype
       - sophos.xg.log_type: $~tmp.log_type
       - sophos.xg.priority: $~tmp.priority
-      - sophos.xg.status_code: $~tmp.status_code
-      - source.bytes: $~tmp.sent_bytes
-      - source.ip: $~tmp.src_ip
+      - sophos.xg.threatname: $~tmp.threatname
+      - source.ip: $~tmp.sourceip
       - source.port: $~tmp.src_port
       - tags: [forwarded, preserve_original_event, sophos-xg]
       - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time
-      - url.domain: $~tmp.domain
   - logpar:
-        # http://update.eset.com/eset_upd/ep7/dll/update.ver.signed"
+        # "http://sophostest.com/callhome/index.html"
       - ~tmp.url: <~tmp.schema>://<~tmp.domain>/<~tmp.path>
     map:
       - ~tmp.aux_slash: /
+      - url.domain: $~tmp.domain
       - url.full: $~tmp.url
       - url.original: $~tmp.url
       - url.path: +s_concat/$~tmp.aux_slash/$~tmp.path
       - url.scheme: $~tmp.schema
-  - logpar:
-      - url.path: /<~tmp.fill>/<~tmp.fill>/<~tmp.fill>/<~tmp.fill>.<~tmp.fill>.<~tmp.extension>
-    map:
-      - url.extension: $~tmp.extension
   - map:
       - related.ip: [$destination.ip, $source.ip]
       - user_agent.original: $~tmp.user_agent
