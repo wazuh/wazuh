@@ -5,6 +5,7 @@ on:
             - 'src/VERSION'
             - 'api/api/spec/spec.yaml'
     push:
+    workflow_dispatch:
 
 jobs:
     check_license_version:
