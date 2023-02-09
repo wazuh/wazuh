@@ -11,6 +11,7 @@ CPMAddPackage(
 
 CPMAddPackage(
         NAME date
+        # TODO: This is master, not a release.
         # Using specific commit hash from master to avoid STDOFF errors,
         # if a version (newer than 3.0.1) is released update this.
         GITHUB_REPOSITORY HowardHinnant/date
