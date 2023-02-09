@@ -2402,7 +2402,6 @@ void test_wdb_global_update_agent_version_bind3_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, os_major);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
 
-
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
@@ -2453,7 +2452,6 @@ void test_wdb_global_update_agent_version_bind4_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 4);
     expect_value(__wrap_sqlite3_bind_text, buffer, os_minor);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2508,7 +2506,6 @@ void test_wdb_global_update_agent_version_bind5_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 5);
     expect_value(__wrap_sqlite3_bind_text, buffer, os_codename);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2566,7 +2563,6 @@ void test_wdb_global_update_agent_version_bind6_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 6);
     expect_value(__wrap_sqlite3_bind_text, buffer, os_platform);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2627,7 +2623,6 @@ void test_wdb_global_update_agent_version_bind7_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 7);
     expect_value(__wrap_sqlite3_bind_text, buffer, os_build);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2691,7 +2686,6 @@ void test_wdb_global_update_agent_version_bind8_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_value(__wrap_sqlite3_bind_text, buffer, os_uname);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2758,7 +2752,6 @@ void test_wdb_global_update_agent_version_bind9_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 9);
     expect_value(__wrap_sqlite3_bind_text, buffer, os_arch);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2828,7 +2821,6 @@ void test_wdb_global_update_agent_version_bind10_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 10);
     expect_value(__wrap_sqlite3_bind_text, buffer, version);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2901,7 +2893,6 @@ void test_wdb_global_update_agent_version_bind11_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 11);
     expect_value(__wrap_sqlite3_bind_text, buffer, config_sum);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2977,7 +2968,6 @@ void test_wdb_global_update_agent_version_bind12_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 12);
     expect_value(__wrap_sqlite3_bind_text, buffer, merged_sum);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -3056,7 +3046,6 @@ void test_wdb_global_update_agent_version_bind13_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 13);
     expect_value(__wrap_sqlite3_bind_text, buffer, manager_host);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -3138,7 +3127,6 @@ void test_wdb_global_update_agent_version_bind14_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 14);
     expect_value(__wrap_sqlite3_bind_text, buffer, node_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -3223,7 +3211,6 @@ void test_wdb_global_update_agent_version_bind15_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 15);
     expect_value(__wrap_sqlite3_bind_text, buffer, agent_ip);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -3311,7 +3298,6 @@ void test_wdb_global_update_agent_version_bind16_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 16);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -3402,7 +3388,6 @@ void test_wdb_global_update_agent_version_bind17_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 17);
     expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -3496,7 +3481,6 @@ void test_wdb_global_update_agent_version_bind18_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 18);
     expect_value(__wrap_sqlite3_bind_text, buffer, group_config_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -3593,7 +3577,6 @@ void test_wdb_global_update_agent_version_bind19_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 19);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
@@ -5616,7 +5599,6 @@ void test_wdb_global_delete_tuple_belong_init_stmt_fail(void **state)
     assert_int_equal(result, OS_INVALID);
 }
 
-
 void test_wdb_global_delete_tuple_belong_exec_stmt_fail(void **state)
 {
     int result = 0;
@@ -6565,7 +6547,6 @@ void test_wdb_global_get_agents_by_connection_status_and_node_due(void **state)
 
     __real_cJSON_Delete(root);
 }
-
 
 void test_wdb_global_get_agents_by_connection_status_err(void **state)
 {

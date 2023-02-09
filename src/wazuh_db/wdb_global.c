@@ -583,7 +583,7 @@ int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_s
     else {
         cJSON* root_j = wdb_global_select_agent_group(wdb, agent_id);
         cJSON* agent_group_j = NULL;
-        if (root_j && (agent_group_j = cJSON_GetObjectItem(root_j->child,"group")) && cJSON_IsString(agent_group_j)) {
+        if (root_j && (agent_group_j = cJSON_GetObjectItem(root_j->child, "group")) && cJSON_IsString(agent_group_j)) {
             OS_SHA256_String_sized(agent_group_j->valuestring, groups_hash, WDB_GROUP_HASH_SIZE);
             cJSON_Delete(root_j);
         }
@@ -864,7 +864,7 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
-        cJSON_ArrayForEach(agent_id_item,sql_agents_id) {
+        cJSON_ArrayForEach(agent_id_item, sql_agents_id) {
             cJSON* agent_id = cJSON_GetObjectItem(agent_id_item, "id_agent");
             if (cJSON_IsNumber(agent_id)) {
                 if (WDBC_ERROR == wdb_global_if_empty_set_default_agent_group(wdb, agent_id->valueint) ||
@@ -1045,7 +1045,7 @@ wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char 
         cJSON* sql_agents_response = wdb_exec_stmt(agent_stmt);
         if (sql_agents_response && sql_agents_response->child) {
             cJSON* json_agent = sql_agents_response->child;
-            cJSON* json_id = cJSON_GetObjectItem(json_agent,"id");
+            cJSON* json_id = cJSON_GetObjectItem(json_agent, "id");
             if (cJSON_IsNumber(json_id)) {
                 //Get ID
                 int agent_id = json_id->valueint;
@@ -1205,7 +1205,7 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
     cJSON* j_group_name = NULL;
     wdbc_result result = WDBC_OK;
     cJSON_ArrayForEach (j_group_name, j_groups) {
-        if (cJSON_IsString(j_group_name)){
+        if (cJSON_IsString(j_group_name)) {
             char* group_name = j_group_name->valuestring;
             cJSON* j_find_response = wdb_global_find_group(wdb, group_name);
             if (j_find_response && cJSON_GetArraySize(j_find_response) > 0) {
@@ -1384,7 +1384,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                     merror("There was an error un-assigning the groups to agent '%03d'", agent_id);
                 }
             } else {
-                if (mode == WDB_GROUP_OVERRIDE ) {
+                if (mode == WDB_GROUP_OVERRIDE) {
                     if (OS_INVALID == wdb_global_delete_agent_belong(wdb, agent_id)) {
                         ret = WDBC_ERROR;
                         merror("There was an error cleaning the previous agent groups");
@@ -1587,7 +1587,7 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
     return status;
 }
 
-int wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent){
+int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON * json_agent) {
     sqlite3_stmt *stmt = NULL;
     int n = 0;
     int index = 0;
@@ -1605,11 +1605,11 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent){
 
     stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_AGENT_INFO];
 
-    for (n = 0 ; global_db_agent_fields[n] ; n++){
+    for (n = 0 ; global_db_agent_fields[n] ; n++) {
         // Every column name of Global DB is stored in global_db_agent_fields
         json_field = cJSON_GetObjectItem(json_agent, global_db_agent_fields[n]+1);
         index = sqlite3_bind_parameter_index(stmt, global_db_agent_fields[n]);
-        if (cJSON_IsNumber(json_field) && index != 0){
+        if (cJSON_IsNumber(json_field) && index != 0) {
             if (sqlite3_bind_int(stmt, index , json_field->valueint) != SQLITE_OK) {
                 merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                 return OS_INVALID;
@@ -1771,7 +1771,6 @@ int wdb_global_agent_exists(wdb_t *wdb, int agent_id) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-
 
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
@@ -2076,7 +2075,7 @@ time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
         struct stat backup_info = {0};
 
         snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
-        if(!stat(tmp_path, &backup_info) ) {
+        if(!stat(tmp_path, &backup_info)) {
             if(backup_info.st_mtime >= most_recent_backup_time) {
                 most_recent_backup_time = backup_info.st_mtime;
                 tmp_backup_name = entry->d_name;
@@ -2114,7 +2113,7 @@ time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
         struct stat backup_info = {0};
 
         snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
-        if(!stat(tmp_path, &backup_info) ) {
+        if(!stat(tmp_path, &backup_info)) {
             if((current_time - backup_info.st_mtime) >= aux_time_var) {
                 aux_time_var = current_time - backup_info.st_mtime;
                 oldest_backup_time = backup_info.st_mtime;
