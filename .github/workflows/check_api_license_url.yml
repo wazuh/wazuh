@@ -34,4 +34,7 @@ jobs:
 
           - name: Check if variables are different
             run: |
-              if [[ ${MAJOR_MINOR_VERSION} != ${MAJOR_MINOR_SPEC_LICENSE_URL} || ${MAJOR_MINOR_VERSION} != ${MAJOR_MINOR_SPEC_LICENSE} || ${MAJOR_MINOR_SPEC_LICENSE_URL} != ${MAJOR_MINOR_SPEC_LICENSE} ]]; then echo "Error comparing versions. Check API spec.yaml urls and src/VERSION"; exit 1; fi
+              if [[ ${MAJOR_MINOR_VERSION} != ${MAJOR_MINOR_SPEC_LICENSE_URL} || ${MAJOR_MINOR_VERSION} != ${MAJOR_MINOR_SPEC_LICENSE} || ${MAJOR_MINOR_SPEC_LICENSE_URL} != ${MAJOR_MINOR_SPEC_LICENSE} ]]
+                then echo "Error comparing versions. Check API spec.yaml urls and src/VERSION"
+                exit 1
+              fi
