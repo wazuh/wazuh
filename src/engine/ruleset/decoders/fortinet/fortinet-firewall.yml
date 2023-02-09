@@ -94,6 +94,7 @@ normalize:
     - event.kind: event
     - event.timezone: $~tmp.tz
     - event.code: $~tmp.logid
+    # due to type value limitations, multiplying by a large number can cause an overflow on the result
     - event.duration: $~tmp.duration
     - event.duration: +i_calc/mul/100000000
     - event.reference: $~tmp.ref
@@ -346,6 +347,26 @@ normalize:
       - fortinet.firewall.severity: $~tmp.severity
 
   # General mapping
+  - check:
+      - ~tmp.proto: 1
+    map:
+      - network.transport: icmp
+  - check:
+      - ~tmp.proto: 2
+    map:
+      - network.transport: igmp
+  - check:
+      - ~tmp.proto: 6
+    map:
+      - network.transport: tcp
+  - check:
+      - ~tmp.proto: 17
+    map:
+      - network.transport: udp
+  - check:
+      - ~tmp.proto: 18
+    map:
+      - network.transport: ipv6-icmp
   - map:
       - \@timestamp: $~tmp.timestamp
       - event.start: $~tmp.timestamp
@@ -461,8 +482,8 @@ normalize:
       - fortinet.firewall.quarskip: $~tmp.quarskip
 
   # Clean variables
-  # - map:
-  #  - ~tmp: +ef_delete
+  - map:
+    - ~tmp: +ef_delete
   #
   # TODO: Failed to assign the fields 'network.community id' and 'network.transport' because value not found in event
   #
