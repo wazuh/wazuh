@@ -2027,6 +2027,9 @@ int wm_sca_pattern_matches(const char * const str,
         else if (strcmp(w_expression_get_regex_type(regex_engine), PCRE2_STR) == 0) {
             w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
         }
+        if(regex == NULL)
+            break;
+
         const int minterm_result = negated ^ wm_sca_test_positive_minterm (minterm, str, reason, regex);
         w_free_expression_t(&regex);
         
