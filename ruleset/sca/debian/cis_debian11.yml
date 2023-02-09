@@ -1,5 +1,5 @@
 # Security Configuration Assessment
-# CIS Checks for Debian Linux 10
+# CIS Checks for Debian Linux 11
 # Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
@@ -8,7 +8,7 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Debian Linux 10 Benchmark v1.0.0 - 02-13-2020
+# Center for Internet Security Debian Linux 11 Benchmark v1.0.0 - 09-22-2022
 
 policy:
   id: "cis_debian11"
@@ -92,6 +92,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1200", "T1200.000"]
+      - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -200,6 +201,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1200", "T1200.000"]
+      - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1038"]
     condition: all
@@ -389,7 +391,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1200", "T1200.000"]
+      - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
