@@ -1,7 +1,11 @@
+---
 name: decoder/queue-ciscat/0
 
 metadata:
   description: Exclusive parent decoder for ciscat (CISCAT_MQ)
+
+sources:
+  - decoder/agent-event-enrichment/0
 
 check:
   - wazuh.queue: 101 # CISCAT_MQ 'e'
