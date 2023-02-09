@@ -459,7 +459,6 @@ checks:
     rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follows. (1) Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var/log/audit directory contains the audit.log file which can grow quite large, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var/log/audit and cause auditd to trigger it's space_left_action as the disk is full. See man auditd.conf for details. (2) Fine grained control over the mount: Configuring /var/log/audit as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. (3) Protection of audit data: As /var/log/audit contains audit logs, care should be taken to ensure the security and integrity of the data and mount point."
     remediation: "IF the /var/log partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log with the configured options: # mount -o remount /var/log"
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
-    additional information: "When modifying /var/log/audit it is advisable to bring the system to emergency mode (so auditd is not running), rename the existing directory, mount the new file system, and migrate the data over before returning to multi-user mode."
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     compliance:
@@ -522,7 +521,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1200", "T1200.000"]
+      - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -566,7 +565,6 @@ checks:
     rationale: "The reasoning for mounting /home on a separate partition is as follows. (1) Protection from resource exhaustion: The default installation only creates a single / partition. Since the /home directory contains user generated data, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /home and impact all local users. (2) Fine grained control over the mount: Configuring /home as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. In the case of /home options such as usrquota/grpquota may be considered to limit the impact that users can have on each other with regards to disk resource exhaustion. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. (3) Protection of user data: As /home contains user data, care should be taken to ensure the security and integrity of the data and mount point."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
-    additional information: "When modifying /home it is advisable to bring the system to emergency mode (so auditd is not running), rename the existing directory, mount the new file system, and migrate the data over before returning to multi-user mode."
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     compliance:
