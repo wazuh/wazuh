@@ -17,25 +17,16 @@ metadata:
     - https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/platform-logs-overview
 
 check:
-   - wazuh.origin: Azure
-
+   - wazuh.origin: /dev/stdin
 
 
 normalize:
   - map:
      - cloud.provider: azure
-     
-
-     # Split in two decoders?
      - event.outcome: $~json.result
-     - azure.auditlogs.properties.operation_type: $~json.operationType
-     - azure.auditlogs.properties.activity_display_name: $~json.activityDisplayName
-     - azure.auditlogs.properties.activity_datetime: $~json.activityDateTime
-     - azure.auditlogs.properties.additional_details: $~json.additionalDetails
-     - azure.auditlogs.properties.result_reason: $~json.resultReason
-     - azure.auditlogs.properties.correlation_id: $~json.correlationId
-     - azure.auditlogs.properties.logged_by_service: $~json.loggedByService
-     - azure.auditlogs.properties.target_resources: $~json.targetResources
+     - azure.resource.id: $~json.ResourceId
 
   - logpar:
-    - ~json.ResourceId: /subscriptions/<azure.subscription_id>/reourceGroups/<azure.resource.group>/providers/<azure.resource.provider>
+    - ~json.ResourceId: /subscriptions/<azure.subscription_id>/resourceGroups/<azure.resource.group>/providers/<azure.resource.provider>
+    - ~json.ResourceId: /SUBSCRIPTIONS/<azure.subscription_id>/RESOURCEGROUPS/<azure.resource.group>/PROVIDERS/<azure.resource.provider>
+    - ~json.ResourceId: /tenants/<azure.tenant_id>/providers/<azure.resource.provider>

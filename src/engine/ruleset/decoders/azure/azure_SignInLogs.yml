@@ -1,4 +1,4 @@
-name: decoder/SignInLogs/0
+name: decoder/azure_SignInLogs/0
 
 sources: 
   - decoder/azure_base_decoder/0
@@ -16,14 +16,14 @@ metadata:
     - https://learn.microsoft.com/en-us/azure/active-directory/reports-monitoring/concept-sign-ins
 
 check:
-   - ~json.category: SignInLogs 
+   - ~json.Category: SignInLogs 
 
 normalize:
   - map:
     - event.category: authentication
     - event.kind: event
     - event.type: info
-    - azure.resource_id: $~json.ResourceId
+    - azure.signinlogs.resource_id: $~json.ResourceId
     - source.address: $~json.IPAddress
     - source.ip: $source.address
     - related.ip: $source.ip
@@ -39,8 +39,18 @@ normalize:
     - azure.signinlogs.properties.processing_time_ms: $~json.ProcessingTimeInMilliseconds
     - azure.signinlogs.properties.risk_level_during_signin: $~json.RiskLevelDuringSignIn
     - message: $~json.FailureReason
-    # TODO: Parse json.Status as azure.signinlogs.properties.status use kv parser
-    #- message: $~json.
+    - ~temp.status: +parse_json/$~json.Status
+    - azure.signinlogs.properties.status.error_code: $~temp.status.errorCode
+    - azure.signinlogs.properties.status.additional_details: $~temp.status.additionalDetails
+    - message: azure.signinlogs.properties.status.additional_details
+    - ~temp.locationDetails: +parse_json/$~json.LocationDetails
+    - geo.city_name: $~temp.locationDetails.city
+    - geo.country_name: $~temp.locationDetails.state
+    - geo.location.lat: $~temp.locationDetails.latitude
+    - geo.location.lon: $~temp.locationDetails.longitude
+    # azure.signinlogs.properties.authentication_processing_details is very difficult to parse
+    
+    
     # TODO: parse json.LocationDetails
     #- geo.city_name: 
     #- geo.country_name
@@ -48,5 +58,4 @@ normalize:
     #- geo.location.lon
     # TODO: parse AuthenticationProcessingDetails
     
-    - 
 
