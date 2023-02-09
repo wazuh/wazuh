@@ -19069,3 +19069,4 @@ paths:
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: 'https://documentation.wazuh.com/4.3/user-manual/api/index.html'
+ 
