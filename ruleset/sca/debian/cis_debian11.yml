@@ -4096,7 +4096,6 @@ checks:
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
     remediation: "Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,go-wx {} \\; #find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;"
-    default value: "Access: (0644/-rw-r--r--) Uid: ( 0/ root) Gid: ( 0/ root)"
     compliance:
       - cis: ["5.2.3"]
       - cis_csc_v8: ["3.3"]
@@ -4108,7 +4107,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
-      - mitre_techniques: ["T1557", "T1557.000"]
+      - mitre_techniques: ["T1557"]
       - mitre_tactics: ["TA0003", "TA0006"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -4123,7 +4122,6 @@ checks:
     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: AllowUsers: The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. AllowGroups: The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. DenyUsers:The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. DenyGroups: The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows: AllowUsers <userlist> OR AllowGroups <grouplist> OR DenyUsers <userlist> OR DenyGroups <grouplist>"
-    default value: "None"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4150,7 +4148,6 @@ checks:
     description: "INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel VERBOSE OR LogLevel INFO"
-    default value: "LogLevel INFO"
     references:
       - https://www.ssh.com/ssh/sshd_config/
     compliance:
@@ -4200,7 +4197,6 @@ checks:
     description: "The PermitRootLogin parameter specifies if the root user can log in using SSH. The default is prohibit-password."
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root. This limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no"
-    default value: "PermitRootLogin without-password"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4225,7 +4221,6 @@ checks:
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no"
-    default value: "HostbasedAuthentication no"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4250,7 +4245,6 @@ checks:
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no"
-    default value: "PermitEmptyPasswords no"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4275,7 +4269,6 @@ checks:
     description: "The PermitUserEnvironment option allows users to present environment options to the SSH daemon."
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has SSH executing trojan'd programs)."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no"
-    default value: "PermitUserEnvironment no"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4300,7 +4293,6 @@ checks:
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with SSH."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
-    default value: "IgnoreRhosts yes"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4335,7 +4327,7 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - mitre_techniques: ["T1210", "T1210.000"]
+      - mitre_techniques: ["T1210"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -4348,7 +4340,6 @@ checks:
     description: 'This variable limits the ciphers that SSH can use during communication. Note:Some organizations may have stricter requirements for approved ciphers. Ensure that ciphers used are in compliance with site policy.The only "strong" ciphers currently FIPS 140-2 compliant are:aes256-ctr, aes192-ctr, aes128-ctr .Supported ciphers in openSSH 8.2:3des-cbc .aes128-cbc .aes192-cbc .aes256-cbc .aes128-ctr .aes192-ctr .aes256-ctr .aes128-gcm@openssh.com .aes256-gcm@openssh.com .chacha20-poly1305@openssh.com.'
     rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. The Triple DES ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain clear text data via a birthday attack against a long-duration encrypted session, aka a "Sweet32." attack. Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plain text data from an arbitrary block of cipher text in an SSH session via unknown vectors.'
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the Ciphers line to contain a comma separated list of the site approved ciphers. Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
-    default value: "Ciphers chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com"
     references:
       - "https://nvd.nist.gov/vuln/detail/CVE-2016-2183"
       - "https://www.openssh.com/txt/cbc.adv"
@@ -4364,7 +4355,7 @@ checks:
       - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - iso_27001-2013: ["A.13.1.1", "A.10.1.1"]
-      - mitre_techniques: ["T1040", "T1040.000", "T1557"]
+      - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
     condition: none
@@ -4377,7 +4368,6 @@ checks:
     description: 'This variable limits the types of MAC algorithms that SSH can use during communication.Notes:Some organizations may have stricter requirements for approved MACs. Ensure that MACs used are in compliance with site policy. The only "strong" MACs currently FIPS 140-2 approved are:hmac-sha2-256 .hmac-sha2-512 .The Supported MACs are:hmac-md5 .hmac-md5-96 .hmac-sha1 .hmac-sha1-96 .hmac-sha2-256 .hmac-sha2-512 .umac-64@openssh.com .umac-128@openssh.com .hmac-md5-etm@openssh.com .hmac-md5-96-etm@openssh.com .hmac-sha1-etm@openssh.com .hmac-sha1-96-etm@openssh.com .hmac-sha2-256-etm@openssh.com .hmac-sha2-512-etm@openssh.com .umac-64-etm@openssh.com .umac-128-etm@openssh.com.'
     rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information."
     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site approved MACs.Example:MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256"
-    default value: "MACs umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,umac-64@openssh.com,umac-128@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1"
     references:
       - http://www.mitls.org/pages/attacks/SLOTH
       - SSHD_CONFIG(5)
@@ -4391,7 +4381,7 @@ checks:
       - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - iso_27001-2013: ["A.13.1.1", "A.10.1.1", "A.9.2.1"]
-      - mitre_techniques: ["T1040", "T1040.000", "T1557", "T1557.000"]
+      - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
     condition: all
@@ -4404,7 +4394,6 @@ checks:
     description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received Notes:Kex algorithms have a higher preference the earlier they appear in the list. Some organizations may have stricter requirements for approved Key exchange algorithms .Ensure that Key exchange algorithms used are in compliance with site policy .The only Key Exchange Algorithms currently FIPS 140-2 approved are:ecdh-sha2-nistp256 .ecdh-sha2-nistp384 .ecdh-sha2-nistp521 .diffie-hellman-group-exchange-sha256 .diffie-hellman-group16-sha512 .diffie-hellman-group18-sha512 .diffie-hellman-group14-sha256 .The Key Exchange algorithms supported by OpenSSH 8.2 are: Page 663curve25519-sha256 .curve25519-sha256@libssh.org .diffie-hellman-group1-sha1 .diffie-hellman-group14-sha1 .diffie-hellman-group14-sha256 .diffie-hellman-group16-sha512 .diffie-hellman-group18-sha512 .diffie-hellman-group-exchange-sha1 .diffie-hellman-group-exchange-sha256 .ecdh-sha2-nistp256 .ecdh-sha2-nistp384 .ecdh-sha2-nistp521 .sntrup4591761x25519-sha512@tinyssh.org."
     rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks."
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example:KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256"
-    default value: "KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256"
     compliance:
       - cis: ["5.2.15"]
       - cis_csc_v8: ["3.10"]
@@ -4415,7 +4404,7 @@ checks:
       - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - iso_27001-2013: ["A.13.1.1", "A.10.1.1"]
-      - mitre_techniques: ["T1040", "T1040.000", "T1557", "T1557.000"]
+      - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
     condition: all
@@ -4429,7 +4418,6 @@ checks:
     rationale: "Leaving port forwarding enabled can expose the organization to security risks and backdoors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: AllowTcpForwarding no"
     impact: "SSH tunnels are widely used in many corporate environments. In some environments the applications themselves may have very limited native support for security. By utilizing tunneling, compliance with SOX, HIPAA, PCI-DSS, and other standards can be achieved without having to modify the applications."
-    default value: "AllowTcpForwarding yes"
     references:
       - https://www.ssh.com/ssh/tunneling/example
     compliance:
@@ -4442,7 +4430,7 @@ checks:
       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
       - soc_2: ["CC7.1", "CC8.1"]
       - iso_27001-2013: ["A.13.1.3"]
-      - mitre_techniques: ["T1048", "T1048.002", "T1572", "T1572.000"]
+      - mitre_techniques: ["T1048", "T1048.002", "T1572"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -4477,7 +4465,6 @@ checks:
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4"
-    default value: "MaxAuthTries 6"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4502,7 +4489,6 @@ checks:
     description: "The MaxStartups parameter specifies the maximum number of concurrent unauthenticated connections to the SSH daemon."
     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxStartups 10:30:60"
-    default value: "MaxStartups 10:30:100"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4527,7 +4513,6 @@ checks:
     description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10"
-    default value: "MaxSessions 10"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4544,7 +4529,6 @@ checks:
     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds(1 Minute), set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60"
-    default value: "LoginGraceTime 120"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4645,7 +4629,6 @@ checks:
     rationale: "A sudo log file simplifies auditing of sudo commands."
     remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Example: Defaults logfile="/var/log/sudo.log"'
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
-    additional information: "visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks for parse errors. If the sudoers file is currently being edited you will receive a message to try again later."
     references:
       - SUDO(8)
       - VISUDO(8)
@@ -4743,7 +4726,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1548", "T1548.000"]
+      - mitre_techniques: ["T1548"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1026"]
     condition: all
@@ -4760,7 +4743,6 @@ checks:
     description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: Password Length: minlen = 14 - password must be 14 characters or more .Password complexity: minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR dcredit = -1 - provide at least one digit .ucredit = -1 - provide at least one uppercase character .ocredit = -1 - provide at least one special character .lcredit = -1 - provide at least one lowercase character."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
     remediation: "The following setting is a recommend example policy. Alter these values to conform to your own organization's password policies. Run the following command to install the pam_pwquality module: # apt install libpam-pwquality Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 .Edit the file /etc/security/pwquality.conf and add or modify the following line for .password complexity to conform to site policy: Option 1 .minclass = 4 .Option 2 .dcredit = -1 .ucredit = -1 .ocredit = -1 .lcredit = -1"
-    additional information: "Additional module options may be set, recommendation requirements only cover including try_first_pass and minlen set to 14 or more. NOTE: As of this writing it is not possible to customize the maximum number of retries for the creation of a password within recommended methods. The command pam-auth-update is used to manage certain PAM configurations via profiles, such as /etc/pam.d/common-password. Making a manual change to this file will cause pam-auth-update to overwrite it on the next run and is thus against recommendations. Alternatively, pam_pwquality (via /etc/security/pwquality.conf) fully supports the configuration of the maximum number of retries for a password change with the configuration entry retry = XXX. The issue is that the template /usr/share/pam-configs/pwquality contains retry=3 which will override any retry setting in /etc/security/pwquality.conf as PAM entries takes precedence. This template file should not be modified as any package update will overwrite the change. Thus it is not possible, in any recommended way, to modify password retries."
     compliance:
       - cis: ["5.4.1"]
       - cis_csc_v8: ["5.2"]
@@ -4784,7 +4766,6 @@ checks:
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
     remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file.# here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth# Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail# Added to enable faillock auth sufficient pam_faillock.so authsucc# Added to enable faillock# here is the fallback if no module succeeds auth requisite pam_deny.so# prime the stack with a positive return value if there is not one already;# this avoids us returning an error just because nothing sets a success code# since the modules above will each just jump around auth required pam_permit.so# and here are more per-package modules (the "Additional" block) auth optional pam_cap.so# end of pam-auth-update config Common account .Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. account required .pam_faillock.so .Fail lock configuration .Edit /etc/security/faillock.conf and configure it per your site policy. Example:Page 703deny = 4 .fail_interval = 900 unlock time = 600'
     impact: "It is critical to test and validate any PAM changes before deploying. Any misconfiguration could cause the system to be inaccessible."
-    additional information: "If a user has been locked out because they have reached the maximum consecutive failure count defined by deny= in the pam_faillock.so module, the user can be unlocked by issuing the command /usr/sbin/faillock --user username --reset. This command sets the failed count to 0, effectively unlocking the user."
     compliance:
       - cis: ["5.4.2"]
       - cis_csc_v8: ["6.2"]
@@ -4811,7 +4792,6 @@ checks:
     description: "The /etc/security/opasswd file stores the users old passwords and can be checked to ensure that users are not recycling recent passwords."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password."
     remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Edit the /etc/pam.d/common-password file to include the remember= option of 5 or more. If this line doesn't exist, add the line directly above the line: password [success=1 default=ignore] pam_unix.so obscure yescrypt: Example: password required pam_pwhistory.so use_authtok remember=5"
-    additional information: "Changes only apply to accounts configured on the local system."
     compliance:
       - cis: ["5.4.3"]
       - cis_csc_v8: ["5.2"]
@@ -4832,7 +4812,6 @@ checks:
     description: "The commands below change password encryption to yescrypt. All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The yescrypt algorithm provides much stronger hashing than previous available algorithms, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: these change only apply to accounts configured on the local system."
     remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. PAM Edit the /etc/pam.d/common-password file and ensure that no hashing algorithm option for pam_unix.so is set: password [success=1 default=ignore] try_first_pass remember=5 pam_unix.so obscure use_authtok Login definitions .Edit /etc/login.defs and ensure that ENCRYPT_METHOD is set to yescrypt."
-    additional information: "Additional module options may be set, recommendation only covers those listed here."
     compliance:
       - cis: ["5.4.4"]
       - cis_csc_v8: ["3.11"]
@@ -4867,7 +4846,6 @@ checks:
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 1 or more days."
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
     remediation: "Set the PASS_MIN_DAYS parameter to 1 in /etc/login.defs : PASS_MIN_DAYS 1 Modify user parameters for all users with a password set to match: # chage --mindays 1 <user>"
-    default value: "PASS_MIN_DAYS 0"
     compliance:
       - cis: ["5.5.1.1"]
       - cis_csc_v8: ["5.2"]
@@ -4889,8 +4867,6 @@ checks:
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity. It is recommended that the PASS_MAX_DAYS parameter does not exceed 365 days and is greater than the value of PASS_MIN_DAYS."
     remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs : PASS_MAX_DAYS 365 Modify user parameters for all users with a password set to match: # chage --maxdays 365 <user>"
-    default value: "PASS_MAX_DAYS 99999"
-    additional information: "A value of -1 will disable password expiration .The password expiration must be greater than the minimum days between password changes or users will be unable to change their password"
     references:
       - https://www.cisecurity.org/white-papers/cis-password-policy-guide/
     compliance:
@@ -4912,7 +4888,6 @@ checks:
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
     remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs :PASS_WARN_AGE 7 Modify user parameters for all users with a password set to match: # chage --warndays 7 <user>"
-    default value: "PASS_WARN_AGE 7"
     compliance:
       - cis: ["5.5.1.3"]
       - cis_csc_v8: ["5.2"]
@@ -4933,8 +4908,6 @@ checks:
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
     remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30 Modify user parameters for all users with a password set to match: # chage --inactive 30 <user>"
-    additional information: "A value of -1 would disable this setting"
-    default value: "INACTIVE=-1"
     compliance:
       - cis: ["5.5.1.4"]
       - cis_csc_v8: ["5.2"]
@@ -4972,7 +4945,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1548", "T1548.000"]
+      - mitre_techniques: ["T1548"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1026"]
     condition: all
@@ -4997,7 +4970,6 @@ checks:
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/passwd: # chmod u-x,go-wx /etc/passwd # chown root:root /etc/passwd"
-    default value: "/etc/passwd 644 0/root 0/root"
     compliance:
       - cis: ["6.1.1"]
       - cis_csc_v8: ["3.3"]
@@ -5070,7 +5042,6 @@ checks:
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/group-: # chmod u-x,go-wx /etc/group- # chown root:root /etc/group-"
-    default value: "/etc/group- 644 0/root 0/root"
     compliance:
       - cis: ["6.1.4"]
       - cis_csc_v8: ["3.3"]
@@ -5353,7 +5324,7 @@ checks:
     remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
     compliance:
       - cis: ["6.2.10"]
-      - mitre_techniques: ["T1548, T1548.000"]
+      - mitre_techniques: ["T1548"]
       - mitre_tactics: ["TA0001"]
       - mitre_mitigations: ["M1026"]
     condition: all
