@@ -485,7 +485,7 @@ normalize:
   - map:
     - ~tmp: +ef_delete
   #
-  # TODO: Failed to assign the fields 'network.community id' and 'network.transport' because value not found in event
+  # TODO: Failed to assign the fields 'network.community id' because value not found in event
   #
   #- check: (+s_eq/~tmp.type/traffic) OR (+s_eq/~tmp.type/utm)
   #  map:
