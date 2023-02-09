@@ -670,6 +670,7 @@ def delete_groups(group_list=None):
                 raise WazuhError(1712)
             with WazuhDBQueryMultigroups(group_id=group_id, limit=None) as db_query:
                 agent_list = [agent['id'] for agent in db_query.run()['items']]
+                agent_list.sort(key=int)
 
             try:
                 affected_agents_result = remove_agents_from_group(call_func=False, agent_list=agent_list,
@@ -679,8 +680,7 @@ def delete_groups(group_list=None):
             except WazuhError:
                 raise WazuhError(4015)
             Agent.delete_single_group(group_id)
-            affected_agents_result.affected_items.sort(key=int)
-            result.affected_items.append({group_id: affected_agents_result.affected_items})
+            result.affected_items.append({group_id: agent_list})
         except WazuhException as e:
             result.add_failed_item(id_=group_id, error=e)
 

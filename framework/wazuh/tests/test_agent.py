@@ -632,16 +632,17 @@ def test_create_group_exceptions(group_id, exception, exception_code):
         shutil.rmtree(os.path.join(test_shared_path, 'delete-me'), ignore_errors=True)
 
 
-@pytest.mark.parametrize('group_list', [
-    ['random-1'],
-    ['random-1', 'random-2'],
+@pytest.mark.parametrize('group_list, expected_agents', [
+    (['group-1'], {'group-1': ['006', '008']}),
+    (['group-1', 'group-2'], {'group-1': ['006', '008'], 'group-2': ['007', '008']}),
 ])
 @patch('wazuh.agent.get_groups')
-@patch('wazuh.agent.remove_agents_from_group', return_value=AffectedItemsWazuhResult(affected_items=['000']))
+@patch('wazuh.agent.remove_agents_from_group', return_value=AffectedItemsWazuhResult())
 @patch('wazuh.agent.Agent.delete_single_group')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_delete_groups(socket_mock, send_mock, mock_delete, mock_remove_agent, mock_get_groups, group_list):
+def test_agent_delete_groups(socket_mock, send_mock, mock_delete, mock_remove_agent, mock_get_groups, group_list,
+                             expected_agents):
     """Test `delete_groups` function from agent module.
 
     Parameters
@@ -664,7 +665,7 @@ def test_agent_delete_groups(socket_mock, send_mock, mock_delete, mock_remove_ag
     for affected_item in result.affected_items:
         key = next(iter(affected_item))
         group_set -= {key}
-        assert affected_item[key] == ['000']
+        assert affected_item[key] == expected_agents[key]
 
     assert group_set == set()
     mock_delete.assert_has_calls([call(group) for group in group_list])
