@@ -186,9 +186,8 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
  * @param src_path Source path of the files to copy
  * @param dst_path Destination path of the files
  * @param group Group name
- * @param initial_iteration Flag indicating if it is the first iteration
  */
-STATIC void copy_directory(const char *src_path, const char *dst_path, char *group, bool initial_iteration);
+STATIC void copy_directory(const char *src_path, const char *dst_path, char *group);
 
 /* Groups structures and sizes */
 static group_t **groups;
@@ -739,7 +738,7 @@ STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_mult
                 return;
             }
 
-            copy_directory(dir, multi_path, group, true);
+            copy_directory(dir, multi_path, group);
 
             group = strtok_r(NULL, delim, &save_ptr);
             closedir(dp);
@@ -1188,7 +1187,7 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
     return;
 }
 
-STATIC void copy_directory(const char *src_path, const char *dst_path, char *group, bool initial_iteration) {
+STATIC void copy_directory(const char *src_path, const char *dst_path, char *group) {
     unsigned int i;
     time_t *modify_time = NULL;
     int ignored;
@@ -1197,12 +1196,7 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, char *gro
 
     if (files = wreaddir(src_path), !files) {
         if (errno != ENOTDIR) {
-            if (initial_iteration) {
-                mwarn("Could not open directory '%s'. Group folder was deleted.", src_path);
-                wdb_remove_group_db(group, NULL);
-            } else {
-                mdebug2("Could not open directory '%s': %s (%d)", src_path, strerror(errno), errno);
-            }
+            mwarn("Could not open directory '%s'. Group folder was deleted.", src_path);
         }
         return;
     }
@@ -1270,7 +1264,7 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, char *gro
                 }
             }
 
-            copy_directory(source_path, destination_path, group, false);
+            copy_directory(source_path, destination_path, group);
             closedir(dir);
         }
     }

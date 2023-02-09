@@ -176,7 +176,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_DELETE_AGENT_BELONG] = "DELETE FROM belongs WHERE id_agent = ?;",
     [WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG] = "DELETE FROM belongs WHERE id_group = ? and id_agent = ?;",
     [WDB_STMT_GLOBAL_DELETE_GROUP] = "DELETE FROM `group` WHERE name = ?;",
-    [WDB_STMT_GLOBAL_GROUP_BELONG_FIND] = "SELECT 1 FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
+    [WDB_STMT_GLOBAL_GROUP_BELONG_FIND] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
     [WDB_STMT_GLOBAL_GROUP_BELONG_GET] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?) AND id_agent > ?;",
     [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
     [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time, group_config_status FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
