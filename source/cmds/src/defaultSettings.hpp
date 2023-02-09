@@ -19,9 +19,6 @@ constexpr auto ENGINE_KVDB_PATH_ENV = "WZE_KVDB_PATH";
 constexpr auto ENGINE_ENVIRONMENT = "default:255:filter/allow-all/0:environment/wazuh/0";
 constexpr auto ENGINE_ENVIRONMENT_ENV = "WZE_ENVIRONMENT";
 
-constexpr auto ENGINE_ENVIRONMENT_TEST = "environment/wazuh/0";
-constexpr auto ENGINE_ENVIRONMENT_TEST_ENV = "WZE_ENVIRONMENT_TEST";
-
 constexpr auto ENGINE_QUEUE_SIZE = 1000000;
 constexpr auto ENGINE_QUEUE_SIZE_ENV = "WZE_QUEUE_SIZE";
 
@@ -38,6 +35,7 @@ constexpr auto ENGINE_FLOOD_FILE = "/var/ossec/logs/engine-flood.log";
 constexpr auto ENGINE_FLOOD_FILE_ENV = "WZE_FLOOD_FILE";
 
 // Test
+constexpr auto ENGINE_ENVIRONMENT_TEST = "environment/wazuh/0";
 constexpr auto ENGINE_KVDB_TEST_PATH = "/var/ossec/etc/kvdb_test/";
 constexpr auto ENGINE_PROTOCOL_QUEUE = 1;
 constexpr auto ENGINE_PROTOCOL_LOCATION = "/dev/stdin";
