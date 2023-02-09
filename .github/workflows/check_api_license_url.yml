@@ -21,3 +21,8 @@ jobs:
               MAJOR_MINOR_VERSION=${MAJOR}.${MINOR}
               cat src/VERSION
               echo ${MAJOR_MINOR_VERSION}
+
+          - name: Get spec.yaml license_url major and minor
+            run: |
+              cat api/api/spec/spec.yaml
+              cat api/api/spec/spec.yaml | grep 'license_url: ' | cut -d '/' -f7
