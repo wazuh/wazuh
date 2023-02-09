@@ -511,54 +511,7 @@ checks:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''allowContentCaching'')" -> r:^0$|^true$'
 
   # 2.3.3.10 Ensure Media Sharing Is Disabled (Automated) - Not implemented
-  - id: 30020
-    title: "Ensure Media Sharing Is Disabled."
-    description: "Starting with macOS 10.15, Apple has provided a control which permits a user to share Apple downloaded content on all Apple devices that are signed in with the same Apple ID. This allows users to share downloaded Movies, Music, or TV shows with other controlled macOS, iOS and iPadOS devices, as well as photos with Apple TVs. With this capability, guest users can also use media downloaded on the computer. The recommended best practice is not to use the computer as a server, but to utilize Apple's cloud storage in order to download and use content stored there if content stored with Apple is used on multiple devices. https://support.apple.com/guide/mac-help/set-up-media-sharing-on-mac-mchlp13371337/mac."
-    rationale: "Disabling Media Sharing reduces the remote attack surface of the system."
-    impact: "Media Sharing allows for pre-downloaded content on a Mac to be available to other Apple devices on the same network. Leaving this disabled forces device users to stream or download content from each Apple authorized device. This sharing could even allow unauthorized devices on the same network media access."
-    remediation: "Graphical Method: Perform the following steps to disable Media Sharing: Open System Preferences. Select Sharing. Uncheck Media Sharing. Terminal Method: Run the following command to disable Media Sharing: $ /usr/bin/sudo -u <username> /usr/bin/defaults write com.apple.amp.mediasharingd home-sharing-enabled -int 0 example: $ sudo -u test2 /usr/bin/defaults write com.apple.amp.mediasharingd home-sharing-enabled -int 0 Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.preferences.sharing.SharingPrefsExtension. The key to include is homeSharingUIStatus. The key must be set to <integer>0</integer>. The key to also include is legacySharingUIStatus. The key must be set to <integer>0</integer>. The key to also include is mediaSharingUIStatus. The key must be set to <integer>0</integer>. Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-    compliance:
-      - cis: ["2.3.3.10"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230"]
-      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
-      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
-      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-    condition: any
-    rules:
-      - "c:defaults read com.apple.amp.mediasharingd home-sharing-enabled -> r:^0$|does not exist"
-      - 'c:sh -c "profiles -P -o stdout | grep homeSharingUIStatus" -> r:homeSharingUIStatus\s*=\s*0'
-      - 'c:sh -c "profiles -P -o stdout | grep legacySharingUIStatus" -> r:legacySharingUIStatus\s*=\s*0'
-      - 'c:sh -c "profiles -P -o stdout | grep mediaSharingUIStatus" -> r:mediaSharingUIStatus\s*=\s*0'
-
   # 2.3.3.11 Ensure Bluetooth Sharing Is Disabled (Automated) - Not implemented
-  - id: 30021
-    title: "Ensure Bluetooth Sharing Is Disabled."
-    description: "Bluetooth Sharing allows files to be exchanged with Bluetooth-enabled devices."
-    rationale: "Disabling Bluetooth Sharing minimizes the risk of an attacker using Bluetooth to remotely attack the system."
-    impact: "Control 2.1.1 discusses disabling Bluetooth if no paired devices exist. There is a general expectation that Bluetooth peripherals will be used by most users in Apple's ecosystem. It is possible that sharing is required and Bluetooth peripherals are not. Bluetooth must be enabled if sharing is an acceptable use case."
-    remediation: "Graphical Method: Perform the following steps to disable Bluetooth Sharing: Open System Settings. Select General. Select Sharing. Set Bluetooth Sharing to disabled. Terminal Method: Run the following command to disable Bluetooth Sharing is disabled: $ /usr/bin/sudo -u <username> /usr/bin/defaults -currentHost write com.apple.Bluetooth PrefKeyServicesEnabled -bool false $ /usr/bin/sudo -u firstuser /usr/bin/defaults -currentHost write com.apple.Bluetooth PrefKeyServicesEnabled -bool false"
-    compliance:
-      - cis: ["2.3.3.11"]
-      - cis_csc_v8: ["3.3", "4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2", "14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230", "AC.2.007", "MP.2.120", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.8.1.3", "A.9.1.1", "A.13.1.3", "A.14.2.5"]
-      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
-      - nist_sp_800-53: ["AC-3", "AC-5", "AC-6", "AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5", "7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.3.1", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC5.2", "CC6.1", "CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-    condition: all
-    rules:
-      - "c:defaults -currentHost read com.apple.Bluetooth PrefKeyServicesEnabled -> r:^0$"
-      - 'c:sh -c "profiles -P -o stdout | grep PrefKeyServicesEnabled" -> r:PrefKeyServicesEnabled\s*=\s*0|^[^\W]*$'
-
   # 2.3.3.12 Ensure Computer Name Does Not Contain PII or Protected Organizational Information (Manual) - Not implemented
 
   # 2.3.4 Time Machine
