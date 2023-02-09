@@ -4,6 +4,7 @@ on:
         paths:
             - 'src/VERSION'
             - 'api/api/spec/spec.yaml'
+    push:
 
 jobs:
     check_license_version:
