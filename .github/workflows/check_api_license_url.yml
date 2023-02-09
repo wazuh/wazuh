@@ -15,11 +15,23 @@ jobs:
           - name: Get VERSION major and minor
             run: MAJOR=$(cat src/VERSION | cut -dv -f2 | cut -d. -f1); MINOR=$(cat src/VERSION | cut -d. -f2); MAJOR_MINOR_VERSION=${MAJOR}.${MINOR}; echo ${MAJOR_MINOR_VERSION}
 
+          - name: Get VERSION major and minor
+            run: |
+              MAJOR=$(cat src/VERSION | cut -dv -f2 | cut -d. -f1);
+              MINOR=$(cat src/VERSION | cut -d. -f2)
+              MAJOR_MINOR_VERSION=${MAJOR}.${MINOR}
+              echo ${MAJOR_MINOR_VERSION}
+
           - name: Get spec.yaml license_url major and minor
-            run: MAJOR_MINOR_SPEC_LICENSE_URL=$(cat api/api/spec/spec.yaml | grep 'license_url: ' | cut -d '/' -f7); echo ${MAJOR_MINOR_SPEC_LICENSE_URL}
+            run: |
+              MAJOR_MINOR_SPEC_LICENSE_URL=$(cat api/api/spec/spec.yaml | grep 'license_url: ' | cut -d '/' -f7)
+              echo ${MAJOR_MINOR_SPEC_LICENSE_URL}
 
           - name: Get spec.yaml url major and minor
-            run: MAJOR_MINOR_SPEC_URL=$(cat api/api/spec/spec.yaml | grep '    url: ' | grep LICENSE | cut -d '/' -f7)
+            run: |
+              MAJOR_MINOR_SPEC_URL=$(cat api/api/spec/spec.yaml | grep '    url: ' | grep LICENSE | cut -d '/' -f7)
+              echo ${MAJOR_MINOR_SPEC_URL}
 
           - name: Check if variable are different
-            run: if [[ ${MAJOR_MINOR_VERSION} != ${MAJOR_MINOR_SPEC_LICENSE_URL} || ${MAJOR_MINOR_VERSION} != ${MAJOR_MINOR_SPEC_LICENSE} || ${MAJOR_MINOR_SPEC_LICENSE_URL} != ${MAJOR_MINOR_SPEC_LICENSE} ]] then echo "Error comparing versions. Check API spec.yaml urls and src/VERSION"; exit 1 fi
+            run: |
+              if [[ ${MAJOR_MINOR_VERSION} != ${MAJOR_MINOR_SPEC_LICENSE_URL} || ${MAJOR_MINOR_VERSION} != ${MAJOR_MINOR_SPEC_LICENSE} || ${MAJOR_MINOR_SPEC_LICENSE_URL} != ${MAJOR_MINOR_SPEC_LICENSE} ]] then echo "Error comparing versions. Check API spec.yaml urls and src/VERSION"; exit 1 fi
