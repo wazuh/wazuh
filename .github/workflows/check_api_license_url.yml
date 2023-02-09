@@ -26,3 +26,8 @@ jobs:
             run: |
               MAJOR_MINOR_SPEC_LICENSE_URL=$(cat api/api/spec/spec.yaml | grep 'license_url: ' | cut -d '/' -f7)
               echo ${MAJOR_MINOR_SPEC_LICENSE_URL}
+
+          - name: Get spec.yaml url major and minor
+            run: |
+              MAJOR_MINOR_SPEC_URL=$(cat api/api/spec/spec.yaml | grep '    url: ' | grep LICENSE | cut -d '/' -f7)
+              echo ${MAJOR_MINOR_SPEC_URL}
