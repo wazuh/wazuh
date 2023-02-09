@@ -214,7 +214,6 @@ static pthread_mutex_t hourly_firewall_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t accumulate_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_mutex_t current_time_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t time_ignored_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Reported variables */
 static int reported_syscheck = 0;
@@ -248,8 +247,7 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 /* CPU Info*/
 static int cpu_cores;
 
-time_t w_get_current_time(void);
-static time_t current_time ;
+static time_t current_time;
 
 /* Print help statement */
 __attribute__((noreturn))
@@ -2053,16 +2051,16 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             }
 
             /* Check ignore time */
-            if (w_guard_mutex_conditioned_variable(time_ignored_mutex, (t_currently_rule->ignore_time))) {
-                if (w_guard_mutex_conditioned_variable(time_ignored_mutex, (t_currently_rule->time_ignored == 0))) {
-                    w_guard_mutex_variable(time_ignored_mutex,(t_currently_rule->time_ignored = lf->generate_time));
+            if (t_currently_rule->ignore_time) {
+                if (t_currently_rule->time_ignored == 0) {
+                    t_currently_rule->time_ignored = lf->generate_time;
                 }
                 /* If the current time - the time the rule was ignored
                     * is less than the time it should be ignored,
                     * alert about the parent one instead
                     */
-                else if (w_guard_mutex_conditioned_variable(time_ignored_mutex,
-                 ((lf->generate_time - t_currently_rule->time_ignored) < t_currently_rule->ignore_time))) {
+                else if ((lf->generate_time - t_currently_rule->time_ignored)
+                            < t_currently_rule->ignore_time) {
 
                     if (lf->prev_rule) {
                         t_currently_rule = (RuleInfo*)lf->prev_rule;
@@ -2071,8 +2069,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                         break;
                     }
                 } else {
-                    w_guard_mutex_conditioned_variable(time_ignored_mutex,
-                     (t_currently_rule->time_ignored = lf->generate_time));
+                    t_currently_rule->time_ignored = lf->generate_time;
                 }
             }
 

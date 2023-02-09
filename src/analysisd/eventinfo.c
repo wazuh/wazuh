@@ -42,8 +42,6 @@ size_t field_offset[] = {
     offsetof(Eventinfo, location)
 };
 
-static pthread_mutex_t rule_level_mutex = PTHREAD_MUTEX_INITIALIZER;
-extern time_t w_get_current_time(void);
 
 // Function to check for repetitions from same fields
 
@@ -226,7 +224,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, __attribute__((unused)) EventList *
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
-        if (w_guard_mutex_conditioned_variable(rule_level_mutex, (lf->matched >= rule->level))) {
+        if (lf->matched >= rule->level) {
             lf = NULL;
             goto end;
         }
@@ -248,7 +246,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, __attribute__((unused)) EventList *
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         if (first_matched) { // To protect from a possible frequency 0
-            w_guard_mutex_variable(rule_level_mutex,(first_matched->matched = rule->level));
+            first_matched->matched = rule->level;
         }
         goto end;
     } while ((lf_node = lf_node->prev) != NULL);
@@ -1116,7 +1114,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     lf_cpy->p_name_size = lf->p_name_size;
 
     /* Other internal variables */
-    w_guard_mutex_variable(rule_level_mutex,(lf_cpy->matched = lf->matched));
+    lf_cpy->matched = lf->matched;
     lf_cpy->time = lf->time;
     lf_cpy->day = lf->day;
     lf_cpy->year = lf->year;
