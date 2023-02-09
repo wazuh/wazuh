@@ -7068,7 +7068,7 @@ paths:
                 api_version: "v4.3.0"
                 revision: '40100'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/4.4/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/4.3/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
