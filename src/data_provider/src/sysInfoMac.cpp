@@ -29,7 +29,7 @@
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
 const std::string MACPORTS_DB_NAME {"registry.db"};
-const std::string MACPORTS_QUERY {"SELECT state, name, version, date, location, archs FROM ports;"};
+const std::string MACPORTS_QUERY {"SELECT name, version, date, location, archs FROM ports WHERE state = 'installed';"};
 constexpr auto MAC_ROSETTA_DEFAULT_ARCH {"arm64"};
 
 using ProcessTaskInfo = struct proc_taskallinfo;
@@ -184,10 +184,11 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                 MACPORTS_QUERY
             };
 
+            std::pair<SQLite::Statement&, const int&> pkgContext {std::make_pair(std::ref(stmt), std::cref(pkgType))};
+
             while (SQLITE_ROW == stmt.step())
             {
                 nlohmann::json jsPackage;
-                std::pair<SQLite::Statement, int> pkgContext {std::make_pair(stmt, pkgType)};
                 FactoryPackageFamilyCreator<OSType::BSDBASED>::create(pkgContext)->buildPackageData(jsPackage);
 
                 if (!jsPackage.at("name").get_ref<const std::string&>().empty())

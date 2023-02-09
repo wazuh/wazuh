@@ -48,7 +48,7 @@ class FactoryPackageFamilyCreator<OSType::BSDBASED> final
         {
             return FactoryBSDPackage::create(ctx);
         }
-        static std::shared_ptr<IPackage> create(std::pair<SQLite::Statement, int>& ctx)
+        static std::shared_ptr<IPackage> create(std::pair<SQLite::Statement&, const int&>& ctx)
         {
             return FactoryBSDPackage::create(ctx);
         }
