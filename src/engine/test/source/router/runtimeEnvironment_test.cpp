@@ -47,7 +47,7 @@ TEST(RuntimeEnvironment, build_2_times)
     ASSERT_FALSE(error.has_value()) << error.value().message;
     error = environment->build(builder);
     ASSERT_TRUE(error.has_value());
-    ASSERT_STREQ(error.value().message.c_str(), "Environment 'environment/env_1/0' is already built.");
+    ASSERT_STREQ(error.value().message.c_str(), "Environment 'environment/env_1/0' is already built");
 }
 
 TEST(RuntimeEnvironment, processEvent_not_built)
@@ -56,7 +56,7 @@ TEST(RuntimeEnvironment, processEvent_not_built)
     auto e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[0]);
     auto error = environment->processEvent(e);
     ASSERT_TRUE(error.has_value());
-    ASSERT_STREQ(error.value().message.c_str(), "Environment 'environment/env_1/0' is not built.");
+    ASSERT_STREQ(error.value().message.c_str(), "Environment 'environment/env_1/0' is not built");
 }
 
 

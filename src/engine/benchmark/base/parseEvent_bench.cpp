@@ -73,7 +73,6 @@ static void parseOssecEvent_batch(benchmark::State& state)
         try
         {
             current = (current + 1) % sizeOfEvents;
-            //benchmark::DoNotOptimize(base::parseEvent::parseOssecEvent(sampleEventsStr[current]));
             base::Event e;
             benchmark::DoNotOptimize(e = base::parseEvent::parseOssecEvent(sampleEventsStr[current]));
             benchmark::ClobberMemory();

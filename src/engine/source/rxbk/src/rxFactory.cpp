@@ -251,6 +251,13 @@ Controller buildRxPipeline(const builder::Environment& environment)
     return controller;
 }
 
+/**
+ * @brief Build a controller from an expression and a set of assets
+ *
+ * @param expression Expression to build the controller (Backend)
+ * @param assetNames Assets to be used in the tracer
+ * @return Controller with a pipeline ready to be executed
+ */
 Controller buildRxPipeline(base::Expression expression, const std::unordered_set<std::string>& assetNames)
 {
     Controller controller;

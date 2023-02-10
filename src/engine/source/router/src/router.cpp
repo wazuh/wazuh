@@ -11,6 +11,76 @@ namespace router
 {
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
 
+Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store, std::size_t threads)
+    : m_mutexRoutes {}
+    , m_namePriorityFilter {}
+    , m_priorityRoute {}
+    , m_isRunning {false}
+    , m_numThreads {threads}
+    , m_store {store}
+    , m_threads {}
+    , m_builder {builder}
+{
+    if (0 == threads || 128 < threads)
+    {
+        throw std::runtime_error("Router: The number of threads must be between 1 and 128");
+    }
+
+    if (nullptr == builder)
+    {
+        throw std::runtime_error("Router: Builder cannot be null");
+    }
+
+    if (nullptr == store)
+    {
+        throw std::runtime_error("Router: Store cannot be null");
+    }
+
+    m_environmentManager = std::make_shared<EnvironmentManager>(builder, threads);
+
+    auto result = m_store->get(ROUTES_TABLE_NAME);
+    if (std::holds_alternative<base::Error>(result))
+    {
+        const auto error = std::get<base::Error>(result);
+        WAZUH_LOG_DEBUG("Router: Routes table not found in store. Creating new table. {}", error.message);
+        m_store->add(ROUTES_TABLE_NAME, json::Json {"[]"});
+        return;
+    }
+    else
+    {
+        const auto table = std::get<json::Json>(result).getArray();
+        if (!table.has_value())
+        {
+            throw std::runtime_error("Can not get routes table from store. Invalid table format.");
+        }
+
+        for (const auto& jRoute : *table)
+        {
+            const auto name = jRoute.getString(JSON_PATH_NAME);
+            const auto priority = jRoute.getInt(JSON_PATH_PRIORITY);
+            const auto filter = jRoute.getString(JSON_PATH_FILTER);
+            const auto target = jRoute.getString(JSON_PATH_TARGET);
+            if (!name.has_value() || !priority.has_value() || !target.has_value() || !filter.has_value())
+            {
+                throw std::runtime_error("Router: Cannot get routes table from store. Invalid table format");
+            }
+
+            const auto err = addRoute(name.value(), priority.value(), filter.value(), target.value());
+            if (err.has_value())
+            {
+                WAZUH_LOG_WARN("Router: couldn't add route " + name.value() + " to the router: {}",
+                               err.value().message);
+            }
+        }
+    }
+    // check if the table is empty
+    if (getRouteTable().empty())
+    {
+        // Add default route
+        WAZUH_LOG_WARN("There is no environment loaded. Events will be written in disk once the queue is full.");
+    }
+};
+
 std::optional<base::Error>
 Router::addRoute(const std::string& routeName, int priority, const std::string& filterName, const std::string& envName)
 {

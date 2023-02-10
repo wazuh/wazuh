@@ -30,7 +30,7 @@ TEST(Router, build_fail)
         router::Router router(builder, store, 0);
         FAIL() << "Router: The router was created with 0 threads";
     } catch (const std::runtime_error& e) {
-        ASSERT_STREQ(e.what(), "Router: The number of threads must be between 1 and 128.");
+        ASSERT_STREQ(e.what(), "Router: The number of threads must be between 1 and 128");
     } catch (...) {
         FAIL() << "Router: The router was created with 0 threads";
     }
@@ -39,7 +39,7 @@ TEST(Router, build_fail)
         router::Router router(nullptr, store, 1);
         FAIL() << "Router: The router was created with a null builder";
     } catch (const std::runtime_error& e) {
-        ASSERT_STREQ(e.what(), "Router: Builder can't be null.");
+        ASSERT_STREQ(e.what(), "Router: Builder cannot be null");
     } catch (...) {
         FAIL() << "Router: The router was created with a null builder";
     }
@@ -48,7 +48,7 @@ TEST(Router, build_fail)
         router::Router router(builder, nullptr, 1);
         FAIL() << "Router: The router was created with a null store";
     } catch (const std::runtime_error& e) {
-        ASSERT_STREQ(e.what(), "Router: Store can't be null.");
+        ASSERT_STREQ(e.what(), "Router: Store cannot be null");
     } catch (...) {
         FAIL() << "Router: The router was created with a null store";
     }
@@ -180,13 +180,18 @@ TEST(Router, priorityChanges) {
     error = router.changeRoutePriority("e_wazuh_queue", p_e_wazuh_queue);
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
+    // Try change change to a taken priority
+    error = router.changeRoutePriority("allow_all", p_e_wazuh_queue);
+    ASSERT_TRUE(error.has_value());
+    ASSERT_STREQ(error.value().message.c_str(), "Priority '2' already taken");
+
     // Change negative priority
     error = router.changeRoutePriority("allow_all", -1);
     ASSERT_TRUE(error.has_value()) << error.value().message;
-    ASSERT_STREQ(error.value().message.c_str(), "Route 'filter/allow_all/0' has an invalid priority. Priority must be between 0 and 255.");
+    ASSERT_STREQ(error.value().message.c_str(), "Route 'filter/allow_all/0' has an invalid priority. Priority must be between 0 and 255");
     error = router.changeRoutePriority("e_wazuh_queue", -1);
     ASSERT_TRUE(error.has_value()) << error.value().message;
-    ASSERT_STREQ(error.value().message.c_str(), "Route 'filter/e_wazuh_queue/0' has an invalid priority. Priority must be between 0 and 255.");
+    ASSERT_STREQ(error.value().message.c_str(), "Route 'filter/e_wazuh_queue/0' has an invalid priority. Priority must be between 0 and 255");
 
     // Check priority
     list = router.getRouteTable();
@@ -197,10 +202,10 @@ TEST(Router, priorityChanges) {
     // Change out of range priority
     error = router.changeRoutePriority("allow_all", 256);
     ASSERT_TRUE(error.has_value()) << error.value().message;
-    ASSERT_STREQ(error.value().message.c_str(), "Route 'filter/allow_all/0' has an invalid priority. Priority must be between 0 and 255.");
+    ASSERT_STREQ(error.value().message.c_str(), "Route 'filter/allow_all/0' has an invalid priority. Priority must be between 0 and 255");
     error = router.changeRoutePriority("e_wazuh_queue", 256);
     ASSERT_TRUE(error.has_value()) << error.value().message;
-    ASSERT_STREQ(error.value().message.c_str(), "Route 'filter/e_wazuh_queue/0' has an invalid priority. Priority must be between 0 and 255.");
+    ASSERT_STREQ(error.value().message.c_str(), "Route 'filter/e_wazuh_queue/0' has an invalid priority. Priority must be between 0 and 255");
 
     // Check priority
     list = router.getRouteTable();

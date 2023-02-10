@@ -63,16 +63,17 @@ namespace cmd::server
 void runStart(ConfHandler confManager)
 {
     // Get needed configuration on main function
-    auto logLevel = confManager->get<int>("server.log_level");
-    auto logOutput = confManager->get<std::string>("server.log_output");
-    auto confPath = confManager->get<std::string>("config");
+    const auto logLevel = confManager->get<int>("server.log_level");
+    const auto logOutput = confManager->get<std::string>("server.log_output");
+    const auto confPath = confManager->get<std::string>("config");
 
     // Server config
-    auto queueSize = confManager->get<int>("server.queue_size");
-    auto eventEndpoint = confManager->get<std::string>("server.event_socket");
-    auto apiEndpoint = confManager->get<std::string>("server.api_socket");
-    auto threads = confManager->get<int>("server.threads");
-    auto floodFilePath = confManager->get<std::string>("server.flood_file");
+    const auto queueSize = confManager->get<int>("server.queue_size");
+    const auto eventEndpoint = confManager->get<std::string>("server.event_socket");
+    const auto apiEndpoint = confManager->get<std::string>("server.api_socket");
+    const auto threads = confManager->get<int>("server.threads");
+    const auto floodFilePath = confManager->get<std::string>("server.flood_file");
+
     std::optional<std::string> floodFile = std::nullopt;
     if (!floodFilePath.empty())
     {
@@ -80,14 +81,14 @@ void runStart(ConfHandler confManager)
     }
 
     // KVDB config
-    auto kvdbPath = confManager->get<std::string>("server.kvdb_path");
+    const auto kvdbPath = confManager->get<std::string>("server.kvdb_path");
 
     // Store config
-    auto fileStorage = confManager->get<std::string>("server.store_path");
+    const auto fileStorage = confManager->get<std::string>("server.store_path");
 
     // Start environment
-    auto environment = confManager->get<std::vector<std::string>>("server.start.environment");
-    auto routeName = environment[0];
+    const auto environment = confManager->get<std::vector<std::string>>("server.start.environment");
+    const auto routeName = environment[0];
     int routePriority;
     try
     {
@@ -98,9 +99,9 @@ void runStart(ConfHandler confManager)
         WAZUH_LOG_ERROR("Invalid route priority '{}'", environment[1]);
         exit(EXIT_FAILURE); // TODO Change whens add the LOG_CRITICAL / LOG_FATAL
     }
-    auto routeFilter = environment[2];
-    auto routeEnvironment = environment[3];
-    auto forceRouterArg = confManager->get<bool>("server.start.force_router_arg");
+    const auto routeFilter = environment[2];
+    const auto routeEnvironment = environment[3];
+    const auto forceRouterArg = confManager->get<bool>("server.start.force_router_arg");
 
     // Set Crt+C handler
     {
