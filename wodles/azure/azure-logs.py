@@ -56,7 +56,7 @@ log_levels = {0: logging.WARNING,
               1: logging.INFO,
               2: logging.DEBUG}
 
-CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
+CREDENTIALS_URL = 'https://documentation.wazuh.com/current/azure/activity-services/prerequisites/credentials.html'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
 
