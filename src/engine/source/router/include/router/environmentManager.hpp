@@ -50,14 +50,14 @@ public:
         , m_numInstances {maxInstances}
         , m_builder {builder}
     {
-        if (maxInstances == 0)
+        if (0 == maxInstances)
         {
-            throw std::runtime_error("EnvironmentManager: Number of instances of the environment can't be 0.");
+            throw std::runtime_error("EnvironmentManager: Number of instances of the environment cannot be 0");
         }
 
-        if (builder == nullptr)
+        if (nullptr == builder)
         {
-            throw std::runtime_error("EnvironmentManager: Builder can't be null.");
+            throw std::runtime_error("EnvironmentManager: Builder cannot be null");
         }
     };
 
@@ -101,7 +101,7 @@ public:
      *
      * @note The instance of the environment should be selected by the thread id,
      * the instance of an environment is not thread safe for processing events.
-     * The lamda function of the expression no are thread safe.
+     * The lamda function of the expression is not thread safe.
      */
     std::optional<base::Error> forwardEvent(const std::string& name, std::size_t instance, base::Event event);
 

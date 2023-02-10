@@ -14,9 +14,7 @@ namespace router
 /**
  * @brief Runtime environment represent an environment in memory, ready to be builed and
  * run
- *
- * TODO: Should be a thread safe class? (I think not).
- *  Mutex not only protect the environment, but also the pipeline. 1 event por pipeline at a time.
+ * @note This class is not thread safe
  */
 class RuntimeEnvironment
 {

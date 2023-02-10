@@ -50,7 +50,7 @@ std::optional<base::Error> EnvironmentManager::addEnvironment(const std::string&
         std::unique_lock<std::shared_mutex> lock(m_mutex);
         if (m_environments.find(name) != m_environments.end())
         {
-            return base::Error {fmt::format("Environment '{}' already exists.", name)};
+            return base::Error {fmt::format("Environment '{}' already exists", name)};
         }
         m_environments.insert({name, std::move(envs)});
     }
@@ -64,12 +64,12 @@ std::optional<base::Error> EnvironmentManager::deleteEnvironment(const std::stri
     auto it = m_environments.find(name);
     if (it == m_environments.end())
     {
-        return base::Error {fmt::format("Environment '{}' doesn't exist.", name)};
+        return base::Error {fmt::format("Environment '{}' does not exist", name)};
     }
 
     if (m_environments.erase(name) != 1)
     {
-        return base::Error {fmt::format("Environment '{}' could not be deleted.", name)};
+        return base::Error {fmt::format("Environment '{}' could not be deleted", name)};
     }
 
     return std::nullopt;
@@ -100,12 +100,12 @@ EnvironmentManager::forwardEvent(const std::string& name, std::size_t instance, 
 
     std::shared_lock<std::shared_mutex> lock(m_mutex);
     auto it = m_environments.find(name);
-    if (it == m_environments.end())
+    if (m_environments.end() == it)
     {
-        return base::Error {fmt::format("Environment '{}' doesn't exist.", name)};
+        return base::Error {fmt::format("Environment '{}' does not exist", name)};
     }
 
-    if (instance >= m_numInstances)
+    if (m_numInstances <= instance)
     {
         return base::Error {fmt::format("Invalid instance number '{}', the maximum is '{}'",
                                         instance,
