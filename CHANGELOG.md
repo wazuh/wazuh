@@ -36,7 +36,7 @@ All notable changes to this project will be documented in this file.
 - Added the update field in the CPE Helper for Vulnerability Detector. ([#13741](https://github.com/wazuh/wazuh/pull/13741))
 - Prevented agents with the same ID from connecting to the manager simultaneously. ([#11702](https://github.com/wazuh/wazuh/pull/11702))
 - wazuh-analysisd, wazuh-remoted and wazuh-db metrics have been extended. ([#13713](https://github.com/wazuh/wazuh/pull/13713))
-- Minimized and optimized wazuh-clusterd number of messages from workers to master related to agent-info and agent-groups tasks. ([#11753](https://github.com/wazuh/wazuh/pull/11753))
+- Minimized and optimized wazuh-clusterd number of messages from workers to master related to agent-info tasks. ([#11753](https://github.com/wazuh/wazuh/pull/11753))
 - Improved performance of the `agent_groups` CLI when listing agents belonging to a group. ([#14244](https://github.com/wazuh/wazuh/pull/14244)
 - Changed wazuh-clusterd binary behaviour to kill any existing cluster processes when executed. ([#14475](https://github.com/wazuh/wazuh/pull/14475))
 - Changed wazuh-clusterd tasks to wait asynchronously for responses coming from wazuh-db. ([#14791](https://github.com/wazuh/wazuh/pull/14843))
@@ -44,6 +44,7 @@ All notable changes to this project will be documented in this file.
 - Added mechanism to dynamically adjust zip size limit in Integrity sync. ([#12241](https://github.com/wazuh/wazuh/pull/12241))
 - Deprecate status field in SCA. ([#15853](https://github.com/wazuh/wazuh/pull/15853))
 - Agent group guessing (based on configuration hash) now writes the new group directly on the master node. ([#16066](https://github.com/wazuh/wazuh/pull/16066))
+- Added delete on cascade of belongs table entries when a group is deleted. ([#16098](https://github.com/wazuh/wazuh/issues/16098))
 
 
 #### Fixed
@@ -71,6 +72,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Virustotal integration to support non UTF-8 characters. ([#13531](https://github.com/wazuh/wazuh/pull/13531))
 - Fixed a bug masking as Timeout any error that might occur while waiting to receive files in the cluster. ([#14922](https://github.com/wazuh/wazuh/pull/14922))
 - Fixed a read buffer overflow in wazuh-authd when parsing requests. ([#15876](https://github.com/wazuh/wazuh/pull/15876))
+- Applied workaround for bpo-46309 used in cluster to wazuh-db communication.([#16012](https://github.com/wazuh/wazuh/pull/16012))
 
 #### Removed
 
@@ -151,6 +153,8 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug that prevent processing Macie logs with problematic ipGeolocation values. ([15335](https://github.com/wazuh/wazuh/pull/15335))
 - Fixed GCP integration module error messages. ([#15584](https://github.com/wazuh/wazuh/pull/15584))
 - Fixed an error that prevented the agent on Windows from stopping correctly. ([#15575](https://github.com/wazuh/wazuh/pull/15575))
+- Fixed Azure integration credentials link. ([#16140](https://github.com/wazuh/wazuh/pull/16140))
+
 
 #### Removed
 
