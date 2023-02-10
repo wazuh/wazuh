@@ -16,7 +16,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/(?i)device_id=
+  - event.original: +r_match/^date=\d+-\d+-\d+ time=\d+:\d+:\d+ device_id=\S+ log_id=\S+ log_part=\S+
 
 definitions:
   DEF_PARSER_HEADER: date=<~log.date> time=<~log.time> device_id=<observer.serial_number> log_id=<event.code> log_part=<~log.rsa.misc.reference_id1>
