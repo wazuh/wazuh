@@ -13,7 +13,6 @@ metadata:
     - https://www.sophos.com/en-us/support/documentation/sophos-utm
 
 sources:
-  - decoder/queue-syslog/0
   - decoder/queue-localfile/0
 
 parse:
@@ -32,30 +31,31 @@ parse:
     # 2016:3:12-03:17:42 data4478.api.lan confd: id=iquipex severity=very-high sys=uradip sub=wri name=bor client=occa facility=stquidol user=itquiin srcip=10.106.239.55 version=1.3129 storage=atevel object=nsecte class=itame type=eumfug attributes=litcount=asun node=estia account=eaq
     - event.original: <@timestamp/%Y:%m:%d-%H:%M:%S> <host.hostname> <event.code>:<~/ignore/ ><~tmp.message>
 
+# TODO: All sophos named fields are not currently in the schema.
 normalize:
 
   - check: event.code==confd OR event.code==aua
     logpar:
       - ~tmp.message: <~tmp/kv/=/ /'/'>
     map:
-      - file.directory : $~tmp.storage
-      - log.level : $~tmp.severity
-      - observer.version : $~tmp.version
-      - related.hosts : $~tmp.host.hostname
-      - related.ip : $~tmp.srcip
-      - rsa.identity.logon_type : $~tmp.facility
-      - rsa.internal.event_desc : $~tmp.name
-      - rsa.internal.messageid : $~tmp.event.code
-      - rsa.misc.group_object : $~tmp.class
-      - rsa.misc.node : $~tmp.node
-      - rsa.misc.obj_type : $~tmp.type
-      - rsa.misc.severity : $~tmp.severity
-      - rsa.misc.version : $~tmp.version
-      - rsa.network.alias_host : $~tmp.host.hostname
-      - rsa.time.event_time : $~tmp.@timestamp
-      - service.name : $~tmp.sub
-      - source.ip : $~tmp.srcip
-      - user.name : $~tmp.user
+      - file.directory: $~tmp.storage
+      - log.level: $~tmp.severity
+      - observer.version: $~tmp.version
+      - related.hosts: $~tmp.host.hostname
+      - related.ip: $~tmp.srcip
+      - rsa.identity.logon_type: $~tmp.facility
+      - rsa.internal.event_desc: $~tmp.name
+      - rsa.internal.messageid: $~tmp.event.code
+      - rsa.misc.group_object: $~tmp.class
+      - rsa.misc.node: $~tmp.node
+      - rsa.misc.obj_type: $~tmp.type
+      - rsa.misc.severity: $~tmp.severity
+      - rsa.misc.version: $~tmp.version
+      - rsa.network.alias_host: $~tmp.host.hostname
+      - rsa.time.event_time: $~tmp.@timestamp
+      - service.name: $~tmp.sub
+      - source.ip: $~tmp.srcip
+      - user.name: $~tmp.user
 
   - check: event.code==astarosg_TVM OR event.code==httpd OR event.code==ulogd
     logpar:
@@ -171,7 +171,7 @@ normalize:
       - process.pid: $~tmp.process_pid
       - rsa.internal.messageid: $event.code
       - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
-      - rsa.misc.severity : $~tmp.severity
+      - rsa.misc.severity: $~tmp.severity
       - rsa.time.event_time: $@timestamp
 
   - map:

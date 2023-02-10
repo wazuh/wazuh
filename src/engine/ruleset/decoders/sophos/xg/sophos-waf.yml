@@ -17,7 +17,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="WAF"
+  - event.original: +r_match/^device\=[[:alpha:]]*? date\=.*? time\=.*? timezone\=[[:alpha:]]*? device_name\=[[:alpha:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="WAF"
 
 parse:
   logpar:
@@ -26,8 +26,9 @@ parse:
     # <30>device="SFW" date=2020-05-19 time=17:20:29 timezone="IST" device_name="XG230" device_id=1234567890123457 log_id=075000617071 log_type="WAF" log_component="Web Application Firewall" priority=Information user_name="jsmith" server=www.iviewtest.com:8989 sourceip=10.198.235.254 localip=10.198.233.48 ws_protocol="HTTP/1.1" url=/ querystring= cookie="-" referer=- method=GET httpstatus=403 reason="Static URL Hardening" extra="No signature found" contenttype="text/html" useragent="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0" host=10.198.235.254 responsetime=19310 bytessent=726 bytesrcv=510 fw_rule_id=3
     # <30>device="SFW" date=2020-05-19 time=18:03:30 timezone="IST" device_name="XG230" device_id=1234567890123456 log_id=075000617071 log_type="WAF" log_component="Web Application Firewall" priority=Information user_name="jsmith" server=www.iviewtest.com:8990 sourceip=10.198.235.254 localip=10.198.233.48 ws_protocol="HTTP/1.1" url=/download/eicarcom2.zip querystring= cookie="; PHPSESSID=jetkd9iadd969hsr77jpj4q974; _pk_id.1.fc3a=3a6250e215194a92.1485866024.1.1485866069.1485866024.; _pk_ses.1.fc3a=*" referer=http://www.iviewtest.com:8990/85-0-Download.html method=GET httpstatus=403 reason="Antivirus" extra="EICAR-AV-Test" contenttype="text/html" useragent="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0" host=10.198.235.254 responsetime=403214 bytessent=739 bytesrcv=715 fw_rule_id=6
     # <30>device="SFW" date=2020-05-20 time=18:03:31 timezone="IST" device_name="XG230" device_id=1234567890123457 log_id=075000617071 log_type="WAF" log_component="Web Application Firewall" priority=Information user_name="-" server=- sourceip=89.160.20.112 localip=216.167.51.72 ws_protocol="HTTP/1.0" url=/ querystring="" cookie="-" referer="-" method=GET httpstatus=403 reason="WAF Anomaly" extra="Inbound Anomaly Score Exceeded (Total Score: 7, SQLi=, XSS=): Last Matched Message: Request Missing a User Agent Header" contenttype="text/html" useragent="-" host=89.160.20.112 responsetime=608 bytessent=5353 bytesrcv=295 fw_rule_id=3
-    - event.original: \<<~>><~tmp.payload_message>
+    - event.original: <~tmp.payload_message>
 
+# TODO: All sophos named fields are not currently in the schema.
 normalize:
   - map:
       - ~tmp.payload_message: +s_replace/=""/=" "
