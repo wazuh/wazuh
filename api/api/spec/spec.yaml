@@ -41,11 +41,11 @@ info:
     <SecurityDefinitions />
 
   version: '4.4.0'
-  x-revision: '40402'
+  x-revision: '40403'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/4.4/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/v4.4.0/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -7068,7 +7068,7 @@ paths:
                 api_version: "v4.3.0"
                 revision: '40100'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/4.4/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/v4.4.0/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -9223,8 +9223,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/current/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/current/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/4.4/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/4.4/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
