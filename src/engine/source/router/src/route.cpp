@@ -25,7 +25,7 @@ void Route::setPriority(int priority)
 {
     if (priority < MIN_PRIORITY || priority > MAX_PRIORITY)
     {
-        throw std::runtime_error(fmt::format("Route '{}' has an invalid priority. Priority must be between {} and {}.",
+        throw std::runtime_error(fmt::format("Route '{}' has an invalid priority. Priority must be between {} and {}",
                                              m_filterName,
                                              MIN_PRIORITY,
                                              MAX_PRIORITY));

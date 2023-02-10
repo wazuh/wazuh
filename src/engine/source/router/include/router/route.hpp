@@ -32,7 +32,7 @@ private:
     /**
      * @brief Execute an expression
      *
-     *  This function is used to execute an expression and return the result, it the backend of the accept function.
+     *  This function is used to execute an expression and return the result in the backend of the accepted function
      * @param expression Expression to execute
      * @param event Event to match
      * @return true if the expression is true, false otherwise
