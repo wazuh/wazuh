@@ -2624,7 +2624,7 @@ class AWSServerAccess(AWSCustomBucket):
         """Check if the bucket is empty or the credentials are wrong."""
         try:
             bucket_objects = self.client.list_objects_v2(Bucket=self.bucket, Delimiter='/')
-            if not 'CommonPrefixes' in bucket_objects and not 'Contents' in bucket_objects:
+            if not 'CommonPrefixes' in bucket_objects and not bucket_objects['Contents']:
                 print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
         except botocore.exceptions.ClientError as error:
