@@ -22,7 +22,8 @@ void ProcessorHandler::create(std::shared_ptr<MetricsContext> data)
             }
         case ProcessorsTypes::Batch:
             {
-                // See this example to do the test in Integration_test
+                // See this example to do the test in Integration_test https://github.com/open-telemetry/opentelemetry-cpp/blob/main/examples/batch/main.cc
+                // Just change foo_library to the one used by the example.
                 if (data->exporter != nullptr)
                 {
                     opentelemetry::sdk::trace::BatchSpanProcessorOptions options{};
