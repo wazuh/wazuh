@@ -35,31 +35,31 @@ usage: python3 build.py [-h] [-r READYTOREVIEW] [-m MAKE] [-t TESTS] [-c COVERAG
 |Argument|Description|
 |---|---|
 | `-h`, `--help`          | Show the help message and exit |
-| `-r`, `--readytoreview` | Run all the quality checks needed to create a PR. Example: `python3 build.py -r <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `-m`, `--make`          | Compile the lib. Example: `python3 build.py -m <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `-t`, `--tests`         | Run tests (should be configured with TEST=on). Example: `python3 build.py -t <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `-c`, `--coverage`      | Collect tests coverage and generates report. Example: `python3 build.py -c <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `-v`, `--valgrind`      | Run valgrind on tests. Example: `python3 build.py -v <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `-c`, `--coverage`      | Collect tests coverage and generates report. Example: `python3 build.py -c <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `--clean`               | Clean the lib. Example: `python3 build.py --clean <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `--cppcheck`            | Run cppcheck on the code. Example: `python3 build.py --cppcheck <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `--asan`                | Run ASAN on the code. Example: `python3 build.py --asan <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `--scheck`              | Run AStyle on the code for checking purposes. Example: `python3 build.py --scheck <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `--sformat`             | Run AStyle on the code formatting the needed files. Example: `python3 build.py --sformat <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
+| `-r`, `--readytoreview` | Run all the quality checks needed to create a PR. Example: `python3 build.py -r <sysinfo\|dbsync\|rsync\|utils_unit_test\|syscollector>` |
+| `-m`, `--make`          | Compile the lib. Example: `python3 build.py -m <sysinfo\|dbsync\|rsync\|utils_unit_test\|syscollector>` |
+| `-t`, `--tests`         | Run tests (should be configured with TEST=on). Example: `python3 build.py -t <sysinfo\|dbsync\|rsync\|utils_unit_test\|syscollector>` |
+| `-c`, `--coverage`      | Collect tests coverage and generates report. Example: `python3 build.py -c <sysinfo\|dbsync\|rsync\|utils_unit_test\|syscollector>` |
+| `-v`, `--valgrind`      | Run valgrind on tests. Example: `python3 build.py -v <sysinfo\|dbsync\|rsync\|utils_unit_test\|syscollector>` |
+| `-c`, `--coverage`      | Collect tests coverage and generates report. Example: `python3 build.py -c <sysinfo\|dbsync\|rsync\|utils_unit_test\|syscollector>` |
+| `--clean`               | Clean the lib. Example: `python3 build.py --clean <sysinfo\|dbsync\|rsync\|utils_unit_test\|syscollector>` |
+| `--cppcheck`            | Run cppcheck on the code. Example: `python3 build.py --cppcheck <sysinfo\|dbsync\|rsync\|utils_unit_test\|syscollector>` |
+| `--asan`                | Run ASAN on the code. Example: `python3 build.py --asan <sysinfo\|dbsync\|rsync\|utils_unit_test\|syscollector>` |
+| `--scheck`              | Run AStyle on the code for checking purposes. Example: `python3 build.py --scheck <sysinfo\|dbsync\|rsync\|utils_unit_test\|syscollector>` |
+| `--sformat`             | Run AStyle on the code formatting the needed files. Example: `python3 build.py --sformat <sysinfo\|dbsync\|rsync\|utils_unit_test\|syscollector>` |
 | `--scanbuild` SCANBUILD | Run scan-build on the code. Example: `python3 build.py --scanbuild <agent\|server\|winagent>` |
 
 Ready to review checks:
-  1. Runs cppcheck on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> folder.
-  2. Compiles <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>.
-  3. Runs <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> UTs.
-  4. Runs valgrind on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> UTs.
-  5. Runs code coverage on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> tests and generates coverage reports.
+  1. Runs cppcheck on <sysinfo|dbsync|rsync|utils_unit_test|syscollector> folder.
+  2. Compiles <sysinfo|dbsync|rsync|utils_unit_test|syscollector>.
+  3. Runs <sysinfo|dbsync|rsync|utils_unit_test|syscollector> UTs.
+  4. Runs valgrind on <sysinfo|dbsync|rsync|utils_unit_test|syscollector> UTs.
+  5. Runs code coverage on <sysinfo|dbsync|rsync|utils_unit_test|syscollector> tests and generates coverage reports.
 If all the checks passed it returns 0 and prints a "[RTR: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns and error code.
 
 
 Output Example executing the RTR tool with `dbsync` module:
 ```
-#> python3 build.py -r shared_modules/dbsync
+#> python3 build.py -r dbsync
 <shared_modules/dbsync>=================== Running RTR checks  ===================<shared_modules/dbsync>
 <shared_modules/dbsync>=================== Running cppcheck    ===================<shared_modules/dbsync>
 [Cppcheck: PASSED]
@@ -117,15 +117,15 @@ shared_modules/dbsync > [make: PASSED]
 ```
 
 Address sanitizer checks:
-  1. Clean previous builds <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> folder.
-  2. Compiles with address sanitizers flags<data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>.
-  3. Runs smoke tests <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
-  4. Runs valgrind on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> UTs.
+  1. Clean previous builds <sysinfo|dbsync|rsync|utils_unit_test|syscollector> folder.
+  2. Compiles with address sanitizers flags<sysinfo|dbsync|rsync|utils_unit_test|syscollector>.
+  3. Runs smoke tests <sysinfo|dbsync|rsync|utils_unit_test|syscollector>
+  4. Runs valgrind on <sysinfo|dbsync|rsync|utils_unit_test|syscollector> UTs.
 If all the checks passed it returns 0 and prints a "[ASAN: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns and error code.
 
 Output Example executing the ASAN tests with `dbsync` module:
 ```
-#> python3 build.py -r shared_modules/dbsync
+#> python3 build.py -r dbsync
 <shared_modules/dbsync>=================== Running ASAN        ===================<shared_modules/dbsync>
 [Cleanfolder: PASSED]
 <shared_modules/dbsync>=================== Running CMake Conf  ===================<shared_modules/dbsync>

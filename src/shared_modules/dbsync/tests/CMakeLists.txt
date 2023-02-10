@@ -1,18 +1,18 @@
-cmake_minimum_required(VERSION 3.12.4)
+project(dbsync_unit_test)
 
-project(unit_tests)
+# All dbsync tests will depend on this target
+add_custom_target(dbsync_unit_test)
 
-include_directories(${CMAKE_SOURCE_DIR}/src/)
-include_directories(${CMAKE_SOURCE_DIR}/src/sqlite/)
-include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
-include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
+# Adding the dbsync tests to the general unit_test target
+add_dependencies(${ALL_UNIT_TEST_TARGET} dbsync_unit_test)
 
-link_directories(${SRC_FOLDER}/external/googletest/lib/)
+# Setting options for all the dbsync tests
+add_compile_options(-O0 -g --coverage)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
+    link_libraries(-fprofile-arcs)
 else()
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -lgcov ")
+    link_libraries(-lgcov)
 endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 add_subdirectory(sqlite)

@@ -1,17 +1,18 @@
-cmake_minimum_required(VERSION 3.12.4)
+project(dbsync_integration_tests)
 
-project(integration_tests)
+# All dbsync integration tests will depend on this target
+add_custom_target(dbsync_integration_tests)
 
-include_directories(${CMAKE_SOURCE_DIR}/include/)
-include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
-include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
+# Adding the dbsync integration tests to the general unit_test target
+add_dependencies(${ALL_UNIT_TEST_TARGET} dbsync_integration_tests)
 
-link_directories(${SRC_FOLDER}/external/googletest/lib/)
+# Setting options for all the dbsync integration tests
+add_compile_options(-O0 -g --coverage)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
+    link_libraries(-fprofile-arcs)
 else()
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -lgcov ")
+    link_libraries(-lgcov)
 endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 add_subdirectory(fim)

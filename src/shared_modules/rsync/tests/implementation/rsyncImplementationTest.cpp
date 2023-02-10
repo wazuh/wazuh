@@ -10,6 +10,7 @@
  */
 
 #include <iostream>
+#include "json.hpp"
 #include "rsyncImplementationTest.h"
 #include "rsyncImplementation.h"
 #include "rsync_exception.h"

@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#include "json.hpp"
 #include "windowsHelper.h"
 #include "sysInfoNetworkWindows_test.h"
 #include "network/networkInterfaceWindows.h"

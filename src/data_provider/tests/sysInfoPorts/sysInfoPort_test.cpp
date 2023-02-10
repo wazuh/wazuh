@@ -8,6 +8,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
+#include "json.hpp"
 #include "sysInfoPort_test.h"
 #include "ports/portImpl.h"
 

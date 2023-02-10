@@ -1,39 +1,24 @@
 {
     "folders": [
         {
-            "name":"data_provider",
-            "flags":"-r"
+            "name": "sysinfo",
+            "flags": "-r"
         },
         {
-            "name":"shared_modules/dbsync",
-            "flags":"-r"
+            "name": "dbsync",
+            "flags": "-r"
         },
         {
-            "name":"shared_modules/rsync",
-            "flags":"-r"
+            "name": "rsync",
+            "flags": "-r"
         },
         {
-            "name":"shared_modules/utils",
-            "flags":"-r"
+            "name": "utils_unit_test",
+            "flags": "-r"
         },
         {
-            "name":"wazuh_modules/syscollector",
-            "flags":"-r"
-        },
-        {
-            "name":"server",
-            "flags":"--scanbuild",
-            "compile":false
-        },
-        {
-            "name":"agent",
-            "flags":"--scanbuild",
-            "compile":false
-        },
-        {
-            "name":"winagent",
-            "flags":"--scanbuild",
-            "compile":false
+            "name": "syscollector",
+            "flags": "-r"
         }
     ]
 }

@@ -43,7 +43,7 @@ headerDic = {
 }
 
 smokeTestsDic = {
-    'wazuh_modules/syscollector': [
+    'syscollector': [
         {
             'test_tool_name': 'syscollector_test_tool',
             'is_smoke_with_configuration': False,
@@ -52,7 +52,7 @@ smokeTestsDic = {
             ]
         }
     ],
-    'shared_modules/dbsync': [
+    'dbsync': [
         {
             'test_tool_name': 'dbsync_test_tool',
             'is_smoke_with_configuration': True,
@@ -90,14 +90,14 @@ smokeTestsDic = {
             ]
         }
     ],
-    'shared_modules/rsync': [
+    'rsync': [
         {
             'test_tool_name': 'rsync_test_tool',
             'is_smoke_with_configuration': False,
             'args': []
         }
     ],
-    'data_provider': [
+    'sysinfo': [
         {
             'test_tool_name': 'sysinfo_test_tool',
             'is_smoke_with_configuration': False,
@@ -107,39 +107,45 @@ smokeTestsDic = {
 }
 
 deleteFolderDic = {
-    'wazuh_modules/syscollector':   ['build', 'smokeTests/output'],
-    'shared_modules/dbsync':        ['build', 'smokeTests/output'],
-    'shared_modules/rsync':         ['build', 'smokeTests/output'],
-    'data_provider':                ['build', 'smokeTests/output'],
-    'shared_modules/utils':         ['build'],
+    'syscollector':                 ['build', 'smokeTests/output'],
+    'dbsync':                       ['build', 'smokeTests/output'],
+    'rsync':                        ['build', 'smokeTests/output'],
+    'sysinfo':                      ['build', 'smokeTests/output'],
+    'all':                          ['build'],
+}
+
+targetsFolderDic = {
+    'syscollector' : 'wazuh_modules/syscollector',
+    'dbsync' : 'shared_modules/dbsync',
+    'rsync' : 'shared_modules/rsync',
+    'sysinfo' : 'data_provider',
+    'utils_unit_test' : 'shared_modules/utils/tests',
+    'utils_unit_test_coverage' : 'shared_modules/utils',
+    'all' : '.',
+    'all_unit_test' : '.'
 }
 
 currentBuildDir = Path(__file__).parent
+currentSrcDir = currentBuildDir.parent
+cmakeBuildDir = f'{currentSrcDir}/build/'
 
-
-def currentDirPath(moduleName):
+def getModuleBuildPath(moduleName='all'):
     """
-    Gets the current dir path based on 'moduleName'
+    Gets the current build path based on 'moduleName'
 
     :param moduleName: Lib to get the path of.
     :return Lib dir path
     """
-    currentDir = os.path.join(currentBuildDir.parent, str(moduleName))
-    if str(moduleName) == 'shared_modules/utils':
-        currentDir = os.path.join(currentDir, 'tests/')
+    return os.path.join(cmakeBuildDir, targetsFolderDic[moduleName])
 
-    return currentDir
-
-
-def currentDirPathBuild(moduleName):
+def getModuleSourcePath(moduleName='all'):
     """
-    Gets the current dir path build based on 'moduleName'
+    Gets the current source path based on 'moduleName'
 
     :param moduleName: Lib to get the path of.
-    :return Lib dir path build folder
+    :return Lib dir path
     """
-    currentDir = currentDirPath(moduleName)
-    return os.path.join(currentDir, 'build')
+    return os.path.join(currentSrcDir, targetsFolderDic[moduleName])
 
 
 def makeLib(moduleName):
@@ -148,19 +154,37 @@ def makeLib(moduleName):
 
     :param moduleName: Lib to be built.
     """
-    command = f'make -C {currentDirPathBuild(moduleName)}'
+    command = f'make -C {getModuleBuildPath()} {moduleName}'
     printHeader(moduleName, 'make')
 
     out = subprocess.run(command, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE, shell=True)
     if out.returncode != 0:
         print(command)
-        print(out.stdout)
-        print(out.stderr)
+        print(out.stdout.decode('utf-8', 'ignore'))
+        print(out.stderr.decode('utf-8', 'ignore'))
         errorString = f'Error compiling library: {str(out.returncode)}'
         raise ValueError(errorString)
     printGreen(f'{moduleName} > [make: PASSED]')
 
+def makeAllLib(moduleName):
+    """
+    Builds the 'moduleName' lib.
+
+    :param moduleName: Lib to be built.
+    """
+    command = f'make -C {getModuleBuildPath(moduleName)} all --trace'
+    printHeader(moduleName, 'make')
+
+    out = subprocess.run(command, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE, shell=True)
+    if out.returncode != 0:
+        print(command)
+        print(out.stdout.decode('utf-8', 'ignore'))
+        print(out.stderr.decode('utf-8', 'ignore'))
+        errorString = f'Error compiling library: {str(out.returncode)}'
+        raise ValueError(errorString)
+    printGreen(f'{moduleName} > [make: PASSED]')
 
 def runTests(moduleName):
     """
@@ -169,29 +193,18 @@ def runTests(moduleName):
     :param moduleName: Lib representing the tests to be executed.
     """
     printHeader(moduleName, 'tests')
-    tests = []
-    reg = re.compile(
-        ".*unit_test|.*unit_test.exe|.*integration_test|.*integration_test.exe")
-    currentDir = currentDirPathBuild(moduleName)
+    command = f'ctest --output-on-failure --test-dir {getModuleBuildPath(moduleName)} -E memcheck'
 
-    if not moduleName == 'shared_modules/utils':
-        currentDir = os.path.join(currentDirPathBuild(moduleName), 'bin')
-
-    objects = os.scandir(currentDir)
-    for entry in objects:
-        if entry.is_file() and bool(re.match(reg, entry.name)):
-            tests.append(entry.name)
-    for test in tests:
-        out = subprocess.run(os.path.join(currentDir, test), stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, shell=True)
-        if out.returncode == 0:
-            printGreen(f'[{test}: PASSED]')
-        else:
-            print(out.stdout)
-            print(out.stderr)
-            printFail(f'[{test}: FAILED]')
-            errorString = 'Error Running test: ' + str(out.returncode)
-            raise ValueError(errorString)
+    out = subprocess.run(command, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0:
+        printGreen(f'[{moduleName}: PASSED]')
+    else:
+        print(out.stdout.decode('utf-8', 'ignore'))
+        print(out.stderr.decode('utf-8', 'ignore'))
+        printFail(f'[{moduleName}: FAILED]')
+        errorString = 'Error Running test: ' + str(out.returncode)
+        raise ValueError(errorString)
 
 
 def checkCoverage(output):
@@ -230,33 +243,18 @@ def runValgrind(moduleName):
 
     :param moduleName: Lib to be analyzed using valgrind tool.
     """
-    printHeader(moduleName, 'valgrind')
-    tests = []
-    reg = re.compile(
-        ".*unit_test|.*unit_test.exe|.*integration_test|.*integration_test.exe")
-    currentDir = ""
-    if str(moduleName) == 'shared_modules/utils':
-        currentDir = os.path.join(currentDirPath(moduleName), 'build')
+    valgrindCommand = f'ctest --output-on-failure --test-dir {getModuleBuildPath(moduleName)} -R memcheck'
+
+    out = subprocess.run(valgrindCommand, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0:
+        printGreen(f'[{moduleName} : PASSED]')
     else:
-        currentDir = os.path.join(currentDirPath(moduleName), 'build/bin')
-
-    objects = os.scandir(currentDir)
-    for entry in objects:
-        if entry.is_file() and bool(re.match(reg, entry.name)):
-            tests.append(entry.name)
-    valgrindCommand = "valgrind --leak-check=full --show-leak-kinds=all -q --error-exitcode=1 " + currentDir
-
-    for test in tests:
-        out = subprocess.run(os.path.join(valgrindCommand, test), stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, shell=True)
-        if out.returncode == 0:
-            printGreen(f'[{test} : PASSED]')
-        else:
-            print(out.stdout)
-            print(out.stderr)
-            printFail(f'[{test} : FAILED]')
-            errorString = 'Error Running valgrind: ' + str(out.returncode)
-            raise ValueError(errorString)
+        print(out.stdout.decode('utf-8', 'ignore'))
+        print(out.stderr.decode('utf-8', 'ignore'))
+        printFail(f'[{moduleName} : FAILED]')
+        errorString = 'Error Running valgrind: ' + str(out.returncode)
+        raise ValueError(errorString)
 
 
 def runCoverage(moduleName):
@@ -265,21 +263,17 @@ def runCoverage(moduleName):
 
     :param moduleName: Lib to be analyzed using gcov and lcov tools.
     """
-    currentDir = currentDirPath(moduleName)
-    if moduleName == 'shared_modules/utils':
-        reportFolder = os.path.join(moduleName, 'coverage_report')
-    else:
-        reportFolder = os.path.join(currentDir, 'coverage_report')
-
+    moduleNameCoverage = moduleName if moduleName != 'utils_unit_test' else 'utils_unit_test_coverage'
+    currentDir = getModuleSourcePath(moduleNameCoverage)
+    reportFolder = os.path.join(currentDir, 'coverage_report')
     includeDir = Path(currentDir)
     moduleCMakeFiles = ""
 
-    if moduleName == 'shared_modules/utils':
-        moduleCMakeFiles = os.path.join(currentDir, '*/CMakeFiles/*.dir')
+    if moduleName == 'utils_unit_test':
+        moduleCMakeFiles = f'{getModuleBuildPath(moduleName)}/CMakeFiles/*.dir'
         includeDir = includeDir.parent
     else:
-        moduleCMakeFiles = os.path.join(
-            currentDir, 'build/tests/*/CMakeFiles/*.dir')
+        moduleCMakeFiles =  f'{getModuleBuildPath(moduleName)}/tests/*/CMakeFiles/*.dir'
 
     printHeader(moduleName, 'coverage')
     folders = ''
@@ -324,8 +318,7 @@ def runCppCheck(moduleName):
     """
     printHeader(moduleName, 'cppcheck')
 
-    currentDir = currentDirPath(moduleName)
-    cppcheckCommand = f'cppcheck --force --std=c++14 --quiet {currentDir}'
+    cppcheckCommand = f'cppcheck --force --std=c++17 --quiet {getModuleSourcePath(moduleName)}'
 
     out = subprocess.run(cppcheckCommand, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE, shell=True)
@@ -344,13 +337,12 @@ def cleanLib(moduleName):
 
     :param moduleName: Lib to be clean.
     """
-    currentDir = currentDirPathBuild(moduleName)
-    os.system('make clean -C' + currentDir)
+    os.system(f'make clean -C {getModuleBuildPath(moduleName)}')
 
 
 def cleanFolder(moduleName, additionalFolder):
 
-    currentDir = currentDirPath(moduleName)
+    currentDir = getModuleSourcePath(moduleName)
     cleanFolderCommand = f'rm -rf {os.path.join(currentDir, additionalFolder)}'
 
     if deleteFolderDic[moduleName].count(additionalFolder) > 0:
@@ -439,21 +431,13 @@ def makeTarget(targetName, tests, debug):
         raise ValueError(errorString)
 
 
-def configureCMake(moduleName, debugMode, testMode, withAsan):
+def configureCMake(moduleName, debugMode, withAsan):
     printHeader(moduleName, 'configurecmake')
-    currentModuleNameDir = currentDirPath(moduleName)
-    currentPathDir = currentDirPathBuild(moduleName)
 
-    if not os.path.exists(currentPathDir):
-        os.mkdir(currentPathDir)
-
-    configureCMakeCommand = "cmake -S" + currentModuleNameDir + " -B" + currentPathDir
+    configureCMakeCommand = f'cmake -S  {currentSrcDir} -B {cmakeBuildDir}'
 
     if debugMode:
         configureCMakeCommand += " -DCMAKE_BUILD_TYPE=Debug"
-
-    if testMode:
-        configureCMakeCommand += " -DUNIT_TEST=1"
 
     if withAsan:
         configureCMakeCommand += " -DFSANITIZE=1"
@@ -476,7 +460,7 @@ def runTestTool(moduleName, testToolCommand, isSmokeTest=False):
     cwd = os.getcwd()
 
     if isSmokeTest:
-        currentmoduleNameDir = currentDirPath(moduleName)
+        currentmoduleNameDir = getModuleSourcePath(moduleName)
         output_folder = os.path.join(currentmoduleNameDir, 'smokeTests/output')
         os.chdir(os.path.join(currentmoduleNameDir, 'smokeTests'))
         cleanFolder(moduleName, 'smokeTests/output')
@@ -505,13 +489,12 @@ def runASAN(moduleName):
     :param moduleName: Lib to be analyzed using ASAN dynamic analysis tool.
     """
     printHeader(moduleName, 'asan')
-    cleanFolder(str(moduleName), "build")
-    configureCMake(str(moduleName), True, False, True)
-    makeLib(str(moduleName))
+    cleanFolder('all', "build")
+    configureCMake(str(moduleName), True, True)
+    makeAllLib(str(moduleName))
 
     for element in smokeTestsDic[moduleName]:
-        path = os.path.join(currentDirPathBuild(moduleName),
-                            'bin', element['test_tool_name'])
+        path = os.path.join(cmakeBuildDir, 'bin', element['test_tool_name'])
         args = ' '.join(element['args'])
         testToolCommand = f'{path} {args}'
         runTestTool(str(moduleName), testToolCommand,
@@ -565,13 +548,13 @@ def _getFoldersToAStyle(moduleName):
     :return specific folders and files to be analyzed.
     """
     printHeader(moduleName, 'AStyle')
-    cleanFolder(str(moduleName), "build")
+    cleanFolder('all', "build")
 
     foldersToScan = ""
-    if str(moduleName) == 'shared_modules/utils':
-        foldersToScan = f'{moduleName}/../*.h {moduleName}/*.cpp'
+    if str(moduleName) == 'utils_unit_test':
+        foldersToScan = f'"{getModuleSourcePath(moduleName)}/../*.h" "{getModuleSourcePath(moduleName)}/*.cpp"'
     else:
-        foldersToScan = f'{moduleName}/*.h {moduleName}/*.cpp'
+        foldersToScan = f'"{getModuleSourcePath(moduleName)}/*.h" "{getModuleSourcePath(moduleName)}/*.cpp"'
     return foldersToScan
 
 
@@ -592,7 +575,7 @@ def runAStyleCheck(moduleName):
 
         if (stdoutString.find("Formatted") != -1):
             printFail('One or more files do not follow the Coding Style convention.')
-            printFail(f'Execute astyle --options=ci/input/astyle.config {moduleName}/*.h {moduleName}/*.cpp for further'
+            printFail(f'Execute astyle --options=ci/input/astyle.config {getModuleSourcePath(moduleName)}/*.h {getModuleSourcePath(moduleName)}/*.cpp for further'
                       f'information.')
 
             printFail('[AStyle: FAILED]')
@@ -636,15 +619,23 @@ def runReadyToReview(moduleName):
 
     printHeader(moduleName, 'rtr')
     runCppCheck(str(moduleName))
-    cleanFolder(str(moduleName), "build")
-    configureCMake(str(moduleName), True, (False, True)[
-                   str(moduleName) != 'shared_modules/utils'], False)
-    makeLib(str(moduleName))
+    cleanFolder('all', "build")
+    configureCMake(str(moduleName), True, False)
+    makeLib('all_unit_test')
+    makeAllLib(str(moduleName))
     runTests(str(moduleName))
     runValgrind(str(moduleName))
     runCoverage(str(moduleName))
     runAStyleCheck(str(moduleName))
-    if str(moduleName) != 'shared_modules/utils':
+    if str(moduleName) != 'utils_unit_test':
         runASAN(moduleName)
 
     printGreen(f'<{moduleName}>[RTR: PASSED]<{moduleName}>')
+
+def getTargetSrcFolder(moduleName):
+    """
+    Returns the target source folder for the given module name.
+    """
+    moduleNameCoverage = moduleName if moduleName != 'utils_unit_test' else 'utils_unit_test_coverage'
+
+    return targetsFolderDic[moduleNameCoverage]

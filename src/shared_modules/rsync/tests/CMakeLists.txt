@@ -1,20 +1,20 @@
-cmake_minimum_required(VERSION 3.12.4)
+project(rsync_unit_test)
 
-project(unit_tests)
+include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 
-include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
-include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
-include_directories(${CMAKE_SOURCE_DIR}/src/)
-include_directories(${SRC_FOLDER}/external/sqlite/)
+# All rsync tests will depend on this target
+add_custom_target(rsync_unit_test)
 
-link_directories(${SRC_FOLDER}/external/googletest/lib/)
-link_directories(${SRC_FOLDER}/external/googletest/lib/)
-link_directories(${SRC_FOLDER}/external/sqlite/)
+# Adding the rsync tests to the general unit_test target
+add_dependencies(${ALL_UNIT_TEST_TARGET} rsync_unit_test)
+
+# Setting options for all the rsync tests
+add_compile_options(-O0 -g --coverage)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
+    link_libraries(-fprofile-arcs)
 else()
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -lgcov ")
+    link_libraries(-lgcov)
 endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 add_subdirectory(interface)

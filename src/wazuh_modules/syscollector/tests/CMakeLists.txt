@@ -1,14 +1,20 @@
-cmake_minimum_required(VERSION 3.12.4)
+project(syscollector_unit_test)
 
-project(unit_tests)
+# All syscollector tests will depend on this target
+add_custom_target(${PROJECT_NAME})
 
-include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
-include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
-link_directories(${SRC_FOLDER}/external/googletest/lib/)
+# Adding the syscollector tests to the general unit_test target
+add_dependencies(${ALL_UNIT_TEST_TARGET} ${PROJECT_NAME})
 
+# Setting options for all the syscollector tests
+add_compile_options(-O0 -g --coverage)
+add_definitions(-DWAZUH_UNIT_TESTING)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    link_libraries(-fprofile-arcs)
+else()
+    link_libraries(-lgcov)
+endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 add_subdirectory(sysCollectorImp)
 add_subdirectory(sysNormalizer)
-

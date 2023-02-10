@@ -1,51 +1,39 @@
-cmake_minimum_required(VERSION 3.12.4)
-
-project(dbsync_unit_test)
-
-set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
-
-include_directories(${CMAKE_SOURCE_DIR}/include/)
-link_directories(${CMAKE_BINARY_DIR}/lib)
-
+add_dependencies(${PROJECT_NAME} dbsyncInterface_unit_test)
+project(dbsyncInterface_unit_test)
 
 file(GLOB INTERFACE_UNITTEST_SRC
     "*.cpp"
-    "${CMAKE_SOURCE_DIR}/src/*.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sqlite/*.cpp")
+    "${CMAKE_SOURCE_DIR}/shared_modules/dbsync/src/*.cpp"
+    "${CMAKE_SOURCE_DIR}/shared_modules/dbsync/src/sqlite/*.cpp")
 
-add_executable(dbsync_unit_test 
-    ${INTERFACE_UNITTEST_SRC} )
+add_executable(dbsyncInterface_unit_test
+    ${INTERFACE_UNITTEST_SRC})
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_link_libraries(dbsync_unit_test
-        debug gtestd
-        debug gmockd
-        debug gtest_maind
-        debug gmock_maind
-        optimized gtest
-        optimized gmock
-        optimized gtest_main
-        optimized gmock_main
+    target_link_libraries(dbsyncInterface_unit_test
+        gtest
+        gmock
+        gtest_main
+        gmock_main
         sqlite3
         cjson
         pthread
-        -static-libgcc -static-libstdc++
-    )
+        -static-libgcc -static-libstdc++)
 else()
-    target_link_libraries(dbsync_unit_test
-        debug gtestd
-        debug gmockd
-        debug gtest_maind
-        debug gmock_maind
-        optimized gtest
-        optimized gmock
-        optimized gtest_main
-        optimized gmock_main
+    target_link_libraries(dbsyncInterface_unit_test
+        gtest
+        gmock
+        gtest_main
+        gmock_main
         sqlite3
         cjson
         pthread
-        dl
-    )
+        dl)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-add_test(NAME dbsync_unit_test
-         COMMAND dbsync_unit_test)
+add_test(NAME dbsyncInterface_unit_test
+    COMMAND dbsyncInterface_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(dbsyncInterface_unit_test dbsyncInterface_unit_test)
+endif()

@@ -1,12 +1,21 @@
-cmake_minimum_required(VERSION 3.12.4)
+project(data_provider_unit_test)
 
-project(unit_tests)
+# Adding the data_provider tests to the general unit_test target
+add_dependencies(${ALL_UNIT_TEST_TARGET} ${PROJECT_NAME})
+
+# All the data_provider tests will depend on this custom target
+add_custom_target(${PROJECT_NAME})
 
 include_directories(${CMAKE_SOURCE_DIR})
 
-include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
-include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
-link_directories(${SRC_FOLDER}/external/googletest/lib/)
+# Setting options for all the data_provider tests
+add_compile_options(-O0 -g --coverage)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  link_libraries(-fprofile-arcs)
+else()
+  link_libraries(-lgcov)
+endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_subdirectory(sysInfoPackagesLinuxHelper)
@@ -27,12 +36,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_subdirectory(sysInfoWin)
   add_subdirectory(sysInfoNetworkWindows)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
-else()
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -lgcov ")
-endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 add_subdirectory(sysInfo)
 add_subdirectory(sysInfoPorts)

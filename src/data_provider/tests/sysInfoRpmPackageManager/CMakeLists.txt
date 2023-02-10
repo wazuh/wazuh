@@ -1,23 +1,16 @@
-cmake_minimum_required(VERSION 3.12.4)
-
+add_dependencies(${PROJECT_NAME} RpmPackageManager_unit_test)
 project(RpmPackageManager_unit_test)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
-
 file(GLOB RPM_UNIT_TEST_SRC "*.cpp")
-file(GLOB RPM_SRC "${CMAKE_SOURCE_DIR}/src/packages/rpm*.cpp")
+file(GLOB RPM_SRC "${CMAKE_SOURCE_DIR}/data_provider/src/packages/rpm*.cpp")
 
-add_executable(Rpm_unit_test ${RPM_UNIT_TEST_SRC} ${RPM_SRC})
+add_executable(RpmPackageManager_unit_test ${RPM_UNIT_TEST_SRC} ${RPM_SRC})
 
-target_link_libraries(Rpm_unit_test
-    debug gtestd
-    debug gmockd
-    debug gtest_maind
-    debug gmock_maind
-    optimized gtest
-    optimized gmock
-    optimized gtest_main
-    optimized gmock_main
+target_link_libraries(RpmPackageManager_unit_test
+    gtest
+    gmock
+    gtest_main
+    gmock_main
     pthread
     sqlite3
     cjson
@@ -25,5 +18,9 @@ target_link_libraries(Rpm_unit_test
     dl
 )
 
-add_test(NAME Rpm_unit_test
-         COMMAND Rpm_unit_test)
+add_test(NAME RpmPackageManager_unit_test
+    COMMAND RpmPackageManager_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(RpmPackageManager_unit_test RpmPackageManager_unit_test)
+endif()

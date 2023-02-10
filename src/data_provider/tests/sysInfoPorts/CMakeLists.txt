@@ -1,8 +1,5 @@
-cmake_minimum_required(VERSION 3.12.4)
-
+add_dependencies(${PROJECT_NAME} sysInfoPort_unit_test)
 project(sysInfoPort_unit_test)
-
-set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 file(GLOB sysinfo_UNIT_TEST_SRC
     "*.cpp")
@@ -15,18 +12,18 @@ add_executable(sysInfoPort_unit_test
     ${SYSINFO_SRC})
 
 target_link_libraries(sysInfoPort_unit_test
-    debug gtestd
-    debug gmockd
-    debug gtest_maind
-    debug gmock_maind
-    optimized gtest
-    optimized gmock
-    optimized gtest_main
-    optimized gmock_main
+    gtest
+    gmock
+    gtest_main
+    gmock_main
     pthread
     sqlite3
     cjson
 )
 
 add_test(NAME sysInfoPort_unit_test
-         COMMAND sysInfoPort_unit_test)
+    COMMAND sysInfoPort_unit_test)
+
+if(CMAKE_MEMORYCHECK_COMMAND)
+    add_memcheck_test(sysInfoPort_unit_test sysInfoPort_unit_test)
+endif()

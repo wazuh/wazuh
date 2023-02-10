@@ -15,6 +15,8 @@
 #include "iportWrapper.h"
 #include "sharedDefs.h"
 #include "bits/stdc++.h"
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 
 constexpr int IPV6_ADDRESS_HEX_SIZE { 32 };
 

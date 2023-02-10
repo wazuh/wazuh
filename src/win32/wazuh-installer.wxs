@@ -197,16 +197,16 @@
                         <File Id="LIBWAZUHSHARED_DLL" Name="libwazuhshared.dll" Source="..\libwazuhshared.dll" />
                     </Component>
                     <Component Id="DBSYNC_DLL" DiskId="1" Guid="E6DD27ED-1579-4369-B83D-FD618894B56C">
-                        <File Id="DBSYNC_DLL" Name="dbsync.dll" Source="..\shared_modules\dbsync\build\bin\dbsync.dll" />
+                        <File Id="DBSYNC_DLL" Name="dbsync.dll" Source="..\build\bin\dbsync.dll" />
                     </Component>
                     <Component Id="RSYNC_DLL" DiskId="1" Guid="9F23B2D8-609D-43F6-BB90-7C81A5DF5A67">
-                        <File Id="RSYNC_DLL" Name="rsync.dll" Source="..\shared_modules\rsync\build\bin\rsync.dll" />
+                        <File Id="RSYNC_DLL" Name="rsync.dll" Source="..\build\bin\rsync.dll" />
                     </Component>
                     <Component Id="SYSINFO_DLL" DiskId="1" Guid="1D244B64-E1C3-4BED-A4CF-9C25E3B3BA0F">
-                        <File Id="SYSINFO_DLL" Name="sysinfo.dll" Source="..\data_provider\build\bin\sysinfo.dll" />
+                        <File Id="SYSINFO_DLL" Name="sysinfo.dll" Source="..\build\bin\sysinfo.dll" />
                     </Component>
                     <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="7CE63D8B-C959-43CC-A7B6-4226414EBADB">
-                        <File Id="SYSCOLLECTOR_DLL" Name="syscollector.dll" Source="..\wazuh_modules\syscollector\build\bin\syscollector.dll" />
+                        <File Id="SYSCOLLECTOR_DLL" Name="syscollector.dll" Source="..\build\bin\syscollector.dll" />
                     </Component>
 
                     <!-- Mark this file as permanent, so it is not deleted on uninstall. -->

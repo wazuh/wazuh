@@ -82,10 +82,13 @@ SELINUX_ENFORCEMENT=selinux/wazuh.te
 SELINUX_POLICY=selinux/wazuh.pp
 SHARED_MODULES=shared_modules/
 DBSYNC=${SHARED_MODULES}dbsync/
+DBSYNC_TARGET=dbsync dbsync_test_tool dbsync_example
 RSYNC=${SHARED_MODULES}rsync/
-SHARED_UTILS_TEST=${SHARED_MODULES}utils/tests/
+RSYNC_TARGET=rsync rsync_test_tool
 SYSCOLLECTOR=wazuh_modules/syscollector/
+SYSCOLLECTOR_TARGET=syscollector
 SYSINFO=data_provider/
+SYSINFO_TARGET=sysinfo sysinfo_test_tool
 
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
@@ -103,11 +106,6 @@ CA_NAME?=DigiCert High Assurance EV Root CA
 
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
-WIN_CMAKE_RULES+=win32/sysinfo
-WIN_CMAKE_RULES+=win32/shared_modules
-ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
-WIN_CMAKE_RULES+=win32/syscollector
-endif
 endif
 
 ifeq (${uname_S},Darwin)
@@ -115,20 +113,18 @@ SYSINFO_OS=-DCMAKE_SYSTEM_NAME=Darwin
 endif
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
-DBSYNC_TEST=-DUNIT_TEST=ON #--coverage
-RSYNC_TEST=-DUNIT_TEST=ON #--coverage
-SYSCOLLECTOR_TEST=-DUNIT_TEST=ON #--coverage
-SYSINFO_TEST=-DUNIT_TEST=ON #--coverage
+DBSYNC_TEST_TARGET=dbsync_unit_test dbsync_integration_tests
+RSYNC_TEST_TARGET=rsync_unit_test
+SHARED_UTILS_TEST_TARGET=utils_unit_test
+SYSCOLLECTOR_TEST_TARGET=syscollector_unit_test
+SYSINFO_TEST_TARGET=data_provider_unit_test
 endif
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-SHARED_MODULES_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-GTEST_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-SYSCOLLECTOR_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-SYSINFO_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
+CMAKE_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 endif
 
 ifeq (${COVERITY}, YES)
-	SHARED_MODULES_RELEASE_TYPE+=-DCOVERITY=1
+	CMAKE_RELEASE_TYPE+=-DCOVERITY=1
 	export COVERITY_UNSUPPORTED_COMPILER_INVOCATION=1
 endif
 
@@ -337,15 +333,10 @@ OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
 AR_LDFLAGS+=${OFLAGS}
 
-DBSYNC_LIB+=-ldbsync
-RSYNC_LIB+=-lrsync
-
 ifeq (${TARGET}, winagent)
-	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin
-	OSSEC_LDFLAGS+=-L${RSYNC}build/bin
+	OSSEC_LDFLAGS+=-Lbuild/bin
 else
-	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib
-	OSSEC_LDFLAGS+=-L${RSYNC}build/lib
+	OSSEC_LDFLAGS+=-Lbuild/lib
 endif
 
 ifneq (,$(filter ${CLEANFULL},YES yes y Y 1))
@@ -357,7 +348,7 @@ ifneq (,$(filter ${ONEWAY},YES yes y Y 1))
 endif
 
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
-        DEFINES+=-DENABLE_AUDIT
+	DEFINES+=-DENABLE_AUDIT
 endif
 
 ifeq (${COVERITY}, YES)
@@ -480,20 +471,6 @@ ifneq (,$(filter ${USE_GEOIP},YES auto yes y Y 1))
 	DEFINES+=-DLIBGEOIP_ENABLED
 	OSSEC_LIBS+=-lGeoIP
 endif # USE_GEOIP
-
-SYSINFO_LIB+=-lsysinfo
-
-ifeq (${TARGET}, winagent)
-	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/bin
-	OSSEC_LDFLAGS+=-L${SYSINFO}build/bin
-else
-	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/lib
-	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib
-endif
-
-ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
-	SYSCOLLECTOR_LIB+=-lsyscollector
-endif
 
 MI :=
 PI :=
@@ -746,18 +723,21 @@ ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
 server: external ${CPPLIBDEPS}
+	mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS} .. && cd ..
 	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},local)
 $(error Do not use 'local' directly, use 'TARGET=local')
 endif
 local: external ${CPPLIBDEPS}
+	mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS} .. && cd ..
 	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},hybrid)
 $(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
 endif
 hybrid: external ${CPPLIBDEPS}
+	mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS} .. && cd ..
 	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},agent)
@@ -765,6 +745,7 @@ $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
 agent: external ${CPPLIBDEPS}
 ifneq (${uname_S},HP-UX)
+	mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS} .. && cd ..
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 endif
 	${MAKE} ${BUILD_AGENT}
@@ -789,6 +770,7 @@ $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
 winagent: external win32/libwinpthread-1.dll ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
+	mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${CMAKE_RELEASE_TYPE} ${SYSINFO_OS} ${SOLARIS_CMAKE_OPTS} .. && cd ..
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
 	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
@@ -800,23 +782,19 @@ winagent: external win32/libwinpthread-1.dll ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && makensis wazuh-installer.nsi
 
+# Test targets will be empty if the TEST flag isn't set
 win32/shared_modules: $(WAZUHEXT_LIB)
-	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
-	cd ${RSYNC} &&  mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
-ifneq (,$(filter ${TEST},YES yes y Y 1))
-ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
-endif
-endif
+	$(MAKE) -C build/ ${DBSYNC_TARGET} ${RSYNC_TARGET} ${DBSYNC_TEST_TARGET} ${RSYNC_TEST_TARGET} ${SHARED_UTILS_TEST_TARGET}
 
 #### Sysinfo ##
 
 win32/sysinfo: $(WAZUHEXT_LIB)
-	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
+	$(MAKE) -C build/ ${SYSINFO_TARGET} ${SYSINFO_TEST_TARGET}
 
 #### Syscollector ##
+
 win32/syscollector: win32/shared_modules win32/sysinfo
-	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
+	$(MAKE) -C build/ ${SYSCOLLECTOR_TARGET} ${SYSCOLLECTOR_TEST_TARGET}
 
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 	cp $< $@
@@ -1561,23 +1539,19 @@ config_o := $(config_c:.c=.o)
 config/%.o: config/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
+# Test targets will be empty if the TEST flag isn't set
+
 build_shared_modules: $(WAZUHEXT_LIB)
-	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
-	cd ${RSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
-ifneq (,$(filter ${TEST},YES yes y Y 1))
-ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
-endif
-endif
+	$(MAKE) -C build/ ${DBSYNC_TARGET} ${RSYNC_TARGET} ${DBSYNC_TEST_TARGET} ${RSYNC_TEST_TARGET} ${SHARED_UTILS_TEST_TARGET}
 
 #### Sysinfo ##
 build_sysinfo: $(WAZUHEXT_LIB)
-	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
+	$(MAKE) -C build/ ${SYSINFO_TARGET} ${SYSINFO_TEST_TARGET}
 
 #### Syscollector ##
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
 build_syscollector: build_shared_modules build_sysinfo
-	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
+	$(MAKE) -C build/ ${SYSCOLLECTOR_TARGET} ${SYSCOLLECTOR_TEST_TARGET}
 endif
 
 #### Wazuh modules ##
@@ -2185,7 +2159,7 @@ wazuh-modulesd: ${wmodulesd_o}
 ### wazuh-gtest-gmock ###
 
 build_gtest:
-	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${CMAKE_OPTS} ${GTEST_RELEASE_TYPE}  -DBUILD_GMOCK=ON -DBUILD_SHARED_LIBS=0 && ${MAKE} && cp -r lib ..
+	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${CMAKE_OPTS} -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=ON -DBUILD_SHARED_LIBS=0 && ${MAKE} && cp -r lib ..
 
 ### wazuh-python ###
 
@@ -2505,11 +2479,7 @@ clean-internals: clean-unit-tests
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
 	rm -f $(WAZUH_LIB)
-	rm -rf $(DBSYNC)build
-	rm -rf $(RSYNC)build
-	rm -rf $(SHARED_UTILS_TEST)build
-	rm -rf $(SYSCOLLECTOR)build
-	rm -rf $(SYSINFO)build
+	rm -rf build/
 	rm -rf libwazuhext
 	rm -rf libstdc++.so.6
 	rm -rf libgcc_s.so.1
@@ -2556,6 +2526,11 @@ clean-unit-tests:
 	rm -f ${wrappers_logcollector_o}
 	rm -f ${wrappers_macos_o}
 	rm -f ${wrappers_data_provider_o}
+	$(MAKE) -C build/${RSYNC}tests clean || true
+	$(MAKE) -C build/${DBSYNC}tests clean || true
+	$(MAKE) -C build/${DBSYNC}integrationTests clean || true
+	$(MAKE) -C build/${SYSINFO}tests clean || true
+	$(MAKE) -C build/${SYSCOLLECTOR}tests clean || true
 
 clean-framework:
 	${MAKE} -C ../framework clean
