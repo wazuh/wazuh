@@ -4112,14 +4112,13 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:sh -c "find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec stat {} \\;" -> r:Access:\s*\( && !r:-rw-r--r--'
+    
 
   # 5.2.4 Ensure SSH access is limited (Automated)
   - id: 29656
     title: "Ensure SSH access is limited."
-    description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: AllowUsers: The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. AllowGroups: The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. DenyUsers:The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. DenyGroups: The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
+    description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. DenyGroups: The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows: AllowUsers <userlist> OR AllowGroups <grouplist> OR DenyUsers <userlist> OR DenyGroups <grouplist>"
     references:
@@ -4140,7 +4139,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:AllowUsers\s+\w+|AllowGroups\s+\w+|DenyUsers\s+\w+|DenyGroups\s+\w+'
+      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
 
   # 5.2.5 Ensure SSH LogLevel is appropriate (Automated)
   - id: 29657
@@ -4164,7 +4163,7 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:LogLevel\s+INFO|LogLevel\s+VERBOSE'
+      - 'c:sshd -T -> r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
 
   # 5.2.6 Ensure SSH PAM is enabled (Automated)
   - id: 29658
@@ -4213,7 +4212,7 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:PermitRootLogin\s+no'
+      - 'c:sshd -T -> r:^\s*PermitRootLogin\s+no'
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled (Automated)
   - id: 29660
@@ -4261,7 +4260,7 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:PermitEmptyPasswords\s+no'
+      - 'not c:sshd -T -> r:^\s*PermitEmptyPasswords\s+yes'
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled (Automated)
   - id: 29662
@@ -4285,7 +4284,7 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:PermitUserEnvironment\s+no'
+      - 'c:sshd -T -> r:^\s*PermitUserEnvironment\s+no'
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled (Automated)
   - id: 29663
@@ -4310,7 +4309,7 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:IgnoreRhosts\s+yes'
+      - 'c:sshd -T -> r:^\s*IgnoreRhosts\s+yes'
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 29664
@@ -4332,7 +4331,7 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:X11Forwarding\s+no'
+      - 'c:sshd -T -> r:^\s*X11Forwarding\s+no'
 
   # 5.2.13 Ensure only strong Ciphers are used (Automated)
   - id: 29665
