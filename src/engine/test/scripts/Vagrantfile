@@ -95,7 +95,7 @@ Vagrant.configure("2") do |config|
         rm $WAZUH_DIR/queue/sockets/queue
         mkdir -p $ENGINE_DIR/store
         mkdir $WAZUH_DIR/etc/kvdb/
-        mdkir $WAZUH_DIR/etc/kvdb/kvdb_test/
+        mkdir $WAZUH_DIR/etc/kvdb/kvdb_test/
         cp -r $ENGINE_SRC_DIR/ruleset/store/schema/ $ENGINE_DIR/store/
 
         echo "--- Enabling the engine ---"
@@ -112,8 +112,9 @@ Vagrant.configure("2") do |config|
         sleep 2s
 
         echo "--- Loading ruleset & enabling wazuh environment  ---"
-        $ENGINE_DIR/wazuh-engine kvdb create -n agents_host_data
-        $ENGINE_DIR/wazuh-engine kvdb create -n agents_host_data -p $WAZUH_DIR/etc/kvdb/kvdb_test/
+        HOST_DATA_KVDB_NAME=agents_host_data
+        $ENGINE_DIR/wazuh-engine kvdb create -n $HOST_DATA_KVDB_NAME
+        cp -r $WAZUH_DIR/etc/kvdb/$HOST_DATA_KVDB_NAME $WAZUH_DIR/etc/kvdb/kvdb_test/
         $ENGINE_DIR/wazuh-engine kvdb create -n auditd-types -p $ENGINE_SRC_DIR/test/kvdb_input_files/auditd/types.json
         $ENGINE_DIR/wazuh-engine kvdb create -n auditd-syscall -p $ENGINE_SRC_DIR/test/kvdb_input_files/auditd/syscall.json
         $ENGINE_DIR/wazuh-engine catalog load --recursive decoder $ENGINE_SRC_DIR/ruleset/decoders/
