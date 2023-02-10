@@ -17,7 +17,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/<\d+>\s*device=.*?date=.*?time=.*?device_name=.*?device_id=.*?log_id=.*?log_type="IDP"
+  - event.original: +r_match/^device\=[[:alpha:]]*? date\=.*? time\=.*? timezone\=[[:alpha:]]*? device_name\=[[:alpha:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="IDP"
 
 parse:
   logpar:
@@ -25,8 +25,9 @@ parse:
     # <30>device="SFW" date=2020-05-18 time=14:38:56 timezone="CEST" device_name="XG230" device_id=1234567890123457 log_id=020804407002 log_type="IDP" log_component="Signatures" log_subtype="Drop" priority=Warning idp_policy_id=7 fw_rule_id=25 user_name="" signature_id=53589 signature_msg="SERVER-WEBAPP DrayTek multiple products command injection attempt" classification="Web Application Attack" rule_priority=2 src_ip=67.43.156.12 src_country_code=NLD dst_ip=172.16.68.20 dst_country_code=R1 protocol="TCP" src_port=59476 dst_port=80 platform="Linux,Mac,Other,Unix,Windows" category="server-webapp" target="Server"
     # <30>device="SFW" date=2018-05-23 time=16:20:34 timezone="BST" device_name="XG750" device_id=SFDemo-f64dd6be log_id=020703406001 log_type="IDP" log_component="Anomaly" log_subtype="Detect" priority=Warning idp_policy_id=1 fw_rule_id=2 user_name="" signature_id=26022 signature_msg="FILE-PDF EmbeddedFile contained within a PDF" classification="A Network Trojan was detected" rule_priority=1 src_ip=10.0.0.168 src_country_code=R1 dst_ip=10.1.1.234 dst_country_code=R1 protocol="TCP" src_port=28938 dst_port=25 platform="Windows" category="Malware Communication" target="Server"
     # <30>device="SFW" date=2018-05-23 time=16:16:43 timezone="BST" device_name="XG750" device_id=SFDemo-f64dd6be log_id=020704406002 log_type="IDP" log_component="Anomaly" log_subtype="Drop" priority=Warning idp_policy_id=1 fw_rule_id=2 user_name="" signature_id=26022 signature_msg="FILE-PDF EmbeddedFile contained within a PDF" classification="A Network Trojan was detected" rule_priority=1 src_ip=10.0.1.31 src_country_code=R1 dst_ip=10.1.0.115 dst_country_code=R1 protocol="TCP" src_port=40140 dst_port=25 platform="Windows" category="Malware Communication" target="Server"
-    - event.original: \<<~>><~tmp.payload_message>
+    - event.original: <~tmp.payload_message>
 
+# TODO: All sophos named fields are not currently in the schema.
 normalize:
   - map:
       - ~tmp.payload_message: +s_replace/=""/=" "
