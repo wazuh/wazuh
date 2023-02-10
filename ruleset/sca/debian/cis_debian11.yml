@@ -604,7 +604,6 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1200", "T1200.000"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -659,7 +658,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1200", "T1200.000"]
+      - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1038"]
     condition: all
@@ -732,7 +731,7 @@ checks:
       - cmmc_v2.0: ["MP.L2-3.8.7"]
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
-      - mitre_techniques: ["T1068", "T1068.000", "T1203", "T1203.000", "T1211", "T1211.000", "T1212", "T1212.000"]
+      - mitre_techniques: ["T1068", "T1203", "T1211", "T1212"]
     condition: any
     rules:
       - "c:systemctl is-enabled autofs -> r:Failed to get unit file state for autofs.service: No such file or directory"
@@ -758,7 +757,6 @@ checks:
     description: "AIDE takes a snapshot of filesystem state including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
     rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
     remediation: "Install AIDE using the appropriate package manager or manual installation: # apt install aide aide-common Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Run the following commands to initialize AIDE: # aideinit # mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db"
-    additional information: "The prelinking feature can interfere with AIDE because it alters binaries to speed up their start up times. Run prelink -ua to restore the binaries to their prelinked state, thus avoiding false positives from AIDE."
     references:
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
@@ -766,10 +764,13 @@ checks:
       - cis: ["1.3.1"]
       - cis_csc_v8: ["3.14"]
       - cis_csc_v7: ["14.9"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - pci_dss_3.2.1: ["6.2"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - soc_2: ["CC7.1"]
+      - cmmc_v2.0: ["AC.L2-3.1.7"]
+      - hipaa: ["164.312(b)","164.312(c)(1)","164.312(c)(2)"]
+      - pci_dss_3.2.1: ["10.2.1","11.5"]
+      - pci_dss_4.0: ["10.2.1","10.2.1.1"]
+      - nist_sp_800-53: ["AC-6(9)"]
+      - soc_2: ["CC6.1"]
+      - iso_27001-2013: ["A.12.4.3"]
       - mitre_techniques: ["T1036", "T1036.002", "T1036.003", "T1036.004", "T1036.005", "T1565", "T1565.001"]
     condition: all
     rules:
@@ -782,7 +783,6 @@ checks:
     description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
     rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
     remediation: "If cron will be used to schedule and run aide check: Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/bin/aide.wrapper --config /etc/aide/aide.conf --check OR If aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/bin/aide.wrapper --config /etc/aide/aide.conf --check [Install] WantedBy=multi-user.target . Create or edit the file /etc/systemd/system/aidecheck.timer and add the following lines: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target .Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer"
-    additional information: "The checking in this recommendation occurs every day at 5am. Alter the frequency and time of the checks in compliance with site policy systemd timers, timer file aidecheck.timer and service file aidecheck.service, have been included as an optional alternative to using cron Ubuntu advises using /usr/bin/aide.wrapper rather than calling /usr/bin/aide directly in order to protect the database and prevent conflicts"
     references:
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
