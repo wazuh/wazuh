@@ -18,6 +18,11 @@
 using namespace base;
 namespace bld = builder::internals::builders;
 
+// INT_MAX = 2147483647
+constexpr auto almostMaxNum = INT_MAX - 1;
+// INT_MIN =-2147483648
+constexpr auto almostMinNum = INT_MIN + 1;
+
 TEST(opBuilderHelperIntCalc, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
@@ -743,4 +748,102 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_several_empty_params)
                     }})");
 
     ASSERT_THROW(bld::opBuilderHelperIntCalc(tuple), std::runtime_error);
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_value_error)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sum", "2"});
+
+    auto event1 = std::make_shared<json::Json>(
+        fmt::format(R"({{"field2check": {}}})", std::to_string(almostMaxNum)).c_str());
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
+    // TODO: does it make any sense to check the whole message or should the message be
+    // shorter
+    ASSERT_EQ(result.trace(),
+              "[helper.i_calc[/field2check, sum, 2]] -> Failure: operation result in "
+              "integer Overflown");
+
+    // TODO: check difference between -2  and -3 (can we use the samed difference?)
+    auto tuple2 = std::make_tuple(std::string {"/field2check"},
+                    std::string {"i_calc"},
+                    std::vector<std::string> {"sum", "-3"});
+
+    auto event2 = std::make_shared<json::Json>(
+        fmt::format(R"({{"field2check": {}}})", std::to_string(-almostMaxNum)).c_str());
+
+    auto op2 = bld::opBuilderHelperIntCalc(tuple2)->getPtr<Term<EngineOp>>()->getFn();
+
+    result = op2(event2);
+
+    ASSERT_FALSE(result);
+    // TODO: does it make any sense to check the whole message or should the message be
+    // shorter
+    ASSERT_EQ(result.trace(),
+              "[helper.i_calc[/field2check, sum, -3]] -> Failure: operation result in "
+              "integer Underflown");
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_sub_value_error)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sub", "2"});
+
+    auto event1 = std::make_shared<json::Json>(
+        fmt::format(R"({{"field2check": {}}})", std::to_string(almostMinNum)).c_str());
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
+    // TODO: view check message
+
+    auto tuple2 = std::make_tuple(std::string {"/field2check"},
+                    std::string {"i_calc"},
+                    std::vector<std::string> {"sub", "-2"});
+
+    auto event2 = std::make_shared<json::Json>(
+        fmt::format(R"({{"field2check": {}}})", std::to_string(almostMaxNum)).c_str());
+
+    auto op2 = bld::opBuilderHelperIntCalc(tuple2)->getPtr<Term<EngineOp>>()->getFn();
+
+    result = op2(event2);
+
+    ASSERT_FALSE(result);
+    // TODO: view check message
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_value_error)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"mul", "2"});
+
+    auto event1 = std::make_shared<json::Json>(
+        fmt::format(R"({{"field2check": {}}})", std::to_string(almostMaxNum)).c_str());
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
+    // TODO: check messages
+
+    auto event2 = std::make_shared<json::Json>(
+        fmt::format(R"({{"field2check": {}}})", std::to_string(almostMinNum)).c_str());
+
+    auto op2 = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result = op2(event2);
+
+    ASSERT_FALSE(result);
+    // TODO: check messages
 }
