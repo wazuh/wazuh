@@ -32,7 +32,8 @@ loop = asyncio.new_event_loop()
 logger = logging.getLogger("wazuh")
 cluster_items = {'node': 'master-node',
                  'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2, "timeout_agent_groups": 0,
-                                          "sync_agent_info": 5, "sync_agent_groups": 5, },
+                                          "sync_agent_info": 5, "sync_agent_groups": 5,
+                                          "agent_groups_mismatch_limit": 10},
                                "communication": {"timeout_receiving_file": 1, "timeout_cluster_request": 20}},
                  "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"}}}
 configuration = {'node_name': 'master', 'nodes': ['master'], 'port': 1111, "name": "wazuh", "node_type": "master"}
@@ -660,38 +661,24 @@ async def test_worker_compare_agent_groups_checksums(socket_mock):
                                              get_payload={"condition": "sync_status", "get_global_hash": True})
 
     with patch('wazuh.core.cluster.worker.c_common.SyncWazuhdb', return_value=sync_object):
-        # There are records that need to be synchronized in the worker. Returns False without comparing checksums.
-        async def retrieve_information_callable():
-            """Auxiliary method."""
+        # Nothing is returned
+        with patch.object(sync_object, 'retrieve_information', side_effect=[None]):
+            assert await w_handler.compare_agent_groups_checksums(master_checksum='CKS', logger=logger) == False
 
-            return ['[{"data": "000111", "hash": "checksum"}]']
+        # The checksums are equal
+        with patch.object(sync_object, 'retrieve_information', side_effect=[['[{"data": "", "hash": "CKS"}]']]):
+            assert await w_handler.compare_agent_groups_checksums(master_checksum='CKS', logger=logger) == True
 
-        with patch.object(sync_object, 'retrieve_information', side_effect=retrieve_information_callable):
-            assert await w_handler.compare_agent_groups_checksums(master_checksum='checksum', logger=logger) == False
-            assert 'There is no data requiring synchronization in the local database.' not in logger._debug2
+        # The checksums are different.
+        with patch.object(sync_object, 'retrieve_information', side_effect=[['[{"data": "", "hash": "!CKS"}]']]):
+            assert await w_handler.compare_agent_groups_checksums(master_checksum='CKS', logger=logger) == False
+            assert 'The checksum of master (CKS) and worker (!CKS) are different.' in logger._debug
 
-        # There are no records that need synchronization in the worker and the checksums are the same. Returns True.
-        async def retrieve_information_callable():
-            """Auxiliary method."""
-
-            return ['[{"data": "", "hash": "checksum"}]']
-
-        with patch.object(sync_object, 'retrieve_information', side_effect=retrieve_information_callable):
-            assert await w_handler.compare_agent_groups_checksums(master_checksum='checksum', logger=logger) == True
-            assert 'There is no data requiring synchronization in the local database.' in logger._debug2
-
-        # There are no records that need synchronization in the worker and the checksums are different.
-        # Returns False and sets the counter value to the maximum limit.
-        async def retrieve_information_callable():
-            """Auxiliary method."""
-
-            return ['[{"data": "", "hash": "checksum_not_equal"}]']
-
-        with patch.object(sync_object, 'retrieve_information', side_effect=retrieve_information_callable):
-            assert await w_handler.compare_agent_groups_checksums(master_checksum='checksum', logger=logger) == False
-            w_handler.agent_groups_checksum_mismatch_counter = w_handler.agent_groups_checksum_mismatch_limit
-            assert 'The master\'s checksum and the worker\'s checksum are different. ' \
-                   'Local checksum: checksum_not_equal | Master checksum: checksum.' in logger._debug
+        # The hash is not returned.
+        with patch.object(sync_object, 'retrieve_information', side_effect=[['[{"data": ""}]']]):
+            assert await w_handler.compare_agent_groups_checksums(master_checksum='CKS', logger=logger) == False
+            assert "The checksum of master (CKS) and worker (UNABLE TO COLLECT FROM DB) " \
+                   "are different." in logger._debug
 
 
 @pytest.mark.asyncio
@@ -717,39 +704,38 @@ async def test_worker_check_agent_groups_checksums(send_request_mock):
             self._debug.clear()
 
     logger = LoggerMock()
-    worker_handler.agent_groups_checksum_mismatch_counter = 0
+    worker_handler.agent_groups_mismatch_counter = 0
     data = {"chunks": ['[{"hash": "a"}]']}
 
     with patch('wazuh.core.cluster.worker.WorkerHandler.compare_agent_groups_checksums', return_value=False):
         # Check that when the checksums are different the counter is incremented
         await worker_handler.check_agent_groups_checksums(data=data, logger=logger)
-        assert worker_handler.agent_groups_checksum_mismatch_counter == 1
-        assert 'Checksum comparison failed. Attempt 1/10.' in logger._debug
+        assert worker_handler.agent_groups_mismatch_counter == 1
+        assert 'Checksum comparison failed (1/10).' in logger._debug
         assert len(logger._info) == 0
 
         # Check that when the counter exceeds the maximum limit, the number of attempts is not printed in the logger
         logger.clear()
-        worker_handler.agent_groups_checksum_mismatch_counter = worker_handler.agent_groups_checksum_mismatch_limit
+        worker_handler.agent_groups_mismatch_counter = worker_handler.agent_groups_mismatch_limit
         await worker_handler.check_agent_groups_checksums(data=data, logger=logger)
-        assert worker_handler.agent_groups_checksum_mismatch_counter == 0
+        assert worker_handler.agent_groups_mismatch_counter == 0
         send_request_mock.assert_called_once_with(command=b'syn_w_g_c', data=b'')
-        assert 'Checksum comparison failed. Attempt 11/10.' not in logger._debug
         assert 'Sent request to obtain all agent-groups information from the master node.' in logger._info
 
     with patch('wazuh.core.cluster.worker.WorkerHandler.compare_agent_groups_checksums', return_value=True):
         # Check that when the checksums are equal, the counter is reset (without previous attempts).
         logger.clear()
-        worker_handler.agent_groups_checksum_mismatch_counter = 0
+        worker_handler.agent_groups_mismatch_counter = 0
         await worker_handler.check_agent_groups_checksums(data=data, logger=logger)
-        assert worker_handler.agent_groups_checksum_mismatch_counter == 0
-        assert 'The checksum of both databases match.' in logger._debug
+        assert worker_handler.agent_groups_mismatch_counter == 0
+        assert 'The checksum of both databases match. ' in logger._debug
 
         # Check that when the checksum are equal the counter is reset (with previous attempts).
         logger.clear()
-        worker_handler.agent_groups_checksum_mismatch_counter = 1
+        worker_handler.agent_groups_mismatch_counter = 1
         await worker_handler.check_agent_groups_checksums(data=data, logger=logger)
-        assert worker_handler.agent_groups_checksum_mismatch_counter == 0
-        assert 'The checksum of both databases match. Reset the attempt counter.' in logger._debug
+        assert worker_handler.agent_groups_mismatch_counter == 0
+        assert 'The checksum of both databases match. Counter reset.' in logger._debug
 
 
 @pytest.mark.asyncio

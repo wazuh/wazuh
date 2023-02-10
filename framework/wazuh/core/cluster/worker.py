@@ -226,8 +226,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         self.agent_info_sync_status = {'date_start': 0.0}
         self.integrity_check_status = {'date_start': 0.0}
         self.integrity_sync_status = {'date_start': 0.0}
-        self.agent_groups_checksum_mismatch_counter = 0
-        self.agent_groups_checksum_mismatch_limit = 10
+        self.agent_groups_mismatch_counter = 0
+        self.agent_groups_mismatch_limit = self.cluster_items['intervals']['worker']['agent_groups_mismatch_limit']
 
     def connection_result(self, future_result):
         """Callback function called when the master sends a response to the hello command sent by the worker.
@@ -416,9 +416,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
     async def compare_agent_groups_checksums(self, master_checksum, logger):
         """Compare the checksum of the local database with the checksum of the master node to check if these differ.
 
-        If the checksum differs, a counter is incremented which at a certain limit
-        will send a request to the master node asking for all the agent-groups information.
-
         Parameters
         ----------
         master_checksum : str
@@ -428,9 +425,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         Returns
         -------
-        bool
-            True if both checksums are equal, False if these differ or cannot be
-            compared because there are records that need to be synchronized in the local DB.
+        ck_equal : bool
+            True if both checksums are equal.
         """
         wdb_conn = AsyncWazuhDBConnection()
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
@@ -442,26 +438,17 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         if not local_agent_groups:
             return False
 
-        local_agent_groups = json.loads(local_agent_groups[0])
-        if not local_agent_groups[0]['data']:
-            logger.debug2('There is no data requiring synchronization in the local database.')
-            try:
-                # There is no syncreq agent-groups so, the checksums should match
-                local_checksum = local_agent_groups[-1]['hash']
-                ck_equal = master_checksum == local_checksum
-            except KeyError:
-                local_checksum = 'UNABLE TO COLLECT FROM DB'
-                ck_equal = False
-            # If there are no records with syncreq and the checksums are different, it means that the worker database
-            # is in an incorrect state. Therefore, all the information will be requested directly to the master node.
-            if not ck_equal:
-                logger.debug(f'The master\'s checksum and the worker\'s checksum are different. '
-                             f'Local checksum: {local_checksum} | Master checksum: {master_checksum}.')
-                self.agent_groups_checksum_mismatch_counter = self.agent_groups_checksum_mismatch_limit
+        try:
+            local_checksum = json.loads(local_agent_groups[0])[-1]['hash']
+            ck_equal = master_checksum == local_checksum
+        except KeyError:
+            local_checksum = 'UNABLE TO COLLECT FROM DB'
+            ck_equal = False
 
-            return ck_equal
+        if not ck_equal:
+            logger.debug(f"The checksum of master ({master_checksum}) and worker ({local_checksum}) are different.")
 
-        return False
+        return ck_equal
 
     async def check_agent_groups_checksums(self, data, logger):
         """Checksum comparison limit controller function for agent-groups.
@@ -483,21 +470,18 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         same_checksum = await self.compare_agent_groups_checksums(master_checksum=master_checksum, logger=logger)
         if same_checksum:
-            msg = 'The checksum of both databases match.'
-            if self.agent_groups_checksum_mismatch_counter != 0:
-                msg += ' Reset the attempt counter.'
-            logger.debug(msg)
-            self.agent_groups_checksum_mismatch_counter = 0
-        else:
-            self.agent_groups_checksum_mismatch_counter += 1
-            if self.agent_groups_checksum_mismatch_counter <= self.agent_groups_checksum_mismatch_limit:
-                logger.debug(
-                    f'Checksum comparison failed. '
-                    f'Attempt {self.agent_groups_checksum_mismatch_counter}/{self.agent_groups_checksum_mismatch_limit}.')
+            logger.debug(f'The checksum of both databases match. '
+                         f'{"Counter reset." if self.agent_groups_mismatch_counter else ""}')
+            self.agent_groups_mismatch_counter = 0
 
-            if self.agent_groups_checksum_mismatch_counter >= self.agent_groups_checksum_mismatch_limit:
+        else:
+            self.agent_groups_mismatch_counter += 1
+            logger.debug(
+                f'Checksum comparison failed ({self.agent_groups_mismatch_counter}/{self.agent_groups_mismatch_limit}).'
+            )
+            if self.agent_groups_mismatch_counter >= self.agent_groups_mismatch_limit:
                 await self.send_request(command=b'syn_w_g_c', data=b'')
-                self.agent_groups_checksum_mismatch_counter = 0
+                self.agent_groups_mismatch_counter = 0
                 logger.info('Sent request to obtain all agent-groups information from the master node.')
 
     async def recv_agent_groups_periodic_information(self, task_id: bytes, info_type: str):
