@@ -16,7 +16,7 @@ SAMPLE_EVENT_1 = {'key1': 'value1', 'key2': 'value2'}
 
 @pytest.mark.parametrize('guardduty_native', [True, False])
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_AWSGuardDutyBucket__init__(mock_custom_bucket, guardduty_native):
+def test_aws_guardduty_bucket__init__(mock_custom_bucket, guardduty_native):
     """Test if the instances of AWSGuardDutyBucket are created properly."""
     with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=guardduty_native):
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
@@ -34,8 +34,8 @@ def test_AWSGuardDutyBucket__init__(mock_custom_bucket, guardduty_native):
                                                  (utils.LIST_OBJECT_V2_NO_PREFIXES, False)])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__')
-def test_AWSGuardDutyBucket_check_guardduty_type(mock_integration, mock_sts,
-                                                 object_list: dict, result: bool):
+def test_aws_guardduty_bucket_check_guardduty_type(mock_integration, mock_sts,
+                                                   object_list: dict, result: bool):
     """Test 'check_guardduty_type' method defines if the bucket contains GuardDuty Native logs or not.
 
     Parameters
@@ -56,7 +56,7 @@ def test_AWSGuardDutyBucket_check_guardduty_type(mock_integration, mock_sts,
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__')
-def test_AWSGuardDutyBucket_check_guardduty_type_ko(mock_integration, mock_sts):
+def test_aws_guardduty_bucket_check_guardduty_type_ko(mock_integration, mock_sts):
     """Test 'check_guardduty_type' handles exceptions raised and exits with the expected exit code."""
     with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type'):
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
@@ -71,7 +71,7 @@ def test_AWSGuardDutyBucket_check_guardduty_type_ko(mock_integration, mock_sts):
 @patch('aws_bucket.AWSLogsBucket.get_base_prefix', return_value='base_prefix/')
 @patch('guardduty.AWSGuardDutyBucket.check_guardduty_type')
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_AWSGuardDutyBucket_get_service_prefix(mock_custom_bucket, mock_type, mock_base_prefix):
+def test_aws_guardduty_bucket_get_service_prefix(mock_custom_bucket, mock_type, mock_base_prefix):
     """Test 'get_service_prefix' method returns the expected prefix with the format <base_prefix>/<account_id>/<service>."""
     instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
 
@@ -83,8 +83,8 @@ def test_AWSGuardDutyBucket_get_service_prefix(mock_custom_bucket, mock_type, mo
 @patch('aws_bucket.AWSLogsBucket.get_service_prefix', return_value='service_prefix/')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__')
-def test_AWSGuardDutyBucket_get_full_prefix(mock_integration, mock_sts, mock_service_prefix,
-                                            guardduty_native):
+def test_aws_guardduty_bucket_get_full_prefix(mock_integration, mock_sts, mock_service_prefix,
+                                              guardduty_native):
     """Test 'get_full_prefix' method the expected prefix depending on the GuardDuty bucket type.
 
     Parameters
@@ -96,7 +96,8 @@ def test_AWSGuardDutyBucket_get_full_prefix(mock_integration, mock_sts, mock_ser
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket, prefix='prefix/')
 
         if instance.type == "GuardDutyNative":
-            assert f'{instance.get_service_prefix(utils.TEST_ACCOUNT_ID)}{utils.TEST_REGION}/' == instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+            assert f'{instance.get_service_prefix(utils.TEST_ACCOUNT_ID)}{utils.TEST_REGION}/' == instance.get_full_prefix(
+                utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
         else:
             assert instance.prefix == instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
 
@@ -104,7 +105,7 @@ def test_AWSGuardDutyBucket_get_full_prefix(mock_integration, mock_sts, mock_ser
 @pytest.mark.parametrize('guardduty_native', [True, False])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__')
-def test_AWSGuardDutyBucket_get_base_prefix(mock_integration, mock_sts, guardduty_native: bool):
+def test_aws_guardduty_bucket_get_base_prefix(mock_integration, mock_sts, guardduty_native: bool):
     """Test 'get_full_prefix' method the expected base prefix depending on the GuardDuty bucket type.
 
     Parameters
@@ -124,7 +125,7 @@ def test_AWSGuardDutyBucket_get_base_prefix(mock_integration, mock_sts, guarddut
 @pytest.mark.parametrize('guardduty_native', [True, False])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__')
-def test_AWSGuardDutyBucket_iter_regions_and_accounts(mock_integration, mock_sts, guardduty_native: bool):
+def test_aws_guardduty_bucket_iter_regions_and_accounts(mock_integration, mock_sts, guardduty_native: bool):
     """Test 'iter_regions_and_accounts' method makes the necessary calls in order to process the bucket's files
     depending on the GuardDuty bucket type.
 
@@ -153,7 +154,7 @@ def test_AWSGuardDutyBucket_iter_regions_and_accounts(mock_integration, mock_sts
 @patch('guardduty.AWSGuardDutyBucket.reformat_msg', return_value=['message'])
 @patch('guardduty.AWSGuardDutyBucket.check_guardduty_type')
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_AWSGuardDutyBucket_send_event(mock_custom_bucket, mock_type, mock_reformat, mock_send):
+def test_aws_guardduty_bucket_send_event(mock_custom_bucket, mock_type, mock_reformat, mock_send):
     """Test 'send_event' method makes the necessary calls in order to send the event to Analysisd."""
     event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
     instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
@@ -193,7 +194,7 @@ def test_AWSGuardDutyBucket_send_event(mock_custom_bucket, mock_type, mock_refor
 @patch('aws_bucket.AWSBucket.reformat_msg')
 @patch('guardduty.AWSGuardDutyBucket.check_guardduty_type')
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_AWSGuardDutyBucket_reformat_msg(mock_custom_bucket, mock_type, mock_reformat, fields: dict):
+def test_aws_guardduty_bucket_reformat_msg(mock_custom_bucket, mock_type, mock_reformat, fields: dict):
     """Test 'reformat_msg' method applies the expected format to a given event..
 
     Parameters
@@ -228,15 +229,17 @@ def test_AWSGuardDutyBucket_reformat_msg(mock_custom_bucket, mock_type, mock_ref
 @pytest.mark.parametrize('log_key, json_file_content, result',
                          [('file.jsonl.gz',
                            '{"detail": {"schemaVersion": "2.0"}, "service": {"serviceName": "guardduty"}}',
-                           [{"detail": {"schemaVersion": "2.0"}, "service": {"serviceName": "guardduty"}, "source": "guardduty"}]),
+                           [{"detail": {"schemaVersion": "2.0"}, "service": {"serviceName": "guardduty"},
+                             "source": "guardduty"}]),
                           ('file.zip',
                            '{"source": "guardduty", "detail": {"schemaVersion": "2.0"}}',
                            [{"source": "guardduty", "schemaVersion": "2.0"}])])
 @patch('aws_bucket.AWSBucket.decompress_file')
 @patch('guardduty.AWSGuardDutyBucket.check_guardduty_type')
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_AWSGuardDutyBucket_load_information_from_file(mock_custom_bucket, mock_type, mock_decompress,
-                                                       log_key: str, json_file_content: list[dict] or str, result: list[dict]):
+def test_aws_guardduty_bucket_load_information_from_file(mock_custom_bucket, mock_type, mock_decompress,
+                                                         log_key: str, json_file_content: list[dict] or str,
+                                                         result: list[dict]):
     """Test 'load_information_from_file' method returns the expected information.
 
     Parameters

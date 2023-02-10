@@ -89,21 +89,21 @@ INVALID_PREFIX_ERROR_CODE = 18
 INVALID_REQUEST_TIME_ERROR_CODE = 19
 
 
-def get_WazuhIntegration_parameters(db_name: str = TEST_DATABASE, db_table_name: str = TEST_TABLE_NAME,
-                                    service_name: str = TEST_SERVICE_NAME, aws_profile: str = TEST_AWS_PROFILE,
-                                    access_key: str = None, secret_key: str = None, iam_role_arn: str = None,
-                                    region: str = None, discard_field: str = None, discard_regex: str = None,
-                                    sts_endpoint: str = None, service_endpoint: str = None,
-                                    iam_role_duration: str = None):
+def get_wazuh_integration_parameters(db_name: str = TEST_DATABASE, db_table_name: str = TEST_TABLE_NAME,
+                                     service_name: str = TEST_SERVICE_NAME, aws_profile: str = TEST_AWS_PROFILE,
+                                     access_key: str = None, secret_key: str = None, iam_role_arn: str = None,
+                                     region: str = None, discard_field: str = None, discard_regex: str = None,
+                                     sts_endpoint: str = None, service_endpoint: str = None,
+                                     iam_role_duration: str = None):
     """Return a dict containing every parameter supported by WazuhIntegration. Used to simulate different ossec.conf
     configurations.
 
     Parameters
     ----------
     db_name : str
-        The name of the database file to be created
+        The name of the database file to be created.
     db_table_name : str
-        The name of the table to be created for the given bucket or service
+        The name of the table to be created for the given bucket or service.
     service_name : str
         Name of the service.
     access_key : str
@@ -138,13 +138,13 @@ def get_WazuhIntegration_parameters(db_name: str = TEST_DATABASE, db_table_name:
             'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
 
 
-def get_AWSBucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str = TEST_BUCKET, reparse: bool = False,
-                             aws_profile: str = TEST_AWS_PROFILE, access_key: str = None, secret_key: str = None,
-                             iam_role_arn: str = None, only_logs_after: str = None, skip_on_error: bool = False,
-                             account_alias: str = None, prefix: str = "", suffix: str = "", delete_file: bool = False,
-                             aws_organization_id: str = None, region: str = None, discard_field: str = None,
-                             discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
-                             iam_role_duration: str = None):
+def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str = TEST_BUCKET, reparse: bool = False,
+                              aws_profile: str = TEST_AWS_PROFILE, access_key: str = None, secret_key: str = None,
+                              iam_role_arn: str = None, only_logs_after: str = None, skip_on_error: bool = False,
+                              account_alias: str = None, prefix: str = "", suffix: str = "", delete_file: bool = False,
+                              aws_organization_id: str = None, region: str = None, discard_field: str = None,
+                              discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
+                              iam_role_duration: str = None):
     """Return a dict containing every parameter supported by AWSBucket. Used to simulate different ossec.conf
     configurations.
 
@@ -204,13 +204,13 @@ def get_AWSBucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str =
             'sts_endpoint': sts_endpoint, 'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
 
 
-def get_AWSService_parameters(db_table_name: str = TEST_TABLE_NAME, service_name: str = 'cloudwatchlogs',
-                              reparse: bool = False, access_key: str = None, secret_key: str = None,
-                              aws_profile: str = TEST_AWS_PROFILE, iam_role_arn: str = None,
-                              only_logs_after: str = None, region: str = None, aws_log_groups: str = None,
-                              remove_log_streams: bool = None, discard_field: str = None,
-                              discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
-                              iam_role_duration: str = None):
+def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_name: str = 'cloudwatchlogs',
+                               reparse: bool = False, access_key: str = None, secret_key: str = None,
+                               aws_profile: str = TEST_AWS_PROFILE, iam_role_arn: str = None,
+                               only_logs_after: str = None, region: str = None, aws_log_groups: str = None,
+                               remove_log_streams: bool = None, discard_field: str = None,
+                               discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
+                               iam_role_duration: str = None):
     """Return a dict containing every parameter supported by AWSService. Used to simulate different ossec.conf
     configurations.
 
@@ -262,22 +262,22 @@ def get_AWSService_parameters(db_table_name: str = TEST_TABLE_NAME, service_name
             'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
 
 
-def get_mocked_WazuhIntegration(**kwargs):
+def get_mocked_wazuh_integration(**kwargs):
     with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
             patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.sqlite3.connect'), \
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
-        return wazuh_integration.WazuhIntegration(**get_WazuhIntegration_parameters(**kwargs))
+        return wazuh_integration.WazuhIntegration(**get_wazuh_integration_parameters(**kwargs))
 
 
-def get_mocked_AWSBucket(**kwargs):
+def get_mocked_aws_bucket(**kwargs):
     with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
             patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.sqlite3.connect'), \
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
-        return aws_bucket.AWSBucket(**get_AWSBucket_parameters(**kwargs))
+        return aws_bucket.AWSBucket(**get_aws_bucket_parameters(**kwargs))
 
 
 def get_mocked_bucket(class_=aws_bucket.AWSBucket, **kwargs):
@@ -286,7 +286,7 @@ def get_mocked_bucket(class_=aws_bucket.AWSBucket, **kwargs):
             patch('wazuh_integration.sqlite3.connect'), \
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
-        return class_(**get_AWSBucket_parameters(**kwargs))
+        return class_(**get_aws_bucket_parameters(**kwargs))
 
 
 def get_mocked_service(class_=aws_service.AWSService, **kwargs):
@@ -295,7 +295,7 @@ def get_mocked_service(class_=aws_service.AWSService, **kwargs):
             patch('wazuh_integration.sqlite3.connect'), \
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
-        return class_(**get_AWSService_parameters(**kwargs))
+        return class_(**get_aws_service_parameters(**kwargs))
 
 
 def database_execute_script(connector, sql_file):

@@ -12,7 +12,7 @@ import umbrella
 
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_CiscoUmbrella__init__(mock_custom_bucket):
+def test_cisco_umbrella__init__(mock_custom_bucket):
     """Test if the instances of CiscoUmbrella are created properly."""
     instance = utils.get_mocked_bucket(class_=umbrella.CiscoUmbrella)
     assert not instance.check_prefix
@@ -62,7 +62,7 @@ def test_CiscoUmbrella__init__(mock_custom_bucket):
        'source': 'cisco_umbrella'}])
 ])
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_CiscoUmbrella_load_information_from_file(mock_custom_bucket,
+def test_cisco_umbrella_load_information_from_file(mock_custom_bucket,
                                                   prefix: str, data: str, expected_result: list[dict]):
     """Test 'load_information_from_file' method returns the expected information.
 
@@ -83,7 +83,7 @@ def test_CiscoUmbrella_load_information_from_file(mock_custom_bucket,
 
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_CiscoUmbrella_load_information_from_file_ko(mock_custom_bucket):
+def test_cisco_umbrella_load_information_from_file_ko(mock_custom_bucket):
     """Test 'load_information_from_file' method exits when the prefix is not dnslogs, proxylogs or iplogs
     with the expected error code
     """
@@ -98,7 +98,7 @@ def test_CiscoUmbrella_load_information_from_file_ko(mock_custom_bucket):
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__')
-def test_CiscoUmbrella_marker_only_logs_after(mock_integration, mock_sts):
+def test_cisco_umbrella_marker_only_logs_after(mock_integration, mock_sts):
     """Test 'marker_only_logs_after' method returns the expected marker using the `only_logs_after` value."""
     test_only_logs_after = utils.TEST_ONLY_LOGS_AFTER
 

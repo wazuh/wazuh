@@ -14,7 +14,7 @@ import load_balancers
 
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_AWSLBBucket__init__(mock_custom_bucket):
+def test_aws_lb_bucket__init__(mock_custom_bucket):
     """Test if the instances of AWSLBBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSLBBucket)
     assert instance.service == 'elasticloadbalancing'
@@ -22,7 +22,7 @@ def test_AWSLBBucket__init__(mock_custom_bucket):
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-def test_AWSLBBucket_get_base_prefix(mock_sts):
+def test_aws_lb_bucket_get_base_prefix(mock_sts):
     """Test 'get_base_prefix' returns the expected prefix with the format <prefix>/AWSLogs/<suffix>"""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSLBBucket, prefix=f'{utils.TEST_PREFIX}/',
                                        suffix=f'{utils.TEST_SUFFIX}/')
@@ -32,7 +32,7 @@ def test_AWSLBBucket_get_base_prefix(mock_sts):
 
 @patch('load_balancers.AWSLBBucket.get_base_prefix', return_value='base_prefix/')
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_AWSLBBucket_get_service_prefix(mock_custom_bucket, mock_base_prefix):
+def test_aws_lb_bucket_get_service_prefix(mock_custom_bucket, mock_base_prefix):
     """Test 'get_service_prefix' returns the expected prefix with the format <base_prefix>/<account_id>/<service>."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSLBBucket)
     expected_service_prefix = f'base_prefix/{utils.TEST_ACCOUNT_ID}/{instance.service}/'
@@ -41,7 +41,7 @@ def test_AWSLBBucket_get_service_prefix(mock_custom_bucket, mock_base_prefix):
 
 @patch('aws_bucket.AWSBucket.iter_regions_and_accounts')
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_AWSLBBucket_iter_regions_and_accounts(mock_custom_bucket, mock_iter_regions_accounts):
+def test_aws_lb_bucket_iter_regions_and_accounts(mock_custom_bucket, mock_iter_regions_accounts):
     """Test 'iter_regions_and_accounts' method calls AWSBucket.iter_regions_and_accounts"""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSLBBucket)
     instance.iter_regions_and_accounts(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
@@ -52,7 +52,7 @@ def test_AWSLBBucket_iter_regions_and_accounts(mock_custom_bucket, mock_iter_reg
 @patch('load_balancers.AWSLBBucket.get_service_prefix',
        return_value=f'base_prefix/{utils.TEST_ACCOUNT_ID}/elasticloadbalancing/')
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_AWSLBBucket_get_full_prefix(mock_custom_bucket, mock_service_prefix):
+def test_aws_lb_bucket_get_full_prefix(mock_custom_bucket, mock_service_prefix):
     """Test 'get_full_prefix' returns the expected prefix with the format <service_prefix>/<region>."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSLBBucket)
     expected_full_prefix = f'base_prefix/{utils.TEST_ACCOUNT_ID}/elasticloadbalancing/{utils.TEST_REGION}/'
@@ -61,7 +61,7 @@ def test_AWSLBBucket_get_full_prefix(mock_custom_bucket, mock_service_prefix):
 
 @patch('aws_bucket.AWSBucket.mark_complete')
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_AWSLBBucket_mark_complete(mock_custom_bucket, mock_mark_complete):
+def test_aws_lb_bucket_mark_complete(mock_custom_bucket, mock_mark_complete):
     """Test 'mark_complete' method calls AWSBucket.mark_complete"""
     test_log_file = 'log_file'
 
@@ -72,14 +72,14 @@ def test_AWSLBBucket_mark_complete(mock_custom_bucket, mock_mark_complete):
 
 
 @patch('load_balancers.AWSLBBucket.__init__')
-def test_AWSALBBucket__init__(mock_lb_bucket):
+def test_aws_alb_bucket__init__(mock_lb_bucket):
     """Test if the instances of AWSALBBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSALBBucket)
     mock_lb_bucket.assert_called_once()
 
 
 @patch('load_balancers.AWSLBBucket.__init__')
-def test_AWSALBBucket_load_information_from_file(mock_lb_bucket):
+def test_aws_alb_bucket_load_information_from_file(mock_lb_bucket):
     """Test 'load_information_from_file' method returns the expected information or logs the appropriate error message."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSALBBucket)
 
@@ -132,14 +132,14 @@ def test_AWSALBBucket_load_information_from_file(mock_lb_bucket):
 
 
 @patch('load_balancers.AWSLBBucket.__init__')
-def test_AWSCLBBucket__init__(mock_lb_bucket):
+def test_aws_clb_bucket__init__(mock_lb_bucket):
     """Test if the instances of AWSCLBBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSCLBBucket)
     mock_lb_bucket.assert_called_once()
 
 
 @patch('load_balancers.AWSLBBucket.__init__')
-def test_AWSCLBBucket_load_information_from_file(mock_lb_bucket):
+def test_aws_clb_bucket_load_information_from_file(mock_lb_bucket):
     """Test 'load_information_from_file' method returns the expected information."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSCLBBucket)
 
@@ -170,14 +170,14 @@ def test_AWSCLBBucket_load_information_from_file(mock_lb_bucket):
 
 
 @patch('load_balancers.AWSLBBucket.__init__')
-def test_AWSNLBBucket___init__(mock_lb_bucket):
+def test_aws_nlb_bucket___init__(mock_lb_bucket):
     """Test if the instances of AWSNLBBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSNLBBucket)
     mock_lb_bucket.assert_called_once()
 
 
 @patch('load_balancers.AWSLBBucket.__init__')
-def test_AWSNLBBucket_load_information_from_file(mock_lb_bucket):
+def test_aws_nlb_bucket_load_information_from_file(mock_lb_bucket):
     """Test 'load_information_from_file' method returns the expected information."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSNLBBucket)
 
