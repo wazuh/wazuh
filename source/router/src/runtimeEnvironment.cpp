@@ -13,7 +13,7 @@ std::optional<base::Error> RuntimeEnvironment::build(std::shared_ptr<builder::Bu
 {
     if (m_controller)
     {
-        return base::Error {fmt::format("Environment '{}' is already built.", m_asset)};
+        return base::Error {fmt::format("Environment '{}' is already built", m_asset)};
     }
 
     try
@@ -34,7 +34,7 @@ std::optional<base::Error> RuntimeEnvironment::processEvent(base::Event event)
 {
     if (!m_controller)
     {
-        return base::Error {fmt::format("Environment '{}' is not built.", m_asset)};
+        return base::Error {fmt::format("Environment '{}' is not built", m_asset)};
     }
     auto result = base::result::makeSuccess(event);
     m_controller->ingestEvent(std::make_shared<base::result::Result<base::Event>>(std::move(result)));
