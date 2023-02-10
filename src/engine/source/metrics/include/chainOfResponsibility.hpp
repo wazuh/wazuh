@@ -1,5 +1,5 @@
-#ifndef _CHAIN_OF_RESPONSABILITY_HPP
-#define _CHAIN_OF_RESPONSABILITY_HPP
+#ifndef _CHAIN_OF_RESPONSIBILITY_HPP
+#define _CHAIN_OF_RESPONSIBILITY_HPP
 
 #include <memory>
 
@@ -89,4 +89,4 @@ public:
     }
 };
 
-#endif // _CHAIN_OF_RESPONSABILITY_HPP
+#endif // _CHAIN_OF_RESPONSIBILITY_HPP

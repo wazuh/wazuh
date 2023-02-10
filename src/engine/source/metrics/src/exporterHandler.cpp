@@ -30,8 +30,8 @@ void ExporterHandler::create(std::shared_ptr<MetricsContext> data)
             }
         case ExportersTypes::Memory:
             {
-                auto inMemorySpanData = std::make_shared<opentelemetry::exporter::memory::InMemorySpanData>(data->bufferSizeMemoryExporter);
-                data->exporter = opentelemetry::exporter::memory::InMemorySpanExporterFactory::Create(inMemorySpanData, data->bufferSizeMemoryExporter);
+                data->inMemorySpanData = std::make_shared<opentelemetry::exporter::memory::InMemorySpanData>(data->bufferSizeMemoryExporter);
+                data->exporter = opentelemetry::exporter::memory::InMemorySpanExporterFactory::Create(data->inMemorySpanData, data->bufferSizeMemoryExporter);
                 break;
             }
         case ExportersTypes::Zipkin:

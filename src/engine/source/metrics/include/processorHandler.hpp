@@ -1,7 +1,7 @@
 #ifndef _PROCESSOR_HANDLER_HPP
 #define _PROCESSOR_HANDLER_HPP
 
-#include "chainOfResponsability.hpp"
+#include "chainOfResponsibility.hpp"
 #include "metricsContext.hpp"
 
 class ProcessorHandler final : public AbstractHandler<std::shared_ptr<MetricsContext>>

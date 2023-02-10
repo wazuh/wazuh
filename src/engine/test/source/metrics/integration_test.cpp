@@ -90,3 +90,23 @@ TEST_F(IntegrationTest, exporterLoggingFile)
     exporter->handleRequest(m_spContext);
     foo_library();
 }
+
+TEST_F(IntegrationTest, exporterMemory)
+{
+    m_spContext->exporterType = ExportersTypes::Memory;
+    m_spContext->processorType = ProcessorsTypes::Simple;
+    m_spContext->bufferSizeMemoryExporter = 100;
+    auto exporter = std::make_shared<ExporterHandler>();
+    auto processor = std::make_shared<ProcessorHandler>();
+    auto provider = std::make_shared<ProviderHandler>();
+    exporter->setNext(processor)->setNext(provider);
+    exporter->handleRequest(m_spContext);
+    foo_library();
+
+    // TODO: this data is encoded, add some way to decode (for example UTF-8)
+    for (const auto& spans : m_spContext->inMemorySpanData->GetSpans())
+    {
+      std::cout << "GetTraceId: << " << std::string((char*)spans->GetTraceId().Id().data()) << std::endl;
+      std::cout << "GetSpanId: << " << std::string((char*)spans->GetSpanId().Id().data()) << std::endl;
+    }
+}

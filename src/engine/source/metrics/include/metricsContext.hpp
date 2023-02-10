@@ -4,6 +4,7 @@
 #include "opentelemetry/sdk/trace/processor.h"
 #include "opentelemetry/sdk/trace/exporter.h"
 #include "opentelemetry/trace/provider.h"
+#include "opentelemetry/exporters/memory/in_memory_span_data.h"
 #include <fstream>
 
 enum class ExportersTypes
@@ -34,7 +35,10 @@ struct MetricsContext
     std::unique_ptr<opentelemetry::sdk::trace::SpanExporter> exporter;
     std::unique_ptr<opentelemetry::sdk::trace::SpanProcessor> processor;
     std::shared_ptr<opentelemetry::trace::TracerProvider> provider;
+    std::shared_ptr<opentelemetry::exporter::memory::InMemorySpanData> inMemorySpanData;
     std::ofstream file;
+    int timeIntervalBetweenExports;
+    int numSpans;
 };
 
 #endif // _METRICS_CONTEXT_H

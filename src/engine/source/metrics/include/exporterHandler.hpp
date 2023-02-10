@@ -1,7 +1,7 @@
 #ifndef _EXPORTER_HANDLER_HPP
 #define _EXPORTER_HANDLER_HPP
 
-#include "chainOfResponsability.hpp"
+#include "chainOfResponsibility.hpp"
 #include "metricsContext.hpp"
 
 class ExporterHandler final : public AbstractHandler<std::shared_ptr<MetricsContext>>

@@ -1,7 +1,7 @@
 #ifndef _PROVIDER_HANDLER_HPP
 #define _PROVIDER_HANDLER_HPP
 
-#include "chainOfResponsability.hpp"
+#include "chainOfResponsibility.hpp"
 #include "metricsContext.hpp"
 
 class ProviderHandler final : public AbstractHandler<std::shared_ptr<MetricsContext>>
