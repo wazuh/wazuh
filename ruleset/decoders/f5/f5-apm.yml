@@ -48,7 +48,6 @@ parse:
 
 normalize:
 
-  # 011f0005
   # original : March 2017/03/04 11:21:59 unte very-high ueipsa[748]: 011f0005: :cti: failure (Client side: vip=https://www5.example.com/olli/rever.html?rsp=oluptat#metco profile=ipv6-icmp pool=edolorin client_ip=10.104.110.134)
   # content  : :cti: failure (Client side: vip=https://www5.example.com/olli/rever.html?rsp=oluptat#metco profile=ipv6-icmp pool=edolorin client_ip=10.104.110.134)
   - check: event.code==011f0005
@@ -58,7 +57,6 @@ normalize:
       - url: +ef_rename/$~url
       - rsa.misc.result: $~tmp.rsa_misc_result
 
-  # 01490106
   # original : December 2019/12/14 07:24:31 olupta medium oremagn[2121]: 01490106: :itseddo: uptatev: AD module: authentication with 'oditem' failed in allow: Preauthentication failed, principal name: inimaven. failure olor
   # content  : uptatev: AD module: authentication with 'oditem' failed in allow: Preauthentication failed, principal name: inimaven. failure olor
   - check: event.code==01490106
@@ -69,7 +67,6 @@ normalize:
       - user.name: $related.user
       - rsa.misc.result: $~tmp.rsa_misc_result
 
-  # 01490107
   - check: event.code==01490107
     logpar:
       # original : April 2017/04/02 01:27:07 caboNem medium laudan[7589]: 01490107: :oconse: mag: AD module: authentication with 'tob' failed: Client 'dolores2519.mail.host' not found in Kerberos database, principal name:deF itempo
@@ -86,7 +83,6 @@ normalize:
       - rsa.db.index: $~tmp.rsa_db_index
       - related.hosts: +a_append/$rsa.web.fqdn
 
-  # 01490008
   # original : December 2016/12/08 17:06:33 aincidu very-high uaeab[5960]: 01490008: :licabo: enimadmi: Connectivity resource utaliqu assigned
   # content  : :licabo: enimadmi: Connectivity resource utaliqu assigned
   - check: event.code==01490008
@@ -95,7 +91,6 @@ normalize:
     map:
       - network.application: $~tmp.network.application
 
-  # 01260009
   # original : July 2018/07/03 10:49:23 piciati medium ntin[4646]: 01260009: :rcitat: Connection error:cinge
   # content  :  :rcitat: Connection error:cinge
   - check: event.code==01260009
@@ -104,7 +99,6 @@ normalize:
     map:
       - rsa.internal.event_desc: $~tmp.rsa_event_desc
 
-  # 01420002
   # original : February 2018/02/24 19:26:15 oeiusmo very-high cusanti[5019]: 01420002: : AUDIT - pid=4996 user=rem folder=tseddoei module=teursint status=success cmd_data=remagnaa
   # content  : : AUDIT - pid=4996 user=rem folder=tseddoei module=teursint status=success cmd_data=remagnaa
   - check: event.code==01420002
@@ -116,7 +110,6 @@ normalize:
       - rsa.misc.result: $~tmp.rsa.misc.result
       - rsa.db.index: $~tmp.rsa.db.index
 
-  # 01490000
   # original : July 2019/07/10 01:56:14 tatemse low vitae[72]: 01490000: :samvolu: dip
   # content  : :samvolu: dip
   - check: event.code==01490000
@@ -125,7 +118,6 @@ normalize:
     map:
       - rsa.internal.event_desc: $~tmp.rsa.internal.event_desc
 
-  # 01490004
   # original : November 2017/11/02 11:05:41 iquip very-high sedquian[4212]: 01490004: :etdolore: magnaa: Executed agent 'sumquiad', return value iusmodt
   # content  : :etdolore: magnaa: Executed agent 'sumquiad', return value iusmodt
   - check: event.code==01490004
@@ -135,7 +127,6 @@ normalize:
       - rsa.misc.result_code: $~tmp.rsa.misc.result_code
       - network.application: $~tmp.network.application
 
-  # 01490005
   # original : February 2017/02/03 21:16:50 sBono high equ[4808]: 01490005: :amvo: siuta: Following rule urmagn from item dquia to ending temporin
   # content  : :amvo: siuta: Following rule urmagn from item dquia to ending temporin
   # original : January 2018/01/12 22:18:32 rchit medium roquisqu[5924]: 01490005: :iquid: evo: Following rule mcorpori from item mqu to ending pteursi
@@ -147,7 +138,6 @@ normalize:
     map:
       - rsa.misc.action: +a_append/$~tmp.rsa.misc.action
 
-  # 01490007
   # original : July 2019/07/24 08:58:48 Dui medium nostrude[7057]: 01490007: :ione: ecillum: Session variable 'maccu' set to ame
   # content  : :ione: ecillum: Session variable 'maccu' set to ame
   - check: event.code==01490007
@@ -157,7 +147,6 @@ normalize:
       - rsa.misc.change_attrib: $~tmp.rsa.misc.change_attrib
       - rsa.misc.change_new: $~tmp.rsa.misc.change_new
 
-  # 01490013 || 01490019
   # original : July 2017/07/25 09:47:41 gelitse very-high arc[2412]: 01490013: :radip: upta: AD agent: Retrieving AAA server: tetura
   # content  : :radip: upta: AD agent: Retrieving AAA server: tetura
   # original : November 2019/11/15 17:19:22 ationevo very-high datatno[3538]: 01490019: :siar: orisnis: AD agent: Query: query with '(sAMAccountName=texp)' successful
@@ -168,7 +157,6 @@ normalize:
     map:
       - user.name: +r_ext/$user.name/(.+)\)
 
-  # 01490101
   # original : April 2018/04/22 23:36:32 exe high illum[2625]: 01490101: :emi: reprehen: Access profile: tvol configuration has been applied. Newly active generation count is: 5959
   # content  :  :emi: reprehen: Access profile: tvol configuration has been applied. Newly active generation count is: 5959
   - check: event.code==01490101
@@ -178,7 +166,6 @@ normalize:
       - rsa.counters.dclass_c1: $~tmp.rsa.counters.dclass_c1
       - rsa.counters.dclass_c1_str: $~tmp.rsa.counters.dclass_c1_str
 
-  # 01490102
   # original : December 2018/12/21 23:20:14 uatDuisa high ano[4054]: 01490102: :uunturm: iatn: Access policy result: unknown
   # content  : :uunturm: iatn: Access policy result: unknown
   - check: event.code==01490102
@@ -187,7 +174,6 @@ normalize:
     map:
       - rsa.misc.result: $~tmp.rsa.misc.result
 
-  # 01490103
   # original : September 2016/09/28 05:53:42 remag very-high abor[5983]: 01490103: :tquiin: tse: Retry Username 'tenimad'
   # content  : :tquiin: tse: Retry Username 'tenimad'
   - check: event.code==01490103
@@ -196,7 +182,6 @@ normalize:
     map:
       - rsa.misc.result: $~tmp.rsa.misc.result
 
-  # 01490113
   - check: event.code==01490113
     logpar:
       # original : March 2016/03/26 10:20:16 ude very-high veri[5990]: 01490113: :tempo: inv: session.user.clientip is 10.134.175.248
@@ -219,7 +204,6 @@ normalize:
       - rsa.db.index: $~tmp.rsa.db.index
       - related.ip: +a_append/$source.ip
 
-  # 01490128
   # original : January 2018/01/27 05:21:06 itessequ low fdeFinib[2580]: 01490128: :sumd: sectetur: Webtop edquian assigned
   # content  : :sumd: sectetur: Webtop edquian assigned
   - check: event.code==01490128
@@ -228,7 +212,6 @@ normalize:
     map:
       - network.application: $~tmp.network.application
 
-  # 01490500
   # original : May 2018/05/07 06:39:06 iumt medium nulapari[1973]: 01490500: :tsunt: rnat:oremi:ectobeat: New session from client IP 10.187.64.126 (ST=uasiarch/CC=Malor/C=boriosa) at VIP 10.47.99.72 Listener upt (Reputation=oremipsu)
   # content  : :tsunt: rnat:oremi:ectobeat: New session from client IP 10.187.64.126 (ST=uasiarch/CC=Malor/C=boriosa) at VIP 10.47.99.72 Listener upt (Reputation=oremipsu)
   - check: event.code==01490500
@@ -245,7 +228,6 @@ normalize:
       - related.ip: +a_append/$destination.ip
       - rsa.misc.category: $~tmp.rsa.misc.category
 
-  # 01490504
   # original : February 2016/02/12 13:12:33 billoi medium orev[6153]: 01490504: :tatemU: deF: sist1803.mail.local can not be resolved.
   # content  : :tatemU: deF: sist1803.mail.local can not be resolved.
   - check: event.code==01490504
@@ -256,14 +238,12 @@ normalize:
       - rsa.web.fqdn: $~tmp.rsa.web.fqdn
       - related.hosts: +a_append/$rsa.web.fqdn
 
-  # 01490505
   # original : May 2016/05/22 14:30:33 metcon low emeumfug[6823]: 01490505: :emporinc: untutlab: tem
   # content  : :emporinc: untutlab: tem
   - check: event.code==01490505
     logpar:
       - ~content: $DEF_SESSION:<~/ignore/ ><~>
 
-  # 01490506
   # original : December 2017/12/01 01:10:49 xerc high eturad[1760]: 01490506: :nvol: enimadmi: Received User-Agent header: mobmail android 2.1.3.3150
   # content  : :nvol: enimadmi: Received User-Agent header: mobmail android 2.1.3.3150
   - check: event.code==01490506
@@ -274,7 +254,6 @@ normalize:
       - user_agent.device.name: Other
       - user_agent.name: Other
 
-  # 01490511
   # original : August 2016/08/16 08:45:59 dol high quiratio[3386]: 01490511: :tisetq: tevelite: Initializing Access profile orporiss with max concurrent user sessions limit: 4739
   # content  : :tisetq: tevelite: Initializing Access profile orporiss with max concurrent user sessions limit: 4739
   - check: event.code==01490511
@@ -284,7 +263,6 @@ normalize:
       - rsa.counters.dclass_c1: $~tmp.rsa.counters.dclass_c1
       - rsa.counters.dclass_c1_str: "Max Concurrent User Sessions Limit"
 
-  # 01490514
   - check: event.code==01490514 OR event.code==01490517
     logpar:
       # original : July 2016/07/04 11:38:16 sinto very-high CSed[2857]: 01490514: :utlabore: ecillu: Access encountered error: success. File: mnisist, Function: deny, Line: icons
@@ -297,7 +275,6 @@ normalize:
       - rsa.misc.result: $~tmp.rsa.misc.result
       - rsa.misc.action: +a_append/$~tmp.rsa.misc.action
 
-  # 01490520 || 01490501 || 01490142 || 01490538
   # original : November 2016/11/24 10:03:59 quaea very-high mvel[1188]: 01490520: :porinc: tetur: xce
   # content  : :porinc: tetur: xce
   # original : November 2018/11/23 09:15:06 urau medium upt[4762]: 01490538: :itaedict: eroi: Configuration snapshot deleted by Access.
@@ -312,14 +289,12 @@ normalize:
     map:
       - rsa.internal.event_desc: $~tmp.rsa.internal.event_desc
 
-  # 01490521
   # original : August 2019/08/07 16:01:23 reprehe medium enimipsa[2698]: 01490521: :samn: quisnos: Session statistics - bytes in:2132, bytes out: 2552
   # content  : :samn: quisnos: Session statistics - bytes in:2132, bytes out: 2552
   - check: event.code==01490521
     logpar:
       - ~content: $DEF_SESSION:<~/ignore/ >Session statistics - bytes in:<~/ignore/ ><destination.bytes>, bytes out:<~/ignore/ ><source.bytes>
 
-  # 01490544
   # original : September 2019/09/05 06:06:31 ameaquei very-high uelaud[1306]: 01490544: :ameiu: utei: Received client info - https://internal.example.net/lumquid/oluptat.jpg?equepor=iosamn#erspicia
   # content  : :ameiu: utei: Received client info - https://internal.example.net/lumquid/oluptat.jpg?equepor=iosamn#erspicia
   - check: event.code==01490544
@@ -328,7 +303,6 @@ normalize:
     map:
       - http.request.referrer: $~tmp.http.request.referrer
 
-  # 01490549
   # original : September 2017/09/06 06:55:24 iconsequ high idunt[571]: 01490549: :siuta: atev: Assigned PPP Dynamic IPv4: 10.6.32.7 Tunnel Type: exerci inesciu Resource: quid Client IP: 10.198.70.58 - orem
   # content  : :siuta: atev: Assigned PPP Dynamic IPv4: 10.6.32.7 Tunnel Type: exerci inesciu Resource: quid Client IP: 10.198.70.58 - orem
   - check: event.code==01490549
@@ -338,7 +312,6 @@ normalize:
       - related.ip: +a_append/$source.nat.ip
       - related.ip: +a_append/$source.ip
 
-  # 014d0001
   # original : September 2016/09/13 22:51:07 fugiatnu high tobea[2364]: 014d0001: :tateve: ctx: itinvol, SERVER : eavolup
   # content  : :tateve: ctx: itinvol, SERVER : eavolup
   - check: event.code==014d0001
@@ -347,7 +320,6 @@ normalize:
     map:
       - rsa.db.index: $~tmp.rsa.db.index
 
-  # 014d0002
   # original : October 2018/10/11 12:07:23 aborio low setquas: 014d0002: :nbyCi: runtmoll: SSOv2 Logon failed, config busBon form norumetM
   # content  : :nbyCi: runtmoll: SSOv2 Logon failed, config busBon form norumetM
   - check: event.code==014d0002
@@ -356,7 +328,6 @@ normalize:
     map:
       - rsa.misc.disposition: Failed
 
-  # 014d0044
   # original : June 2018/06/19 03:46:49 namaliqu medium aeca[4543]: 014d0044: :autemv: sciveli
   # content  : :autemv: sciveli
   - check: event.code==014d0044
@@ -365,14 +336,12 @@ normalize:
     map:
       - rsa.db.index: $~tmp.rsa.db.index
 
-  # 01490079
   # original : September 2019/09/19 13:09:05 psumqui high ncu: 01490079: :quaturve: ciad: Access policy 'diconseq' configuration has changed.Access profile 'utod' configuration changes need to be applied for the new configuration
   # content  :  :quaturve: ciad: Access policy 'diconseq' configuration has changed.Access profile 'utod' configuration changes need to be applied for the new configuration
   - check: event.code==01490079
     logpar:
       - ~content: <~/ignore/ >$DEF_SESSION:<~>
 
-  # CROND
   # original : March 2016/03/12 03:17:42 seq high crond[5738]: (ccaecat) veleumi
   # original : July 2016/07/18 18:40:50 lum high CROND[1675]: (sitvolup) CMD (cancel)
   # original : January 2019/01/19 13:25:23 volup very-high crond[4071]: (iconsequ) CMD (block)
@@ -383,7 +352,6 @@ normalize:
       - rsa.db.index: $~tmp.rsa.db.index
       - user.name: $~tmp.user_name
 
-  # syslog-ng
   # original : November 2019/11/01 10:16:48 erc low tasnu: [syslog-ng]
   # original : March 2017/03/18 18:24:33 ptasnula high syslog-ng[2638]: ill
   - check: event.code==syslog-ng
@@ -391,7 +359,6 @@ normalize:
       - rsa.internal.messageid: syslog-ng
       - rsa.misc.client: $~tmp.rsa_misc_client
 
-  # auditd OR sSMTP
   # original : May 2018/05/21 13:41:41 sint low auditd[3376]: ctobeat
   # original : November 2019/11/30 00:21:57 pidat very-high sSMTP[6673]: ptateve
   - check: event.code==auditd OR event.code==sSMTP
@@ -399,7 +366,6 @@ normalize:
       - rsa.db.index: $~tmp.rsa_misc_client
       - rsa.misc.client: $event.code
 
-  # Rule
   # original : October 2019/10/18 03:14:14 tem very-high giatnula[71]: Rule: enimadmi <<qui>: APM_EVENT=deny | aecon | sedq ***failure***
   - check: event.code==Rule
     map:
