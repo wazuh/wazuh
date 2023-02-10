@@ -13,7 +13,8 @@ metadata:
     - https://docs.fortinet.com/document/forticlient/7.0.2/log-message-reference/327109
 
 sources:
-    - decoder/queue-localfile/0
+  - decoder/queue-syslog/0
+  - decoder/queue-localfile/0
 
 check:
   - event.original: +r_match/(?i)logid=
