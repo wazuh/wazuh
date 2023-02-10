@@ -198,7 +198,7 @@ opBuilderHelperIntTransformation(const std::string& targetField,
     std::vector<std::string> rReferenceVector {};
 
     // Depending on rValue type we store the reference or the integer value, avoiding
-    // iterating again through values in lambda
+    // iterating again through values inside lambda
     for (const auto& param : parameters)
     {
         int rValue {};
@@ -236,46 +236,8 @@ opBuilderHelperIntTransformation(const std::string& targetField,
                                 param.m_value));
         }
     }
-
-    // Depending on the operator we return the correct function
-    std::function<int(int l, int r)> transformFunction;
-    switch (op)
-    {
-        case IntOperator::SUM:
-            transformFunction = [](int l, int r)
-            {
-                return l + r;
-            };
-            break;
-        case IntOperator::SUB:
-            transformFunction = [](int l, int r)
-            {
-                return l - r;
-            };
-            break;
-        case IntOperator::MUL:
-            transformFunction = [](int l, int r)
-            {
-                return l * r;
-            };
-            break;
-        case IntOperator::DIV:
-            transformFunction = [name](int l, int r)
-            {
-                if (0 == r)
-                {
-                    throw std::runtime_error(fmt::format("'{}' function: Division by zero", name));
-                }
-
-                return l / r;
-            };
-            break;
-        default: break;
-    }
-
     // Tracing messages
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-
     const std::string failureTrace1 {
         fmt::format(TRACE_TARGET_NOT_FOUND, name, targetField)};
     const std::string failureTrace2 {
@@ -284,6 +246,86 @@ opBuilderHelperIntTransformation(const std::string& targetField,
         fmt::format(R"([{}] -> Failure: Parameter is not integer: )", name)};
     const std::string failureTrace4 =
         fmt::format(R"([{}] -> Failure: Parameter value makes division by zero: )", name);
+    const std::string overflowFailureTrace =
+        fmt::format(R"([{}] -> Failure: operation result in integer Overflown)", name);
+    const std::string underflowFailureTrace =
+        fmt::format(R"([{}] -> Failure: operation result in integer Underflown)", name);
+
+    // Depending on the operator we return the correct function
+    std::function<int(int l, int r)> transformFunction;
+    switch (op)
+    {
+        case IntOperator::SUM:
+            transformFunction =
+                [overflowFailureTrace, underflowFailureTrace](int l, int r)
+            {
+                if ((r > 0) && (l > INT_MAX - r))
+                {
+                    throw std::runtime_error(overflowFailureTrace);
+                }
+                else if ((r < 0) && (l < INT_MIN - r))
+                {
+                    throw std::runtime_error(underflowFailureTrace);
+                }
+                else
+                {
+                    return l + r;
+                }
+            };
+            break;
+        case IntOperator::SUB:
+            transformFunction =
+                [overflowFailureTrace, underflowFailureTrace](int l, int r)
+            {
+                if ((r < 0) && (l > INT_MAX + r))
+                {
+                    throw std::runtime_error(overflowFailureTrace);
+                }
+                else if ((r > 0) && (l < INT_MIN + r))
+                {
+                    throw std::runtime_error(underflowFailureTrace);
+                }
+                else
+                {
+                    return l - r;
+                }
+            };
+            break;
+        case IntOperator::MUL:
+            transformFunction =
+                [overflowFailureTrace, underflowFailureTrace](int l, int r)
+            {
+                if ((r != 0) && (l > INT_MAX / r))
+                {
+                    throw std::runtime_error(overflowFailureTrace);
+                }
+                else if ((r != 0) && (l < INT_MIN * r))
+                {
+                    throw std::runtime_error(underflowFailureTrace);
+                }
+                else
+                {
+                    return l * r;
+                }
+            };
+            break;
+        case IntOperator::DIV:
+            transformFunction =
+                [name, overflowFailureTrace, underflowFailureTrace](int l, int r)
+            {
+                if (0 == r)
+                {
+                    throw std::runtime_error(
+                        fmt::format(R"("{}" function: Division by zero)", name));
+                }
+                else
+                {
+                    return l / r;
+                }
+            };
+            break;
+        default: break;
+    }
 
     // Function that implements the helper
     return base::Term<base::EngineOp>::create(
@@ -292,9 +334,11 @@ opBuilderHelperIntTransformation(const std::string& targetField,
          rValueVector = std::move(rValueVector),
          rReferenceVector = std::move(rReferenceVector),
          targetField = std::move(targetField)](
-            base::Event event) mutable -> base::result::Result<base::Event>
+            base::Event event) -> base::result::Result<base::Event>
         {
-            // In order to avoid copying rValueVector the lambda was changed to mutable
+
+            std::vector<int> auxVector {};
+            auxVector.insert(auxVector.begin(), rValueVector.begin(), rValueVector.end());
 
             const auto lValue {event->getInt(targetField)};
             if (!lValue.has_value())
@@ -321,15 +365,23 @@ opBuilderHelperIntTransformation(const std::string& targetField,
                                                          failureTrace4 + rValueItem);
                     }
 
-                    rValueVector.emplace_back(resolvedRValue.value());
+                    auxVector.emplace_back(resolvedRValue.value());
                 }
             }
 
-            // TODO: should we check the result?
-            auto res {std::accumulate(rValueVector.begin(),
-                                      rValueVector.end(),
-                                      lValue.value(),
-                                      transformFunction)};
+            int res;
+            try
+            {
+                res = std::accumulate(auxVector.begin(),
+                                        auxVector.end(),
+                                        lValue.value(),
+                                        transformFunction);
+            }
+            catch(const std::runtime_error& e)
+            {
+                return base::result::makeFailure(event, e.what());
+            }
+
             event->setInt(res, targetField);
             return base::result::makeSuccess(event, successTrace);
         });
