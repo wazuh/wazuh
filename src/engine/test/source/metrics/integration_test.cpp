@@ -53,6 +53,8 @@ protected:
     }
 };
 
+// To test this you have to download the docker image of zipkin into the VM using docker run -d -p 9411:9411 openzipkin/zipkin
+// and then reassign the ports to access the browser http://localhost:new_port.
 TEST_F(IntegrationTest, exporterZipkin)
 {
     m_spContext->exporterType = ExportersTypes::Zipkin;
