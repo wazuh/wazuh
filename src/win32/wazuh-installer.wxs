@@ -130,6 +130,7 @@
             <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchUI">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
         </UI>
         <InstallExecuteSequence>
+            <RemoveExistingProducts After="InstallInitialize"/>
             <!-- Set OS VERSION -->
             <Custom Action="SetOSVersion0" Before="SetCustomActionDataValue">( VersionNT = 501 OR VersionNT64 = 501 )</Custom>
             <Custom Action="SetOSVersion1" Before="SetCustomActionDataValue">( VersionNT = 502 OR VersionNT64 = 502 )</Custom>
