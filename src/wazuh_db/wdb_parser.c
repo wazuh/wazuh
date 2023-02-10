@@ -5045,6 +5045,8 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
         }
     }
 
+    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
+
     snprintf(output, OS_MAXSTR + 1, "ok");
     cJSON_Delete(agent_data);
 
@@ -5374,6 +5376,8 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output) {
         snprintf(output, OS_MAXSTR + 1, "err Error deleting agent from agent table in global.db.");
         return OS_INVALID;
     }
+
+    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
 
     snprintf(output, OS_MAXSTR + 1, "ok");
 

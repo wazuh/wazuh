@@ -45,7 +45,7 @@ info:
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/4.3/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/4.4/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -564,7 +564,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/4.3/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.4/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -631,7 +631,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of requests per minute reached"
             remediation: "This limit can be changed in api.yaml file. More information here:
-            https://documentation.wazuh.com/4.3/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/4.4/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -644,7 +644,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/4.3/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.4/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -3890,7 +3890,7 @@ components:
           type: number
           format: float
           description: "Same as `alerts_written` but focusing in [FTS alerts]
-          (https://documentation.wazuh.com/4.3/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
+          (https://documentation.wazuh.com/4.4/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
           #fts)"
         hostinfo_queue_size:
           type: number
@@ -7076,7 +7076,7 @@ paths:
                 api_version: "v4.3.0"
                 revision: '40100'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/4.3/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/4.4/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -9558,15 +9558,15 @@ paths:
                   affected_items:
                     - name: master-node
                       type: master
-                      version: 4.3.0
+                      version: 4.4.0
                       ip: wazuh-master
                     - name: worker1
                       type: worker
-                      version: 4.3.0
+                      version: 4.4.0
                       ip: 172.26.0.7
                     - name: worker2
                       type: worker
-                      version: 4.3.0
+                      version: 4.4.0
                       ip: 172.26.0.6
                   total_affected_items: 3
                   total_failed_items: 0
@@ -9616,13 +9616,13 @@ paths:
                     - info:
                         name: master-node
                         type: master
-                        version: 4.3.0
+                        version: 4.4.0
                         ip: wazuh-master
                         n_active_agents: 5
                     - info:
                         name: worker1
                         type: worker
-                        version: 4.3.0
+                        version: 4.4.0
                         ip: 172.21.0.7
                         n_active_agents: 3
                       status:
@@ -9654,7 +9654,7 @@ paths:
                     - info:
                         name: worker2
                         type: worker
-                        version: 4.3.0
+                        version: 4.4.0
                         ip: 172.21.0.6
                         n_active_agents: 1
                       status:
@@ -16782,7 +16782,7 @@ paths:
                       tgid: 1
                       share: 729
                       rgroup: "root"
-                      argvs: "/scripts/entrypoint.sh nginx-lb 4.3"
+                      argvs: "/scripts/entrypoint.sh nginx-lb 4.4"
                       start_time: 1217866
                       stime: 0
                       vm_size: 3984
@@ -19078,4 +19078,4 @@ paths:
 
 externalDocs:
   description: "Find more about Wazuh API usage"
-  url: 'https://documentation.wazuh.com/4.3/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/4.4/user-manual/api/index.html'
