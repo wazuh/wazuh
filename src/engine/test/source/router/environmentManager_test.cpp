@@ -24,7 +24,7 @@ TEST(EnvironmentManager, instance_fail_null_builder)
     }
     catch (const std::runtime_error& e)
     {
-        ASSERT_STREQ(e.what(), "EnvironmentManager: Builder can't be null.");
+        ASSERT_STREQ(e.what(), "EnvironmentManager: Builder cannot be null");
     }
     catch (...)
     {
@@ -42,7 +42,7 @@ TEST(EnvironmentManager, zero_instances)
     }
     catch (const std::runtime_error& e)
     {
-        ASSERT_STREQ(e.what(), "EnvironmentManager: Number of instances of the environment can't be 0.");
+        ASSERT_STREQ(e.what(), "EnvironmentManager: Number of instances of the environment cannot be 0");
     }
     catch (...)
     {
@@ -103,21 +103,21 @@ TEST(EnvironmentManager, environmentFlow)
 
         err = manager.forwardEvent("environment/env_1/0", i, e1);
         ASSERT_TRUE(err.has_value());
-        ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_1/0' doesn't exist.");
+        ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_1/0' does not exist");
 
         err = manager.deleteEnvironment("environment/env_2/0");
         ASSERT_FALSE(err.has_value()) << err.value().message;// Process event
 
         err = manager.forwardEvent("environment/env_2/0", i, e2);
         ASSERT_TRUE(err.has_value());
-        ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_2/0' doesn't exist.");
+        ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_2/0' does not exist");
 
         err = manager.deleteEnvironment("environment/env_3/0");
         ASSERT_FALSE(err.has_value()) << err.value().message;
 
         err = manager.forwardEvent("environment/env_3/0", i, e3);
         ASSERT_TRUE(err.has_value());
-        ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_3/0' doesn't exist.");
+        ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_3/0' does not exist");
 
     }
 }
@@ -143,7 +143,7 @@ TEST(EnvironmentManager, add_list_del_environment)
 
     err = manager.addEnvironment("environment/env_1/0");
     ASSERT_TRUE(err.has_value());
-    ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_1/0' already exists.");
+    ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_1/0' already exists");
 
     envs = manager.listEnvironments();
     ASSERT_EQ(envs.size(), 1);
@@ -157,7 +157,7 @@ TEST(EnvironmentManager, add_list_del_environment)
 
     err = manager.deleteEnvironment("environment/env_1/0");
     ASSERT_TRUE(err.has_value());
-    ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_1/0' doesn't exist.");
+    ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_1/0' does not exist");
 
     err = manager.addEnvironment("environment/env_1/0");
     ASSERT_FALSE(err.has_value()) << err.value().message;
