@@ -99,8 +99,8 @@ def test_WazuhGCloudSubscriber_check_permissions(mock_credentials):
 
 
 @pytest.mark.parametrize('errcode, msg', [
-    (1204, "project not found or user does not have access"),
-    (1205, ""),
+    (1204, ""),
+    (1205, "project not found or user does not have access"),
     (1206, "")
 ])
 @patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
