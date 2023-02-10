@@ -13,6 +13,7 @@ metadata:
     - https://docs.fortinet.com/document/fortimanager/7.2.1/log-message-reference/683345/introduction
 
 sources:
+  - decoder/queue-syslog/0
   - decoder/queue-localfile/0
 
 check:
