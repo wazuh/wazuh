@@ -69,7 +69,7 @@ CREATE INDEX IF NOT EXISTS group_name ON `group` (name);
 
 CREATE TABLE IF NOT EXISTS belongs (
     id_agent INTEGER REFERENCES agent (id) ON DELETE CASCADE,
-    id_group INTEGER,
+    id_group INTEGER REFERENCES `group` (id) ON DELETE CASCADE,
     priority INTEGER NOT NULL DEFAULT 0,
     UNIQUE (id_agent, priority),
     PRIMARY KEY (id_agent, id_group)

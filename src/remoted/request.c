@@ -56,6 +56,10 @@ void req_init() {
     max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
     guess_agent_group = getDefine_Int("remoted", "guess_agent_group", 0, 1);
 
+    if (guess_agent_group && logr.worker_node) {
+        mwarn("The internal option guess_agent_group must be configured on the master node.");
+    }
+
     // Create hash table
     if (req_table = OSHash_Create(), !req_table) {
         merror_exit("At OSHash_Create()");
