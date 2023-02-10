@@ -212,7 +212,7 @@ char * key_request_exec_output(request_type_t type, char *request) {
 void* run_key_request_main(__attribute__((unused)) void *arg) {
     int sock;
     unsigned int i;
-    char buffer[OS_MAXSTR + 1];
+    char buffer[OS_MAXSTR + 1] = {0};
     char * copy;
 
     authd_sigblock();
