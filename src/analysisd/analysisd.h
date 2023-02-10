@@ -116,15 +116,6 @@ extern int num_rule_matching_threads;
     (void)(AnyVariable);                                        \
     w_mutex_unlock(&mutex)
 
-/**
- * @breif mutex for any condition passed as an argument
- * @return result of the evaluated condition
- * */
-#define w_guard_mutex_conditioned_variable(mutex, AnyVariable)  \
-    ({w_mutex_lock(&mutex);                                     \
-    bool condition = (AnyVariable);                             \
-    w_mutex_unlock(&mutex);                                     \
-    condition;})
 
 time_t w_get_current_time(void);
 
