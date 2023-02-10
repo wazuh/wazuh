@@ -1,6 +1,7 @@
 import socket
 import sqlite3
 import sys
+
 try:
     import boto3
 except ImportError:
@@ -19,10 +20,9 @@ import aws_tools
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import utils
 
-
 DEPRECATED_TABLES = {'log_progress', 'trail_progress'}
 DEFAULT_GOV_REGIONS = {'us-gov-east-1', 'us-gov-west-1'}
-SERVICES_REQUIRING_REGION = {'inspector',  'cloudwatch'}
+SERVICES_REQUIRING_REGION = {'inspector', 'cloudwatch'}
 WAZUH_DEFAULT_RETRY_CONFIGURATION = {'max_attempts': 10, 'mode': 'standard'}
 MESSAGE_HEADER = "1:Wazuh-AWS:"
 
@@ -160,16 +160,20 @@ class WazuhIntegration:
         args = {}
         if not path.exists(aws_tools.DEFAULT_AWS_CONFIG_PATH):
             args['config'] = botocore.config.Config(retries=WAZUH_DEFAULT_RETRY_CONFIGURATION)
-            aws_tools.debug(f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",2)
+            aws_tools.debug(
+                f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",
+                2)
         else:
-            aws_tools.debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',2)
+            aws_tools.debug(
+                f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}', 2)
         return args
 
     def get_client(self, access_key=None, secret_key=None, profile=None, iam_role_arn=None, service_name=None,
                    region=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
         conn_args = {}
         if access_key is not None and secret_key is not None:
-            print(aws_tools.DEPRECATED_MESSAGE.format(name="access_key and secret_key", release="4.4", url=aws_tools.CREDENTIALS_URL))
+            print(aws_tools.DEPRECATED_MESSAGE.format(name="access_key and secret_key", release="4.4",
+                                                      url=aws_tools.CREDENTIALS_URL))
             conn_args['aws_access_key_id'] = access_key
             conn_args['aws_secret_access_key'] = secret_key
 
@@ -187,7 +191,8 @@ class WazuhIntegration:
         # If using a role, create session using that
         try:
             if iam_role_arn:
-                sts_client = boto_session.client(service_name='sts', endpoint_url=sts_endpoint, **self.connection_config)
+                sts_client = boto_session.client(service_name='sts', endpoint_url=sts_endpoint,
+                                                 **self.connection_config)
                 assume_role_kwargs = {'RoleArn': iam_role_arn, 'RoleSessionName': 'WazuhLogParsing'}
                 if iam_role_duration is not None:
                     assume_role_kwargs['DurationSeconds'] = iam_role_duration
@@ -247,7 +252,7 @@ class WazuhIntegration:
             elif e.errno == 90:
                 print("ERROR: Message too long to send to Wazuh.  Skipping message...")
                 aws_tools.debug('+++ ERROR: Message longer than buffer socket for Wazuh. Consider increasing rmem_max. '
-                      'Skipping message...', 1)
+                                'Skipping message...', 1)
             else:
                 print("ERROR: Error sending message to wazuh: {}".format(e))
                 sys.exit(13)

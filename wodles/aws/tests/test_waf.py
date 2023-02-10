@@ -15,7 +15,7 @@ logs_path = os.path.join(test_data_path, 'log_files')
 
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_AWSWAFBucket__init__(mock_custom_bucket):
+def test_aws_waf_bucket__init__(mock_custom_bucket):
     """Test if the instances of AWSWAFBucket are created properly."""
     utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
     mock_custom_bucket.assert_called_once()
@@ -31,16 +31,14 @@ def test_AWSWAFBucket__init__(mock_custom_bucket):
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
 @patch('aws_bucket.AWSCustomBucket.__init__', side_effect=aws_bucket.AWSCustomBucket.__init__)
-def test_AWSWAFBucket_load_information_from_file(mock_custom_bucket, mock_bucket, mock_sts, mock_integration,
-                                                 log_file: str, skip_on_error: bool):
+def test_aws_waf_bucket_load_information_from_file(mock_custom_bucket, mock_bucket, mock_sts, mock_integration,
+                                                   log_file: str, skip_on_error: bool):
     """Test AWSWAFBucket's implementation of the load_information_from_file method.
 
     Parameters
     ----------
     log_file : str
         File that should be decompressed.
-    aws_waf_bucket : AWSWAFBucket
-        Instance of the AWSWAFBucket class.
     skip_on_error : bool
         If the skip_on_error is disabled or not.
     """
@@ -60,9 +58,9 @@ def test_AWSWAFBucket_load_information_from_file(mock_custom_bucket, mock_bucket
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
 @patch('aws_bucket.AWSCustomBucket.__init__', side_effect=aws_bucket.AWSCustomBucket.__init__)
-def test_AWSWAFBucket_load_information_from_file_ko(mock_custom_bucket, mock_bucket, mock_sts, mock_integration,
-                                                    log_file: str, skip_on_error: bool,
-                                                    expected_exception: Exception):
+def test_aws_waf_bucket_load_information_from_file_ko(mock_custom_bucket, mock_bucket, mock_sts, mock_integration,
+                                                      log_file: str, skip_on_error: bool,
+                                                      expected_exception: Exception):
     """Test that AWSWAFBucket's implementation of the load_information_from_file method raises
     an exception when called with invalid arguments.
 
