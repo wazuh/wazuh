@@ -804,15 +804,62 @@ checks:
   # 1.4 Secure Boot Settings
   ###############################################
 
-  # 1.4.1 Ensure bootloader password is set (Automated) - Not implemented - needs a script.
-  # 1.4.2 Ensure permissions on bootloader config are configured (Automated) - Not implemented - needs a script.
+  # 1.4.1 Ensure bootloader password is set (Automated)
+  - id: 28029
+    title: "Ensure bootloader password is set."
+    description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters."
+    rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off SELinux at boot time)."
+    impact: 'If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing "e" or access the GRUB 2 command line by pressing "c" If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem.'
+    remediation: "Create an encrypted password with grub2-setpassword: # grub2-setpassword Enter password: <password> Confirm password: <password>"
+    compliance:
+      - cis: ["1.4.1"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - nist_sp_800-53: ["AC-5","AC-6"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - mitre_techniques: ["T1542"]
+      - mitre_tactics: ["TA0003"]
+      - mitre_mitigations: ["M1046"]
+    condition: all
+    rules:
+      - f:/boot/grub2/user.cfg
+      - f:/boot/grub2/user.cfg -> r:^\s*GRUB2_PASSWORD=grub.pbkdf2.sha512
+
+  # 1.4.2 Ensure permissions on bootloader config are configured (Automated)
+  - id: 28030 
+    title: "Ensure permissions on bootloader config are configured (Automated)."
+    description: "The grub files contain information on boot settings and passwords for unlocking boot options."
+    rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
+    remediation: "Run the following commands to set ownership and permissions on your grub configuration files: Run the following command to set ownership and permissions on grub.cfg: # chown root:root /boot/grub2/grub.cfg # chmod og-rwx /boot/grub2/grub.cfg Run the following command to set ownership and permissions on grubenv: # chown root:root /boot/grub2/grubenv # chmod u-x,og-rwx /boot/grub2/grubenv Run the following command to set ownership and permissions on user.cfg: # chown root:root /boot/grub2/user.cfg # chmod u-x,og-rwx /boot/grub2/user.cfg Note: This may require a re-boot to enable the change Default Value: /boot/grub2/grub.cfg 0700 0/root 0/root /boot/grub2/grubenv 0600 0/root 0/root /boot/grub2/user.cfg 0600 0/root 0/root"
+    compliance:
+      - cis: ["1.4.2"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1","AC.L1-3.1.2","AC.L2-3.1.5","AC.L2-3.1.3","MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3"]
+      - pci_dss_4.0: ["1.3.1","7.1"]
+      - nist_sp_800-53: ["AC-5","AC-6"]
+      - soc_2: ["CC5.2","CC6.1"]
+      - mitre_techniques: ["T1542"]
+      - mitre_tactics: ["TA0005","TA0007"]
+      - mitre_mitigations: ["M1022"]
+    condition: all
+    rules:
+      - 'c:stat -Lc "%#a %u %U %g %G" /boot/grub2/grub.cfg -> r:0\d00\s+0\s+root\s+0\s+root'
+      - 'c:stat -Lc "%#a %u %U %g %G" /boot/grub2/grubenv -> r:0400\s|0600\s && r:0\s+root\s+0\s+root' 
+      - 'c:stat -Lc "%#a %u %U %g %G" /boot/grub2/user.cfg -> r:0400\s|0600\s && r:0\s+root\s+0\s+root'
 
   ###############################################
   # 1.5 Additional Process Hardening
   ###############################################
 
   # 1.5.1 Ensure core dump storage is disabled (Automated)
-  - id: 28029 
+  - id: 28031
     title: "Ensure core dump storage is disabled."
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file."
     rationale: "A core dump includes a memory image taken at the time the operating system terminates an application. The memory image could contain sensitive data and is generally useful only for developers trying to debug problems."
@@ -828,7 +875,7 @@ checks:
       - "f:/etc/systemd/coredump.conf -> r:^Storage=none"
 
   # 1.5.2 Ensure core dump backtraces are disabled (Automated)
-  - id: 28030 
+  - id: 28032 
     title: "Ensure core dump backtraces are disabled."
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file."
     rationale: "A core dump includes a memory image taken at the time the operating system terminates an application. The memory image could contain sensitive data and is generally useful only for developers trying to debug problems, increasing the risk to the system."
@@ -854,7 +901,7 @@ checks:
   ###############################################
 
   # 1.6.1.1 Ensure SELinux is installed (Automated)
-  - id: 28031 
+  - id: 28033 
     title: "Ensure SELinux is installed."
     description: "SELinux provides Mandatory Access Control."
     rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
@@ -878,7 +925,7 @@ checks:
       - "c:rpm -q libselinux -> r:^libselinux-"
 
   # 1.6.1.2 Ensure SELinux is not disabled in bootloader configuration (Automated)
-  - id: 28032 
+  - id: 28034 
     title: "Ensure SELinux is not disabled in bootloader configuration."
     description: "Configure SELINUX to be enabled at boot time and verify that it has not been overwritten by the grub boot parameters."
     rationale: "SELinux must be enabled at boot time in your grub configuration to ensure that the controls it provides are not overridden."
@@ -904,7 +951,7 @@ checks:
       - 'f:/boot/grub2/grub.cfg -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
 
   # 1.6.1.3 Ensure SELinux policy is configured (Automated)
-  - id: 28033 
+  - id: 28035 
     title: "Ensure SELinux policy is configured."
     description: "Configure SELinux to meet or exceed the default targeted policy, which constrains daemons and system software only."
     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that at least the default recommendations are met."
@@ -928,7 +975,7 @@ checks:
       - 'f:/etc/selinux/config -> r:^\s*SELINUXTYPE\s*=\s*targeted|^\s*SELINUXTYPE\s*=\s*mls'
 
   # 1.6.1.4 Ensure the SELinux mode is not disabled (Automated)
-  - id: 28034 
+  - id: 28036 
     title: "Ensure the SELinux mode is not disabled."
     description: "SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t."
     rationale: "Running SELinux in disabled mode is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future."
@@ -955,7 +1002,7 @@ checks:
       - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing|\s*SELINUX\s*=\s*permisive'
 
   # 1.6.1.5 Ensure the SELinux mode is enforcing (Automated)
-  - id: 28035 
+  - id: 28037 
     title: "Ensure the SELinux mode is enforcing."
     description: "SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t."
     rationale: "Running SELinux in disabled mode the system not only avoids enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Running SELinux in Permissive mode, though helpful for developing SELinux policy, only logs access denial entries, but does not deny any operations."
@@ -984,7 +1031,7 @@ checks:
       - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing'
 
   # 1.6.1.6 Ensure no unconfined services exist (Automated)
-  - id: 28036 
+  - id: 28038 
     title: "Ensure no unconfined services exist."
     description: "Unconfined processes run in unconfined domains."
     rationale: "For unconfined processes, SELinux policy rules are applied, but policy rules exist that allow processes running in unconfined domains almost all access. Processes running in unconfined domains fall back to using DAC rules exclusively. If an unconfined process is compromised, SELinux does not prevent an attacker from gaining access to system resources and data, but of course, DAC rules are still used. SELinux is a security enhancement on top of DAC rules - it does not replace them."
@@ -1008,7 +1055,7 @@ checks:
       - "c:ps -eZ -> r:unconfined_service_t"
 
   # 1.6.1.7 Ensure SETroubleshoot is not installed (Automated)
-  - id: 28037 
+  - id: 28039 
     title: "Ensure SETroubleshoot is not installed."
     description: "The SETroubleshoot service notifies desktop users of SELinux denials through a user-friendly interface. The service provides important information around configuration errors, unauthorized intrusions, and other potential errors."
     rationale: "The SETroubleshoot service is an unnecessary daemon to have running on a server, especially if X Windows is disabled."
@@ -1030,7 +1077,7 @@ checks:
       - "c:rpm -qa setroubleshoot -> r:setroubleshoot"
 
   # 1.6.1.8 Ensure the MCS Translation Service (mcstrans) is not installed (Automated)
-  - id: 28038 
+  - id: 28040 
     title: "Ensure the MCS Translation Service (mcstrans) is not installed."
     description: "The mcstransd daemon provides category label information to client processes requesting information. The label translations are defined in /etc/selinux/targeted/setrans.conf."
     rationale: "Since this service is not used very often, remove it to reduce the amount of potentially vulnerable code running on the system."
@@ -1055,7 +1102,7 @@ checks:
   ###############################################
 
   # 1.7.1 Ensure message of the day is configured properly (Automated)
-  - id: 28039 
+  - id: 28041
     title: "Ensure message of the day is configured properly."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and  patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture  \\r - operating system release \\s - operating system name \\v - operating system version."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the "uname -a" command once they have logged in.'
@@ -1069,7 +1116,7 @@ checks:
       - 'f:/etc/motd -> r:\\v|\\r|\\m|\\s|rhel'
 
   # 1.7.2 Ensure local login warning banner is configured properly (Automated)
-  - id: 28040 
+  - id: 28042 
     title: "Ensure local login warning banner is configured properly."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version - or the operating system's name."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
@@ -1083,7 +1130,7 @@ checks:
       - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|rhel'
 
   # 1.7.3 Ensure remote login warning banner is configured properly (Automated)
-  - id: 28041 
+  - id: 28043 
     title: "Ensure remote login warning banner is configured properly."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
@@ -1097,7 +1144,7 @@ checks:
       - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|rhel'
 
   # 1.7.4 Ensure permissions on /etc/motd are configured (Automated)
-  - id: 28042 
+  - id: 28044 
     title: "Ensure permissions on /etc/motd are configured."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
     rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
@@ -1121,7 +1168,7 @@ checks:
       - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.7.5 Ensure permissions on /etc/issue are configured (Automated)
-  - id: 28043 
+  - id: 28045 
     title: "Ensure permissions on /etc/issue are configured."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals."
     rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
@@ -1145,7 +1192,7 @@ checks:
       - 'c:stat -L /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.7.6 Ensure permissions on /etc/issue.net are configured (Automated)
-  - id: 28044 
+  - id: 28046 
     title: "Ensure permissions on /etc/issue.net are configured."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
     rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
@@ -1173,7 +1220,7 @@ checks:
   ###############################################
 
   # 1.8.1 Ensure GNOME Display Manager is removed (Automated)
-  - id: 28045 
+  - id: 28047 
     title: "Ensure GNOME Display Manager is removed."
     description: "The GNOME Display Manager (GDM) is a program that manages graphical display servers and handles graphical user logins."
     rationale: "If a Graphical User Interface (GUI) is not required, it should be removed to reduce the attack surface of the system."
@@ -1213,7 +1260,7 @@ checks:
   # 1.8.9 Ensure GDM autorun-never is not overridden (Automated) - Not implemented
 
   # 1.8.10  Ensure XDCMP is not enabled (Automated)
-  - id: 28046 
+  - id: 28048 
     title: "Ensure XDCMP is not enabled."
     description: "X Display Manager Control Protocol (XDMCP) is designed to provide authenticated access to display management services for remote displays."
     rationale: "XDMCP is inherently insecure. - XDMCP is not a ciphered protocol. This may allow an attacker to capture keystrokes entered by a user - XDMCP is vulnerable to man-in-the-middle attacks. This may allow an attacker to steal the credentials of legitimate users by impersonating the XDMCP server."
@@ -1237,7 +1284,7 @@ checks:
 
 
   # 1.9 Ensure updates, patches, and additional security software are installed (Manual)
-  - id: 28047 
+  - id: 28049 
     title: "Ensure updates, patches, and additional security software are installed."
     description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
     rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
@@ -1259,7 +1306,7 @@ checks:
       - 'not c:sh -c "dnf check-update | egrep -v \"Updating|Last metadata|^$\"" -> r:^\w'
 
   # 1.10 Ensure system-wide crypto policy is not legacy (Automated)
-  - id: 28048 
+  - id: 28050 
     title: "Ensure system-wide crypto policy is not legacy."
     description: "The system-wide crypto-policies followed by the crypto core components allow consistently deprecating and disabling algorithms system-wide. The individual policy levels (DEFAULT, LEGACY, FUTURE, and FIPS) are included in the crypto-policies(7) package."
     rationale: "If the Legacy system-wide crypto policy is selected, it includes support for TLS 1.0, TLS 1.1, and SSH2 protocols or later. The algorithms DSA, 3DES, and RC4 are allowed, while RSA and Diffie-Hellman parameters are accepted if larger than 1023-bits. These legacy protocols and algorithms can make the system vulnerable to attacks, including those listed in RFC 7457."
