@@ -817,7 +817,6 @@ checks:
     rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off AppArmor at boot time)."
     remediation: 'Create an encrypted password with grub-mkpasswd-pbkdf2: # grub-mkpasswd-pbkdf2 Enter password: <password> Reenter password: <password> PBKDF2 hash of your password is <encrypted-password>. Add the following into a custom /etc/grub.d configuration file: cat <<EOF set superusers="<username>" password_pbkdf2 <username> <encrypted-password> EOF. The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS= Example: CLASS="--class gnu-linux --class gnu --class os --unrestricted". Run the following command to update the grub2 configuration: # update-grub.'
     impact: "If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing 'e' or access the GRUB 2 command line by pressing 'c' If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem You can add --unrestricted to the menu entries to allow the system to boot without entering a password. Password will still be required to edit menu items. More Information - https://help.ubuntu.com/community/Grub2/Passwords."
-    additional information: "Changes to /etc/grub.d/10_linux may be overwritten during updates to the grub-common package. You should review any changes to this file before rebooting otherwise the system may unexpectedly prompt for a password on the next boot."
     default value: "This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment."
     references:
       - https://help.ubuntu.com/community/Grub2/Passwords
@@ -830,7 +829,7 @@ checks:
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.9.4.3"]
       - nist_sp_800-53: ["IA-5 (1)"]
-      - mitre_techniques: ["T1542", "T1542.000"]
+      - mitre_techniques: ["T1542"]
       - mitre_tactics: ["TA0003"]
       - mitre_mitigations: ["M1046"]
     condition: any
@@ -844,7 +843,6 @@ checks:
     description: "The grub configuration file contains information on boot settings and passwords for unlocking boot options."
     rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
     remediation: "Run the following commands to set permissions on your grub configuration: # chown root:root /boot/grub/grub.cfg # chmod u-wx,go-rwx /boot/grub/grub.cfg .Additional Information: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment"
-    additional information: "This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment"
     compliance:
       - cis: ["1.4.2"]
       - cis_csc_v8: ["3.3"]
@@ -856,7 +854,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1542", "T1542.000"]
+      - mitre_techniques: ["T1542"]
       - mitre_tactics: ["TA0005", "TA0007"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -878,7 +876,7 @@ checks:
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.9.4.3"]
       - nist_sp_800-53: ["IA-5 (1)"]
-      - mitre_techniques: ["T1548", "T1548.000"]
+      - mitre_techniques: ["T1548"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -901,10 +899,13 @@ checks:
       - cis: ["1.5.2"]
       - cis_csc_v8: ["3.14"]
       - cis_csc_v7: ["14.9"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - pci_dss_3.2.1: ["6.2"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - soc_2: ["CC7.1"]
+      - cmmc_v2.0: ["AC.L2-3.1.7"]
+      - hipaa: ["164.312(b)","164.312(c)(1)","164.312(c)(2)"]
+      - pci_dss_3.2.1: ["10.2.1","11.5"]
+      - pci_dss_4.0: ["10.2.1","10.2.1.1"]
+      - nist_sp_800-53: ["AC-6(9)"]
+      - soc_2: ["CC6.1"]
+      - iso_27001-2013: ["A.12.4.3"]
       - mitre_techniques: ["T1055", "T1055.009", "T1065", "T1065.001"]
       - mitre_tactics: ["TA0002"]
       - mitre_mitigations: ["M1050"]
@@ -942,7 +943,7 @@ checks:
     remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 .Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 .Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 .IF systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 .Run the command: systemctl daemon-reload"
     compliance:
       - cis: ["1.5.4"]
-      - mitre_techniques: ["T1005", "T1005.000"]
+      - mitre_techniques: ["T1005"]
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
@@ -975,7 +976,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1068", "T1068.000", "T1565", "T1565.001", "T1565.003"]
+      - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
       - mitre_tactics: ["TA0003"]
       - mitre_mitigations: ["M1026"]
     condition: all
@@ -1004,7 +1005,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1068", "T1068.000", "T1565", "T1565.001", "T1565.003"]
+      - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
       - mitre_tactics: ["TA0003"]
       - mitre_mitigations: ["M1026"]
     condition: none
