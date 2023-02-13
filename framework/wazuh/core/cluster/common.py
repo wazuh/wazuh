@@ -29,7 +29,6 @@ from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import WazuhDBConnection
 
-
 class Response:
     """
     Define and store a response from a request.
@@ -130,6 +129,9 @@ class SendStringTask:
     """
     Create an asyncio task that can be identified by a task_id specified in advance.
     """
+    # Due to a CPython bug in the Streams library, tasks must be hard-referenced so that they are not deleted
+    # by the garbage collector (https://github.com/python/cpython/issues/90467). It should be fixed in Python 3.10.8.
+    tasks_hard_reference = set()
 
     def __init__(self, wazuh_common, logger):
         """Class constructor.
@@ -144,6 +146,7 @@ class SendStringTask:
         self.wazuh_common = wazuh_common
         self.coro = self.set_up_coro()
         self.task = asyncio.create_task(self.coro())
+        self.tasks_hard_reference.add(self.task)
         self.task.add_done_callback(self.done_callback)
         self.logger = logger
 
@@ -162,6 +165,7 @@ class SendStringTask:
 
         Remove string and task_id (if exist) from sync_tasks dict. If task was not cancelled, raise stored exception.
         """
+        self.tasks_hard_reference.discard(self.task)
         if not self.task.cancelled():
             task_exc = self.task.exception()
             if task_exc:
@@ -602,77 +606,13 @@ class Handler(asyncio.Protocol):
 
         for error in result['error_messages']['chunks']:
             logger.debug2(f'Chunk {error[0] + 1}/{len(data["chunks"])}: {data["chunks"][error[0]]}')
-            logger.error(
-                f'Wazuh-db response for chunk {error[0] + 1}/{len(data["chunks"])} was not "ok": {error[1]}')
+            logger.error(f'Wazuh-db response for chunk {error[0] + 1}/{len(data["chunks"])} was not "ok": {error[1]}')
 
         logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-db '
                      f'in {result["time_spent"]:.3f}s.')
         result['error_messages'] = [error[1] for error in result['error_messages']['chunks']]
 
         return result
-
-    async def send_result_to_manager(self, command: bytes, result: dict) -> bytes:
-        """Send the results to the manager with the specified command.
-
-        Parameters
-        ----------
-        command : bytes
-            Command sent to the sender node.
-        result : dict
-            Insertion operation result.
-
-        Returns
-        -------
-        response : bytes
-            Response from the receiving node to the sender node of the task.
-        """
-        response = await self.send_request(command=command, data=json.dumps(result).encode())
-
-        return response
-
-    async def sync_wazuh_db_information(self, task_id: bytes, info_type: str, logger: logging.Logger,
-                                        command: bytes, error_command: bytes, timeout: int,
-                                        sync_dict: dict = None) -> bytes:
-        """Create a process to send to the local wazuh-db the chunks of data received from a master/worker node.
-
-        Parameters
-        ----------
-        task_id : bytes
-            Pre-defined task_id to identify this object.
-        info_type : str
-            Information type handled.
-        logger : Logger object
-            Logger to use.
-        command : bytes
-            Command sent to the sender node.
-        error_command : bytes
-            Command sent to the sender node in case of error.
-        timeout : int
-            Seconds to wait before stopping the wdb update task.
-        sync_dict : dict
-            Dictionary with general cluster information.
-
-        Returns
-        -------
-        response : bytes
-            Response from the receiving node to the sender node of the task.
-        """
-        sync_dict = sync_dict if sync_dict is not None else {}
-        logger.info('Starting.')
-
-        start_time = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
-        data = await self.get_chunks_in_task_id(task_id, error_command)
-        result = await self.update_chunks_wdb(data, info_type, logger, error_command, timeout)
-        response = await self.send_result_to_manager(command, result)
-        end_time = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
-
-        sync_dict.update({'date_start_master': start_time.strftime(DECIMALS_DATE_FORMAT),
-                          'date_end_master': end_time.strftime(DECIMALS_DATE_FORMAT),
-                          'n_synced_chunks': result['updated_chunks']})
-        logger.info(f'Finished in {(end_time - start_time).total_seconds():.3f}s. '
-                    f'Updated {result["updated_chunks"]} chunks.')
-
-        return response
 
     async def send_file(self, filename: str, task_id: bytes = None) -> int:
         """Send a file to peer, slicing it into chunks.
@@ -1460,7 +1400,7 @@ class SyncWazuhdb(SyncTask):
 
 
 def end_sending_agent_information(logger, start_time, response) -> Tuple[bytes, bytes]:
-    """Function called when the master/worker sends the "syn_m_a_e", "syn_m_g_e" or "syn_w_g_e" command.
+    """Function called when the master/worker sends the "syn_m_a_e" or "syn_w_g_e" command.
 
     This method is called once the master finishes processing the agent-info/agent-groups. It logs
     information like the number of chunks that were updated and any error message.
@@ -1491,7 +1431,7 @@ def end_sending_agent_information(logger, start_time, response) -> Tuple[bytes, 
 
 def error_receiving_agent_information(logger, response, info_type):
     """Function called when the master/worker sends the
-    "syn_m_a_err", "syn_m_g_err", "syn_w_g_err" or "syn_w_g_err" command.
+    "syn_m_a_err", "syn_w_g_err" or "syn_w_g_err" command.
 
     Parameters
     ----------
@@ -1509,7 +1449,7 @@ def error_receiving_agent_information(logger, response, info_type):
     bytes
         Response message.
     """
-    logger.error(f"There was an error while processing {info_type} on the master: {response}")
+    logger.error(f"There was an error while processing {info_type} on the peer: {response}")
 
     return b'ok', b'Thanks'
 

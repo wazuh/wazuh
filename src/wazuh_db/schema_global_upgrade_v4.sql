@@ -1,6 +1,6 @@
 /*
  * SQL Schema for upgrading databases
- * Copyright (C) 2015-2022, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * November, 2021.
  *
@@ -10,7 +10,7 @@
 
 CREATE TABLE IF NOT EXISTS _belongs (
     id_agent INTEGER REFERENCES agent (id) ON DELETE CASCADE,
-    id_group INTEGER,
+    id_group INTEGER REFERENCES `group` (id) ON DELETE CASCADE,
     priority INTEGER NOT NULL DEFAULT 0,
     UNIQUE (id_agent, priority),
     PRIMARY KEY (id_agent, id_group)

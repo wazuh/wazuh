@@ -21,7 +21,7 @@
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
 !define VERSION "4.4.0"
-!define REVISION "40402"
+!define REVISION "40403"
 !define NAME "Wazuh"
 !define SERVICE "WazuhSvc"
 
@@ -39,7 +39,7 @@ OutFile "${OutFile}"
 VIProductVersion "4.0.0.0"
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
-VIAddVersionKey LegalCopyright "2022 - Wazuh Inc."
+VIAddVersionKey LegalCopyright "2023 - Wazuh Inc."
 VIAddVersionKey FileDescription "Wazuh Agent installer"
 VIAddVersionKey FileVersion "${VERSION}"
 VIAddVersionKey ProductVersion "${VERSION}"

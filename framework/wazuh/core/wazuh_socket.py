@@ -244,7 +244,8 @@ class WazuhAsyncSocketJSON(WazuhAsyncSocket):
 daemons = {
     "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4},
     "task-manager": {"protocol" : "TCP", "path": common.TASKS_SOCKET, "header_format": "<I", "size": 4},
-    "wazuh-db": {"protocol": "TCP", "path": common.WDB_SOCKET, "header_format": "<I", "size": 4}
+    "wazuh-db": {"protocol": "TCP", "path": common.WDB_SOCKET, "header_format": "<I", "size": 4},
+    "remoted": {"protocol": "TCP", "path": common.REMOTED_SOCKET, "header_format": "<I", "size": 4}
 }
 
 

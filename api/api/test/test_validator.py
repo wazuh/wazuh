@@ -82,10 +82,10 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     # relative paths
     ('etc/lists/new_lists3', _get_dirnames_path),
     # version
-    ('v4.3.0', _wazuh_version),
-    ('4.3.0', _wazuh_version),
-    ('wazuh 4.3.0', _wazuh_version),
-    ('wazuh v4.3.0', _wazuh_version),
+    ('v4.4.0', _wazuh_version),
+    ('4.4.0', _wazuh_version),
+    ('wazuh 4.4.0', _wazuh_version),
+    ('wazuh v4.4.0', _wazuh_version),
     # miscellaneous
     ('aHR0cHM6Ly9zdGFja2FidXNlLmNvbS90YWcvamF2YS8=', _base64)
 ])
@@ -154,10 +154,10 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('../ossec', _get_dirnames_path),
     ('etc/rules/../../../dir', _get_dirnames_path),
     # version
-    ('v4.3', _wazuh_version),
-    ('4.3', _wazuh_version),
-    ('wazuh 4.3', _wazuh_version),
-    ('wazuh v4.3', _wazuh_version),
+    ('v4.4', _wazuh_version),
+    ('4.4', _wazuh_version),
+    ('wazuh 4.4', _wazuh_version),
+    ('wazuh v4.4', _wazuh_version),
     # miscellaneous
     ('aDhjasdh3=', _base64)
 ])

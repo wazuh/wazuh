@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -163,6 +163,7 @@ def test_sst_init(setup_coro_mock, create_task_mock):
     with patch.object(TaskMock, "add_done_callback") as done_callback_mock:
         sst_task = cluster_common.SendStringTask(wazuh_common=cluster_common.WazuhCommon(), logger='')
         assert sst_task.logger == ''
+        assert sst_task.task in sst_task.tasks_hard_reference
         assert isinstance(sst_task.wazuh_common, cluster_common.WazuhCommon)
         setup_coro_mock.assert_called_once()
         done_callback_mock.assert_called_once()
@@ -200,8 +201,10 @@ def test_sst_done_callback(setup_coro_mock, create_task_mock):
         logger = logging.getLogger('wazuh')
         with patch.object(logger, "error") as logger_mock:
             sst_task = cluster_common.SendStringTask(wazuh_common=wazuh_common_mock, logger=logger)
+            assert sst_task.task in sst_task.tasks_hard_reference
             sst_task.done_callback()
             logger_mock.assert_called_once_with(Exception)
+            assert sst_task.task not in sst_task.tasks_hard_reference
 
 
 # Test ReceiveStringTask methods
@@ -663,46 +666,6 @@ async def test_handler_update_chunks_wdb(send_request_mock):
         [call(command=b'ERROR',
               data=b'error processing info chunks in process pool: '
                    b'Error 2005 - Could not connect to wdb socket: [Errno 2] No such file or directory')])
-
-
-@pytest.mark.asyncio
-@patch('wazuh.core.cluster.common.Handler.send_request', return_value=b"some data")
-async def test_handler_send_result_to_manager(send_request_mock):
-    """Check that the results are sent correctly."""
-
-    handler = cluster_common.Handler(fernet_key, cluster_items)
-    assert await handler.send_result_to_manager(command=b'testing', result={'dict': '0'}) == b"some data"
-    send_request_mock.assert_has_calls([call(command=b'testing', data=b'{"dict": "0"}')])
-
-
-@pytest.mark.asyncio
-@freeze_time("2022-02-15")
-@patch('wazuh.core.cluster.common.Handler.send_result_to_manager', return_value=b"ok")
-@patch('wazuh.core.cluster.common.Handler.update_chunks_wdb', return_value={'updated_chunks': 1})
-@patch('wazuh.core.cluster.common.Handler.get_chunks_in_task_id', return_value={'test': 'chunks_in_task_id'})
-async def test_handler_sync_wazuh_db_information(get_chunks_in_task_id_mock, update_chunks_wdb_mock,
-                                                 send_result_to_manager_mock):
-    """Check that data is sent to wazuh-db."""
-
-    class LoggerMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self._info = []
-
-        def info(self, data):
-            """Auxiliary method."""
-            self._info.append(data)
-
-    logger = LoggerMock()
-    sync_dict = {'date_start_master': 0, 'date_end_master': 0, 'n_synced_chunks': 0}
-    handler = cluster_common.Handler(fernet_key, cluster_items)
-    with patch.object(LoggerMock, "info") as logger_info_mock:
-        assert await handler.sync_wazuh_db_information(task_id=b'1', info_type='info', logger=logger,
-                                                       command=b'command',
-                                                       error_command=b'error_command', sync_dict=sync_dict,
-                                                       timeout=10) == b'ok'
-        logger_info_mock.assert_has_calls([call('Finished in 0.000s. Updated 1 chunks.')])
 
 
 @pytest.mark.asyncio
@@ -1473,7 +1436,7 @@ def test_error_receiving_agent_information():
     logger = logging.getLogger('testing')
     with patch.object(logger, "error") as logger_error_mock:
         assert cluster_common.error_receiving_agent_information(logger, "response", "info") == (b'ok', b'Thanks')
-        logger_error_mock.assert_called_once_with("There was an error while processing info on the master: response")
+        logger_error_mock.assert_called_once_with("There was an error while processing info on the peer: response")
 
 
 @patch("wazuh.core.cluster.common.WazuhDBConnection")
