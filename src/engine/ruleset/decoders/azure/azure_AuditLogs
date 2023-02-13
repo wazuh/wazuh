@@ -17,15 +17,37 @@ metadata:
     - https://learn.microsoft.com/en-us/azure/active-directory/reports-monitoring/concept-audit-logs
 
 check:
-   - ~json.category: AuditLogs
+   - ~json.Type: AuditLogs
 
 normalize:
   - map:
-     - azure.auditlogs.properties.operation_type: $~json.operationType
-     - azure.auditlogs.properties.activity_display_name: $~json.activityDisplayName
-     - azure.auditlogs.properties.activity_datetime: $~json.activityDateTime
-     - azure.auditlogs.properties.additional_details: $~json.additionalDetails
-     - azure.auditlogs.properties.result_reason: $~json.resultReason
-     - azure.auditlogs.properties.correlation_id: $~json.correlationId
-     - azure.auditlogs.properties.logged_by_service: $~json.loggedByService
-     - azure.auditlogs.properties.target_resources: $~json.targetResources
+     - event.kind: event
+     - event.duration: $~json.DurationMs
+     - event.duration: +i_calc/mul/1000000
+     - log.level: $~json.level
+     - event.action: $~json.OperationName
+     - azure.auditlogs.operation_name: $~json.OperationName
+     - azure.auditlogs.result_signature: $~json.ResultSignature
+     - azure.auditlogs.operation_version: $~json.OperationVersion
+     - azure.tenant_id: $~json.TenantId
+     - azure.correlation_id: $~json.CorrelationId
+     - azure.auditlogs.properties.operation_type: $~json.OperationType
+     - azure.auditlogs.properties.operation_type: $~json.AADOperationType
+     - azure.auditlogs.properties.activity_display_name: $~json.ActivityDisplayName
+     - azure.auditlogs.properties.activity_datetime: $~json.ActivityDateTime
+     - azure.auditlogs.properties.additional_details: $~json.AdditionalDetails
+     - azure.auditlogs.properties.result_reason: $~json.ResultReason
+     - azure.auditlogs.properties.correlation_id: $~json.CorrelationId
+     - azure.auditlogs.properties.logged_by_service: $~json.LoggedByService
+     # TargetREsources
+     #- azure.auditlogs.properties.target_resources: $~json.targetResources
+     - azure.auditlogs.properties.initiated_by: +parse_json/$~json.InitiatedBy
+
+  - logpar:
+    - ~json.CallerIpAddress: <source.ip>:<source.port>
+    - ~json.CallerIpAddress: \[<source.ip>\]:<source.port>
+    - ~json.CallerIpAddress: <source.ip>
+
+  - map:  
+    - client.ip: $source.ip
+    - related.ip: $source.ip

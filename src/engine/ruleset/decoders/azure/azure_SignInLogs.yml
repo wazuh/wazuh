@@ -16,7 +16,7 @@ metadata:
     - https://learn.microsoft.com/en-us/azure/active-directory/reports-monitoring/concept-sign-ins
 
 check:
-   - ~json.Category: SignInLogs 
+   - ~json.Type: SignInLogs 
 
 normalize:
   - map:
