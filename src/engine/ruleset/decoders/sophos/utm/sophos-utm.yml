@@ -15,6 +15,9 @@ metadata:
 sources:
   - decoder/queue-localfile/0
 
+check:
+  - event.original: +r_match/^\d{4}:\d{1,2}:\d{1,2}-\d{2}:\d{2}:\d{2}\s\S+.*?:\s
+
 parse:
   logpar:
 
@@ -45,7 +48,6 @@ normalize:
       - related.ip: $~tmp.srcip
       - rsa.identity.logon_type: $~tmp.facility
       - rsa.internal.event_desc: $~tmp.name
-      - rsa.internal.messageid: $~tmp.event.code
       - rsa.misc.group_object: $~tmp.class
       - rsa.misc.node: $~tmp.node
       - rsa.misc.obj_type: $~tmp.type
@@ -83,8 +85,6 @@ normalize:
       - rsa.db.index: $~tmp.extra
       - rsa.identity.logon_type: $~tmp.facility
       - rsa.internal.event_desc: $~tmp.name
-      - rsa.internal.messageid: $~tmp.event.code
-      - rsa.investigations.event_cat: 1901000000,
       - rsa.investigations.event_cat_name: Other.Default
       - rsa.misc.action: +a_append/$~tmp.function/method
       - rsa.misc.comments: $~tmp.reason
@@ -124,7 +124,6 @@ normalize:
         event.code==frox OR event.code==ipsec_starter OR event.code==pluto OR
         event.code==pop3proxy OR event.code==xl2tpd
     map:
-      - rsa.internal.messageid: $event.code
       - process.pid: $~tmp.process_pid
       - related.host: +a_append/$host.hostname
       - rsa.network.alias_host: +a_append/$host.hostname
@@ -134,7 +133,6 @@ normalize:
   - check:
       - event.code: reverseproxy
     map:
-      - rsa.internal.messageid: $event.code
       - process.pid: $~tmp.process_pid
       - rsa.network.alias_host: +a_append/$host.hostname
       - rsa.time.event_time: $@timestamp
@@ -144,7 +142,6 @@ normalize:
   - check:
       - event.code: httpproxy
     map:
-      - rsa.internal.messageid: $event.code
       - process.pid: $~tmp.process_pid
       - rsa.time.event_time: $@timestamp
       - ~tmp.message: +r_ext/$message/] ([^\]]+)$
@@ -153,14 +150,12 @@ normalize:
   - check:
       - event.code: afcd
     map:
-      - rsa.internal.messageid: $event.code
       - rsa.time.event_time: $@timestamp
       - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
 
   - check:
       - event.code: sshd
     map:
-      - rsa.internal.messageid: $event.code
       - rsa.time.event_time: $@timestamp
       - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
       - rsa.network.alias_host: +a_append/$host.hostname
@@ -169,7 +164,6 @@ normalize:
       - event.code: confd-sync
     map:
       - process.pid: $~tmp.process_pid
-      - rsa.internal.messageid: $event.code
       - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
       - rsa.misc.severity: $~tmp.severity
       - rsa.time.event_time: $@timestamp
@@ -178,11 +172,12 @@ normalize:
       - event.dataset: sophos.utm
       - event.module: sophos
       - fileset.name: utm
+      - host.name: $host.hostname
       - input.type: log
       - observer.product: UTM
       - observer.type: Firewall
       - observer.vendor: Sophos
+      - rsa.internal.messageid: $~tmp.event.code
       - service.type: sophos
-      - host.name: $host.hostname
       - tags: +a_append/forwarded/sophos.utm
       - ~tmp: +ef_delete
