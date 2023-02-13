@@ -4012,9 +4012,9 @@ checks:
   # 5.1.8 Ensure cron is restricted to authorized users (Automated)
   - id: 29652
     title: "Ensure cron is restricted to authorized users."
-    description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Notes:Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy .Even though a given user is not listed in cron.allow, cron jobs can still be run as that user .The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
+    description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Notes:Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy. Even though a given user is not listed in cron.allow, cron jobs can still be run as that user .The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
     rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: "Run the following commands to remove /etc/cron.deny: # rm /etc/cron.deny .Run the following command to create /etc/cron.allow # touch /etc/cron.allow Run the following commands to set permissions and ownership for /etc/cron.allow: # chmod g-wx,o-rwx /etc/cron.allow # chown root:root /etc/cron.allow"
+    remediation: "Run the following commands to remove /etc/cron.deny: # rm /etc/cron.deny Run the following command to create /etc/cron.allow # touch /etc/cron.allow Run the following commands to set permissions and ownership for /etc/cron.allow: # chmod g-wx,o-rwx /etc/cron.allow # chown root:root /etc/cron.allow"
     compliance:
       - cis: ["5.1.8"]
       - cis_csc_v8: ["3.3"]
@@ -4040,7 +4040,7 @@ checks:
     title: "Ensure at is restricted to authorized users."
     description: "Configure /etc/at.allow to allow specific users to use this service. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not specifically defined in this file is allowed to use at. By removing the file, only users in /etc/at.allow are allowed to use at. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, at should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: "Run the following commands to remove /etc/at.deny: # rm /etc/at.deny .Run the following command to create /etc/at.allow # touch /etc/at.allow .Run the following commands to set permissions and ownership for /etc/at.allow: # chmod g-wx,o-rwx /etc/at.allow # chown root:root /etc/at.allow"
+    remediation: "Run the following commands to remove /etc/at.deny: # rm /etc/at.deny Run the following command to create /etc/at.allow # touch /etc/at.allow Run the following commands to set permissions and ownership for /etc/at.allow: # chmod g-wx,o-rwx /etc/at.allow # chown root:root /etc/at.allow"
     compliance:
       - cis: ["5.1.9"]
       - cis_csc_v8: ["3.3"]
@@ -4336,14 +4336,14 @@ checks:
   # 5.2.13 Ensure only strong Ciphers are used (Automated)
   - id: 29665
     title: "Ensure only strong Ciphers are used."
-    description: 'This variable limits the ciphers that SSH can use during communication. Note:Some organizations may have stricter requirements for approved ciphers. Ensure that ciphers used are in compliance with site policy.The only "strong" ciphers currently FIPS 140-2 compliant are:aes256-ctr, aes192-ctr, aes128-ctr .Supported ciphers in openSSH 8.2:3des-cbc .aes128-cbc .aes192-cbc .aes256-cbc .aes128-ctr .aes192-ctr .aes256-ctr .aes128-gcm@openssh.com .aes256-gcm@openssh.com .chacha20-poly1305@openssh.com.'
-    rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. The Triple DES ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain clear text data via a birthday attack against a long-duration encrypted session, aka a "Sweet32." attack. Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plain text data from an arbitrary block of cipher text in an SSH session via unknown vectors.'
+    description: 'This variable limits the ciphers that SSH can use during communication. Note: - Some organizations may have stricter requirements for approved ciphers. - Ensure that ciphers used are in compliance with site policy.The only "strong" ciphers currently FIPS 140-2 compliant are:aes256-ctr, aes192-ctr, aes128-ctr. - Supported ciphers in openSSH 8.2: 3des-cbc, aes128-cbc, aes192-cbc, aes256-cbc, aes128-ctr, aes192-ctr, aes256-ctr, aes128-gcm@openssh.com, aes256-gcm@openssh.com, chacha20-poly1305@openssh.com.'
+    rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. - The Triple DES ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain clear text data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack. - Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plain text data from an arbitrary block of cipher text in an SSH session via unknown vectors.'
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the Ciphers line to contain a comma separated list of the site approved ciphers. Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
     references:
-      - "https://nvd.nist.gov/vuln/detail/CVE-2016-2183"
-      - "https://www.openssh.com/txt/cbc.adv"
-      - "https://nvd.nist.gov/vuln/detail/CVE-2008-5161"
-      - "SSHD_CONFIG(5)"
+      - https://nvd.nist.gov/vuln/detail/CVE-2016-2183
+      - https://www.openssh.com/txt/cbc.adv
+      - https://nvd.nist.gov/vuln/detail/CVE-2008-5161
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.13"]
       - cis_csc_v8: ["3.10"]
@@ -4364,11 +4364,11 @@ checks:
   # 5.2.14 Ensure only strong MAC algorithms are used (Automated)
   - id: 29666
     title: "Ensure only strong MAC algorithms are used."
-    description: 'This variable limits the types of MAC algorithms that SSH can use during communication.Notes:Some organizations may have stricter requirements for approved MACs. Ensure that MACs used are in compliance with site policy. The only "strong" MACs currently FIPS 140-2 approved are:hmac-sha2-256 .hmac-sha2-512 .The Supported MACs are:hmac-md5 .hmac-md5-96 .hmac-sha1 .hmac-sha1-96 .hmac-sha2-256 .hmac-sha2-512 .umac-64@openssh.com .umac-128@openssh.com .hmac-md5-etm@openssh.com .hmac-md5-96-etm@openssh.com .hmac-sha1-etm@openssh.com .hmac-sha1-96-etm@openssh.com .hmac-sha2-256-etm@openssh.com .hmac-sha2-512-etm@openssh.com .umac-64-etm@openssh.com .umac-128-etm@openssh.com.'
+    description: 'This variable limits the types of MAC algorithms that SSH can use during communication. Notes : - Some organizations may have stricter requirements for approved MACs. - Ensure that MACs used are in compliance with site policy. - The only "strong" MACs currently FIPS 140-2 approved are: hmac-sha2-256. hmac-sha2-512. - The Supported MACs are: hmac-md5, hmac-md5-96, hmac-sha1, hmac-sha1-96, hmac-sha2-256, hmac-sha2-512, umac-64@openssh.co, umac-128@openssh.com, hmac-md5-etm@openssh.com, hmac-md5-96-etm@openssh.com, hmac-sha1-etm@openssh.com, hmac-sha1-96-etm@openssh.com, hmac-sha2-256-etm@openss.com, hmac-sha2-512-etm@openssh.com, umac-64-etm@openssh.com, umac-128-etm@openssh.com.'
     rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information."
     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site approved MACs.Example:MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256"
     references:
-      - http://www.mitls.org/pages/attacks/SLOTH
+      - More information on SSH downgrade attacks can be found here: http://www.mitls.org/pages/attacks/SLOTH
       - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.14"]
@@ -4379,18 +4379,18 @@ checks:
       - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
-      - iso_27001-2013: ["A.13.1.1", "A.10.1.1", "A.9.2.1"]
+      - iso_27001-2013: ["A.13.1.1", "A.10.1.1"]
       - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
     condition: all
     rules:
-      - "c:sshd -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
+      - "c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
   # 5.2.15 Ensure only strong Key Exchange algorithms are used (Automated)
   - id: 29667
     title: "Ensure only strong Key Exchange algorithms are used."
-    description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received Notes:Kex algorithms have a higher preference the earlier they appear in the list. Some organizations may have stricter requirements for approved Key exchange algorithms .Ensure that Key exchange algorithms used are in compliance with site policy .The only Key Exchange Algorithms currently FIPS 140-2 approved are:ecdh-sha2-nistp256 .ecdh-sha2-nistp384 .ecdh-sha2-nistp521 .diffie-hellman-group-exchange-sha256 .diffie-hellman-group16-sha512 .diffie-hellman-group18-sha512 .diffie-hellman-group14-sha256 .The Key Exchange algorithms supported by OpenSSH 8.2 are: Page 663curve25519-sha256 .curve25519-sha256@libssh.org .diffie-hellman-group1-sha1 .diffie-hellman-group14-sha1 .diffie-hellman-group14-sha256 .diffie-hellman-group16-sha512 .diffie-hellman-group18-sha512 .diffie-hellman-group-exchange-sha1 .diffie-hellman-group-exchange-sha256 .ecdh-sha2-nistp256 .ecdh-sha2-nistp384 .ecdh-sha2-nistp521 .sntrup4591761x25519-sha512@tinyssh.org."
+    description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received Notes: - Kex algorithms have a higher preference the earlier they appear in the list. Some organizations may have stricter requirements for approved Key exchange algorithms. - Ensure that Key exchange algorithms used are in compliance with site policy. - The only Key Exchange Algorithms currently FIPS 140-2 approved are: ecdh-sha2-nistp256, ecdh-sha2-nistp384, ecdh-sha2-nistp521, diffie-hellman-group-exchange-sha256, diffie-hellman-group16-sha512, diffie-hellman-group18-sha512, diffie-hellman-group14-sha256. - The Key Exchange algorithms supported by OpenSSH 8.2 are: curve25519-sha256, curve25519-sha256@libssh.org, diffie-hellman-group1-sha1, diffie-hellman-group14-sha1, diffie-hellman-group14-sha256, diffie-hellman-group16-sha512, diffie-hellman-group18-sha512, diffie-hellman-group-exchange-sha1, diffie-hellman-group-exchange-sha256, ecdh-sha2-nistp256, ecdh-sha2-nistp384, ecdh-sha2-nistp521, sntrup4591761x25519-sha512@tinyssh.org."
     rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks."
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example:KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256"
     compliance:
@@ -4406,7 +4406,7 @@ checks:
       - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
-    condition: all
+    condition: none
     rules:
       - "c:sshd -T -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
@@ -4456,7 +4456,7 @@ checks:
       - mitre_mitigations: ["M1035"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:banner\s*\t*/etc/issue.net'
+      - 'c:sshd -T -> r:^\s*banner\s*\t*/etc/issue.net'
 
   # 5.2.18 Ensure SSH MaxAuthTries is set to 4 or less (Automated)
   - id: 29670
@@ -4520,7 +4520,7 @@ checks:
       - mitre_tactics: ["TA0040"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^maxsessions\s+(\d+) compare <= 10'
+      - 'c:sshd -T -> n:^\s*maxsessions\s+(\d+) compare <= 10'
 
   # 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 29673
@@ -4550,12 +4550,10 @@ checks:
   # 5.2.22 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 29674
     title: "Ensure SSH Idle Timeout Interval is configured."
-    description: "NOTE: To clarify, the two settings described below is only meant for idle connections from a protocol perspective and not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not and never had, intentionally, the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they where abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus it can no longer be abused disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option en-abled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination."
+    description: "NOTE: To clarify, the two settings described below is only meant for idle connections from a protocol perspective and not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not and never had, intentionally, the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they where abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus it can no longer be abused disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: - ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. - ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option en-abled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination."
     rationale: "In order to prevent resource exhaustion, appropriate values should be set for both ClientAliveInterval and ClientAliveCountMax. Specifically, looking at the source code, ClientAliveCountMax must be greater than zero in order to utilize the ability of SSH to drop idle connections. If connections are allowed to stay open indefinately, this can potentially be used as a DDOS attack or simple resource exhaustion could occur over unreliable networks. The example set here is a 45 second timeout. Consult your site policy for network timeouts and apply as appropriate."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameters according to site policy. Example: ClientAliveInterval 15 ClientAliveCountMax 3"
     references:
-      - https://bugzilla.redhat.com/show_bug.cgi?id=1873547
-      - https://github.com/openssh/openssh-portable/blob/V_8_9/serverloop.c#L137
       - https://man.openbsd.org/sshd_config
     compliance:
       - cis: ["5.2.22"]
@@ -4763,7 +4761,7 @@ checks:
     title: "Ensure lockout for failed password attempts is configured."
     description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. deny - Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries.fail_interval - The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out unlock_time - The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be re-enabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
-    remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file.# here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth# Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail# Added to enable faillock auth sufficient pam_faillock.so authsucc# Added to enable faillock# here is the fallback if no module succeeds auth requisite pam_deny.so# prime the stack with a positive return value if there is not one already;# this avoids us returning an error just because nothing sets a success code# since the modules above will each just jump around auth required pam_permit.so# and here are more per-package modules (the "Additional" block) auth optional pam_cap.so# end of pam-auth-update config Common account .Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. account required .pam_faillock.so .Fail lock configuration .Edit /etc/security/faillock.conf and configure it per your site policy. Example:Page 703deny = 4 .fail_interval = 900 unlock time = 600'
+    remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file.# here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth# Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail# Added to enable faillock auth sufficient pam_faillock.so authsucc# Added to enable faillock# here is the fallback if no module succeeds auth requisite pam_deny.so# prime the stack with a positive return value if there is not one already;# this avoids us returning an error just because nothing sets a success code# since the modules above will each just jump around auth required pam_permit.so# and here are more per-package modules (the "Additional" block) auth optional pam_cap.so# end of pam-auth-update config Common account .Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. account required .pam_faillock.so .Fail lock configuration .Edit /etc/security/faillock.conf and configure it per your site policy. Example: deny = 4 .fail_interval = 900 unlock time = 600'
     impact: "It is critical to test and validate any PAM changes before deploying. Any misconfiguration could cause the system to be inaccessible."
     compliance:
       - cis: ["5.4.2"]
