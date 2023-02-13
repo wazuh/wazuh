@@ -1804,13 +1804,9 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
             sprintf(*reason, "No integer was found within the comparison '%s' ", partial_comparison);
         }
         mwarn("No integer was found within the comparison '%s' ", partial_comparison);
-        os_free(regex_match);
+        w_free_expression_match(regex, &regex_match);
         w_free_expression_t(&regex);
         return RETURN_INVALID;
-    }
-
-    if(regex_match->d_size.prts_str_size){
-        os_free(regex_match->d_size.prts_str_size);
     }
 
     if (!regex_match->sub_strings || !regex_match->sub_strings[0]) {
@@ -1819,7 +1815,7 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
             sprintf(*reason, "No number was captured.");
         }
         mwarn("No number was captured.");
-        os_free(regex_match);
+        w_free_expression_match(regex, &regex_match);
         w_free_expression_t(&regex);
         return RETURN_INVALID;
     }
@@ -1836,7 +1832,7 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
             sprintf(*reason, "Conversion error. Cannot convert '%s' to integer.", regex_match->sub_strings[0]);
         }
         mwarn("Conversion error. Cannot convert '%s' to integer.", regex_match->sub_strings[0]);
-        os_free(regex_match);
+        w_free_expression_match(regex, &regex_match);
         w_free_expression_t(&regex);
         return RETURN_INVALID;
     }
@@ -1848,8 +1844,9 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
             }
             os_free(regex_match->sub_strings);
         }
-        os_free(regex_match);
     }
+
+    w_free_expression_match(regex, &regex_match);
     w_free_expression_t(&regex);
 
 
@@ -1921,7 +1918,7 @@ static int wm_sca_regex_numeric_comparison (const char * const pattern,
     if (!w_expression_match(regex_engine, str, NULL, regex_match)) {
         mdebug2("No match found for regex '%s'", pattern_copy_ref);
         os_free(pattern_copy);
-        os_free(regex_match);
+        w_free_expression_match(regex_engine, &regex_match);
         return RETURN_NOT_FOUND;
     }
 
@@ -1933,7 +1930,7 @@ static int wm_sca_regex_numeric_comparison (const char * const pattern,
         }
         w_free_expression_t(&regex_engine);
         os_free(pattern_copy);
-        os_free(regex_match);
+        w_free_expression_match(regex_engine, &regex_match);
         return RETURN_INVALID;
     }
 
@@ -1950,7 +1947,7 @@ static int wm_sca_regex_numeric_comparison (const char * const pattern,
             sprintf(*reason, "Conversion error. Cannot convert '%s' to integer.", regex_match->sub_strings[0]);
         }
         os_free(pattern_copy);
-        os_free(regex_match);
+        w_free_expression_match(regex_engine, &regex_match);
         return RETURN_INVALID;
     }
 
@@ -1967,7 +1964,7 @@ static int wm_sca_regex_numeric_comparison (const char * const pattern,
             }
             os_free(regex_match->sub_strings);
         }
-        os_free(regex_match);
+        w_free_expression_match(regex_engine, &regex_match);
     }
 
     return result;

@@ -88,6 +88,38 @@ void w_free_expression(w_expression_t * var) {
     w_free_expression_t(&var);
 }
 
+void w_free_expression_match(w_expression_t * expression, regex_matching **reg){
+    if (expression == NULL) {
+        return;
+    }
+
+    switch (expression->exp_type) {
+         case EXP_TYPE_OSMATCH:
+            OSRegex_free_regex_matching(*reg);
+            os_free(*reg);
+            break;
+
+        case EXP_TYPE_OSREGEX:
+            OSRegex_free_regex_matching(*reg);
+            os_free(*reg);
+            break;
+
+        case EXP_TYPE_PCRE2:
+            OSRegex_free_regex_matching(*reg);
+            os_free(*reg);
+            break;
+
+        case EXP_TYPE_STRING:
+            break;
+
+        case EXP_TYPE_OSIP_ARRAY:
+            break;
+
+        default:
+            break;
+    }
+}
+
 bool w_expression_add_osip(w_expression_t ** var, char * ip) {
 
     unsigned int ip_s = 0;
@@ -185,8 +217,8 @@ bool w_expression_match(w_expression_t * expression, const char * str_test, cons
                 retval = true;
             }
 
-            if (regex_match->sub_strings != NULL) {
-                OSRegex_free_regex_matching(regex_match);
+            if (status_match.sub_strings != NULL) {
+                OSRegex_free_regex_matching(&status_match);
             }
             break;
 
