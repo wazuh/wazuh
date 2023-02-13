@@ -133,6 +133,8 @@ then
 
     sed -E -i'' -e "s/version='.+',/version='${version:1}',/g" $API_SETUP
     sed -E -i'' -e "s/version: '.+'/version: '${version:1}'/g" $API_SPEC
+    sed -E -i'' -e "s_/v[0-9]+\.[0-9]+\.[0-9]+_/${version}_g" $API_SPEC
+    sed -E -i'' -e "s_com/[0-9]+\.[0-9]+_com/$(expr match "$version" 'v\([0-9]*.[0-9]*\).*')_g" $API_SPEC
 
     # Documentation config file
 

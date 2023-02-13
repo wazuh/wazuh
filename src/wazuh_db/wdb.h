@@ -1304,6 +1304,17 @@ int wdb_parse_global_get_group_agents(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output);
 
 /**
+ * @brief Function to recalculate the agent group hash.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] agent_id Int with the agent id.
+ * @param [in] sync_status String with the sync_status to be set.
+ * @return WDBC_OK Success.
+ *         WDBC_ERROR On error.
+ */
+int wdb_global_recalculate_agent_groups_hash(wdb_t* wdb, int agent_id, char* sync_status);
+
+/**
  * @brief Function to parse sync-agent-info-get params and set next ID to iterate on further calls.
  *        If no last_id is provided. Last obtained ID is used.
  *
@@ -1920,9 +1931,9 @@ int wdb_global_delete_tuple_belong(wdb_t *wdb, int id_group, int id_agent);
  *
  * @param [in] wdb The Global struct database.
  * @param [in] group_name The group name.
- * @return Returns true if the group is empty, false if it isn´t empty or error.
+ * @return Returns cJSON* with agents id.
  */
-bool wdb_is_group_empty(wdb_t *wdb, char* group_name);
+cJSON* wdb_is_group_empty(wdb_t *wdb, char* group_name);
 
 /**
  * @brief Function to delete a group by using the name.
@@ -2081,6 +2092,15 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
  * @return wdbc_result representing the status of the command.
  */
 wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups);
+
+/**
+ * @brief Sets default group to an agent if it doesn't have any.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to set default group.
+ * @return wdbc_result representing the status of the command.
+ */
+int wdb_global_if_empty_set_default_agent_group(wdb_t *wdb, int id);
 
 /**
  * @brief Returns the number of groups that are assigned to an agent.
