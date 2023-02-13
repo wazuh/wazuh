@@ -70,7 +70,6 @@ decoders:
   - decoder/syscollector-program/0
   - decoder/syscollector-program-del/0
   - decoder/syscollector-program-save/0
-
   # Enrich events with host info
   - decoder/agent-event-enrichment/0
   - decoder/dbsync-host-data/0
