@@ -16,6 +16,7 @@ decoders:
 
   # Internal decoders
   - decoder/dbsync/0
+  - decoder/fim/0
   - decoder/fim-event/0
   - decoder/fim-scan/0
   - decoder/rootcheck/0
@@ -34,41 +35,41 @@ decoders:
   - decoder/sophos-waf/0
   - decoder/sophos-wifi/0
   - decoder/syscollector-base/0
-  - decoder/syscollector-dbsync-base/0
-  - decoder/syscollector-dbsync-hotfixes-inserted/0
-  - decoder/syscollector-dbsync-hotfixes/0
-  - decoder/syscollector-dbsync-hwinfo-inserted/0
-  - decoder/syscollector-dbsync-hwinfo/0
-  - decoder/syscollector-dbsync-network-address-inserted/0
-  - decoder/syscollector-dbsync-network-address/0
-  - decoder/syscollector-dbsync-network-iface-inserted/0
-  - decoder/syscollector-dbsync-network-iface/0
-  - decoder/syscollector-dbsync-network-protocol-inserted/0
   - decoder/syscollector-dbsync-network-protocol/0
-  - decoder/syscollector-dbsync-osinfo-inserted/0
   - decoder/syscollector-dbsync-osinfo/0
-  - decoder/syscollector-dbsync-packages-inserted/0
-  - decoder/syscollector-dbsync-packages/0
-  - decoder/syscollector-dbsync-ports-inserted/0
+  - decoder/syscollector-dbsync-osinfo-inserted/0
   - decoder/syscollector-dbsync-ports/0
-  - decoder/syscollector-dbsync-processes-inserted/0
+  - decoder/syscollector-dbsync-ports-inserted/0
   - decoder/syscollector-dbsync-processes/0
+  - decoder/syscollector-dbsync-processes-inserted/0
+  - decoder/syscollector-dbsync-base/0
+  - decoder/syscollector-dbsync-hotfixes/0
+  - decoder/syscollector-dbsync-hotfixes-inserted/0
+  - decoder/syscollector-dbsync-hwinfo/0
+  - decoder/syscollector-dbsync-hwinfo-inserted/0
+  - decoder/syscollector-dbsync-network-address/0
+  - decoder/syscollector-dbsync-network-address-inserted/0
+  - decoder/syscollector-dbsync-network-iface/0
+  - decoder/syscollector-dbsync-network-iface-inserted/0
+  - decoder/syscollector-dbsync-network-protocol-inserted/0
+  - decoder/syscollector-dbsync-packages/0
+  - decoder/syscollector-dbsync-packages-inserted/0
   - decoder/syscollector-hardware/0
   - decoder/syscollector-hotfix/0
   - decoder/syscollector-netinfo/0
+  - decoder/syscollector-network/0
   - decoder/syscollector-network-end/0
   - decoder/syscollector-network-ip/0
-  - decoder/syscollector-network/0
   - decoder/syscollector-osinfo/0
+  - decoder/syscollector-port/0
   - decoder/syscollector-port-del/0
   - decoder/syscollector-port-save/0
-  - decoder/syscollector-port/0
+  - decoder/syscollector-process/0
   - decoder/syscollector-process-del/0
   - decoder/syscollector-process-save/0
-  - decoder/syscollector-process/0
+  - decoder/syscollector-program/0
   - decoder/syscollector-program-del/0
   - decoder/syscollector-program-save/0
-  - decoder/syscollector-program/0
 
   # Enrich events with host info
   - decoder/agent-event-enrichment/0
