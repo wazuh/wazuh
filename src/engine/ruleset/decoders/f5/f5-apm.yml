@@ -22,6 +22,10 @@ definitions:
 
 parse:
   logpar:
+    # iRules : https://clouddocs.f5.com/api/irules/
+    # October 2019/10/18 03:14:14 tem very-high giatnula[71]: Rule: enimadmi <<qui>: APM_EVENT=deny | aecon | sedq ***failure***
+    - event.original: <~> <@timestamp/%Y\/%m\/%d %T> <~> <log.level> <event.code>[<process.pid>]:<~/ignore/ ><~tmp.rsa.internal.messageid>:<~/ignore/ ><~tmp.rsa.misc.rule_name> \<\<<~tmp.rsa.internal.event_desc>>:<~/ignore/ >APM_EVENT=<event.action> | <user.name> | <~> ***<~tmp.rsa.misc.result>***
+
     # crond
     # March 2016/03/12 03:17:42 seq high crond[5738]: (ccaecat) veleumi
     # July 2016/07/18 18:40:50 lum high CROND[1675]: (sitvolup) CMD (cancel)
@@ -34,10 +38,6 @@ parse:
     - event.original: <~> <@timestamp/%Y\/%m\/%d %T> <~> <log.level> <~>[<process.pid>]<~/ignore/:> <event.code>:<~/ignore/ ><~content>
     # May 2016/05/08 07:27:59 labor low isqu: 01490167: :uis: Current snapshot ID: idolore updated inside session db for access profile: onse
     - event.original: <~> <@timestamp/%Y\/%m\/%d %T> <~> <log.level> <~>:<~/ignore/:> <event.code>:<~/ignore/:><~content>
-
-    # iRules : https://clouddocs.f5.com/api/irules/
-    # October 2019/10/18 03:14:14 tem very-high giatnula[71]: Rule: enimadmi <<qui>: APM_EVENT=deny | aecon | sedq ***failure***
-    - event.original: <~> <@timestamp/%Y\/%m\/%d %T> <~> <log.level> <event.code>[<process.pid>]:<~/ignore/ ><~tmp.rsa.internal.messageid>:<~/ignore/ ><~tmp.rsa.misc.rule_name> \<\<<~tmp.rsa.internal.event_desc>>:<~/ignore/ >APM_EVENT=<event.action> | <user.name> | <~> ***<~tmp.rsa.misc.result>***
 
     # syslog-ng - auditd - SMTP
     # March 2017/03/18 18:24:33 ptasnula high syslog-ng[2638]: ill
@@ -242,7 +242,7 @@ normalize:
   # content  : :emporinc: untutlab: tem
   - check: event.code==01490505
     logpar:
-      - ~content: $DEF_SESSION:<~/ignore/ ><~>
+      - ~content: $DEF_SESSION:<~>
 
   # original : December 2017/12/01 01:10:49 xerc high eturad[1760]: 01490506: :nvol: enimadmi: Received User-Agent header: mobmail android 2.1.3.3150
   # content  : :nvol: enimadmi: Received User-Agent header: mobmail android 2.1.3.3150
@@ -324,7 +324,7 @@ normalize:
   # content  : :nbyCi: runtmoll: SSOv2 Logon failed, config busBon form norumetM
   - check: event.code==014d0002
     logpar:
-      - ~content: <~/ignore/ >$DEF_SESSION:<~/ignore/ ><~>
+      - ~content: <~/ignore/ >$DEF_SESSION:<~>
     map:
       - rsa.misc.disposition: Failed
 
