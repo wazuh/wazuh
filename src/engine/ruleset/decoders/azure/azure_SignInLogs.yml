@@ -49,13 +49,25 @@ normalize:
     - geo.location.lat: $~temp.locationDetails.latitude
     - geo.location.lon: $~temp.locationDetails.longitude
     # azure.signinlogs.properties.authentication_processing_details is very difficult to parse
-    
-    
-    # TODO: parse json.LocationDetails
-    #- geo.city_name: 
-    #- geo.country_name
-    #- geo.location.lat:
-    #- geo.location.lon
-    # TODO: parse AuthenticationProcessingDetails
-    
+    - user.full_name: $~json.UserPrincipalName
+    - user.id: $~json.UserId
 
+    # User Agent
+    - user_agent.original: $~json.UserAgent
+
+
+  - check: NOT $~temp.status.errorCode OR $~temp.status.errorCode==0
+    map:
+     - event.outcome: success
+  
+  - check: $~temp.status.errorCode AND $~temp.status.errorCode>0
+    map:
+     - event.outcome: failure
+    
+  - logpar:
+    - ~json.UserPrincipalName: <user.name>@<user.domain>
+
+# Cleanup
+  - map:
+    - ~json: +ef_delete
+    - ~temp: +ef_delete
