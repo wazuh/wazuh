@@ -1060,7 +1060,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1068", "T1068.000", "T1565", "T1565.001", "T1565.003"]
+      - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
@@ -1080,7 +1080,7 @@ checks:
     remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd"
     compliance:
       - cis: ["1.7.1"]
-      - mitre_techniques: ["T1082", "T1082.000", "T1592", "T1592.004"]
+      - mitre_techniques: ["T1082", "T1592", "T1592.004"]
       - mitre_tactics: ["TA0007"]
     references:
       - http://www.justice.gov/criminal/cybercrime/
@@ -1099,7 +1099,7 @@ checks:
       - http://www.justice.gov/criminal/cybercrime/
     compliance:
       - cis: ["1.7.2"]
-      - mitre_techniques: ["T1082", "T1082.000", "T1592", "T1592.004"]
+      - mitre_techniques: ["T1082", "T1592", "T1592.004"]
       - mitre_tactics: ["TA0007"]
     condition: none
     rules:
@@ -1115,7 +1115,7 @@ checks:
       - http://www.justice.gov/criminal/cybercrime/
     compliance:
       - cis: ["1.7.3"]
-      - mitre_techniques: ["T1018", "T1018.000", "T1082", "T1082.000", "T1592", "T1592.004"]
+      - mitre_techniques: ["T1018", "T1082", "T1082.000", "T1592", "T1592.004"]
       - mitre_tactics: ["TA0007"]
     condition: none
     rules:
@@ -1127,7 +1127,6 @@ checks:
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
     rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/motd : # chown root:root $(readlink -e /etc/motd) # chmod u-x,go-wx $(readlink -e /etc/motd) OR run the following command to remove the /etc/motd file: # rm /etc/motd"
-    additional value: "If Message of the day is not needed, this file can be removed."
     default value: "File doesn't exist"
     references:
       - http://www.justice.gov/criminal/cybercrime/
@@ -1309,7 +1308,6 @@ checks:
     description: "server: The server directive specifies an NTP server which can be used as a time source. The client-server relationship is strictly hierarchical: a client might synchronize its system time to that of the server, but the server's system time will never be influenced by that of a client. This directive can be used multiple times to specify multiple servers. The directive is immediately followed by either the name of the server, or its IP address. (2) pool: The syntax of this directive is similar to that for the server directive, except that it is used to specify a pool of NTP servers rather than a single NTP server. The pool name is expected to resolve to multiple addresses which might change over time. This directive can be used multiple times to specify multiple pools. All options valid in the server directive can be used in this directive too."
     rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
     remediation: "Edit /etc/chrony/chrony.conf or a file ending in .sources in /etc/chrony/sources.d/ and add or edit server or pool lines as appropriate according to local site policy: <[server|pool]> <[remote-server|remote-pool]> Examples: pool directive: pool time.nist.gov iburst maxsources 4 #The maxsources option is unique to the pool directive server directive: server time-a-g.nist.gov iburst server 132.163.97.3 iburst server time-d-b.nist.gov iburst Run one of the following commands to load the updated time sources into chronyd running config: # systemctl restart chronyd - OR if sources are in a .sources file - # chronyc reload sources OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system:# apt purge chrony"
-    additional information: "If pool and/or server directive(s) are set in a sources file in /etc/chrony/sources.d, the line: sourcedir /etc/chrony/sources.d must be present in /etc/chrony/chrony.conf"
     references:
       - chrony.conf(5) Manual Page
       - https://tf.nist.gov/tf-cgi/servers.cgi
@@ -1547,7 +1545,7 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1595,7 +1593,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1620,7 +1618,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1645,7 +1643,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1688,7 +1686,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1712,7 +1710,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1736,7 +1734,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1760,7 +1758,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1784,7 +1782,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1005", "T1005.000", "T1039", "T1039.000", "T1083", "T1083.000", "T1135", "T1135.000", "T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1005", "T1039", "T1083", "T1135", "T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
     condition: all
     rules:
@@ -1806,7 +1804,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1829,7 +1827,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1852,7 +1850,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1875,7 +1873,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1018", "T1018.000", "T1210", "T1210.000"]
+      - mitre_techniques: ["T1018", "T1210"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: none
@@ -1898,7 +1896,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1105", "T1105.000", "T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002", "T1570", "T1570.000"]
+      - mitre_techniques: ["T1105", "T1203", "T1210", "T1543", "T1543.002", "T1570", "T1570.000"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: any
@@ -1927,7 +1925,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
       - nist_sp_800-53: ["CM-11"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1951,7 +1949,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1040", "T1040.000", "T1203", "T1203.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1040", "T1203", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
     condition: all
@@ -1975,7 +1973,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203",  "T1543", "T1543.002"]
       - mitre_tactics: ["TA0006", "TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
     condition: all
@@ -1999,7 +1997,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1040", "T1040.000", "T1203", "T1203.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1040",  "T1203", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0006", "TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
     condition: all
@@ -2023,7 +2021,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1040", "T1040.000", "T1203", "T1203.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1040",  "T1203",  "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
