@@ -14,7 +14,7 @@ import load_balancers
 
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_aws_lb_bucket__init__(mock_custom_bucket):
+def test_aws_lb_bucket_initializes_properly(mock_custom_bucket):
     """Test if the instances of AWSLBBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSLBBucket)
     assert instance.service == 'elasticloadbalancing'
@@ -72,7 +72,7 @@ def test_aws_lb_bucket_mark_complete(mock_custom_bucket, mock_mark_complete):
 
 
 @patch('load_balancers.AWSLBBucket.__init__')
-def test_aws_alb_bucket__init__(mock_lb_bucket):
+def test_aws_alb_bucket_initializes_properly(mock_lb_bucket):
     """Test if the instances of AWSALBBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSALBBucket)
     mock_lb_bucket.assert_called_once()
@@ -132,7 +132,7 @@ def test_aws_alb_bucket_load_information_from_file(mock_lb_bucket):
 
 
 @patch('load_balancers.AWSLBBucket.__init__')
-def test_aws_clb_bucket__init__(mock_lb_bucket):
+def test_aws_clb_bucket_initializes_properly(mock_lb_bucket):
     """Test if the instances of AWSCLBBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSCLBBucket)
     mock_lb_bucket.assert_called_once()
@@ -170,7 +170,7 @@ def test_aws_clb_bucket_load_information_from_file(mock_lb_bucket):
 
 
 @patch('load_balancers.AWSLBBucket.__init__')
-def test_aws_nlb_bucket___init__(mock_lb_bucket):
+def test_aws_nlb_bucket_initializes_properly(mock_lb_bucket):
     """Test if the instances of AWSNLBBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSNLBBucket)
     mock_lb_bucket.assert_called_once()

@@ -12,7 +12,7 @@ import umbrella
 
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_cisco_umbrella__init__(mock_custom_bucket):
+def test_cisco_umbrella_initializes_properly(mock_custom_bucket):
     """Test if the instances of CiscoUmbrella are created properly."""
     instance = utils.get_mocked_bucket(class_=umbrella.CiscoUmbrella)
     assert not instance.check_prefix
@@ -83,7 +83,7 @@ def test_cisco_umbrella_load_information_from_file(mock_custom_bucket,
 
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_cisco_umbrella_load_information_from_file_ko(mock_custom_bucket):
+def test_cisco_umbrella_load_information_from_file_handles_exceptions(mock_custom_bucket):
     """Test 'load_information_from_file' method exits when the prefix is not dnslogs, proxylogs or iplogs
     with the expected error code
     """

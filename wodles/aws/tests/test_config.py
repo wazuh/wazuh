@@ -28,7 +28,7 @@ utils.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = utils.TEST_LOG_FULL_PAT
 
 
 @patch('aws_bucket.AWSLogsBucket.__init__')
-def test_aws_config_bucket__init__(mock_logs_bucket):
+def test_aws_config_bucket_initializes_properly(mock_logs_bucket):
     """Test if the instances of AWSConfigBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
     mock_logs_bucket.assert_called_once()
@@ -164,7 +164,7 @@ def test_aws_config_bucket_marker_only_logs_after(mock_marker_only_logs_after, m
 
 
 @patch('aws_bucket.AWSBucket.marker_only_logs_after')
-def test_aws_config_bucket_marker_only_logs_after_ko(mock_marker_only_logs_after):
+def test_aws_config_bucket_marker_only_logs_after_handles_exceptions(mock_marker_only_logs_after):
     """Test 'marker_only_logs_after' method handles the AtrributeError exception and exits
     with the expected exit code."""
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
@@ -255,7 +255,7 @@ def test_aws_config_bucket_build_s3_filter_args(custom_database,
     assert expected_filter_args == instance.build_s3_filter_args(aws_account_id, aws_region, date, iterating)
 
 
-def test_aws_config_bucket_build_s3_filter_args_ko():
+def test_aws_config_bucket_build_s3_filter_args_handles_exceptions():
     """Test 'build_s3_filter_args' method handles exceptions raised and exits with the expected exit code."""
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, reparse=True)
 
@@ -339,7 +339,7 @@ def test_aws_config_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
                 mock_mark_complete.assert_called_with(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, bucket_file)
 
 
-def test_aws_config_bucket_iter_files_in_bucket_ko():
+def test_aws_config_bucket_iter_files_in_bucket_handles_exceptions():
     """Test 'iter_files_in_bucket' method handles exceptions raised when trying to fetch objects from AWS
     or by an unexpected cause and exits with the expected exit code.
     """

@@ -18,13 +18,14 @@ utils.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = TEST_LOG_SERVER_ACCESS_
 
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_aws_server_access___init__(mock_custom_bucket):
+def test_aws_server_access_initializes_properly(mock_custom_bucket):
     """Test if the instances of AWSServerAccess are created properly."""
     instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
     assert instance.date_regex == re.compile(r'(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2})')
     assert instance.date_format == '%Y-%m-%d'
 
     mock_custom_bucket.assert_called_once()
+
 
 @pytest.mark.parametrize('object_list',
                          [utils.LIST_OBJECT_V2, utils.LIST_OBJECT_V2_NO_PREFIXES, utils.LIST_OBJECT_V2_TRUNCATED])
@@ -124,7 +125,7 @@ def test_aws_server_access_iter_files_in_bucket(mock_build_filter, mock_debug,
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-def test_aws_server_access_iter_files_in_bucket_ko(mock_sts):
+def test_aws_server_access_iter_files_in_bucket_handles_exceptions(mock_sts):
     """Test 'iter_files_in_bucket' method handles exceptions raised when the filename does not have the valid format
     or by an unexpected cause and exits with the expected exit code.
     """
@@ -161,7 +162,7 @@ def test_aws_server_access_marker_only_logs_after(mock_sts):
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-def test_aws_server_access_check_bucket_ko_empty(mock_sts):
+def test_aws_server_access_check_bucket_handles_exceptions_when_empty_bucket(mock_sts):
     """Test 'check_bucket' method exits with the expected code when no files are found in the bucket."""
     instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess, bucket=utils.TEST_BUCKET)
     instance.client = MagicMock()
@@ -179,8 +180,8 @@ def test_aws_server_access_check_bucket_ko_empty(mock_sts):
     ("OtherClientError", utils.UNKNOWN_ERROR_CODE)
 ])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-def test_aws_server_access_check_bucket_ko_client(mock_sts,
-                                                  error_code: str, exit_code: int):
+def test_aws_server_access_check_bucket_handles_exceptions_on_client_error(mock_sts,
+                                                                           error_code: str, exit_code: int):
     """Test 'check_bucket' method handles the different botocore exception and exits with the expected code when an exception is raised accessing to AWS.
 
     Parameters

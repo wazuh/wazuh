@@ -49,8 +49,9 @@ utils.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = utils.TEST_LOG_FULL_PAT
 @patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH)
 @patch('wazuh_integration.utils.get_wazuh_version')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_bucket__init__(mock_wazuh_integration, mock_version, mock_path, mock_client, mock_connect, mock_metadata,
-                            only_logs_after: str or None):
+def test_aws_bucket_initializes_properly(mock_wazuh_integration, mock_version, mock_path, mock_client, mock_connect,
+                                         mock_metadata,
+                                         only_logs_after: str or None):
     """Test if the instances of AWSBucket are created properly."""
     kwargs = utils.get_aws_bucket_parameters(db_table_name=utils.TEST_TABLE_NAME, bucket=utils.TEST_BUCKET,
                                              aws_profile=utils.TEST_AWS_PROFILE, access_key=utils.TEST_ACCESS_KEY,
@@ -122,7 +123,7 @@ def test_aws_bucket_already_processed(custom_database,
                                     aws_region=region) == expected_result
 
 
-def test_aws_bucket_get_creation_date():
+def test_aws_bucket_get_creation_date_raises_exception():
     """Test 'get_creation_date' method properly raise a NotImplementedError exception when being directly called."""
     bucket = utils.get_mocked_aws_bucket()
 
@@ -158,7 +159,7 @@ def test_aws_bucket_mark_complete(custom_database):
 
 
 @patch('aws_bucket.aws_tools.debug')
-def test_aws_bucket_mark_complete_ko(mock_debug, custom_database):
+def test_aws_bucket_mark_complete_handles_exceptions_when_db_query_fails(mock_debug, custom_database):
     """Test 'mark_complete' handles exceptions raised when trying to execute a query to the DB."""
     bucket = utils.get_mocked_aws_bucket()
 
@@ -185,7 +186,7 @@ def test_aws_bucket_create_table(custom_database):
     assert utils.database_execute_query(bucket.db_connector, SQL_SELECT_TABLES) == utils.TEST_TABLE_NAME
 
 
-def test_aws_bucket_create_table_ko(custom_database):
+def test_aws_bucket_create_table_handles_exceptions_when_table_is_not_created(custom_database):
     """Test `create_table` method handles exceptions raised
     and exits with the expected code when the table cannot be created.
     """
@@ -203,7 +204,7 @@ def test_aws_bucket_create_table_ko(custom_database):
 
 
 @pytest.mark.parametrize('already_initialised', [True, False])
-def test_aws_bucket_init_db(custom_database, already_initialised):
+def test_aws_bucket_db_initialization(custom_database, already_initialised):
     """Test 'init_db' function checks if the database has already been initialised and creates it if not."""
     bucket = utils.get_mocked_aws_bucket()
     bucket.db_connector = custom_database
@@ -221,7 +222,7 @@ def test_aws_bucket_init_db(custom_database, already_initialised):
     assert utils.database_execute_query(bucket.db_connector, bucket.sql_find_table, {'name': bucket.db_table_name})
 
 
-def test_aws_bucket_init_db_ko(custom_database):
+def test_aws_bucket_db_initialization_handles_exceptions(custom_database):
     """Test 'init_db' handles exceptions when accessing the database."""
     bucket = utils.get_mocked_aws_bucket()
     bucket.db_connector = custom_database
@@ -269,7 +270,7 @@ def test_aws_bucket_db_maintenance(custom_database, expected_db_count):
 
 
 @patch('builtins.print')
-def test_aws_bucket_db_maintenance_ko(mock_print, custom_database):
+def test_aws_bucket_db_maintenance_handles_exceptions_when_db_fails(mock_print, custom_database):
     """Test 'db_maintenance' method handles exceptions raised when fails to make the DB maintenance."""
     bucket = utils.get_mocked_aws_bucket()
 
@@ -370,7 +371,7 @@ def test_aws_bucket_find_account_ids(mock_prefix):
     ('OtherClientException', utils.UNKNOWN_ERROR_CODE)
 ])
 @patch('aws_bucket.AWSBucket.get_base_prefix', return_value=utils.TEST_PREFIX)
-def test_aws_bucket_find_account_ids_ko_client_error(mock_prefix, error_code: str, exit_code: int):
+def test_aws_bucket_find_account_ids_handles_exceptions_on_client_error(mock_prefix, error_code: str, exit_code: int):
     """Test 'find_account_ids' method handles client errors as expected."""
     bucket = utils.get_mocked_aws_bucket(bucket=utils.TEST_BUCKET, prefix=utils.TEST_PREFIX)
     bucket.client = MagicMock()
@@ -382,7 +383,7 @@ def test_aws_bucket_find_account_ids_ko_client_error(mock_prefix, error_code: st
 
 
 @patch('aws_bucket.AWSBucket.get_base_prefix', return_value=utils.TEST_PREFIX)
-def test_aws_bucket_find_account_ids_ko_key_error(mock_prefix):
+def test_aws_bucket_find_account_ids_handles_exceptions_on_key_error(mock_prefix):
     """Test 'find_account_ids' method handles KeyError as expected."""
     bucket = utils.get_mocked_aws_bucket(bucket=utils.TEST_BUCKET, prefix=utils.TEST_PREFIX)
     bucket.client = MagicMock()
@@ -415,7 +416,7 @@ def test_aws_bucket_find_regions(mock_prefix, object_list: dict):
     ('OtherClientException', utils.UNKNOWN_ERROR_CODE)
 ])
 @patch('aws_bucket.AWSBucket.get_service_prefix', return_value=utils.TEST_PREFIX)
-def test_aws_bucket_find_regions_ko(mock_prefix, error_code: str, exit_code: int):
+def test_aws_bucket_find_regions_handles_exceptions_on_client_error(mock_prefix, error_code: str, exit_code: int):
     """Test 'find_regions' method handles client errors as expected."""
     bucket = utils.get_mocked_aws_bucket(bucket=utils.TEST_BUCKET, prefix=utils.TEST_PREFIX)
     bucket.client = MagicMock()
@@ -546,7 +547,7 @@ def test_aws_bucket_decompress_file(mock_io):
 
 
 @patch('io.BytesIO')
-def test_aws_bucket_decompress_file_ko(mock_io):
+def test_aws_bucket_decompress_file_handles_exceptions_when_decompress_fails(mock_io):
     """Test 'decompress_file' method handles exceptions raised when trying to decompress a file and exits with the expected exit code."""
     bucket = utils.get_mocked_aws_bucket()
     bucket.client = MagicMock()
@@ -597,10 +598,10 @@ def test_aws_bucket_get_log_file(mock_load_from_file, expected_result):
 ])
 @pytest.mark.parametrize('skip_on_error', [True, False])
 @patch('aws_bucket.AWSBucket.load_information_from_file')
-def test_aws_bucket_get_log_file_ko(mock_load_from_file,
+def test_aws_bucket_get_log_file_handles_exceptions_when_information_cannot_be_loaded(mock_load_from_file,
                                     skip_on_error: bool,
                                     exception: Exception, error_message: str, exit_code: int):
-    """Test 'get_log_file' method handles exceptions raised according to their type calling '_exception_handler' method.
+    """Test 'get_log_file' method handles exceptions raised according to their type.
 
     Parameters
     ----------
@@ -761,7 +762,8 @@ def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
     with patch('aws_bucket.AWSBucket.already_processed', return_value=True) as mock_already_processed, \
             patch('aws_bucket.AWSBucket.get_log_file') as mock_get_log_file, \
             patch('aws_bucket.AWSBucket.iter_events') as mock_iter_events, \
-            patch('aws_bucket.AWSBucket.mark_complete') as mock_mark_complete:
+            patch('aws_bucket.AWSBucket.mark_complete') as mock_mark_complete, \
+            patch('aws_bucket.AWSBucket.get_full_prefix', return_value=utils.TEST_FULL_PREFIX):
 
         if 'IsTruncated' in object_list and object_list['IsTruncated']:
             bucket.client.list_objects_v2.side_effect = [object_list, utils.LIST_OBJECT_V2_NO_PREFIXES]
@@ -819,7 +821,7 @@ def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
     (aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
     ('OtherClientException', utils.UNKNOWN_ERROR_CODE),
 ])
-def test_aws_bucket_iter_files_in_bucket_ko(error_code, exit_code):
+def test_aws_bucket_iter_files_in_bucket_handles_exceptions_on_error(error_code, exit_code):
     """Test 'iter_files_in_bucket' method handles exceptions raised when trying to fetch objects from AWS
     or by an unexpected cause and exits with the expected exit code.
     """
@@ -854,7 +856,7 @@ def test_aws_bucket_check_bucket():
     paginator.paginate.assert_called_with(Bucket=bucket.bucket, Prefix=bucket.prefix, Delimiter='/')
 
 
-def test_aws_bucket_check_bucket_no_files():
+def test_aws_bucket_check_bucket_exits_when_empty():
     """Test 'check_bucket' method exits with the expected error code when the bucket is empty."""
     page = {'OtherKey': ''}
     bucket = utils.get_mocked_aws_bucket()
@@ -876,7 +878,7 @@ def test_aws_bucket_check_bucket_no_files():
     (aws_bucket.INVALID_REQUEST_TIME_ERROR_CODE, utils.INVALID_REQUEST_TIME_ERROR_CODE),
     ("OtherClientError", utils.UNKNOWN_ERROR_CODE)
 ])
-def test_aws_bucket_check_bucket_ko_client_error(error_code: str, exit_code: int):
+def test_aws_bucket_check_bucket_handles_exceptions_on_client_error(error_code: str, exit_code: int):
     """Test 'check_bucket' method handles the different botocore client exceptions and exits with the expected code
     when an exception is raised accessing to AWS.
 
@@ -897,7 +899,7 @@ def test_aws_bucket_check_bucket_ko_client_error(error_code: str, exit_code: int
     assert e.value.code == exit_code
 
 
-def test_aws_bucket_check_bucket_ko_endpoint_error():
+def test_aws_bucket_check_bucket_handles_exceptions_on_endpoint_error():
     """Test 'check_bucket' method handles botocore endpoint exceptions and exits with the expected code
     when an exception is raised connecting to AWS."""
     bucket = utils.get_mocked_aws_bucket()
@@ -914,7 +916,7 @@ def test_aws_bucket_check_bucket_ko_endpoint_error():
 @pytest.mark.parametrize('suffix', [utils.TEST_SUFFIX, None])
 @patch('wazuh_integration.WazuhIntegration.__init__')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
-def test_aws_logs_bucket__init__(mock_bucket, mock_integration, prefix, suffix):
+def test_aws_logs_bucket_initializes_properly(mock_bucket, mock_integration, prefix, suffix):
     """Test if the instances of AWSLogsBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, prefix=prefix, suffix=suffix)
     mock_bucket.assert_called_once()
@@ -1014,7 +1016,7 @@ def test_aws_logs_bucket_load_information_from_file(mock_integration, mock_decom
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
-def test_aws_custom_bucket__init__(mock_bucket, mock_integration, mock_sts, access_key, secret_key, profile):
+def test_aws_custom_bucket_initializes_properly(mock_bucket, mock_integration, mock_sts, access_key, secret_key, profile):
     """Test if the instances of AWSCustomBucket are created properly."""
 
     mock_client = MagicMock()
@@ -1287,7 +1289,7 @@ def test_aws_custom_bucket_db_maintenance(mock_integration, mock_sts, aws_accoun
 @patch('builtins.print')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__')
-def test_aws_custom_bucket_db_maintenance_ko(mock_integration, mock_sts, mock_print, custom_database):
+def test_aws_custom_bucket_db_maintenance_handles_exceptions(mock_integration, mock_sts, mock_print, custom_database):
     """Test 'db_maintenance' handles exceptions raised when trying to execute a query to the DB."""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
 

@@ -12,7 +12,7 @@ import cloudtrail
 
 
 @patch('aws_bucket.AWSLogsBucket.__init__')
-def test_aws_cloudtrail_bucket__init__(mock_logs_bucket):
+def test_aws_cloudtrail_bucket_initializes_properly(mock_logs_bucket):
     """Test if the instances of AWSCloudTrailBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=cloudtrail.AWSCloudTrailBucket)
     mock_logs_bucket.assert_called_once()

@@ -20,7 +20,7 @@ TEST_SERVICES_SCHEMA = 'schema_services_test.sql'
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('aws_service.AWSService.__init__', side_effect=aws_service.AWSService.__init__)
-def test_aws_inspector__init__(mock_aws_service, mock_sts_client):
+def test_aws_inspector_initializes_properly(mock_aws_service, mock_sts_client):
     """Test if the instances of AWSInspector are created properly."""
     instance = utils.get_mocked_service(class_=inspector.AWSInspector)
 

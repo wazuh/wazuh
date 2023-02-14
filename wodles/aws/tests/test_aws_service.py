@@ -19,7 +19,7 @@ TEST_DATETIME_STR = datetime.strftime(TEST_DATETIME, '%Y-%m-%dT%H:%M:%SZ')
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_service__init__(mock_wazuh_integration, mock_sts):
+def test_aws_service_initializes_properly(mock_wazuh_integration, mock_sts):
     """Test if the instances of 'AWSService' are created properly."""
     mock_client = MagicMock()
     mock_sts.return_value = mock_client

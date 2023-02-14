@@ -16,7 +16,7 @@ SAMPLE_EVENT_1 = {'key1': 'value1', 'key2': 'value2'}
 
 @pytest.mark.parametrize('guardduty_native', [True, False])
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_aws_guardduty_bucket__init__(mock_custom_bucket, guardduty_native):
+def test_aws_guardduty_bucket_initializes_properly(mock_custom_bucket, guardduty_native):
     """Test if the instances of AWSGuardDutyBucket are created properly."""
     with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=guardduty_native):
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
@@ -56,7 +56,7 @@ def test_aws_guardduty_bucket_check_guardduty_type(mock_integration, mock_sts,
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__')
-def test_aws_guardduty_bucket_check_guardduty_type_ko(mock_integration, mock_sts):
+def test_aws_guardduty_bucket_check_guardduty_type_handles_exceptions(mock_integration, mock_sts):
     """Test 'check_guardduty_type' handles exceptions raised and exits with the expected exit code."""
     with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type'):
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
