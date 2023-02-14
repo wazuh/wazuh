@@ -418,41 +418,6 @@ end:
     return wdb;
 }
 
-/* Open database for agent */
-sqlite3* wdb_open_agent(int id_agent, const char *name) {
-    char dir[OS_FLSIZE + 1];
-    sqlite3 *db;
-
-    snprintf(dir, OS_FLSIZE, "%s/agents/%03d-%s.db", WDB_DIR, id_agent, name);
-
-    if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE, NULL)) {
-        mdebug1("No SQLite database found for agent '%s', creating.", name);
-        sqlite3_close_v2(db);
-
-        if (wdb_create_agent_db(id_agent, name) < 0) {
-            merror("Couldn't create SQLite database '%s'", dir);
-            return NULL;
-        }
-
-        // Retry to open
-
-        if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE, NULL)) {
-            merror("Can't open SQLite database '%s': %s", dir, sqlite3_errmsg(db));
-            sqlite3_close_v2(db);
-            return NULL;
-        }
-
-        if (wdb_journal_wal(db) == -1) {
-            merror("Cannot open database '%s': error setting the journalig mode.", dir);
-            sqlite3_close_v2(db);
-            return NULL;
-        }
-    }
-
-    sqlite3_busy_timeout(db, BUSY_SLEEP);
-    return db;
-}
-
 // Open database for agent and store in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_agent2(int agent_id) {
     char sagent_id[64];

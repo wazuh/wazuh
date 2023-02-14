@@ -11,7 +11,10 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND wmdb_tests_names "test_wm_database")
 list(APPEND wmdb_tests_flags "-Wl,--wrap,wdb_set_agent_groups -Wl,--wrap,opendir -Wl,--wrap,readdir -Wl,--wrap,strerror -Wl,--wrap,unlink \
                               -Wl,--wrap,closedir -Wl,--wrap,rmdir_ex -Wl,--wrap,getpid  -Wl,--wrap,w_is_single_node -Wl,--wrap,_mterror \
-                              -Wl,--wrap,wdb_get_agent_name -Wl,--wrap,wdb_remove_agent_db -Wl,--wrap,wdbc_query_ex ${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS}")
+                              -Wl,--wrap,wdb_get_all_agents_rbtree -Wl,--wrap,rbtree_get -Wl,--wrap,wdb_get_agent_group -Wl,--wrap,OS_CIDRtoStr \
+                              -Wl,--wrap,wdb_insert_agent -Wl,--wrap,rbtree_keys -Wl,--wrap,OS_IsAllowedID -Wl,--wrap,wdb_get_agent_name \
+                              -Wl,--wrap,wdb_remove_agent -Wl,--wrap,fopen \
+                              -Wl,--wrap,wdb_get_agent_name -Wl,--wrap,wdbc_query_ex ${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS}")
 
 # Add extra compiling flags
 add_compile_options(-Wall)

@@ -147,40 +147,17 @@ def last_scan(agent_list):
 
         return result
 
-    if WazuhVersion(agent_version) < WazuhVersion('Wazuh v3.7.0'):
-        db_agent = glob('{0}/{1}-*.db'.format(common.DATABASE_PATH_AGENTS, agent_list[0]))
-        if not db_agent:
-            raise WazuhInternalError(1600, extra_message=agent_list[0])
-        else:
-            db_agent = db_agent[0]
-        conn = Connection(db_agent)
+    with WazuhDBQuerySyscheck(agent_id=agent_list[0], query='module=fim', offset=0, sort=None,
+                              search=None, limit=common.DATABASE_LIMIT, select={'end', 'start'},
+                              fields={'end': 'end_scan', 'start': 'start_scan', 'module': 'module'},
+                              table='scan_info', default_sort_field='start_scan') as db_query:
+        fim_scan_info = db_query.run()['items'][0]
 
-        data = {}
-        # end time
-        query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending rootcheck scan.'"
-        conn.execute(query)
-        for t in conn:
-            data['end'] = t['max(date_last)'] if t['max(date_last)'] is not None else "ND"
-
-        # start time
-        query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting rootcheck scan.'"
-        conn.execute(query)
-        for t in conn:
-            data['start'] = t['max(date_last)'] if t['max(date_last)'] is not None else "ND"
-
-        result.affected_items.append(data)
-    else:
-        with WazuhDBQuerySyscheck(agent_id=agent_list[0], query='module=fim', offset=0, sort=None,
-                                  search=None, limit=common.DATABASE_LIMIT, select={'end', 'start'},
-                                  fields={'end': 'end_scan', 'start': 'start_scan', 'module': 'module'},
-                                  table='scan_info', default_sort_field='start_scan') as db_query:
-            fim_scan_info = db_query.run()['items'][0]
-
-        end = None if not fim_scan_info['end'] else fim_scan_info['end']
-        start = None if not fim_scan_info['start'] else fim_scan_info['start']
-        # If start is None or the scan is running, end will be None.
-        result.affected_items.append(
-            {'start': start, 'end': None if start is None else None if end is None or end < start else end})
+    end = None if not fim_scan_info['end'] else fim_scan_info['end']
+    start = None if not fim_scan_info['start'] else fim_scan_info['start']
+    # If start is None or the scan is running, end will be None.
+    result.affected_items.append(
+        {'start': start, 'end': None if start is None else None if end is None or end < start else end})
     result.total_affected_items = len(result.affected_items)
 
     return result

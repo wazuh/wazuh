@@ -28,8 +28,7 @@ wmodule* wm_database_read();
 
 /**
  * @brief Synchronizes a keystore with the agent table of global.db. It will insert
- *        the agents that are in the keystore and are not in global.db. It also
- *        will create all the agent artifacts.
+ *        the agents that are in the keystore and are not in global.db.
  *        In addition it will remove from global.db in wazuh-db all the agents that
  *        are not in the keystore. Also it will remove all the artifacts for those
  *        agents.
@@ -39,24 +38,7 @@ wmodule* wm_database_read();
 void sync_keys_with_wdb(keystore *keys);
 
 /**
- * @brief Synchronizes a keystore with the legacy agents databases in var/db/agents.
- *        It will create a database for the agents in the keystore that doesn't
- *        have it created.
- *
- * @param keys The keystore structure to be synchronized
- */
-void sync_keys_with_agents_artifacts(keystore *keys);
-
-/**
- * @brief Synchronizes the agents artifacts with wazuh-db. It will remove
- *        the databases of agents that are not in the agent table of
- *        global.db.
- */
-void sync_agents_artifacts_with_wdb();
-
-/**
- * @brief This function removes the legacy agent DB, the wazuh-db agent DB
- *        and the diff folder of an agent.
+ * @brief This function removes the wazuh-db agent DB and the diff folder of an agent.
  *
  * @param agent_id The ID of the agent.
  * @param agent_name The name of the agent.
@@ -77,6 +59,6 @@ void wm_sync_legacy_groups_files();
  * @param group_file_path The full path of the group file.
  * @return int OS_SUCCESS if successful, OS_INVALID otherwise.
  */
-int wm_sync_group_file (const char* group_file, const char* group_file_path);
+int wm_sync_group_file(const char* group_file, const char* group_file_path);
 
 #endif /* WM_DATABASE */
