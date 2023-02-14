@@ -2065,19 +2065,18 @@ char **expand_win32_wildcards(const char *path) {
             }
 
             hFind = FindFirstFile(pattern, &FindFileData);
+
             if (hFind == INVALID_HANDLE_VALUE) {
                 long unsigned errcode = GetLastError();
                 if (errcode == 2) {
-                    mdebug2("No file/folder that matches %s.", pattern);
+                    mdebug2("No file that matches %s.", pattern);
+                } else if (errcode == 3) {
+                    mdebug2("No folder that matches %s.", pattern);
                 } else {
                     mdebug2("FindFirstFile failed (%lu) - '%s'\n", errcode, pattern);
                 }
-
-                os_free(pattern);
-                os_free(parent_path);
-                next_glob = NULL;
-                continue;
             }
+
             do {
                 if (strcmp(FindFileData.cFileName, ".") == 0 || strcmp(FindFileData.cFileName, "..") == 0) {
                     continue;
