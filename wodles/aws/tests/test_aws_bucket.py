@@ -89,27 +89,6 @@ def test_aws_bucket__init__(mock_wazuh_integration, mock_version, mock_path, moc
     assert not integration.check_prefix
 
 
-@pytest.mark.parametrize('match_start, expected_result', [
-    (len(utils.TEST_FULL_PREFIX), True),
-    (len(utils.TEST_FULL_PREFIX) - 1, False),
-    (0, False),
-    (None, False),
-])
-def test_aws_bucket__same_prefix(match_start: int or None, expected_result: bool):
-    """Test `_same_prefix` method detects if the prefix of a file key is the same as the one expected.
-
-    Parameters
-    ----------
-    match_start : int or None
-        The position of the string with the file key where it started matching with a date format.
-    expected_result: bool
-        True if the prefix is the same, False otherwise.
-    """
-    bucket = utils.get_mocked_aws_bucket()
-    with patch('aws_bucket.AWSBucket.get_full_prefix', return_value=utils.TEST_FULL_PREFIX):
-        assert bucket._same_prefix(match_start=match_start, aws_account_id="", aws_region="") == expected_result
-
-
 @pytest.mark.parametrize('log_file, account_id, region, expected_result', [
     (utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
     (utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_2, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, True),
@@ -536,72 +515,34 @@ def test_aws_bucket_reformat_msg():
     assert formatted_event['aws']['tags'] == {'value': ['tag1', 'tag2']}
 
 
-@patch('gzip.open')
-def test_aws_bucket__decompress_gzip(mock_open):
-    """Test '_decompress_gzip' method executes the necessary functions in order to decompress gzip compressed data"""
-    gzip_mock = MagicMock()
-    mock_open.return_value = gzip_mock
-
-    bucket = utils.get_mocked_aws_bucket()
-    assert bucket._decompress_gzip(MagicMock()) == gzip_mock
-    gzip_mock.read.assert_called_once()
-    gzip_mock.seek.assert_called_with(0)
-
-
-@pytest.mark.parametrize('error', [gzip.BadGzipFile, zlib.error, TypeError])
-def test_aws_bucket__decompress_gzip_ko(error):
-    """Test '_decompress_gzip' method handles exceptions raised when trying to decompress a file and exits with the expected exit code."""
-    bucket = utils.get_mocked_aws_bucket()
-
-    with patch('gzip.open', side_effect=error), \
-            pytest.raises(SystemExit) as e:
-        bucket._decompress_gzip(MagicMock())
-    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
-
-
-@patch('io.TextIOWrapper')
-@patch('zipfile.ZipFile')
-def test_aws_bucket__decompress_zip(mock_zip, mock_io):
-    """Test '_decompress_zip' method executes the necessary functions in order to decompress zip compressed data"""
-    zip_mock = MagicMock()
-    mock_zip.return_value = zip_mock
-    zip_mock.namelist.return_value = ['name']
-    zip_mock.open.return_value = "file contents"
-
-    bucket = utils.get_mocked_aws_bucket()
-    bucket._decompress_zip(MagicMock())
-
-    zip_mock.namelist.assert_called_once()
-    zip_mock.open.assert_called_with('name')
-    mock_io.assert_called_with("file contents")
-
-
-@patch('zipfile.ZipFile', side_effect=zipfile.BadZipFile)
-def test_aws_bucket__decompress_zip_ko(mock_zip):
-    """Test '_decompress_zip' method handles exceptions raised when trying to decompress a file and exits with the expected exit code."""
-    bucket = utils.get_mocked_aws_bucket()
-
-    with pytest.raises(SystemExit) as e:
-        bucket._decompress_zip(MagicMock())
-    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
-
-
-@pytest.mark.parametrize('log_key, mocked_function', [
-    ('test.gz', 'aws_bucket.AWSBucket._decompress_gzip'),
-    ('test.zip', 'aws_bucket.AWSBucket._decompress_zip'),
-    ('test.tar', 'io.TextIOWrapper')
-])
 @patch('io.BytesIO')
-def test_aws_bucket_decompress_file(mock_io, log_key, mocked_function):
+def test_aws_bucket_decompress_file(mock_io):
     """Test 'decompress_file' method calls the expected function for a determined file type."""
     bucket = utils.get_mocked_aws_bucket()
     bucket.client = MagicMock()
 
-    with patch(mocked_function) as mock_decompress:
-        bucket.decompress_file(log_key)
+    with patch('gzip.open', return_value=MagicMock()) as mock_gzip_open:
+        gzip_mock = mock_gzip_open.return_value
+        bucket.decompress_file('test.gz')
 
     bucket.client.get_object.assert_called_once()
-    mock_decompress.assert_called_once()
+    mock_gzip_open.assert_called_once()
+    gzip_mock.read.assert_called_once()
+    gzip_mock.seek.assert_called_with(0)
+
+    with patch('zipfile.ZipFile', return_value=MagicMock()) as mock_zip, \
+            patch('io.TextIOWrapper') as mock_io_text:
+        zip_mock = mock_zip.return_value
+        zip_mock.namelist.return_value = ['name']
+        zip_mock.open.return_value = "file contents"
+        bucket.decompress_file('test.zip')
+    zip_mock.namelist.assert_called_once()
+    zip_mock.open.assert_called_with('name')
+    mock_io_text.assert_called_with("file contents")
+
+    with patch('io.TextIOWrapper') as mock_io_text:
+        bucket.decompress_file('test.tar')
+        mock_io_text.assert_called_once()
 
 
 @patch('io.BytesIO')
@@ -609,6 +550,16 @@ def test_aws_bucket_decompress_file_ko(mock_io):
     """Test 'decompress_file' method handles exceptions raised when trying to decompress a file and exits with the expected exit code."""
     bucket = utils.get_mocked_aws_bucket()
     bucket.client = MagicMock()
+
+    with patch('gzip.open', side_effect=[gzip.BadGzipFile, zlib.error, TypeError]), \
+            pytest.raises(SystemExit) as e:
+        bucket.decompress_file('test.gz')
+    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
+
+    with patch('zipfile.ZipFile', side_effect=zipfile.BadZipFile), \
+            pytest.raises(SystemExit) as e:
+        bucket.decompress_file('test.zip')
+    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
 
     with pytest.raises(SystemExit) as e:
         bucket.decompress_file('test.snappy')
@@ -644,14 +595,17 @@ def test_aws_bucket_get_log_file(mock_load_from_file, expected_result):
     (csv.Error, f'Failed to parse file {utils.TEST_LOG_KEY}: Error()', utils.PARSE_FILE_ERROR_CODE),
     (Exception, f'Unknown error reading/parsing file {utils.TEST_LOG_KEY}: Exception()', utils.UNKNOWN_ERROR_CODE)
 ])
+@pytest.mark.parametrize('skip_on_error', [True, False])
 @patch('aws_bucket.AWSBucket.load_information_from_file')
-@patch('aws_bucket.AWSBucket._exception_handler')
-def test_aws_bucket_get_log_file_ko(mock_exception_handler, mock_load_from_file,
+def test_aws_bucket_get_log_file_ko(mock_load_from_file,
+                                    skip_on_error: bool,
                                     exception: Exception, error_message: str, exit_code: int):
     """Test 'get_log_file' method handles exceptions raised according to their type calling '_exception_handler' method.
 
     Parameters
     ----------
+    skip_on_error: bool
+        Whether to send the error to Wazuh or exit with an error code.
     exception: Exception
         Exception that might be raised.
     error_message: str
@@ -659,46 +613,27 @@ def test_aws_bucket_get_log_file_ko(mock_exception_handler, mock_load_from_file,
     exit_code: int
         Expected exit code.
     """
-    bucket = utils.get_mocked_aws_bucket()
+    bucket = utils.get_mocked_aws_bucket(skip_on_error=skip_on_error)
     mock_load_from_file.side_effect = exception
-    bucket.get_log_file(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY)
-    mock_exception_handler.assert_called_once_with(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, error_message, exit_code)
+    if bucket.skip_on_error:
+        with patch('aws_bucket.AWSBucket.send_msg') as mock_send_msg, \
+                patch('aws_bucket.aws_tools.debug') as mock_debug, \
+                patch('aws_bucket.AWSBucket.get_alert_msg', return_value='error_msg') as mock_get_alert_msg:
+            debug_message_example = "++ {}; skipping...".format(error_message)
 
+            bucket.get_log_file(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY)
+            mock_debug.assert_called_with(debug_message_example, 1)
+            mock_get_alert_msg.assert_called_once_with(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, None, error_message)
+            mock_send_msg.assert_called_once_with(mock_get_alert_msg())
 
-@patch('aws_bucket.aws_tools.debug')
-@patch('aws_bucket.AWSBucket.get_alert_msg', return_value='error_msg')
-def test_aws_bucket__exception_handler(mock_get_alert_msg, mock_debug):
-    """Test '_exception_handler' method sends an error message to Analysisd."""
-    error_text_example = 'error text'
-    error_code_example = 0
+            mock_send_msg.side_effect = Exception
+            bucket.get_log_file(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY)
+            mock_debug.assert_called_with("++ Failed to send message to Wazuh", 1)
 
-    debug_message_example = "++ {}; skipping...".format(error_text_example)
-
-    bucket = utils.get_mocked_aws_bucket()
-    bucket.skip_on_error = True
-
-    with patch('aws_bucket.AWSBucket.send_msg') as mock_send_msg:
-        bucket._exception_handler(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, error_text_example, error_code_example)
-        mock_debug.assert_called_with(debug_message_example, 1)
-        mock_get_alert_msg.assert_called_once_with(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, None, error_text_example)
-        mock_send_msg.assert_called_once_with('error_msg')
-
-        mock_send_msg.side_effect = Exception
-        bucket._exception_handler(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, error_text_example, error_code_example)
-        mock_debug.assert_called_with("++ Failed to send message to Wazuh", 1)
-
-
-def test_aws_bucket__exception_handler_ko():
-    """Test '_exception_handler' method handles exceptions raised when trying to send an error message to Analysisd and exits with the expected error code."""
-    error_text_example = 'error text'
-    error_code_example = 0
-
-    bucket = utils.get_mocked_aws_bucket()
-    bucket.skip_on_error = False
-
-    with pytest.raises(SystemExit) as e:
-        bucket._exception_handler(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, error_text_example, error_code_example)
-    assert e.value.code == error_code_example
+    else:
+        with pytest.raises(SystemExit) as e:
+            bucket.get_log_file(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY)
+        assert e.value.code == exit_code
 
 
 @patch('aws_bucket.AWSBucket.iter_regions_and_accounts')
@@ -791,17 +726,14 @@ def test_aws_bucket_iter_events(mock_debug, mock_send_event, mock_get_alert,
 @pytest.mark.parametrize('reparse', [True, False])
 @pytest.mark.parametrize('check_prefix', [True, False])
 @pytest.mark.parametrize('delete_file', [True, False])
-@pytest.mark.parametrize('same_prefix_result', [True, False])
 @patch('aws_bucket.aws_tools.debug')
 @patch('aws_bucket.AWSBucket.build_s3_filter_args')
 def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
-                                         same_prefix_result: bool, delete_file, check_prefix, reparse, object_list):
+                                         delete_file: bool, check_prefix: bool, reparse: bool, object_list: dict):
     """Test 'iter_files_in_bucket' method makes the necessary method calls in order to process the logs inside the bucket.
 
     Parameters
     ----------
-    same_prefix_result: bool
-        Result expected to be returned by the '_same_prefix' method.
     delete_file: bool
         Whether to remove the file from the bucket or not.
     check_prefix: bool
@@ -826,8 +758,7 @@ def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
     aws_account_id = utils.TEST_ACCOUNT_ID
     aws_region = utils.TEST_REGION
 
-    with patch('aws_bucket.AWSBucket._same_prefix', return_value=same_prefix_result) as mock_same_prefix, \
-            patch('aws_bucket.AWSBucket.already_processed', return_value=True) as mock_already_processed, \
+    with patch('aws_bucket.AWSBucket.already_processed', return_value=True) as mock_already_processed, \
             patch('aws_bucket.AWSBucket.get_log_file') as mock_get_log_file, \
             patch('aws_bucket.AWSBucket.iter_events') as mock_iter_events, \
             patch('aws_bucket.AWSBucket.mark_complete') as mock_mark_complete:
@@ -857,8 +788,6 @@ def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
                 if bucket.check_prefix:
                     date_match = bucket.date_regex.search(bucket_file['Key'])
                     match_start = date_match.span()[0] if date_match else None
-
-                    mock_same_prefix.assert_called_with(match_start, aws_account_id, aws_region)
 
                     if not bucket._same_prefix(match_start, aws_account_id, aws_region):
                         mock_debug.assert_any_call(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)

@@ -20,29 +20,6 @@ class AWSServerAccess(AWSCustomBucket):
         self.date_regex = re.compile(r'(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2})')
         self.date_format = '%Y-%m-%d'
 
-    def _key_is_old(self, file_date: datetime or None, last_key_date: datetime or None) -> bool:
-        """
-        Check if the file key provided is too old to process.
-
-        Parameters
-        ----------
-        file_date : datetime or None
-            The date extracted from a file key.
-        last_key_date : datetime or None
-            The date extracted from a file key.
-
-        Returns
-        -------
-        bool
-            True if the file must be skipped, False otherwise.
-        """
-        if file_date:
-            if (self.only_logs_after and file_date < self.only_logs_after) or \
-                    (last_key_date and file_date < last_key_date):
-                return True
-
-        return False
-
     def iter_files_in_bucket(self, aws_account_id: str = None, aws_region: str = None):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region,

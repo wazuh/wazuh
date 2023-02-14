@@ -167,8 +167,9 @@ def test_aws_config_bucket__format_created_date(date: str, expected_date: str):
     ('AWSLogs/123456789/Config/us-east-1/2019/04/15/', 'AWSLogs/123456789/Config/us-east-1/2019/4/15/'),
     ('AWSLogs/123456789/Config/us-east-1/2019/12/06/', 'AWSLogs/123456789/Config/us-east-1/2019/12/6/')
 ])
-def test_aws_config_bucket__remove_padding_zeros_from_marker(marker: str, result_marker: str):
-    """Test AWSConfigBucket's '_remove_padding_zeros_from_marker' method.
+@patch('aws_bucket.AWSBucket.marker_only_logs_after')
+def test_aws_config_bucket_marker_only_logs_after(mock_marker_only_logs_after, marker: str, result_marker: str):
+    """Test 'marker_only_logs_after' method returns the expected marker.
 
     Parameters
     ----------
@@ -177,32 +178,26 @@ def test_aws_config_bucket__remove_padding_zeros_from_marker(marker: str, result
     result_marker: str
         The marker the method should return without padding zeros in the date.
     """
-    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, only_logs_after=utils.TEST_ONLY_LOGS_AFTER)
+    mock_marker_only_logs_after.return_value = result_marker
 
-    assert instance._remove_padding_zeros_from_marker(marker) == result_marker
+    assert instance.marker_only_logs_after(utils.TEST_ACCOUNT_ID,
+                                           utils.TEST_REGION) == instance._remove_padding_zeros_from_marker(marker)
 
 
-def test_aws_config_bucket__remove_padding_zeros_from_marker_ko():
-    """Test '_remove_padding_zeros_from_marker' method handles the AtrributeError exception and exits
+@patch('aws_bucket.AWSBucket.marker_only_logs_after')
+def test_aws_config_bucket_marker_only_logs_after_ko(mock_marker_only_logs_after):
+    """Test 'marker_only_logs_after' method handles the AtrributeError exception and exits
     with the expected exit code."""
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
+    mock_marker_only_logs_after.return_value = 'AWSLogs/123456789/Config/us-east-1/2019/12/06/'
 
     with patch('re.sub') as mock_re_sub:
         with pytest.raises(SystemExit) as e:
             mock_re_sub.side_effect = AttributeError
-            instance._remove_padding_zeros_from_marker('AWSLogs/123456789/Config/us-east-1/2019/12/06/')
+            instance.marker_only_logs_after(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+
         assert e.value.code == utils.THROTTLING_ERROR_CODE
-
-
-@patch('aws_bucket.AWSBucket.marker_only_logs_after')
-def test_aws_config_bucket_marker_only_logs_after(mock_marker_only_logs_after):
-    """Test 'marker_only_logs_after' method returns the expected marker."""
-    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, only_logs_after=utils.TEST_ONLY_LOGS_AFTER)
-    mock_marker_only_logs_after.return_value = f'AWSLogs/{utils.TEST_ACCOUNT_ID}/Config/{utils.TEST_REGION}/{instance.only_logs_after.strftime(instance.date_format)}'
-
-    assert instance.marker_only_logs_after(utils.TEST_ACCOUNT_ID,
-                                           utils.TEST_REGION) == instance._remove_padding_zeros_from_marker(
-        mock_marker_only_logs_after(instance, utils.TEST_ACCOUNT_ID, utils.TEST_REGION))
 
 
 @patch('aws_bucket.AWSBucket.marker_custom_date')

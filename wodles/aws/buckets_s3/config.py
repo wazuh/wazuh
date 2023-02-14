@@ -156,7 +156,7 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
             Marker generated using the only_logs_after value.
         """
         return self._remove_padding_zeros_from_marker(aws_bucket.AWSBucket.marker_only_logs_after(self, aws_region,
-                                                                                       aws_account_id))
+                                                                                                  aws_account_id))
 
     def marker_custom_date(self, aws_region: str, aws_account_id: str, date: datetime) -> str:
         """Return a marker using the specified date to pass it as a filter to the list_objects_v2 method.
@@ -178,8 +178,9 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
         str
             Marker generated using the specified date.
         """
-        return self._remove_padding_zeros_from_marker(aws_bucket.AWSBucket.marker_custom_date(self, aws_region, aws_account_id,
-                                                                                   date))
+        return self._remove_padding_zeros_from_marker(
+            aws_bucket.AWSBucket.marker_custom_date(self, aws_region, aws_account_id,
+                                                    date))
 
     def build_s3_filter_args(self, aws_account_id, aws_region, date, iterating=False):
         filter_marker = ''
@@ -249,7 +250,8 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
                         aws_tools.debug("++ File previously processed, but reparse flag set: {file}".format(
                             file=bucket_file['Key']), 1)
                     else:
-                        aws_tools.debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
+                        aws_tools.debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']),
+                                        1)
                         continue
 
                 aws_tools.debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
@@ -284,7 +286,8 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
                             aws_tools.debug("++ File previously processed, but reparse flag set: {file}".format(
                                 file=bucket_file['Key']), 1)
                         else:
-                            aws_tools.debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
+                            aws_tools.debug(
+                                "++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
                             continue
                     aws_tools.debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
                     # Get the log file from S3 and decompress it
@@ -384,4 +387,3 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
                     print("WARNING: Could not reformat event {0}".format(event))
 
         return event
-

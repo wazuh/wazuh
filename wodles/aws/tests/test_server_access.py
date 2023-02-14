@@ -26,37 +26,6 @@ def test_aws_server_access___init__(mock_custom_bucket):
 
     mock_custom_bucket.assert_called_once()
 
-
-@pytest.mark.parametrize('file_date, last_key_date, only_logs_after, is_old',
-                         [(datetime(2019, 1, 1, 0, 0), datetime(2018, 1, 1, 0, 0), '20200101', True),
-                          (datetime(2018, 1, 1, 0, 0), datetime(2020, 1, 1, 0, 0), '20190101', True),
-                          (datetime(2018, 1, 1, 0, 0), None, '20190101', True),
-                          (datetime(2020, 1, 1, 0, 0), datetime(2019, 1, 1, 0, 0), '20180101', False),
-                          (datetime(2019, 1, 1, 0, 0), datetime(2018, 1, 1, 0, 0), None, False),
-                          (None, datetime(2018, 1, 1, 0, 0), '20190101', False)
-                          ])
-def test_aws_server_access__key_is_old(only_logs_after: str or None, last_key_date: datetime or None,
-                                       file_date: datetime or None, is_old: bool):
-    """Test '_key_is_old' method returns if the file must be skipped based on its date.
-
-    Parameters
-    ----------
-    only_logs_after: str or None
-        Date after which obtain logs.
-    last_key_date: datetime or None
-        Date from the last key.
-    file_date: datetime or None
-        Date present in the filename.
-    is_old: bool
-        Expected method result.
-    """
-    with patch('wazuh_integration.WazuhIntegration.get_sts_client'):
-        instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess,
-                                           only_logs_after=only_logs_after)
-
-        assert instance._key_is_old(file_date, last_key_date) == is_old
-
-
 @pytest.mark.parametrize('object_list',
                          [utils.LIST_OBJECT_V2, utils.LIST_OBJECT_V2_NO_PREFIXES, utils.LIST_OBJECT_V2_TRUNCATED])
 @pytest.mark.parametrize('reparse', [True, False])
