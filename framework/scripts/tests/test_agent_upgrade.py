@@ -102,11 +102,11 @@ def test_create_command():
 
 
 @pytest.mark.parametrize('agents_versions, failed_agents, expected_output', [
-    ({'001': {'prev_version': '4.2.0', 'new_version': '4.3.0'}}, {'001': 'test_error'},
-     '\nUpgraded agents:\n\tAgent 001 upgraded: 4.2.0 -> 4.3.0\n\nFailed upgrades:\n\tAgent 001 status: test_error\n'),
+    ({'001': {'prev_version': '4.2.0', 'new_version': '4.4.0'}}, {'001': 'test_error'},
+     '\nUpgraded agents:\n\tAgent 001 upgraded: 4.2.0 -> 4.4.0\n\nFailed upgrades:\n\tAgent 001 status: test_error\n'),
     ({}, {}, ''),
-    ({'001': {'prev_version': '4.2.0', 'new_version': '4.3.0'}}, {},
-     '\nUpgraded agents:\n\tAgent 001 upgraded: 4.2.0 -> 4.3.0\n'),
+    ({'001': {'prev_version': '4.2.0', 'new_version': '4.4.0'}}, {},
+     '\nUpgraded agents:\n\tAgent 001 upgraded: 4.2.0 -> 4.4.0\n'),
     ({}, {'001': 'test_error'}, '\nFailed upgrades:\n\tAgent 001 status: test_error\n')
 ])
 def test_print_result(capfd, agents_versions, failed_agents, expected_output):
@@ -148,7 +148,7 @@ async def test_check_status(mock_sleep, mock_print_result, silent):
     agent_upgrade.args.version = '4.2.0'
     with patch('scripts.agent_upgrade.cluster_utils.forward_function', return_value=task_results) as mock_forward_func:
         await agent_upgrade.check_status(affected_agents=['001', '002'],
-                                         result_dict={'001': {'new_version': '4.3.0'}, '002': {'new_version': '4.3.0'}},
+                                         result_dict={'001': {'new_version': '4.4.0'}, '002': {'new_version': '4.3.0'}},
                                          failed_agents={}, silent=silent)
 
         mock_forward_func.assert_called_once_with(agent_upgrade.get_upgrade_result, f_kwargs={'agent_list': ANY})

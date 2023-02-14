@@ -87,13 +87,14 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_it
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                               configuration=cluster_config, enable_ssl=args.ssl, logger=logger,
                               cluster_items=cluster_items)
+    # Spawn pool processes
+    if my_server.task_pool is not None:
+        my_server.task_pool.map(cluster_utils.process_spawn_sleep, range(my_server.task_pool._max_workers))
+
     my_local_server = local_server.LocalServerMaster(performance_test=args.performance_test, logger=logger,
                                                      concurrency_test=args.concurrency_test, node=my_server,
                                                      configuration=cluster_config, enable_ssl=args.ssl,
                                                      cluster_items=cluster_items)
-    # Spawn pool processes
-    if my_server.task_pool is not None:
-        my_server.task_pool.map(cluster_utils.process_spawn_sleep, range(my_server.task_pool._max_workers))
     await asyncio.gather(my_server.start(), my_local_server.start())
 
 
