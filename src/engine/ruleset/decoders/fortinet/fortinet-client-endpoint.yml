@@ -16,7 +16,8 @@ sources:
   - decoder/queue-syslog/0
   - decoder/queue-localfile/0
 
-# TODO: verify how to check de event
+check:
+  - event.original: +r_match/^\S+\s\d{1,2}\s\d{1,2}:\d{1,2}:\d{1,2}\s\S+.*?\sproto=\S+\sservice=\S+\sstatus=\S+\ssrc=\S+\sdst=\S+\s
 
 parse:
   logpar:
