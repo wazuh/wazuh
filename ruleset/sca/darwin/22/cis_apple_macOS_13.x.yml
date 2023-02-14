@@ -1228,7 +1228,7 @@ checks:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxMinutesUntilChangePassword=(\d+) compare < 525601'
 
   # 5.2.8 Ensure Password History Is Configured (Automated)
-  - id: 30059
+  - id: 30047
     title: "Ensure Password History Is Configured."
     description: "Over time, passwords can be captured by third parties through mistakes, phishing attacks, third-party breaches, or merely brute-force attacks. To reduce the risk of exposure and to decrease the incentives of password reuse (passwords that are not forced to be changed periodically generally are not ever changed), users must reset passwords periodically. This control ensures that previous passwords are not reused immediately by keeping a history of previous password hashes. Ensure that password history checks are part of the password policy on the computer. This control checks whether a new password is different than the previous 15. The latest NIST guidance based on exploit research referenced in this section details how one of the greatest risks is password exposure rather than password cracking. Passwords should be changed to a new unique value whenever a password might have been exposed to anyone other than the account holder. Attackers have maintained persistent control based on predictable password change patterns and substantially different patterns should be used in case of a leak."
     rationale: "Old passwords should not be reused."
@@ -1253,12 +1253,12 @@ checks:
   # 5.3.2 Ensure all user storage CoreStorage volumes are encrypted (Manual) - Not Implemented
 
   # 5.4 Ensure the Sudo Timeout Period Is Set to Zero (Automated)
-  - id: 30060
+  - id: 30048
     title: "Ensure the Sudo Timeout Period Is Set to Zero."
     description: "The sudo command allows the user to run programs as the root user. Working as the root user allows the user an extremely high level of configurability within the system. This control, along with the control to use a separate timestamp for each tty, limits the window where an unauthorized user, process, or attacker could utilize legitimate credentials that are valid for longer than required."
     rationale: "The sudo command stays logged in as the root user for five minutes before timing out and re-requesting a password. This five-minute window should be eliminated since it leaves the system extremely vulnerable. This is especially true if an exploit were to gain access to the system, since they would be able to make changes as a root user."
     impact: "This control has a serious impact where users often have to use sudo. It is even more of an impact where users have to use sudo multiple times in quick succession as part of normal work processes. Organizations with that common use case will likely find this control too onerous and are better to accept the risk of not requiring a 0 grace period. In some ways the use of sudo -s, which is undesirable, is better than a long grace period since that use does change the hash to show that it is a root shell rather than a normal shell where sudo commands will be implemented without a password."
-    remediation: "Run the following command to edit the sudo settings: $ /usr/bin/sudo /usr/sbin/visudo -f /etc/sudoers.d/<configuration file name>. Note: Unlike other Unix and/or Linux distros, macOS will ignore configuration files in the sudoers.d folder that contain a . so do not add a file extension to the configuration file. Add the line Defaults timestamp_timeout=0 to the configuration file. If /etc/sudoers.d/ is not owned by root or in the wheel group, run the following to change ownership and group: $ /usr/bin/sudo /usr/sbin/chown -R root:wheel /etc/security/sudoers.d/."
+    remediation: "Terminal Method: Run the following command to edit the sudo settings: $ /usr/bin/sudo /usr/sbin/visudo -f /etc/sudoers.d/<configuration file name>. Note: Unlike other Unix and/or Linux distros, macOS will ignore configuration files in the sudoers.d folder that contain a . so do not add a file extension to the configuration file. Add the line Defaults timestamp_timeout=0 to the configuration file. If /etc/sudoers.d/ is not owned by root or in the wheel group, run the following to change ownership and group: $ /usr/bin/sudo /usr/sbin/chown -R root:wheel /etc/security/sudoers.d/."
     compliance:
       - cis: ["5.4"]
       - cis_csc_v8: ["4.3"]
@@ -1272,10 +1272,11 @@ checks:
       - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
-      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*timestamp_timeout=0'
+      - 'c:sh -c "sudo -V | grep -c \"Authentication timestamp timeout: 0.0 minutes\"" -> r:^1'
+      - "c:stat /etc/sudoers.d -> r:root wheel"
 
   # 5.5 Ensure a Separate Timestamp Is Enabled for Each User/tty Combo (Automated)
-  - id: 30061
+  - id: 30049
     title: "Ensure a Separate Timestamp Is Enabled for Each User/tty Combo."
     description: "Using tty tickets ensures that a user must enter the sudo password in each Terminal session. With sudo versions 1.8 and higher, introduced in 10.12, the default value is to have tty tickets for each interface so that root access is limited to a specific terminal. The default configuration can be overwritten or not configured correctly on earlier versions of macOS."
     rationale: "In combination with removing the sudo timeout grace period, a further mitigation should be in place to reduce the possibility of a background process using elevated rights when a user elevates to root in an explicit context or tty. Additional mitigation should be in place to reduce the risk of privilege escalation of background processes."
@@ -1296,15 +1297,10 @@ checks:
       - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
-      - "not f:/etc/sudoers -> r:!tty_tickets"
-      - 'not d:/etc/sudoers.d -> r:\.* -> r:!tty_tickets'
-      - "not f:/etc/sudoers -> r:timestamp_type=ppid"
-      - 'not d:/etc/sudoers.d -> r:\.* -> r:timestamp_type=ppid'
-      - "not f:/etc/sudoers -> r:timestamp_type=global"
-      - 'not d:/etc/sudoers.d -> r:\.* -> r:timestamp_type=global'
+      - 'c:sh -c "sudo -V | grep -c \"Type of authentication timestamp record: tty\"" -> r:^1'
 
   # 5.6 Ensure the "root" Account Is Disabled (Automated)
-  - id: 30062
+  - id: 30050
     title: "Ensure the 'root' Account Is Disabled."
     description: "The root account is a superuser account that has access privileges to perform any actions and read/write to any file on the computer. With some versions of Linux, the system administrator may commonly use the root account to perform administrative functions."
     rationale: "Enabling and using the root account puts the system at risk since any successful exploit or mistake while the root account is in use could have unlimited access privileges within the system. Using the sudo command allows users to perform functions as a root user while limiting and password protecting the access privileges. By default the root account is not enabled on a macOS computer. An administrator can escalate privileges using the sudo command (use -s or -i to get a root shell)."
@@ -1325,14 +1321,14 @@ checks:
       - "c:dscl . -read /Users/root AuthenticationAuthority -> r:^No such key: AuthenticationAuthority"
 
   # 5.7 Ensure an Administrator Account Cannot Login to Another User's Active and Locked Session (Automated)
-  - id: 30063
+  - id: 30051
     title: "Ensure an Administrator Account Cannot Login to Another User's Active and Locked Session."
     description: "macOS has a privilege that can be granted to any user that will allow that user to unlock active user's sessions."
     rationale: "Disabling the administrator's and/or user's ability to log into another user's active and locked session prevents unauthorized persons from viewing potentially sensitive and/or personal information."
     impact: "While Fast user switching is a workaround for some lab environments, especially where there is even less of an expectation of privacy, this setting change may impact some maintenance workflows."
-    remediation: "Run the following command to disable a user logging into another user's active and/or locked session: $ /usr/bin/sudo /usr/bin/security authorizationdb write system.login.screensaver use-login-window-ui ; YES (0)"
+    remediation: "Run the following command to disable a user logging into another user's active and/or locked session: $ /usr/bin/sudo /usr/bin/security authorizationdb write system.login.screensaver use-login-window-ui YES (0)"
     references:
-      - https://derflounder.wordpress.com/2014/02/16/managing-the-authorizationdatabase-in-os-x-mavericks/
+      - https://derflounder.wordpress.com/2014/02/16/managing-the-authorization-database-in-os-x-mavericks/
       - https://www.jamf.com/jamf-nation/discussions/18195/system-login-screensaver
     compliance:
       - cis: ["5.7"]
@@ -1350,7 +1346,7 @@ checks:
       - 'c:sh -c "security authorizationdb read system.login.screensaver | grep -c ''use-login-window-ui''" -> r:^1$'
 
   # 5.8 Ensure a Login Window Banner Exists (Automated)
-  - id: 30064
+  - id: 30052
     title: "Ensure a Login Window Banner Exists."
     description: "A Login window banner warning informs the user that the system is reserved for authorized use only. It enforces an acknowledgment by the user that they have been informed of the use policy in the banner if required. The system recognizes either the .txt and the .rtf formats."
     rationale: "An access warning may reduce a casual attacker's tendency to target the system. Access warnings may also aid in the prosecution of an attacker by evincing the attacker's knowledge of the system's private status, acceptable use policy, and authorization requirements."
@@ -1373,27 +1369,10 @@ checks:
     rules:
       - "d:/Library/Security -> r:^PolicyBanner"
 
-  # 5.9 Ensure Legacy EFI Is Valid and Updating (Automated)
-  - id: 30065
-    title: "Ensure Legacy EFI Is Valid and Updating."
-    description: "In order to mitigate firmware attacks, Apple has created an automated Firmware check to ensure that the EFI version running is a known good version from Apple. There is also an automated process to check it every seven days. This check is only valid on T1 chips and prior. Neither T2 chips nor Apple silicon require this control check."
-    rationale: "If the Firmware of a computer has been compromised, the Operating System that the Firmware loads cannot be trusted, either."
-    remediation: "If EFI does not pass the integrity check, you may send a report to Apple. Backing up files and clean installing a known good Operating System and Firmware is recommended."
-    compliance:
-      - cis: ["5.9"]
-      - cis_csc_v8: ["2.2"]
-      - cis_csc_v7: ["2.2"]
-      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073", "RM.3.147"]
-      - pci_dss_4.0: ["2.2.5", "12.3.4"]
-    condition: any
-    rules:
-      - "c:/usr/libexec/firmwarecheckers/eficheck/eficheck --integrity-check -> r:No changes detected in primary hashes"
-      - 'c:/usr/libexec/firmwarecheckers/eficheck/eficheck --integrity-check -> r:MBP133\.'
-      - 'c:sh -c "system_profiler SPiBridgeDataType | grep \"T2\"" -> r:Model Name: Apple T2 Security Chip'
-      - 'c:sh -c "launchctl list | grep com.apple.driver.eficheck" -> r:com.apple.driver.eficheck'
+  # 5.9 Ensure Legacy EFI Is Valid and Updating (Automated) - Not implemented
 
   # 5.10 Ensure the Guest Home Folder Does Not Exist (Automated)
-  - id: 30066
+  - id: 30053
     title: "Ensure the Guest Home Folder Does Not Exist."
     description: "In the previous two controls, the guest account login has been disabled and sharing to guests has been disabled, as well. There is no need for the legacy Guest home folder to remain in the file system. When normal user accounts are removed, you have the option to archive it, leave it in place, or delete. In the case of the guest folder, the folder remains in place without a GUI option to remove it. If at some point in the future a Guest account is needed, it will be re-created. The presence of the Guest home folder can cause automated audits to fail when looking for compliant settings within all User folders, as well. Rather than ignoring the folder's continued existence, it is best removed."
     rationale: "The Guest home folders are unneeded after the Guest account is disabled and could be used inappropriately."
@@ -1412,7 +1391,7 @@ checks:
       - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
     condition: all
     rules:
-      - "d:/Users/Guest"
+      - "not d:/Users/Guest"
 
   ##########################################################################
   # 6 Applications
@@ -1420,26 +1399,7 @@ checks:
 
   # 6.1 Finder
 
-  # 6.1.1 Ensure Show All Filename Extensions Setting is Enabled (Automated)
-  - id: 30067
-    title: "Ensure Show All Filename Extensions Setting is Enabled."
-    description: "A filename extension is a suffix added to a base filename that indicates the base filename's file format."
-    rationale: "Visible filename extensions allow the user to identify the file type and the application it is associated with which leads to quick identification of misrepresented malicious files."
-    impact: "The user of the system can open files of unknown or unexpected filetypes if the extension is not visible."
-    remediation: "Graphical Method: Perform the following steps to ensure file extensions are shown: 1. Open Finder 2. Select Finder in the menu bar 3. Select Settings 4. Select Advanced 5. Set Show all filename extensions to enabled. Terminal Method: Run the following command to enable displaying of file extensions: $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Preferences/.GlobalPreferences.plist AppleShowAllExtensions -bool true $ /usr/bin/sudo killall Finder Default Value: Filename extensions are turned off by default."
-    compliance:
-      - cis: ["6.1.1"]
-      - cis_csc_v8: ["2.3"]
-      - cis_csc_v7: ["2.6"]
-      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.7", "CM.2.063", "CM.3.069", "CM.4.073"]
-      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
-      - mitre_techniques: ["T1191", "T1092", "T1175", "T1173", "T1519", "T1052", "T1210", "T1133", "T1118", "T1171", "T1170", "T1046", "T1137", "T1086", "T1164", "T1121", "T1076", "T1091", "T1180", "T1064", "T1184", "T1221", "T1127", "T1028"]
-      - nist_sp_800-53: ["CM-11", "CM-7(2)", "CM-8(3)", "CM-10"]
-      - pci_dss_4.0: ["12.3.4"]
-      - soc_2: ["CC7.1"]
-    condition: all
-    rules:
-      - "c:defaults read NSGlobalDomain AppleShowAllExtensions -> r:^1$"
+  # 6.1.1 Ensure Show All Filename Extensions Setting is Enabled (Automated) - Not implemented
 
   # 6.2 Mail
 
@@ -1447,119 +1407,14 @@ checks:
 
   # 6.3 Safari
 
-  # 6.3.1 Ensure Automatic Opening of Safe Files in Safari Is Disabled (Automated)
-  - id: 30068
-    title: "Ensure Automatic Opening of Safe Files in Safari Is Disabled."
-    description: "Safari will automatically run or execute what it considers safe files. This can include installers and other files that execute on the operating system. Safari evaluates file safety by using a list of filetypes maintained by Apple. The list of files include text, image, video and archive formats that would be run in the context of the OS rather than the browser."
-    rationale: "Hackers have taken advantage of this setting via drive-by attacks. These attacks occur when a user visits a legitimate website that has been corrupted. The user unknowingly downloads a malicious file either by closing an infected pop-up or hovering over a malicious banner. An attacker can create a malicious file that will fall within Safari's safe file list that will download and execute without user input."
-    impact: "Apple considers many files that the operating system itself auto-executes as 'safe files.' Many of these files could be malicious and could execute locally without the user even knowing that a file of a specific type had been downloaded."
-    remediation: "Graphical Method: Perform the following steps to set safe files to not open after downloading in Safari: 1. Open Safari 2. Select Safari from the menu bar 3. Select Settings 4. Select General 5. Set Open 'safe' files after downloading to disabled. Terminal Method: Run the following command to disable safe files from not opening when downloaded in Safari: $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari AutoOpenSafeDownloads -bool false example:$ /usr/bin/sudo -u firstuser /usr/bin/defaults write /Users/firstuser/Library/Containers/com.apple.Safari/Data/Library/Preferences /com.apple.Safari AutoOpenSafeDownloads -bool false Note: To run the Terminal commands, Terminal must be granted Full Disk Access in the Security & Privacy pane in System Preferences. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.Safari 2. The key to include is AutoOpenSafeDownloads 3. The key must be set to: <false/> Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-    compliance:
-      - cis: ["6.3.1"]
-      - cis_csc_v8: ["9.1", "9.6"]
-      - cis_csc_v7: ["7.1", "7.9", "8.5"]
-      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.2", "SC.L2-3.13.13", "SI.L1-3.14.2"]
-      - pci_dss_4.0: ["5.4.1"]
-      - nist_sp_800-53: ["SI-8"]
-      - iso_27001-2013: ["A.8.1.3", "A.12.2.1", "A.13.1.1"]
-      - mitre_techniques: ["T1527", "T1223", "T1483", "T1189", "T1193", "T1192", "T1194", "T1528", "T1204", "T1102"]
-    condition: any
-    rules:
-      - "c:defaults read com.apple.Safari AutoOpenSafeDownloads -> r:^0$"
-      - 'c:sh -c "profiles -P -o stdout | grep AutoOpenSafeDownloads" -> r:AutoOpenSafeDownloads\s*=\s*0'
-
-  # 6.3.2 Audit History and Remove History Items (Manual)
-
-  # 6.3.3 Ensure Warn When Visiting A Fraudulent Website in Safari Is Enabled (Automated) - Not Implemented
-
-  # 6.3.4 Ensure Prevent Cross-site Tracking in Safari Is Enabled (Automated)
-  - id: 30069
-    title: "Ensure Prevent Cross-site Tracking in Safari Is Enabled."
-    description: "There is a vast network of groups that collect, use and sell user data. One method used to collect user data is pay and provide contented and services for website owners, along with that 'assistance' the site owners push tracking cookies on visitors. In many cases the help allows a content owner to keep the site up. The tracking cookies allow information brokers to track web users across visited sites. For better privacy and to provide some resistance to data brokers prevent cross-tracking."
-    rationale: "Cross-tracking allows data-brokers to follow you across the Internet to enable their business model of selling personal data. Users should protect their data and not volunteer it to marketing companies."
-    impact: "Marketing companies will be unable to target you as effectively."
-    remediation: "Graphical Method: Perform the following steps to set prevent cross-site tracking in Safari to enabled: 1. Open Safari 2. Select Safari from the menu bar 3. Select Settings 4. Select Privacy 5. Set Prevent cross-site tracking is enable. Terminal Method: Run the following command to enable Safari to prevent cross-site tracking: $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari BlockStoragePolicy -int 2 $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari WebKitPreferences.storageBlockingPolicy -int 1 $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Containers/com.apple.Safari/Data/Library/Preference s/com.apple.Safari WebKitStorageBlockingPolicy -int 1 example: $ /usr/bin/sudo -u firstuser /usr/bin/defaults write /Users/firstuser/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari BlockStoragePolicy -int 2 $ /usr/bin/sudo -u firstuser /usr/bin/defaults write /Users/firstuser/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari WebKitPreferences.storageBlockingPolicy -int 1 $ /usr/bin/sudo -u firstuser /usr/bin/defaults write /Users/firstuser/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari WebKitStorageBlockingPolicy -int 1 Note: To run the Terminal commands, Terminal must be granted Full Disk Access in the Security & Privacy pane in System Preferences. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.Safari 2. The key to include is BlockStoragePolicy 3. The key must be set to: 2 4. The key to also include is WebKitPreferences.storageBlockingPolicy 5. The key must be set to: 1 6. The key to also include is WebKitStorageBlockingPolicy 7. The key must be set to: 1 Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-    references:
-      - https://support.apple.com/guide/safari/prevent-cross-site-tracking-sfri40732/mac
-    compliance:
-      - cis: ["6.3.4"]
-      - cis_csc_v8: ["9.1"]
-      - cis_csc_v7: ["7.1"]
-      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.2"]
-      - iso_27001-2013: ["A.8.1.3", "A.12.2.1"]
-    condition: any
-    rules:
-      - "c:defaults read com.apple.Safari BlockStoragePolicy -> r:^2$"
-      - "c:defaults read com.apple.Safari WebKitPreferences.storageBlockingPolicy -> r:^1$"
-      - "c:defaults read com.apple.Safari WebKitStorageBlockingPolicy -> r:^1$"
-      - 'c:sh -c "profiles -P -o stdout | grep BlockStoragePolicy" -> r:BlockStoragePolicy\s*=\s*2'
-      - 'c:sh -c "profiles -P -o stdout | grep WebKitPreferences.storageBlockingPolicy" -> r:WebKitPreferences.storageBlockingPolicy\s*=\s*1'
-      - 'c:sh -c "profiles -P -o stdout | grep WebKitStorageBlockingPolicy" -> r:WebKitStorageBlockingPolicy\s*=\s*1'
-
-  # 6.3.5 Audit Hide IP Address in Safari Setting (Manual) - Not Implemented
-
-  # 6.3.6 Ensure Advertising Privacy Protection in Safari Is Enabled (Automated)
-  - id: 30070
-    title: "Ensure Advertising Privacy Protection in Safari Is Enabled."
-    description: "Apple provides a framework that allows advertisers to target Apple users and end-users with advertisements. While many people prefer that when they see advertising it is relevant to them and their interests, the detailed information that is data mining collected, correlated, and available to advertisers in repositories is often disconcerting. This information is valuable to both advertisers and attackers and has been used with other metadata to reveal users' identities. Organizations should manage advertising settings on computers rather than allow users to configure the settings. https://www.apple.com/legal/privacy/data/en/apple-advertising/ Ad tracking should be limited on 10.15 and prior."
-    rationale: "Organizations should manage user privacy settings on managed devices to align with organizational policies and user data protection requirements."
-    impact: "Uses will see generic advertising rather than targeted advertising. Apple warns that this will reduce the number of relevant ads."
-    remediation: "Graphical Method: Perform the following steps to set Safari to allow privacy-preserving measurement of ad effectiveness: 1. Open Safari 2. Select Safari from the menu bar 3. Select Settings 4. Select Privacy 5. Set Allow privacy-preserving measurement of ad effectiveness to enabled. Terminal Method: Run the following command to enable allow privacy-preserving measurement of ad effectiveness in Safari: $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari WebKitPreferences.privateClickMeasurementEnabled -bool true example: $ /usr/bin/sudo -u firstuser /usr/bin/defaults write /Users/firstuser/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari WebKitPreferences.privateClickMeasurementEnabled -bool true Note: To run the Terminal commands, Terminal must be granted Full Disk Access in the Security & Privacy pane in System Preferences."
-    compliance:
-      - cis: ["6.3.6"]
-      - cis_csc_v8: ["9.1"]
-      - cis_csc_v7: ["7.1"]
-      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.2"]
-      - iso_27001-2013: ["A.8.1.3", "A.12.2.1"]
-    condition: all
-    rules:
-      - "c:defaults read com.apple.Safari WebKitPreferences.privateClickMeasurementEnabled -> r:^1$"
-
-  # 6.3.7 Ensure Show Full Website Address in Safari Is Enabled (Automated)
-  - id: 30071
-    title: "Ensure Show Full Website Address in Safari Is Enabled."
-    description: "Attackers use websites with malicious or unwanted content to exploit the user or the computer. Part of the attack chain is to lure someone to load their content rather than the desired content. In order to reduce the risk in interacting with unwanted content the full website address should always be displayed in Safari."
-    rationale: "Full visibility into what site is being visited is important for privacy and security."
-    impact: "Many URLs are very long and complicated, particularly for internal content management systems. Some complete URLS in the Smart Search Field may be difficult to parse."
-    remediation: "Graphical Method: Perform the following steps to set Safari to show full website addresses: 1. Open Safari 2. Select Safari from the menu bar 3. Select Settings 4. Select Security 5. Set Show full website address to enabled Terminal Method: Run the following command to enable showing full website addresses in Safari: $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari ShowFullURLInSmartSearchField -bool true example: $ /usr/bin/sudo -u firstuser /usr/bin/defaults write /Users/firstuser/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari ShowFullURLInSmartSearchField -bool true Note: To run the Terminal commands, Terminal must be granted Full Disk Access in the Security & Privacy pane in System Preferences. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.Safari 2. The key to include is ShowFullURLInSmartSearchField 3. The key must be set to: <true/> Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-    references:
-      - https://apple.stackexchange.com/questions/371473/always-show-full-url-insafari-address-bar
-    compliance:
-      - cis: ["6.3.7"]
-      - cis_csc_v8: ["9.1"]
-      - cis_csc_v7: ["7.1"]
-      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.2"]
-      - iso_27001-2013: ["A.8.1.3", "A.12.2.1"]
-    condition: any
-    rules:
-      - "c:defaults read com.apple.Safari ShowFullURLInSmartSearchField -> r:^1$"
-      - 'c:sh -c "profiles -P -o stdout | grep ShowFullURLInSmartSearchField" -> r:ShowFullURLInSmartSearchField\s*=\s*1'
+  # 6.3.1 Ensure Automatic Opening of Safe Files in Safari Is Disabled (Automated) - Not implemented
+  # 6.3.2 Audit History and Remove History Items (Manual) - Not implemented
+  # 6.3.3 Ensure Warn When Visiting A Fraudulent Website in Safari Is Enabled (Automated) - Not implemented
+  # 6.3.4 Ensure Prevent Cross-site Tracking in Safari Is Enabled (Automated) - Not implemented
+  # 6.3.5 Audit Hide IP Address in Safari Setting (Manual) - Not implemented
+  # 6.3.6 Ensure Advertising Privacy Protection in Safari Is Enabled (Automated) - Not implemented
+  # 6.3.7 Ensure Show Full Website Address in Safari Is Enabled (Automated) - Not implemented
 
   # 6.4 Terminal
 
-  # 6.4.1 Ensure Secure Keyboard Entry Terminal.app Is Enabled (Automated)
-  - id: 30072
-    title: "Ensure Secure Keyboard Entry Terminal.app Is Enabled."
-    description: "Secure Keyboard Entry prevents other applications on the system and/or network from detecting and recording what is typed into Terminal. Unauthorized applications and malicious code could intercept keystrokes entered in the Terminal."
-    rationale: "Enabling Secure Keyboard Entry minimizes the risk of a key logger from detecting what is entered in Terminal."
-    impact: "Enabling this in Terminal would prevent an application that is otherwise validly intercepting keyboard input from intercepting that input in Terminal.app. This could impact productivity tools."
-    remediation: "Graphical Method: Perform the following steps to enable secure keyboard entries in Terminal: 1. Open the Applications folder 2. Open the Utilities folder 3. Open Terminal 4. Select Terminal in the Menu Bar 5. Set Secure Keyboard Entry to enabled. Terminal Method: $ /usr/bin/sudo -u <username> /usr/bin/defaults write -app Terminal SecureKeyboardEntry -bool true example: $ /usr/bin/sudo -u firstuser /usr/bin/defaults write -app Terminal SecureKeyboardEntry -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.Terminal 2. The key to include is SecureKeyboardEntry 3. The key must be set to <true/> Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-    references:
-      - https://support.apple.com/en-ca/guide/terminal/trml109/mac
-      - https://developer.apple.com/library/archive/technotes/tn2150/_index.html
-      - https://krypted.com/mac-os-x/secure-keyboard-entry-on-macos/
-    compliance:
-      - cis: ["6.4.1"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["4.1", "5.1", "9.2"]
-      - cmmc_v2.0: ["CM.3.068", "SC.5.230", "AC.3.018", "AC.1.002", "CM.2.061", "SC.3.180", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.9.2.3", "A.8.1.3", "A.14.2.5", "A.13.1.3"]
-      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
-      - nist_sp_800-53: ["SI-4", "AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
-    rules:
-      - "c:defaults read -app Terminal SecureKeyboardEntry -> r:^1$|does not exist"
-      - 'c:sh -c "profiles -P -o stdout | grep SecureKeyboardEntry" -> r:SecureKeyboardEntry\s*=\s*1'
+  # 6.4.1 Ensure Secure Keyboard Entry Terminal.app Is Enabled (Automated) - Not implemented
