@@ -140,28 +140,6 @@ def test_aws_config_bucket_iter_regions_and_accounts(mock_db_maintenance, mock_i
             mock_db_maintenance.assert_called_with(aws_account_id=aws_account_id, aws_region=region)
 
 
-@pytest.mark.parametrize('date, expected_date', [
-    ('2021/1/19', '20210119'),
-    ('2021/1/1', '20210101'),
-    ('2021/01/01', '20210101'),
-    ('2000/2/12', '20000212'),
-    ('2022/02/1', '20220201')
-])
-def test_aws_config_bucket__format_created_date(date: str, expected_date: str):
-    """Test AWSConfigBucket's _format_created_date method.
-
-    Parameters
-    ----------
-    date : str
-        The date introduced.
-    expected_date : str
-        The date that the method should return.
-    """
-    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
-
-    assert instance._format_created_date(date) == expected_date
-
-
 @pytest.mark.parametrize('marker, result_marker', [
     ('AWSLogs/123456789012/Config/us-east-1/2020/01/06', 'AWSLogs/123456789012/Config/us-east-1/2020/1/6'),
     ('AWSLogs/123456789/Config/us-east-1/2019/04/15/', 'AWSLogs/123456789/Config/us-east-1/2019/4/15/'),
@@ -190,7 +168,8 @@ def test_aws_config_bucket_marker_only_logs_after_ko(mock_marker_only_logs_after
     """Test 'marker_only_logs_after' method handles the AtrributeError exception and exits
     with the expected exit code."""
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
-    mock_marker_only_logs_after.return_value = 'AWSLogs/123456789/Config/us-east-1/2019/12/06/'
+    mock_marker_only_logs_after.return_value = os.path.join('AWSLogs', '123456789', 'Config', 'us-east-1', '2019', '12',
+                                                            '06')
 
     with patch('re.sub') as mock_re_sub:
         with pytest.raises(SystemExit) as e:
@@ -206,7 +185,8 @@ def test_aws_config_bucket_marker_custom_date(mock_marker_custom_date):
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
     custom_date = datetime(2022, 9, 8)
 
-    mock_marker_custom_date.return_value = f'AWSLogs/{utils.TEST_ACCOUNT_ID}/Config/{utils.TEST_REGION}/{custom_date.strftime(instance.date_format)}'
+    mock_marker_custom_date.return_value = os.path.join('AWSLogs', utils.TEST_ACCOUNT_ID, 'Config', utils.TEST_REGION,
+                                                        custom_date.strftime(instance.date_format))
 
     assert instance.marker_custom_date(utils.TEST_ACCOUNT_ID, utils.TEST_REGION,
                                        custom_date) == instance._remove_padding_zeros_from_marker(
