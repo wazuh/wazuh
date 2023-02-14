@@ -1449,6 +1449,8 @@ static int CheckEventJSON(cJSON *event, cJSON **scan_id, cJSON **id, cJSON **nam
 
         if ( *result = cJSON_GetObjectItem(*check, "result"), !*result) {
             *result = cJSON_CreateString("not applicable");
+            cJSON_AddItemToObject(*check, "result", *result);
+            cJSON_ReplaceItemInObject(event, "check", *check);
         } else {
             obj = *result;
             if(!obj->valuestring ) {
