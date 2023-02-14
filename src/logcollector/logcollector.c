@@ -1526,7 +1526,10 @@ int check_pattern_expand(int do_seek) {
                 int totalFiles = 0;
                 char *full_path = NULL;
 
-                while (NULL != result[++totalFiles]);
+                while (NULL != result[totalFiles])
+                {
+                    totalFiles++;
+                }
                 totalFiles %= maximum_files;
 
                 for (file = 0; file < totalFiles; file++) {
@@ -1537,6 +1540,7 @@ int check_pattern_expand(int do_seek) {
                     for (i = 0; globs[j].gfiles[i].file; i++) {
                         if (!strcmp(globs[j].gfiles[i].file, full_path)) {
                             found = 1;
+                            os_free(full_path);
                             break;
                         }
                     }
@@ -1558,6 +1562,7 @@ int check_pattern_expand(int do_seek) {
                                 NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
                             if (h1 == INVALID_HANDLE_VALUE) {
+                                os_free(full_path);
                                 continue;
                             }
 
