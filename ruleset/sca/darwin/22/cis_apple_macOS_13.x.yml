@@ -517,7 +517,7 @@ checks:
   # 2.3.4 Time Machine
 
   # 2.3.4.1 Ensure Backup Automatically is Enabled If Time Machine Is Enabled (Automated)
-  - id: 30022
+  - id: 30020
     title: "Ensure Backup Automatically is Enabled If Time Machine Is Enabled."
     description: 'Backup solutions are only effective if the backups run on a regular basis. The time to check for backups is before the hard drive fails or the computer goes missing. In order to simplify the user experience so that backups are more likely to occur, Time Machine should be on and set to Back Up Automatically whenever the target volume is available. Operational staff should ensure that backups complete on a regular basis and the backups are tested to ensure that file restoration from backup is possible when needed. Backup dates are available even when the target volume is not available in the Time Machine plist. SnapshotDates = ("2012-08-20 12:10:22 +0000","2013-02-03 23:43:22 +0000","2014-02-19 21:37:21 +0000","2015-02-22 13:07:25 +0000", "2016-08-20 14:07:14 +0000" When the backup volume is connected to the computer more extensive information is available through tmutil. See man tmutil.'
     rationale: "Backups should automatically run whenever the backup drive is available."
@@ -525,8 +525,8 @@ checks:
     remediation: "Graphical Method: Perform the following steps to enable Time Machine automatic backup: Open System Settings. Select General. Select Time Machine. Select Options... Set Back up frequency to Automatically <every hour/every day/every week> Terminal Method: Run the following command to enable automatic backups if Time Machine is enabled: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.TimeMachine.plist AutoBackup -bool true Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.TimeMachine The key to include is Forced. The key must be set to: <array> <dict> <key>mcx_preference_settings</key> <dict> <key>AutoBackup</key> <true/> </dict> </dict> </array"
     compliance:
       - cis: ["2.3.4.1"]
-      - cis_csc_v8: ["10.1"]
-      - cis_csc_v7: ["11.2"]
+      - cis_csc_v8: ["11.2"]
+      - cis_csc_v7: ["10.1"]
       - cmmc_v2.0: ["RM.5.152", "SI.L1-3.14.2"]
       - hipaa: ["164.308(a)(5)(ii)(B)"]
       - nist_sp_800-53: ["CA-3", "CA-9"]
@@ -535,15 +535,15 @@ checks:
       - soc_2: ["CC6.8"]
     condition: any
     rules:
-      - "c:defaults read /Library/Preferences/com.apple.TimeMachine.plist AutoBackup -> r:^1$"
-      - 'c:sh -c "profiles -P -o stdout | grep AutoBackup" -> r:AutoBackup\s*=\s*1'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.TimeMachine'').objectForKey(''AutoBackup'')" -> r:^1$'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.TimeMachine'').objectForKey(''LastDestinationID'')" -> r:^\.+$'
 
-  #2.3.4.2 Ensure Time Machine Volumes Are Encrypted If Time Machine Is Enabled (Automated)
-  - id: 30023
+  # 2.3.4.2 Ensure Time Machine Volumes Are Encrypted If Time Machine Is Enabled (Automated)
+  - id: 30021
     title: "Ensure Time Machine Volumes Are Encrypted If Time Machine Is Enabled."
     description: "One of the most important security tools for data protection on macOS is FileVault. With encryption in place it makes it difficult for an outside party to access your data if they get physical possession of the computer. One very large weakness in data protection with FileVault is the level of protection on backup volumes. If the internal drive is encrypted but the external backup volume that goes home in the same laptop bag is not it is self-defeating. Apple tries to make this mistake easily avoided by providing a checkbox to enable encryption when setting-up a Time Machine backup. Using this option does require some password management, particularly if a large drive is used with multiple computers. A unique complex password to unlock the drive can be stored in keychains on multiple systems for ease of use. While some portable drives may contain non-sensitive data and encryption may make interoperability with other systems difficult backup volumes should be protected just like boot volumes."
     rationale: "Backup volumes need to be encrypted."
-    remediation: "Perform the following steps to enable encryption on the Time Machine drive: Open System Settings. Select General. Select Time Machine. Select the unencrypted drive. Select - to forget that drive as a destination. Select + to add a different drive as the destination. Select Set Up Disk... Set Encrypt Backup to enabled. Enter a password in the New Password and the same password in the Re-enter Password fields. A password hint is required, but it is recommended that you do not use any identifying information for the password. Note: In macOS 12.0 Monterey and previous, the existing Time Machine drive could have encryption added without formatting it. This is no longer possible in macOS 13.0 Ventura. If you with to keep previous backups from the unencrypted volume, you will need to manually move those files over to the new encrypted drive."
+    remediation: "Perform the following steps to enable encryption on the Time Machine drive: 1 Open System Settings. 1 Select General. 3 Select Time Machine. 4 Select the unencrypted drive. 5 Select - to forget that drive as a destination. 6 Select + to add a different drive as the destination. 7 Select Set Up Disk... 8 Set Encrypt Backup to enabled. 9 Enter a password in the New Password and the same password in the Re-enter Password fields. 10 A password hint is required, but it is recommended that you do not use any identifying information for the password. Note: In macOS 12.0 Monterey and previous, the existing Time Machine drive could have encryption added without formatting it. This is no longer possible in macOS 13.0 Ventura. If you with to keep previous backups from the unencrypted volume, you will need to manually move those files over to the new encrypted drive."
     compliance:
       - cis: ["2.3.4.2"]
       - cis_csc_v8: ["3.6", "3.11", "11.3"]
@@ -558,69 +558,26 @@ checks:
       - soc_2: ["CC6.1", "CC6.4", "CC6.7", "A1.2"]
     condition: all
     rules:
-      - "c:defaults read /Library/Preferences/com.apple.TimeMachine.plist | grep -c NotEncrypted -> r:^0$"
+      - 'c: sh -c "defaults read /Library/Preferences/com.apple.TimeMachine.plist | grep -c NotEncrypted" -> r:^0$'
 
   # 2.4 Control Center
 
-  # 2.4.1 Ensure Show Wi-Fi status in Menu Bar Is Enabled (Automated)
-  - id: 30024
-    title: "Ensure Show Wi-Fi status in Menu Bar Is Enabled."
-    description: "The Wi-Fi status in the menu bar indicates if the system's wireless internet capabilities are enabled. If so, the system will scan for available wireless networks in order to connect. At the time of this revision, all computers Apple builds have wireless network capability, which has not always been the case. This control only pertains to systems that have a wireless NIC available. Operating systems running in a virtual environment may not score as expected, either."
-    rationale: 'Enabling "Show Wi-Fi status in menu bar" is a security awareness method that helps mitigate public area wireless exploits by making the user aware of their wireless connectivity status.'
-    impact: "The user of the system should have a quick check on their wireless network status available."
-    remediation: "Graphical Method: Perform the following steps to enable Wi-Fi status in the menu bar: Open System Settings. Select Control Center. Set Wi-Fi to Show in Menu Bar. Terminal Method: For each user, run the following command to enable Wi-Fi status in the menu bar: $ /usr/bin/sudo -u <username> /usr/bin/defaults -currentHost write com.apple.controlcenter.plist WiFi -int 2 example: $ /usr/bin/sudo -u firstuser /usr/bin/defaults -currentHost write com.apple.controlcenter.plist WiFi -int 2 Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.controlcenter. The key to include is WiFi. The key must be set to <integer>18</integer> Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-    compliance:
-      - cis: ["2.4.1"]
-      - cis_csc_v8: ["4.8", "12.6"]
-      - cis_csc_v7: ["15.4", "15.5"]
-      - cmmc_v2.0: ["AC.2.015", "AC.L2-3.1.17", "AC.L2-3.1.13", "IA.L1-3.5.2", "SC.L1-3.13.1", "SC.L2-3.13.15", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.2.5", "2.2.4", "2.1.1", "4.1.1", "6.4.1"]
-      - soc_2: ["CC6.1", "CC6.3", "CC6.6"]
-    condition: any
-    rules:
-      - "c:defaults -currentHost read com.apple.controlcenter.plist WiFi -> r:^2$"
-      - 'c:sh -c "profiles -P -o stdout | grep WiFi" -> r:WiFi\s*=\s*1'
-
-  # 2.4.2 Ensure Show Bluetooth Status in Menu Bar Is Enabled (Automated)
-  - id: 30025
-    title: "Ensure Show Bluetooth Status in Menu Bar Is Enabled."
-    description: "By showing the Bluetooth status in the menu bar, a small Bluetooth icon is placed in the menu bar. This icon quickly shows the status of Bluetooth, and can allow the user to quickly turn Bluetooth on or off."
-    rationale: 'Enabling "Show Bluetooth status in menu bar" is a security awareness method that helps understand the current state of Bluetooth, including whether it is enabled, discoverable, what paired devices exist, and what paired devices are currently active.'
-    impact: "Bluetooth is a useful wireless tool that has been widely exploited when configured improperly. The user should have insight into the Bluetooth status."
-    remediation: "Graphical Method: Perform the following steps to enable Bluetooth status in the menu bar: Open System Settings. Select Control Center. Set Bluetooth to Show in Menu Bar. Terminal Method: For each user, run the following command to enable Bluetooth status in the menu bar: $ /usr/bin/sudo -u <username> /usr/bin/defaults -currentHost write com.apple.controlcenter.plist Bluetooth -int 18 example: $ /usr/bin/sudo -u firstuser /usr/bin/defaults -currentHost write com.apple.controlcenter.plist Bluetooth -int 18 Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.controlcenter. The key to include is Bluetooth. The key must be set to <integer>18</integer>. Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-    references:
-      -
-    compliance:
-      - cis: ["2.4.1"]
-      - cis_csc_v8: ["4.8", "13.9"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "CM.L2-3.4.8", "CM.3.068", "SC.5.230", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
-      - nist_sp_800-53: ["SI-4"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.2.1", "1.2.5", "1.2.6", "2.2.4", "2.2.2", "2.2.5", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition: any
-    rules:
-      - "c:defaults -currentHost read com.apple.controlcenter.plist Bluetooth -> r:^1$8"
-      - 'c:sh -c "profiles -P -o stdout | grep Bluetooth" -> r:Bluetooth\s*=\s*1'
+  # 2.4.1 Ensure Show Wi-Fi status in Menu Bar Is Enabled (Automated) - Not implemented
+  # 2.4.2 Ensure Show Bluetooth Status in Menu Bar Is Enabled (Automated) - Not implemented
 
   # 2.5 Siri & Spotlight
 
   # 2.5.1 Audit Siri Settings (Manual) - Not Implemented
 
   # 2.6 Privacy & Security
-
   # 2.6.1 Location Services
+
   # 2.6.1.1 Ensure Location Services Is Enabled (Automated)
-  - id: 30026
+  - id: 30022
     title: "Ensure Location Services Is Enabled."
     description: "macOS uses location information gathered through local Wi-Fi networks to enable applications to supply relevant information to users. With the operating system verifying the location, users do not need to change the time or the time zone. The computer will change them based on the user's location. They do not need to specify their location for weather or travel times, and they will receive alerts on travel times to meetings and appointment where location information is supplied. Location Services simplify some processes with mobile computers, such as asset management and time or log management. There are some use cases where it is important that the computer not be able to report its exact location. While the general use case is to enable Location Services, it should not be allowed if the physical location of the computer and the user should not be public knowledge."
     rationale: "Location Services are helpful in most use cases and can simplify log and time management where computers change time zones."
-    remediation: "Graphical Method: Perform the following steps to enable Location Services: Open System Settings. Select Privacy & Security. Select Location Services. Set Location Services to enabled. Terminal Method: Run the following command to enable Location Services: $ /usr/bin/sudo /bin/launchctl load -w /System/Library/LaunchDaemons/com.apple.locationd.plist If the com.apple.locationd.plist outputs 0, run the following command to also ensure Location Services is running: $ /usr/bin/sudo /usr/bin/defaults write /var/db/locationd/Library/Preferences/ByHost/com.apple.locationd LocationServicesEnabled -bool false $ /usr/bin/sudo /bin/launchctl kickstart -k system/com.apple.locationd Note: In some use cases, organizations may not want Location Services running. To disable Location Services, System Integrity Protection must be disabled."
+    remediation: "Graphical Method: Perform the following steps to enable Location Services: 1 Open System Settings. 2 Select Privacy & Security. 3 Select Location Services. 4 Set Location Services to enabled. Terminal Method: Run the following command to enable Location Services: $ /usr/bin/sudo /bin/launchctl load -w /System/Library/LaunchDaemons/com.apple.locationd.plist If the com.apple.locationd.plist outputs 0, run the following command to also ensure Location Services is running: $ /usr/bin/sudo /usr/bin/defaults write /var/db/locationd/Library/Preferences/ByHost/com.apple.locationd LocationServicesEnabled -bool false $ /usr/bin/sudo /bin/launchctl kickstart -k system/com.apple.locationd Note: In some use cases, organizations may not want Location Services running. To disable Location Services, System Integrity Protection must be disabled."
     references:
       - https://support.apple.com/en-us/HT204690
     compliance:
@@ -637,14 +594,15 @@ checks:
     condition: all
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.locationd" -> r:^1$'
+      - 'c:sudo -u _locationd /usr/bin/osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.locationd'').objectForKey(''LocationServicesEnabled'')" -> r:^1$'
 
   # 2.6.1.2 Ensure Location Services Is in the Menu Bar (Automated)
-  - id: 30027
+  - id: 30023
     title: "Ensure Location Services Is in the Menu Bar."
     description: "This setting provides the user to understand the current status of Location Services and which applications are using it."
     rationale: 'Apple has fully integrated location services into macOS. Where the computer is currently located is used for Timezones, weather, travel times, geolocation, "Find my Mac" and advertising services. This benchmark recommends that location services are enabled for most users. Many users may have occasions when they do not want to share their current locations, some users may need to rarely share their locations. The immediate availability of Location Services in the menu bar provides easy access to the current status, which applications are using the service and a quick shortcut to making changes. This setting provides better user control in managing user privacy.'
     impact: "Users may be provided visibility to a setting they cannot control if organizations control Location Services globally by policy."
-    remediation: "Perform the following steps to set whether the location services icon is in the menu bar: Open System Settings. Select Privacy & Security. Select Location Services. Select Details... Set Show location icon in menu bar when System Services request your location to your organization's parameters. Terminal Method: Run the following commands to set the option of the location services icon being in the menu bar: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.locationmenu.plist ShowSystemServices -bool <true/false>"
+    remediation: "Perform the following steps to set whether the location services icon is in the menu bar: 1 Open System Settings. 2 Select Privacy & Security. 3 Select Location Services. 4 Select Details... 5 Set Show location icon in menu bar when System Services request your location to your organization's parameters. Terminal Method: Run the following commands to set the option of the location services icon being in the menu bar: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.locationmenu.plist ShowSystemServices -bool <true/false>"
     compliance:
       - cis: ["2.6.1.2"]
       - cis_csc_v8: ["4.1", "4.8"]
@@ -658,65 +616,33 @@ checks:
       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:defaults read /Library/Preferences/com.apple.locationmenu.plist ShowSystemServices -> r:true"
+      - "c:defaults read /Library/Preferences/com.apple.locationmenu.plist ShowSystemServices -> r:^1$|^true$"
 
   # 2.6.1.3 Audit Location Services Access (Manual) - Not Implemented
 
-  # 2.6.2 Ensure Sending Diagnostic and Usage Data to Apple Is Disabled (Automated)
-  - id: 30028
-    title: "Ensure Sending Diagnostic and Usage Data to Apple Is Disabled."
-    description: "Apple provides a mechanism to send diagnostic and analytics data back to Apple to help them improve the platform. Information sent to Apple may contain internal organizational information that should be controlled and not available for processing by Apple. Turn off all Analytics and Improvements sharing. Share Mac Analytics (Share with App Developers dependent on Mac Analytic sharing) Includes diagnostics, usage and location data. Share iCloud Analytics Includes iCloud data and usage information."
-    rationale: "Organizations should have knowledge of what is shared with the vendor and that this setting automatically forwards information to Apple."
-    remediation: "Perform the following steps to disable diagnostic data being sent to Apple: Open System Settings. Select Privacy & Security. Select Analytics & Improvements. Select Analytics & Improvements. Set Share Mac Analytics to disabled. Set Share with App Developers to disabled. Set Improve Siri & Dictation to disabled. Terminal Method: Run the following commands to disable the sending of diagnostic data to Apple: $ /usr/bin/sudo /usr/bin/defaults write /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist AutoSubmit -bool false /usr/bin/sudo /usr/bin/defaults write /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist ThirdPartyDataSubmit -bool false $ /usr/bin/sudo /bin/chmod 644 /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist $ /usr/bin/sudo /usr/sbin/chgrp admin /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist $ /usr/bin/sudo -u <username> /usr/bin/defaults write /Users/<username>/Library/Preferences/com.apple.assistant.support \"Siri Data Sharing Opt-In Status\" -int 2 example: $ /usr/bin/sudo -u seconduser /usr/bin/defaults write /Users/seconduser/Library/Preferences/com.apple.assistant.support \"Siri Data Sharing Opt-In Status\" -int 2 Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.applicationaccess. The key to include is allowDiagnosticSubmission. The key must be set to <false/>. The key to also include is Siri Data Sharing Opt-In Status. The key must be set to <integer>2<integer/>. There must also be a second PayloadType string of com.apple.SubmitDiagInfo. The key to include is AutoSubmit. The key must be set to <false/>. Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-    references:
-      - https://support.apple.com/en-ca/guide/mac-help/mh27990/mac
-    compliance:
-      - cis: ["2.6.2"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230"]
-      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
-      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
-      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21", "SI-4", "CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_3.2.1: ["2.2", "11.5", "1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1", "1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-    condition: any
-    rules:
-      - 'c:defaults read /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist AutoSubmit -> r:^0$'
-      - 'c:sh -c "profiles -P -o stdout | grep allowDiagnosticSubmission" -> r:allowDiagnosticSubmission\s*=\s*0'
-
-  # 2.6.3 Ensure Limit Ad Tracking Is Enabled (Automated) - Not Implemented
-
+  # 2.6.2 Ensure Sending Diagnostic and Usage Data to Apple Is Disabled (Automated) - Not implemented
+  # 2.6.3 Ensure Limit Ad Tracking Is Enabled (Automated) - Not implemented
   # 2.6.4 Ensure Gatekeeper Is Enabled (Automated)
-  - id: 30029
+  - id: 30024
     title: "Ensure Gatekeeper Is Enabled."
     description: "Gatekeeper is Apple's application that utilizes allowlisting to restrict downloaded applications from launching. It functions as a control to limit applications from unverified sources from running without authorization. In an update to Gatekeeper in macOS 13 Ventura, Gatekeeper checks every application on every launch, not just quarantined apps."
     rationale: "Disallowing unsigned software will reduce the risk of unauthorized or malicious applications from running on the system."
-    remediation: "Graphical Method: Perform the following steps to enable Gatekeeper: Open System Settings. Select Privacy & Security. Set 'Allow apps downloaded from' to 'App Store and identified developers' Terminal Method: Run the following command to enable Gatekeeper to allow applications from App Store and identified developers: $ /usr/bin/sudo /usr/sbin/spctl --master-enable Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.systempolicy.control. The key to include is AllowIdentifiedDevelopers. The key must be set to <true/>. The key to also include is EnableAssessment. The key must be set to <true/>"
+    remediation: "Graphical Method: Perform the following steps to enable Gatekeeper: 1 OpenSystemSettings 2 Select Privacy & Security 3 Set'Allowappsdownloadedfrom' to 'AppStoreandidentifieddevelopers'. Terminal Method: Run the following command to enable Gatekeeper to allow applications from App Store and identified developers: $ /usr/bin/sudo /usr/sbin/spctl --master-enable. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.systempolicy.control 2. The key to include is AllowIdentifiedDevelopers 3. The key must be set to <true/> 4. The key to also include is EnableAssessment 5. The key must be set to <true/> "
     compliance:
       - cis: ["2.6.4"]
       - cis_csc_v8: ["10.1", "10.2", "10.5"]
       - cis_csc_v7: ["8.2", "8.4"]
-      - cmmc_v2.0: ["SI.1.212", "SI.1.213", "SI.L1-3.14.2", "SI.L1-3.14.4"]
-      - hipaa: ["164.308(a)(5)(ii)(B)"]
-      - iso_27001-2013: ["A.12.2.1"]
-      - mitre_techniques: ["T1215", "T1027", "T1045", "T1193", "T1194", "T1221", "T1200", "T1091", "T1103", "T1017", "T1138", "T1073", "T1189", "T1190", "T1212", "T1211", "T1068", "T1210", "T1495", "T1137", "T1075", "T1195", "T1019", "T1072", "T1100"]
-      - nist_sp_800-53: ["SI-3", "SI-16"]
-      - pci_dss_3.2.1: ["5.1.1", "5.2", "11.4", "5.1"]
-      - pci_dss_4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.1", "5.3.2"]
-      - soc_2: ["CC6.8"]
     condition: all
     rules:
       - "c:spctl --status -> r:^assessments enabled"
 
   # 2.6.5 Ensure FileVault Is Enabled (Automated)
-  - id: 30030
+  - id: 30025
     title: "Ensure FileVault Is Enabled."
     description: "FileVault secures a system's data by automatically encrypting its boot volume and requiring a password or recovery key to access it. FileVault should be used with a saved escrow key to ensure that the owner can decrypt their data if the password is lost. FileVault may also be enabled using command line using the fdesetup command. To use this functionality, consult the Der Flounder blog for more details (see link below under References)."
     rationale: "Encrypting sensitive data minimizes the likelihood of unauthorized users gaining access to it."
     impact: "Mounting a FileVault encrypted volume from an alternate boot source will require a valid password to decrypt it."
-    remediation: "Perform the following steps to enable FileVault: Open System Settings. Select Security & Privacy. Select Turn On... Note: This will allow you to create a recovery key for FileVault. Keep the key saved securely in case it is needed at a later date. Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.MCX. The key to include is dontAllowFDEDisable. The key must be set to <true/>. Note: This profile is required to pass the audit."
+    remediation: "Graphical Method: Perform the following steps to enable FileVault: 1 Open System Settings. 2 Select Security & Privacy. 3 Select Turn On... Note: This will allow you to create a recovery key for FileVault. Keep the key saved securely in case it is needed at a later date. Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.MCX. The key to include is dontAllowFDEDisable. The key must be set to <true/>. Note: This profile is required to pass the audit."
     references:
       - https://derflounder.wordpress.com/2015/02/02/managing-yosemites-filevault-2-with-fdesetup/
       - https://derflounder.wordpress.com/2019/01/15/unlock-or-decrypt-your-filevault-encrypted-boot-drive-from-the-command-line-on-macos-mojave/
@@ -733,38 +659,17 @@ checks:
       - pci_dss_3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition: all
+    condition: any
     rules:
       - "c:fdesetup status -> r:^FileVault is On"
+      - 'c:osascript -l JavaScript -e "osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''dontAllowFDEDisable'')" -> r:^0$'
 
   # 2.6.6 Audit Lockdown Mode (Manual) - Not Implemented
   # 2.6.7 Ensure an Administrator Password Is Required to Access System-Wide Preferences (Manual) - Not Implemented
 
   # 2.7 Desktop & Dock
 
-  # 2.7.1 Ensure Screen Saver Corners Are Secure (Automated)
-  - id: 30031
-    title: "Ensure Screen Saver Corners Are Secure (Automated)."
-    description: "Hot Corners can be configured to disable the screen saver by moving the mouse cursor to a corner of the screen."
-    rationale: "Setting a hot corner to disable the screen saver poses a potential security risk since an unauthorized person could use this to bypass the login screen and gain access to the system."
-    remediation: "Graphical Method: Perform the following steps to disable a Hot Corner set to Disable Screen Saver: Open System Settings. Select Desktop & Dock. Select `Hot Corners... Set any corners set to Disable Screen Saver to any other selection to meets your organization's parameters. Select Done. Terminal Method: Run the following command to turn off Disable Screen Saver for a Hot Corner: $ /usr/bin/sudo -u <username> /usr/bin/defaults write com.apple.dock <corner that is set to '6'> -int 0 example: $ /usr/bin/sudo -u seconduser /usr/bin/defaults write com.apple.dock wvous-tl-corner -int 0 $ /usr/bin/sudo -u seconduser /usr/bin/defaults read com.apple.dock wvous-tl-corner 0 Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.dock. The key to include is Forced. The key must be set to the following: <array> <dict> <key>mcx_preference_settings</key> <dict> <key>wvous-bl-corner</key> <integer><≠6></integer> <key>wvous-br-corner</key> <integer><≠6></integer> <key>wvous-tl-corner</key> <integer><≠6></integer> <key>wvous-tr-corner</key> <integer><≠6></integer> </dict> </dict> </array>"
-    compliance:
-      - cis: ["2.7.1"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.2.010", "AC.3.019", "IA.3.086", "AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
-      - pci_dss_3.2.1: ["8.1.8", "10.2.5"]
-      - pci_dss_4.0: ["8.2.8"]
-      - nist_sp_800-53: ["AC-2(5)", "AC-11", "AC-11(1)", "AC-12"]
-    condition: all
-    rules:
-      - "c:defaults read com.apple.dock wvous-tl-corner -> !r:^6$"
-      - "c:defaults read com.apple.dock wvous-bl-corner -> !r:^6$"
-      - "c:defaults read com.apple.dock wvous-tr-corner -> !r:^6$"
-      - "c:defaults read com.apple.dock wvous-br-corner -> !r:^6$"
+  # 2.7.1 Ensure Screen Saver Corners Are Secure (Automated) - Not implemented
 
   # 2.8 Displays
 
@@ -773,12 +678,12 @@ checks:
   # 2.9 Battery (Energy Saver)
 
   # 2.9.1 Ensure Power Nap Is Disabled for Intel Macs (Automated)
-  - id: 30032
+  - id: 30026
     title: "Ensure Power Nap Is Disabled for Intel Macs."
     description: "Power Nap allows the system to stay in low power mode, especially while on battery power, and periodically connect to previously known networks with stored credentials for user applications to phone home and get updates. This capability requires FileVault to remain unlocked and the use of previously joined networks to be risk accepted based on the SSID without user input. This control has been updated to check the status on both battery and AC Power. The presence of an electrical outlet does not completely correlate with logical and physical security of the device or available networks."
     rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access. The use of Power Nap adds to the risk of compromised physical and logical security. The user should be able to decrypt FileVault and have the applications download what is required when the computer is actively used. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs."
     impact: "Power Nap exists for unattended user application updates like email and social media clients. With Power Nap disabled, the computer will not wake and reconnect to known wireless SSIDs intermittently when slept."
-    remediation: "Graphical Method: Perform the following steps to disable Power Nap: Desktop Instructions: Open System Settings. Select Energy Saver. Set Power Nap to disabled. Select UPS (if applicable). Set Power Nap to disabled. Laptop Instructions: Open System Settings. Select Battery. Select Power Adapter (for laptops only). Set Power Nap to disabled. Select Battery. Set Power Nap to disabled. Select UPS (if applicable). Set Power Nap to disabled. Terminal Method: Run the following command to disable Power Nap: $ /usr/bin/sudo /usr/bin/pmset -a powernap 0."
+    remediation: "Graphical Method: Perform the following steps to disable Power Nap: Desktop Instructions: 1 Open System Settings. 2 Select Energy Saver. 3 Set Power Nap to disabled. 4 Select UPS (if applicable). 5 Set Power Nap to disabled. Laptop Instructions: 1 Open System Settings. 2 Select Battery. 3 Select Power Adapter (for laptops only). 4 Set Power Nap to disabled. 5 Select Battery. 6 Set Power Nap to disabled. 7 Select UPS (if applicable). 8 Set Power Nap to disabled. Terminal Method: Run the following command to disable Power Nap: $ /usr/bin/sudo /usr/bin/pmset -a powernap 0."
     compliance:
       - cis: ["2.9.1"]
       - cis_csc_v8: ["4.1", "4.8"]
@@ -792,15 +697,15 @@ checks:
       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sh -c "pmset -g everything | grep powernap | grep -c 1" -> r:^0$'
+      - 'c:sh -c "pmset -g custom | grep powernap | grep -c 1" -> r:^0$'
 
   # 2.9.2 Ensure Wake for Network Access Is Disabled (Automated)
-  - id: 30033
+  - id: 30027
     title: "Ensure Wake for Network Access Is Disabled."
     description: "This feature allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. This macOS feature is meant to allow the computer to resume activity as needed regardless of physical security controls. This feature allows other users to be able to access your computer's shared resources, such as shared printers or Apple Music playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer, it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist, the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on any unmanaged network or where untrusted devices exist that could send wake signals."
     rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
     impact: "Management programs like Apple Remote Desktop Administrator use wake-on-LAN to connect with computers. If turned off, such management programs will not be able to wake a computer over the LAN. If the wake-on-LAN feature is needed, do not turn off this feature. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs."
-    remediation: "Graphical Method: Perform the following steps to disable Wake for network access: Desktop Instructions: Open System Settings. Select Energy Saver. Set Wake for network access to disabled. Laptop Instructions: Open System Settings. Select Battery. Select Options... Set Wake for network access to Never. Terminal Method: Run the following command to disable Wake for network access: $ /usr/bin/sudo /usr/bin/pmset -a womp 0 Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.MCX. The key to include is com.apple.EnergySaver.desktop.ACPower. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict>. The key to also include is com.apple.EnergySaver.portable.ACPower. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict>. The key to also include is com.apple.EnergySaver.portable.BatteryPower. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict>. Note: Both Wake on LAN and Wake on Modem Ring need to be set. Only setting Wake On LAN will allow the profile to install but not set any settings. This profile will only apply the setting at installation and is not sticky."
+    remediation: "Graphical Method: Perform the following steps to disable Wake for network access: Desktop Instructions: 1 Open System Settings. 2 Select Energy Saver. 3 Set Wake for network access to disabled. Laptop Instructions: 1 Open System Settings. 2 Select Battery. 3 Select Options... 4 Set Wake for network access to Never. Terminal Method: Run the following command to disable Wake for network access: $ /usr/bin/sudo /usr/bin/pmset -a womp 0 Profile Method: Create or edit a configuration profile with the following information: 1 The PayloadType string is com.apple.MCX. 2 The key to include is com.apple.EnergySaver.desktop.ACPower. 3 The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict>. 4 The key to also include is com.apple.EnergySaver.portable.ACPower. 5 The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict>. 6 The key to also include is com.apple.EnergySaver.portable.BatteryPower. 7 The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict>. Note: Both Wake on LAN and Wake on Modem Ring need to be set. Only setting Wake On LAN will allow the profile to install but not set any settings. This profile will only apply the setting at installation and is not sticky."
     compliance:
       - cis: ["2.9.2"]
       - cis_csc_v8: ["4.8"]
@@ -812,43 +717,21 @@ checks:
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
+    condition: any
     rules:
       - 'c:sh -c "pmset -g | grep -e womp" -> r:0'
+      - 'not c:sh -c "profiles -P -o stdout | grep ''Wake On LAN''" -> n:=\s*(\d) compare != 0'
+      - 'not c:sh -c "profiles -P -o stdout | grep ''Wake On Modem Ring''" -> n:=\s*(\d) compare != 0'
 
   # 2.9.3 Ensure the OS is not Activate When Resuming from Sleep (Automated) - Not Implemented
 
   # 2.10 Lock Screen
 
-  # 2.10.1 Ensure an Inactivity Interval of 20 Minutes Or Less for the Screen Saver Is Enabled (Automated)
-  - id: 30034
-    title: "Ensure an Inactivity Interval of 20 Minutes Or Less for the Screen Saver Is Enabled."
-    description: "A locking screen saver is one of the standard security controls to limit access to a computer and the current user's session when the computer is temporarily unused or unattended. In macOS, the screen saver starts after a value is selected in the dropdown menu. 20 minutes or less is an acceptable value. Any value can be selected through the command line or script, but a number that is not reflected in the GUI can be problematic. 20 minutes is the default for new accounts."
-    rationale: "Setting an inactivity interval for the screen saver prevents unauthorized persons from viewing a system left unattended for an extensive period of time."
-    impact: "If the screen saver is not set, users may leave the computer available for an unauthorized person to access information."
-    remediation: "Graphical Method: Perform the following to set the screen saver to activate in 20 minutes or less: 1. Open System Settings 2. Select Lock Screen 3. Set Start Screen Saver when inactive to a selection that is 20 minutes or less (≤1200) Terminal Method: Run the following command to set individual users to an idle time of the screen saver is set to 20 minutes or less (≤1200): $ /usr/bin/sudo -u <username> /usr/bin/defaults -currentHost write com.apple.screensaver idleTime -int <value ≤1200> Note: Issues arise if the command line is used to make the setting something other than what is available in the GUI Menu. Choose either 1 (60), 2 (120), 5 (300), 10 (600), or 20 (1200) minutes to avoid any issues. Profile Method: 1. The PayloadType string is com.apple.screensaver 2. The key to include is idleTime 3. The key must be set to <integer><≤1200></integer> Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-    compliance:
-      - cis: ["2.10.1"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - cmmc_v2.0: ["AC.2.010", "AC.3.019", "IA.3.086"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - pci_dss_3.2.1: ["8.1.8", "10.2.5"]
-      - pci_dss_4.0: ["8.2.8"]
-      - nist_sp_800-53: ["AC-2(5)", "AC-11", "AC-11(1)", "AC-12"]
-    condition: any
-    rules:
-      - "not c:defaults -currentHost read com.apple.screensaver idleTime -> r:does not exist"
-      - 'c:defaults -currentHost read com.apple.screensaver idleTime -> n:^(\d+)$ compare <= 1200'
-      - 'c:sh -c "profiles -P -o stdout | grep idleTime" -> n:idleTime\s*=\s*(\d+) compare <= 1200'
-
+  # 2.10.1 Ensure an Inactivity Interval of 20 Minutes Or Less for the Screen Saver Is Enabled (Automated) - Not implemented
   # 2.10.2 Ensure a Password is Required to Wake the Computer From Sleep or Screen Saver Is Enabled (Automated) - Not Implemented
 
   # 2.10.3 Ensure a Custom Message for the Login Screen Is Enabled (Automated)
-  - id: 30035
+  - id: 30028
     title: "Ensure a Custom Message for the Login Screen Is Enabled."
     description: "An access warning informs the user that the system is reserved for authorized use only, and that the use of the system may be monitored."
     rationale: "An access warning may reduce a casual attacker's tendency to target the system. Access warnings may also aid in the prosecution of an attacker by evincing the attacker's knowledge of the system's private status, acceptable use policy, and authorization requirements."
@@ -868,15 +751,14 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: any
     rules:
-      - "not c:defaults read /Library/Preferences/com.apple.loginwindow.plist LoginwindowText -> r:does not exist"
-      - 'c:sh -c "profiles -P -o stdout | grep LoginwindowText" -> r:LoginwindowText\s*=\s*"\w+'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''LoginwindowText'')" -> r:^\.+$'
 
   # 2.10.4 Ensure Login Window Displays as Name and Password Is Enabled (Automated)
-  - id: 30036
+  - id: 30029
     title: "Ensure Login Window Displays as Name and Password Is Enabled."
     description: "The login window prompts a user for his/her credentials, verifies their authorization level, and then allows or denies the user access to the system."
     rationale: "Prompting the user to enter both their username and password makes it twice as hard for unauthorized users to gain access to the system since they must discover two attributes."
-    remediation: "Graphical Method: Perform the following steps to ensure the login window display name and password: 1. Open System Settings 2. Select Lock Screen 3. Set 'Login window showstoName and Password` Terminal Method: Run the following command to enable the login window to display name and password: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -bool true Note: The GUI will not display the updated setting until the current user(s) logs out. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is SHOWFULLNAME 3. The key must be set to <true/>."
+    remediation: "Graphical Method: Perform the following steps to ensure the login window display name and password: 1. Open System Settings 2. Select Lock Screen 3. Set 'Login window shows to Name and Password'. Terminal Method: Run the following command to enable the login window to display name and password: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -bool true Note: The GUI will not display the updated setting until the current user(s) logs out. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is SHOWFULLNAME 3. The key must be set to <true/>."
     compliance:
       - cis: ["2.10.4"]
       - cis_csc_v8: ["4.1"]
@@ -891,16 +773,15 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: any
     rules:
-      - "c:defaults read /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -> r:^1$"
-      - 'c:sh -c "profiles -P -o stdout | grep SHOWFULLNAME" -> r:SHOWFULLNAME\s*=\s*1'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''SHOWFULLNAME'')" -> r:^1$|^true$'
 
   # 2.10.5 Ensure Show Password Hints Is Disabled (Automated)
-  - id: 30037
+  - id: 30030
     title: "Ensure Show Password Hints Is Disabled."
     description: "Password hints are user-created text displayed when an incorrect password is used for an account."
     rationale: "Password hints make it easier for unauthorized persons to gain access to systems by displaying information provided by the user to assist in remembering the password. This info could include the password itself or other information that might be readily discerned with basic knowledge of the end user."
     impact: "The user can set the hint to any value, including the password itself or clues that allow trivial social engineering attacks."
-    remediation: "Graphical Method: Perform the following steps to disable password hints from being shown: 1. Open System Settings 2. Select Lock Screen 3. Set 'Show password hints` to disabled Terminal Method: Run the following command to disable password hints: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow RetriesUntilHint -int 0 ; Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is RetriesUntilHint 3. The key must be set to <integer>0</integer>."
+    remediation: "Graphical Method: Perform the following steps to disable password hints from being shown: 1. Open System Settings 2. Select Lock Screen 3. Set 'Show password hints' to disabled Terminal Method: Run the following command to disable password hints: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow RetriesUntilHint -int 0 ; Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is RetriesUntilHint 3. The key must be set to <integer>0</integer>."
     compliance:
       - cis: ["2.10.5"]
       - cis_csc_v8: ["4.1"]
@@ -915,19 +796,17 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: any
     rules:
-      - "c:defaults read /Library/Preferences/com.apple.loginwindow RetriesUntilHint -> r:^0$|does not exist"
-      - 'c:sh -c "profiles -P -o stdout | grep RetriesUntilHint" -> r:RetriesUntilHint\s*=\s*0'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''RetriesUntilHint'')" -> r:^0$'
 
   # 2.11 Touch ID & Password (Login Password)
 
   # 2.11.1 Ensure Users' Accounts Do Not Have a Password Hint (Automated) - Not Implemented
-
   # 2.11.2 Audit Touch ID and Wallet & Apple Pay Settings (Manual) - Not Implemented
 
   # 2.12 Users & Groups
 
   # 2.12.1 Ensure Guest Account Is Disabled (Automated)
-  - id: 30038
+  - id: 30031
     title: "Ensure Guest Account Is Disabled."
     description: "The guest account allows users access to the system without having to create an account or password. Guest users are unable to make setting changes and cannot remotely login to the system. All files, caches, and passwords created by the guest user are deleted upon logging out."
     rationale: "Disabling the guest account mitigates the risk of an untrusted user doing basic reconnaissance and possibly using privilege escalation attacks to take control of the system."
@@ -947,12 +826,11 @@ checks:
       - soc_2: ["CC6.2", "CC6.3", "CC5.2"]
     condition: any
     rules:
-      - "c:defaults read /Library/Preferences/com.apple.loginwindow.plist GuestEnabled -> r:^0$"
-      - 'c:sh -c "profiles -P -o stdout | grep DisableGuestAccount" -> r:DisableGuestAccount\s*=\s*1'
-      - 'c:sh -c "profiles -P -o stdout | grep EnableGuestAccount" -> r:EnableGuestAccount\s*=\s*0'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''DisableGuestAccount'')" -> r:^1$'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''GuestEnabled'')" -> r:^0$'
 
   # 2.12.2 Ensure Guest Access to Shared Folders Is Disabled (Automated)
-  - id: 30039
+  - id: 30032
     title: "Ensure Guest Access to Shared Folders Is Disabled."
     description: "Allowing guests to connect to shared folders enables users to access selected shared folders and their contents from different computers on a network."
     rationale: "Not allowing guests to connect to shared folders mitigates the risk of an untrusted user doing basic reconnaissance and possibly use privilege escalation attacks to take control of the system."
@@ -970,9 +848,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: all
+    condition: any
     rules:
-      - "c:sysadminctl -smbGuestAccess status -> r:^SMB guest access disabled"
+      - "c:sysadminctl -smbGuestAccess status -> r:SMB guest access disabled"
 
   # 2.12.3 Ensure Automatic Login Is Disabled (Automated)
   - id: 30040
@@ -994,17 +872,16 @@ checks:
       - soc_2: ["CC6.3"]
     condition: any
     rules:
-      - 'not c:defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser -> r:^\w'
-      - "c:defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser -> r:does not exist"
-      - 'c:sh -c "profiles -P -o stdout | grep com.apple.login.mcx.DisableAutoLoginClient" -> r:com.apple.login.mcx.DisableAutoLoginClient\s*=\s*1'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''com.apple.login.mcx.DisableAutoLoginClient'')" -> r:^1$'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''autoLoginUser'')" -> r:^\.+$'
 
   # 2.13 Passwords
 
-  # 2.13.1 Audit Passwords System Preference Setting (Manual) - Not Implemented
+  # 2.13.1 Audit Passwords System Preference Setting (Manual) - Not implemented
 
   # 2.14 Notifications
 
-  # 2.14.1 Audit Notification & Focus Settings (Manual)
+  # 2.14.1 Audit Notification & Focus Settings (Manual) - Not implemented
 
   ##########################################################################
   # 3 Logging and Auditing
