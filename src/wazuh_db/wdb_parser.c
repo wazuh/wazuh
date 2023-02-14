@@ -5678,14 +5678,10 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
         cJSON *j_set_synced = cJSON_GetObjectItem(args, "set_synced");
         cJSON *j_get_hash = cJSON_GetObjectItem(args, "get_global_hash");
         cJSON *j_agent_registration_delta = cJSON_GetObjectItem(args, "agent_registration_delta");
-        // Checking the existence of mandatory parameters
-        if (!cJSON_IsString(j_sync_condition)) {
-            mdebug1("Missing mandatory 'condition' field in sync-agent-groups-get command.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required 'condition' field");
-            ret = OS_INVALID;
-        }
+
         // Checking data types of alternative parameters in case they would have been sent in the input JSON.
-        else if ((j_last_id && (!cJSON_IsNumber(j_last_id) || j_last_id->valueint < 0)) ||
+        if ((j_sync_condition && !cJSON_IsString(j_sync_condition)) ||
+            (j_last_id && (!cJSON_IsNumber(j_last_id) || j_last_id->valueint < 0)) ||
             (j_set_synced && !cJSON_IsBool(j_set_synced)) ||
             (j_get_hash && !cJSON_IsBool(j_get_hash)) ||
             (j_agent_registration_delta && (!cJSON_IsNumber(j_agent_registration_delta) || j_agent_registration_delta->valueint < 0))) {
@@ -5693,15 +5689,15 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, invalid alternative fields data");
             ret = OS_INVALID;
         } else {
-            wdb_groups_sync_condition_t condition = WDB_GROUP_INVALID_CONDITION;
+            wdb_groups_sync_condition_t condition = WDB_GROUP_NO_CONDITION;
             int last_id = 0;
             bool set_synced = false;
             bool get_hash = false;
             int agent_registration_delta = 0;
 
-            if (0 == strcmp(j_sync_condition->valuestring, "sync_status")) {
+            if (cJSON_IsString(j_sync_condition) && 0 == strcmp(j_sync_condition->valuestring, "sync_status")) {
                 condition = WDB_GROUP_SYNC_STATUS;
-            } else if (0 == strcmp(j_sync_condition->valuestring, "all")) {
+            } else if (cJSON_IsString(j_sync_condition) && 0 == strcmp(j_sync_condition->valuestring, "all")) {
                 condition = WDB_GROUP_ALL;
             }
             if (j_last_id) {

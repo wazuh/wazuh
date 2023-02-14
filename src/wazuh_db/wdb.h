@@ -70,7 +70,7 @@
 typedef enum wdb_groups_sync_condition_t {
         WDB_GROUP_SYNC_STATUS,      ///< Get groups by their sync status
         WDB_GROUP_ALL,              ///< Get all groups
-        WDB_GROUP_INVALID_CONDITION ///< Invalid condition
+        WDB_GROUP_NO_CONDITION      ///< No condition
 } wdb_groups_sync_condition_t;
 
 /// Enumeration of agent groups set mode
@@ -372,6 +372,7 @@ typedef struct wdb_config {
     int free_pages_percentage;
     int max_fragmentation;
     int check_fragmentation_interval;
+    int is_worker;
     wdb_backup_settings_node** wdb_backup_settings;
 } wdb_config;
 
@@ -2019,6 +2020,16 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t* wdb,
                                              bool get_hash,
                                              int agent_registration_delta,
                                              cJSON** output);
+
+/**
+ * @brief Add global group hash to JSON response.
+ *
+ * @param wdb The Global struct database.
+ * @param response JSON response to fill with global group hash.
+ * @param response_size Current size of JSON response.
+ * @return int result to represent if global hash has being added to JSON response.
+ */
+int wdb_global_add_global_group_hash_to_resposne(wdb_t *wdb, cJSON** response, size_t response_size);
 
 /**
  * @brief Function to update group_sync_status of a particular agent.
