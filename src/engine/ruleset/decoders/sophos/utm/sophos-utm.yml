@@ -13,6 +13,7 @@ metadata:
     - https://www.sophos.com/en-us/support/documentation/sophos-utm
 
 sources:
+  - decoder/queue-syslog/0
   - decoder/queue-localfile/0
 
 check:
