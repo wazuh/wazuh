@@ -364,7 +364,7 @@ int audit_init(void) {
     }
 
     // Initialize audit queue
-    audit_queue = queue_init(1024 * 1024);
+    audit_queue = queue_init(syscheck.whodata_queue_size);
     w_create_thread(audit_parse_thread, NULL);
 
     // Perform Audit healthcheck

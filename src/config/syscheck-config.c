@@ -112,6 +112,8 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->registry_nodiff                 = NULL;
     syscheck->registry_nodiff_regex           = NULL;
     syscheck->enable_registry_synchronization = 1;
+#else
+    syscheck->whodata_queue_size              = 16384;
 #endif
     syscheck->prefilter_cmd                   = NULL;
     syscheck->sync_interval                   = 300;
@@ -1657,6 +1659,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_32bit = "32bit";
     const char *xml_64bit = "64bit";
     const char *xml_both = "both";
+#else
+    const char *xml_whodata_queue_size = "whodata_queue_size";
 #endif
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
@@ -2110,6 +2114,18 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         mwarn(XML_VALUEERR,children[j]->element,children[j]->content);
                         OS_ClearNode(children);
                         return(OS_INVALID);
+                    }
+                } else if (strcmp(children[j]->element, xml_whodata_queue_size) == 0) {
+                    char * end;
+                    long value = strtol(children[j]->content, &end, 10);
+
+                    if (*end || value < 1 || value > 1024 * 1024) {
+                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        OS_ClearNode(children);
+                        return(OS_INVALID);
+                    }
+                    else {
+                        syscheck->whodata_queue_size = value;
                     }
                 } else {
                     mwarn(XML_ELEMNULL);
