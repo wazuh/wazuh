@@ -552,32 +552,30 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         """
         raise NotImplementedError
 
-    def _exception_handler(self, aws_account_id, log_key, error_txt, error_code):
-        if self.skip_on_error:
-            aws_tools.debug("++ {}; skipping...".format(error_txt), 1)
-            try:
-                error_msg = self.get_alert_msg(aws_account_id,
-                                               log_key,
-                                               None,
-                                               error_txt)
-                self.send_msg(error_msg)
-            except:
-                aws_tools.debug("++ Failed to send message to Wazuh", 1)
-        else:
-            print("ERROR: {}".format(error_txt))
-            sys.exit(error_code)
-
     def get_log_file(self, aws_account_id, log_key):
+        def exception_handler(error_txt, error_code):
+            if self.skip_on_error:
+                aws_tools.debug("++ {}; skipping...".format(error_txt), 1)
+                try:
+                    error_msg = self.get_alert_msg(aws_account_id,
+                                                   log_key,
+                                                   None,
+                                                   error_txt)
+                    self.send_msg(error_msg)
+                except:
+                    aws_tools.debug("++ Failed to send message to Wazuh", 1)
+            else:
+                print("ERROR: {}".format(error_txt))
+                sys.exit(error_code)
+
         try:
             return self.load_information_from_file(log_key=log_key)
         except (TypeError, IOError, zipfile.BadZipfile, zipfile.LargeZipFile) as e:
-            self._exception_handler(aws_account_id, log_key,
-                                    "Failed to decompress file {}: {}".format(log_key, repr(e)), 8)
+            exception_handler("Failed to decompress file {}: {}".format(log_key, repr(e)), 8)
         except (ValueError, csv.Error) as e:
-            self._exception_handler(aws_account_id, log_key, "Failed to parse file {}: {}".format(log_key, repr(e)), 9)
+            exception_handler("Failed to parse file {}: {}".format(log_key, repr(e)), 9)
         except Exception as e:
-            self._exception_handler(aws_account_id, log_key,
-                                    "Unknown error reading/parsing file {}: {}".format(log_key, repr(e)), 1)
+            exception_handler("Unknown error reading/parsing file {}: {}".format(log_key, repr(e)), 1)
 
     def iter_bucket(self, account_id, regions):
         self.init_db()
@@ -630,7 +628,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
 
         def _event_should_be_skipped(event_):
             return self.discard_field and self.discard_regex \
-                   and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
+                and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
 
         if event_list is not None:
             for event in event_list:
