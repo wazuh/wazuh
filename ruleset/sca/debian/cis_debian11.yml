@@ -4737,9 +4737,9 @@ checks:
   # 5.4.1 Ensure password creation requirements are configured (Automated)
   - id: 29682
     title: "Ensure password creation requirements are configured."
-    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: Password Length: minlen = 14 - password must be 14 characters or more .Password complexity: minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR dcredit = -1 - provide at least one digit .ucredit = -1 - provide at least one uppercase character .ocredit = -1 - provide at least one special character .lcredit = -1 - provide at least one lowercase character."
+    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: - Password Length: minlen = 14 - password must be 14 characters or more. - Password complexity: minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR dcredit = -1 - provide at least one digit. ucredit = -1 - provide at least one uppercase character. ocredit = -1 - provide at least one special character. lcredit = -1 - provide at least one lowercase character."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
-    remediation: "The following setting is a recommend example policy. Alter these values to conform to your own organization's password policies. Run the following command to install the pam_pwquality module: # apt install libpam-pwquality Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 .Edit the file /etc/security/pwquality.conf and add or modify the following line for .password complexity to conform to site policy: Option 1 .minclass = 4 .Option 2 .dcredit = -1 .ucredit = -1 .ocredit = -1 .lcredit = -1"
+    remediation: "The following setting is a recommend example policy. Alter these values to conform to your own organization's password policies. Run the following command to install the pam_pwquality module: # apt install libpam-pwquality Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14. Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy: Option 1. minclass = 4 .Option 2. dcredit = -1. ucredit = -1. ocredit = -1. lcredit = -1"
     compliance:
       - cis: ["5.4.1"]
       - cis_csc_v8: ["5.2"]
@@ -4754,12 +4754,11 @@ checks:
     condition: all
     rules:
       - 'f:/etc/security/pwquality.conf -> !r:^# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
-      - 'f:/etc/pam.d/common-password -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+) compare <=3'
 
   # 5.4.2 Ensure lockout for failed password attempts is configured (Automated)
   - id: 29683
     title: "Ensure lockout for failed password attempts is configured."
-    description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. deny - Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries.fail_interval - The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out unlock_time - The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be re-enabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
+    description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. deny - Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries. fail_interval - The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out. unlock_time - The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be re-enabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
     remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file.# here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth# Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail# Added to enable faillock auth sufficient pam_faillock.so authsucc# Added to enable faillock# here is the fallback if no module succeeds auth requisite pam_deny.so# prime the stack with a positive return value if there is not one already;# this avoids us returning an error just because nothing sets a success code# since the modules above will each just jump around auth required pam_permit.so# and here are more per-package modules (the "Additional" block) auth optional pam_cap.so# end of pam-auth-update config Common account .Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. account required .pam_faillock.so .Fail lock configuration .Edit /etc/security/faillock.conf and configure it per your site policy. Example: deny = 4 .fail_interval = 900 unlock time = 600'
     impact: "It is critical to test and validate any PAM changes before deploying. Any misconfiguration could cause the system to be inaccessible."
@@ -4824,6 +4823,7 @@ checks:
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
     condition: none
+
     rules:
       - 'f:/etc/pam.d/common-password -> r:"(yescrypt|md5|bigcrypt|sha256|sha512|blowfish)"'
 
@@ -4945,13 +4945,14 @@ checks:
       - mitre_techniques: ["T1548"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1026"]
-    condition: all
+    condition: any
     rules:
       - 'f:/etc/passwd -> !r:^# && r:root:\w+:\w+:0:'
+      - 'c:grep "^root:" /etc/passwd | cut -f4 -d: -> r: ^0$'
 
   # 5.5.4 Ensure default user umask is 027 or more restrictive (Automated) - Not Implemented
 
-  # 5.5.5 Ensure default user umask is 027 or more restrictive (Automated) - Not Implemented
+  # 5.5.5 Ensure default user shell timeout is 900 seconds or less (Automated) - Not Implemented
 
   ############################################################
   # 6 System Maintenance
@@ -5175,7 +5176,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "not c:sh -c 'df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type f -perm -0002 -> r:\\.+"
+      - "not c:df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type f -perm -0002 -> r:\\.+"
 
   # 6.1.10 Ensure no unowned files or directories exist (Automated)
   - id: 3200
@@ -5198,7 +5199,7 @@ checks:
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
-      - "not c:sh -c 'df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nouser -> r:\\.+"
+      - "not c:df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nouser -> r:\\.+"
 
   # 6.1.11 Ensure no ungrouped files or directories exist (Automated)
   - id: 3201
@@ -5221,7 +5222,7 @@ checks:
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
-      - "not c:sh -c 'df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -nogroup -> r:\\.+"
+      - "not c:df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -nogroup -> r:\\.+"
   #
   # 6.1.12 Audit SUID executables (Manual) - Not Implemented
 
