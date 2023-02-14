@@ -15,7 +15,7 @@ logs_path = os.path.join(test_data_path, 'log_files')
 
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_aws_waf_bucket__init__(mock_custom_bucket):
+def test_aws_waf_bucket_initializes_properly(mock_custom_bucket):
     """Test if the instances of AWSWAFBucket are created properly."""
     utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
     mock_custom_bucket.assert_called_once()
@@ -58,9 +58,12 @@ def test_aws_waf_bucket_load_information_from_file(mock_custom_bucket, mock_buck
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
 @patch('aws_bucket.AWSCustomBucket.__init__', side_effect=aws_bucket.AWSCustomBucket.__init__)
-def test_aws_waf_bucket_load_information_from_file_ko(mock_custom_bucket, mock_bucket, mock_sts, mock_integration,
-                                                      log_file: str, skip_on_error: bool,
-                                                      expected_exception: Exception):
+def test_aws_waf_bucket_load_information_from_file_handles_exceptions_on_invalid_arguments(mock_custom_bucket,
+                                                                                           mock_bucket, mock_sts,
+                                                                                           mock_integration,
+                                                                                           log_file: str,
+                                                                                           skip_on_error: bool,
+                                                                                           expected_exception: Exception):
     """Test that AWSWAFBucket's implementation of the load_information_from_file method raises
     an exception when called with invalid arguments.
 

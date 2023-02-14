@@ -29,7 +29,7 @@ TEST_CLOUDWATCH_SCHEMA = "schema_cloudwatchlogs_test.sql"
 @pytest.mark.parametrize('remove_log_streams', [True, False])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('aws_service.AWSService.__init__', side_effect=aws_service.AWSService.__init__)
-def test_aws_cloudwatchlogs__init__(mock_aws_service, mock_sts_client,
+def test_aws_cloudwatchlogs_initializes_properly(mock_aws_service, mock_sts_client,
                                     remove_log_streams: bool, aws_log_groups: str or None,
                                     only_logs_after: str or None):
     """Test if the instances of AWSCloudWatchLogs are created properly.
@@ -133,7 +133,7 @@ def test_aws_cloudwatchlogs_remove_aws_log_stream(mock_debug, mock_sts_client):
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('cloudwatchlogs.aws_tools.debug')
-def test_aws_cloudwatchlogs_remove_aws_log_stream_ko(mock_debug, mock_sts_client):
+def test_aws_cloudwatchlogs_remove_aws_log_stream_handles_exceptions(mock_debug, mock_sts_client):
     """Test 'remove_aws_log_stream' method handles exceptions raised when trying to remove a log stream from a log group.
     This could be due to a botocore ClientError or another type of Exception.
     """
@@ -229,7 +229,7 @@ def test_aws_cloudwatchlogs_get_alerts_within_range(mock_debug, mock_sts_client,
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-def test_aws_cloudwatchlogs_get_alerts_within_range_ko(mock_sts_client):
+def test_aws_cloudwatchlogs_get_alerts_within_range_handles_exceptions_on_client_error(mock_sts_client):
     """Test 'get_alerts_within_range' method handles exceptions raised
     when trying to get log events from AWS CloudWatch Logs.
     """
@@ -406,7 +406,7 @@ def test_aws_cloudwatchlogs_get_log_streams(mock_debug, mock_sts_client,
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('cloudwatchlogs.aws_tools.debug')
-def test_aws_cloudwatchlogs_get_log_streams_ko(mock_debug, mock_sts_client):
+def test_aws_cloudwatchlogs_get_log_streams_handles_exceptions(mock_debug, mock_sts_client):
     """Test 'get_log_streams' method handles exceptions raised when trying to fetch the log streams
     from the specified log group.
     This could be due to a botocore Error or another type of Exception.

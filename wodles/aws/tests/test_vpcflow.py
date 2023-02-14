@@ -30,7 +30,7 @@ SQL_FIND_LAST_KEY_PROCESSED = """SELECT log_key FROM {table_name} ORDER BY log_k
 
 
 @patch('aws_bucket.AWSLogsBucket.__init__')
-def test_aws_vpc_flow_bucket__init__(mock_logs_bucket):
+def test_aws_vpc_flow_bucket_initializes_properly(mock_logs_bucket):
     """Test if the instances of AWSVPCFlowBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
     assert instance.service == 'vpcflowlogs'
@@ -95,7 +95,7 @@ def test_aws_vpc_flow_bucket_get_ec2_client(access_key: str or None, secret_key:
 
 
 @patch('aws_bucket.AWSLogsBucket.__init__')
-def test_aws_vpc_flow_bucket_get_ec2_client_ko(mock_logs_bucket):
+def test_aws_vpc_flow_bucket_get_ec2_client_handles_exceptions_on_ec2_client_error(mock_logs_bucket):
     """Test 'get_ec2_client' method handles exceptions raised when trying to get the EC2 client."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
@@ -229,7 +229,7 @@ def test_aws_vpc_flow_bucket_get_date_last_log(custom_database, reparse: bool, o
     assert instance.get_date_last_log(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, TEST_FLOW_LOG_ID) == last_date_processed
 
 
-def test_aws_vpc_flow_bucket_get_date_last_log_db_error(custom_database):
+def test_aws_vpc_flow_bucket_get_date_last_log_db_when_empty_db(custom_database):
     """Test 'get_date_last_log' method returns the expected last log date getting it from
     the instance's attributes (only_logs_after) if the DB is empty for a given bucket.
     """
@@ -490,7 +490,7 @@ def test_aws_vpc_flow_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
                                                       TEST_FLOW_LOG_ID)
 
 
-def test_aws_vpc_flow_bucket_iter_files_in_bucket_ko():
+def test_aws_vpc_flow_bucket_iter_files_in_bucket_handles_exceptions():
     """Test 'iter_files_in_bucket' method handles exceptions raised by botocore or by an unexpected cause and exits with the expected exit code."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
@@ -549,7 +549,7 @@ def test_aws_vpc_flow_bucket_mark_complete(custom_database):
 
 
 @patch('aws_bucket.aws_tools.debug')
-def test_aws_vpc_flow_bucket_mark_complete_ko(mock_debug, custom_database):
+def test_aws_vpc_flow_bucket_mark_complete_handles_exceptions_on_query_error(mock_debug, custom_database):
     """Test 'mark_complete' handles exceptions raised when trying to execute a query to the DB."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, reparse=False)
 

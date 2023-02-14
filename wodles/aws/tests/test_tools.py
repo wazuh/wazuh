@@ -30,7 +30,7 @@ def test_arg_valid_date():
     assert parsed_date == "20220101"
 
 
-def test_arg_valid_date_ko():
+def test_arg_valid_date_raises_exception_when_invalid_format_provided():
     """Test 'arg_valid_date' function raises an 'ArgumentTypeError' error if the format provided is not supported."""
     with pytest.raises(argparse.ArgumentTypeError):
         aws_tools.arg_valid_date("2022-01-01")
@@ -76,7 +76,7 @@ def test_arg_valid_accountid(arg_string: str or None):
     f'{utils.TEST_ACCOUNT_ID},{utils.TEST_ACCOUNT_ID[:-1]}',
     f'{utils.TEST_ACCOUNT_ID},{utils.TEST_ACCOUNT_ID},123456789abc'
 ])
-def test_arg_valid_accountid_ko(arg_string):
+def test_arg_valid_accountid_raises_exception_when_invalid_account_provided(arg_string):
     """Test 'arg_valid_accountid' function raises an 'ArgumentTypeError' error
     if the number of digits is different to 12 or the account id is not formed only by digits.
 
@@ -123,7 +123,7 @@ def test_arg_valid_iam_role_duration(arg_string: str):
 
 
 @pytest.mark.parametrize('arg_string', ["899", "3601"])
-def test_arg_valid_iam_role_duration_ko(arg_string):
+def test_arg_valid_iam_role_duration_raises_exception_when_invalid_duration_provided(arg_string):
     """Test 'arg_valid_iam_role_duration' function raises an 'ArgumentTypeError' error
     when the duration is not between 15m and 12h.
 

@@ -25,7 +25,7 @@ DB_TABLENAME = "test_table"
 @patch('wazuh_integration.WazuhIntegration.get_client')
 @patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH)
 @patch('wazuh_integration.utils.get_wazuh_version')
-def test_wazuh_integration__init__(mock_version, mock_path, mock_client, mock_connect, mock_metadata):
+def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_client, mock_connect, mock_metadata):
     """Test if the instances of WazuhIntegration are created properly."""
     mock_connect.return_value = MagicMock()
     args = utils.get_wazuh_integration_parameters()
@@ -75,7 +75,7 @@ def test_wazuh_integration_check_metadata_version_no_table(custom_database):
 
 
 @pytest.mark.parametrize('table_exists', [True, False, sqlite3.Error])
-def test_wazuh_integration_check_metadata_version_ko(custom_database, table_exists):
+def test_wazuh_integration_check_metadata_version_handles_exceptions(custom_database, table_exists):
     """Test if `check_metadata_version` function handles exceptions properly.
 
     Parameters
@@ -248,7 +248,7 @@ def test_wazuh_integration_get_client(iam_role_arn, service_name):
                                                         **instance.connection_config)
 
 
-def test_wazuh_integration_get_client_ko():
+def test_wazuh_integration_get_client_handles_exceptions_on_botocore_error():
     """Test `get_client` function handles botocore.exceptions as expected."""
     mock_boto_session = MagicMock()
     mock_boto_session.client.side_effect = wazuh_integration.botocore.exceptions.ClientError({'Error': {'Code': 1}},
@@ -301,7 +301,7 @@ def test_wazuh_integration_get_sts_client(access_key, secret_key, profile):
         assert sts_client == mock_session.client()
 
 
-def test_wazuh_integration_get_sts_client_ko():
+def test_wazuh_integration_get_sts_client_handles_exceptions_when_invalid_creds_provided():
     """Test `get_sts_client` function handles invalid credentials exception as expected."""
     mock_boto_session = MagicMock()
     mock_boto_session.client.side_effect = wazuh_integration.botocore.exceptions.ClientError({'Error': {'Code': 1}},
@@ -364,7 +364,7 @@ def test_wazuh_integration_send_msg_socket_error(error_code, expected_exit_code)
             instance.send_msg(utils.TEST_MESSAGE)
 
 
-def test_wazuh_integration_send_msg_ko():
+def test_wazuh_integration_send_msg_handles_exceptions():
     """Test `send_msg` function handles the other expected exceptions."""
     instance = utils.get_mocked_wazuh_integration()
 
@@ -384,7 +384,7 @@ def test_wazuh_integration_create_table():
     instance.db_cursor.execute.assert_called_with(test_sql)
 
 
-def test_wazuh_integration_create_table_ko():
+def test_wazuh_integration_create_table_handles_exceptions_when_table_not_created():
     """Test `create_table` function handles exceptions raised
     and exits with the expected code when the table cannot be created.
     """
@@ -404,7 +404,7 @@ def test_wazuh_integration_create_table_ko():
     []
 ])
 @patch('wazuh_integration.WazuhIntegration.create_table')
-def test_wazuh_integration_init_db(mock_create_table, table_list):
+def test_wazuh_integration_db_initialization(mock_create_table, table_list):
     """Test `init_db` function checks if the required table exists and creates it if not.
 
     Parameters
@@ -425,7 +425,7 @@ def test_wazuh_integration_init_db(mock_create_table, table_list):
         mock_create_table.assert_called_with(test_sql)
 
 
-def test_wazuh_integration_init_db_ko():
+def test_wazuh_integration_db_initialization_handles_exceptions():
     """Test `init_db` function handles exception as expected."""
     instance = utils.get_mocked_wazuh_integration()
     instance.db_cursor = MagicMock()
