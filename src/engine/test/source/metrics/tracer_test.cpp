@@ -91,7 +91,7 @@ TEST_F(TracerInstrumentationTest, SetTracerOutputFile)
 
 TEST_F(TracerInstrumentationTest, SetTracerOutputStd)
 {
-    m_spContext->exporterType = ExportersTypes::Memory;
+    m_spContext->exporterType = ExportersTypes::Logging;
     m_spContext->processorType = ProcessorsTypes::Simple;
     auto exporter = std::make_shared<ExporterHandler>();
     auto processor = std::make_shared<ProcessorHandler>();
