@@ -70,8 +70,10 @@ std::tuple<bool, std::string> getKeyOrError(const json::Json& params)
 
 api::CommandFn kvdbCreateCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    return [kvdbManager](const json::Json& params) -> api::wpResponse
+    return [kvdbManager](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         // Get KVDB's name
         const auto [ok, kvdbName] = getNameOrError(params);
         if (!ok)
@@ -95,8 +97,10 @@ api::CommandFn kvdbCreateCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbMana
 
 api::CommandFn kvdbDeleteCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    return [kvdbManager](const json::Json& params) -> api::wpResponse
+    return [kvdbManager](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         // Get KVDB's name
         const auto [ok, kvdbName] = getNameOrError(params);
         if (!ok)
@@ -117,8 +121,10 @@ api::CommandFn kvdbDeleteCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbMana
 
 api::CommandFn kvdbDumpCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    return [kvdbManager](const json::Json& params) -> api::wpResponse
+    return [kvdbManager](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         // Get KVDB's name
         const auto [ok, kvdbName] = getNameOrError(params);
         if (!ok)
@@ -140,8 +146,10 @@ api::CommandFn kvdbDumpCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManage
 
 api::CommandFn kvdbGetKeyCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    return [kvdbManager](const json::Json& params) -> api::wpResponse
+    return [kvdbManager](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         // Get KVDB's name
         const auto [ok, kvdbName] = getNameOrError(params);
         if (!ok)
@@ -173,8 +181,10 @@ api::CommandFn kvdbGetKeyCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbMana
 
 api::CommandFn kvdbInsertKeyCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    return [kvdbManager](const json::Json& params) -> api::wpResponse
+    return [kvdbManager](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         // Get KVDB's name
         const auto [ok, kvdbName] = getNameOrError(params);
         if (!ok)
@@ -205,8 +215,10 @@ api::CommandFn kvdbInsertKeyCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbM
 
 api::CommandFn kvdbListCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    return [kvdbManager](const json::Json& params) -> api::wpResponse
+    return [kvdbManager](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         // get json params
         const auto kvdbNameToMatch = params.getString("/name");
         bool filtered {false};
@@ -248,8 +260,10 @@ api::CommandFn kvdbListCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManage
 
 api::CommandFn kvdbRemoveKeyCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    return [kvdbManager](const json::Json& params) -> api::wpResponse
+    return [kvdbManager](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         // Get KVDB's name
         const auto [ok, kvdbName] = getNameOrError(params);
         if (!ok)
