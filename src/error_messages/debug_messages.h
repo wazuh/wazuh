@@ -276,6 +276,9 @@
 #define FIM_WHODATA_SUCCESS_POLICY          "(6369): Found Audit %s subcategory configured to success. GUID: %s"
 #define FIM_REGISTRY_LIMIT_VALUE            "(6370): Maximum number of registry values to be monitored: '%u'"
 #define FIM_REGISTRY_VALUES_ENTRIES_INFO    "(6371): Fim registry values entries count: '%d'"
+#define FIM_WILDCARDS_REGISTERS_START       "(6372): Starting configuration for Windows registry wildcards."
+#define FIM_WILDCARDS_ADD_REGISTER          "(6373): Expanding entry '%s' to '%s' to monitor FIM events."
+#define FIM_WILDCARDS_REGISTERS_FINALIZE    "(6374): Wildcard configuration successfully completed."
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"

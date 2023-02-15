@@ -4412,6 +4412,238 @@ void test_get_registry_mtime_success(void **state) {
     assert_int_not_equal(retval, 0);
 }
 
+void test_get_subkey(void **state)
+{
+    //Scenario one, single * 
+    char* path_one = "HKEY_SOMETHING\\*\\A";
+    char* subkey_one = get_subkey(path_one, '*');
+
+    //Scenario two, something before *
+    char* path_two = "HKEY_SOMETHING\\A\\B\\*";
+    char* subkey_two = get_subkey(path_two, '*');
+
+    //Scenario three, single ? 
+    char* path_three = "HKEY_SOMETHING\\A?";
+    char* subkey_three = get_subkey(path_three, '?');
+
+    //Scenario four, something before ?
+    char* path_four = "HKEY_SOMETHING\\A\\B\\C?";
+    char* subkey_four = get_subkey(path_four, '?');
+
+    assert_string_equal(subkey_one,"");
+    assert_string_equal(subkey_two,"A\\B");
+    assert_string_equal(subkey_three, "");
+    assert_string_equal(subkey_four, "A\\B");
+}
+
+void test_w_is_still_a_wildcard(void **state) {
+    int ret;
+    reg_path_struct** test_vector_one = (reg_path_struct**)calloc(2, sizeof(reg_path_struct*));
+    test_vector_one[0] = (reg_path_struct*)calloc(1, sizeof(reg_path_struct));
+    test_vector_one[0]->has_wildcard = 0;
+    test_vector_one[0]->checked = 0;
+    test_vector_one[1] = NULL;
+
+    ret = w_is_still_a_wildcard(test_vector_one);
+
+    assert_int_equal(0, ret);
+
+    reg_path_struct** test_vector_two = (reg_path_struct**)calloc(2, sizeof(reg_path_struct*));
+    test_vector_two[0] = (reg_path_struct*)calloc(1, sizeof(reg_path_struct));
+    test_vector_two[0]->has_wildcard = 1;
+    test_vector_two[0]->checked = 1;
+    test_vector_two[1] = NULL;
+
+    ret = w_is_still_a_wildcard(test_vector_two);
+
+    assert_int_equal(0, ret);
+
+    reg_path_struct** test_vector_three = (reg_path_struct**)calloc(2, sizeof(reg_path_struct*));
+    test_vector_three[0] = (reg_path_struct*)calloc(1, sizeof(reg_path_struct));
+    test_vector_three[0]->has_wildcard = 1;
+    test_vector_three[0]->checked = 0;
+    test_vector_three[1] = NULL;
+
+    ret = w_is_still_a_wildcard(test_vector_three);
+
+    reg_path_struct** test_vector_four = (reg_path_struct**)calloc(2, sizeof(reg_path_struct*));
+    test_vector_four[0] = (reg_path_struct*)calloc(1, sizeof(reg_path_struct));
+    test_vector_four[0]->has_wildcard = 0;
+    test_vector_four[0]->checked = 1;
+    test_vector_four[1] = NULL;
+
+    ret = w_is_still_a_wildcard(test_vector_four);
+
+    assert_int_equal(0, ret);
+
+    free(test_vector_one[0]);
+    free(test_vector_two[0]);
+    free(test_vector_three[0]);
+    free(test_vector_four[0]);
+
+    free(test_vector_three);
+    free(test_vector_two);
+    free(test_vector_one);
+    free(test_vector_four);
+
+}
+
+void test_w_list_all_keys_subkey_notnull(void** state) {
+    HKEY root_key = HKEY_LOCAL_MACHINE;
+    HKEY keyhandle;
+    FILETIME last_write_time = { 0, 1000 };
+
+    char* subkey = "HARDWARE";
+    char* result[4] = {
+        "ACPI",
+        "DESCRIPTION",
+        "DEVICEMAP",
+        "RESOURCEMAP"
+    };
+
+    expect_RegOpenKeyEx_call(root_key, subkey, 0, KEY_READ, NULL, ERROR_SUCCESS);
+    expect_RegQueryInfoKey_call(4, 0, &last_write_time, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("ACPI",5,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("DESCRIPTION",12,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("DEVICEMAP",10,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("RESOURCEMAP",12,ERROR_SUCCESS);
+
+    char** query_result = w_list_all_keys(root_key, subkey);
+
+    for (int idx = 0; idx < 4; idx++) {
+        assert_string_equal(query_result[idx], result[idx]);
+        free(query_result[idx]);
+    }
+}
+
+void test_w_list_all_keys_subkey_null(void** state) {
+    HKEY root_key = HKEY_LOCAL_MACHINE;
+    HKEY keyhandle;
+    FILETIME last_write_time = { 0, 1000 };
+
+    char* subkey = "";
+    char* result[6] = {
+        "BCD00000000",
+        "HARDWARE",
+        "SAM",
+        "SECURITY",
+        "SOFTWARE",
+        "SYSTEM",
+    };
+
+    expect_RegOpenKeyEx_call(root_key, subkey, 0, KEY_READ, NULL, ERROR_SUCCESS);
+    expect_RegQueryInfoKey_call(6, 0, &last_write_time, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("BCD00000000",12,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("HARDWARE",9,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SAM",4,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SECURITY",9,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SOFTWARE",9,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SYSTEM",7,ERROR_SUCCESS);
+
+    char** query_result = w_list_all_keys(root_key, subkey);
+
+    for (int idx = 0; idx < 6; idx++) {
+        assert_string_equal(query_result[idx], result[idx]);
+        free(query_result[idx]);
+    }
+}
+
+void test_w_switch_root_key(void** state) {
+    char* root_key_valid_lm = "HKEY_LOCAL_MACHINE";
+    char* root_key_valid_cr = "HKEY_CLASSES_ROOT";
+    char* root_key_valid_cc = "HKEY_CURRENT_CONFIG";
+    char* root_key_valid_us = "HKEY_USERS";
+    char* root_key_valid_cu = "HKEY_CURRENT_USER";
+
+    char* root_key_invalid  = "HKEY_SOMETHING";
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    HKEY ret;
+
+    ret = w_switch_root_key(root_key_valid_lm);
+    assert_int_equal(ret, HKEY_LOCAL_MACHINE);
+
+    ret = w_switch_root_key(root_key_valid_cr);
+    assert_int_equal(ret, HKEY_CLASSES_ROOT);
+
+    ret = w_switch_root_key(root_key_valid_cc);
+    assert_int_equal(ret, HKEY_CURRENT_CONFIG);
+
+    ret = w_switch_root_key(root_key_valid_us);
+    assert_int_equal(ret, HKEY_USERS);
+
+    ret = w_switch_root_key(root_key_valid_cu);
+    assert_int_equal(ret, HKEY_CURRENT_USER);
+
+    ret = w_switch_root_key(root_key_invalid);
+    assert_null(ret);
+}
+
+void test_expand_wildcard_registers_star_only(void **state){
+    char* entry     = "HKEY_LOCAL_MACHINE\\*";
+    char** paths    = NULL;
+    os_calloc(OS_SIZE_1024,sizeof(char*),paths);
+    char* subkey    = "";
+    HKEY root_key   = HKEY_LOCAL_MACHINE;
+
+    char* result[6] = {
+        "HKEY_LOCAL_MACHINE\\BCD00000000",
+        "HKEY_LOCAL_MACHINE\\HARDWARE",
+        "HKEY_LOCAL_MACHINE\\SAM",
+        "HKEY_LOCAL_MACHINE\\SECURITY",
+        "HKEY_LOCAL_MACHINE\\SOFTWARE",
+        "HKEY_LOCAL_MACHINE\\SYSTEM",
+    };
+
+    HKEY keyhandle;
+    FILETIME last_write_time = { 0, 1000 };
+
+    expect_RegOpenKeyEx_call(root_key, subkey, 0, KEY_READ, NULL, ERROR_SUCCESS);
+    expect_RegQueryInfoKey_call(6, 0, &last_write_time, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("BCD00000000",12,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("HARDWARE",9,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SAM",4,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SECURITY",9,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SOFTWARE",9,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SYSTEM",7,ERROR_SUCCESS);
+
+    expand_wildcard_registers(entry,paths);
+
+    int i = 0;
+    while(*paths != NULL){
+        assert_string_equal(*paths, result[i]);
+        free(*paths);
+        paths++;
+        i++;
+    }
+}
+
+void test_expand_wildcard_registers_invalid_path(void **state){
+    char* entry     = "HKEY_LOCAL_MACHINE\\????";
+    char** paths    = NULL;
+    os_calloc(OS_SIZE_1024,sizeof(char*),paths);
+    char* subkey    = "";
+    HKEY root_key   = HKEY_LOCAL_MACHINE;
+
+    FILETIME last_write_time = { 0, 1000 };
+
+    expect_RegOpenKeyEx_call(root_key, subkey, 0, KEY_READ, NULL, ERROR_SUCCESS);
+    expect_RegQueryInfoKey_call(6, 0, &last_write_time, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("BCD00000000",12,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("HARDWARE",9,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SAM",4,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SECURITY",9,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SOFTWARE",9,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SYSTEM",7,ERROR_SUCCESS);
+
+    expand_wildcard_registers(entry,paths);
+
+    assert_null(*paths);
+    free(paths);
+
+}
+
 #endif
 
 
@@ -4654,6 +4886,15 @@ int main(int argc, char *argv[]) {
         /* get_registry_mtime tests */
         cmocka_unit_test(test_get_registry_mtime_RegQueryInfoKeyA_fails),
         cmocka_unit_test(test_get_registry_mtime_success),
+
+        /* expand_wildcard_register */
+        cmocka_unit_test(test_get_subkey),
+        cmocka_unit_test(test_w_is_still_a_wildcard),
+        cmocka_unit_test(test_w_list_all_keys_subkey_notnull),
+        cmocka_unit_test(test_w_list_all_keys_subkey_null),
+        cmocka_unit_test(test_w_switch_root_key),
+        cmocka_unit_test(test_expand_wildcard_registers_star_only),
+        cmocka_unit_test(test_expand_wildcard_registers_invalid_path),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

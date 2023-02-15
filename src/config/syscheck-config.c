@@ -617,14 +617,38 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
             continue;
         }
 
-        /* Add new entry */
-        if (arch == ARCH_BOTH) {
-            dump_syscheck_registry(syscheck, tmp_entry, opts, restrict_key, restrict_value, recursion_level, tag, ARCH_64BIT, tmp_diff_size);
-            dump_syscheck_registry(syscheck, tmp_entry, opts, restrict_key, restrict_value, recursion_level, tag, ARCH_32BIT, tmp_diff_size);
-        } else {
-            dump_syscheck_registry(syscheck, tmp_entry, opts, restrict_key, restrict_value, recursion_level, tag, arch, tmp_diff_size);
-        }
+        /* Expand any wildcard */
+        char** paths_wildcard = NULL;
+        char** start_vector   = paths_wildcard;
+        os_calloc(OS_SIZE_8192,sizeof(char*),paths_wildcard);
+        expand_wildcard_registers(entry[i],paths_wildcard);
 
+        if(*paths_wildcard != NULL){
+            mdebug1(FIM_WILDCARDS_REGISTERS_START);
+            while(*paths_wildcard != NULL){
+                mdebug2(FIM_WILDCARDS_ADD_REGISTER, entry[i], *paths_wildcard);
+                /* Add new entry */
+                if (arch == ARCH_BOTH) {
+                    dump_syscheck_registry(syscheck, *paths_wildcard, opts, restrict_key, restrict_value, recursion_level, tag, ARCH_64BIT, tmp_diff_size);
+                    dump_syscheck_registry(syscheck, *paths_wildcard, opts, restrict_key, restrict_value, recursion_level, tag, ARCH_32BIT, tmp_diff_size);
+                } else {
+                    dump_syscheck_registry(syscheck, *paths_wildcard, opts, restrict_key, restrict_value, recursion_level, tag, arch, tmp_diff_size);
+                }
+                paths_wildcard++;
+            }
+            paths_wildcard = start_vector;
+		    w_FreeArray(paths_wildcard);
+		    os_free(paths_wildcard);
+            mdebug1(FIM_WILDCARDS_REGISTERS_FINALIZE);
+        } else {
+            /* Add new entry */
+            if (arch == ARCH_BOTH) {
+                dump_syscheck_registry(syscheck, tmp_entry, opts, restrict_key, restrict_value, recursion_level, tag, ARCH_64BIT, tmp_diff_size);
+                dump_syscheck_registry(syscheck, tmp_entry, opts, restrict_key, restrict_value, recursion_level, tag, ARCH_32BIT, tmp_diff_size);
+            } else {
+                dump_syscheck_registry(syscheck, tmp_entry, opts, restrict_key, restrict_value, recursion_level, tag, arch, tmp_diff_size);
+            }
+        }
         /* Next entry */
         free(entry[i]);
     }
