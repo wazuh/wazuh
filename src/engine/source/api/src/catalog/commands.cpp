@@ -7,8 +7,10 @@ namespace api::catalog::cmds
 
 api::CommandFn postResourceCmd(std::shared_ptr<Catalog> catalog)
 {
-    return [catalog](const json::Json& params) -> api::wpResponse
+    return [catalog](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         // TODO: join all the parameters verification in a single method
         // Check json params
         const auto formatOpt = params.getString("/format");
@@ -87,8 +89,10 @@ api::CommandFn postResourceCmd(std::shared_ptr<Catalog> catalog)
 
 api::CommandFn getResourceCmd(std::shared_ptr<Catalog> catalog)
 {
-    return [catalog](const json::Json& params) -> api::wpResponse
+    return [catalog](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         // Check json params
         const auto nameOpt = params.getString("/name");
         if (!nameOpt)
@@ -159,8 +163,10 @@ api::CommandFn getResourceCmd(std::shared_ptr<Catalog> catalog)
 
 api::CommandFn putResourceCmd(std::shared_ptr<Catalog> catalog)
 {
-    return [catalog](const json::Json& params) -> api::wpResponse
+    return [catalog](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         // Check json params
         const auto nameOpt = params.getString("/name");
         if (!nameOpt)
@@ -238,8 +244,10 @@ api::CommandFn putResourceCmd(std::shared_ptr<Catalog> catalog)
 
 api::CommandFn deleteResourceCmd(std::shared_ptr<Catalog> catalog)
 {
-    return [catalog](const json::Json& params) -> api::wpResponse
+    return [catalog](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         // Check json params
         const auto nameOpt = params.getString("/name");
         if (!nameOpt)
@@ -289,8 +297,10 @@ api::CommandFn deleteResourceCmd(std::shared_ptr<Catalog> catalog)
 
 api::CommandFn validateResourceCmd(std::shared_ptr<Catalog> catalog)
 {
-    return [catalog](const json::Json& params) -> api::wpResponse
+    return [catalog](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         // Check json params
         const auto nameOpt = params.getString("/name");
         if (!nameOpt)

@@ -95,9 +95,7 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                         base::utils::wazuhProtocol::WazuhRequest wrequest {jrequest};
                         if (wrequest.isValid())
                         {
-                            wresponse =
-                                m_registry->getCallback(wrequest.getCommand().value())(
-                                    wrequest.getParameters().value());
+                            wresponse = m_registry->getCallback(wrequest.getCommand().value())(wrequest);
                         }
                         else
                         {
@@ -113,9 +111,7 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                     catch (const std::exception& e)
                     {
                         wresponse = base::utils::wazuhProtocol::WazuhResponse::unknownError();
-                        WAZUH_LOG_ERROR("Engine API endpoint: Error with client ({}): {}",
-                                        client.peer(),
-                                        e.what());
+                        WAZUH_LOG_ERROR("Engine API endpoint: Error with client ({}): {}", client.peer(), e.what());
                     }
 
                     auto [buffer, size] = addSecureHeader(wresponse.toString());

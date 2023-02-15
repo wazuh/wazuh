@@ -15,8 +15,10 @@ using ConfHandler = std::shared_ptr<conf::IConf<ConfDriver>>;
 template<typename ConfDriver>
 api::CommandFn configGetCmd(ConfHandler<ConfDriver> confHandler)
 {
-    return [confHandler](const json::Json& params) -> api::wpResponse
+    return [confHandler](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         try
         {
             auto name = params.getString("/name");
@@ -43,8 +45,10 @@ api::CommandFn configGetCmd(ConfHandler<ConfDriver> confHandler)
 template<typename ConfDriver>
 api::CommandFn configSaveCmd(ConfHandler<ConfDriver> confHandler)
 {
-    return [confHandler](const json::Json& params) -> api::wpResponse
+    return [confHandler](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         try
         {
             auto path = params.getString("/path");
@@ -69,8 +73,10 @@ api::CommandFn configSaveCmd(ConfHandler<ConfDriver> confHandler)
 template<typename ConfDriver>
 api::CommandFn configPutCmd(ConfHandler<ConfDriver> confHandler)
 {
-    return [confHandler](const json::Json& params) -> api::wpResponse
+    return [confHandler](api::wpRequest request) -> api::wpResponse
     {
+        const auto params = request.getParameters().value(); // The request is validated by the server
+
         try
         {
             auto name = params.getString("/name");
