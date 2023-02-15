@@ -46,3 +46,5 @@ Standard: Auto
 TabWidth: '4'
 UseTab: Never
 ---
+Language: Proto
+DisableFormat: false

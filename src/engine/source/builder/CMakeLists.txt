@@ -78,7 +78,6 @@ target_link_libraries(builders
   kvdb
   re2
   logicExpression
-  server
   wdb
   OpenSSL::Crypto
 )

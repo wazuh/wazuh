@@ -30,7 +30,7 @@ CommandFn Registry::getCallback(const std::string& command)
     }
     return [command](const json::Json&)
     {
-        return WazuhResponse {
+        return base::utils::wazuhProtocol::WazuhResponse {
             json::Json {"{}"}, -1, fmt::format(R"(Command "{}" not found)", command)};
     };
 };

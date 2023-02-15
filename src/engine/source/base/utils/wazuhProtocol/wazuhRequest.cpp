@@ -1,8 +1,8 @@
-#include "api/wazuhRequest.hpp"
+#include "wazuhRequest.hpp"
 
 #include <logging/logging.hpp>
 
-namespace api
+namespace base::utils::wazuhProtocol
 {
 /*
  * https://github.com/wazuh/wazuh/issues/5934
@@ -20,10 +20,9 @@ std::optional<std::string> WazuhRequest::validate() const
     // Check if the version is supported
     if (m_jrequest.getInt("/version").value() != SUPPORTED_VERSION)
     {
-        return fmt::format(
-            "The request version ({}) is not supported, the supported version is {}",
-            m_jrequest.getInt("/version").value(),
-            SUPPORTED_VERSION);
+        return fmt::format("The request version ({}) is not supported, the supported version is {}",
+                           m_jrequest.getInt("/version").value(),
+                           SUPPORTED_VERSION);
     }
     if (!m_jrequest.isString("/command"))
     {
@@ -51,35 +50,30 @@ std::optional<std::string> WazuhRequest::validate() const
     return std::nullopt;
 }
 
-WazuhRequest WazuhRequest::create(std::string_view command,
-                                  std::string_view originName,
-                                  const json::Json& parameters)
+WazuhRequest WazuhRequest::create(std::string_view command, std::string_view originName, const json::Json& parameters)
 {
 
     if (command.empty())
     {
-        WAZUH_LOG_DEBUG(
-            "Engine API request: \"{}\" method: command: \"{}\", origin name: "
-            "\"{}\", parameters: \"{}\".",
-            __func__,
-            command,
-            originName,
-            parameters.str());
+        WAZUH_LOG_DEBUG("Engine API request: \"{}\" method: command: \"{}\", origin name: "
+                        "\"{}\", parameters: \"{}\".",
+                        __func__,
+                        command,
+                        originName,
+                        parameters.str());
 
         throw std::runtime_error("The command cannot be empty");
     }
     if (!parameters.isObject())
     {
-        WAZUH_LOG_DEBUG(
-            "Engine API request: \"{}\" method: command: \"{}\", origin name: "
-            "\"{}\", parameters: \"{}\".",
-            __func__,
-            command,
-            originName,
-            parameters.str());
+        WAZUH_LOG_DEBUG("Engine API request: \"{}\" method: command: \"{}\", origin name: "
+                        "\"{}\", parameters: \"{}\".",
+                        __func__,
+                        command,
+                        originName,
+                        parameters.str());
 
-        throw std::runtime_error(
-            "The command parameters must be a JSON object");
+        throw std::runtime_error("The command parameters must be a JSON object");
     }
 
     json::Json jrequest;
@@ -92,4 +86,4 @@ WazuhRequest WazuhRequest::create(std::string_view command,
     return WazuhRequest(jrequest);
 }
 
-} // namespace api
+} // namespace base::utils::wazuhProtocol

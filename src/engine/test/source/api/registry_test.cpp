@@ -43,8 +43,8 @@ TEST(Registry, addComand)
 
     // Add command
     registry.registerCommand(command,
-                             [](const json::Json& json) -> api::WazuhResponse {
-                                 return api::WazuhResponse {json, 0, "OK"};
+                             [](const json::Json& json) -> base::utils::wazuhProtocol::WazuhResponse {
+                                 return base::utils::wazuhProtocol::WazuhResponse {json, 0, "OK"};
                              });
 
     // Get callback in registry
@@ -73,8 +73,8 @@ TEST(Registry, addComandEmpty)
 
     // Attempt to add command
     bool res = registry.registerCommand(command,
-                                        [](const json::Json& json) -> api::WazuhResponse {
-                                            return api::WazuhResponse {json, 0, "OK"};
+                                        [](const json::Json& json) -> base::utils::wazuhProtocol::WazuhResponse {
+                                            return base::utils::wazuhProtocol::WazuhResponse {json, 0, "OK"};
                                         });
 
     ASSERT_FALSE(res); // Fail
@@ -127,8 +127,8 @@ TEST(Registry, AddduplicateCommand)
     // Add command for the first time
     bool res =
         registry.registerCommand(command,
-                                 [](const json::Json& json) -> api::WazuhResponse {
-                                     return api::WazuhResponse {json, 1, "OK cmd1"};
+                                 [](const json::Json& json) -> base::utils::wazuhProtocol::WazuhResponse {
+                                     return base::utils::wazuhProtocol::WazuhResponse {json, 1, "OK cmd1"};
                                  });
     ASSERT_TRUE(res); // OK
     // Get callback in registry
@@ -139,8 +139,8 @@ TEST(Registry, AddduplicateCommand)
 
     // Add command
     res = registry.registerCommand(command,
-                                   [](const json::Json& json) -> api::WazuhResponse {
-                                       return api::WazuhResponse {json, 2, "OK cmd2"};
+                                   [](const json::Json& json) -> base::utils::wazuhProtocol::WazuhResponse {
+                                       return base::utils::wazuhProtocol::WazuhResponse {json, 2, "OK cmd2"};
                                    });
     ASSERT_FALSE(res); // Fail
 
@@ -168,15 +168,15 @@ TEST(Registry, AddMultipleCommands)
     // Add command for the first time
     bool res =
         registry.registerCommand(command,
-                                 [](const json::Json& json) -> api::WazuhResponse {
-                                     return api::WazuhResponse {json, 1, "OK cmd1"};
+                                 [](const json::Json& json) -> base::utils::wazuhProtocol::WazuhResponse {
+                                     return base::utils::wazuhProtocol::WazuhResponse {json, 1, "OK cmd1"};
                                  });
     ASSERT_TRUE(res); // OK
 
     // Add command for the first time
     res = registry.registerCommand(command2,
-                                   [](const json::Json& json) -> api::WazuhResponse {
-                                       return api::WazuhResponse {json, 2, "OK cmd2"};
+                                   [](const json::Json& json) -> base::utils::wazuhProtocol::WazuhResponse {
+                                       return base::utils::wazuhProtocol::WazuhResponse {json, 2, "OK cmd2"};
                                    });
     ASSERT_TRUE(res); // OK
 

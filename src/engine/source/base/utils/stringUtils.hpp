@@ -14,7 +14,7 @@
 #include <string_view>
 #include <vector>
 
-namespace utils::string
+namespace base::utils::string
 {
 
 /**
@@ -112,6 +112,6 @@ inline bool startsWith(std::string_view str, std::string_view prefix)
     return str.substr(0, prefix.size()) == prefix;
 }
 
-} // namespace utils::string
+} // namespace base::utils::string
 
 #endif // _STRING_UTILS_H

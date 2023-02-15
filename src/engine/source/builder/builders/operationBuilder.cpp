@@ -138,7 +138,7 @@ Expression operationBuilder(const std::any& definition, OperationType type, std:
         std::vector<std::string> helperArgs;
         auto helperString = value.getString().value().substr(1);
 
-        helperArgs = utils::string::splitEscaped(
+        helperArgs = base::utils::string::splitEscaped(
             helperString, syntax::FUNCTION_HELPER_ARG_ANCHOR, syntax::FUNCTION_HELPER_DEFAULT_ESCAPE);
 
         helperName = helperArgs.at(0);

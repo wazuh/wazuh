@@ -70,7 +70,7 @@ json::Json getParameters(const std::string& format, const std::string& name, con
     return params;
 }
 
-void processResponse(const api::WazuhResponse& response)
+void processResponse(const base::utils::wazuhProtocol::WazuhResponse& response)
 {
     auto content = response.data().getString("/content");
     auto message = response.message();
@@ -84,7 +84,7 @@ void processResponse(const api::WazuhResponse& response)
     }
 }
 
-void singleRequest(const api::WazuhRequest& request, const std::string& socketPath)
+void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, const std::string& socketPath)
 {
     try
     {
@@ -102,7 +102,7 @@ void singleRequest(const api::WazuhRequest& request, const std::string& socketPa
 
 void runGet(const std::string& socketPath, const std::string& format, const std::string& nameStr)
 {
-    auto request = api::WazuhRequest::create(
+    auto request = base::utils::wazuhProtocol::WazuhRequest::create(
         details::commandName("get"), details::ORIGIN_NAME, details::getParameters(format, nameStr));
 
     details::singleRequest(request, socketPath);
@@ -113,7 +113,7 @@ void runUpdate(const std::string& socketPath,
                const std::string& nameStr,
                const std::string& content)
 {
-    auto request = api::WazuhRequest::create(
+    auto request = base::utils::wazuhProtocol::WazuhRequest::create(
         details::commandName("put"), details::ORIGIN_NAME, details::getParameters(format, nameStr, content));
 
     details::singleRequest(request, socketPath);
@@ -124,7 +124,7 @@ void runCreate(const std::string& socketPath,
                const std::string& nameStr,
                const std::string& content)
 {
-    auto request = api::WazuhRequest::create(
+    auto request = base::utils::wazuhProtocol::WazuhRequest::create(
         details::commandName("post"), details::ORIGIN_NAME, details::getParameters(format, nameStr, content));
 
     details::singleRequest(request, socketPath);
@@ -132,7 +132,7 @@ void runCreate(const std::string& socketPath,
 
 void runDelete(const std::string& socketPath, const std::string& format, const std::string& nameStr)
 {
-    auto request = api::WazuhRequest::create(
+    auto request = base::utils::wazuhProtocol::WazuhRequest::create(
         details::commandName("delete"), details::ORIGIN_NAME, details::getParameters(format, nameStr));
 
     details::singleRequest(request, socketPath);
@@ -143,7 +143,7 @@ void runValidate(const std::string& socketPath,
                  const std::string& nameStr,
                  const std::string& content)
 {
-    auto request = api::WazuhRequest::create(
+    auto request = base::utils::wazuhProtocol::WazuhRequest::create(
         details::commandName("validate"), details::ORIGIN_NAME, details::getParameters(format, nameStr, content));
 
     details::singleRequest(request, socketPath);
@@ -220,7 +220,7 @@ void runLoad(const std::string& socketPath,
             }
 
             // Send request
-            auto request = api::WazuhRequest::create(
+            auto request = base::utils::wazuhProtocol::WazuhRequest::create(
                 details::commandName("post"), details::ORIGIN_NAME, details::getParameters(format, nameStr, content));
             std::cout << dirEntry << " ==> ";
             try
