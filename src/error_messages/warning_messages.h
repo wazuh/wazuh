@@ -39,10 +39,11 @@
 #define FIM_WARN_FILE_REALTIME                  "(6921): Unable to configure real-time option for file: '%s'"
 #define FIM_PATH_NOT_OPEN                       "(6922): Cannot open '%s': %s"
 
-#define FIM_AUDIT_NORUNNING                     "(6924): Who-data engine cannot start because Auditd is not running."
-#define FIM_INVALID_OPTION_SKIP                 "(6925): Invalid option '%s' for attribute '%s'. The paths '%s' will not be monitored."
-#define FIM_WARN_WHODATA_ADD_RULE               "(6926): Unable to add audit rule for '%s'"
-#define FIM_DB_FULL_ALERT                       "(6927): Sending DB 100%% full alert."
+#define FIM_AUDIT_NORUNNING                     "(6923): Who-data engine cannot start because Auditd is not running."
+#define FIM_INVALID_OPTION_SKIP                 "(6924): Invalid option '%s' for attribute '%s'. The paths '%s' will not be monitored."
+#define FIM_WARN_WHODATA_ADD_RULE               "(6925): Unable to add audit rule for '%s'"
+#define FIM_DB_FULL_ALERT_FILE                  "(6926): File database is 100%% full."
+#define FIM_DB_FULL_ALERT_REG                   "(6927): Registry database is 100%% full."
 #define FIM_WARN_WHODATA_GETID                  "(6928): Couldn't get event ID from Audit message. Line: '%s'."
 #define FIM_WARN_WHODATA_EVENT_TOOLONG          "(6929): Caching Audit message: event too long. Event with ID: '%s' will be discarded."
 #define FIM_WARN_MAX_DIR_REACH                  "(6930): Maximum number of directories to be monitored in the same tag reached (%d) Excess are discarded: '%s'"
@@ -69,6 +70,7 @@
 #define FIM_WHODATA_ERROR_CHECKING_POL          "(6951): Unable to check the necessary policies for whodata: %s (%lu)."
 #define FIM_WHODATA_POLICY_CHANGE_CHECKER       "(6952): Audit policy change detected. Switching directories to realtime."
 #define FIM_WHODATA_POLICY_CHANGE_CHANNEL       "(6953): Event 4719 received due to changes in audit policy. Switching directories to realtime."
+#define FIM_EMPTY_CHANGED_ATTRIBUTES            "(6954): Entry '%s' does not have any modified fields. No event will be generated."
 
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."

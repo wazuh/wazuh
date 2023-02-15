@@ -403,6 +403,8 @@ INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');
 INSERT INTO sync_info (component) VALUES ('fim_file');
 INSERT INTO sync_info (component) VALUES ('fim_registry');
+INSERT INTO sync_info (component) VALUES ('fim_registry_key');
+INSERT INTO sync_info (component) VALUES ('fim_registry_value');
 INSERT INTO sync_info (component) VALUES ('syscollector-processes');
 INSERT INTO sync_info (component) VALUES ('syscollector-packages');
 INSERT INTO sync_info (component) VALUES ('syscollector-hotfixes');

@@ -18,6 +18,7 @@
 #include <functional>
 #include <iostream>
 #include "threadSafeQueue.h"
+#include "promiseFactory.h"
 #include "commonDefs.h"
 
 namespace Utils
@@ -108,16 +109,15 @@ namespace Utils
             {
                 if (m_running)
                 {
-                    std::promise<void> promise;
-                    auto fut { promise.get_future() };
+                    auto promise { PromiseFactory<PROMISE_TYPE>::getPromiseObject() };
                     m_queue.push
                     (
                         [&promise]()
                     {
-                        promise.set_value();
+                        promise->set_value();
                     }
                     );
-                    fut.wait();
+                    promise->wait();
                     cancel();
                 }
             }

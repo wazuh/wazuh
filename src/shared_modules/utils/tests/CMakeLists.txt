@@ -53,6 +53,12 @@ file(GLOB UTIL_CXX_UNITTEST_LINUX_SRC
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 link_directories(${SRC_FOLDER}/external/openssl/)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+  add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
+else()
+  add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
+endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_executable(utils_unit_test
       ${UTIL_CXX_UNITTEST_COMMON_SRC}

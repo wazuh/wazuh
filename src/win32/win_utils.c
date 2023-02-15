@@ -100,6 +100,10 @@ int local_start()
         merror_exit("WSAStartup() failed");
     }
 
+    /* Initialize error logging for shared modulesd */
+    dbsync_initialize(loggingErrorFunction);
+    rsync_initialize(loggingErrorFunction);
+
     /* Read agent config */
     mdebug1("Reading agent configuration.");
     if (ClientConf(cfg) < 0) {

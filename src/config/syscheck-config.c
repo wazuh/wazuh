@@ -80,7 +80,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->scan_day                        = NULL;
     syscheck->scan_time                       = NULL;
     syscheck->file_limit_enabled              = true;
-    syscheck->file_limit                      = 100000;
+    syscheck->file_entry_limit                = 100000;
     syscheck->directories                     = OSList_Create();
 
     if (syscheck->directories == NULL) {
@@ -100,6 +100,8 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->wdata.fd                        = NULL;
 #endif
 #ifdef WIN32
+    syscheck->registry_limit_enabled          = true;
+    syscheck->db_entry_registry_limit         = 100000;
     syscheck->realtime_change                 = 0;
     syscheck->registry                        = NULL;
     syscheck->key_ignore                      = NULL;
@@ -113,10 +115,11 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
 #endif
     syscheck->prefilter_cmd                   = NULL;
     syscheck->sync_interval                   = 300;
-    syscheck->max_sync_interval               = 3600;
     syscheck->sync_response_timeout           = 30;
-    syscheck->sync_queue_size                 = 16384;
+    syscheck->sync_max_interval               = 3600;
+    syscheck->sync_thread_pool                = 1;
     syscheck->sync_max_eps                    = 10;
+    syscheck->sync_queue_size                 = 16384;
     syscheck->max_eps                         = 100;
     syscheck->max_files_per_second            = 0;
     syscheck->allow_remote_prefilter_cmd      = false;
@@ -197,7 +200,7 @@ void dump_syscheck_registry(syscheck_config *syscheck,
     int overwrite = -1;
 
     if (syscheck->registry == NULL) {
-        os_calloc(2, sizeof(registry), syscheck->registry);
+        os_calloc(2, sizeof(registry_t), syscheck->registry);
         syscheck->registry[pl + 1].entry = NULL;
         syscheck->registry[pl].tag = NULL;
         syscheck->registry[pl + 1].tag = NULL;
@@ -216,7 +219,7 @@ void dump_syscheck_registry(syscheck_config *syscheck,
             pl++;
         }
         if (overwrite < 0) {
-            os_realloc(syscheck->registry, (pl + 2) * sizeof(registry), syscheck->registry);
+            os_realloc(syscheck->registry, (pl + 2) * sizeof(registry_t), syscheck->registry);
             syscheck->registry[pl + 1].entry = NULL;
             syscheck->registry[pl].tag = NULL;
             syscheck->registry[pl + 1].tag = NULL;
@@ -329,12 +332,12 @@ void dump_registry_nodiff(syscheck_config *syscheck, const char *entry, int arch
                     strcmp(syscheck->registry_nodiff[ign_size].entry, entry) == 0)
                 return;
 
-        os_realloc(syscheck->registry_nodiff, sizeof(registry) * (ign_size + 2),
+        os_realloc(syscheck->registry_nodiff, sizeof(registry_t) * (ign_size + 2),
                    syscheck->registry_nodiff);
 
         syscheck->registry_nodiff[ign_size + 1].entry = NULL;
     } else {
-        os_calloc(2, sizeof(registry), syscheck->registry_nodiff);
+        os_calloc(2, sizeof(registry_t), syscheck->registry_nodiff);
         syscheck->registry_nodiff[0].entry = NULL;
         syscheck->registry_nodiff[1].entry = NULL;
     }
@@ -1174,11 +1177,12 @@ out_free:
 static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
     const char *xml_enabled = "enabled";
     const char *xml_sync_interval = "interval";
-    const char *xml_max_sync_interval = "max_interval";
+    const char *xml_sync_max_interval = "max_interval";
     const char *xml_response_timeout = "response_timeout";
     const char *xml_sync_queue_size = "queue_size";
     const char *xml_max_eps = "max_eps";
     const char *xml_registry_enabled = "registry_enabled";
+    const char *xml_sync_thread_pool = "thread_pool";
 
     for (int i = 0; node[i]; i++) {
         if (strcmp(node[i]->element, xml_enabled) == 0) {
@@ -1197,21 +1201,21 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
             } else {
                 syscheck->sync_interval = t;
             }
-        } else if (strcmp(node[i]->element, xml_max_sync_interval) == 0) {
-            long t = w_parse_time(node[i]->content);
+        } else if (strcmp(node[i]->element, xml_sync_max_interval) == 0) {
+            long max_interval = w_parse_time(node[i]->content);
 
-            if (t <= 0) {
+            if (max_interval < 0) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
-                syscheck->max_sync_interval = t;
+                syscheck->sync_max_interval = (uint32_t) max_interval;
             }
         } else if (strcmp(node[i]->element, xml_response_timeout) == 0) {
-            long t = w_parse_time(node[i]->content);
+            long response_timeout = w_parse_time(node[i]->content);
 
-            if (t == -1) {
+            if (response_timeout < 0) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
-                syscheck->sync_response_timeout = t;
+                syscheck->sync_response_timeout = (uint32_t) response_timeout;
             }
         } else if (strcmp(node[i]->element, xml_sync_queue_size) == 0) {
             char * end;
@@ -1219,7 +1223,8 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
 
             if (value < 2 || value > 1000000 || *end) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
+            }
+            else {
                 syscheck->sync_queue_size = value;
             }
         } else if (strcmp(node[i]->element, xml_max_eps) == 0) {
@@ -1241,9 +1246,26 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                 syscheck->enable_registry_synchronization = r;
             }
 #endif
+        } else if (strcmp(node[i]->element, xml_sync_thread_pool) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                int value = atoi(node[i]->content);
+
+                if (value < 1) {
+                    mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    syscheck->sync_thread_pool = value;
+                }
+            }
         } else {
             mwarn(XML_INVELEM, node[i]->element);
         }
+    }
+
+    if (syscheck->sync_max_interval < syscheck->sync_interval) {
+        syscheck->sync_max_interval = syscheck->sync_interval;
+        mwarn("'max_interval' cannot be less than 'interval'. New 'max_interval' value: '%d'", syscheck->sync_interval);
     }
 }
 
@@ -1584,8 +1606,11 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_database = "database";
     const char *xml_scantime = "scan_time";
     const char *xml_file_limit = "file_limit";
-    const char *xml_file_limit_enabled = "enabled";
-    const char *xml_file_limit_entries = "entries";
+    const char *xml_enabled = "enabled";
+    const char *xml_entries = "entries";
+#ifdef WIN32
+    const char *xml_registry_limit = "registry_limit";
+#endif
     const char *xml_ignore = "ignore";
     const char *xml_registry_ignore = "registry_ignore";
 #ifdef WIN32
@@ -1725,9 +1750,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
                 continue;
             }
-
             for(j = 0; children[j]; j++) {
-                if (strcmp(children[j]->element, xml_file_limit_enabled) == 0) {
+                if (strcmp(children[j]->element, xml_enabled) == 0) {
                     if (strcmp(children[j]->content, "yes") == 0) {
                         syscheck->file_limit_enabled = true;
                     }
@@ -1740,28 +1764,72 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         return (OS_INVALID);
                     }
                 }
-                else if (strcmp(children[j]->element, xml_file_limit_entries) == 0) {
+                else if (strcmp(children[j]->element, xml_entries) == 0) {
                     if (!OS_StrIsNum(children[j]->content)) {
                         merror(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
                         return (OS_INVALID);
                     }
 
-                    syscheck->file_limit = atoi(children[j]->content);
+                    syscheck->file_entry_limit = atoi(children[j]->content);
 
-                    if (syscheck->file_limit < 0) {
+                    if (syscheck->file_entry_limit < 0) {
                         mdebug2("Maximum value allowed for file_limit is '%d'", MAX_FILE_LIMIT);
-                        syscheck->file_limit = MAX_FILE_LIMIT;
+                        syscheck->file_entry_limit = MAX_FILE_LIMIT;
                     }
                 }
             }
 
             if (!syscheck->file_limit_enabled) {
-                syscheck->file_limit = 0;
+                syscheck->file_entry_limit = 0;
             }
 
             OS_ClearNode(children);
         }
+
+#ifdef WIN32
+        // Get registry limit
+        else if (strcmp(node[i]->element, xml_registry_limit) == 0) {
+            if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
+                continue;
+            }
+            for(j = 0; children[j]; j++) {
+                if (strcmp(children[j]->element, xml_enabled) == 0) {
+                    if (strcmp(children[j]->content, "yes") == 0) {
+                        syscheck->registry_limit_enabled = true;
+                    }
+                    else if (strcmp(children[j]->content, "no") == 0) {
+                        syscheck->registry_limit_enabled = false;
+                    }
+                    else {
+                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        OS_ClearNode(children);
+                        return (OS_INVALID);
+                    }
+                }
+                else if (strcmp(children[j]->element, xml_entries) == 0) {
+                    if (!OS_StrIsNum(children[j]->content)) {
+                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        OS_ClearNode(children);
+                        return (OS_INVALID);
+                    }
+
+                    syscheck->db_entry_registry_limit = atoi(children[j]->content);
+
+                    if (syscheck->db_entry_registry_limit < 0) {
+                        mdebug2("Maximum value allowed for registry_limit is '%d'", MAX_FILE_LIMIT);
+                        syscheck->db_entry_registry_limit = MAX_FILE_LIMIT;
+                    }
+                }
+            }
+
+            if (!syscheck->registry_limit_enabled) {
+                syscheck->db_entry_registry_limit = 0;
+            }
+
+            OS_ClearNode(children);
+        }
+#endif
 
         /* Get if xml_scan_on_start */
         else if (strcmp(node[i]->element, xml_scan_on_start) == 0) {

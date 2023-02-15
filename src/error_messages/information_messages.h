@@ -51,12 +51,14 @@
 #define FIM_WINREGISTRY_ENDED               "(6032): Registry integrity monitoring scan ended"
 #define FIM_LINKCHECK_START                 "(6033): Starting symbolic link updater. Interval '%d'."
 #define FIM_LINKCHECK_CHANGED               "(6034): Updating symbolic link '%s': from '%s' to '%s'."
-#define FIM_WHODATA_VOLUMES                 "(6036): Analyzing Windows volumes"
+#define FIM_WHODATA_VOLUMES                 "(6035): Analyzing Windows volumes"
 
-#define FIM_DB_NORMAL_ALERT                 "(6038): Sending DB back to normal alert."
-#define FIM_DB_80_PERCENTAGE_ALERT          "(6039): Sending DB 80%% full alert."
-#define FIM_DB_90_PERCENTAGE_ALERT          "(6039): Sending DB 90%% full alert."
-
+#define FIM_DB_NORMAL_ALERT_FILE            "(6036): The file database status returns to normal."
+#define FIM_DB_NORMAL_ALERT_REG             "(6037): The registry database status returns to normal."
+#define FIM_DB_80_PERCENTAGE_ALERT_FILE     "(6038): File database is 80%% full."
+#define FIM_DB_80_PERCENTAGE_ALERT_REG      "(6039): Registry database is 80%% full."
+#define FIM_DB_90_PERCENTAGE_ALERT_FILE     "(6040): File database is 90%% full."
+#define FIM_DB_90_PERCENTAGE_ALERT_REG      "(6041): Registry database is 90%% full."
 
 #define FIM_FILE_SIZE_LIMIT_DISABLED        "(6042): File size limit disabled."
 #define FIM_DISK_QUOTA_LIMIT_DISABLED       "(6043): Disk quota limit disabled."

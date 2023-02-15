@@ -71,6 +71,7 @@ DynamicField df[] = {
     [FIM_REGISTRY_ARCH] = {.key = "fim_registry_arch", .value = "[x64]"},
     [FIM_REGISTRY_VALUE_NAME] = {.key = "fim_registry_value_name", .value = "value_name"},
     [FIM_REGISTRY_VALUE_TYPE] = {.key = "fim_registry_value_type", .value = "binary"},
+    [FIM_REGISTRY_HASH] = {.key = "hash_full_path", .value = "ff03d79932df0148efa6a066552badf25ea9c466"},
     [FIM_ENTRY_TYPE] = {.key = "fim_entry_type", .value = "registry"},
     [FIM_EVENT_TYPE] = {.key = "fim_event_type", .value = "modified"}
 };
@@ -133,7 +134,7 @@ static int test_teardown(void **state) {
 
 void test_OS_Log_no_syscheck_event(void **state) {
     Eventinfo *lf = *state;
-    char buffer[FIM_NFIELDS][40];
+    char buffer[FIM_NFIELDS][60];
     FILE fp = { '\0' };
 
     expect_fprintf(&fp, "** Alert 160987966.0: - rule_group\n"
@@ -143,7 +144,7 @@ void test_OS_Log_no_syscheck_event(void **state) {
                            "full_log\n", 0);
 
     for (int i = 0; i < lf->nfields; i++) {
-        snprintf(buffer[i], 40, "%s: %s\n", df[i].key, df[i].value);
+        snprintf(buffer[i], sizeof(buffer[i]), "%s: %s\n", df[i].key, df[i].value);
         expect_fprintf(&fp, buffer[i], 0);
     }
 
@@ -158,7 +159,7 @@ void test_OS_Log_no_syscheck_event(void **state) {
 
 void test_OS_Log_no_label_event(void **state) {
     Eventinfo *lf = *state;
-    char buffer[FIM_NFIELDS][40];
+    char buffer[FIM_NFIELDS][60];
     lf->labels[0].key = NULL;
     lf->labels[0].value = NULL;
     FILE fp = { '\0' };
@@ -169,7 +170,7 @@ void test_OS_Log_no_label_event(void **state) {
                            "full_log\n", 0);
 
     for (int i = 0; i < lf->nfields; i++) {
-        snprintf(buffer[i], 40, "%s: %s\n", df[i].key, df[i].value);
+        snprintf(buffer[i], sizeof(buffer[i]), "%s: %s\n", df[i].key, df[i].value);
         expect_fprintf(&fp, buffer[i], 0);
     }
 

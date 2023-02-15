@@ -15,6 +15,7 @@
 #include <memory>
 #include <mutex>
 #include <functional>
+#include <shared_mutex>
 #include <memory>
 #include "commonDefs.h"
 #include "json.hpp"

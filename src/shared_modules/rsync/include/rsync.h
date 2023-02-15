@@ -13,6 +13,7 @@
 #define _RSYNC_H_
 
 // Define EXPORTED for any platform
+#ifndef EXPORTED
 #ifdef _WIN32
 #ifdef WIN_EXPORT
 #define EXPORTED __declspec(dllexport)
@@ -23,6 +24,7 @@
 #define EXPORTED __attribute__((visibility("default")))
 #else
 #define EXPORTED
+#endif
 #endif
 
 #include "commonDefs.h"

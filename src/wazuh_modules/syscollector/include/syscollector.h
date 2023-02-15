@@ -30,16 +30,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "headers/logging_helper.h"
 
-typedef enum syscollector_log_level_t
-{
-    SYS_LOG_ERROR,
-    SYS_LOG_INFO,
-    SYS_LOG_DEBUG,
-    SYS_LOG_DEBUG_VERBOSE
-} syscollector_log_level_t;
-
-typedef void((*log_callback_t)(const syscollector_log_level_t level, const char* log));
+typedef void((*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag));
 
 typedef void((*send_data_callback_t)(const void* buffer));
 
