@@ -1,10 +1,10 @@
-#ifndef _API_WAZUH_RESPONSE_HPP
-#define _API_WAZUH_RESPONSE_HPP
+#ifndef _BASE_UTILS_WAZUH_RESPONSE_HPP
+#define _BASE_UTILS_WAZUH_RESPONSE_HPP
 
 #include <json/json.hpp>
 #include <logging/logging.hpp>
 
-namespace api
+namespace base::utils::wazuhProtocol
 {
 
 namespace

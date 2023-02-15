@@ -76,6 +76,9 @@ add_library(base STATIC
     utils/socketInterface/unixSecureStream.cpp
     utils/socketInterface/unixDatagram.cpp
     utils/socketInterface/unixDatagram.hpp
+    utils/wazuhProtocol/wazuhResponse.hpp
+    utils/wazuhProtocol/wazuhRequest.hpp
+    utils/wazuhProtocol/wazuhRequest.cpp
     utils/baseMacros.hpp
     utils/baseMacros.cpp
     utils/ipUtils.cpp

@@ -82,7 +82,7 @@ public:
      */
     Name(const std::string& fullName)
     {
-        m_parts = utils::string::split(fullName, SEPARATOR_C);
+        m_parts = base::utils::string::split(fullName, SEPARATOR_C);
         assertSize(m_parts.size());
     }
 

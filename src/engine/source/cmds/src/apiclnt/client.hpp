@@ -9,8 +9,8 @@
 
 #include <uvw/pipe.hpp>
 
-#include <api/wazuhRequest.hpp>
-#include <api/wazuhResponse.hpp>
+#include <base/utils/wazuhProtocol/wazuhRequest.hpp>
+#include <base/utils/wazuhProtocol/wazuhResponse.hpp>
 #include <error.hpp>
 
 namespace cmd::apiclnt
@@ -74,7 +74,7 @@ public:
     {
     }
 
-    api::WazuhResponse send(const api::WazuhRequest& request)
+    base::utils::wazuhProtocol::WazuhResponse send(const base::utils::wazuhProtocol::WazuhRequest& request)
     {
         // Prepare request
         auto requestStr = request.toStr();
@@ -95,10 +95,10 @@ public:
         }
 
         // Parse response
-        api::WazuhResponse parsedResponse;
+        base::utils::wazuhProtocol::WazuhResponse parsedResponse;
         try
         {
-            parsedResponse = api::WazuhResponse::fromStr(std::get<std::string>(res));
+            parsedResponse = base::utils::wazuhProtocol::WazuhResponse::fromStr(std::get<std::string>(res));
         }
         catch (const std::exception& e)
         {

@@ -32,12 +32,12 @@ parsec::Parser<json::Json> getBoolParser(std::string name, Stop, Options lst)
         auto fp = text.substr(index);
         json::Json ret;
         // TODO Check True/ TRUE/ true/ False/ FALSE/ false / 0 / 1?
-        if (utils::string::startsWith(fp, "true"))
+        if (base::utils::string::startsWith(fp, "true"))
         {
             ret.setBool(true);
             return parsec::makeSuccess<json::Json>(std::move(ret), index + 4);
         }
-        else if (utils::string::startsWith(fp, "false"))
+        else if (base::utils::string::startsWith(fp, "false"))
         {
             ret.setBool(false);
             return parsec::makeSuccess<json::Json>(std::move(ret), index + 5);

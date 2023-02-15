@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+package com.wazuh.api.engine.router;
+
+// Client-facing representation of a route exposed in APIs.
+message Route
+{
+    // Name of the route
+    string name = 1;
+    // Filter to apply to the route
+    string asset_filter = 2;
+    // Policy to end of the route
+    string asset_policy = 3;
+    // Priority of the route
+    int32 priority = 4;
+}
+
+/* Define a query of a route */
+message RouteGetRequest
+{
+    // Name of the route to query
+    string name = 1;
+}
+
+/* Define a response for a route query */
+message RouteGetResponse
+{
+    // Status of the query
+    ResturnCodeStatus status = 1;
+    // Error message if status is ERROR
+    optional string error = 2;
+    // Route queried if status is SUCCESS
+    optional Route route = 3;
+}

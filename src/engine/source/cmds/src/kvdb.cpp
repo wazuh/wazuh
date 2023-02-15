@@ -5,8 +5,8 @@
 
 #include <fmt/format.h>
 
-#include <api/wazuhRequest.hpp>
-#include <api/wazuhResponse.hpp>
+#include <base/utils/wazuhProtocol/wazuhRequest.hpp>
+#include <base/utils/wazuhProtocol/wazuhResponse.hpp>
 #include <json/json.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
@@ -103,7 +103,7 @@ json::Json getParametersKeyValue(const std::string& action,
     return data;
 }
 
-void processResponse(const api::WazuhResponse& response)
+void processResponse(const base::utils::wazuhProtocol::WazuhResponse& response)
 {
     if (response.data().size() > 0)
     {
@@ -115,7 +115,7 @@ void processResponse(const api::WazuhResponse& response)
     }
 }
 
-void singleRequest(const api::WazuhRequest& request, const std::string& socketPath)
+void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, const std::string& socketPath)
 {
     try
     {
@@ -134,7 +134,7 @@ void singleRequest(const api::WazuhRequest& request, const std::string& socketPa
 
 void runList(const std::string& socketPath, const std::string& kvdbName, bool loaded)
 {
-    auto req = api::WazuhRequest::create(details::commandName(details::API_KVDB_LIST_SUBCOMMAND),
+    auto req = base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_LIST_SUBCOMMAND),
                                          details::ORIGIN_NAME,
                                          details::getParameters(details::API_KVDB_LIST_SUBCOMMAND, kvdbName, loaded));
 
@@ -143,7 +143,7 @@ void runList(const std::string& socketPath, const std::string& kvdbName, bool lo
 
 void runCreate(const std::string& socketPath, const std::string& kvdbName, const std::string& kvdbInputFilePath)
 {
-    auto req = api::WazuhRequest::create(
+    auto req = base::utils::wazuhProtocol::WazuhRequest::create(
         details::commandName(details::API_KVDB_CREATE_SUBCOMMAND),
         details::ORIGIN_NAME,
         details::getParameters(details::API_KVDB_CREATE_SUBCOMMAND, kvdbName, kvdbInputFilePath));
@@ -153,7 +153,7 @@ void runCreate(const std::string& socketPath, const std::string& kvdbName, const
 
 void runDump(const std::string& socketPath, const std::string& kvdbName)
 {
-    auto req = api::WazuhRequest::create(details::commandName(details::API_KVDB_DUMP_SUBCOMMAND),
+    auto req = base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_DUMP_SUBCOMMAND),
                                          details::ORIGIN_NAME,
                                          details::getParameters(details::API_KVDB_DUMP_SUBCOMMAND, kvdbName));
 
@@ -162,7 +162,7 @@ void runDump(const std::string& socketPath, const std::string& kvdbName)
 
 void runDelete(const std::string& socketPath, const std::string& kvdbName)
 {
-    auto req = api::WazuhRequest::create(details::commandName(details::API_KVDB_DELETE_SUBCOMMAND),
+    auto req = base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_DELETE_SUBCOMMAND),
                                          details::ORIGIN_NAME,
                                          details::getParameters(details::API_KVDB_DELETE_SUBCOMMAND, kvdbName));
 
@@ -172,7 +172,7 @@ void runDelete(const std::string& socketPath, const std::string& kvdbName)
 void runGetKV(const std::string& socketPath, const std::string& kvdbName, const std::string& kvdbKey)
 {
     auto req =
-        api::WazuhRequest::create(details::commandName(details::API_KVDB_GET_SUBCOMMAND),
+        base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_GET_SUBCOMMAND),
                                   details::ORIGIN_NAME,
                                   details::getParametersKey(details::API_KVDB_GET_SUBCOMMAND, kvdbName, kvdbKey));
 
@@ -184,7 +184,7 @@ void runInsertKV(const std::string& socketPath,
                  const std::string& kvdbKey,
                  const std::string& kvdbValue)
 {
-    auto req = api::WazuhRequest::create(
+    auto req = base::utils::wazuhProtocol::WazuhRequest::create(
         details::commandName(details::API_KVDB_INSERT_SUBCOMMAND),
         details::ORIGIN_NAME,
         details::getParametersKeyValue(details::API_KVDB_INSERT_SUBCOMMAND, kvdbName, kvdbKey, kvdbValue));
@@ -195,7 +195,7 @@ void runInsertKV(const std::string& socketPath,
 void runRemoveKV(const std::string& socketPath, const std::string& kvdbName, const std::string& kvdbKey)
 {
     auto req =
-        api::WazuhRequest::create(details::commandName(details::API_KVDB_REMOVE_SUBCOMMAND),
+        base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_REMOVE_SUBCOMMAND),
                                   details::ORIGIN_NAME,
                                   details::getParametersKey(details::API_KVDB_REMOVE_SUBCOMMAND, kvdbName, kvdbKey));
 

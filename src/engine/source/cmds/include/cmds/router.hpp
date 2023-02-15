@@ -5,8 +5,8 @@
 
 #include <CLI/CLI.hpp>
 
-#include <api/wazuhRequest.hpp>
-#include <api/wazuhResponse.hpp>
+#include <base/utils/wazuhProtocol/wazuhRequest.hpp>
+#include <base/utils/wazuhProtocol/wazuhResponse.hpp>
 #include <json/json.hpp>
 
 namespace cmd::router
@@ -22,8 +22,8 @@ json::Json getParameters(const std::string& action,
                          const std::string& filterName = "",
                          const std::string& environment = "");
 json::Json getIngestParameters(const std::string& action, const std::string& event);
-void processResponse(const api::WazuhResponse& response);
-void singleRequest(const api::WazuhRequest& request, const std::string& socketPath);
+void processResponse(const base::utils::wazuhProtocol::WazuhResponse& response);
+void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, const std::string& socketPath);
 } // namespace details
 
 void runGet(const std::string& socketPath, const std::string& nameStr);

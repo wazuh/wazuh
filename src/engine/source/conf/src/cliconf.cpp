@@ -11,7 +11,7 @@ const CLI::Option* CliConf::getOption(const std::string& key) const
     // Find the module holding the option
     const CLI::App* module = m_app.get();
 
-    auto splitted = utils::string::split(key, '.');
+    auto splitted = base::utils::string::split(key, '.');
     for (auto i = 0; i < splitted.size() - 1; ++i)
     {
         module = module->get_subcommand(splitted[i]);
