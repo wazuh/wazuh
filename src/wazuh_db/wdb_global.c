@@ -1584,11 +1584,6 @@ int wdb_global_add_global_group_hash_to_resposne(wdb_t *wdb, cJSON** response, s
         return WDBC_ERROR;
     }
 
-    if (response_size == NULL || response_size < 0) {
-        mdebug1("Invalid response_size.");
-        return WDBC_ERROR;
-    }
-
     size_t hash_len = strlen("hash:\"\"")+sizeof(os_sha1);
     if (response_size+hash_len+1 < WDB_MAX_RESPONSE_SIZE) {
         os_sha1 hash = {0};
