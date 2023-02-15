@@ -329,7 +329,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
             /* Main element does not need to have any child */
             if (chld_node) {
                 if (read_main_elements(&xml, modules, chld_node, d1, d2) < 0) {
-                    merror(CONFIG_ERROR, cfgfile);
+                    mwarn(CONFIG_ERROR, cfgfile);
                     OS_ClearNode(chld_node);
                     OS_ClearNode(node);
                     OS_ClearXML(&xml);
