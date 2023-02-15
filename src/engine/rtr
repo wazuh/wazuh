@@ -23,7 +23,7 @@ run() {
         STEP_DESC=`echo $step | jq -r '.description'`
         STEP_PARAMS=`echo $step | jq -r '.parameters | join(" ")'`
         echo "->Step: $STEP_DESC"
-        docker run -v $SRC_DIR:/source -v $OUTPUT_DIR:/output -v $RTR_DIR:/rtr $CONTAINER_NAME /rtr/rtr.py -u $USERID -g $GROUPID -o /output -s /source $STEP_PARAMS
+        docker run --rm -v $SRC_DIR:/source -v $OUTPUT_DIR:/output -v $RTR_DIR:/rtr $CONTAINER_NAME /rtr/rtr.py -u $USERID -g $GROUPID -o /output -s /source $STEP_PARAMS
         docker_exit_code=$?
         if [ $docker_exit_code -ne 0 ]; then
             echo "Execution fail, RTR step: $STEP_DESC"
