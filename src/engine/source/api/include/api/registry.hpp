@@ -8,7 +8,8 @@
 
 #include <json/json.hpp>
 
-#include "wazuhResponse.hpp"
+#include <utils/wazuhProtocol/wazuhResponse.hpp>
+#include <utils/wazuhProtocol/wazuhRequest.hpp>
 
 namespace api
 {
@@ -21,7 +22,10 @@ namespace api
  * @brief Represent a command function, which receives a json::Json with the params and
  * returns a WazuhResponse.
  */
-using CommandFn = std::function<WazuhResponse(const json::Json&)>;
+// TODO change accept WazuhRequest
+using wpResponse = base::utils::wazuhProtocol::WazuhResponse;
+using wpRequest = base::utils::wazuhProtocol::WazuhRequest;
+using CommandFn = std::function<wpResponse(const json::Json&)>;
 
 /**
  * @brief A registry for API commands

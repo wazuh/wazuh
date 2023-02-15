@@ -9,7 +9,7 @@
 
 #include "stringUtils.hpp"
 
-namespace utils::string
+namespace base::utils::string
 {
 
 std::vector<std::string> split(std::string_view str, const char delimiter)
@@ -57,7 +57,7 @@ std::vector<std::string> splitEscaped(std::string_view input, const char& splitC
         const auto& thisChar = input[i];
         if (thisChar == escape && i + 1 < input.size())
         {
-            const auto& nextChar = input[i+1];
+            const auto& nextChar = input[i + 1];
             // Escape char
             if (nextChar == escape || nextChar == splitChar)
             {
@@ -83,4 +83,4 @@ std::vector<std::string> splitEscaped(std::string_view input, const char& splitC
     return splitted;
 }
 
-} // namespace utils::string
+} // namespace base::utils::string

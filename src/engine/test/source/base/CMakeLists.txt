@@ -57,9 +57,16 @@ add_executable(name_test
 target_link_libraries(name_test gtest_main base)
 gtest_discover_tests(name_test)
 
+# Wazuh Protocol test
+add_executable(wazuhProtocol_test
+  utils/wazuhProtocol/wazuhRequest_test.cpp
+  utils/wazuhProtocol/wazuhResponse_test.cpp
+)
+target_link_libraries(wazuhProtocol_test gtest_main base)
+gtest_discover_tests(wazuhProtocol_test)
+
 add_executable(parseEvent_test
   parseEvent_test.cpp
 )
 target_link_libraries(parseEvent_test gtest_main base)
 gtest_discover_tests(parseEvent_test)
-

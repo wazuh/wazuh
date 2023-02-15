@@ -17,7 +17,7 @@ target_link_libraries(router
 target_include_directories(router
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    PRIVATE
     ${CameronQueue_SOURCE_DIR}
+    PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/src
 )

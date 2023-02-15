@@ -18,7 +18,7 @@ namespace cmd::config
 {
 namespace details
 {
-void processResponse(const api::WazuhResponse& response)
+void processResponse(const base::utils::wazuhProtocol::WazuhResponse& response)
 {
     auto message = response.message();
     if (message)
@@ -31,7 +31,7 @@ void processResponse(const api::WazuhResponse& response)
     }
 }
 
-void singleRequest(const api::WazuhRequest& request, const std::string& socketPath)
+void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, const std::string& socketPath)
 {
     apiclnt::Client client(socketPath);
     try
@@ -54,7 +54,7 @@ void runGet(const std::string& socketPath, const std::string& nameStr)
     {
         params.setString(nameStr, "/name");
     }
-    const auto request = api::WazuhRequest::create("config_get", details::ORIGIN_NAME, params);
+    const auto request = base::utils::wazuhProtocol::WazuhRequest::create("config_get", details::ORIGIN_NAME, params);
     details::singleRequest(request, socketPath);
 }
 
@@ -67,7 +67,7 @@ void runSave(const std::string& socketPath, const std::string& pathStr)
         params.setString(pathStr, "/path");
     }
 
-    const auto request = api::WazuhRequest::create("config_save", details::ORIGIN_NAME, params);
+    const auto request = base::utils::wazuhProtocol::WazuhRequest::create("config_save", details::ORIGIN_NAME, params);
     details::singleRequest(request, socketPath);
 }
 
@@ -77,7 +77,7 @@ void runPut(const std::string& socketPath, const std::string& nameStr, const std
     params.setObject();
     params.setString(nameStr, "/name");
     params.setString(valueStr, "/value");
-    const auto request = api::WazuhRequest::create("config_put", details::ORIGIN_NAME, params);
+    const auto request = base::utils::wazuhProtocol::WazuhRequest::create("config_put", details::ORIGIN_NAME, params);
     details::singleRequest(request, socketPath);
 }
 

@@ -1,9 +1,9 @@
-#ifndef _API_WAZUH_REQUEST_HPP
-#define _API_WAZUH_REQUEST_HPP
+#ifndef _BASE_UTILS_WAZUH_REQUEST_HPP
+#define _BASE_UTILS_WAZUH_REQUEST_HPP
 
 #include <json/json.hpp>
 
-namespace api
+namespace base::utils::wazuhProtocol
 {
 
 /**
@@ -87,9 +87,7 @@ public:
      * @throw std::runtime_error if the command is empty or the parameters are not a JSON
      * object
      */
-    static WazuhRequest create(std::string_view command,
-                               std::string_view originName,
-                               const json::Json& parameters);
+    static WazuhRequest create(std::string_view command, std::string_view originName, const json::Json& parameters);
 
     std::string toStr() const { return m_jrequest.str(); }
 
@@ -103,6 +101,6 @@ private:
     std::optional<std::string> validate() const;
 };
 
-} // namespace api
+} // namespace base::utils::wazuhProtocol
 
 #endif // _API_WAZUH_REQUEST_HPP

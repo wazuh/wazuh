@@ -17,7 +17,7 @@
 #include <utils/socketInterface/unixDatagram.hpp>
 #include <utils/stringUtils.hpp>
 // TODO: move the wazuhRequest to a common path such as "utils"
-#include <api/wazuhRequest.hpp>
+#include <base/utils/wazuhProtocol/wazuhRequest.hpp>
 
 using base::utils::socketInterface::SendRetval;
 using base::utils::socketInterface::unixDatagram;
@@ -283,7 +283,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
                 return base::result::makeFailure(event, failureTrace10 + e.what());
             }
 
-            auto payload = api::WazuhRequest::create(
+            auto payload = base::utils::wazuhProtocol::WazuhRequest::create(
                 commandNameResolvedValue, ar::ORIGIN_NAME, jsonParams);
 
             // Append header message

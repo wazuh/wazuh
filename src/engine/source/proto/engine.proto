@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package com.wazuh.api.engine;
+
+enum ResturnCodeStatus
+{
+    UNKNOWN = 0;
+    SUCCESS = 1;
+    ERROR = 2;
+}

@@ -641,7 +641,8 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
             }
 
             // accumulated concation without trailing indexes
-            const std::string composedValueString {utils::string::join(stringArray, separator)};
+            const std::string composedValueString {
+                base::utils::string::join(stringArray, separator)};
 
             event->setString(composedValueString, targetField);
             return base::result::makeSuccess(event, successTrace);
@@ -1115,7 +1116,8 @@ base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
                                                  (!event->exists(fieldReference)) ? failureTrace1 : failureTrace2);
             }
 
-            const auto splitted = utils::string::split(resolvedReference.value(), separator);
+            const auto splitted =
+                base::utils::string::split(resolvedReference.value(), separator);
 
             for (const auto& value : splitted)
             {
