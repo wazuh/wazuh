@@ -195,6 +195,9 @@ void* wm_database_main(wm_database *data) {
         struct timespec spec0;
         struct timespec spec1;
 
+        // Initial wait
+        sleep(data->interval);
+
         while (1) {
             tstart = (long long) time(NULL);
             cstart = clock();
