@@ -1479,11 +1479,6 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
             break;
     }
 
-    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("Cannot begin transaction");
-        return WDBC_ERROR;
-    }
-
     *output = cJSON_CreateArray();
     cJSON* j_response = cJSON_CreateObject();
     cJSON* j_data = cJSON_CreateArray();
@@ -1494,8 +1489,14 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
     os_free(out_aux);
 
     if (condition != WDB_GROUP_NO_CONDITION) {
+        if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+            mdebug1("Cannot begin transaction");
+            return WDBC_ERROR;
+        }
+
         // Agents registered recently may be excluded depending on the 'agent_registration_delta' value.
         time_t agent_registration_time = time(NULL) - agent_registration_delta;
+
         while (status == WDBC_UNKNOWN) {
             //Prepare SQL query
             if (wdb_stmt_cache(wdb, sync_statement_index) < 0) {

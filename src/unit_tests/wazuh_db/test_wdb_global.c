@@ -1136,7 +1136,6 @@ void test_wdb_global_sync_agent_groups_get_no_condition_get_hash_true(void **sta
     bool get_hash = true;
     cJSON *j_output = NULL;
 
-    will_return(__wrap_wdb_begin2, OS_SUCCESS);
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
@@ -1161,13 +1160,18 @@ void test_wdb_global_sync_agent_groups_get_transaction_fail(void **state)
     bool set_synced = true;
     bool get_hash = true;
     int agent_registration_delta = 10;
+    cJSON *j_output = NULL;
+
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
     will_return(__wrap_wdb_begin2, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, agent_registration_delta, NULL);
+    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, agent_registration_delta, &j_output);
 
     assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_output);
 }
 
 void test_wdb_global_sync_agent_groups_get_cache_fail(void **state)
