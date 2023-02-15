@@ -1130,23 +1130,20 @@ void test_wdb_global_sync_agent_groups_get_no_condition_get_hash_true(void **sta
 {
     wdbc_result result = WDBC_OK;
     test_struct_t *data  = (test_struct_t *)*state;
-    wdb_groups_sync_condition_t condition = 2;
+    wdb_groups_sync_condition_t condition = WDB_GROUP_NO_CONDITION;
     int last_agent_id = 0;
     bool set_synced = false;
     bool get_hash = true;
-    int agent_registration_delta = 0;
-    int wrapped_time = 100;
     cJSON *j_output = NULL;
 
     will_return(__wrap_wdb_begin2, OS_SUCCESS);
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    will_return(__wrap_time, wrapped_time);
 
     expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
     will_return(__wrap_wdb_get_global_group_hash, OS_SUCCESS);
 
-    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, agent_registration_delta, &j_output);
+    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, 10, &j_output);
 
     char *output = cJSON_PrintUnformatted(j_output);
     assert_string_equal(output, "[{\"data\":[],\"hash\":null}]");
@@ -1538,15 +1535,32 @@ void test_wdb_global_sync_agent_groups_get_due_buffer_full(void **state)
     __real_cJSON_Delete(j_output);
 }
 
-/* Tests wdb_global_add_global_group_hash_to_resposne */
+/* Tests wdb_global_add_global_group_hash_to_response */
+
+void test_wdb_global_sync_agent_groups_get_invalid_condition(void **state)
+{
+    wdbc_result result = WDBC_OK;
+    test_struct_t *data  = (test_struct_t *)*state;
+    wdb_groups_sync_condition_t condition = WDB_GROUP_INVALID_CONDITION;
+    int last_agent_id = 0;
+    bool set_synced = true;
+    bool get_hash = true;
+    int agent_registration_delta = 10;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid groups sync condition");
+
+    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, agent_registration_delta, NULL);
+
+    assert_int_equal(result, WDBC_ERROR);
+}
 
 void test_wdb_global_add_global_group_hash_to_resposne_response_null(void **state) {
     wdbc_result result = WDBC_OK;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid JSON array.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid JSON object.");
 
-    result = wdb_global_add_global_group_hash_to_resposne(data->wdb, NULL, 1);
+    result = wdb_global_add_global_group_hash_to_response(data->wdb, NULL, 1);
 
     assert_int_equal(result, WDBC_ERROR);
 }
@@ -1560,7 +1574,7 @@ void test_wdb_global_add_global_group_hash_to_resposne_get_hash_return_null(void
     expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
     will_return(__wrap_wdb_get_global_group_hash, OS_SUCCESS);
 
-    result = wdb_global_add_global_group_hash_to_resposne(data->wdb, &j_response, 1);
+    result = wdb_global_add_global_group_hash_to_response(data->wdb, &j_response, 1);
 
     char *output = cJSON_PrintUnformatted(j_response);
     assert_string_equal(output, "{\"hash\":null}");
@@ -1572,9 +1586,9 @@ void test_wdb_global_add_global_group_hash_to_resposne_get_hash_return_null(void
 void test_wdb_global_add_global_group_hash_to_resposne_response_due(void **state) {
     wdbc_result result = WDBC_OK;
     test_struct_t *data  = (test_struct_t *)*state;
-    cJSON *j_response = __real_cJSON_CreateArray();
+    cJSON *j_response = cJSON_CreateObject();
 
-    result = wdb_global_add_global_group_hash_to_resposne(data->wdb, &j_response, WDB_MAX_RESPONSE_SIZE-1);
+    result = wdb_global_add_global_group_hash_to_response(data->wdb, &j_response, WDB_MAX_RESPONSE_SIZE-1);
 
     assert_int_equal(result, WDBC_DUE);
     __real_cJSON_Delete(j_response);
@@ -1584,14 +1598,14 @@ void test_wdb_global_add_global_group_hash_to_resposne_get_hash_error(void **sta
 {
     wdbc_result result = WDBC_OK;
     test_struct_t *data  = (test_struct_t *)*state;
-    cJSON *j_response = __real_cJSON_CreateArray();
+    cJSON *j_response = cJSON_CreateObject();
 
     expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
     will_return(__wrap_wdb_get_global_group_hash, OS_INVALID);
 
     expect_string(__wrap__merror, formatted_msg, "Cannot obtain the global group hash");
 
-    result = wdb_global_add_global_group_hash_to_resposne(data->wdb, &j_response, 1);
+    result = wdb_global_add_global_group_hash_to_response(data->wdb, &j_response, 1);
 
     assert_int_equal(result, WDBC_ERROR);
     __real_cJSON_Delete(j_response);
@@ -8892,6 +8906,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_step_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_success, test_setup, test_teardown),
         /* Tests wdb_global_sync_agent_groups_get */
+        cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_invalid_condition, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_no_condition_get_hash_true, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_cache_fail, test_setup, test_teardown),
@@ -8902,7 +8917,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_exec_fail_get_hash_true_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_set_synced_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_due_buffer_full, test_setup, test_teardown),
-        /* Tests wdb_global_add_global_group_hash_to_resposne */
+        /* Tests wdb_global_add_global_group_hash_to_response */
         cmocka_unit_test_setup_teardown(test_wdb_global_add_global_group_hash_to_resposne_response_null, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_add_global_group_hash_to_resposne_response_due, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_add_global_group_hash_to_resposne_get_hash_error, test_setup, test_teardown),

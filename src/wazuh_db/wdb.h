@@ -70,7 +70,8 @@
 typedef enum wdb_groups_sync_condition_t {
         WDB_GROUP_SYNC_STATUS,      ///< Get groups by their sync status
         WDB_GROUP_ALL,              ///< Get all groups
-        WDB_GROUP_NO_CONDITION      ///< No condition
+        WDB_GROUP_NO_CONDITION,     ///< No condition
+        WDB_GROUP_INVALID_CONDITION ///< Invalid condition
 } wdb_groups_sync_condition_t;
 
 /// Enumeration of agent groups set mode
@@ -2029,7 +2030,7 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t* wdb,
  * @param response_size Current size of JSON response.
  * @return int result to represent if global hash has being added to JSON response.
  */
-int wdb_global_add_global_group_hash_to_resposne(wdb_t *wdb, cJSON** response, size_t response_size);
+int wdb_global_add_global_group_hash_to_response(wdb_t *wdb, cJSON** response, size_t response_size);
 
 /**
  * @brief Function to update group_sync_status of a particular agent.

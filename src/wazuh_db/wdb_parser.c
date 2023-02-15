@@ -5695,10 +5695,12 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
             bool get_hash = false;
             int agent_registration_delta = 0;
 
-            if (cJSON_IsString(j_sync_condition) && 0 == strcmp(j_sync_condition->valuestring, "sync_status")) {
+            if (j_sync_condition && 0 == strcmp(j_sync_condition->valuestring, "sync_status")) {
                 condition = WDB_GROUP_SYNC_STATUS;
-            } else if (cJSON_IsString(j_sync_condition) && 0 == strcmp(j_sync_condition->valuestring, "all")) {
+            } else if (j_sync_condition && 0 == strcmp(j_sync_condition->valuestring, "all")) {
                 condition = WDB_GROUP_ALL;
+            } else if (j_sync_condition) {
+                condition = WDB_GROUP_INVALID_CONDITION;
             }
             if (j_last_id) {
                 last_id = j_last_id->valueint;

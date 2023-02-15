@@ -1472,6 +1472,9 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
         case WDB_GROUP_ALL:
             sync_statement_index = WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET;
             break;
+        case WDB_GROUP_INVALID_CONDITION:
+            mdebug1("Invalid groups sync condition");
+            return WDBC_ERROR;
         default:
             break;
     }
@@ -1489,10 +1492,10 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
     char *out_aux = cJSON_PrintUnformatted(*output);
     size_t response_size = strlen(out_aux);
     os_free(out_aux);
-    // Agents registered recently may be excluded depending on the 'agent_registration_delta' value.
-    time_t agent_registration_time = time(NULL) - agent_registration_delta;
 
     if (condition != WDB_GROUP_NO_CONDITION) {
+        // Agents registered recently may be excluded depending on the 'agent_registration_delta' value.
+        time_t agent_registration_time = time(NULL) - agent_registration_delta;
         while (status == WDBC_UNKNOWN) {
             //Prepare SQL query
             if (wdb_stmt_cache(wdb, sync_statement_index) < 0) {
@@ -1560,7 +1563,7 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
             } else {
                 //All agents have been obtained
                 if (get_hash) {
-                    status = wdb_global_add_global_group_hash_to_resposne(wdb, &j_response, response_size);
+                    status = wdb_global_add_global_group_hash_to_response(wdb, &j_response, response_size);
                 } else {
                     status = WDBC_OK;
                 }
@@ -1569,7 +1572,7 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
         }
     } else {
         if (get_hash) {
-            status = wdb_global_add_global_group_hash_to_resposne(wdb, &j_response, response_size);
+            status = wdb_global_add_global_group_hash_to_response(wdb, &j_response, response_size);
         } else {
             status = WDBC_OK;
         }
@@ -1578,9 +1581,9 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
     return status;
 }
 
-int wdb_global_add_global_group_hash_to_resposne(wdb_t *wdb, cJSON** response, size_t response_size) {
-    if (response == NULL || *response == NULL) {
-        mdebug1("Invalid JSON array.");
+int wdb_global_add_global_group_hash_to_response(wdb_t *wdb, cJSON** response, size_t response_size) {
+    if (response == NULL || !cJSON_IsObject(*response)) {
+        mdebug1("Invalid JSON object.");
         return WDBC_ERROR;
     }
 
