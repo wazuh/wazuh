@@ -110,13 +110,13 @@ parsec::Parser<json::Json> getKVParser(std::string name, Stop endTokens, Options
                 doc, fmt::format("/{}", k), v, kv[i + 1].isEscaped(), std::string {esc});
         }
 
-        if (start - 1 != pos)
+        if (start - 1 != end)
         {
             return parsec::makeError<json::Json>(
                 fmt::format("{}: Invalid key-value string", name), index);
         }
 
-        return parsec::makeSuccess(std::move(doc), end);
+        return parsec::makeSuccess(std::move(doc), pos);
     };
 }
 
