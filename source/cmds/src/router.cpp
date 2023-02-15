@@ -56,7 +56,7 @@ json::Json getIngestParameters(const std::string& action, const std::string& eve
     return params;
 }
 
-void processResponse(const api::WazuhResponse& response)
+void processResponse(const base::utils::wazuhProtocol::WazuhResponse& response)
 {
     auto content = response.data();
     auto message = response.message();
@@ -70,7 +70,7 @@ void processResponse(const api::WazuhResponse& response)
     }
 }
 
-void singleRequest(const api::WazuhRequest& request, const std::string& socketPath)
+void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, const std::string& socketPath)
 {
     try
     {
@@ -88,35 +88,35 @@ void singleRequest(const api::WazuhRequest& request, const std::string& socketPa
 void runGet(const std::string& socketPath, const std::string& nameStr)
 {
     json::Json params = details::getParameters("get", nameStr);
-    auto request = api::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
+    auto request = base::utils::wazuhProtocol::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
     details::singleRequest(request, socketPath);
 }
 
 void runAdd(const std::string& socketPath, const std::string& nameStr, int priority, const std::string& filterName, const std::string& environment)
 {
     json::Json params = details::getParameters("set", nameStr, priority, filterName, environment);
-    auto request = api::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
+    auto request = base::utils::wazuhProtocol::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
     details::singleRequest(request, socketPath);
 }
 
 void runDelete(const std::string& socketPath, const std::string& nameStr)
 {
     json::Json params = details::getParameters("delete", nameStr);
-    auto request = api::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
+    auto request = base::utils::wazuhProtocol::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
     details::singleRequest(request, socketPath);
 }
 
 void runUpdate(const std::string& socketPath, const std::string& nameStr, int priority)
 {
     json::Json params = details::getParameters("change_priority", nameStr, priority);
-    auto request = api::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
+    auto request = base::utils::wazuhProtocol::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
     details::singleRequest(request, socketPath);
 }
 
 void runIngest(const std::string& socketPath, const std::string& event)
 {
     json::Json params = details::getIngestParameters("enqueue_event", event);
-    auto request = api::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
+    auto request = base::utils::wazuhProtocol::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
     details::singleRequest(request, socketPath);
 }
 

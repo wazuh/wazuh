@@ -327,12 +327,12 @@ void Router::stop()
 /********************************************************************
  *                  callback API Request
  ********************************************************************/
-
+/*
 api::CommandFn Router::apiCallbacks()
 {
     return [this](const json::Json params)
     {
-        api::WazuhResponse response {};
+        base::utils::wazuhProtocol::WazuhResponse response {};
         const auto action = params.getString("/action");
 
         if (!action)
@@ -366,14 +366,14 @@ api::CommandFn Router::apiCallbacks()
         return response;
     };
 }
-
+*/
 /********************************************************************
  *                  private callback API Request
  ********************************************************************/
-
-api::WazuhResponse Router::apiSetRoute(const json::Json& params)
+/*
+base::utils::wazuhProtocol::WazuhResponse Router::apiSetRoute(const json::Json& params)
 {
-    api::WazuhResponse response {};
+    base::utils::wazuhProtocol::WazuhResponse response {};
     const auto name = params.getString(JSON_PATH_NAME);
     const auto filter = params.getString(JSON_PATH_FILTER);
     const auto priority = params.getInt(JSON_PATH_PRIORITY);
@@ -410,7 +410,7 @@ api::WazuhResponse Router::apiSetRoute(const json::Json& params)
     return response;
 }
 
-api::WazuhResponse Router::apiGetRoutes(const json::Json& params)
+base::utils::wazuhProtocol::WazuhResponse Router::apiGetRoutes(const json::Json& params)
 {
     json::Json data {};
     // Filter by name
@@ -435,12 +435,12 @@ api::WazuhResponse Router::apiGetRoutes(const json::Json& params)
         data = tableToJson();
     }
 
-    return api::WazuhResponse {data, "Ok"};
+    return base::utils::wazuhProtocol::WazuhResponse {data, "Ok"};
 }
 
-api::WazuhResponse Router::apiDeleteRoute(const json::Json& params)
+base::utils::wazuhProtocol::WazuhResponse Router::apiDeleteRoute(const json::Json& params)
 {
-    api::WazuhResponse response {};
+    base::utils::wazuhProtocol::WazuhResponse response {};
     const auto name = params.getString(JSON_PATH_NAME);
     if (!name)
     {
@@ -461,9 +461,9 @@ api::WazuhResponse Router::apiDeleteRoute(const json::Json& params)
     return response;
 }
 
-api::WazuhResponse Router::apiChangeRoutePriority(const json::Json& params)
+base::utils::wazuhProtocol::WazuhResponse Router::apiChangeRoutePriority(const json::Json& params)
 {
-    api::WazuhResponse response {};
+    base::utils::wazuhProtocol::WazuhResponse response {};
     const auto name = params.getString(JSON_PATH_NAME);
     const auto priority = params.getInt(JSON_PATH_PRIORITY);
 
@@ -491,9 +491,9 @@ api::WazuhResponse Router::apiChangeRoutePriority(const json::Json& params)
     return response;
 }
 
-api::WazuhResponse Router::apiEnqueueEvent(const json::Json& params)
+base::utils::wazuhProtocol::WazuhResponse Router::apiEnqueueEvent(const json::Json& params)
 {
-    api::WazuhResponse response {};
+    base::utils::wazuhProtocol::WazuhResponse response {};
     const auto event = params.getString(JSON_PATH_EVENT);
     if (!event)
     {
@@ -521,7 +521,7 @@ api::WazuhResponse Router::apiEnqueueEvent(const json::Json& params)
     }
     return response;
 }
-
+*/
 json::Json Router::tableToJson()
 {
     json::Json data {};

@@ -149,7 +149,7 @@ inline void csvStr2ArrayIfExist(const DecodeCxt& ctx, Name field)
     if (csv)
     {
         const auto scaArrayPath = ctx.destinationPath.at(field);
-        const auto cvaArray = utils::string::split(csv.value().c_str(), ',');
+        const auto cvaArray = base::utils::string::split(csv.value().c_str(), ',');
 
         ctx.event->setArray(scaArrayPath);
         for (const auto& csvItem : cvaArray)
@@ -263,7 +263,7 @@ std::tuple<SearchResult, std::string> searchAndParse(
 
     if (wazuhdb::QueryResultCodes::OK == rescode && payload.has_value())
     {
-        if (utils::string::startsWith(payload.value(), "found"))
+        if (base::utils::string::startsWith(payload.value(), "found"))
         {
             retCode = SearchResult::FOUND;
             try
@@ -286,7 +286,7 @@ std::tuple<SearchResult, std::string> searchAndParse(
                 retCode = SearchResult::ERROR;
             }
         }
-        else if (utils::string::startsWith(payload.value(), "not found"))
+        else if (base::utils::string::startsWith(payload.value(), "not found"))
         {
             retCode = SearchResult::NOT_FOUND;
         }
@@ -909,7 +909,7 @@ std::optional<std::string> handleScanInfo(const DecodeCxt& ctx)
         {
             scanInfoUpdate = true;
             // If query fails or hash is not found, storedHash is empty
-            const auto storedHash = utils::string::split(scanInfo, ' ').at(0);
+            const auto storedHash = base::utils::string::split(scanInfo, ' ').at(0);
             const bool diferentHash = (storedHash != eventHash);
             const bool newHash = (diferentHash && !isFirstScan);
 
@@ -1016,7 +1016,7 @@ std::optional<std::string> handlePoliciesInfo(const DecodeCxt& ctx)
         else
         {
             /* For each policy id, look if we have scanned it */
-            const auto& policiesList = utils::string::split(policiesDB, ',');
+            const auto& policiesList = base::utils::string::split(policiesDB, ',');
 
             for (auto& pId : policiesList)
             {

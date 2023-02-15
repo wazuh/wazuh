@@ -88,11 +88,11 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
             {
                 for (const auto& message : result.value())
                 {
-                    api::WazuhResponse wresponse {};
+                    base::utils::wazuhProtocol::WazuhResponse wresponse {};
                     try
                     {
                         json::Json jrequest {message.c_str()};
-                        api::WazuhRequest wrequest {jrequest};
+                        base::utils::wazuhProtocol::WazuhRequest wrequest {jrequest};
                         if (wrequest.isValid())
                         {
                             wresponse =
@@ -101,18 +101,18 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                         }
                         else
                         {
-                            wresponse = api::WazuhResponse(
+                            wresponse = base::utils::wazuhProtocol::WazuhResponse(
                                 json::Json {R"({})"}, -1, wrequest.error().value());
                             // TODO: Create ERROR API response
                         }
                     }
                     catch (const std::runtime_error& e)
                     {
-                        wresponse = api::WazuhResponse::invalidRequest();
+                        wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidRequest();
                     }
                     catch (const std::exception& e)
                     {
-                        wresponse = api::WazuhResponse::unknownError();
+                        wresponse = base::utils::wazuhProtocol::WazuhResponse::unknownError();
                         WAZUH_LOG_ERROR("Engine API endpoint: Error with client ({}): {}",
                                         client.peer(),
                                         e.what());
@@ -129,7 +129,7 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                     "({}).",
                     client.peer());
                 // TODO: are we sure that it is always due to an invalid size?
-                auto invalidSize = api::WazuhResponse::invalidSize();
+                auto invalidSize = base::utils::wazuhProtocol::WazuhResponse::invalidSize();
                 auto [buffer, size] {addSecureHeader(invalidSize.toString())};
                 client.write(std::move(buffer), size);
                 timer->close();

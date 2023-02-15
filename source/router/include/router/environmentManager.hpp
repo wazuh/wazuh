@@ -9,7 +9,6 @@
 #include <thread>
 #include <vector>
 
-#include <api/api.hpp>
 #include <error.hpp>
 
 namespace router

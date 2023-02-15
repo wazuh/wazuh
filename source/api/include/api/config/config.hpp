@@ -15,7 +15,7 @@ using ConfHandler = std::shared_ptr<conf::IConf<ConfDriver>>;
 template<typename ConfDriver>
 api::CommandFn configGetCmd(ConfHandler<ConfDriver> confHandler)
 {
-    return [confHandler](const json::Json& params) -> api::WazuhResponse
+    return [confHandler](const json::Json& params) -> api::wpResponse
     {
         try
         {
@@ -25,17 +25,17 @@ api::CommandFn configGetCmd(ConfHandler<ConfDriver> confHandler)
                 auto confStr = confHandler->getConfiguration();
                 json::Json jValue;
                 jValue.setString(confStr, "/content");
-                return api::WazuhResponse(jValue, 0, "");
+                return api::wpResponse(jValue, 0, "");
             }
 
             auto value = confHandler->template get<std::string>(name.value());
             json::Json jValue;
             jValue.setString(value, "/content");
-            return api::WazuhResponse(jValue, 0, "");
+            return api::wpResponse(jValue, 0, "");
         }
         catch (const std::exception& e)
         {
-            return api::WazuhResponse(e.what());
+            return api::wpResponse(e.what());
         }
     };
 }
@@ -43,7 +43,7 @@ api::CommandFn configGetCmd(ConfHandler<ConfDriver> confHandler)
 template<typename ConfDriver>
 api::CommandFn configSaveCmd(ConfHandler<ConfDriver> confHandler)
 {
-    return [confHandler](const json::Json& params) -> api::WazuhResponse
+    return [confHandler](const json::Json& params) -> api::wpResponse
     {
         try
         {
@@ -59,17 +59,17 @@ api::CommandFn configSaveCmd(ConfHandler<ConfDriver> confHandler)
         }
         catch (const std::exception& e)
         {
-            return api::WazuhResponse(e.what());
+            return api::wpResponse(e.what());
         }
 
-        return api::WazuhResponse("OK");
+        return api::wpResponse("OK");
     };
 }
 
 template<typename ConfDriver>
 api::CommandFn configPutCmd(ConfHandler<ConfDriver> confHandler)
 {
-    return [confHandler](const json::Json& params) -> api::WazuhResponse
+    return [confHandler](const json::Json& params) -> api::wpResponse
     {
         try
         {
@@ -77,15 +77,15 @@ api::CommandFn configPutCmd(ConfHandler<ConfDriver> confHandler)
             auto value = params.getString("/value");
             if (!name || !value)
             {
-                return api::WazuhResponse("Missing parameters");
+                return api::wpResponse("Missing parameters");
             }
 
             confHandler->put(name.value(), value.value());
-            return api::WazuhResponse("OK");
+            return api::wpResponse("OK");
         }
         catch (const std::exception& e)
         {
-            return api::WazuhResponse(e.what());
+            return api::wpResponse(e.what());
         }
     };
 }

@@ -19,10 +19,10 @@ namespace
 std::queue<Token> tokenize(const std::string& rawExpression)
 {
     std::vector<std::string> rawTokens =
-        utils::string::splitMulti(rawExpression,
-                                  utils::string::Delimeter(' ', false),
-                                  utils::string::Delimeter('(', true),
-                                  utils::string::Delimeter(')', true));
+        base::utils::string::splitMulti(rawExpression,
+                                  base::utils::string::Delimeter(' ', false),
+                                  base::utils::string::Delimeter('(', true),
+                                  base::utils::string::Delimeter(')', true));
 
     std::queue<Token> tokens;
     size_t i = 0;

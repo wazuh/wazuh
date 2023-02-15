@@ -208,7 +208,7 @@ void runStart(ConfHandler confManager)
         WAZUH_LOG_INFO("Router initialized.");
 
         // Register the API command
-        server->getRegistry()->registerCommand("router", router->apiCallbacks());
+        //server->getRegistry()->registerCommand("router", router->apiCallbacks());
         WAZUH_LOG_DEBUG("Router API registered.")
 
         // If the router table is empty or the force flag is passed, load from the command line
