@@ -2,6 +2,7 @@
 
 #include "baseTypes.hpp"
 #include "builder/builders/operationBuilder.hpp"
+#include "builder/register.hpp"
 #include <json/json.hpp>
 
 using namespace builder::internals;
@@ -55,6 +56,15 @@ Json operations {R"([
 ])"};
 
 auto operationArray {operations.getArray().value()};
+
+Json helperFunctionsCases {R"([
+    {"target": "+a_append/argument"},
+    {"nested.target": "+a_append/argument"},
+    {"referenceArg": "+a_append/argument/$target"},
+    {"nestedreferenceArg": "+a_append/argument/$nested.target"}
+])"};
+
+auto helperFunctionArray {helperFunctionsCases.getArray().value()};
 
 TEST(OperationConditionBuilderTest, Builds)
 {
@@ -415,6 +425,20 @@ TEST(OperationConditionBuilderTest, BuildsOperatesObject)
     }
 }
 
+TEST(OperationConditionBuilderTest, BuildsWithHelper)
+{
+    auto registry = std::make_shared<Registry>();
+
+    ASSERT_NO_THROW(registerBuilders(registry));
+    ASSERT_NO_THROW(registry->getBuilder("helper.a_append"));
+
+    for (auto operationDef : helperFunctionArray)
+    {
+        auto def = operationDef.getObject().value()[0];
+        ASSERT_NO_THROW(getOperationConditionBuilder(registry)(def));
+    }
+}
+
 TEST(OperationMapBuilderTest, Builds)
 {
     auto registry = std::make_shared<Registry>();
@@ -648,4 +672,18 @@ TEST(OperationMapBuilderTest, BuildsOperatesObject)
     }
 
     ASSERT_EQ(*expected, *event);
+}
+
+TEST(OperationMapBuilderTest, BuildsWithHelper)
+{
+    auto registry = std::make_shared<Registry>();
+
+    ASSERT_NO_THROW(registerBuilders(registry));
+    ASSERT_NO_THROW(registry->getBuilder("helper.a_append"));
+
+    for (auto helperFunctionDef : helperFunctionArray)
+    {
+        auto def = helperFunctionDef.getObject().value()[0];
+        ASSERT_NO_THROW(getOperationMapBuilder(registry)(def));
+    }
 }

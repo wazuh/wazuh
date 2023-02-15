@@ -38,6 +38,19 @@ std::string join(const std::vector<std::string>& strVector,
                  std::string_view separator = "",
                  const bool startsWithSeparator = false);
 
+/**
+ * @brief Split a string in items defined by splitChar and allowing it to be escaped
+ * by escape char.
+ *
+ * @param input String to be split
+ * @param splitChar Char used to split the input string, '/' by default
+ * @param escape Char used to escape the splitChar when needed, '\\' by default
+ * @return std::vector<std::string>
+ */
+std::vector<std::string> splitEscaped(std::string_view input,
+                                      const char& splitChar = '/',
+                                      const char& escape = '\\');
+
 using Delimeter = std::pair<char, bool>;
 
 /**
