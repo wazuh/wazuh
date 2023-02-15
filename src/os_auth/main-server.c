@@ -151,6 +151,11 @@ int main(int argc, char **argv)
     /* Initialize some variables */
     bio_err = 0;
 
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+
     // Get options
     {
         int c;
@@ -387,11 +392,6 @@ int main(int argc, char **argv)
             } else {
                 merror_exit("Unable to generate auth certificates.");
             }
-        }
-
-        /* Change working directory */
-        if (chdir(home_path) == -1) {
-            merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
         }
 
         /* Set the Debug level */
