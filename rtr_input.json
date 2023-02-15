@@ -1,0 +1,10 @@
+{
+    "steps": [
+        {
+            "description": "Build",
+            "parameters": [
+                "--test build"
+            ]
+        }
+    ]
+}
