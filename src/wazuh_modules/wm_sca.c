@@ -1928,7 +1928,6 @@ static int wm_sca_regex_numeric_comparison (const char * const pattern,
             os_malloc(snprintf(NULL, 0, "Regex '%s' matched, but no string was captured by it. Did you forget specifying a capture group?", pattern_copy_ref) + 1, *reason);
             sprintf(*reason, "Regex '%s' matched, but no string was captured by it. Did you forget specifying a capture group?", pattern_copy_ref);
         }
-        w_free_expression_t(&regex_engine);
         os_free(pattern_copy);
         w_free_expression_match(regex_engine, &regex_match);
         return RETURN_INVALID;
