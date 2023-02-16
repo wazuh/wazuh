@@ -6,11 +6,13 @@ add_library(router STATIC
 )
 
 target_link_libraries(router
-    PRIVATE
+    PUBLIC
+    # For api::Route, needs knos runtimeEnvironment becouse know runtimeEnvironment
     builders
+    rxbk
+    PRIVATE
     base
     json
-    rxbk
     store::istore
 )
 

@@ -14,6 +14,7 @@
 #include <api/catalog/commands.hpp>
 #include <api/config/config.hpp>
 #include <api/kvdb/commands.hpp>
+#include <api/router/commands.hpp>
 #include <builder/builder.hpp>
 #include <builder/register.hpp>
 #include <cmds/details/stackExecutor.hpp>
@@ -209,6 +210,7 @@ void runStart(ConfHandler confManager)
 
         // Register the API command
         //server->getRegistry()->registerCommand("router", router->apiCallbacks());
+        api::router::cmds::registerCommands(router, server->getRegistry());
         WAZUH_LOG_DEBUG("Router API registered.")
 
         // If the router table is empty or the force flag is passed, load from the command line

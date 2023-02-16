@@ -99,14 +99,13 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                         }
                         else
                         {
-                            wresponse = base::utils::wazuhProtocol::WazuhResponse(
-                                json::Json {R"({})"}, -1, wrequest.error().value());
-                            // TODO: Create ERROR API response
+                            wresponse =
+                                base::utils::wazuhProtocol::WazuhResponse::invalidRequest(wrequest.error().value());
                         }
                     }
                     catch (const std::runtime_error& e)
                     {
-                        wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidRequest();
+                        wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidJsonRequest();
                     }
                     catch (const std::exception& e)
                     {
