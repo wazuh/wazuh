@@ -1,0 +1,3 @@
+wazuh.queue:
+  description: 'A char indicating the Wazuh protocol queue of the eventes ingested'
+  type: long
