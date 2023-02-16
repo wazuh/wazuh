@@ -50,31 +50,31 @@ namespace wazuh {
 namespace api {
 namespace engine {
 
-enum ResturnCodeStatus : int {
+enum ReturnStatus : int {
   UNKNOWN = 0,
-  SUCCESS = 1,
+  OK = 1,
   ERROR = 2,
-  ResturnCodeStatus_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
-  ResturnCodeStatus_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
+  ReturnStatus_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
+  ReturnStatus_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
 };
-bool ResturnCodeStatus_IsValid(int value);
-constexpr ResturnCodeStatus ResturnCodeStatus_MIN = UNKNOWN;
-constexpr ResturnCodeStatus ResturnCodeStatus_MAX = ERROR;
-constexpr int ResturnCodeStatus_ARRAYSIZE = ResturnCodeStatus_MAX + 1;
+bool ReturnStatus_IsValid(int value);
+constexpr ReturnStatus ReturnStatus_MIN = UNKNOWN;
+constexpr ReturnStatus ReturnStatus_MAX = ERROR;
+constexpr int ReturnStatus_ARRAYSIZE = ReturnStatus_MAX + 1;
 
-const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ResturnCodeStatus_descriptor();
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ReturnStatus_descriptor();
 template<typename T>
-inline const std::string& ResturnCodeStatus_Name(T enum_t_value) {
-  static_assert(::std::is_same<T, ResturnCodeStatus>::value ||
+inline const std::string& ReturnStatus_Name(T enum_t_value) {
+  static_assert(::std::is_same<T, ReturnStatus>::value ||
     ::std::is_integral<T>::value,
-    "Incorrect type passed to function ResturnCodeStatus_Name.");
+    "Incorrect type passed to function ReturnStatus_Name.");
   return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
-    ResturnCodeStatus_descriptor(), enum_t_value);
+    ReturnStatus_descriptor(), enum_t_value);
 }
-inline bool ResturnCodeStatus_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ResturnCodeStatus* value) {
-  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ResturnCodeStatus>(
-    ResturnCodeStatus_descriptor(), name, value);
+inline bool ReturnStatus_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ReturnStatus* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ReturnStatus>(
+    ReturnStatus_descriptor(), name, value);
 }
 // ===================================================================
 
@@ -101,10 +101,10 @@ inline bool ResturnCodeStatus_Parse(
 
 PROTOBUF_NAMESPACE_OPEN
 
-template <> struct is_proto_enum< ::com::wazuh::api::engine::ResturnCodeStatus> : ::std::true_type {};
+template <> struct is_proto_enum< ::com::wazuh::api::engine::ReturnStatus> : ::std::true_type {};
 template <>
-inline const EnumDescriptor* GetEnumDescriptor< ::com::wazuh::api::engine::ResturnCodeStatus>() {
-  return ::com::wazuh::api::engine::ResturnCodeStatus_descriptor();
+inline const EnumDescriptor* GetEnumDescriptor< ::com::wazuh::api::engine::ReturnStatus>() {
+  return ::com::wazuh::api::engine::ReturnStatus_descriptor();
 }
 
 PROTOBUF_NAMESPACE_CLOSE
