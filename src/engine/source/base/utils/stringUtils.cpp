@@ -50,33 +50,27 @@ std::vector<std::string> splitEscaped(std::string_view input, const char& splitC
 {
     std::vector<std::string> splitted;
 
-    // Replace escaped chars in between sections, false if escaped char is not splitChar
-    const auto removeOnlyEscapedSplitted = [](std::string& auxSubStr, const char& escape, const char& splitChar)
+    // Replace escaped chars in between sections
+    const auto removeEscaped = [](std::string& auxSubStr, const char& escape, const char& splitChar)
     {
         for (auto j = auxSubStr.find(escape, 0); j != std::string::npos; j = auxSubStr.find(escape, j))
         {
-            if (auxSubStr.at(j + 1) == splitChar)
+            if ((auxSubStr.size() - 1) > j && (auxSubStr.at(j + 1) == splitChar))
             {
                 auxSubStr.erase(j, 1);
-                j++;
             }
-            else
-            {
-                // If char being escaped is not splitChar then fail
-                return false;
-            }
+            j++;
         }
-        return true;
     };
 
     // returns true if last char is escaped
-    const auto endingEscaped = [](std::string_view& vs, const char& escape)
+    const auto endingEscaped = [](std::string_view& stringView, const char& escape)
     {
-        std::string auxSubStr {vs.data(), vs.size()};
+        std::string auxSubStr {stringView.data(), stringView.size()};
         auto j = auxSubStr.rfind(escape);
         if (std::string::npos != j)
         {
-            return (j == auxSubStr.size() - 1);
+            return ((auxSubStr.size() - 1) == j);
         }
         return false;
     };
@@ -116,10 +110,7 @@ std::vector<std::string> splitEscaped(std::string_view input, const char& splitC
     // Apply escaped in each item and return empty array when error
     for (auto& item : splitted)
     {
-        if (!removeOnlyEscapedSplitted(item, escape, splitChar))
-        {
-            return {};
-        }
+        removeEscaped(item, escape, splitChar);
     }
 
     return splitted;
