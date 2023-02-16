@@ -16,9 +16,6 @@ CREATE TABLE IF NOT EXISTS _belongs (
     PRIMARY KEY (id_agent, id_group)
 );
 
-CREATE INDEX IF NOT EXISTS belongs_id_agent ON belongs (id_agent);
-CREATE INDEX IF NOT EXISTS belongs_id_group ON belongs (id_group);
-
 BEGIN;
 INSERT INTO _belongs (id_agent, id_group, priority) SELECT id_agent, id_group, belongs.rowid FROM belongs WHERE id_agent IN (SELECT id FROM agent) AND id_group IN (SELECT id FROM `group`);
 UPDATE _belongs SET priority=(SELECT temp.r_num - 1 FROM (SELECT *, row_number() OVER(PARTITION BY id_agent ORDER BY belongs.rowid) r_num FROM belongs) temp WHERE _belongs.id_agent = temp.id_agent AND _belongs.id_group = temp.id_group);
@@ -26,6 +23,9 @@ END;
 
 DROP TABLE IF EXISTS belongs;
 ALTER TABLE _belongs RENAME TO belongs;
+
+CREATE INDEX IF NOT EXISTS belongs_id_agent ON belongs (id_agent);
+CREATE INDEX IF NOT EXISTS belongs_id_group ON belongs (id_group);
 
 CREATE TABLE IF NOT EXISTS _agent (
     id INTEGER PRIMARY KEY,
@@ -64,9 +64,11 @@ END;
 
 DROP TABLE IF EXISTS agent;
 ALTER TABLE _agent RENAME TO agent;
+
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
 CREATE INDEX IF NOT EXISTS agent_group_hash ON agent (group_hash);
+
 CREATE TABLE IF NOT EXISTS `_group` (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
@@ -74,7 +76,7 @@ CREATE TABLE IF NOT EXISTS `_group` (
 );
 
 BEGIN;
-INSERT OR IGNORE INTO `_group` (name) SELECT name FROM `group`;
+INSERT INTO `_group` (name) SELECT name FROM `group`;
 END;
 
 DROP TABLE IF EXISTS `group`;
