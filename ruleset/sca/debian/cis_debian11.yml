@@ -47,7 +47,9 @@ checks:
     title: "Ensure /tmp is separate partition."
     description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
     rationale: "Making /tmp its own file system allows an administrator to set additional mount options such as the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hard link to a system setuid program and wait for it to be updated. Once the program was updated, the hard link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
-    remediation: "First ensure that systemd is correctly configured to ensure that /tmp will be mounted at boot time.   # systemctl unmask tmp.mount. For specific configuration requirements of the /tmp mount for your environment, modify /etc/fstab or tmp.mount. Example of /etc/fstab configured tmpfs file system with specific mount options: tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 0 Example of tmp.mount configured tmpfs file system with specific mount options: [Unit] Description=Temporary Directory /tmp ConditionPathIsSymbolicLink=!/tmp DefaultDependencies=no Conflicts=umount.targetBefore=local-fs.target umount.target After=swap.target [Mount] What=tmpfs Where=/tmp Type=tmpfs"
+    remediation: "Configure /etc/fstab as appropriate. Example: tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime 0 0 or Run the following commands to enable systemd /tmp mounting: systemctl unmask tmp.mount systemctl enable tmp.mount Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to configure the /tmp mount: [Mount] What=tmpfs Where=/tmp Type=tmpfs Options=mode=1777,strictatime,noexec,nodev,nosuid"
+    impact: "Since the /tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. Running out of /tmp space is a problem regardless of what kind of filesystem lies under it, but in a configuration where /tmp is not a separate file system it will essentially have the whole disk available, as the default installation only creates a single / partition. On the other hand, a RAM-based /tmp (as with tmpfs) will almost certainly be much smaller, which can lead to applications filling up the filesystem much more easily. Another alternative is to create a dedicated partition for /tmp from a separate volume or disk. One of the downsides of a disk-based dedicated partition is that it will be slower than tmpfs which is RAM-based. /tmp utilizing tmpfs can be resized using the size={size} parameter in the relevant entry in /etc/fstab."
+    additional information: "If an entry for /tmp exists in /etc/fstab it will take precedence over entries in systemd unit file."
     references:
       - https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/
       - https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html
@@ -453,9 +455,11 @@ checks:
   # 1.1.6.1 Ensure separate partition exists for /var/log/audit (Automated)
   - id: 29515
     title: "Ensure separate partition exists for /var/log/audit."
-    description: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    description: "The auditing daemon, auditd, stores log data in the /var/log/audit directory."
+    rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follows. (1) Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var/log/audit directory contains the audit.log file which can grow quite large, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var/log/audit and cause auditd to trigger it's space_left_action as the disk is full. See man auditd.conf for details. (2) Fine grained control over the mount: Configuring /var/log/audit as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. (3) Protection of audit data: As /var/log/audit contains audit logs, care should be taken to ensure the security and integrity of the data and mount point."
     remediation: "IF the /var/log partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log with the configured options: # mount -o remount /var/log"
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    additional information: "When modifying /var/log/audit it is advisable to bring the system to emergency mode (so auditd is not running), rename the existing directory, mount the new file system, and migrate the data over before returning to multi-user mode."
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     compliance:
@@ -518,7 +522,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1200"]
+      - mitre_techniques: ["T1200", "T1200.000"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -562,6 +566,7 @@ checks:
     rationale: "The reasoning for mounting /home on a separate partition is as follows. (1) Protection from resource exhaustion: The default installation only creates a single / partition. Since the /home directory contains user generated data, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /home and impact all local users. (2) Fine grained control over the mount: Configuring /home as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. In the case of /home options such as usrquota/grpquota may be considered to limit the impact that users can have on each other with regards to disk resource exhaustion. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. (3) Protection of user data: As /home contains user data, care should be taken to ensure the security and integrity of the data and mount point."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    additional information: "When modifying /home it is advisable to bring the system to emergency mode (so auditd is not running), rename the existing directory, mount the new file system, and migrate the data over before returning to multi-user mode."
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     compliance:
@@ -601,7 +606,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1200"]
+      - mitre_techniques: ["T1200", "T1200.000"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -644,6 +649,7 @@ checks:
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm using the updated options from /etc/fstab: # mount -o remount /dev/shm"
+    additional information: "/dev/shm should be added to /etc/fstab even though it is already being mounted on boot to add additional mount options."
     compliance:
       - cis: ["1.1.8.1"]
       - cis_csc_v8: ["3.3"]
@@ -655,7 +661,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1200"]
+      - mitre_techniques: ["T1200", "T1200.000"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1038"]
     condition: all
@@ -720,6 +726,7 @@ checks:
     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
     remediation: "If there are no other packages that depends on autofs, remove the package with: # apt purge autofs OR if there are dependencies on the autofs package: Run the following commands to mask autofs: # systemctl stop autofs # systemctl mask autofs"
     impact: "The use of portable hard drives is very common for workstation users. If your organization allows the use of portable storage or media on workstations and physical access controls to workstations is considered adequate there is little value add in turning off automounting."
+    additional information: "This control should align with the tolerance of the use of portable drives and optical media in the organization. On a server requiring an admin to manually mount media can be part of defense-in-depth to reduce the risk of unapproved software or information being introduced or proprietary software or information being exfiltrated. If admins commonly use flash drives and Server access has sufficient physical controls, requiring manual mounting may not increase security."
     compliance:
       - cis: ["1.1.9"]
       - cis_csc_v8: ["10.3"]
@@ -727,7 +734,7 @@ checks:
       - cmmc_v2.0: ["MP.L2-3.8.7"]
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
-      - mitre_techniques: ["T1068", "T1203", "T1211", "T1212"]
+      - mitre_techniques: ["T1068", "T1068.000", "T1203", "T1203.000", "T1211", "T1211.000", "T1212", "T1212.000"]
     condition: any
     rules:
       - "c:systemctl is-enabled autofs -> r:Failed to get unit file state for autofs.service: No such file or directory"
@@ -753,6 +760,7 @@ checks:
     description: "AIDE takes a snapshot of filesystem state including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
     rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
     remediation: "Install AIDE using the appropriate package manager or manual installation: # apt install aide aide-common Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Run the following commands to initialize AIDE: # aideinit # mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db"
+    additional information: "The prelinking feature can interfere with AIDE because it alters binaries to speed up their start up times. Run prelink -ua to restore the binaries to their prelinked state, thus avoiding false positives from AIDE."
     references:
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
@@ -760,13 +768,10 @@ checks:
       - cis: ["1.3.1"]
       - cis_csc_v8: ["3.14"]
       - cis_csc_v7: ["14.9"]
-      - cmmc_v2.0: ["AC.L2-3.1.7"]
-      - hipaa: ["164.312(b)","164.312(c)(1)","164.312(c)(2)"]
-      - pci_dss_3.2.1: ["10.2.1","11.5"]
-      - pci_dss_4.0: ["10.2.1","10.2.1.1"]
-      - nist_sp_800-53: ["AC-6(9)"]
-      - soc_2: ["CC6.1"]
-      - iso_27001-2013: ["A.12.4.3"]
+      - cmmc_v2.0: ["SI.L1-3.14.1"]
+      - pci_dss_3.2.1: ["6.2"]
+      - nist_sp_800-53: ["SI-2(2)"]
+      - soc_2: ["CC7.1"]
       - mitre_techniques: ["T1036", "T1036.002", "T1036.003", "T1036.004", "T1036.005", "T1565", "T1565.001"]
     condition: all
     rules:
@@ -779,6 +784,7 @@ checks:
     description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
     rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
     remediation: "If cron will be used to schedule and run aide check: Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/bin/aide.wrapper --config /etc/aide/aide.conf --check OR If aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/bin/aide.wrapper --config /etc/aide/aide.conf --check [Install] WantedBy=multi-user.target . Create or edit the file /etc/systemd/system/aidecheck.timer and add the following lines: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target .Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer"
+    additional information: "The checking in this recommendation occurs every day at 5am. Alter the frequency and time of the checks in compliance with site policy systemd timers, timer file aidecheck.timer and service file aidecheck.service, have been included as an optional alternative to using cron Ubuntu advises using /usr/bin/aide.wrapper rather than calling /usr/bin/aide directly in order to protect the database and prevent conflicts"
     references:
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
@@ -812,6 +818,7 @@ checks:
     rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off AppArmor at boot time)."
     remediation: 'Create an encrypted password with grub-mkpasswd-pbkdf2: # grub-mkpasswd-pbkdf2 Enter password: <password> Reenter password: <password> PBKDF2 hash of your password is <encrypted-password>. Add the following into a custom /etc/grub.d configuration file: cat <<EOF set superusers="<username>" password_pbkdf2 <username> <encrypted-password> EOF. The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS= Example: CLASS="--class gnu-linux --class gnu --class os --unrestricted". Run the following command to update the grub2 configuration: # update-grub.'
     impact: "If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing 'e' or access the GRUB 2 command line by pressing 'c' If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem You can add --unrestricted to the menu entries to allow the system to boot without entering a password. Password will still be required to edit menu items. More Information - https://help.ubuntu.com/community/Grub2/Passwords."
+    additional information: "Changes to /etc/grub.d/10_linux may be overwritten during updates to the grub-common package. You should review any changes to this file before rebooting otherwise the system may unexpectedly prompt for a password on the next boot."
     default value: "This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment."
     references:
       - https://help.ubuntu.com/community/Grub2/Passwords
@@ -824,7 +831,7 @@ checks:
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.9.4.3"]
       - nist_sp_800-53: ["IA-5 (1)"]
-      - mitre_techniques: ["T1542"]
+      - mitre_techniques: ["T1542", "T1542.000"]
       - mitre_tactics: ["TA0003"]
       - mitre_mitigations: ["M1046"]
     condition: any
@@ -838,6 +845,7 @@ checks:
     description: "The grub configuration file contains information on boot settings and passwords for unlocking boot options."
     rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
     remediation: "Run the following commands to set permissions on your grub configuration: # chown root:root /boot/grub/grub.cfg # chmod u-wx,go-rwx /boot/grub/grub.cfg .Additional Information: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment"
+    additional information: "This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment"
     compliance:
       - cis: ["1.4.2"]
       - cis_csc_v8: ["3.3"]
@@ -849,7 +857,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1542"]
+      - mitre_techniques: ["T1542", "T1542.000"]
       - mitre_tactics: ["TA0005", "TA0007"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -871,7 +879,7 @@ checks:
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.9.4.3"]
       - nist_sp_800-53: ["IA-5 (1)"]
-      - mitre_techniques: ["T1548"]
+      - mitre_techniques: ["T1548", "T1548.000"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -894,13 +902,10 @@ checks:
       - cis: ["1.5.2"]
       - cis_csc_v8: ["3.14"]
       - cis_csc_v7: ["14.9"]
-      - cmmc_v2.0: ["AC.L2-3.1.7"]
-      - hipaa: ["164.312(b)","164.312(c)(1)","164.312(c)(2)"]
-      - pci_dss_3.2.1: ["10.2.1","11.5"]
-      - pci_dss_4.0: ["10.2.1","10.2.1.1"]
-      - nist_sp_800-53: ["AC-6(9)"]
-      - soc_2: ["CC6.1"]
-      - iso_27001-2013: ["A.12.4.3"]
+      - cmmc_v2.0: ["SI.L1-3.14.1"]
+      - pci_dss_3.2.1: ["6.2"]
+      - nist_sp_800-53: ["SI-2(2)"]
+      - soc_2: ["CC7.1"]
       - mitre_techniques: ["T1055", "T1055.009", "T1065", "T1065.001"]
       - mitre_tactics: ["TA0002"]
       - mitre_mitigations: ["M1050"]
@@ -916,7 +921,7 @@ checks:
     remediation: "Edit /etc/default/apport and add or edit the enabled parameter to equal 0: enabled=0 Run the following commands to stop and disable the apport service # systemctl stop apport.service # systemctl --now disable apport.service -- OR -- Run the following command to remove the apport package: # apt purge apport"
     default value: "enabled=1"
     compliance:
-     -  cis: ["1.5.3"]
+      - cis: ["1.5.3"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -938,7 +943,7 @@ checks:
     remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 .Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 .Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 .IF systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 .Run the command: systemctl daemon-reload"
     compliance:
       - cis: ["1.5.4"]
-      - mitre_techniques: ["T1005"]
+      - mitre_techniques: ["T1005", "T1005.000"]
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
@@ -971,7 +976,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
+      - mitre_techniques: ["T1068", "T1068.000", "T1565", "T1565.001", "T1565.003"]
       - mitre_tactics: ["TA0003"]
       - mitre_mitigations: ["M1026"]
     condition: all
@@ -1000,7 +1005,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
+      - mitre_techniques: ["T1068", "T1068.000", "T1565", "T1565.001", "T1565.003"]
       - mitre_tactics: ["TA0003"]
       - mitre_mitigations: ["M1026"]
     condition: none
@@ -1055,7 +1060,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
+      - mitre_techniques: ["T1068", "T1068.000", "T1565", "T1565.001", "T1565.003"]
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
@@ -1075,7 +1080,7 @@ checks:
     remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd"
     compliance:
       - cis: ["1.7.1"]
-      - mitre_techniques: ["T1082", "T1592", "T1592.004"]
+      - mitre_techniques: ["T1082", "T1082.000", "T1592", "T1592.004"]
       - mitre_tactics: ["TA0007"]
     references:
       - http://www.justice.gov/criminal/cybercrime/
@@ -1094,7 +1099,7 @@ checks:
       - http://www.justice.gov/criminal/cybercrime/
     compliance:
       - cis: ["1.7.2"]
-      - mitre_techniques: ["T1082", "T1592", "T1592.004"]
+      - mitre_techniques: ["T1082", "T1082.000", "T1592", "T1592.004"]
       - mitre_tactics: ["TA0007"]
     condition: none
     rules:
@@ -1110,7 +1115,7 @@ checks:
       - http://www.justice.gov/criminal/cybercrime/
     compliance:
       - cis: ["1.7.3"]
-      - mitre_techniques: ["T1018", "T1082",  "T1592", "T1592.004"]
+      - mitre_techniques: ["T1018", "T1018.000", "T1082", "T1082.000", "T1592", "T1592.004"]
       - mitre_tactics: ["TA0007"]
     condition: none
     rules:
@@ -1122,6 +1127,7 @@ checks:
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
     rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/motd : # chown root:root $(readlink -e /etc/motd) # chmod u-x,go-wx $(readlink -e /etc/motd) OR run the following command to remove the /etc/motd file: # rm /etc/motd"
+    additional value: "If Message of the day is not needed, this file can be removed."
     default value: "File doesn't exist"
     references:
       - http://www.justice.gov/criminal/cybercrime/
@@ -1303,6 +1309,7 @@ checks:
     description: "server: The server directive specifies an NTP server which can be used as a time source. The client-server relationship is strictly hierarchical: a client might synchronize its system time to that of the server, but the server's system time will never be influenced by that of a client. This directive can be used multiple times to specify multiple servers. The directive is immediately followed by either the name of the server, or its IP address. (2) pool: The syntax of this directive is similar to that for the server directive, except that it is used to specify a pool of NTP servers rather than a single NTP server. The pool name is expected to resolve to multiple addresses which might change over time. This directive can be used multiple times to specify multiple pools. All options valid in the server directive can be used in this directive too."
     rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
     remediation: "Edit /etc/chrony/chrony.conf or a file ending in .sources in /etc/chrony/sources.d/ and add or edit server or pool lines as appropriate according to local site policy: <[server|pool]> <[remote-server|remote-pool]> Examples: pool directive: pool time.nist.gov iburst maxsources 4 #The maxsources option is unique to the pool directive server directive: server time-a-g.nist.gov iburst server 132.163.97.3 iburst server time-d-b.nist.gov iburst Run one of the following commands to load the updated time sources into chronyd running config: # systemctl restart chronyd - OR if sources are in a .sources file - # chronyc reload sources OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system:# apt purge chrony"
+    additional information: "If pool and/or server directive(s) are set in a sources file in /etc/chrony/sources.d, the line: sourcedir /etc/chrony/sources.d must be present in /etc/chrony/chrony.conf"
     references:
       - chrony.conf(5) Manual Page
       - https://tf.nist.gov/tf-cgi/servers.cgi
@@ -1540,7 +1547,7 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
-      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1588,7 +1595,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1613,7 +1620,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1638,7 +1645,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1681,7 +1688,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1705,7 +1712,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1729,7 +1736,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1753,7 +1760,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1777,7 +1784,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1005", "T1039", "T1083", "T1135", "T1203", "T1210", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1005", "T1005.000", "T1039", "T1039.000", "T1083", "T1083.000", "T1135", "T1135.000", "T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
     condition: all
     rules:
@@ -1799,7 +1806,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1822,7 +1829,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1845,7 +1852,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1868,7 +1875,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1018", "T1210"]
+      - mitre_techniques: ["T1018", "T1018.000", "T1210", "T1210.000"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: none
@@ -1891,7 +1898,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1105", "T1203", "T1210", "T1543", "T1543.002", "T1570", "T1570.000"]
+      - mitre_techniques: ["T1105", "T1105.000", "T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002", "T1570", "T1570.000"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: any
@@ -1920,7 +1927,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
       - nist_sp_800-53: ["CM-11"]
-      - mitre_techniques: ["T1203", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1944,7 +1951,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1040", "T1203", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1040", "T1040.000", "T1203", "T1203.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
     condition: all
@@ -1968,7 +1975,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203",  "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0006", "TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
     condition: all
@@ -1992,7 +1999,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1040",  "T1203", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1040", "T1040.000", "T1203", "T1203.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0006", "TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
     condition: all
@@ -2016,7 +2023,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1040",  "T1203",  "T1543", "T1543.002"]
+      - mitre_techniques: ["T1040", "T1040.000", "T1203", "T1203.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -2039,7 +2046,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1203.000", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -4010,9 +4017,9 @@ checks:
   # 5.1.8 Ensure cron is restricted to authorized users (Automated)
   - id: 29652
     title: "Ensure cron is restricted to authorized users."
-    description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Notes:Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy .Even though a given user is not listed in cron.allow, cron jobs can still be run as that user .The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
+    description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Notes: - Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy. - Even though a given user is not listed in cron.allow, cron jobs can still be run as that user. - The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
     rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: "Run the following commands to remove /etc/cron.deny: # rm /etc/cron.deny .Run the following command to create /etc/cron.allow # touch /etc/cron.allow Run the following commands to set permissions and ownership for /etc/cron.allow: # chmod g-wx,o-rwx /etc/cron.allow # chown root:root /etc/cron.allow"
+    remediation: "Run the following commands to remove /etc/cron.deny: # rm /etc/cron.deny Run the following command to create /etc/cron.allow # touch /etc/cron.allow Run the following commands to set permissions and ownership for /etc/cron.allow: # chmod g-wx,o-rwx /etc/cron.allow # chown root:root /etc/cron.allow"
     compliance:
       - cis: ["5.1.8"]
       - cis_csc_v8: ["3.3"]
@@ -4025,7 +4032,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1053", "T1053.003"]
-      - mitre_tactics: ["TA0002", "TA0007"]
+      - mitre_tactics: ["TA0002"]
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
@@ -4038,7 +4045,7 @@ checks:
     title: "Ensure at is restricted to authorized users."
     description: "Configure /etc/at.allow to allow specific users to use this service. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not specifically defined in this file is allowed to use at. By removing the file, only users in /etc/at.allow are allowed to use at. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, at should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: "Run the following commands to remove /etc/at.deny: # rm /etc/at.deny .Run the following command to create /etc/at.allow # touch /etc/at.allow .Run the following commands to set permissions and ownership for /etc/at.allow: # chmod g-wx,o-rwx /etc/at.allow # chown root:root /etc/at.allow"
+    remediation: "Run the following commands to remove /etc/at.deny: # rm /etc/at.deny Run the following command to create /etc/at.allow # touch /etc/at.allow Run the following commands to set permissions and ownership for /etc/at.allow: # chmod g-wx,o-rwx /etc/at.allow # chown root:root /etc/at.allow"
     compliance:
       - cis: ["5.1.9"]
       - cis_csc_v8: ["3.3"]
@@ -4051,7 +4058,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1053", "T1053.003"]
-      - mitre_tactics: ["TA0002", "TA0007"]
+      - mitre_tactics: ["TA0002"]
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
@@ -4093,8 +4100,7 @@ checks:
     title: "Ensure permissions on SSH public host key files are configured."
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: "Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,go-wx {} \\; #find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;"
-    default value: "Access: (0644/-rw-r--r--) Uid: ( 0/ root) Gid: ( 0/ root)"
+    remediation: 'Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chmod u-x,go-wx {} \; # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chown root:root {} \;'
     compliance:
       - cis: ["5.2.3"]
       - cis_csc_v8: ["3.3"]
@@ -4106,22 +4112,19 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
-      - mitre_techniques: ["T1557", "T1557.000"]
+      - mitre_techniques: ["T1557"]
       - mitre_tactics: ["TA0003", "TA0006"]
       - mitre_mitigations: ["M1022"]
-    condition: all
+    condition: none
     rules:
-      - 'c:stat -L /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-
+      - 'c:sh -c "find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec stat {} \;" -> r:Access:\s*\( && !r:-rw-r--r--'
+    
   # 5.2.4 Ensure SSH access is limited (Automated)
   - id: 29656
     title: "Ensure SSH access is limited."
-    description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: AllowUsers: The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. AllowGroups: The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. DenyUsers:The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. DenyGroups: The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
+    description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. - DenyGroups: The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows: AllowUsers <userlist> OR AllowGroups <grouplist> OR DenyUsers <userlist> OR DenyGroups <grouplist>"
-    default value: "None"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4140,7 +4143,8 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:AllowUsers\s+\w+|AllowGroups\s+\w+|DenyUsers\s+\w+|DenyGroups\s+\w+'
+      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
 
   # 5.2.5 Ensure SSH LogLevel is appropriate (Automated)
   - id: 29657
@@ -4148,7 +4152,6 @@ checks:
     description: "INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel VERBOSE OR LogLevel INFO"
-    default value: "LogLevel INFO"
     references:
       - https://www.ssh.com/ssh/sshd_config/
     compliance:
@@ -4165,7 +4168,9 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:LogLevel\s+INFO|LogLevel\s+VERBOSE'
+      - 'c:sshd -T -> r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
+      - 'not f:/etc/ssh/sshd_config -> !r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
 
   # 5.2.6 Ensure SSH PAM is enabled (Automated)
   - id: 29658
@@ -4191,6 +4196,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -> r:^\s*usepam\s+yes'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*usepam\s+yes'
 
   # 5.2.7 Ensure SSH root login is disabled (Automated)
   - id: 29659
@@ -4198,7 +4204,6 @@ checks:
     description: "The PermitRootLogin parameter specifies if the root user can log in using SSH. The default is prohibit-password."
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root. This limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no"
-    default value: "PermitRootLogin without-password"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4215,7 +4220,8 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:PermitRootLogin\s+no'
+      - 'c:sshd -T -> r:^\s*PermitRootLogin\s+no'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*PermitRootLogin\s+no'
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled (Automated)
   - id: 29660
@@ -4223,7 +4229,6 @@ checks:
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no"
-    default value: "HostbasedAuthentication no"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4240,7 +4245,9 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:HostbasedAuthentication\s+no'
+      - 'c:sshd -T -> r:^\s*HostbasedAuthentication\s+no'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*HostbasedAuthentication\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*HostbasedAuthentication\s+yes'
 
   # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled (Automated)
   - id: 29661
@@ -4248,7 +4255,6 @@ checks:
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no"
-    default value: "PermitEmptyPasswords no"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4265,7 +4271,7 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:PermitEmptyPasswords\s+no'
+      - 'not c:sshd -T -> r:^\s*PermitEmptyPasswords\s+yes'
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled (Automated)
   - id: 29662
@@ -4273,7 +4279,6 @@ checks:
     description: "The PermitUserEnvironment option allows users to present environment options to the SSH daemon."
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has SSH executing trojan'd programs)."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no"
-    default value: "PermitUserEnvironment no"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4290,7 +4295,7 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:PermitUserEnvironment\s+no'
+      - 'c:sshd -T -> r:^\s*PermitUserEnvironment\s+no'
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled (Automated)
   - id: 29663
@@ -4298,7 +4303,6 @@ checks:
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with SSH."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
-    default value: "IgnoreRhosts yes"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4316,7 +4320,7 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:IgnoreRhosts\s+yes'
+      - 'c:sshd -T -> r:^\s*IgnoreRhosts\s+yes'
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 29664
@@ -4333,25 +4337,24 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - mitre_techniques: ["T1210", "T1210.000"]
+      - mitre_techniques: ["T1210"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:X11Forwarding\s+no'
+      - 'c:sshd -T -> r:^\s*X11Forwarding\s+no'
 
   # 5.2.13 Ensure only strong Ciphers are used (Automated)
   - id: 29665
     title: "Ensure only strong Ciphers are used."
-    description: 'This variable limits the ciphers that SSH can use during communication. Note:Some organizations may have stricter requirements for approved ciphers. Ensure that ciphers used are in compliance with site policy.The only "strong" ciphers currently FIPS 140-2 compliant are:aes256-ctr, aes192-ctr, aes128-ctr .Supported ciphers in openSSH 8.2:3des-cbc .aes128-cbc .aes192-cbc .aes256-cbc .aes128-ctr .aes192-ctr .aes256-ctr .aes128-gcm@openssh.com .aes256-gcm@openssh.com .chacha20-poly1305@openssh.com.'
-    rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. The Triple DES ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain clear text data via a birthday attack against a long-duration encrypted session, aka a "Sweet32." attack. Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plain text data from an arbitrary block of cipher text in an SSH session via unknown vectors.'
+    description: 'This variable limits the ciphers that SSH can use during communication. Note: - Some organizations may have stricter requirements for approved ciphers. - Ensure that ciphers used are in compliance with site policy.The only "strong" ciphers currently FIPS 140-2 compliant are:aes256-ctr, aes192-ctr, aes128-ctr. - Supported ciphers in openSSH 8.2: 3des-cbc, aes128-cbc, aes192-cbc, aes256-cbc, aes128-ctr, aes192-ctr, aes256-ctr, aes128-gcm@openssh.com, aes256-gcm@openssh.com, chacha20-poly1305@openssh.com.'
+    rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. - The Triple DES ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain clear text data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack. - Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plain text data from an arbitrary block of cipher text in an SSH session via unknown vectors.'
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the Ciphers line to contain a comma separated list of the site approved ciphers. Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
-    default value: "Ciphers chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com"
     references:
-      - "https://nvd.nist.gov/vuln/detail/CVE-2016-2183"
-      - "https://www.openssh.com/txt/cbc.adv"
-      - "https://nvd.nist.gov/vuln/detail/CVE-2008-5161"
-      - "SSHD_CONFIG(5)"
+      - https://nvd.nist.gov/vuln/detail/CVE-2016-2183
+      - https://www.openssh.com/txt/cbc.adv
+      - https://nvd.nist.gov/vuln/detail/CVE-2008-5161
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.13"]
       - cis_csc_v8: ["3.10"]
@@ -4362,7 +4365,7 @@ checks:
       - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - iso_27001-2013: ["A.13.1.1", "A.10.1.1"]
-      - mitre_techniques: ["T1040", "T1040.000", "T1557"]
+      - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
     condition: none
@@ -4372,12 +4375,11 @@ checks:
   # 5.2.14 Ensure only strong MAC algorithms are used (Automated)
   - id: 29666
     title: "Ensure only strong MAC algorithms are used."
-    description: 'This variable limits the types of MAC algorithms that SSH can use during communication.Notes:Some organizations may have stricter requirements for approved MACs. Ensure that MACs used are in compliance with site policy. The only "strong" MACs currently FIPS 140-2 approved are:hmac-sha2-256 .hmac-sha2-512 .The Supported MACs are:hmac-md5 .hmac-md5-96 .hmac-sha1 .hmac-sha1-96 .hmac-sha2-256 .hmac-sha2-512 .umac-64@openssh.com .umac-128@openssh.com .hmac-md5-etm@openssh.com .hmac-md5-96-etm@openssh.com .hmac-sha1-etm@openssh.com .hmac-sha1-96-etm@openssh.com .hmac-sha2-256-etm@openssh.com .hmac-sha2-512-etm@openssh.com .umac-64-etm@openssh.com .umac-128-etm@openssh.com.'
+    description: 'This variable limits the types of MAC algorithms that SSH can use during communication. Notes : - Some organizations may have stricter requirements for approved MACs. - Ensure that MACs used are in compliance with site policy. - The only "strong" MACs currently FIPS 140-2 approved are: hmac-sha2-256. hmac-sha2-512. - The Supported MACs are: hmac-md5, hmac-md5-96, hmac-sha1, hmac-sha1-96, hmac-sha2-256, hmac-sha2-512, umac-64@openssh.co, umac-128@openssh.com, hmac-md5-etm@openssh.com, hmac-md5-96-etm@openssh.com, hmac-sha1-etm@openssh.com, hmac-sha1-96-etm@openssh.com, hmac-sha2-256-etm@openss.com, hmac-sha2-512-etm@openssh.com, umac-64-etm@openssh.com, umac-128-etm@openssh.com.'
     rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information."
     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site approved MACs.Example:MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256"
-    default value: "MACs umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,umac-64@openssh.com,umac-128@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1"
     references:
-      - http://www.mitls.org/pages/attacks/SLOTH
+      - More information on SSH downgrade attacks can be found here: http://www.mitls.org/pages/attacks/SLOTH
       - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.14"]
@@ -4388,21 +4390,20 @@ checks:
       - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
-      - iso_27001-2013: ["A.13.1.1", "A.10.1.1", "A.9.2.1"]
-      - mitre_techniques: ["T1040", "T1040.000", "T1557", "T1557.000"]
+      - iso_27001-2013: ["A.13.1.1", "A.10.1.1"]
+      - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
     condition: all
     rules:
-      - "c:sshd -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
+      - "c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
   # 5.2.15 Ensure only strong Key Exchange algorithms are used (Automated)
   - id: 29667
     title: "Ensure only strong Key Exchange algorithms are used."
-    description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received Notes:Kex algorithms have a higher preference the earlier they appear in the list. Some organizations may have stricter requirements for approved Key exchange algorithms .Ensure that Key exchange algorithms used are in compliance with site policy .The only Key Exchange Algorithms currently FIPS 140-2 approved are:ecdh-sha2-nistp256 .ecdh-sha2-nistp384 .ecdh-sha2-nistp521 .diffie-hellman-group-exchange-sha256 .diffie-hellman-group16-sha512 .diffie-hellman-group18-sha512 .diffie-hellman-group14-sha256 .The Key Exchange algorithms supported by OpenSSH 8.2 are: Page 663curve25519-sha256 .curve25519-sha256@libssh.org .diffie-hellman-group1-sha1 .diffie-hellman-group14-sha1 .diffie-hellman-group14-sha256 .diffie-hellman-group16-sha512 .diffie-hellman-group18-sha512 .diffie-hellman-group-exchange-sha1 .diffie-hellman-group-exchange-sha256 .ecdh-sha2-nistp256 .ecdh-sha2-nistp384 .ecdh-sha2-nistp521 .sntrup4591761x25519-sha512@tinyssh.org."
+    description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received Notes: - Kex algorithms have a higher preference the earlier they appear in the list. Some organizations may have stricter requirements for approved Key exchange algorithms. - Ensure that Key exchange algorithms used are in compliance with site policy. - The only Key Exchange Algorithms currently FIPS 140-2 approved are: ecdh-sha2-nistp256, ecdh-sha2-nistp384, ecdh-sha2-nistp521, diffie-hellman-group-exchange-sha256, diffie-hellman-group16-sha512, diffie-hellman-group18-sha512, diffie-hellman-group14-sha256. - The Key Exchange algorithms supported by OpenSSH 8.2 are: curve25519-sha256, curve25519-sha256@libssh.org, diffie-hellman-group1-sha1, diffie-hellman-group14-sha1, diffie-hellman-group14-sha256, diffie-hellman-group16-sha512, diffie-hellman-group18-sha512, diffie-hellman-group-exchange-sha1, diffie-hellman-group-exchange-sha256, ecdh-sha2-nistp256, ecdh-sha2-nistp384, ecdh-sha2-nistp521, sntrup4591761x25519-sha512@tinyssh.org."
     rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks."
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example:KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256"
-    default value: "KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256"
     compliance:
       - cis: ["5.2.15"]
       - cis_csc_v8: ["3.10"]
@@ -4413,10 +4414,10 @@ checks:
       - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - iso_27001-2013: ["A.13.1.1", "A.10.1.1"]
-      - mitre_techniques: ["T1040", "T1040.000", "T1557", "T1557.000"]
+      - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
-    condition: all
+    condition: none
     rules:
       - "c:sshd -T -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
@@ -4427,7 +4428,6 @@ checks:
     rationale: "Leaving port forwarding enabled can expose the organization to security risks and backdoors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: AllowTcpForwarding no"
     impact: "SSH tunnels are widely used in many corporate environments. In some environments the applications themselves may have very limited native support for security. By utilizing tunneling, compliance with SOX, HIPAA, PCI-DSS, and other standards can be achieved without having to modify the applications."
-    default value: "AllowTcpForwarding yes"
     references:
       - https://www.ssh.com/ssh/tunneling/example
     compliance:
@@ -4440,7 +4440,7 @@ checks:
       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
       - soc_2: ["CC7.1", "CC8.1"]
       - iso_27001-2013: ["A.13.1.3"]
-      - mitre_techniques: ["T1048", "T1048.002", "T1572", "T1572.000"]
+      - mitre_techniques: ["T1048", "T1048.002", "T1572"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -4467,7 +4467,7 @@ checks:
       - mitre_mitigations: ["M1035"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:banner\s*\t*/etc/issue.net'
+      - 'c:sshd -T -> r:^\s*banner\s*\t*/etc/issue.net'
 
   # 5.2.18 Ensure SSH MaxAuthTries is set to 4 or less (Automated)
   - id: 29670
@@ -4475,7 +4475,6 @@ checks:
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4"
-    default value: "MaxAuthTries 6"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4500,7 +4499,6 @@ checks:
     description: "The MaxStartups parameter specifies the maximum number of concurrent unauthenticated connections to the SSH daemon."
     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxStartups 10:30:60"
-    default value: "MaxStartups 10:30:100"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4525,7 +4523,6 @@ checks:
     description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10"
-    default value: "MaxSessions 10"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4534,7 +4531,7 @@ checks:
       - mitre_tactics: ["TA0040"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^maxsessions\s+(\d+) compare <= 10'
+      - 'c:sshd -T -> n:^\s*maxsessions\s+(\d+) compare <= 10'
 
   # 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 29673
@@ -4542,7 +4539,6 @@ checks:
     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds(1 Minute), set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60"
-    default value: "LoginGraceTime 120"
     references:
       - SSHD_CONFIG(5)
     compliance:
@@ -4565,12 +4561,10 @@ checks:
   # 5.2.22 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 29674
     title: "Ensure SSH Idle Timeout Interval is configured."
-    description: "NOTE: To clarify, the two settings described below is only meant for idle connections from a protocol perspective and not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not and never had, intentionally, the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they where abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus it can no longer be abused disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option en-abled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination."
+    description: "NOTE: To clarify, the two settings described below is only meant for idle connections from a protocol perspective and not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not and never had, intentionally, the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they where abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus it can no longer be abused disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: - ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. - ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option en-abled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination."
     rationale: "In order to prevent resource exhaustion, appropriate values should be set for both ClientAliveInterval and ClientAliveCountMax. Specifically, looking at the source code, ClientAliveCountMax must be greater than zero in order to utilize the ability of SSH to drop idle connections. If connections are allowed to stay open indefinately, this can potentially be used as a DDOS attack or simple resource exhaustion could occur over unreliable networks. The example set here is a 45 second timeout. Consult your site policy for network timeouts and apply as appropriate."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameters according to site policy. Example: ClientAliveInterval 15 ClientAliveCountMax 3"
     references:
-      - https://bugzilla.redhat.com/show_bug.cgi?id=1873547
-      - https://github.com/openssh/openssh-portable/blob/V_8_9/serverloop.c#L137
       - https://man.openbsd.org/sshd_config
     compliance:
       - cis: ["5.2.22"]
@@ -4643,7 +4637,6 @@ checks:
     rationale: "A sudo log file simplifies auditing of sudo commands."
     remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Example: Defaults logfile="/var/log/sudo.log"'
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
-    additional information: "visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks for parse errors. If the sudoers file is currently being edited you will receive a message to try again later."
     references:
       - SUDO(8)
       - VISUDO(8)
@@ -4741,7 +4734,7 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1548", "T1548.000"]
+      - mitre_techniques: ["T1548"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1026"]
     condition: all
@@ -4755,10 +4748,9 @@ checks:
   # 5.4.1 Ensure password creation requirements are configured (Automated)
   - id: 29682
     title: "Ensure password creation requirements are configured."
-    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: Password Length: minlen = 14 - password must be 14 characters or more .Password complexity: minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR dcredit = -1 - provide at least one digit .ucredit = -1 - provide at least one uppercase character .ocredit = -1 - provide at least one special character .lcredit = -1 - provide at least one lowercase character."
+    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: - Password Length: minlen = 14 - password must be 14 characters or more. - Password complexity: minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR dcredit = -1 - provide at least one digit. ucredit = -1 - provide at least one uppercase character. ocredit = -1 - provide at least one special character. lcredit = -1 - provide at least one lowercase character."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
-    remediation: "The following setting is a recommend example policy. Alter these values to conform to your own organization's password policies. Run the following command to install the pam_pwquality module: # apt install libpam-pwquality Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 .Edit the file /etc/security/pwquality.conf and add or modify the following line for .password complexity to conform to site policy: Option 1 .minclass = 4 .Option 2 .dcredit = -1 .ucredit = -1 .ocredit = -1 .lcredit = -1"
-    additional information: "Additional module options may be set, recommendation requirements only cover including try_first_pass and minlen set to 14 or more. NOTE: As of this writing it is not possible to customize the maximum number of retries for the creation of a password within recommended methods. The command pam-auth-update is used to manage certain PAM configurations via profiles, such as /etc/pam.d/common-password. Making a manual change to this file will cause pam-auth-update to overwrite it on the next run and is thus against recommendations. Alternatively, pam_pwquality (via /etc/security/pwquality.conf) fully supports the configuration of the maximum number of retries for a password change with the configuration entry retry = XXX. The issue is that the template /usr/share/pam-configs/pwquality contains retry=3 which will override any retry setting in /etc/security/pwquality.conf as PAM entries takes precedence. This template file should not be modified as any package update will overwrite the change. Thus it is not possible, in any recommended way, to modify password retries."
+    remediation: "The following setting is a recommend example policy. Alter these values to conform to your own organization's password policies. Run the following command to install the pam_pwquality module: # apt install libpam-pwquality Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14. Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy: Option 1. minclass = 4 .Option 2. dcredit = -1. ucredit = -1. ocredit = -1. lcredit = -1"
     compliance:
       - cis: ["5.4.1"]
       - cis_csc_v8: ["5.2"]
@@ -4773,16 +4765,14 @@ checks:
     condition: all
     rules:
       - 'f:/etc/security/pwquality.conf -> !r:^# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
-      - 'f:/etc/pam.d/common-password -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+) compare <=3'
 
   # 5.4.2 Ensure lockout for failed password attempts is configured (Automated)
   - id: 29683
     title: "Ensure lockout for failed password attempts is configured."
-    description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. deny - Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries.fail_interval - The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out unlock_time - The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be re-enabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
+    description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. deny - Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries. fail_interval - The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out. unlock_time - The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be re-enabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
-    remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file.# here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth# Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail# Added to enable faillock auth sufficient pam_faillock.so authsucc# Added to enable faillock# here is the fallback if no module succeeds auth requisite pam_deny.so# prime the stack with a positive return value if there is not one already;# this avoids us returning an error just because nothing sets a success code# since the modules above will each just jump around auth required pam_permit.so# and here are more per-package modules (the "Additional" block) auth optional pam_cap.so# end of pam-auth-update config Common account .Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. account required .pam_faillock.so .Fail lock configuration .Edit /etc/security/faillock.conf and configure it per your site policy. Example:Page 703deny = 4 .fail_interval = 900 unlock time = 600'
+    remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file.# here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth# Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail# Added to enable faillock auth sufficient pam_faillock.so authsucc# Added to enable faillock# here is the fallback if no module succeeds auth requisite pam_deny.so# prime the stack with a positive return value if there is not one already;# this avoids us returning an error just because nothing sets a success code# since the modules above will each just jump around auth required pam_permit.so# and here are more per-package modules (the "Additional" block) auth optional pam_cap.so# end of pam-auth-update config Common account .Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. account required .pam_faillock.so .Fail lock configuration .Edit /etc/security/faillock.conf and configure it per your site policy. Example: deny = 4 .fail_interval = 900 unlock time = 600'
     impact: "It is critical to test and validate any PAM changes before deploying. Any misconfiguration could cause the system to be inaccessible."
-    additional information: "If a user has been locked out because they have reached the maximum consecutive failure count defined by deny= in the pam_faillock.so module, the user can be unlocked by issuing the command /usr/sbin/faillock --user username --reset. This command sets the failed count to 0, effectively unlocking the user."
     compliance:
       - cis: ["5.4.2"]
       - cis_csc_v8: ["6.2"]
@@ -4809,7 +4799,6 @@ checks:
     description: "The /etc/security/opasswd file stores the users old passwords and can be checked to ensure that users are not recycling recent passwords."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password."
     remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Edit the /etc/pam.d/common-password file to include the remember= option of 5 or more. If this line doesn't exist, add the line directly above the line: password [success=1 default=ignore] pam_unix.so obscure yescrypt: Example: password required pam_pwhistory.so use_authtok remember=5"
-    additional information: "Changes only apply to accounts configured on the local system."
     compliance:
       - cis: ["5.4.3"]
       - cis_csc_v8: ["5.2"]
@@ -4830,7 +4819,6 @@ checks:
     description: "The commands below change password encryption to yescrypt. All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The yescrypt algorithm provides much stronger hashing than previous available algorithms, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: these change only apply to accounts configured on the local system."
     remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. PAM Edit the /etc/pam.d/common-password file and ensure that no hashing algorithm option for pam_unix.so is set: password [success=1 default=ignore] try_first_pass remember=5 pam_unix.so obscure use_authtok Login definitions .Edit /etc/login.defs and ensure that ENCRYPT_METHOD is set to yescrypt."
-    additional information: "Additional module options may be set, recommendation only covers those listed here."
     compliance:
       - cis: ["5.4.4"]
       - cis_csc_v8: ["3.11"]
@@ -4846,6 +4834,7 @@ checks:
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
     condition: none
+
     rules:
       - 'f:/etc/pam.d/common-password -> r:"(yescrypt|md5|bigcrypt|sha256|sha512|blowfish)"'
 
@@ -4865,7 +4854,6 @@ checks:
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 1 or more days."
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
     remediation: "Set the PASS_MIN_DAYS parameter to 1 in /etc/login.defs : PASS_MIN_DAYS 1 Modify user parameters for all users with a password set to match: # chage --mindays 1 <user>"
-    default value: "PASS_MIN_DAYS 0"
     compliance:
       - cis: ["5.5.1.1"]
       - cis_csc_v8: ["5.2"]
@@ -4887,8 +4875,6 @@ checks:
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity. It is recommended that the PASS_MAX_DAYS parameter does not exceed 365 days and is greater than the value of PASS_MIN_DAYS."
     remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs : PASS_MAX_DAYS 365 Modify user parameters for all users with a password set to match: # chage --maxdays 365 <user>"
-    default value: "PASS_MAX_DAYS 99999"
-    additional information: "A value of -1 will disable password expiration .The password expiration must be greater than the minimum days between password changes or users will be unable to change their password"
     references:
       - https://www.cisecurity.org/white-papers/cis-password-policy-guide/
     compliance:
@@ -4910,7 +4896,6 @@ checks:
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
     remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs :PASS_WARN_AGE 7 Modify user parameters for all users with a password set to match: # chage --warndays 7 <user>"
-    default value: "PASS_WARN_AGE 7"
     compliance:
       - cis: ["5.5.1.3"]
       - cis_csc_v8: ["5.2"]
@@ -4931,8 +4916,6 @@ checks:
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
     remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30 Modify user parameters for all users with a password set to match: # chage --inactive 30 <user>"
-    additional information: "A value of -1 would disable this setting"
-    default value: "INACTIVE=-1"
     compliance:
       - cis: ["5.5.1.4"]
       - cis_csc_v8: ["5.2"]
@@ -4970,16 +4953,17 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1548", "T1548.000"]
+      - mitre_techniques: ["T1548"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1026"]
-    condition: all
+    condition: any
     rules:
       - 'f:/etc/passwd -> !r:^# && r:root:\w+:\w+:0:'
+      - 'c:grep "^root:" /etc/passwd | cut -f4 -d: -> r: ^0$'
 
   # 5.5.4 Ensure default user umask is 027 or more restrictive (Automated) - Not Implemented
 
-  # 5.5.5 Ensure default user umask is 027 or more restrictive (Automated) - Not Implemented
+  # 5.5.5 Ensure default user shell timeout is 900 seconds or less (Automated) - Not Implemented
 
   ############################################################
   # 6 System Maintenance
@@ -4995,7 +4979,6 @@ checks:
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/passwd: # chmod u-x,go-wx /etc/passwd # chown root:root /etc/passwd"
-    default value: "/etc/passwd 644 0/root 0/root"
     compliance:
       - cis: ["6.1.1"]
       - cis_csc_v8: ["3.3"]
@@ -5068,7 +5051,6 @@ checks:
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/group-: # chmod u-x,go-wx /etc/group- # chown root:root /etc/group-"
-    default value: "/etc/group- 644 0/root 0/root"
     compliance:
       - cis: ["6.1.4"]
       - cis_csc_v8: ["3.3"]
@@ -5205,7 +5187,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "not c:sh -c 'df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type f -perm -0002 -> r:\\.+"
+      - "not c:df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type f -perm -0002 -> r:\\.+"
 
   # 6.1.10 Ensure no unowned files or directories exist (Automated)
   - id: 3200
@@ -5228,7 +5210,7 @@ checks:
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
-      - "not c:sh -c 'df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nouser -> r:\\.+"
+      - "not c:df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nouser -> r:\\.+"
 
   # 6.1.11 Ensure no ungrouped files or directories exist (Automated)
   - id: 3201
@@ -5251,7 +5233,7 @@ checks:
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
-      - "not c:sh -c 'df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -nogroup -> r:\\.+"
+      - "not c:df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -nogroup -> r:\\.+"
   #
   # 6.1.12 Audit SUID executables (Manual) - Not Implemented
 
@@ -5351,7 +5333,7 @@ checks:
     remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
     compliance:
       - cis: ["6.2.10"]
-      - mitre_techniques: ["T1548, T1548.000"]
+      - mitre_techniques: ["T1548"]
       - mitre_tactics: ["TA0001"]
       - mitre_mitigations: ["M1026"]
     condition: all
