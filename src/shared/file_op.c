@@ -2776,16 +2776,12 @@ FILE * wfopen(const char * pathname, const char * mode) {
     return fp;
 
 #else
-    char *modeInheritHandle = NULL;
-    
-    os_calloc(1, strlen(mode) + 2, modeInheritHandle);
-    if(modeInheritHandle) {
-        sprintf(modeInheritHandle, "%se", mode);
-    } else {
-        return NULL;
+    FILE *fp = fopen(pathname, mode);
+    if(fp) {
+    	w_file_cloexec(fp);
     }
-    
-    return fopen(pathname, modeInheritHandle);
+    return fp;
+
 #endif
 }
 
