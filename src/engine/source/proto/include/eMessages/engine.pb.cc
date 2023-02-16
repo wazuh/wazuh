@@ -35,13 +35,13 @@ static constexpr ::_pbi::MigrationSchema* schemas = nullptr;
 static constexpr ::_pb::Message* const* file_default_instances = nullptr;
 
 const char descriptor_table_protodef_engine_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
-  "\n\014engine.proto\022\024com.wazuh.api.engine*8\n\021"
-  "ResturnCodeStatus\022\013\n\007UNKNOWN\020\000\022\013\n\007SUCCES"
-  "S\020\001\022\t\n\005ERROR\020\002b\006proto3"
+  "\n\014engine.proto\022\024com.wazuh.api.engine*.\n\014"
+  "ReturnStatus\022\013\n\007UNKNOWN\020\000\022\006\n\002OK\020\001\022\t\n\005ERR"
+  "OR\020\002b\006proto3"
   ;
 static ::_pbi::once_flag descriptor_table_engine_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_engine_2eproto = {
-    false, false, 102, descriptor_table_protodef_engine_2eproto,
+    false, false, 92, descriptor_table_protodef_engine_2eproto,
     "engine.proto",
     &descriptor_table_engine_2eproto_once, nullptr, 0, 0,
     schemas, file_default_instances, TableStruct_engine_2eproto::offsets,
@@ -58,11 +58,11 @@ namespace com {
 namespace wazuh {
 namespace api {
 namespace engine {
-const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ResturnCodeStatus_descriptor() {
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ReturnStatus_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_engine_2eproto);
   return file_level_enum_descriptors_engine_2eproto[0];
 }
-bool ResturnCodeStatus_IsValid(int value) {
+bool ReturnStatus_IsValid(int value) {
   switch (value) {
     case 0:
     case 1:

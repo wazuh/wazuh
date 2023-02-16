@@ -25,51 +25,51 @@ namespace wazuh {
 namespace api {
 namespace engine {
 namespace router {
-PROTOBUF_CONSTEXPR Route::Route(
+PROTOBUF_CONSTEXPR Entry::Entry(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.asset_filter_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.asset_policy_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.priority_)*/0
   , /*decltype(_impl_._cached_size_)*/{}} {}
-struct RouteDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR RouteDefaultTypeInternal()
+struct EntryDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR EntryDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
-  ~RouteDefaultTypeInternal() {}
+  ~EntryDefaultTypeInternal() {}
   union {
-    Route _instance;
+    Entry _instance;
   };
 };
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 RouteDefaultTypeInternal _Route_default_instance_;
-PROTOBUF_CONSTEXPR routeGetRequest::routeGetRequest(
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 EntryDefaultTypeInternal _Entry_default_instance_;
+PROTOBUF_CONSTEXPR RouteGet_Request::RouteGet_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_._cached_size_)*/{}} {}
-struct routeGetRequestDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR routeGetRequestDefaultTypeInternal()
+struct RouteGet_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR RouteGet_RequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
-  ~routeGetRequestDefaultTypeInternal() {}
+  ~RouteGet_RequestDefaultTypeInternal() {}
   union {
-    routeGetRequest _instance;
+    RouteGet_Request _instance;
   };
 };
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 routeGetRequestDefaultTypeInternal _routeGetRequest_default_instance_;
-PROTOBUF_CONSTEXPR routeGetResponse::routeGetResponse(
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 RouteGet_RequestDefaultTypeInternal _RouteGet_Request_default_instance_;
+PROTOBUF_CONSTEXPR RouteGet_Response::RouteGet_Response(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.route_)*/nullptr
+  , /*decltype(_impl_.rute_)*/nullptr
   , /*decltype(_impl_.status_)*/0} {}
-struct routeGetResponseDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR routeGetResponseDefaultTypeInternal()
+struct RouteGet_ResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR RouteGet_ResponseDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
-  ~routeGetResponseDefaultTypeInternal() {}
+  ~RouteGet_ResponseDefaultTypeInternal() {}
   union {
-    routeGetResponse _instance;
+    RouteGet_Response _instance;
   };
 };
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 routeGetResponseDefaultTypeInternal _routeGetResponse_default_instance_;
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 RouteGet_ResponseDefaultTypeInternal _RouteGet_Response_default_instance_;
 }  // namespace router
 }  // namespace engine
 }  // namespace api
@@ -81,64 +81,64 @@ static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors
 
 const uint32_t TableStruct_router_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Route, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Route, _impl_.name_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Route, _impl_.asset_filter_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Route, _impl_.asset_policy_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Route, _impl_.priority_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.name_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.asset_filter_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.asset_policy_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.priority_),
   ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::routeGetRequest, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::RouteGet_Request, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::routeGetRequest, _impl_.name_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::routeGetResponse, _impl_._has_bits_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::routeGetResponse, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::RouteGet_Request, _impl_.name_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::RouteGet_Response, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::RouteGet_Response, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::routeGetResponse, _impl_.status_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::routeGetResponse, _impl_.error_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::routeGetResponse, _impl_.route_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::RouteGet_Response, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::RouteGet_Response, _impl_.error_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::RouteGet_Response, _impl_.rute_),
   ~0u,
   0,
   1,
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  { 0, -1, -1, sizeof(::com::wazuh::api::engine::router::Route)},
-  { 10, -1, -1, sizeof(::com::wazuh::api::engine::router::routeGetRequest)},
-  { 17, 26, -1, sizeof(::com::wazuh::api::engine::router::routeGetResponse)},
+  { 0, -1, -1, sizeof(::com::wazuh::api::engine::router::Entry)},
+  { 10, -1, -1, sizeof(::com::wazuh::api::engine::router::RouteGet_Request)},
+  { 17, 26, -1, sizeof(::com::wazuh::api::engine::router::RouteGet_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
-  &::com::wazuh::api::engine::router::_Route_default_instance_._instance,
-  &::com::wazuh::api::engine::router::_routeGetRequest_default_instance_._instance,
-  &::com::wazuh::api::engine::router::_routeGetResponse_default_instance_._instance,
+  &::com::wazuh::api::engine::router::_Entry_default_instance_._instance,
+  &::com::wazuh::api::engine::router::_RouteGet_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::router::_RouteGet_Response_default_instance_._instance,
 };
 
 const char descriptor_table_protodef_router_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
   "\n\014router.proto\022\033com.wazuh.api.engine.rou"
-  "ter\032\014engine.proto\"S\n\005Route\022\014\n\004name\030\001 \001(\t"
+  "ter\032\014engine.proto\"S\n\005Entry\022\014\n\004name\030\001 \001(\t"
   "\022\024\n\014asset_filter\030\002 \001(\t\022\024\n\014asset_policy\030\003"
-  " \001(\t\022\020\n\010priority\030\004 \001(\005\"\037\n\017routeGetReques"
-  "t\022\014\n\004name\030\001 \001(\t\"\253\001\n\020routeGetResponse\0227\n\006"
-  "status\030\001 \001(\0162\'.com.wazuh.api.engine.Rest"
-  "urnCodeStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0226\n\005rou"
-  "te\030\003 \001(\0132\".com.wazuh.api.engine.router.R"
-  "outeH\001\210\001\001B\010\n\006_errorB\010\n\006_routeb\006proto3"
+  " \001(\t\022\020\n\010priority\030\004 \001(\005\" \n\020RouteGet_Reque"
+  "st\022\014\n\004name\030\001 \001(\t\"\245\001\n\021RouteGet_Response\0222"
+  "\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.Re"
+  "turnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0225\n\004rute\030\003"
+  " \001(\0132\".com.wazuh.api.engine.router.Entry"
+  "H\001\210\001\001B\010\n\006_errorB\007\n\005_ruteb\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_router_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_router_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_router_2eproto = {
-    false, false, 357, descriptor_table_protodef_router_2eproto,
+    false, false, 352, descriptor_table_protodef_router_2eproto,
     "router.proto",
     &descriptor_table_router_2eproto_once, descriptor_table_router_2eproto_deps, 1, 3,
     schemas, file_default_instances, TableStruct_router_2eproto::offsets,
@@ -159,19 +159,19 @@ namespace router {
 
 // ===================================================================
 
-class Route::_Internal {
+class Entry::_Internal {
  public:
 };
 
-Route::Route(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+Entry::Entry(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
   SharedCtor(arena, is_message_owned);
-  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.Route)
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.Entry)
 }
-Route::Route(const Route& from)
+Entry::Entry(const Entry& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
-  Route* const _this = this; (void)_this;
+  Entry* const _this = this; (void)_this;
   new (&_impl_) Impl_{
       decltype(_impl_.name_){}
     , decltype(_impl_.asset_filter_){}
@@ -205,10 +205,10 @@ Route::Route(const Route& from)
       _this->GetArenaForAllocation());
   }
   _this->_impl_.priority_ = from._impl_.priority_;
-  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.Route)
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.Entry)
 }
 
-inline void Route::SharedCtor(
+inline void Entry::SharedCtor(
     ::_pb::Arena* arena, bool is_message_owned) {
   (void)arena;
   (void)is_message_owned;
@@ -233,8 +233,8 @@ inline void Route::SharedCtor(
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
-Route::~Route() {
-  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.router.Route)
+Entry::~Entry() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.router.Entry)
   if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
   (void)arena;
     return;
@@ -242,19 +242,19 @@ Route::~Route() {
   SharedDtor();
 }
 
-inline void Route::SharedDtor() {
+inline void Entry::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
   _impl_.asset_filter_.Destroy();
   _impl_.asset_policy_.Destroy();
 }
 
-void Route::SetCachedSize(int size) const {
+void Entry::SetCachedSize(int size) const {
   _impl_._cached_size_.Set(size);
 }
 
-void Route::Clear() {
-// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.router.Route)
+void Entry::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.router.Entry)
   uint32_t cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -266,7 +266,7 @@ void Route::Clear() {
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* Route::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* Entry::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   while (!ctx->Done(&ptr)) {
     uint32_t tag;
@@ -278,7 +278,7 @@ const char* Route::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
           auto str = _internal_mutable_name();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.Route.name"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.Entry.name"));
         } else
           goto handle_unusual;
         continue;
@@ -288,7 +288,7 @@ const char* Route::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
           auto str = _internal_mutable_asset_filter();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.Route.asset_filter"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.Entry.asset_filter"));
         } else
           goto handle_unusual;
         continue;
@@ -298,7 +298,7 @@ const char* Route::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
           auto str = _internal_mutable_asset_policy();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.Route.asset_policy"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.Entry.asset_policy"));
         } else
           goto handle_unusual;
         continue;
@@ -333,9 +333,9 @@ failure:
 #undef CHK_
 }
 
-uint8_t* Route::_InternalSerialize(
+uint8_t* Entry::_InternalSerialize(
     uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
-  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.router.Route)
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.router.Entry)
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -344,7 +344,7 @@ uint8_t* Route::_InternalSerialize(
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_name().data(), static_cast<int>(this->_internal_name().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.router.Route.name");
+      "com.wazuh.api.engine.router.Entry.name");
     target = stream->WriteStringMaybeAliased(
         1, this->_internal_name(), target);
   }
@@ -354,7 +354,7 @@ uint8_t* Route::_InternalSerialize(
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_asset_filter().data(), static_cast<int>(this->_internal_asset_filter().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.router.Route.asset_filter");
+      "com.wazuh.api.engine.router.Entry.asset_filter");
     target = stream->WriteStringMaybeAliased(
         2, this->_internal_asset_filter(), target);
   }
@@ -364,7 +364,7 @@ uint8_t* Route::_InternalSerialize(
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_asset_policy().data(), static_cast<int>(this->_internal_asset_policy().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.router.Route.asset_policy");
+      "com.wazuh.api.engine.router.Entry.asset_policy");
     target = stream->WriteStringMaybeAliased(
         3, this->_internal_asset_policy(), target);
   }
@@ -379,12 +379,12 @@ uint8_t* Route::_InternalSerialize(
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.router.Route)
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.router.Entry)
   return target;
 }
 
-size_t Route::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.router.Route)
+size_t Entry::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.router.Entry)
   size_t total_size = 0;
 
   uint32_t cached_has_bits = 0;
@@ -420,17 +420,17 @@ size_t Route::ByteSizeLong() const {
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData Route::_class_data_ = {
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData Entry::_class_data_ = {
     ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    Route::MergeImpl
+    Entry::MergeImpl
 };
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*Route::GetClassData() const { return &_class_data_; }
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*Entry::GetClassData() const { return &_class_data_; }
 
 
-void Route::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<Route*>(&to_msg);
-  auto& from = static_cast<const Route&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.router.Route)
+void Entry::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<Entry*>(&to_msg);
+  auto& from = static_cast<const Entry&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.router.Entry)
   GOOGLE_DCHECK_NE(&from, _this);
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
@@ -450,18 +450,18 @@ void Route::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
-void Route::CopyFrom(const Route& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.router.Route)
+void Entry::CopyFrom(const Entry& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.router.Entry)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-bool Route::IsInitialized() const {
+bool Entry::IsInitialized() const {
   return true;
 }
 
-void Route::InternalSwap(Route* other) {
+void Entry::InternalSwap(Entry* other) {
   using std::swap;
   auto* lhs_arena = GetArenaForAllocation();
   auto* rhs_arena = other->GetArenaForAllocation();
@@ -481,7 +481,7 @@ void Route::InternalSwap(Route* other) {
   swap(_impl_.priority_, other->_impl_.priority_);
 }
 
-::PROTOBUF_NAMESPACE_ID::Metadata Route::GetMetadata() const {
+::PROTOBUF_NAMESPACE_ID::Metadata Entry::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_router_2eproto_getter, &descriptor_table_router_2eproto_once,
       file_level_metadata_router_2eproto[0]);
@@ -489,19 +489,19 @@ void Route::InternalSwap(Route* other) {
 
 // ===================================================================
 
-class routeGetRequest::_Internal {
+class RouteGet_Request::_Internal {
  public:
 };
 
-routeGetRequest::routeGetRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+RouteGet_Request::RouteGet_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
   SharedCtor(arena, is_message_owned);
-  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.routeGetRequest)
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.RouteGet_Request)
 }
-routeGetRequest::routeGetRequest(const routeGetRequest& from)
+RouteGet_Request::RouteGet_Request(const RouteGet_Request& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
-  routeGetRequest* const _this = this; (void)_this;
+  RouteGet_Request* const _this = this; (void)_this;
   new (&_impl_) Impl_{
       decltype(_impl_.name_){}
     , /*decltype(_impl_._cached_size_)*/{}};
@@ -515,10 +515,10 @@ routeGetRequest::routeGetRequest(const routeGetRequest& from)
     _this->_impl_.name_.Set(from._internal_name(), 
       _this->GetArenaForAllocation());
   }
-  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.routeGetRequest)
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.RouteGet_Request)
 }
 
-inline void routeGetRequest::SharedCtor(
+inline void RouteGet_Request::SharedCtor(
     ::_pb::Arena* arena, bool is_message_owned) {
   (void)arena;
   (void)is_message_owned;
@@ -532,8 +532,8 @@ inline void routeGetRequest::SharedCtor(
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
-routeGetRequest::~routeGetRequest() {
-  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.router.routeGetRequest)
+RouteGet_Request::~RouteGet_Request() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.router.RouteGet_Request)
   if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
   (void)arena;
     return;
@@ -541,17 +541,17 @@ routeGetRequest::~routeGetRequest() {
   SharedDtor();
 }
 
-inline void routeGetRequest::SharedDtor() {
+inline void RouteGet_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
 }
 
-void routeGetRequest::SetCachedSize(int size) const {
+void RouteGet_Request::SetCachedSize(int size) const {
   _impl_._cached_size_.Set(size);
 }
 
-void routeGetRequest::Clear() {
-// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.router.routeGetRequest)
+void RouteGet_Request::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.router.RouteGet_Request)
   uint32_t cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -560,7 +560,7 @@ void routeGetRequest::Clear() {
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* routeGetRequest::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* RouteGet_Request::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   while (!ctx->Done(&ptr)) {
     uint32_t tag;
@@ -572,7 +572,7 @@ const char* routeGetRequest::_InternalParse(const char* ptr, ::_pbi::ParseContex
           auto str = _internal_mutable_name();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.routeGetRequest.name"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.RouteGet_Request.name"));
         } else
           goto handle_unusual;
         continue;
@@ -599,9 +599,9 @@ failure:
 #undef CHK_
 }
 
-uint8_t* routeGetRequest::_InternalSerialize(
+uint8_t* RouteGet_Request::_InternalSerialize(
     uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
-  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.router.routeGetRequest)
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.router.RouteGet_Request)
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -610,7 +610,7 @@ uint8_t* routeGetRequest::_InternalSerialize(
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_name().data(), static_cast<int>(this->_internal_name().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.router.routeGetRequest.name");
+      "com.wazuh.api.engine.router.RouteGet_Request.name");
     target = stream->WriteStringMaybeAliased(
         1, this->_internal_name(), target);
   }
@@ -619,12 +619,12 @@ uint8_t* routeGetRequest::_InternalSerialize(
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.router.routeGetRequest)
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.router.RouteGet_Request)
   return target;
 }
 
-size_t routeGetRequest::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.router.routeGetRequest)
+size_t RouteGet_Request::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.router.RouteGet_Request)
   size_t total_size = 0;
 
   uint32_t cached_has_bits = 0;
@@ -641,17 +641,17 @@ size_t routeGetRequest::ByteSizeLong() const {
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData routeGetRequest::_class_data_ = {
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData RouteGet_Request::_class_data_ = {
     ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    routeGetRequest::MergeImpl
+    RouteGet_Request::MergeImpl
 };
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*routeGetRequest::GetClassData() const { return &_class_data_; }
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*RouteGet_Request::GetClassData() const { return &_class_data_; }
 
 
-void routeGetRequest::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<routeGetRequest*>(&to_msg);
-  auto& from = static_cast<const routeGetRequest&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.router.routeGetRequest)
+void RouteGet_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<RouteGet_Request*>(&to_msg);
+  auto& from = static_cast<const RouteGet_Request&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.router.RouteGet_Request)
   GOOGLE_DCHECK_NE(&from, _this);
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
@@ -662,18 +662,18 @@ void routeGetRequest::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const 
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
-void routeGetRequest::CopyFrom(const routeGetRequest& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.router.routeGetRequest)
+void RouteGet_Request::CopyFrom(const RouteGet_Request& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.router.RouteGet_Request)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-bool routeGetRequest::IsInitialized() const {
+bool RouteGet_Request::IsInitialized() const {
   return true;
 }
 
-void routeGetRequest::InternalSwap(routeGetRequest* other) {
+void RouteGet_Request::InternalSwap(RouteGet_Request* other) {
   using std::swap;
   auto* lhs_arena = GetArenaForAllocation();
   auto* rhs_arena = other->GetArenaForAllocation();
@@ -684,7 +684,7 @@ void routeGetRequest::InternalSwap(routeGetRequest* other) {
   );
 }
 
-::PROTOBUF_NAMESPACE_ID::Metadata routeGetRequest::GetMetadata() const {
+::PROTOBUF_NAMESPACE_ID::Metadata RouteGet_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_router_2eproto_getter, &descriptor_table_router_2eproto_once,
       file_level_metadata_router_2eproto[1]);
@@ -692,36 +692,36 @@ void routeGetRequest::InternalSwap(routeGetRequest* other) {
 
 // ===================================================================
 
-class routeGetResponse::_Internal {
+class RouteGet_Response::_Internal {
  public:
-  using HasBits = decltype(std::declval<routeGetResponse>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<RouteGet_Response>()._impl_._has_bits_);
   static void set_has_error(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
-  static const ::com::wazuh::api::engine::router::Route& route(const routeGetResponse* msg);
-  static void set_has_route(HasBits* has_bits) {
+  static const ::com::wazuh::api::engine::router::Entry& rute(const RouteGet_Response* msg);
+  static void set_has_rute(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
   }
 };
 
-const ::com::wazuh::api::engine::router::Route&
-routeGetResponse::_Internal::route(const routeGetResponse* msg) {
-  return *msg->_impl_.route_;
+const ::com::wazuh::api::engine::router::Entry&
+RouteGet_Response::_Internal::rute(const RouteGet_Response* msg) {
+  return *msg->_impl_.rute_;
 }
-routeGetResponse::routeGetResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+RouteGet_Response::RouteGet_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
   SharedCtor(arena, is_message_owned);
-  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.routeGetResponse)
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.RouteGet_Response)
 }
-routeGetResponse::routeGetResponse(const routeGetResponse& from)
+RouteGet_Response::RouteGet_Response(const RouteGet_Response& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
-  routeGetResponse* const _this = this; (void)_this;
+  RouteGet_Response* const _this = this; (void)_this;
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.error_){}
-    , decltype(_impl_.route_){nullptr}
+    , decltype(_impl_.rute_){nullptr}
     , decltype(_impl_.status_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -733,14 +733,14 @@ routeGetResponse::routeGetResponse(const routeGetResponse& from)
     _this->_impl_.error_.Set(from._internal_error(), 
       _this->GetArenaForAllocation());
   }
-  if (from._internal_has_route()) {
-    _this->_impl_.route_ = new ::com::wazuh::api::engine::router::Route(*from._impl_.route_);
+  if (from._internal_has_rute()) {
+    _this->_impl_.rute_ = new ::com::wazuh::api::engine::router::Entry(*from._impl_.rute_);
   }
   _this->_impl_.status_ = from._impl_.status_;
-  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.routeGetResponse)
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.RouteGet_Response)
 }
 
-inline void routeGetResponse::SharedCtor(
+inline void RouteGet_Response::SharedCtor(
     ::_pb::Arena* arena, bool is_message_owned) {
   (void)arena;
   (void)is_message_owned;
@@ -748,7 +748,7 @@ inline void routeGetResponse::SharedCtor(
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.error_){}
-    , decltype(_impl_.route_){nullptr}
+    , decltype(_impl_.rute_){nullptr}
     , decltype(_impl_.status_){0}
   };
   _impl_.error_.InitDefault();
@@ -757,8 +757,8 @@ inline void routeGetResponse::SharedCtor(
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
-routeGetResponse::~routeGetResponse() {
-  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.router.routeGetResponse)
+RouteGet_Response::~RouteGet_Response() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.router.RouteGet_Response)
   if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
   (void)arena;
     return;
@@ -766,18 +766,18 @@ routeGetResponse::~routeGetResponse() {
   SharedDtor();
 }
 
-inline void routeGetResponse::SharedDtor() {
+inline void RouteGet_Response::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.error_.Destroy();
-  if (this != internal_default_instance()) delete _impl_.route_;
+  if (this != internal_default_instance()) delete _impl_.rute_;
 }
 
-void routeGetResponse::SetCachedSize(int size) const {
+void RouteGet_Response::SetCachedSize(int size) const {
   _impl_._cached_size_.Set(size);
 }
 
-void routeGetResponse::Clear() {
-// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.router.routeGetResponse)
+void RouteGet_Response::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.router.RouteGet_Response)
   uint32_t cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -788,8 +788,8 @@ void routeGetResponse::Clear() {
       _impl_.error_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
-      GOOGLE_DCHECK(_impl_.route_ != nullptr);
-      _impl_.route_->Clear();
+      GOOGLE_DCHECK(_impl_.rute_ != nullptr);
+      _impl_.rute_->Clear();
     }
   }
   _impl_.status_ = 0;
@@ -797,19 +797,19 @@ void routeGetResponse::Clear() {
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* routeGetResponse::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* RouteGet_Response::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
   while (!ctx->Done(&ptr)) {
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // .com.wazuh.api.engine.ResturnCodeStatus status = 1;
+      // .com.wazuh.api.engine.ReturnStatus status = 1;
       case 1:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
           uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
-          _internal_set_status(static_cast<::com::wazuh::api::engine::ResturnCodeStatus>(val));
+          _internal_set_status(static_cast<::com::wazuh::api::engine::ReturnStatus>(val));
         } else
           goto handle_unusual;
         continue;
@@ -819,14 +819,14 @@ const char* routeGetResponse::_InternalParse(const char* ptr, ::_pbi::ParseConte
           auto str = _internal_mutable_error();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.routeGetResponse.error"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.RouteGet_Response.error"));
         } else
           goto handle_unusual;
         continue;
-      // optional .com.wazuh.api.engine.router.Route route = 3;
+      // optional .com.wazuh.api.engine.router.Entry rute = 3;
       case 3:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
-          ptr = ctx->ParseMessage(_internal_mutable_route(), ptr);
+          ptr = ctx->ParseMessage(_internal_mutable_rute(), ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -855,13 +855,13 @@ failure:
 #undef CHK_
 }
 
-uint8_t* routeGetResponse::_InternalSerialize(
+uint8_t* RouteGet_Response::_InternalSerialize(
     uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
-  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.router.routeGetResponse)
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.router.RouteGet_Response)
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // .com.wazuh.api.engine.ResturnCodeStatus status = 1;
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
   if (this->_internal_status() != 0) {
     target = stream->EnsureSpace(target);
     target = ::_pbi::WireFormatLite::WriteEnumToArray(
@@ -873,28 +873,28 @@ uint8_t* routeGetResponse::_InternalSerialize(
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_error().data(), static_cast<int>(this->_internal_error().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.router.routeGetResponse.error");
+      "com.wazuh.api.engine.router.RouteGet_Response.error");
     target = stream->WriteStringMaybeAliased(
         2, this->_internal_error(), target);
   }
 
-  // optional .com.wazuh.api.engine.router.Route route = 3;
-  if (_internal_has_route()) {
+  // optional .com.wazuh.api.engine.router.Entry rute = 3;
+  if (_internal_has_rute()) {
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(3, _Internal::route(this),
-        _Internal::route(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(3, _Internal::rute(this),
+        _Internal::rute(this).GetCachedSize(), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.router.routeGetResponse)
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.router.RouteGet_Response)
   return target;
 }
 
-size_t routeGetResponse::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.router.routeGetResponse)
+size_t RouteGet_Response::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.router.RouteGet_Response)
   size_t total_size = 0;
 
   uint32_t cached_has_bits = 0;
@@ -910,15 +910,15 @@ size_t routeGetResponse::ByteSizeLong() const {
           this->_internal_error());
     }
 
-    // optional .com.wazuh.api.engine.router.Route route = 3;
+    // optional .com.wazuh.api.engine.router.Entry rute = 3;
     if (cached_has_bits & 0x00000002u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-          *_impl_.route_);
+          *_impl_.rute_);
     }
 
   }
-  // .com.wazuh.api.engine.ResturnCodeStatus status = 1;
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
   if (this->_internal_status() != 0) {
     total_size += 1 +
       ::_pbi::WireFormatLite::EnumSize(this->_internal_status());
@@ -927,17 +927,17 @@ size_t routeGetResponse::ByteSizeLong() const {
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData routeGetResponse::_class_data_ = {
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData RouteGet_Response::_class_data_ = {
     ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    routeGetResponse::MergeImpl
+    RouteGet_Response::MergeImpl
 };
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*routeGetResponse::GetClassData() const { return &_class_data_; }
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*RouteGet_Response::GetClassData() const { return &_class_data_; }
 
 
-void routeGetResponse::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<routeGetResponse*>(&to_msg);
-  auto& from = static_cast<const routeGetResponse&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.router.routeGetResponse)
+void RouteGet_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<RouteGet_Response*>(&to_msg);
+  auto& from = static_cast<const RouteGet_Response&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.router.RouteGet_Response)
   GOOGLE_DCHECK_NE(&from, _this);
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
@@ -948,8 +948,8 @@ void routeGetResponse::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const
       _this->_internal_set_error(from._internal_error());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_internal_mutable_route()->::com::wazuh::api::engine::router::Route::MergeFrom(
-          from._internal_route());
+      _this->_internal_mutable_rute()->::com::wazuh::api::engine::router::Entry::MergeFrom(
+          from._internal_rute());
     }
   }
   if (from._internal_status() != 0) {
@@ -958,18 +958,18 @@ void routeGetResponse::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
-void routeGetResponse::CopyFrom(const routeGetResponse& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.router.routeGetResponse)
+void RouteGet_Response::CopyFrom(const RouteGet_Response& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.router.RouteGet_Response)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-bool routeGetResponse::IsInitialized() const {
+bool RouteGet_Response::IsInitialized() const {
   return true;
 }
 
-void routeGetResponse::InternalSwap(routeGetResponse* other) {
+void RouteGet_Response::InternalSwap(RouteGet_Response* other) {
   using std::swap;
   auto* lhs_arena = GetArenaForAllocation();
   auto* rhs_arena = other->GetArenaForAllocation();
@@ -980,14 +980,14 @@ void routeGetResponse::InternalSwap(routeGetResponse* other) {
       &other->_impl_.error_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(routeGetResponse, _impl_.status_)
-      + sizeof(routeGetResponse::_impl_.status_)
-      - PROTOBUF_FIELD_OFFSET(routeGetResponse, _impl_.route_)>(
-          reinterpret_cast<char*>(&_impl_.route_),
-          reinterpret_cast<char*>(&other->_impl_.route_));
+      PROTOBUF_FIELD_OFFSET(RouteGet_Response, _impl_.status_)
+      + sizeof(RouteGet_Response::_impl_.status_)
+      - PROTOBUF_FIELD_OFFSET(RouteGet_Response, _impl_.rute_)>(
+          reinterpret_cast<char*>(&_impl_.rute_),
+          reinterpret_cast<char*>(&other->_impl_.rute_));
 }
 
-::PROTOBUF_NAMESPACE_ID::Metadata routeGetResponse::GetMetadata() const {
+::PROTOBUF_NAMESPACE_ID::Metadata RouteGet_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_router_2eproto_getter, &descriptor_table_router_2eproto_once,
       file_level_metadata_router_2eproto[2]);
@@ -1000,17 +1000,17 @@ void routeGetResponse::InternalSwap(routeGetResponse* other) {
 }  // namespace wazuh
 }  // namespace com
 PROTOBUF_NAMESPACE_OPEN
-template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::Route*
-Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::Route >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::Route >(arena);
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::Entry*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::Entry >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::Entry >(arena);
 }
-template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::routeGetRequest*
-Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::routeGetRequest >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::routeGetRequest >(arena);
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::RouteGet_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::RouteGet_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::RouteGet_Request >(arena);
 }
-template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::routeGetResponse*
-Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::routeGetResponse >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::routeGetResponse >(arena);
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::RouteGet_Response*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::RouteGet_Response >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::RouteGet_Response >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 
