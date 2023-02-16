@@ -15,6 +15,8 @@ enum class RESPONSE_ERROR_CODES
     UNKNOWN_ERROR,
     INVALID_JSON_REQUEST,
     INVALID_MSG_SIZE,
+    INVALID_REQUEST,
+    INTERNAL_ERROR // This never happens, its only for coverage, the code should never reach this point
 };
 
 }
@@ -42,7 +44,7 @@ public:
      * @param message Optional message
      */
     explicit WazuhResponse(const json::Json& data,
-                           int error,
+                           int error = 0,
                            std::string_view message = "") noexcept
         : m_data(data)
         , m_error(error)
@@ -61,7 +63,7 @@ public:
      * from a module use the other one with a error code of 0
      */
     explicit WazuhResponse(json::Json&& data,
-                           int error,
+                           int error = 0,
                            std::string_view message = "") noexcept
         : m_data(data)
         , m_error(error)
@@ -231,7 +233,7 @@ public:
      * @brief Return a request with invalid JSON format message
      *
      */
-    static WazuhResponse invalidRequest()
+    static WazuhResponse invalidJsonRequest()
     {
         return WazuhResponse(json::Json(R"({})"),
                              static_cast<int>(RESPONSE_ERROR_CODES::INVALID_JSON_REQUEST),
@@ -258,6 +260,30 @@ public:
         return WazuhResponse(json::Json(R"({})"),
                              static_cast<int>(RESPONSE_ERROR_CODES::UNKNOWN_ERROR),
                              "Unknown error");
+    }
+
+    /**
+     * @brief Return a request with invalid JSON format message
+     *
+     */
+    static WazuhResponse invalidRequest(const std::string& message)
+    {
+        return WazuhResponse(json::Json(R"({})"),
+                             static_cast<int>(RESPONSE_ERROR_CODES::INVALID_REQUEST),
+                             std::string{"Invalid request: "} + message);
+    }
+
+    /**
+     * @brief Return a request with internal error message
+     *
+     * This error is used when the request is valid but the server cannot
+     * process  the respons
+     */
+    static WazuhResponse internalError(const std::string& message)
+    {
+        return WazuhResponse(json::Json(R"({})"),
+                             static_cast<int>(RESPONSE_ERROR_CODES::INTERNAL_ERROR),
+                             std::string{"Internal error: "} + message);
     }
 };
 
