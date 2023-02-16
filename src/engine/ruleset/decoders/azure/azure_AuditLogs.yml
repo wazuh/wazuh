@@ -24,7 +24,7 @@ normalize:
      - event.kind: event
      - event.duration: $~json.DurationMs
      - event.duration: +i_calc/mul/1000000
-     - log.level: $~json.level
+     - log.level: $~json.Level
      - event.action: $~json.OperationName
      - azure.auditlogs.operation_name: $~json.OperationName
      - azure.auditlogs.result_signature: $~json.ResultSignature
@@ -45,7 +45,7 @@ normalize:
 
   - logpar:
     - ~json.CallerIpAddress: <source.ip>:<source.port>
-    - ~json.CallerIpAddress: \[<source.ip>\]:<source.port>
+    - ~json.CallerIpAddress: "[<source.ip>]:<source.port>"
     - ~json.CallerIpAddress: <source.ip>
 
   - map:  

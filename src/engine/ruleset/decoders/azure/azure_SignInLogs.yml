@@ -20,13 +20,13 @@ check:
 
 normalize:
   - map:
-    - event.category: authentication
+    - event.category: +a_append/authentication
     - event.kind: event
-    - event.type: info
+    - event.type: +a_append/info
     - azure.signinlogs.resource_id: $~json.ResourceId
     - source.address: $~json.IPAddress
     - source.ip: $source.address
-    - related.ip: $source.ip
+    - related.ip: +a_append/$source.ip
     - client.ip: $source.ip
     - log.level: $~json.level
     - event.duration: $~json.DurationMs
@@ -55,6 +55,30 @@ normalize:
     # User Agent
     - user_agent.original: $~json.UserAgent
 
+    - azure.signinlogs.properties.authentication_processing_details: $~json.AuthenticationProcessingDetails
+    - azure.signinlogs.identity: $~json.identity
+    - azure.signinlogs.properties.app_display_name:  $~json.AppDisplayName
+    - azure.signinlogs.properties.app_id: $~json.AppId
+    - azure.signinlogs.properties.client_app_used: $~json.ClientAppUsed
+    - azure.signinlogs.properties.conditional_access_status: $~json.ConditionalAccessStatus
+    - azure.signinlogs.properties.device_detail: +parse_json/$~json.DeviceDetail
+    - azure.signinlogs.properties.id: $~json.Id
+    - azure.signinlogs.properties.is_interactive: $~json.IsInteractive
+    - azure.signinlogs.properties.original_request_id: $~json.OriginalRequestId
+    - azure.signinlogs.properties.risk_detail: $~json.RiskDetail
+    - azure.signinlogs.properties.risk_level_aggregated: $~json.RiskLevelAggregated
+    - azure.signinlogs.properties.risk_state: $~json.RiskState
+    - azure.signinlogs.properties.service_principal_id: $~json.ServicePrincipalId
+    - azure.signinlogs.properties.status: +parse_json/$~json.Status
+    - azure.signinlogs.properties.token_issuer_name: $~json.TokenIssuerName
+    - azure.signinlogs.properties.token_issuer_type: $~json.TokenIssuerType
+    - azure.signinlogs.properties.user_display_name: $~json.UserDisplayName
+    - azure.signinlogs.properties.user_id: $~json.UserId
+    - azure.signinlogs.properties.user_principal_name: $~json.UserPrincipalName
+    - azure.signinlogs.result_description : $~json.ResultDescription
+    - azure.signinlogs.result_signature: $~json.ResultSignature
+    - azure.signinlogs.result_type: $~json.ResultType
+    - azure.resource.provider: $~json.ResourceProvider
 
   - check: NOT $~temp.status.errorCode OR $~temp.status.errorCode==0
     map:
