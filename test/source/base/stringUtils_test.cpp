@@ -204,11 +204,11 @@ TEST(splitEscaped, SuccessEmptyFields)
     ASSERT_EQ(result2, expected2);
 }
 
-// Escaping a non splitting char
-TEST(splitEscaped, FailedEndingScaped)
+// Escaping a non splitting char: this doesn't fail because I need to be able to escape different chars like in regex
+TEST(splitEscaped, EndingScaped)
 {
     std::string input = R"(ABCD\\)";
-    std::vector<std::string> expected = {};
+    std::vector<std::string> expected = {R"(ABCD\\)"};
     std::vector<std::string> result = utils::string::splitEscaped(input);
     ASSERT_EQ(result, expected);
 }
@@ -242,11 +242,11 @@ TEST(splitEscaped, SuccessSplitDifferentEscape)
     ASSERT_EQ(result, expected);
 }
 
-// Failure wrong escaped characters
-TEST(splitEscaped, FailedWrongEscapedCharacters)
+// Different escaped characters: this doesn't fail because I need to be able to escape different chars like in regex
+TEST(splitEscaped, AnotherEscapedCharacters)
 {
     std::string input = R"(#!ABC!DEFGH!IJKLM!N#?OP!QRST!UVWX!YZ#!)";
-    std::vector<std::string> expected = {};
+    std::vector<std::string> expected = {"!ABC", "DEFGH", "IJKLM", "N#?OP", "QRST", "UVWX", "YZ!"};
     std::vector<std::string> result = utils::string::splitEscaped(input, '!', '#');
     ASSERT_EQ(result, expected);
 }
