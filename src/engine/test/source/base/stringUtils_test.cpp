@@ -72,8 +72,7 @@ TEST(split, ok_delimiter)
 
 TEST(splitMulti, ThreeDelimiters)
 {
-    std::string input =
-        "this is-a test to split by - and ,,where-are included in the result";
+    std::string input = "this is-a test to split by - and ,,where-are included in the result";
     std::vector<std::string> expected = {"this",
                                          "is",
                                          "-",
@@ -91,31 +90,22 @@ TEST(splitMulti, ThreeDelimiters)
                                          "in",
                                          "the",
                                          "result"};
-    std::vector<std::string> result =
-        utils::string::splitMulti(input,
-                                  utils::string::Delimeter('-', true),
-                                  utils::string::Delimeter(',', false),
-                                  utils::string::Delimeter(' ', false));
+    std::vector<std::string> result = utils::string::splitMulti(input,
+                                                                utils::string::Delimeter('-', true),
+                                                                utils::string::Delimeter(',', false),
+                                                                utils::string::Delimeter(' ', false));
     ASSERT_EQ(result, expected);
 }
 
 // Difference of behavior between split and splitMulti with empty strings
 TEST(splitMulti, SingleDelimiterAndEmptyAtEnd)
 {
-    std::string input =
-        "this is/a test/to split by / where/are included in/the// result//";
-    std::vector<std::string> expected = {"this is",
-                                         "a test",
-                                         "to split by ",
-                                         " where",
-                                         "are included in",
-                                         "the"," result"};
-    std::vector<std::string> result =
-        utils::string::splitMulti(input,
-                                  utils::string::Delimeter('/', false));
+    std::string input = "this is/a test/to split by / where/are included in/the// result//";
+    std::vector<std::string> expected = {
+        "this is", "a test", "to split by ", " where", "are included in", "the", " result"};
+    std::vector<std::string> result = utils::string::splitMulti(input, utils::string::Delimeter('/', false));
     ASSERT_EQ(result, expected);
 }
-
 
 TEST(startsWith, Success)
 {
@@ -196,8 +186,7 @@ TEST(join, defaut_separator_empty_strings_array_as_input)
 TEST(splitEscaped, SuccessDefaultValues)
 {
     std::string input = R"(+helper_function/param\/et\/er/param2/param3)";
-    std::vector<std::string> expected = {
-        "+helper_function", R"(param/et/er)", "param2", "param3"};
+    std::vector<std::string> expected = {"+helper_function", R"(param/et/er)", "param2", "param3"};
     std::vector<std::string> result = utils::string::splitEscaped(input);
     ASSERT_EQ(result, expected);
 }
@@ -210,7 +199,7 @@ TEST(splitEscaped, SuccessEmptyFields)
     ASSERT_EQ(result, expected);
 
     std::string input2 = R"(+123//456/ABC/!)";
-    std::vector<std::string> expected2 = {"+123","","456", "ABC", "!"};
+    std::vector<std::string> expected2 = {"+123", "", "456", "ABC", "!"};
     std::vector<std::string> result2 = utils::string::splitEscaped(input2);
     ASSERT_EQ(result2, expected2);
 }
@@ -248,8 +237,7 @@ TEST(splitEscaped, SuccessNoSplit)
 TEST(splitEscaped, SuccessSplitDifferentEscape)
 {
     std::string input = R"(#!ABC!DEFGH!IJKLM!N#!OP!QRST!UVWX!YZ#!)";
-    std::vector<std::string> expected = {
-        "!ABC", "DEFGH", "IJKLM", "N!OP", "QRST", "UVWX", "YZ!"};
+    std::vector<std::string> expected = {"!ABC", "DEFGH", "IJKLM", "N!OP", "QRST", "UVWX", "YZ!"};
     std::vector<std::string> result = utils::string::splitEscaped(input, '!', '#');
     ASSERT_EQ(result, expected);
 }
