@@ -287,8 +287,7 @@ TEST(OperationConditionBuilderTest, BuildsOperatesArray)
 
     auto expression = getOperationConditionBuilder(registry)(definition);
     auto expressionRootLevel = expression->getPtr<base::Operation>()->getOperands();
-    auto expressionNestedLevel =
-        expressionRootLevel[6]->getPtr<base::Operation>()->getOperands();
+    auto expressionNestedLevel = expressionRootLevel[6]->getPtr<base::Operation>()->getOperands();
 
     for (auto i = 0; i < 6; i++)
     {
@@ -387,8 +386,7 @@ TEST(OperationConditionBuilderTest, BuildsOperatesObject)
 
     auto expression = getOperationConditionBuilder(registry)(definition);
     auto expressionRootLevel = expression->getPtr<base::Operation>()->getOperands();
-    auto expressionNestedLevel =
-        expressionRootLevel[6]->getPtr<base::Operation>()->getOperands();
+    auto expressionNestedLevel = expressionRootLevel[6]->getPtr<base::Operation>()->getOperands();
 
     for (auto i = 0; i < 6; i++)
     {
@@ -576,13 +574,11 @@ TEST(OperationMapBuilderTest, BuildsOperatesArray)
     auto event = std::make_shared<Json>();
     auto expression = getOperationMapBuilder(registry)(definition);
     auto expressionsRootLevel = expression->getPtr<base::Operation>()->getOperands();
-    auto expressionsNestedLevel =
-        expressionsRootLevel[6]->getPtr<base::Operation>()->getOperands();
+    auto expressionsNestedLevel = expressionsRootLevel[6]->getPtr<base::Operation>()->getOperands();
 
     for (auto i = 0; i < 6; i++)
     {
-        auto result =
-            expressionsRootLevel[i]->getPtr<base::Term<EngineOp>>()->getFn()(event);
+        auto result = expressionsRootLevel[i]->getPtr<base::Term<EngineOp>>()->getFn()(event);
         if (!result)
         {
             GTEST_COUT << "Expected Success, Failed: " << result.trace() << std::endl;
@@ -647,13 +643,11 @@ TEST(OperationMapBuilderTest, BuildsOperatesObject)
     auto event = std::make_shared<Json>();
     auto expression = getOperationMapBuilder(registry)(definition);
     auto expressionsRootLevel = expression->getPtr<base::Operation>()->getOperands();
-    auto expressionsNestedLevel =
-        expressionsRootLevel[6]->getPtr<base::Operation>()->getOperands();
+    auto expressionsNestedLevel = expressionsRootLevel[6]->getPtr<base::Operation>()->getOperands();
 
     for (auto i = 0; i < 6; i++)
     {
-        auto result =
-            expressionsRootLevel[i]->getPtr<base::Term<EngineOp>>()->getFn()(event);
+        auto result = expressionsRootLevel[i]->getPtr<base::Term<EngineOp>>()->getFn()(event);
         if (!result)
         {
             GTEST_COUT << "Expected Success, Failed: " << result.trace() << std::endl;
