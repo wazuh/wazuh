@@ -47,9 +47,7 @@ std::string join(const std::vector<std::string>& strVector,
  * @param escape Char used to escape the splitChar when needed, '\\' by default
  * @return std::vector<std::string>
  */
-std::vector<std::string> splitEscaped(std::string_view input,
-                                      const char& splitChar = '/',
-                                      const char& escape = '\\');
+std::vector<std::string> splitEscaped(std::string_view input, const char& splitChar = '/', const char& escape = '\\');
 
 using Delimeter = std::pair<char, bool>;
 

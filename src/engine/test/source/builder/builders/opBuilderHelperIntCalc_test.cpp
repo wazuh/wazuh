@@ -658,7 +658,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_division_by_zero_several_p
     ASSERT_FALSE(result);
 }
 
-//Succesfully using both values and references
+// Succesfully using both values and references
 TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_multiple_parameters_values_and_references)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
@@ -683,7 +683,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_multiple_parameters_values_and_re
     ASSERT_EQ((10 + 10 + 10 + 30), result.payload()->getInt("/field2check").value());
 }
 
-//Failing on several non existing references
+// Failing on several non existing references
 TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_several_non_existing_references)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
@@ -735,7 +735,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_several_different_types_reference
     ASSERT_FALSE(result);
 }
 
-//Failing on several empty values
+// Failing on several empty values
 TEST(opBuilderHelperIntCalc, Exec_int_calc_several_empty_params)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
@@ -765,12 +765,11 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_value_error)
 
     ASSERT_FALSE(result);
     // TODO: does it make any sense to check the whole message or should the message be
-    // shorter
+    // shorter? same for all the next results
     ASSERT_EQ(result.trace(),
               "[helper.i_calc[/field2check, sum, 2]] -> Failure: operation result in "
               "integer Overflown");
 
-    // TODO: check difference between -2  and -3 (can we use the samed difference?)
     auto tuple2 = std::make_tuple(std::string {"/field2check"},
                     std::string {"i_calc"},
                     std::vector<std::string> {"sum", "-3"});
@@ -783,8 +782,6 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_value_error)
     result = op2(event2);
 
     ASSERT_FALSE(result);
-    // TODO: does it make any sense to check the whole message or should the message be
-    // shorter
     ASSERT_EQ(result.trace(),
               "[helper.i_calc[/field2check, sum, -3]] -> Failure: operation result in "
               "integer Underflown");
@@ -804,7 +801,6 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sub_value_error)
     result::Result<Event> result = op(event1);
 
     ASSERT_FALSE(result);
-    // TODO: view check message
 
     auto tuple2 = std::make_tuple(std::string {"/field2check"},
                     std::string {"i_calc"},
@@ -818,7 +814,6 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sub_value_error)
     result = op2(event2);
 
     ASSERT_FALSE(result);
-    // TODO: view check message
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_value_error)
@@ -835,7 +830,6 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_value_error)
     result::Result<Event> result = op(event1);
 
     ASSERT_FALSE(result);
-    // TODO: check messages
 
     auto event2 = std::make_shared<json::Json>(
         fmt::format(R"({{"field2check": {}}})", std::to_string(almostMinNum)).c_str());
@@ -845,5 +839,4 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_value_error)
     result = op2(event2);
 
     ASSERT_FALSE(result);
-    // TODO: check messages
 }

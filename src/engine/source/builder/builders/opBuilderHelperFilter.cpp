@@ -57,11 +57,8 @@ enum class Type
  *   - if the right parameter is a value and not a valid integer
  *   - if helper::base::Parameter::Type is not supported
  */
-std::function<base::result::Result<base::Event>(base::Event)>
-getIntCmpFunction(const std::string& targetField,
-                  Operator op,
-                  const helper::base::Parameter& rightParameter,
-                  const std::string& name)
+std::function<base::result::Result<base::Event>(base::Event)> getIntCmpFunction(
+    const std::string& targetField, Operator op, const helper::base::Parameter& rightParameter, const std::string& name)
 {
     // Depending on rValue type we store the reference or the integer value
     std::variant<std::string, int> rValue {};
@@ -84,16 +81,13 @@ getIntCmpFunction(const std::string& targetField,
 
             break;
 
-        case helper::base::Parameter::Type::REFERENCE:
-            rValue = rightParameter.m_value;
-            break;
+        case helper::base::Parameter::Type::REFERENCE: rValue = rightParameter.m_value; break;
 
         default:
-            throw std::runtime_error(
-                fmt::format("\"{}\" function: Parameter \"{}\" has an invalid type ({}).",
-                            name,
-                            rightParameter.m_value,
-                            static_cast<int>(rightParameter.m_type)));
+            throw std::runtime_error(fmt::format("\"{}\" function: Parameter \"{}\" has an invalid type ({}).",
+                                                 name,
+                                                 rightParameter.m_value,
+                                                 static_cast<int>(rightParameter.m_type)));
     }
 
     // Depending on the operator we return the correct function
@@ -163,8 +157,7 @@ getIntCmpFunction(const std::string& targetField,
         int resolvedValue {0};
         if (helper::base::Parameter::Type::REFERENCE == rValueType)
         {
-            std::optional<int> resolvedRValue {
-                event->getInt(std::get<std::string>(rValue))};
+            std::optional<int> resolvedRValue {event->getInt(std::get<std::string>(rValue))};
             if (!resolvedRValue.has_value())
             {
                 return base::result::makeFailure(event, failureTrace2);
@@ -198,11 +191,8 @@ getIntCmpFunction(const std::string& targetField,
  *
  * @throws std::runtime_error if helper::base::Parameter::Type is not supported
  */
-std::function<base::result::Result<base::Event>(base::Event)>
-getStringCmpFunction(const std::string& targetField,
-                     Operator op,
-                     const helper::base::Parameter& rightParameter,
-                     const std::string& name)
+std::function<base::result::Result<base::Event>(base::Event)> getStringCmpFunction(
+    const std::string& targetField, Operator op, const helper::base::Parameter& rightParameter, const std::string& name)
 {
     // Depending on rValue type we store the reference or the string value, string in both
     // cases
@@ -259,12 +249,11 @@ getStringCmpFunction(const std::string& targetField,
         case Operator::CN:
             cmpFunction = [](const std::string& l, const std::string& r)
             {
-                if(!r.empty())
+                if (!r.empty())
                 {
                     return l.find(r) != std::string::npos;
                 }
                 return false;
-
             };
             break;
 
@@ -325,8 +314,7 @@ getStringCmpFunction(const std::string& targetField,
 base::Expression opBuilderComparison(const std::any& definition, Operator op, Type t)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
+    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(name, raw_parameters)};
     // Assert expected number of parameters
@@ -338,19 +326,17 @@ base::Expression opBuilderComparison(const std::any& definition, Operator op, Ty
     {
         case Type::INT:
         {
-            auto opFn = getIntCmpFunction(targetField, op, parameters[0], name);
+            auto opFn = getIntCmpFunction(targetField, op, parameters.at(0), name);
             return base::Term<base::EngineOp>::create(name, opFn);
         }
         case Type::STRING:
         {
-            auto opFn = getStringCmpFunction(targetField, op, parameters[0], name);
+            auto opFn = getStringCmpFunction(targetField, op, parameters.at(0), name);
             return base::Term<base::EngineOp>::create(name, opFn);
         }
         default:
             throw std::runtime_error(
-                fmt::format("{} function: Unsupported comparison type ({}).",
-                            name,
-                            static_cast<int>(t)));
+                fmt::format("{} function: Unsupported comparison type ({}).", name, static_cast<int>(t)));
     }
 }
 
@@ -453,13 +439,12 @@ base::Expression opBuilderHelperStringStarts(const std::any& definition)
     return expression;
 }
 
-//field: +s_contains/value|$ref
+// field: +s_contains/value|$ref
 base::Expression opBuilderHelperStringContains(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::CN, Type::STRING)};
     return expression;
 }
-
 
 //*************************************************
 //*               Regex filters                   *
@@ -469,25 +454,23 @@ base::Expression opBuilderHelperStringContains(const std::any& definition)
 base::Expression opBuilderHelperRegexMatch(const std::any& definition)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
+    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(name, raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(name, parameters, 1);
     // Parameter type check
-    helper::base::checkParameterType(
-        name, parameters[0], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(name, parameters.at(0), helper::base::Parameter::Type::VALUE);
     // Format name for the tracer
     name = helper::base::formatHelperName(name, targetField, parameters);
 
-    auto regex_ptr {std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet)};
+    auto regex_ptr {std::make_shared<RE2>(parameters.at(0).m_value, RE2::Quiet)};
     if (!regex_ptr->ok())
     {
         throw std::runtime_error(fmt::format("\"{}\" function: "
                                              "Invalid regex: \"{}\".",
                                              name,
-                                             parameters[0].m_value));
+                                             parameters.at(0).m_value));
     }
 
     // Tracing
@@ -499,8 +482,7 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             const auto resolvedField {event->getString(targetField)};
             if (!resolvedField.has_value())
@@ -524,25 +506,23 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
 {
     // TODO: Regex parameter fails at operationBuilderSplit
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
+    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(name, raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(name, parameters, 1);
     // Parameter type check
-    helper::base::checkParameterType(
-        name, parameters[0], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(name, parameters.at(0), helper::base::Parameter::Type::VALUE);
     // Format name for the tracer
     name = helper::base::formatHelperName(name, targetField, parameters);
 
-    auto regex_ptr {std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet)};
+    auto regex_ptr {std::make_shared<RE2>(parameters.at(0).m_value, RE2::Quiet)};
     if (!regex_ptr->ok())
     {
         throw std::runtime_error(fmt::format("\"{}\" function: "
                                              "Invalid regex: \"{}\".",
                                              name,
-                                             parameters[0].m_value));
+                                             parameters.at(0).m_value));
     }
 
     // Tracing
@@ -554,8 +534,7 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             const auto resolvedField {event->getString(targetField)};
             if (!resolvedField.has_value())
@@ -583,8 +562,7 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
 base::Expression opBuilderHelperIPCIDR(const std::any& definition)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
+    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(name, raw_parameters)};
     // Assert expected number of parameters
@@ -592,8 +570,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     // Parameter type check
     for (const auto& parameter : parameters)
     {
-        helper::base::checkParameterType(
-            name, parameter, helper::base::Parameter::Type::VALUE);
+        helper::base::checkParameterType(name, parameter, helper::base::Parameter::Type::VALUE);
     }
     // Format name for the tracer
     name = helper::base::formatHelperName(name, targetField, parameters);
@@ -601,7 +578,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     uint32_t network {};
     try
     {
-        network = utils::ip::IPv4ToUInt(parameters[0].m_value);
+        network = utils::ip::IPv4ToUInt(parameters.at(0).m_value);
     }
     catch (std::exception& e)
     {
@@ -615,14 +592,14 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     uint32_t mask {};
     try
     {
-        mask = utils::ip::IPv4MaskUInt(parameters[1].m_value);
+        mask = utils::ip::IPv4MaskUInt(parameters.at(1).m_value);
     }
     catch (std::exception& e)
     {
         throw std::runtime_error(fmt::format("\"{}\" function: IPv4 Mask \"{}\" "
                                              "could not be converted to int: {}",
                                              name,
-                                             parameters[1].m_value,
+                                             parameters.at(1).m_value,
                                              e.what()));
     }
 
@@ -639,8 +616,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             const auto resolvedField {event->getString(targetField)};
             if (!resolvedField.has_value())
@@ -798,8 +774,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
                 // Check if the array contains the value
                 if (std::find_if(resolvedArray.value().begin(),
                                  resolvedArray.value().end(),
-                                 [&cmpValue](const json::Json& value)
-                                 { return value == cmpValue; })
+                                 [&cmpValue](const json::Json& value) { return value == cmpValue; })
                     != resolvedArray.value().end())
                 {
                     return base::result::makeSuccess(event, successTrace);
@@ -962,8 +937,7 @@ base::Expression opBuilderHelperIsNotString(const std::any& definition)
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
@@ -1007,8 +981,7 @@ base::Expression opBuilderHelperIsBool(const std::any& definition)
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
@@ -1051,8 +1024,7 @@ base::Expression opBuilderHelperIsNotBool(const std::any& definition)
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
@@ -1096,8 +1068,7 @@ base::Expression opBuilderHelperIsArray(const std::any& definition)
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
@@ -1140,8 +1111,7 @@ base::Expression opBuilderHelperIsNotArray(const std::any& definition)
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
@@ -1185,8 +1155,7 @@ base::Expression opBuilderHelperIsObject(const std::any& definition)
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
@@ -1229,8 +1198,7 @@ base::Expression opBuilderHelperIsNotObject(const std::any& definition)
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
@@ -1273,8 +1241,7 @@ base::Expression opBuilderHelperIsNull(const std::any& definition)
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
@@ -1317,8 +1284,7 @@ base::Expression opBuilderHelperIsNotNull(const std::any& definition)
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
@@ -1361,8 +1327,7 @@ base::Expression opBuilderHelperIsTrue(const std::any& definition)
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
@@ -1405,8 +1370,7 @@ base::Expression opBuilderHelperIsFalse(const std::any& definition)
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
             base::result::Result<base::Event> result;
 
