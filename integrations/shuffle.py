@@ -31,7 +31,8 @@ except ModuleNotFoundError as e:
 #      <name>shuffle</name>
 #      <hook_url>http://<IP>:3001/api/v1/hooks/<HOOK_ID></hook_url>
 #      <level>3</level>
-#      <alert_format>json</alert_format>
+#      <alert_format>json</alert_format>\
+#      <options>JSON_OBJ</options>
 #  </integration>
 
 # Global vars
@@ -52,12 +53,13 @@ def main(args):
         # Read arguments
         bad_arguments = False
         if len(args) >= 4:
-            msg = '{0} {1} {2} {3} {4}'.format(
+            msg = '{0} {1} {2} {3} {4} {5}'.format(
                 now,
-                args[1],
-                args[2],
-                args[3],
-                args[4] if len(args) > 4 else '',
+                sys.argv[1],
+                sys.argv[2],
+                sys.argv[3],
+                sys.argv[4] if len(sys.argv) > 4 else '',
+                sys.argv[5] if len(sys.argv) > 5 else ''
             )
             debug_enabled = (len(args) > 4 and args[4] == 'debug')
         else:
@@ -86,6 +88,13 @@ def process_args(args):
     # Read args
     alert_file_location = args[1]
     webhook: str = args[3]
+    options_file_location = ''
+    json_options = ''
+    
+    for idx in range(4,len(args)):
+        if(args[idx][-7:] == "options"):
+            options_file_location = args[idx]
+            break
 
     debug("# Webhook")
     debug(webhook)
@@ -94,6 +103,15 @@ def process_args(args):
     debug(alert_file_location)
 
     # Load alert. Parse JSON object.
+    if(options_file_location):
+        with open(options_file_location) as options_file:
+            try:
+                json_options = json.load(options_file)
+                debug("# Options")
+                debug(json_options)
+            except:
+                debug("# Error: Bad options format.")
+                
     try:
         with open(alert_file_location) as alert_file:
             json_alert = json.load(alert_file)
@@ -108,7 +126,7 @@ def process_args(args):
     debug(json_alert)
 
     debug("# Generating message")
-    msg: str = generate_msg(json_alert)
+    msg: str = generate_msg(json_alert,json_options)
 
     # Check if alert is skipped
     if isinstance(msg, str):
@@ -137,7 +155,7 @@ def filter_msg(alert) -> bool:
     return not alert["rule"]["id"] in SKIP_RULE_IDS
 
 
-def generate_msg(alert) -> str:
+def generate_msg(alert,options) -> str:
     if not filter_msg(alert):
         print("Skipping rule %s" % alert["rule"]["id"])
         return ""
@@ -158,6 +176,10 @@ def generate_msg(alert) -> str:
            'timestamp': alert["timestamp"],
            'id': alert['id'], "all_fields": alert}
 
+    if(options):
+        for key in options.keys():
+            msg[key] = options[key]
+            
     return json.dumps(msg)
 
 
