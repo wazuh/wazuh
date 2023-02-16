@@ -26,7 +26,7 @@ def test_aws_lb_bucket_get_base_prefix(mock_sts):
     """Test 'get_base_prefix' returns the expected prefix with the format <prefix>/AWSLogs/<suffix>"""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSLBBucket, prefix=f'{utils.TEST_PREFIX}/',
                                        suffix=f'{utils.TEST_SUFFIX}/')
-    expected_base_prefix = f'{utils.TEST_PREFIX}/AWSLogs/{utils.TEST_SUFFIX}/'
+    expected_base_prefix = os.path.join(utils.TEST_PREFIX, 'AWSLogs', utils.TEST_SUFFIX, '')
     assert instance.get_base_prefix() == expected_base_prefix
 
 
@@ -35,7 +35,7 @@ def test_aws_lb_bucket_get_base_prefix(mock_sts):
 def test_aws_lb_bucket_get_service_prefix(mock_custom_bucket, mock_base_prefix):
     """Test 'get_service_prefix' returns the expected prefix with the format <base_prefix>/<account_id>/<service>."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSLBBucket)
-    expected_service_prefix = f'base_prefix/{utils.TEST_ACCOUNT_ID}/{instance.service}/'
+    expected_service_prefix = os.path.join('base_prefix', utils.TEST_ACCOUNT_ID, instance.service, '')
     assert instance.get_service_prefix(utils.TEST_ACCOUNT_ID) == expected_service_prefix
 
 
@@ -50,12 +50,12 @@ def test_aws_lb_bucket_iter_regions_and_accounts(mock_custom_bucket, mock_iter_r
 
 
 @patch('load_balancers.AWSLBBucket.get_service_prefix',
-       return_value=f'base_prefix/{utils.TEST_ACCOUNT_ID}/elasticloadbalancing/')
+       return_value=os.path.join('base_prefix', utils.TEST_ACCOUNT_ID, 'elasticloadbalancing', ''))
 @patch('aws_bucket.AWSCustomBucket.__init__')
 def test_aws_lb_bucket_get_full_prefix(mock_custom_bucket, mock_service_prefix):
     """Test 'get_full_prefix' returns the expected prefix with the format <service_prefix>/<region>."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSLBBucket)
-    expected_full_prefix = f'base_prefix/{utils.TEST_ACCOUNT_ID}/elasticloadbalancing/{utils.TEST_REGION}/'
+    expected_full_prefix = os.path.join('base_prefix', utils.TEST_ACCOUNT_ID, 'elasticloadbalancing', utils.TEST_REGION, '')
     assert instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION) == expected_full_prefix
 
 

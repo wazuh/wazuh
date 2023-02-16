@@ -929,7 +929,7 @@ def test_aws_logs_bucket_get_base_prefix(mock_integration, organization_id):
     """Test 'get_base_prefix' returns the expected prefix with the format <prefix>/AWSLogs/<suffix>/<organization_id>/"""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, aws_organization_id=organization_id,
                                        prefix=f'{utils.TEST_PREFIX}/', suffix=f'{utils.TEST_SUFFIX}/')
-    expected_base_prefix = f'{utils.TEST_PREFIX}/AWSLogs/{utils.TEST_SUFFIX}{"/" + organization_id if organization_id else ""}/'
+    expected_base_prefix = os.path.join(utils.TEST_PREFIX, 'AWSLogs', utils.TEST_SUFFIX, (organization_id if organization_id else ""), '')
     assert instance.get_base_prefix() == expected_base_prefix
 
 
@@ -939,7 +939,7 @@ def test_aws_logs_bucket_get_service_prefix(mock_base_prefix, mock_integration):
     """Test 'get_service_prefix' method returns the expected prefix with the format <base_prefix>/<account_id>/<service>."""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket)
     instance.service = utils.TEST_SERVICE_NAME
-    expected_base_prefix = f'base_prefix/{utils.TEST_ACCOUNT_ID}/{utils.TEST_SERVICE_NAME}/'
+    expected_base_prefix = os.path.join('base_prefix', utils.TEST_ACCOUNT_ID, utils.TEST_SERVICE_NAME, '')
     assert instance.get_service_prefix(utils.TEST_ACCOUNT_ID) == expected_base_prefix
 
 
@@ -948,7 +948,7 @@ def test_aws_logs_bucket_get_service_prefix(mock_base_prefix, mock_integration):
 def test_aws_logs_bucket_get_full_prefix(mock_service_prefix, mock_integration):
     """Test 'get_full_prefix' method returns the expected prefix with the format <service_prefix>/<region>."""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, region=utils.TEST_REGION)
-    expected_base_prefix = f'service_prefix/{utils.TEST_REGION}/'
+    expected_base_prefix = os.path.join('service_prefix', utils.TEST_REGION, '')
     assert instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION) == expected_base_prefix
 
 
