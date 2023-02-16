@@ -839,6 +839,8 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
 
     sqlite3_stmt *stmt = NULL;
     cJSON* agent_id_item = NULL;
+    int is_worker = OS_INVALID;
+    char* sync_status = NULL;
     int result = OS_INVALID;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -864,11 +866,12 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
+        sync_status = (w_is_single_node(&is_worker) || is_worker)?"synced":"syncreq";
         cJSON_ArrayForEach(agent_id_item, sql_agents_id) {
             cJSON* agent_id = cJSON_GetObjectItem(agent_id_item, "id_agent");
             if (cJSON_IsNumber(agent_id)) {
                 if (WDBC_ERROR == wdb_global_if_empty_set_default_agent_group(wdb, agent_id->valueint) ||
-                    WDBC_ERROR == wdb_global_recalculate_agent_groups_hash(wdb, agent_id->valueint, wconfig.is_worker?"synced":"syncreq")) {
+                    WDBC_ERROR == wdb_global_recalculate_agent_groups_hash(wdb, agent_id->valueint, sync_status)) {
                     merror("Couldn't recalculate hash group for agent: '%03d'", agent_id->valueint);
                 }
             }

@@ -15,6 +15,7 @@
 #include "../wrappers/wazuh/shared/time_op_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/posix/time_wrappers.h"
+#include "../wrappers/wazuh/shared/cluster_op_wrappers.h"
 #include "wazuhdb_op.h"
 
 #define GROUPS_SIZE 10
@@ -5562,6 +5563,9 @@ void test_wdb_global_delete_group_recalculate_fail(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
+    will_return(__wrap_w_is_single_node, 1);
+    will_return(__wrap_w_is_single_node, 1);
+
     /* wdb_global_get_agent_max_group_priority */
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_PRIORITY_GET);
     will_return(__wrap_wdb_init_stmt_in_cache, NULL);
@@ -5618,6 +5622,9 @@ void test_wdb_global_delete_group_success(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    will_return(__wrap_w_is_single_node, 0);
+    will_return(__wrap_w_is_single_node, 0);
 
     /* wdb_global_get_agent_max_group_priority */
     create_wdb_global_get_agent_max_group_priority_success_call(agent_id, j_priority_resp);
