@@ -2075,7 +2075,7 @@ checks:
   ############################################################
 
   # 4.1.1.1 Ensure auditd is installed (Automated).
-  - id: 28123 
+  - id: 28079
     title: "Ensure auditd is installed."
     description: "auditd is the userspace component to the Linux Auditing System. It's responsible for writing audit records to the disk."
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
@@ -2097,12 +2097,12 @@ checks:
     rules:
       - "c:rpm -q audit -> r:^audit-"
 
-  # 4.1.1.2 Ensure auditing for processes that start prior to auditd is enabled.
-  - id: 28124 
+  # 4.1.1.2 Ensure auditing for processes that start prior to auditd is enabled (Automated).
+  - id: 28080
     title: "Ensure auditing for processes that start prior to auditd is enabled."
     description: "Configure grub2 so that processes that are capable of being audited can be audited even if they start up prior to auditd startup."
     rationale: "Audit events need to be captured on processes that start up prior to auditd, so that potential malicious activity cannot go undetected."
-    remediation: "Run the following command to add audit=1 to GRUB_CMDLINE_LINUX: # grubby --update-kernel ALL --args 'audit=1'."
+    remediation: "Run the following command to update the grub2 configuration with audit=1: # grubby --update-kernel ALL --args 'audit=1'."
     compliance:
       - cis: ["4.1.1.2"]
       - cis_csc_v8: ["8.2"]
@@ -2121,9 +2121,8 @@ checks:
 
   # 4.1.1.3 Ensure audit_backlog_limit is sufficient (Automated) - Not implemented
 
-
   # 4.1.1.4 Ensure auditd service is enabled (Automated)
-  - id: 28125 
+  - id: 28081
     title: "Ensure auditd service is enabled."
     description: "Turn on the auditd daemon to record system events."
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
@@ -2149,7 +2148,7 @@ checks:
   ############################################################
 
   # 4.1.2.1 Ensure audit log storage size is configured (Automated)
-  - id: 28126 
+  - id: 28082
     title: "Ensure audit log storage size is configured."
     description: "Configure the maximum size of the audit log file. Once the log reaches the maximum size, it will be rotated and a new log file will be started."
     rationale: "It is important that an appropriate size is determined for log files so that they do not impact the system and audit data is not lost."
@@ -2170,7 +2169,7 @@ checks:
       - 'f:/etc/audit/auditd.conf -> r:^max_log_file\s*=\s*\d+'
 
   # 4.1.2.2 Ensure audit logs are not automatically deleted (Automated)
-  - id: 28127 
+  - id: 28083
     title: "Ensure audit logs are not automatically deleted."
     description: "The max_log_file_action setting determines how to handle the audit log file reaching the max file size. A value of keep_logs will rotate the logs but never delete old logs."
     rationale: "In high security contexts, the benefits of maintaining a long audit history exceed the cost of storing the audit history."
@@ -2190,12 +2189,12 @@ checks:
       - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file_action\s*=\s*keep_logs'
 
   # 4.1.2.3 Ensure system is disabled when audit logs are full (Automated)
-  - id: 28128 
+  - id: 28084
     title: "Ensure system is disabled when audit logs are full."
     description: "The auditd daemon can be configured to halt the system when the audit logs are full. The admin_space_left_action parameter tells the system what action to take when the system has detected that it is low on disk space. Valid values are ignore, syslog, suspend, single, and halt. - ignore, the audit daemon does nothing - Syslog, the audit daemon will issue a warning to syslog - Suspend, the audit daemon will stop writing records to the disk - single, the audit daemon will put the computer system in single user mode - halt, the audit daemon will shutdown the system."
     rationale: "In high security contexts, the risk of detecting unauthorized access or nonrepudiation exceeds the benefit of the system's availability."
     impact: "If the admin_space_left_action parameter is set to halt the audit daemon will shutdown the system when the disk partition containing the audit logs becomes full."
-    remediation: "Set the following parameters in /etc/audit/auditd.conf: space_left_action = email action_mail_acct = root. set admin_space_left_action to either halt or single in /etc/audit/auditd.conf.Example: admin_space_left_action = halt."
+    remediation: "Set the following parameters in /etc/audit/auditd.conf: space_left_action = email action_mail_acct = root. set admin_space_left_action to either halt or single in /etc/audit/auditd.conf. Example: admin_space_left_action = halt."
     compliance:
       - cis: ["4.1.2.3"]
       - cis_csc_v8: ["8.2","8.3"]
@@ -2218,7 +2217,7 @@ checks:
   #############################################
 
   # 4.1.3.1 Ensure changes to system administration scope (sudoers) is collected (Automated)
-  - id: 28129 
+  - id: 28085
     title: "Ensure changes to system administration scope (sudoers) is collected."
     description: 'Monitor scope changes for system administrators. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers, or files in /etc/sudoers.d, will be written to when the file(s) or related attributes have changed. The audit records will be tagged with the identifier "scope".'
     rationale: "Changes in the /etc/sudoers and /etc/sudoers.d files can indicate that an unauthorized change has been made to the scope of system administrator activity."
@@ -2272,11 +2271,11 @@ checks:
   # 4.1.3.19 Ensure kernel module loading unloading and modification is collected (Automated) - Not implemented
 
   # 4.1.3.20 Ensure the audit configuration is immutable (Automated)
-  - id: 28130 
+  - id: 28085
     title: "Ensure the audit configuration is immutable."
-    description: 'Set system audit so that audit rules cannot be modified with auditctl . Setting the flag  "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on  system reboot.  Note: This setting will require the system to be rebooted to update the active auditd  configuration settings.'
-    rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to  potentially hide malicious activity and then put the audit rules back. Users would most  likely notice a system reboot and that could alert administrators of an attempt to make  unauthorized audit changes."
-    remediation: 'Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at  the end of the file:  Example:  # printf -- "-e 2" >> /etc/audit/rules.d/99-finalize.rules  Load audit rules  Merge and load the rules into active configuration:  # augenrules --load  Check if reboot is required.  # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot  required to load rules\n"; fi'
+    description: 'Set system audit so that audit rules cannot be modified with auditctl . Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
+    rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
+    remediation: 'Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file: Example: # printf -- "-e 2" >> /etc/audit/rules.d/99-finalize.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
     compliance:
       - cis: ["4.1.3.20"]
       - cis_csc_v8: ["3.3","8.5"]
@@ -2287,7 +2286,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)","164.308(a)(3)(ii)(A)","164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1","7.1.1","7.1.2","7.1.3","10.1","10.2.2","10.2.4","10.2.5","10.3"]
       - pci_dss_4.0: ["1.3.1","7.1","9.4.5","10.2","10.2.1","10.2.1.2","10.2.1.5"]
-      - soc_2: ["CC5.2","CC6.1","CC4.1"]
+      - soc_2: ["CC5.2","CC6.1","CC7.2"]
       - mitre_techniques: ["T1562","T1562.001"]
       - mitre_tactics: ["TA0005"]
     condition: any
@@ -2312,7 +2311,7 @@ checks:
  
   # 4.1.4.7 Ensure audit configuration files belong to group root (Automated) - Not implemented
 
-  # 4.1.4.8  Ensure audit tools are 755 or more restrictive (Automated) - Not implemented
+  # 4.1.4.8 Ensure audit tools are 755 or more restrictive (Automated) - Not implemented
   
   # 4.1.4.9 Ensure audit tools are owned by root (Automated) - Not implemented
 
@@ -2326,7 +2325,7 @@ checks:
   ###############################################
 
   # 4.2.1.1 Ensure rsyslog is installed (Automated)
-  - id: 28131 
+  - id: 28086
     title: "Ensure rsyslog is installed."
     description: "The rsyslog software is recommended in environments where journald does not meet operation requirements."
     rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
@@ -2341,14 +2340,14 @@ checks:
       - hipaa: ["164.312(b)"]
       - pci_dss_3.2.1: ["10.2","10.3"]
       - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
-      - mitre_techniques: ["T1005","T1005.000","T1070","T1070.002"]
+      - mitre_techniques: ["T1005","T1070","T1070.002"]
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
       - "c:rpm -q rsyslog -> r:^rsyslog-"
 
   # 4.2.1.2 Ensure rsyslog service is enabled (Automated)
-  - id: 28132 
+  - id: 28087
     title: "Ensure rsyslog service is enabled."
     description: "Once the rsyslog package is installed, ensure that the service is enabled."
     rationale: "If the rsyslog service is not enabled to start on boot, the system will not capture logging events."
@@ -2370,10 +2369,10 @@ checks:
       - "c:systemctl is-enabled rsyslog -> r:^enabled"
 
   # 4.2.1.3 Ensure journald is configured to send logs to rsyslog (Manual)
-  - id: 28133 
+  - id: 28088
     title: "Ensure journald is configured to send logs to rsyslog."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of journald logs, however, use of the RSyslog service provides a consistent means of log collection and export."
-    rationale: "IF RSyslog is the preferred method for capturing logs, all logs of the system should be sent to it for further processing."
+    rationale: "IF RSyslog is the preferred method for capturing logs, all logs of the system should be sent to it for further processing. Note: This recommendation only applies if rsyslog is the chosen method for client side logging. Do not apply this recommendation if journald is used."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes Restart the service: # systemctl restart rsyslog."
     compliance:
       - cis: ["4.2.1.3"]
@@ -2391,15 +2390,17 @@ checks:
       - mitre_mitigations: ["M1029"]
     condition: all
     rules:
-      - "f:/etc/systemd/journald.conf -> r:=ForwardToSyslog=yes$"
+      - "f:/etc/systemd/journald.conf -> r:^ForwardToSyslog=yes"
 
   # 4.2.1.4 Ensure rsyslog default file permissions configured (Automated)
-  - id: 28134 
+  - id: 28089
     title: "Ensure rsyslog default file permissions configured."
     description: "Rsyslog will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
     impact: "The systems global umask could override, but only making the file permissions stricter, what is configured in RSyslog with the FileCreateMode directive. RSyslog also has its own $umask directive that can alter the intended file creation mode. In addition, consideration should be given to how FileCreateMode is used. Thus it is critical to ensure that the intended file creation mode is not overridden with less restrictive settings in /etc/rsyslog.conf, /etc/rsyslog.d/*conf files and that FileCreateMode is set before any file is created."
     remediation: "Edit either /etc/rsyslog.conf or a dedicated .conf file in /etc/rsyslog.d/ and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640 Restart the service: # systemctl restart rsyslog."
+    references: 
+    - See the rsyslog.conf(5) man page for more information.
     compliance:
       - cis: ["4.2.1.4"]
       - cis_csc_v8: ["3.3","8.2"]
@@ -2420,11 +2421,13 @@ checks:
 
   # 4.2.1.5 Ensure logging is configured (Manual) - Not implemented
   # 4.2.1.6 Ensure rsyslog is configured to send logs to a remote log host (Manual)
-  - id: 28135 
+  - id: 28090
     title: "Ensure rsyslog is configured to send logs to a remote log host."
     description: "RSyslog supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add the following line (where loghost.example.com is the name of your central log host). The target directive may either be a fully qualified domain name or an IP address. *.* action(type="omfwd" target="192.168.2.100" port="514" protocol="tcp" action.resumeRetryCount="100" queue.type="LinkedList" queue.size="1000") Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog'
+    references: 
+    - See the rsyslog.conf(5) man page for more information.
     compliance:
       - cis: ["4.2.1.6"]
       - cis_csc_v8: ["8.2"]
@@ -2446,11 +2449,11 @@ checks:
       - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:# && r:^*.* action && r:target="'
 
   # 4.2.1.7 Ensure rsyslog is not configured to receive logs from a remote client (Automated)
-  - id: 28136 
+  - id: 28091
     title: "Ensure rsyslog is not configured to receive logs from a remote client."
     description: "RSyslog supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
-    remediation: 'Should there be any active log server configuration found in the auditing section, modify those files and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf. - Old format: $ModLoad imtcp $InputTCPServerRun - New format: module(load="imtcp") input(type="imtcp" port="514") - Restart the service: # systemctl restart rsyslog'
+    remediation: 'Should there be any active log server configuration found in the auditing section, modify those files and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf. New format: module(load="imtcp") input(type="imtcp" port="514") -OR- Old format: $ModLoad imtcp $InputTCPServerRun - Restart the service: # systemctl restart rsyslog'
     compliance:
       - cis: ["4.2.1.7"]
       - cis_csc_v8: ["4.8","8.2"]
@@ -2477,7 +2480,7 @@ checks:
   ###############################################
 
   # 4.2.2.1.1 Ensure systemd-journal-remote is installed (Manual)
-  - id: 28137 
+  - id: 28092 
     title: "Ensure systemd-journal-remote is installed."
     description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
@@ -2498,10 +2501,10 @@ checks:
     rules:
       - "c:rpm -q systemd-journal-remote -> r:systemd-journal-remote-"
 
-  #  4.2.2.1.2 Ensure systemd-journal-remote is configured (Manual) - Not implemented
+  # 4.2.2.1.2 Ensure systemd-journal-remote is configured (Manual) - Not implemented
 
-  #  4.2.2.1.3 Ensure systemd-journal-remote is enabled (Manual)
-  - id: 28138 
+  # 4.2.2.1.3 Ensure systemd-journal-remote is enabled (Manual)
+  - id: 28093
     title: "Ensure systemd-journal-remote is enabled."
     description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
@@ -2523,7 +2526,7 @@ checks:
       - "c:systemctl is-enabled systemd-journal-upload.service -> r:^enabled"
 
   # 4.2.2.1.4 Ensure journald is not configured to receive logs from a remote client (Automated)
-  - id: 28139 
+  - id: 28094
     title: "Ensure journald is not configured to receive logs from a remote client."
     description: "Journald supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts. NOTE: - The same package, systemd-journal-remote, is used for both sending logs to remote hosts and receiving incoming logs. - With regards to receiving logs, there are two services; systemd-journal- remote.socket and systemd-journal-remote.service."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
@@ -2532,10 +2535,11 @@ checks:
       - cis: ["4.2.2.1.4"]
       - cis_csc_v8: ["4.8","8.2"]
       - cis_csc_v7: ["6.2","6.3","9.2"]
-      - nist_sp_800-53: ["AU-2","AU-12","CM-7","SI-5"]
+      - nist_sp_800-53: ["AU.L2-3.3.1","AU-2","AU-12","CM-7","SI-5"]
       - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5"]
-      - pci_dss_4.0: ["1.2.5","2.2.4","6.4.1"]
+      - hipaa: ["164.312(b)"]
+      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5","10.2","10.3"]
+      - pci_dss_4.0: ["1.2.5","2.2.4","5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2"]
       - soc_2: ["CC6.3","CC6.6"]
       - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
       - mitre_tactics: ["TA0040"]
@@ -2545,7 +2549,7 @@ checks:
       - "c:systemctl is-enabled systemd-journal-remote.socket -> r:^masked"
 
   # 4.2.2.2 Ensure journald service is enabled (Automated)
-  - id: 28140 
+  - id: 28095
     title: "Ensure journald service is enabled."
     description: "Ensure that the systemd-journald service is enabled to allow capturing of logging events."
     rationale: "If the systemd-journald service is not enabled to start on boot, the system will not capture logging events."
@@ -2568,7 +2572,7 @@ checks:
       - "c:systemctl is-enabled systemd-journald.service -> r:^static"
 
   # 4.2.2.3 Ensure journald is configured to compress large log files. (Automated)
-  - id: 28141 
+  - id: 28096
     title: "Ensure journald is configured to compress large log files."
     description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large."
     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
@@ -2592,7 +2596,7 @@ checks:
       - 'f:/etc/systemd/journald.conf -> r:^\s*Compress=yes'
 
   # 4.2.2.4 Ensure journald is configured to write logfiles to persistent disk (Automated)
-  - id: 28142 
+  - id: 28097
     title: "Ensure journald is configured to write logfiles to persistent disk."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss due to a reboot."
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
@@ -2609,16 +2613,16 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - mitre_techniques: ["T1070","T1070.002","T1562","T1562.006"]
       - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: ["M1053"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*Storage=persistent'
 
   # 4.2.2.5 Ensure journald is not configured to send logs to rsyslog (Manual)
-  - id: 28143 
+  - id: 28098
     title: "Ensure journald is not configured to send logs to rsyslog."
     description: "Data from journald should be kept in the confines of the service and not forwarded on to other services."
-    rationale: "IF journald is the method for capturing logs, all logs of the system should be handled by journald and not forwarded to other logging mechanisms."
+    rationale: "IF journald is the method for capturing logs, all logs of the system should be handled by journald and not forwarded to other logging mechanisms. Note: This recommendation only applies if journald is the chosen method for client side logging. Do not apply this recommendation if rsyslog is used."
     remediation: "Edit the /etc/systemd/journald.conf file and ensure that ForwardToSyslog=yes is removed. Restart the service: # systemctl restart systemd-journal-upload."
     compliance:
       - cis: ["4.2.2.5"]
@@ -2640,9 +2644,9 @@ checks:
   # 4.2.2.6 Ensure journald log rotation is configured per site policy (Manual) - Not implemented
   # 4.2.2.7 Ensure journald default file permissions configured (Manual) - Not implemented
 
-  # 4.2.3 Ensure permissions on all logfiles are configured (Automated)
+  # 4.2.3 Ensure all logfiles have appropriate permissions and ownership (Automated)
   - id: 28144 
-    title: "Ensure permissions on all logfiles are configured."
+    title: "Ensure all logfiles have appropriate permissions and ownership."
     description: "Log files contain information from many services on the the local system, or in the event of a centralized log server, others systems logs as well. In general log files are found in /var/log/, although application can be configured to store logs elsewhere. Should your application store logs in another, ensure to run the same test on that location."
     rationale: "It is important that log files have the correct permissions to ensure that sensitive data is protected and that only the appropriate users / groups have access to them."
     remediation: 'Run the following command to set permissions on all existing log files in /var/log. Although the command is not destructive, ensure that the output of the audit procedure is captured in the event that the remediation causes issues. # find /var/log/ -type f -perm /g+wx,o+rwx -exec chmod --changes g-wx,o-rwx "{}" + . If there are services that logs to other locations, ensure that those log files have the appropriate permissions.'
