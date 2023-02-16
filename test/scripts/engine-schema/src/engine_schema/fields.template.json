@@ -1,0 +1,14 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "fields.json",
+    "name": "schema/fields/0",
+    "type": "object",
+    "additionalProperties": false,
+    "patternProperties": {
+        "^~.+": {
+            "description": "Custom field.",
+            "ecs_type": null
+        }
+    },
+    "properties": {}
+}
