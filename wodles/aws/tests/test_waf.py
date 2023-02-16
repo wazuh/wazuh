@@ -22,10 +22,10 @@ def test_aws_waf_bucket_initializes_properly(mock_custom_bucket):
 
 
 @pytest.mark.parametrize('log_file, skip_on_error', [
-    (f'{logs_path}/WAF/aws-waf', False),
-    (f'{logs_path}/WAF/aws-waf', True),
-    (f'{logs_path}/WAF/aws-waf-invalid-json', True),
-    (f'{logs_path}/WAF/aws-waf-wrong-structure', True),
+    (os.path.join(logs_path, 'WAF', 'aws-waf'), False),
+    (os.path.join(logs_path, 'WAF', 'aws-waf'), True),
+    (os.path.join(logs_path, 'WAF', 'aws-waf-invalid-json'), True),
+    (os.path.join(logs_path, 'WAF', 'aws-waf-wrong-structure'), True),
 ])
 @patch('wazuh_integration.WazuhIntegration.__init__')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
@@ -51,8 +51,8 @@ def test_aws_waf_bucket_load_information_from_file(mock_custom_bucket, mock_buck
 
 
 @pytest.mark.parametrize('log_file, skip_on_error, expected_exception', [
-    (f'{logs_path}/WAF/aws-waf-invalid-json', False, SystemExit),
-    (f'{logs_path}/WAF/aws-waf-wrong-structure', False, SystemExit),
+    (os.path.join(logs_path, 'WAF', 'aws-waf-invalid-json'), False, SystemExit),
+    (os.path.join(logs_path, 'WAF', 'aws-waf-wrong-structure'), False, SystemExit),
 ])
 @patch('wazuh_integration.WazuhIntegration.__init__')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')

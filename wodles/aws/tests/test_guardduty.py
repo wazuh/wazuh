@@ -75,7 +75,7 @@ def test_aws_guardduty_bucket_get_service_prefix(mock_custom_bucket, mock_type, 
     """Test 'get_service_prefix' method returns the expected prefix with the format <base_prefix>/<account_id>/<service>."""
     instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
 
-    expected_base_prefix = f'base_prefix/{utils.TEST_ACCOUNT_ID}/{instance.service}/'
+    expected_base_prefix = os.path.join('base_prefix', utils.TEST_ACCOUNT_ID, instance.service, '')
     assert instance.get_service_prefix(utils.TEST_ACCOUNT_ID) == expected_base_prefix
 
 
@@ -96,7 +96,7 @@ def test_aws_guardduty_bucket_get_full_prefix(mock_integration, mock_sts, mock_s
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket, prefix='prefix/')
 
         if instance.type == "GuardDutyNative":
-            assert f'{instance.get_service_prefix(utils.TEST_ACCOUNT_ID)}{utils.TEST_REGION}/' == instance.get_full_prefix(
+            assert os.path.join(instance.get_service_prefix(utils.TEST_ACCOUNT_ID), utils.TEST_REGION, '') == instance.get_full_prefix(
                 utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
         else:
             assert instance.prefix == instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
@@ -117,7 +117,7 @@ def test_aws_guardduty_bucket_get_base_prefix(mock_integration, mock_sts, guardd
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket, prefix='prefix/')
 
         if instance.type == "GuardDutyNative":
-            assert instance.get_base_prefix() == f'{instance.prefix}AWSLogs/'
+            assert instance.get_base_prefix() == os.path.join(instance.prefix, 'AWSLogs', '')
         else:
             assert instance.get_base_prefix() == instance.prefix
 
