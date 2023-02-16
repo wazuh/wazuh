@@ -124,7 +124,7 @@ int main(int argc, char **argv)
 
     /* Read config */
     if ((c = ExecdConfig(cfg)) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
     }
 
     /* Exit if test_config */

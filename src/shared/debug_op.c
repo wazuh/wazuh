@@ -239,7 +239,7 @@ void os_logging_config(){
     flags.log_plain = 1;
     flags.log_json = 0;
     OS_ClearXML(&xml);
-    merror_exit(XML_ERROR, OSSECCONF, xml.err, xml.err_line);
+    mlerror_exit(LOGLEVEL_ERROR, XML_ERROR, OSSECCONF, xml.err, xml.err_line);
   }
 
   logformat = OS_GetOneContentforElement(&xml, xmlf);
@@ -485,6 +485,25 @@ void _mterror_exit(const char *tag, const char * file, int line, const char * fu
 {
     va_list args;
     int level = LOGLEVEL_CRITICAL;
+
+    va_start(args, msg);
+    _log(level, tag, file, line, func, msg, args);
+    va_end(args);
+
+#ifdef WIN32
+    /* If not MA */
+#ifndef MA
+    WinSetError();
+#endif
+#endif
+
+    exit(1);
+}
+
+void _mlerror_exit(const int level, const char * file, int line, const char * func, const char *msg, ...)
+{
+    va_list args;
+    const char *tag = __local_name;
 
     va_start(args, msg);
     _log(level, tag, file, line, func, msg, args);
