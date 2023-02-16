@@ -140,11 +140,6 @@ Expression operationBuilder(const std::any& definition, OperationType type, std:
 
         helperArgs = utils::string::splitEscaped(
             helperString, syntax::FUNCTION_HELPER_ARG_ANCHOR, syntax::FUNCTION_HELPER_DEFAULT_ESCAPE);
-        if (helperArgs.empty())
-        {
-            throw std::runtime_error(
-                fmt::format(R"(An error occurred splitting arguments for the helper function "{}" )", helperString));
-        }
 
         helperName = helperArgs.at(0);
         helperArgs.erase(helperArgs.begin());
