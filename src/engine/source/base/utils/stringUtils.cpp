@@ -34,9 +34,7 @@ std::vector<std::string> split(std::string_view str, const char delimiter)
     return ret;
 }
 
-std::string join(const std::vector<std::string>& strVector,
-                 std::string_view separator,
-                 const bool startsWithSeparator)
+std::string join(const std::vector<std::string>& strVector, std::string_view separator, const bool startsWithSeparator)
 {
     std::string strResult {};
     for (std::size_t i = 0; i < strVector.size(); ++i)
@@ -48,33 +46,30 @@ std::string join(const std::vector<std::string>& strVector,
     return strResult;
 }
 
-std::vector<std::string>
-splitEscaped(std::string_view input, const char& splitChar, const char& escape)
+std::vector<std::string> splitEscaped(std::string_view input, const char& splitChar, const char& escape)
 {
     std::vector<std::string> splitted;
 
-    // Replace escaped chars in between sections
-    const auto removeOnlyEscapedSplitted =
-        [](std::string& auxSubStr, const char& escape, const char& splitChar)
+    // Replace escaped chars in between sections, false if escaped char is not splitChar
+    const auto removeOnlyEscapedSplitted = [](std::string& auxSubStr, const char& escape, const char& splitChar)
     {
-        for (auto j = auxSubStr.find(escape, 0); j != std::string::npos;
-             j = auxSubStr.find(escape, j))
+        for (auto j = auxSubStr.find(escape, 0); j != std::string::npos; j = auxSubStr.find(escape, j))
         {
-            if (auxSubStr.at(j+1) == splitChar)
+            if (auxSubStr.at(j + 1) == splitChar)
             {
                 auxSubStr.erase(j, 1);
                 j++;
             }
             else
             {
-                // If not escaping splitChar then fail
+                // If char being escaped is not splitChar then fail
                 return false;
             }
         }
         return true;
     };
 
-    // Check if last char is escaped
+    // returns true if last char is escaped
     const auto endingEscaped = [](std::string_view& vs, const char& escape)
     {
         std::string auxSubStr {vs.data(), vs.size()};
@@ -104,14 +99,14 @@ splitEscaped(std::string_view input, const char& splitChar, const char& escape)
         if (splitChar == input[i])
         {
             auto substr = input.substr(last, i - last);
-            // Check if substr last char is escaped, if so continue
+            // Check if the last char in substr is escaped, if so continue
             if (endingEscaped(substr, escape))
             {
                 continue;
             }
             else
             {
-                // If not then ending in escaped then split
+                // If not then split
                 splitted.push_back(std::string(substr));
                 last = i + 1;
             }
@@ -121,7 +116,7 @@ splitEscaped(std::string_view input, const char& splitChar, const char& escape)
     // Apply escaped in each item and return empty array when error
     for (auto& item : splitted)
     {
-        if(!removeOnlyEscapedSplitted(item, escape, splitChar))
+        if (!removeOnlyEscapedSplitted(item, escape, splitChar))
         {
             return {};
         }
