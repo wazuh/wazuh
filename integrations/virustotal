@@ -28,6 +28,7 @@ except Exception as e:
 #      <api_key>api_key_here</api_key>
 #      <group>syscheck</group>
 #      <alert_format>json</alert_format>
+#      <options>JSON_OBJ</options>
 #  </integration>
 
 # Global vars
@@ -47,6 +48,13 @@ def main(args):
     # Read args
     alert_file_location = args[1]
     apikey = args[2]
+    options_file_location = ''
+    json_options = ''
+    
+    for idx in range(4,len(args)):
+        if(args[idx][-7:] == "options"):
+            options_file_location = args[idx]
+            break
 
     debug("# API Key")
     debug(apikey)
@@ -55,13 +63,22 @@ def main(args):
     debug(alert_file_location)
 
     # Load alert. Parse JSON object.
+    if(options_file_location):
+        with open(options_file_location) as options_file:
+            try:
+                json_options = json.load(options_file)
+                debug("# Options")
+                debug(json_options)
+            except:
+                debug("# Error: Bad options format.")
+                
     with open(alert_file_location, errors='ignore') as alert_file:
         json_alert = json.load(alert_file)
     debug("# Processing alert")
     debug(json_alert)
 
     # Request VirusTotal info
-    msg = request_virustotal_info(json_alert,apikey)
+    msg = request_virustotal_info(json_alert,apikey,json_options)
 
     # If positive match, send event to Wazuh Manager
     if msg:
@@ -128,7 +145,7 @@ def query_api(hash, apikey):
         response.raise_for_status()
         exit(0)
 
-def request_virustotal_info(alert, apikey):
+def request_virustotal_info(alert, apikey,options):
     alert_output = {}
 
     # If there is no a md5 checksum present in the alert. Exit.
@@ -166,7 +183,10 @@ def request_virustotal_info(alert, apikey):
         alert_output["virustotal"]["positives"] = positives
         alert_output["virustotal"]["total"] = total
         alert_output["virustotal"]["permalink"] = permalink
-
+    
+    if(options):
+        for key in options.keys():
+            msg[key] = options[key]
 
     debug(alert_output)
 
