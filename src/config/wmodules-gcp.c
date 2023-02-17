@@ -126,7 +126,7 @@ int wm_gcp_pubsub_read(xml_node **nodes, wmodule *module) {
             } else {
                 const char * const realpath_buffer_ref = realpath(nodes[i]->content, realpath_buffer);
                 if (!realpath_buffer_ref) {
-                    mwarn("File '%s' from tag '%s' not found.", realpath_buffer, XML_CREDENTIALS_FILE);
+                    merror("File '%s' from tag '%s' not found.", realpath_buffer, XML_CREDENTIALS_FILE);
                     return OS_INVALID;
                 }
             }

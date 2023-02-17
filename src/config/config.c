@@ -469,22 +469,11 @@ void PrintErrorAcordingToModules(int modules, const char *cfgfile) {
 
     switch (BITMASK(modules)) {
         case CSYSCHECK:
-            mwarn(CONFIG_ERROR, cfgfile);
-            break;
-        case CCLIENT:
-            merror(CONFIG_ERROR, cfgfile);
-            break;
         case CROOTCHECK:
             mwarn(CONFIG_ERROR, cfgfile);
             break;
-        case CWMODULE:
-            /*syscollector*/
-            merror(CONFIG_ERROR, cfgfile);
-            break;
-        case CBUFFER|CLABELS:
-            merror(CONFIG_ERROR, cfgfile);
-            break;
         default:
+            merror(CONFIG_ERROR, cfgfile);
             break;
     }
 }
