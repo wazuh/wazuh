@@ -13,6 +13,7 @@
 
 #include "sha512_op.h"
 #include "headers/defs.h"
+#include "shared.h"
 
 int OS_SHA512_File(const char *fname, os_sha512 output, int mode)
 {

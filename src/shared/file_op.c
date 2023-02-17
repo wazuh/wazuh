@@ -2622,7 +2622,6 @@ wino_t get_fp_inode(FILE * fp) {
     return GetFileInformationByHandle(h, &fileInfo) ? (wino_t)fileInfo.nFileIndexHigh << 32 | fileInfo.nFileIndexLow : (wino_t)-1;
 
 #else
-
     struct stat buf;
     int fd;
     return fd = fileno(fp), fd < 0 ? (wino_t)-1 : fstat(fd, &buf) ? (wino_t)-1 : buf.st_ino;

@@ -16,6 +16,7 @@
 #include "headers/defs.h"
 #include "../sha1/sha1_op.h"
 #include <openssl/sha.h>
+#include "shared.h"
 #include "hmac.h"
 
 int OS_HMAC_SHA1_Str(const char *key, const char *text, os_sha1 output)

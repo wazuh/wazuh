@@ -15,6 +15,7 @@
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 #include "headers/defs.h"
+#include "shared.h"
 
 int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, int mode)
 {
