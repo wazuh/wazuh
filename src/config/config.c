@@ -465,16 +465,6 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     return (0);
 }
 
-#define BITMASK(modules)   (\
-                            (modules & CGLOBAL       ) | (modules & CRULES        ) | (modules & CSYSCHECK     )|\
-                            (modules & CROOTCHECK    ) | (modules & CALERTS       ) | (modules & CLOCALFILE    )|\
-                            (modules & CREMOTE       ) | (modules & CCLIENT       ) | (modules & CMAIL         )|\
-                            (modules & CAR           ) | (modules & CDBD          ) | (modules & CSYSLOGD      )|\
-                            (modules & CAGENT_CONFIG ) | (modules & CAGENTLESS    ) | (modules & CREPORTS      )|\
-                            (modules & CINTEGRATORD  ) | (modules & CWMODULE      ) | (modules & CLABELS       )|\
-                            (modules & CAUTHD        ) | (modules & CBUFFER       ) | (modules & CCLUSTER      )|\
-                            (modules & CSOCKET       ) | (modules & CLOGTEST      ) | (modules & WAZUHDB       ) )
-
 void PrintErrorAcordingToModules(int modules, const char *cfgfile) {
 
     switch (BITMASK(modules)) {
@@ -491,8 +481,11 @@ void PrintErrorAcordingToModules(int modules, const char *cfgfile) {
             /*syscollector*/
             merror(CONFIG_ERROR, cfgfile);
             break;
+        case CBUFFER|CLABELS:
+            merror(CONFIG_ERROR, cfgfile);
+            break;
         default:
-            merror("modules: %09o default\n", modules);
+            merror("Configuration error at module: %09o default\n", modules); /*delete*/
             break;
     }
 }
