@@ -637,7 +637,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         if (strchr(logf[pl].file, '*') ||
             strchr(logf[pl].file, '?')) {
 
-            os_realloc(log_config->globs, (gl + 2) * sizeof(logreader_glob), log_config->globs);
+            os_realloc(log_config->globs, (gl + 2)*sizeof(logreader_glob), log_config->globs);
             os_strdup(logf[pl].file, log_config->globs[gl].gpath);
             memset(&log_config->globs[gl + 1], 0, sizeof(logreader_glob));
             os_calloc(1, sizeof(logreader), log_config->globs[gl].gfiles);
@@ -648,7 +648,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             if (logf[pl].exclude && strchr(logf[pl].exclude, '%')) {
 
                 time_t l_time = time(0);
-                char excluded_path_date[PATH_MAX] = { 0 };
+                char excluded_path_date[PATH_MAX] = {0};
                 size_t ret;
                 struct tm tm_result = { .tm_sec = 0 };
 
@@ -662,7 +662,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 os_strdup(logf[pl].exclude, log_config->globs[gl].exclude_path);
             }
 
-            if (Remove_Localfile(&logf, pl, 0, 0, NULL)) {
+            if (Remove_Localfile(&logf, pl, 0, 0,NULL)) {
                 merror(REM_ERROR, logf[pl].file);
                 return (OS_INVALID);
             }

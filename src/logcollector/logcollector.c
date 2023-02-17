@@ -1515,6 +1515,7 @@ int check_pattern_expand(int do_seek) {
         for (j = 0; globs[j].gpath; j++) {
 
             if (current_files >= maximum_files) {
+                mwarn(FILE_LIMIT, maximum_files);
                 break;
             }
 
@@ -1523,16 +1524,14 @@ int check_pattern_expand(int do_seek) {
             if (result) {
 
                 int file;
-                int totalFiles = 0;
                 char *full_path = NULL;
 
-                while (NULL != result[totalFiles])
-                {
-                    totalFiles++;
-                }
-                totalFiles %= maximum_files;
+                for (file = 0; result[file] != NULL; file++) {
 
-                for (file = 0; file < totalFiles; file++) {
+                    if (current_files >= maximum_files) {
+                        mwarn(FILE_LIMIT, maximum_files);
+                        break;
+                    }
 
                     os_strdup(result[file], full_path);
 
@@ -1540,7 +1539,6 @@ int check_pattern_expand(int do_seek) {
                     for (i = 0; globs[j].gfiles[i].file; i++) {
                         if (!strcmp(globs[j].gfiles[i].file, full_path)) {
                             found = 1;
-                            os_free(full_path);
                             break;
                         }
                     }
@@ -1549,7 +1547,7 @@ int check_pattern_expand(int do_seek) {
                         retval = 1;
                         int added = 0;
 
-                        char* ex_file = OSHash_Get(excluded_files, full_path);
+                        char *ex_file = OSHash_Get(excluded_files, full_path);
 
                         if (!ex_file) {
 
@@ -1558,8 +1556,8 @@ int check_pattern_expand(int do_seek) {
                             HANDLE h1;
 
                             h1 = CreateFile(full_path, GENERIC_READ,
-                                FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                                            FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                            NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
                             if (h1 == INVALID_HANDLE_VALUE) {
                                 os_free(full_path);
@@ -1592,7 +1590,7 @@ int check_pattern_expand(int do_seek) {
                             added = 1;
                         }
 
-                        char* file_excluded_binary = OSHash_Get(excluded_binaries, full_path);
+                        char *file_excluded_binary = OSHash_Get(excluded_binaries, full_path);
 
                         /* This file could have to non binary file */
                         if (file_excluded_binary && !added) {
