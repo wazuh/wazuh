@@ -80,48 +80,6 @@ private:
      */
     void dumpTableToStorage();
 
-    /* Api callbacks */
-    /**
-     * @brief API callback for route creation
-     *
-     * @param params Parameters for route creation ("/name"), optional priority ("/priority") to override the default
-     * @return base::utils::wazuhProtocol::WazuhResponse with the result of the operation
-     */
-    //base::utils::wazuhProtocol::WazuhResponse apiSetRoute(const json::Json& params);
-
-    /**
-     * @brief API callback for list routes
-     * @param params none
-     * @return base::utils::wazuhProtocol::WazuhResponse with the result of the operation, a list of  entries with the name, priority and
-     * target
-     *
-     */
-   // base::utils::wazuhProtocol::WazuhResponse apiGetRoutes(const json::Json& params);
-
-    /**
-     * @brief API callback for route deletion
-     *
-     * @param params Parameters for route deletion ("/name")
-     * @return base::utils::wazuhProtocol::WazuhResponse with the result of the operation
-     */
-  //  base::utils::wazuhProtocol::WazuhResponse apiDeleteRoute(const json::Json& params);
-
-    /**
-     * @brief API callback for route priority change
-     *
-     * @param params Parameters for route priority change ("/name"), new priority ("/priority")
-     * @return base::utils::wazuhProtocol::WazuhResponse with the result of the operation
-     */
- //   base::utils::wazuhProtocol::WazuhResponse apiChangeRoutePriority(const json::Json& params);
-
-    /**
-     * @brief API callback for push an event to the router
-     *
-     * @param params Parameters for event push ("/event")
-     * @return base::utils::wazuhProtocol::WazuhResponse with the result of the operation
-     */
- //   base::utils::wazuhProtocol::WazuhResponse apiEnqueueEvent(const json::Json& params);
-
 public:
     using Entry = std::tuple<std::string, std::size_t, std::string, std::string>; ///< Entry of the routes table (name,
                                                                                   ///< priority, filter, target)
@@ -200,13 +158,6 @@ public:
      * Send a stop signal to the router and wait for the threads to finish.
      */
     void stop();
-
-    /**
-     * @brief Main API callback for environment management
-     *
-     * @return api::CommandFn
-     */
-  //  api::CommandFn apiCallbacks();
 
     /**
      * @brief Clear the router table
