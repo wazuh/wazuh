@@ -267,7 +267,7 @@ void os_logging_config(){
         }else{
           flags.log_plain = 1;
           flags.log_json = 0;
-          merror_exit(XML_VALUEERR, "log_format", part);
+          mlerror_exit(LOGLEVEL_ERROR, XML_VALUEERR, "log_format", part);
         }
       }
       for (i=0; parts[i]; i++){
