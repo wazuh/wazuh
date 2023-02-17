@@ -150,21 +150,23 @@ Router::addRoute(const std::string& routeName, int priority, const std::string& 
     return std::nullopt;
 }
 
-std::optional<base::Error> Router::removeRoute(const std::string& routeName)
+void Router::removeRoute(const std::string& routeName)
 {
     std::unique_lock lock {m_mutexRoutes};
 
     auto it = m_namePriorityFilter.find(routeName);
     if (it == m_namePriorityFilter.end())
     {
-        return base::Error {fmt::format("Route '{}' not found", routeName)};
+        return; // If the route doesn't exist, we don't need to do anything
     }
     const auto priority = std::get<0>(it->second);
 
     auto it2 = m_priorityRoute.find(priority);
     if (it2 == m_priorityRoute.end())
     {
-        return base::Error {fmt::format("Priority '{}' not found", priority)}; // Should never happen
+        // Should never happen
+        WAZUH_LOG_WARN("Router: Priority '{}' not found when removing route '{}'", priority, routeName);
+        return;
     }
     const auto envName = it2->second.front().getTarget();
     // Remove from maps
@@ -173,7 +175,13 @@ std::optional<base::Error> Router::removeRoute(const std::string& routeName)
     lock.unlock();
 
     dumpTableToStorage();
-    return m_environmentManager->deleteEnvironment(envName);
+    auto err = m_environmentManager->deleteEnvironment(envName);
+    if (err)
+    {
+        // Should never happen
+        WAZUH_LOG_WARN("Router: couldn't delete environment '{}': {} ", envName, err.value().message);
+    }
+    return;
 }
 
 std::vector<Router::Entry> Router::getRouteTable()
@@ -282,6 +290,27 @@ std::optional<base::Error> Router::enqueueEvent(base::Event event)
     return base::Error {"The router queue is in high load"};
 }
 
+std::optional<base::Error> Router::enqueueOssecEvent(std::string_view event)
+{
+
+    std::optional<base::Error> err = std::nullopt;
+    try
+    {
+        base::Event ev = base::parseEvent::parseOssecEvent(event.data());
+        err = enqueueEvent(ev);
+    }
+    catch (const std::exception& e)
+    {
+        err = base::Error {e.what()};
+    }
+
+    if (err)
+    {
+        return err;
+    }
+    return std::nullopt;
+}
+
 std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
 {
     std::shared_lock lock {m_mutexRoutes};
@@ -339,119 +368,6 @@ void Router::stop()
     WAZUH_LOG_DEBUG("Router stopped.");
 }
 
-/*
-base::utils::wazuhProtocol::WazuhResponse Router::apiGetRoutes(const json::Json& params)
-{
-    json::Json data {};
-    // Filter by name
-    const auto name = params.getString(JSON_PATH_NAME);
-    if (name)
-    {
-        auto entry = getEntry(name.value());
-        if (entry)
-        {
-            data.setString(std::get<0>(entry.value()), JSON_PATH_NAME);
-            data.setInt(std::get<1>(entry.value()), JSON_PATH_PRIORITY);
-            data.setString(std::get<2>(entry.value()), JSON_PATH_FILTER);
-            data.setString(std::get<3>(entry.value()), JSON_PATH_TARGET);
-        }
-        else
-        {
-            data.setObject();
-        }
-    }
-    else
-    {
-        data = tableToJson();
-    }
-
-    return base::utils::wazuhProtocol::WazuhResponse {data, "Ok"};
-}
-
-base::utils::wazuhProtocol::WazuhResponse Router::apiDeleteRoute(const json::Json& params)
-{
-    base::utils::wazuhProtocol::WazuhResponse response {};
-    const auto name = params.getString(JSON_PATH_NAME);
-    if (!name)
-    {
-        response.message(R"(Error: Error: Missing "priority" parameter)");
-    }
-    else
-    {
-        const auto err = removeRoute(name.value());
-        if (err)
-        {
-            response.message(std::string {"Error: "} + err.value().message);
-        }
-        else
-        {
-            response.message(fmt::format("Route '{}' deleted", name.value()));
-        }
-    }
-    return response;
-}
-
-base::utils::wazuhProtocol::WazuhResponse Router::apiChangeRoutePriority(const json::Json& params)
-{
-    base::utils::wazuhProtocol::WazuhResponse response {};
-    const auto name = params.getString(JSON_PATH_NAME);
-    const auto priority = params.getInt(JSON_PATH_PRIORITY);
-
-    if (!name)
-    {
-        response.message(R"(Error: Error: Missing "priority" parameter)");
-    }
-    else if (!priority)
-    {
-        response.message(R"(Missing "priority" parameter)");
-    }
-    else
-    {
-        const auto err = changeRoutePriority(name.value(), priority.value());
-        if (err)
-        {
-            response.message(err.value().message);
-        }
-        else
-        {
-            response.message(fmt::format("Route '{}' priority changed to '{}'", name.value(), priority.value()));
-        }
-    }
-
-    return response;
-}
-
-base::utils::wazuhProtocol::WazuhResponse Router::apiEnqueueEvent(const json::Json& params)
-{
-    base::utils::wazuhProtocol::WazuhResponse response {};
-    const auto event = params.getString(JSON_PATH_EVENT);
-    if (!event)
-    {
-        response.message(R"(Error: Missing "event" parameter)");
-    }
-    else
-    {
-        try
-        {
-            base::Event ev = base::parseEvent::parseOssecEvent(event.value());
-            auto err = enqueueEvent(ev);
-            if (err)
-            {
-                response.message(err.value().message);
-            }
-            else
-            {
-                response.message("Ok");
-            }
-        }
-        catch (const std::exception& e)
-        {
-            response.message(fmt::format("Error: {} ", e.what()));
-        }
-    }
-    return response;
-}
-*/
 json::Json Router::tableToJson()
 {
     json::Json data {};
