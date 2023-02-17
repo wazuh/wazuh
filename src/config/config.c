@@ -329,7 +329,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
             /* Main element does not need to have any child */
             if (chld_node) {
                 if (read_main_elements(&xml, modules, chld_node, d1, d2) < 0) {
-                    merror(CONFIG_ERROR, cfgfile);
+                    PrintErrorAcordingToModules(modules, cfgfile);
                     OS_ClearNode(chld_node);
                     OS_ClearNode(node);
                     OS_ClearXML(&xml);
@@ -463,4 +463,36 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     OS_ClearNode(node);
     OS_ClearXML(&xml);
     return (0);
+}
+
+#define BITMASK(modules)   (\
+                            (modules & CGLOBAL       ) | (modules & CRULES        ) | (modules & CSYSCHECK     )|\
+                            (modules & CROOTCHECK    ) | (modules & CALERTS       ) | (modules & CLOCALFILE    )|\
+                            (modules & CREMOTE       ) | (modules & CCLIENT       ) | (modules & CMAIL         )|\
+                            (modules & CAR           ) | (modules & CDBD          ) | (modules & CSYSLOGD      )|\
+                            (modules & CAGENT_CONFIG ) | (modules & CAGENTLESS    ) | (modules & CREPORTS      )|\
+                            (modules & CINTEGRATORD  ) | (modules & CWMODULE      ) | (modules & CLABELS       )|\
+                            (modules & CAUTHD        ) | (modules & CBUFFER       ) | (modules & CCLUSTER      )|\
+                            (modules & CSOCKET       ) | (modules & CLOGTEST      ) | (modules & WAZUHDB       ) )
+
+void PrintErrorAcordingToModules(int modules, const char *cfgfile) {
+
+    switch (BITMASK(modules)) {
+        case CSYSCHECK:
+            mwarn(CONFIG_ERROR, cfgfile);
+            break;
+        case CCLIENT:
+            merror(CONFIG_ERROR, cfgfile);
+            break;
+        case CROOTCHECK:
+            mwarn(CONFIG_ERROR, cfgfile);
+            break;
+        case CWMODULE:
+            /*syscollector*/
+            merror(CONFIG_ERROR, cfgfile);
+            break;
+        default:
+            merror("modules: %09o default\n", modules);
+            break;
+    }
 }
