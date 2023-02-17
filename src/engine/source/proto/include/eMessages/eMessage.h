@@ -19,9 +19,11 @@ std::variant<base::Error, T> eMessageFromJson(const std::string& json)
     T message;
 
     google::protobuf::util::JsonParseOptions inOptions = google::protobuf::util::JsonParseOptions();
-    inOptions.ignore_unknown_fields = false;
+    //inOptions.ignore_unknown_fields = false;
+    inOptions.ignore_unknown_fields = true;
+    inOptions.case_insensitive_enum_parsing = false;
 
-    const auto res = google::protobuf::util::JsonStringToMessage(json, &message);
+    const auto res = google::protobuf::util::JsonStringToMessage(json, &message, inOptions);
     if (res.ok())
     {
         return message;

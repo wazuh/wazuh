@@ -59,6 +59,12 @@ extern RouteGet_RequestDefaultTypeInternal _RouteGet_Request_default_instance_;
 class RouteGet_Response;
 struct RouteGet_ResponseDefaultTypeInternal;
 extern RouteGet_ResponseDefaultTypeInternal _RouteGet_Response_default_instance_;
+class RouteSet_Request;
+struct RouteSet_RequestDefaultTypeInternal;
+extern RouteSet_RequestDefaultTypeInternal _RouteSet_Request_default_instance_;
+class RouteSet_Response;
+struct RouteSet_ResponseDefaultTypeInternal;
+extern RouteSet_ResponseDefaultTypeInternal _RouteSet_Response_default_instance_;
 }  // namespace router
 }  // namespace engine
 }  // namespace api
@@ -68,6 +74,8 @@ PROTOBUF_NAMESPACE_OPEN
 template<> ::com::wazuh::api::engine::router::Entry* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::Entry>(Arena*);
 template<> ::com::wazuh::api::engine::router::RouteGet_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::RouteGet_Request>(Arena*);
 template<> ::com::wazuh::api::engine::router::RouteGet_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::RouteGet_Response>(Arena*);
+template<> ::com::wazuh::api::engine::router::RouteSet_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::RouteSet_Request>(Arena*);
+template<> ::com::wazuh::api::engine::router::RouteSet_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::RouteSet_Response>(Arena*);
 PROTOBUF_NAMESPACE_CLOSE
 namespace com {
 namespace wazuh {
@@ -199,11 +207,15 @@ class Entry final :
 
   enum : int {
     kNameFieldNumber = 1,
-    kAssetFilterFieldNumber = 2,
-    kAssetPolicyFieldNumber = 3,
+    kFilterFieldNumber = 2,
+    kPolicyFieldNumber = 3,
     kPriorityFieldNumber = 4,
   };
-  // string name = 1;
+  // optional string name = 1;
+  bool has_name() const;
+  private:
+  bool _internal_has_name() const;
+  public:
   void clear_name();
   const std::string& name() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -217,35 +229,47 @@ class Entry final :
   std::string* _internal_mutable_name();
   public:
 
-  // string asset_filter = 2;
-  void clear_asset_filter();
-  const std::string& asset_filter() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_asset_filter(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_asset_filter();
-  PROTOBUF_NODISCARD std::string* release_asset_filter();
-  void set_allocated_asset_filter(std::string* asset_filter);
+  // optional string filter = 2;
+  bool has_filter() const;
   private:
-  const std::string& _internal_asset_filter() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_asset_filter(const std::string& value);
-  std::string* _internal_mutable_asset_filter();
+  bool _internal_has_filter() const;
+  public:
+  void clear_filter();
+  const std::string& filter() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_filter(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_filter();
+  PROTOBUF_NODISCARD std::string* release_filter();
+  void set_allocated_filter(std::string* filter);
+  private:
+  const std::string& _internal_filter() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_filter(const std::string& value);
+  std::string* _internal_mutable_filter();
   public:
 
-  // string asset_policy = 3;
-  void clear_asset_policy();
-  const std::string& asset_policy() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_asset_policy(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_asset_policy();
-  PROTOBUF_NODISCARD std::string* release_asset_policy();
-  void set_allocated_asset_policy(std::string* asset_policy);
+  // optional string policy = 3;
+  bool has_policy() const;
   private:
-  const std::string& _internal_asset_policy() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_asset_policy(const std::string& value);
-  std::string* _internal_mutable_asset_policy();
+  bool _internal_has_policy() const;
+  public:
+  void clear_policy();
+  const std::string& policy() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_policy(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_policy();
+  PROTOBUF_NODISCARD std::string* release_policy();
+  void set_allocated_policy(std::string* policy);
+  private:
+  const std::string& _internal_policy() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_policy(const std::string& value);
+  std::string* _internal_mutable_policy();
   public:
 
-  // int32 priority = 4;
+  // optional int32 priority = 4;
+  bool has_priority() const;
+  private:
+  bool _internal_has_priority() const;
+  public:
   void clear_priority();
   int32_t priority() const;
   void set_priority(int32_t value);
@@ -262,11 +286,12 @@ class Entry final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr asset_filter_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr asset_policy_;
-    int32_t priority_;
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr filter_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_;
+    int32_t priority_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_router_2eproto;
@@ -396,7 +421,11 @@ class RouteGet_Request final :
   enum : int {
     kNameFieldNumber = 1,
   };
-  // string name = 1;
+  // optional string name = 1;
+  bool has_name() const;
+  private:
+  bool _internal_has_name() const;
+  public:
   void clear_name();
   const std::string& name() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -418,8 +447,9 @@ class RouteGet_Request final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_router_2eproto;
@@ -613,6 +643,333 @@ class RouteGet_Response final :
   union { Impl_ _impl_; };
   friend struct ::TableStruct_router_2eproto;
 };
+// -------------------------------------------------------------------
+
+class RouteSet_Request final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.router.RouteSet_Request) */ {
+ public:
+  inline RouteSet_Request() : RouteSet_Request(nullptr) {}
+  ~RouteSet_Request() override;
+  explicit PROTOBUF_CONSTEXPR RouteSet_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  RouteSet_Request(const RouteSet_Request& from);
+  RouteSet_Request(RouteSet_Request&& from) noexcept
+    : RouteSet_Request() {
+    *this = ::std::move(from);
+  }
+
+  inline RouteSet_Request& operator=(const RouteSet_Request& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline RouteSet_Request& operator=(RouteSet_Request&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const RouteSet_Request& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const RouteSet_Request* internal_default_instance() {
+    return reinterpret_cast<const RouteSet_Request*>(
+               &_RouteSet_Request_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    3;
+
+  friend void swap(RouteSet_Request& a, RouteSet_Request& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(RouteSet_Request* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(RouteSet_Request* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  RouteSet_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<RouteSet_Request>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const RouteSet_Request& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const RouteSet_Request& from) {
+    RouteSet_Request::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(RouteSet_Request* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.router.RouteSet_Request";
+  }
+  protected:
+  explicit RouteSet_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kRouteFieldNumber = 1,
+  };
+  // optional .com.wazuh.api.engine.router.Entry route = 1;
+  bool has_route() const;
+  private:
+  bool _internal_has_route() const;
+  public:
+  void clear_route();
+  const ::com::wazuh::api::engine::router::Entry& route() const;
+  PROTOBUF_NODISCARD ::com::wazuh::api::engine::router::Entry* release_route();
+  ::com::wazuh::api::engine::router::Entry* mutable_route();
+  void set_allocated_route(::com::wazuh::api::engine::router::Entry* route);
+  private:
+  const ::com::wazuh::api::engine::router::Entry& _internal_route() const;
+  ::com::wazuh::api::engine::router::Entry* _internal_mutable_route();
+  public:
+  void unsafe_arena_set_allocated_route(
+      ::com::wazuh::api::engine::router::Entry* route);
+  ::com::wazuh::api::engine::router::Entry* unsafe_arena_release_route();
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.router.RouteSet_Request)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::com::wazuh::api::engine::router::Entry* route_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_router_2eproto;
+};
+// -------------------------------------------------------------------
+
+class RouteSet_Response final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.router.RouteSet_Response) */ {
+ public:
+  inline RouteSet_Response() : RouteSet_Response(nullptr) {}
+  ~RouteSet_Response() override;
+  explicit PROTOBUF_CONSTEXPR RouteSet_Response(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  RouteSet_Response(const RouteSet_Response& from);
+  RouteSet_Response(RouteSet_Response&& from) noexcept
+    : RouteSet_Response() {
+    *this = ::std::move(from);
+  }
+
+  inline RouteSet_Response& operator=(const RouteSet_Response& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline RouteSet_Response& operator=(RouteSet_Response&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const RouteSet_Response& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const RouteSet_Response* internal_default_instance() {
+    return reinterpret_cast<const RouteSet_Response*>(
+               &_RouteSet_Response_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    4;
+
+  friend void swap(RouteSet_Response& a, RouteSet_Response& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(RouteSet_Response* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(RouteSet_Response* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  RouteSet_Response* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<RouteSet_Response>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const RouteSet_Response& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const RouteSet_Response& from) {
+    RouteSet_Response::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(RouteSet_Response* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.router.RouteSet_Response";
+  }
+  protected:
+  explicit RouteSet_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kErrorFieldNumber = 2,
+    kStatusFieldNumber = 1,
+  };
+  // optional string error = 2;
+  bool has_error() const;
+  private:
+  bool _internal_has_error() const;
+  public:
+  void clear_error();
+  const std::string& error() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_error(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_error();
+  PROTOBUF_NODISCARD std::string* release_error();
+  void set_allocated_error(std::string* error);
+  private:
+  const std::string& _internal_error() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_error(const std::string& value);
+  std::string* _internal_mutable_error();
+  public:
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  void clear_status();
+  ::com::wazuh::api::engine::ReturnStatus status() const;
+  void set_status(::com::wazuh::api::engine::ReturnStatus value);
+  private:
+  ::com::wazuh::api::engine::ReturnStatus _internal_status() const;
+  void _internal_set_status(::com::wazuh::api::engine::ReturnStatus value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.router.RouteSet_Response)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr error_;
+    int status_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_router_2eproto;
+};
 // ===================================================================
 
 
@@ -624,9 +981,17 @@ class RouteGet_Response final :
 #endif  // __GNUC__
 // Entry
 
-// string name = 1;
+// optional string name = 1;
+inline bool Entry::_internal_has_name() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  return value;
+}
+inline bool Entry::has_name() const {
+  return _internal_has_name();
+}
 inline void Entry::clear_name() {
   _impl_.name_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000001u;
 }
 inline const std::string& Entry::name() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.Entry.name)
@@ -635,7 +1000,7 @@ inline const std::string& Entry::name() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void Entry::set_name(ArgT0&& arg0, ArgT... args) {
- 
+ _impl_._has_bits_[0] |= 0x00000001u;
  _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.name)
 }
@@ -648,22 +1013,32 @@ inline const std::string& Entry::_internal_name() const {
   return _impl_.name_.Get();
 }
 inline void Entry::_internal_set_name(const std::string& value) {
-  
+  _impl_._has_bits_[0] |= 0x00000001u;
   _impl_.name_.Set(value, GetArenaForAllocation());
 }
 inline std::string* Entry::_internal_mutable_name() {
-  
+  _impl_._has_bits_[0] |= 0x00000001u;
   return _impl_.name_.Mutable(GetArenaForAllocation());
 }
 inline std::string* Entry::release_name() {
   // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.Entry.name)
-  return _impl_.name_.Release();
+  if (!_internal_has_name()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  auto* p = _impl_.name_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.name_.IsDefault()) {
+    _impl_.name_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
 }
 inline void Entry::set_allocated_name(std::string* name) {
   if (name != nullptr) {
-    
+    _impl_._has_bits_[0] |= 0x00000001u;
   } else {
-    
+    _impl_._has_bits_[0] &= ~0x00000001u;
   }
   _impl_.name_.SetAllocated(name, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -674,109 +1049,153 @@ inline void Entry::set_allocated_name(std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.Entry.name)
 }
 
-// string asset_filter = 2;
-inline void Entry::clear_asset_filter() {
-  _impl_.asset_filter_.ClearToEmpty();
+// optional string filter = 2;
+inline bool Entry::_internal_has_filter() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  return value;
 }
-inline const std::string& Entry::asset_filter() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.Entry.asset_filter)
-  return _internal_asset_filter();
+inline bool Entry::has_filter() const {
+  return _internal_has_filter();
 }
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void Entry::set_asset_filter(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.asset_filter_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.asset_filter)
+inline void Entry::clear_filter() {
+  _impl_.filter_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000002u;
 }
-inline std::string* Entry::mutable_asset_filter() {
-  std::string* _s = _internal_mutable_asset_filter();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.router.Entry.asset_filter)
-  return _s;
-}
-inline const std::string& Entry::_internal_asset_filter() const {
-  return _impl_.asset_filter_.Get();
-}
-inline void Entry::_internal_set_asset_filter(const std::string& value) {
-  
-  _impl_.asset_filter_.Set(value, GetArenaForAllocation());
-}
-inline std::string* Entry::_internal_mutable_asset_filter() {
-  
-  return _impl_.asset_filter_.Mutable(GetArenaForAllocation());
-}
-inline std::string* Entry::release_asset_filter() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.Entry.asset_filter)
-  return _impl_.asset_filter_.Release();
-}
-inline void Entry::set_allocated_asset_filter(std::string* asset_filter) {
-  if (asset_filter != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.asset_filter_.SetAllocated(asset_filter, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.asset_filter_.IsDefault()) {
-    _impl_.asset_filter_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.Entry.asset_filter)
-}
-
-// string asset_policy = 3;
-inline void Entry::clear_asset_policy() {
-  _impl_.asset_policy_.ClearToEmpty();
-}
-inline const std::string& Entry::asset_policy() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.Entry.asset_policy)
-  return _internal_asset_policy();
+inline const std::string& Entry::filter() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.Entry.filter)
+  return _internal_filter();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void Entry::set_asset_policy(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.asset_policy_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.asset_policy)
+void Entry::set_filter(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000002u;
+ _impl_.filter_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.filter)
 }
-inline std::string* Entry::mutable_asset_policy() {
-  std::string* _s = _internal_mutable_asset_policy();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.router.Entry.asset_policy)
+inline std::string* Entry::mutable_filter() {
+  std::string* _s = _internal_mutable_filter();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.router.Entry.filter)
   return _s;
 }
-inline const std::string& Entry::_internal_asset_policy() const {
-  return _impl_.asset_policy_.Get();
+inline const std::string& Entry::_internal_filter() const {
+  return _impl_.filter_.Get();
 }
-inline void Entry::_internal_set_asset_policy(const std::string& value) {
-  
-  _impl_.asset_policy_.Set(value, GetArenaForAllocation());
+inline void Entry::_internal_set_filter(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.filter_.Set(value, GetArenaForAllocation());
 }
-inline std::string* Entry::_internal_mutable_asset_policy() {
-  
-  return _impl_.asset_policy_.Mutable(GetArenaForAllocation());
+inline std::string* Entry::_internal_mutable_filter() {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  return _impl_.filter_.Mutable(GetArenaForAllocation());
 }
-inline std::string* Entry::release_asset_policy() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.Entry.asset_policy)
-  return _impl_.asset_policy_.Release();
-}
-inline void Entry::set_allocated_asset_policy(std::string* asset_policy) {
-  if (asset_policy != nullptr) {
-    
-  } else {
-    
+inline std::string* Entry::release_filter() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.Entry.filter)
+  if (!_internal_has_filter()) {
+    return nullptr;
   }
-  _impl_.asset_policy_.SetAllocated(asset_policy, GetArenaForAllocation());
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  auto* p = _impl_.filter_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.asset_policy_.IsDefault()) {
-    _impl_.asset_policy_.Set("", GetArenaForAllocation());
+  if (_impl_.filter_.IsDefault()) {
+    _impl_.filter_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.Entry.asset_policy)
+  return p;
+}
+inline void Entry::set_allocated_filter(std::string* filter) {
+  if (filter != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  _impl_.filter_.SetAllocated(filter, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.filter_.IsDefault()) {
+    _impl_.filter_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.Entry.filter)
 }
 
-// int32 priority = 4;
+// optional string policy = 3;
+inline bool Entry::_internal_has_policy() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  return value;
+}
+inline bool Entry::has_policy() const {
+  return _internal_has_policy();
+}
+inline void Entry::clear_policy() {
+  _impl_.policy_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000004u;
+}
+inline const std::string& Entry::policy() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.Entry.policy)
+  return _internal_policy();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void Entry::set_policy(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000004u;
+ _impl_.policy_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.policy)
+}
+inline std::string* Entry::mutable_policy() {
+  std::string* _s = _internal_mutable_policy();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.router.Entry.policy)
+  return _s;
+}
+inline const std::string& Entry::_internal_policy() const {
+  return _impl_.policy_.Get();
+}
+inline void Entry::_internal_set_policy(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_.policy_.Set(value, GetArenaForAllocation());
+}
+inline std::string* Entry::_internal_mutable_policy() {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  return _impl_.policy_.Mutable(GetArenaForAllocation());
+}
+inline std::string* Entry::release_policy() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.Entry.policy)
+  if (!_internal_has_policy()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000004u;
+  auto* p = _impl_.policy_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.policy_.IsDefault()) {
+    _impl_.policy_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void Entry::set_allocated_policy(std::string* policy) {
+  if (policy != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000004u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000004u;
+  }
+  _impl_.policy_.SetAllocated(policy, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.policy_.IsDefault()) {
+    _impl_.policy_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.Entry.policy)
+}
+
+// optional int32 priority = 4;
+inline bool Entry::_internal_has_priority() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
+  return value;
+}
+inline bool Entry::has_priority() const {
+  return _internal_has_priority();
+}
 inline void Entry::clear_priority() {
   _impl_.priority_ = 0;
+  _impl_._has_bits_[0] &= ~0x00000008u;
 }
 inline int32_t Entry::_internal_priority() const {
   return _impl_.priority_;
@@ -786,7 +1205,7 @@ inline int32_t Entry::priority() const {
   return _internal_priority();
 }
 inline void Entry::_internal_set_priority(int32_t value) {
-  
+  _impl_._has_bits_[0] |= 0x00000008u;
   _impl_.priority_ = value;
 }
 inline void Entry::set_priority(int32_t value) {
@@ -798,9 +1217,17 @@ inline void Entry::set_priority(int32_t value) {
 
 // RouteGet_Request
 
-// string name = 1;
+// optional string name = 1;
+inline bool RouteGet_Request::_internal_has_name() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  return value;
+}
+inline bool RouteGet_Request::has_name() const {
+  return _internal_has_name();
+}
 inline void RouteGet_Request::clear_name() {
   _impl_.name_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000001u;
 }
 inline const std::string& RouteGet_Request::name() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.RouteGet_Request.name)
@@ -809,7 +1236,7 @@ inline const std::string& RouteGet_Request::name() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void RouteGet_Request::set_name(ArgT0&& arg0, ArgT... args) {
- 
+ _impl_._has_bits_[0] |= 0x00000001u;
  _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.RouteGet_Request.name)
 }
@@ -822,22 +1249,32 @@ inline const std::string& RouteGet_Request::_internal_name() const {
   return _impl_.name_.Get();
 }
 inline void RouteGet_Request::_internal_set_name(const std::string& value) {
-  
+  _impl_._has_bits_[0] |= 0x00000001u;
   _impl_.name_.Set(value, GetArenaForAllocation());
 }
 inline std::string* RouteGet_Request::_internal_mutable_name() {
-  
+  _impl_._has_bits_[0] |= 0x00000001u;
   return _impl_.name_.Mutable(GetArenaForAllocation());
 }
 inline std::string* RouteGet_Request::release_name() {
   // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.RouteGet_Request.name)
-  return _impl_.name_.Release();
+  if (!_internal_has_name()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  auto* p = _impl_.name_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.name_.IsDefault()) {
+    _impl_.name_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
 }
 inline void RouteGet_Request::set_allocated_name(std::string* name) {
   if (name != nullptr) {
-    
+    _impl_._has_bits_[0] |= 0x00000001u;
   } else {
-    
+    _impl_._has_bits_[0] &= ~0x00000001u;
   }
   _impl_.name_.SetAllocated(name, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -1030,9 +1467,199 @@ inline void RouteGet_Response::set_allocated_rute(::com::wazuh::api::engine::rou
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.RouteGet_Response.rute)
 }
 
+// -------------------------------------------------------------------
+
+// RouteSet_Request
+
+// optional .com.wazuh.api.engine.router.Entry route = 1;
+inline bool RouteSet_Request::_internal_has_route() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  PROTOBUF_ASSUME(!value || _impl_.route_ != nullptr);
+  return value;
+}
+inline bool RouteSet_Request::has_route() const {
+  return _internal_has_route();
+}
+inline void RouteSet_Request::clear_route() {
+  if (_impl_.route_ != nullptr) _impl_.route_->Clear();
+  _impl_._has_bits_[0] &= ~0x00000001u;
+}
+inline const ::com::wazuh::api::engine::router::Entry& RouteSet_Request::_internal_route() const {
+  const ::com::wazuh::api::engine::router::Entry* p = _impl_.route_;
+  return p != nullptr ? *p : reinterpret_cast<const ::com::wazuh::api::engine::router::Entry&>(
+      ::com::wazuh::api::engine::router::_Entry_default_instance_);
+}
+inline const ::com::wazuh::api::engine::router::Entry& RouteSet_Request::route() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.RouteSet_Request.route)
+  return _internal_route();
+}
+inline void RouteSet_Request::unsafe_arena_set_allocated_route(
+    ::com::wazuh::api::engine::router::Entry* route) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.route_);
+  }
+  _impl_.route_ = route;
+  if (route) {
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.router.RouteSet_Request.route)
+}
+inline ::com::wazuh::api::engine::router::Entry* RouteSet_Request::release_route() {
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  ::com::wazuh::api::engine::router::Entry* temp = _impl_.route_;
+  _impl_.route_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::com::wazuh::api::engine::router::Entry* RouteSet_Request::unsafe_arena_release_route() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.RouteSet_Request.route)
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  ::com::wazuh::api::engine::router::Entry* temp = _impl_.route_;
+  _impl_.route_ = nullptr;
+  return temp;
+}
+inline ::com::wazuh::api::engine::router::Entry* RouteSet_Request::_internal_mutable_route() {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  if (_impl_.route_ == nullptr) {
+    auto* p = CreateMaybeMessage<::com::wazuh::api::engine::router::Entry>(GetArenaForAllocation());
+    _impl_.route_ = p;
+  }
+  return _impl_.route_;
+}
+inline ::com::wazuh::api::engine::router::Entry* RouteSet_Request::mutable_route() {
+  ::com::wazuh::api::engine::router::Entry* _msg = _internal_mutable_route();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.router.RouteSet_Request.route)
+  return _msg;
+}
+inline void RouteSet_Request::set_allocated_route(::com::wazuh::api::engine::router::Entry* route) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.route_;
+  }
+  if (route) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(route);
+    if (message_arena != submessage_arena) {
+      route = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, route, submessage_arena);
+    }
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  _impl_.route_ = route;
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.RouteSet_Request.route)
+}
+
+// -------------------------------------------------------------------
+
+// RouteSet_Response
+
+// .com.wazuh.api.engine.ReturnStatus status = 1;
+inline void RouteSet_Response::clear_status() {
+  _impl_.status_ = 0;
+}
+inline ::com::wazuh::api::engine::ReturnStatus RouteSet_Response::_internal_status() const {
+  return static_cast< ::com::wazuh::api::engine::ReturnStatus >(_impl_.status_);
+}
+inline ::com::wazuh::api::engine::ReturnStatus RouteSet_Response::status() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.RouteSet_Response.status)
+  return _internal_status();
+}
+inline void RouteSet_Response::_internal_set_status(::com::wazuh::api::engine::ReturnStatus value) {
+  
+  _impl_.status_ = value;
+}
+inline void RouteSet_Response::set_status(::com::wazuh::api::engine::ReturnStatus value) {
+  _internal_set_status(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.RouteSet_Response.status)
+}
+
+// optional string error = 2;
+inline bool RouteSet_Response::_internal_has_error() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  return value;
+}
+inline bool RouteSet_Response::has_error() const {
+  return _internal_has_error();
+}
+inline void RouteSet_Response::clear_error() {
+  _impl_.error_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000001u;
+}
+inline const std::string& RouteSet_Response::error() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.RouteSet_Response.error)
+  return _internal_error();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void RouteSet_Response::set_error(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000001u;
+ _impl_.error_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.RouteSet_Response.error)
+}
+inline std::string* RouteSet_Response::mutable_error() {
+  std::string* _s = _internal_mutable_error();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.router.RouteSet_Response.error)
+  return _s;
+}
+inline const std::string& RouteSet_Response::_internal_error() const {
+  return _impl_.error_.Get();
+}
+inline void RouteSet_Response::_internal_set_error(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  _impl_.error_.Set(value, GetArenaForAllocation());
+}
+inline std::string* RouteSet_Response::_internal_mutable_error() {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  return _impl_.error_.Mutable(GetArenaForAllocation());
+}
+inline std::string* RouteSet_Response::release_error() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.RouteSet_Response.error)
+  if (!_internal_has_error()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  auto* p = _impl_.error_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.error_.IsDefault()) {
+    _impl_.error_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void RouteSet_Response::set_allocated_error(std::string* error) {
+  if (error != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  _impl_.error_.SetAllocated(error, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.error_.IsDefault()) {
+    _impl_.error_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.RouteSet_Response.error)
+}
+
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------
