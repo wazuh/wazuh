@@ -485,7 +485,6 @@ void PrintErrorAcordingToModules(int modules, const char *cfgfile) {
             merror(CONFIG_ERROR, cfgfile);
             break;
         default:
-            merror("Configuration error at module: %09o default\n", modules); /*delete*/
             break;
     }
 }
