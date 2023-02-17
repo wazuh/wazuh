@@ -1950,7 +1950,7 @@ def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
             super().__init__(**kwargs)
 
         def to_dict(self):
-            return {'info': {'n_active_agents': 4, 'type': 'worker'}, 'status': {'last_keep_alive': 0}}
+            return {'info': {'type': 'worker'}, 'status': {'last_keep_alive': 0}}
 
     class MockMaster(master.Master):
         def to_dict(self):
@@ -1964,7 +1964,7 @@ def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
 
     assert master_class.get_health({'jey': 'value', 'hoy': 'value'}) == {'n_connected_nodes': 0, 'nodes': {}}
     assert master_class.get_health(None) == {'n_connected_nodes': 1,
-                                             'nodes': {'1': {'info': {'n_active_agents': 5, 'type': 'worker'},
+                                             'nodes': {'1': {'info': {'n_active_agents': 1, 'type': 'worker'},
                                                              'status':
                                                                  {'last_keep_alive': '1970-01-01T00:00:00.000000Z'}},
                                                        'master': {'testing': 'get_health',

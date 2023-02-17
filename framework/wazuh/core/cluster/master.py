@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import contextlib
 import functools
 import json
 import operator
@@ -1203,19 +1204,18 @@ class Master(server.AbstractServer):
             workers_info.update({self.configuration['node_name']: self.to_dict()})
 
         # Get active agents by node and format last keep alive date format
-        active_agents = Agent.get_agents_overview(filters={'status': 'active', 'node_name': filter_node},
-                                                  q="id!=000")['items']
-        for agent in active_agents:
-            if (agent_node := agent["node_name"]) in workers_info.keys():
-                workers_info[agent_node]["info"]["n_active_agents"] = \
-                    workers_info[agent_node]["info"].get("n_active_agents", 0) + 1
+        active_agents = Agent.get_agents_overview(filters={'status': 'active', 'node_name': filter_node}, limit=None,
+                                                  select={'node_name'}, q="id!=000")['items']
+
         for node_name in workers_info.keys():
-            if workers_info[node_name]["info"].get("n_active_agents") is None:
-                workers_info[node_name]["info"]["n_active_agents"] = 0
+            workers_info[node_name]["info"]["n_active_agents"] = 0
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
                     utils.get_date_from_timestamp(workers_info[node_name]['status']['last_keep_alive']
                                                   ).strftime(DECIMALS_DATE_FORMAT))
+        for agent in active_agents:
+            with contextlib.suppress(KeyError):
+                workers_info[agent["node_name"]]["info"]["n_active_agents"] += 1
 
         return {"n_connected_nodes": n_connected_nodes, "nodes": workers_info}
 
