@@ -4,6 +4,7 @@ from importlib.metadata import files
 from enum import Enum, auto
 from pathlib import Path, PurePath
 from typing import Tuple
+import socket
 
 import yaml
 try:
@@ -96,3 +97,36 @@ class ResourceHandler:
         pure_path = PurePath(path / name)
 
         self._write_file(pure_path, content, format)
+
+    def update_catalog_file(self, path: str, name: str, content: dict, format: Format):
+        # TODO Update once API refactored is implemented
+        raw_message = ''
+        format_str = ''
+        if format is Format.JSON:
+            raw_message = json.dumps(content)
+            format_str = 'json'
+        elif format is Format.YML:
+            raw_message = yaml.dump(content, Dumper=Dumper)
+            format_str = 'yaml'
+        else:
+            raise Exception(f'Format not supported in update catalog {name}')
+
+        request = {'version': 1, 'command': 'put_catalog', 'origin': {
+            'name': 'engine-schema', 'module': 'engine-schema'}, 'parameters': {'name': name, 'content': raw_message, 'format': format_str}}
+        request_raw = json.dumps(request)
+        request_bytes = len(request_raw).to_bytes(4, 'little')
+        request_bytes += request_raw.encode('utf-8')
+
+        data = b''
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(path)
+            s.sendall(request_bytes)
+            data = s.recv(65507)
+
+        resp_size = int.from_bytes(data[:4], 'little')
+        resp_message = data[4:resp_size+4].decode('UTF-8')
+
+        response = json.loads(resp_message)
+        if response['message'] != 'OK':
+            raise Exception(
+                f'Could not update {name} due to: {response["message"]}')

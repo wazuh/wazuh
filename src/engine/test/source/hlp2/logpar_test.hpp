@@ -14,54 +14,50 @@ json::Json getConfig()
 {
     json::Json config {};
     config.setObject();
-    config.setString(hlp::schemaTypeToStr(hlp::SchemaType::LONG), "/long");
-    config.setString(hlp::schemaTypeToStr(hlp::SchemaType::TEXT), "/text");
+    config.setString(hlp::schemaTypeToStr(hlp::SchemaType::LONG), "/fields/long");
+    config.setString(hlp::schemaTypeToStr(hlp::SchemaType::TEXT), "/fields/text");
     return config;
 }
 
-parsec::Parser<json::Json> _dummyTextParser(std::string endToken,
-                                             std::vector<std::string> args)
+parsec::Parser<json::Json> __dummyTextParser(std::string endToken, std::vector<std::string> args)
 {
-    return parsec::Parser<json::Json> {
-        [end = endToken](std::string_view txt, size_t i)
-        {
-            if (i < txt.size())
-            {
-                json::Json result {};
-                if (end.empty())
-                {
-                    result.setString(txt.substr(i));
-                    return parsec::makeSuccess(std::move(result), txt.size());
-                }
-                else
-                {
-                    auto pos = txt.find(end, i);
-                    if (pos != std::string_view::npos)
-                    {
-                        std::string match {txt.substr(i, pos - i)};
-                        if (match.empty())
-                        {
-                            return parsec::makeError<json::Json>("Empty match", i);
-                        }
-                        result.setString(match);
-                        return parsec::makeSuccess(std::move(result), pos);
-                    }
-                    else
-                    {
-                        return parsec::makeError<json::Json>("Found EOF", i);
-                    }
-                }
-            }
-            else
-            {
-                return parsec::makeError<json::Json>("Unexpected end of input", i);
-            }
-        }};
+    return parsec::Parser<json::Json> {[end = endToken](std::string_view txt, size_t i)
+                                       {
+                                           if (i < txt.size())
+                                           {
+                                               json::Json result {};
+                                               if (end.empty())
+                                               {
+                                                   result.setString(txt.substr(i));
+                                                   return parsec::makeSuccess(std::move(result), txt.size());
+                                               }
+                                               else
+                                               {
+                                                   auto pos = txt.find(end, i);
+                                                   if (pos != std::string_view::npos)
+                                                   {
+                                                       std::string match {txt.substr(i, pos - i)};
+                                                       if (match.empty())
+                                                       {
+                                                           return parsec::makeError<json::Json>("Empty match", i);
+                                                       }
+                                                       result.setString(match);
+                                                       return parsec::makeSuccess(std::move(result), pos);
+                                                   }
+                                                   else
+                                                   {
+                                                       return parsec::makeError<json::Json>("Found EOF", i);
+                                                   }
+                                               }
+                                           }
+                                           else
+                                           {
+                                               return parsec::makeError<json::Json>("Unexpected end of input", i);
+                                           }
+                                       }};
 }
 
-parsec::Parser<json::Json> dummyTextParser(std::string,
-                                           std::list<std::string> endTokens,
-                                           std::vector<std::string> args)
+parsec::Parser<json::Json> dummyTextParser(std::string, std::list<std::string> endTokens, std::vector<std::string> args)
 {
     if (endTokens.empty())
     {
@@ -83,8 +79,7 @@ parsec::Parser<json::Json> dummyTextParser(std::string,
     return p;
 }
 
-parsec::Parser<json::Json>
-dummyLongParser(std::string, std::list<std::string>, std::vector<std::string> args)
+parsec::Parser<json::Json> dummyLongParser(std::string, std::list<std::string>, std::vector<std::string> args)
 {
     if (!args.empty())
     {
@@ -116,9 +111,7 @@ dummyLongParser(std::string, std::list<std::string>, std::vector<std::string> ar
     };
 }
 
-parsec::Parser<json::Json> dummyLiteralParser(std::string,
-                                              std::list<std::string>,
-                                              std::vector<std::string> args)
+parsec::Parser<json::Json> dummyLiteralParser(std::string, std::list<std::string>, std::vector<std::string> args)
 {
     if (args.size() != 1)
     {
@@ -135,8 +128,7 @@ parsec::Parser<json::Json> dummyLiteralParser(std::string,
             }
             else
             {
-                return parsec::makeError<json::Json>(
-                    fmt::format("Expected '{}' at '{}'", lit, i), i);
+                return parsec::makeError<json::Json>(fmt::format("Expected '{}' at '{}'", lit, i), i);
             }
         }
         else

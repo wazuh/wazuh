@@ -196,7 +196,7 @@
                     "items": {
                         "allOf": [
                             {
-                                "$ref": "schemas.json#"
+                                "$ref": "fields.json#"
                             },
                             {
                                 "maxProperties": 1
@@ -218,7 +218,7 @@
             "items": {
                 "allOf": [
                     {
-                        "$ref": "schemas.json#"
+                        "$ref": "fields.json#"
                     },
                     {
                         "maxProperties": 1
@@ -250,7 +250,7 @@
                     "items": {
                         "allOf": [
                             {
-                                "$ref": "schemas.json#"
+                                "$ref": "fields.json#"
                             },
                             {
                                 "maxProperties": 1
