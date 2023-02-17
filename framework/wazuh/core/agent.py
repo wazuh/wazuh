@@ -683,7 +683,7 @@ class Agent:
 
     @staticmethod
     def get_agents_overview(offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
-                            filters=None, q=""):
+                            filters=None, q="", count=True, get_data=True):
         """Gets a list of available agents with basic attributes.
 
         Parameters
@@ -696,21 +696,26 @@ class Agent:
             Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         search : str
             Looks for items with the specified string. Format: {"fields": ["field1","field2"]}.
-        select : str
+        select : set
             Select fields to return. Format: {"fields":["field1","field2"]}.
         filters : dict
             Defines required field filters.
         q : str
             Defines query to filter in DB.
+        count : bool
+            Whether to compute totalItems.
+        get_data : bool
+            Whether to return data.
 
         Returns
         -------
-        Information gathered from the database query
+        data : dict
+            Information gathered from the database query
         """
         pfilters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=filters.pop('id'),
                                     filters=filters) if filters and 'id' in filters else {'filters': filters}
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      query=q, **pfilters)
+                                      query=q, count=count, get_data=get_data, **pfilters)
         data = db_query.run()
 
         return data
