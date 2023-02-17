@@ -22,14 +22,12 @@ parsec::Parser<char> pChar(std::string chars)
             }
             else
             {
-                return parsec::makeError<char>(
-                    fmt::format("Expected one of '{}', found '{}'", chars, t[i]), i);
+                return parsec::makeError<char>(fmt::format("Expected one of '{}', found '{}'", chars, t[i]), i);
             }
         }
         else
         {
-            return parsec::makeError<char>(
-                fmt::format("Expected one of '{}', found EOF", chars), i);
+            return parsec::makeError<char>(fmt::format("Expected one of '{}', found EOF", chars), i);
         }
     };
 }
@@ -46,14 +44,12 @@ parsec::Parser<char> pNotChar(std::string chars)
             }
             else
             {
-                return parsec::makeError<char>(
-                    fmt::format("Expected not one of '{}', found '{}'", chars, t[i]), i);
+                return parsec::makeError<char>(fmt::format("Expected not one of '{}', found '{}'", chars, t[i]), i);
             }
         }
         else
         {
-            return parsec::makeError<char>(
-                fmt::format("Expected not one of '{}', found EOF", chars), i);
+            return parsec::makeError<char>(fmt::format("Expected not one of '{}', found EOF", chars), i);
         }
     };
 }
@@ -99,30 +95,27 @@ parsec::Parser<char> pCharAlphaNum(std::string extended)
     {
         if (i < t.size())
         {
-            if ((t[i] >= 'a' && t[i] <= 'z') || (t[i] >= 'A' && t[i] <= 'Z')
-                || (t[i] >= '0' && t[i] <= '9')
+            if ((t[i] >= 'a' && t[i] <= 'z') || (t[i] >= 'A' && t[i] <= 'Z') || (t[i] >= '0' && t[i] <= '9')
                 || extended.find(t[i]) != std::string::npos)
             {
                 return parsec::makeSuccess(char {t[i]}, i + 1);
             }
             else
             {
-                return parsec::makeError<char>(
-                    fmt::format("Expected alphanumeric, found '{}'", t[i]), i);
+                return parsec::makeError<char>(fmt::format("Expected alphanumeric, found '{}'", t[i]), i);
             }
         }
         else
         {
-            return parsec::makeError<char>(
-                fmt::format("Expected alphanumeric, found EOF"), i);
+            return parsec::makeError<char>(fmt::format("Expected alphanumeric, found EOF"), i);
         }
     };
 }
 
 parsec::Parser<parsec::Values<std::string>> pArgs()
 {
-    auto pArg = pChar({syntax::EXPR_ARG_SEP}) >> pRawLiteral(
-                    {syntax::EXPR_ARG_SEP, syntax::EXPR_END}, {syntax::EXPR_ESCAPE});
+    auto pArg =
+        pChar({syntax::EXPR_ARG_SEP}) >> pRawLiteral({syntax::EXPR_ARG_SEP, syntax::EXPR_END}, {syntax::EXPR_ESCAPE});
 
     return parsec::many(pArg);
 }
@@ -144,8 +137,8 @@ parsec::Parser<FieldName> pFieldName()
         }
         else
         {
-            return parsec::makeError<std::string>(
-                fmt::format("Optional '{}', found EOF", syntax::EXPR_CUSTOM_FIELD), i);
+            return parsec::makeError<std::string>(fmt::format("Optional '{}', found EOF", syntax::EXPR_CUSTOM_FIELD),
+                                                  i);
         }
     };
 
@@ -172,16 +165,11 @@ parsec::Parser<FieldName> pFieldName()
                 [](auto s) {
                     return FieldName {s, true};
                 },
-                parsec::fmap<std::string, std::string>(
-                    [=](auto s) { return customS + s; }, parsec::opt(pName)));
+                parsec::fmap<std::string, std::string>([=](auto s) { return customS + s; }, parsec::opt(pName)));
         }
         else
         {
-            return parsec::fmap<FieldName, std::string>(
-                [](auto s) {
-                    return FieldName {s, false};
-                },
-                pName);
+            return parsec::fmap<FieldName, std::string>([](auto s) { return FieldName {s, false}; }, pName);
         }
     };
 
@@ -192,15 +180,14 @@ parsec::Parser<Field> pField()
 {
     auto start = pChar({syntax::EXPR_BEGIN});
     auto end = pChar({syntax::EXPR_END});
-    auto pField = parsec::
-        fmap<Field, std::tuple<std::tuple<char, FieldName>, parsec::Values<std::string>>>(
-            [](auto t)
-            {
-                const auto& [tInner, args] = t;
-                const auto& [c, name] = tInner;
-                return Field {name, args, c != '\0'};
-            },
-            (parsec::opt(pChar({syntax::EXPR_OPT})) & pFieldName()) & pArgs());
+    auto pField = parsec::fmap<Field, std::tuple<std::tuple<char, FieldName>, parsec::Values<std::string>>>(
+        [](auto t)
+        {
+            const auto& [tInner, args] = t;
+            const auto& [c, name] = tInner;
+            return Field {name, args, c != '\0'};
+        },
+        (parsec::opt(pChar({syntax::EXPR_OPT})) & pFieldName()) & pArgs());
     return start >> pField << end;
 }
 
@@ -212,9 +199,8 @@ parsec::Parser<Literal> pLiteral()
     reservedLiteralChars.push_back(syntax::EXPR_GROUP_BEGIN);
     reservedLiteralChars.push_back(syntax::EXPR_GROUP_END);
 
-    return parsec::fmap<Literal, std::string>(
-        [](auto s) { return Literal {s}; },
-        pRawLiteral1(reservedLiteralChars, {syntax::EXPR_ESCAPE}));
+    return parsec::fmap<Literal, std::string>([](auto s) { return Literal {s}; },
+                                              pRawLiteral1(reservedLiteralChars, {syntax::EXPR_ESCAPE}));
 }
 
 parsec::Parser<Choice> pChoice()
@@ -234,17 +220,13 @@ parsec::Parser<Choice> pChoice()
             if (f1.optional)
             {
                 return parsec::makeError<Choice>(
-                    fmt::format("Expected field, found optional field '{}'",
-                                f1.name.value),
-                    i);
+                    fmt::format("Expected field, found optional field '{}'", f1.name.value), i);
             }
 
             if (f2.optional)
             {
                 return parsec::makeError<Choice>(
-                    fmt::format("Expected field, found optional field '{}'",
-                                f2.name.value),
-                    i);
+                    fmt::format("Expected field, found optional field '{}'", f2.name.value), i);
             }
 
             return parsec::makeSuccess(Choice {f1, f2}, res.index());
@@ -254,12 +236,9 @@ parsec::Parser<Choice> pChoice()
 
 parsec::Parser<parsec::Values<ParserInfo>> pExpr()
 {
-    auto pF =
-        parsec::fmap<ParserInfo, Field>([](auto f) { return ParserInfo {f}; }, pField());
-    auto pL = parsec::fmap<ParserInfo, Literal>([](auto l) { return ParserInfo {l}; },
-                                                pLiteral());
-    auto pC = parsec::fmap<ParserInfo, Choice>([](auto c) { return ParserInfo {c}; },
-                                               pChoice());
+    auto pF = parsec::fmap<ParserInfo, Field>([](auto f) { return ParserInfo {f}; }, pField());
+    auto pL = parsec::fmap<ParserInfo, Literal>([](auto l) { return ParserInfo {l}; }, pLiteral());
+    auto pC = parsec::fmap<ParserInfo, Choice>([](auto c) { return ParserInfo {c}; }, pChoice());
 
     auto pExpr = pC | pF | pL;
     return parsec::many1(pExpr);
@@ -269,8 +248,7 @@ namespace
 {
 parsec::Result<Group> pG(std::string_view text, size_t i)
 {
-    auto resStart =
-        (pChar({syntax::EXPR_GROUP_BEGIN}) & pChar({syntax::EXPR_OPT}))(text, i);
+    auto resStart = (pChar({syntax::EXPR_GROUP_BEGIN}) & pChar({syntax::EXPR_OPT}))(text, i);
     auto lastIdx = i;
     if (resStart.failure())
     {
@@ -279,10 +257,9 @@ parsec::Result<Group> pG(std::string_view text, size_t i)
     lastIdx = resStart.index();
 
     parsec::Parser<Group> pGfn = pG;
-    auto pGmap = parsec::fmap<parsec::Values<ParserInfo>, Group>(
-        [](auto v) { return parsec::Values<ParserInfo> {v}; }, pGfn);
-    auto pBody = parsec::fmap<parsec::Values<ParserInfo>,
-                              parsec::Values<parsec::Values<ParserInfo>>>(
+    auto pGmap =
+        parsec::fmap<parsec::Values<ParserInfo>, Group>([](auto v) { return parsec::Values<ParserInfo> {v}; }, pGfn);
+    auto pBody = parsec::fmap<parsec::Values<ParserInfo>, parsec::Values<parsec::Values<ParserInfo>>>(
         [](auto v)
         {
             parsec::Values<ParserInfo> merge {};
@@ -323,11 +300,8 @@ parsec::Parser<std::list<ParserInfo>> pLogpar()
 {
     auto pE = pExpr();
     auto pG = pGroup();
-    auto p = pE
-             | parsec::fmap<std::list<ParserInfo>, Group>(
-                 [](auto g) { return std::list<ParserInfo> {g}; }, pG);
-    return parsec::fmap<std::list<ParserInfo>,
-                        parsec::Values<parsec::Values<ParserInfo>>>(
+    auto p = pE | parsec::fmap<std::list<ParserInfo>, Group>([](auto g) { return std::list<ParserInfo> {g}; }, pG);
+    return parsec::fmap<std::list<ParserInfo>, parsec::Values<parsec::Values<ParserInfo>>>(
                [](auto v)
                {
                    std::list<ParserInfo> merged {};
@@ -352,7 +326,12 @@ Logpar::Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion, size_t
     if (!ecsFieldTypes.isObject())
     {
         // TODO: check message
-        throw std::runtime_error("ECS field types must be an object");
+        throw std::runtime_error("Configuration file must be an object");
+    }
+
+    if (!ecsFieldTypes.isObject("/fields"))
+    {
+        throw std::runtime_error("Configuration file must have a 'fields' object");
     }
 
     if (ecsFieldTypes.size() == 0)
@@ -362,25 +341,23 @@ Logpar::Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion, size_t
     }
 
     // Populate m_fieldTypes
-    auto obj = ecsFieldTypes.getObject().value();
+    auto obj = ecsFieldTypes.getObject("/fields").value();
     for (const auto& [key, value] : obj)
     {
         if (!value.isString())
         {
-            throw std::runtime_error(
-                fmt::format("When loading logpar schema fields, field '{}' must "
-                            "be a string with the name of the type",
-                            key));
+            throw std::runtime_error(fmt::format("When loading logpar schema fields, field '{}' must "
+                                                 "be a string with the name of the type",
+                                                 key));
         }
 
         const auto schemaType = strToSchemaType(value.getString().value());
         if (schemaType == SchemaType::ERROR_TYPE)
         {
-            throw std::runtime_error(
-                fmt::format("When loading logpar schema fields, type '{}' in schema "
-                            "field '{}' is not supported",
-                            value.getString().value(),
-                            key));
+            throw std::runtime_error(fmt::format("When loading logpar schema fields, type '{}' in schema "
+                                                 "field '{}' is not supported",
+                                                 value.getString().value(),
+                                                 key));
         }
 
         m_fieldTypes[key] = schemaType;
@@ -411,21 +388,17 @@ Logpar::Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion, size_t
     m_parserBuilders = {};
 }
 
-parsec::Parser<json::Json>
-Logpar::buildLiteralParser(const parser::Literal& literal) const
+parsec::Parser<json::Json> Logpar::buildLiteralParser(const parser::Literal& literal) const
 {
     if (m_parserBuilders.count(ParserType::P_LITERAL) == 0)
     {
-        throw std::runtime_error(fmt::format("Parser type '{}' not found",
-                                             parserTypeToStr(ParserType::P_LITERAL)));
+        throw std::runtime_error(fmt::format("Parser type '{}' not found", parserTypeToStr(ParserType::P_LITERAL)));
     }
 
     return m_parserBuilders.at(ParserType::P_LITERAL)(literal.value, {}, {literal.value});
 }
 
-parsec::Parser<json::Json>
-Logpar::buildFieldParser(const parser::Field& field,
-                         std::list<std::string> endTokens) const
+parsec::Parser<json::Json> Logpar::buildFieldParser(const parser::Field& field, std::list<std::string> endTokens) const
 {
     // Get type of the parser to be built
     ParserType type;
@@ -443,8 +416,7 @@ Logpar::buildFieldParser(const parser::Field& field,
             type = strToParserType(args.front());
             if (type == ParserType::ERROR_TYPE)
             {
-                throw std::runtime_error(
-                    fmt::format("Parser type '{}' not found", field.args.front()));
+                throw std::runtime_error(fmt::format("Parser type '{}' not found", field.args.front()));
             }
             args.erase(args.begin());
         }
@@ -454,15 +426,14 @@ Logpar::buildFieldParser(const parser::Field& field,
     {
         if (m_fieldTypes.count(field.name.value) == 0)
         {
-            throw std::runtime_error(
-                fmt::format("Field '{}' not found in schema", field.name.value));
+            throw std::runtime_error(fmt::format("Field '{}' not found in schema", field.name.value));
         }
 
         const auto schemaType = m_fieldTypes.at(field.name.value);
         if (m_typeParsers.count(schemaType) == 0)
         {
-            throw std::runtime_error(fmt::format(
-                "Parser type for ECS type '{}' not found", schemaTypeToStr(schemaType)));
+            throw std::runtime_error(
+                fmt::format("Parser type for ECS type '{}' not found", schemaTypeToStr(schemaType)));
         }
 
         type = m_typeParsers.at(schemaType);
@@ -470,8 +441,7 @@ Logpar::buildFieldParser(const parser::Field& field,
 
     if (m_parserBuilders.count(type) == 0)
     {
-        throw std::runtime_error(
-            fmt::format("Parser type '{}' not found", parserTypeToStr(type)));
+        throw std::runtime_error(fmt::format("Parser type '{}' not found", parserTypeToStr(type)));
     }
 
     // Get parser from type
@@ -510,9 +480,8 @@ Logpar::buildFieldParser(const parser::Field& field,
     return ret;
 }
 
-parsec::Parser<json::Json>
-Logpar::buildChoiceParser(const parser::Choice& choice,
-                          std::list<std::string> endTokens) const
+parsec::Parser<json::Json> Logpar::buildChoiceParser(const parser::Choice& choice,
+                                                     std::list<std::string> endTokens) const
 {
     auto p1 = buildFieldParser(choice.left, endTokens);
     auto p2 = buildFieldParser(choice.right, endTokens);
@@ -520,16 +489,13 @@ Logpar::buildChoiceParser(const parser::Choice& choice,
     return p1 | p2;
 }
 
-parsec::Parser<json::Json> Logpar::buildGroupOptParser(const parser::Group& group,
-                                                       size_t recurLvl) const
+parsec::Parser<json::Json> Logpar::buildGroupOptParser(const parser::Group& group, size_t recurLvl) const
 {
     auto p = buildParsers(group.children, recurLvl);
     return parsec::opt(p);
 }
 
-parsec::Parser<json::Json>
-Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
-                     size_t recurLvl) const
+parsec::Parser<json::Json> Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos, size_t recurLvl) const
 {
     if (recurLvl > m_maxGroupRecursion)
     {
@@ -537,11 +503,9 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
     }
 
     std::list<parsec::Parser<json::Json>> parsers;
-    for (auto parserInfo = parserInfos.begin(); parserInfo != parserInfos.end();
-         ++parserInfo)
+    for (auto parserInfo = parserInfos.begin(); parserInfo != parserInfos.end(); ++parserInfo)
     {
-        auto groupEndToken = [](const parser::Group& group,
-                                auto& ref) -> std::list<std::string>
+        auto groupEndToken = [](const parser::Group& group, auto& ref) -> std::list<std::string>
         {
             auto it = group.children.cbegin();
             std::list<std::string> endTokens;
@@ -556,11 +520,9 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
                 // and each group can resolve its end token
                 std::list<std::string> insideTokens;
 
-                while (it != group.children.cend()
-                       && std::holds_alternative<parser::Group>(*it))
+                while (it != group.children.cend() && std::holds_alternative<parser::Group>(*it))
                 {
-                    insideTokens.splice(insideTokens.end(),
-                                        ref(std::get<parser::Group>(*it), ref));
+                    insideTokens.splice(insideTokens.end(), ref(std::get<parser::Group>(*it), ref));
                     it = std::next(it);
                 }
                 if (std::holds_alternative<parser::Literal>(*it))
@@ -640,36 +602,33 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
                 auto endTokens = groupEndToken(group, groupEndToken);
 
                 // Dependendant of recursion allowed, as for now we only allow one
-                auto pF = buildFieldParser(std::get<parser::Field>(*parserInfo),
-                                           {endTokens.front()});
+                auto pF = buildFieldParser(std::get<parser::Field>(*parserInfo), {endTokens.front()});
                 auto pG = buildParsers(group.children, recurLvl + 1);
-                auto choice1 =
-                    parsec::fmap<json::Json, std::tuple<json::Json, json::Json>>(
-                        [](auto&& t) -> json::Json
+                auto choice1 = parsec::fmap<json::Json, std::tuple<json::Json, json::Json>>(
+                    [](auto&& t) -> json::Json
+                    {
+                        auto& [a, b] = t;
+                        if (a.isObject() && b.isObject())
                         {
-                            auto& [a, b] = t;
-                            if (a.isObject() && b.isObject())
-                            {
-                                a.merge(json::NOT_RECURSIVE, b);
-                                return a;
-                            }
-                            else if (a.isObject())
-                            {
-                                return a;
-                            }
-                            else if (b.isObject())
-                            {
-                                return b;
-                            }
-                            else
-                            {
-                                return json::Json();
-                            }
-                        },
-                        pF& pG);
+                            a.merge(json::NOT_RECURSIVE, b);
+                            return a;
+                        }
+                        else if (a.isObject())
+                        {
+                            return a;
+                        }
+                        else if (b.isObject())
+                        {
+                            return b;
+                        }
+                        else
+                        {
+                            return json::Json();
+                        }
+                    },
+                    pF& pG);
                 auto endToken2 = getEndToken(parserInfos, next, getEndToken);
-                auto choice2 =
-                    buildFieldParser(std::get<parser::Field>(*parserInfo), endToken2);
+                auto choice2 = buildFieldParser(std::get<parser::Field>(*parserInfo), endToken2);
 
                 parsers.push_back(choice1 | choice2);
                 // Skip group
@@ -678,11 +637,9 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
             }
 
             // Normal case
-            std::list<std::string> endTokens =
-                getEndToken(parserInfos, parserInfo, getEndToken);
+            std::list<std::string> endTokens = getEndToken(parserInfos, parserInfo, getEndToken);
 
-            parsers.push_back(
-                buildFieldParser(std::get<parser::Field>(*parserInfo), endTokens));
+            parsers.push_back(buildFieldParser(std::get<parser::Field>(*parserInfo), endTokens));
         }
         // Literal
         else if (std::holds_alternative<parser::Literal>(*parserInfo))
@@ -692,11 +649,9 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
         // Choice
         else if (std::holds_alternative<parser::Choice>(*parserInfo))
         {
-            std::list<std::string> endTokens =
-                getEndToken(parserInfos, parserInfo, getEndToken);
+            std::list<std::string> endTokens = getEndToken(parserInfos, parserInfo, getEndToken);
 
-            parsers.push_back(
-                buildChoiceParser(std::get<parser::Choice>(*parserInfo), endTokens));
+            parsers.push_back(buildChoiceParser(std::get<parser::Choice>(*parserInfo), endTokens));
         }
         // Group
         else if (std::holds_alternative<parser::Group>(*parserInfo))
@@ -715,8 +670,7 @@ Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos,
             }
 
             // Recursively calls buildParsers
-            parsers.push_back(
-                buildGroupOptParser(std::get<parser::Group>(*parserInfo), recurLvl + 1));
+            parsers.push_back(buildGroupOptParser(std::get<parser::Group>(*parserInfo), recurLvl + 1));
         }
         else
         {
@@ -761,8 +715,7 @@ void Logpar::registerBuilder(ParserType type, ParserBuilder builder)
 {
     if (m_parserBuilders.count(type) != 0)
     {
-        throw std::runtime_error(
-            fmt::format("Parser type '{}' already registered", parserTypeToStr(type)));
+        throw std::runtime_error(fmt::format("Parser type '{}' already registered", parserTypeToStr(type)));
     }
 
     m_parserBuilders[type] = builder;

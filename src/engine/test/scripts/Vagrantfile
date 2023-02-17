@@ -39,7 +39,7 @@ Vagrant.configure("2") do |config|
         #Dependencies
         add-apt-repository ppa:rmescandon/yq -y
         apt-get update
-        apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq yq tig linux-tools-common linux-tools-generic linux-tools-`uname -r` bpfcc-tools sysstat -y
+        apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq yq tig linux-tools-common linux-tools-generic linux-tools-`uname -r` bpfcc-tools sysstat python3-pip -y
 
         #CMake 3.24 installation from its release page
         curl -sL https://github.com/Kitware/CMake/releases/download/v3.24.2/cmake-3.24.2-linux-x86_64.tar.gz | tar -xz -C /usr/local --strip-components=1
@@ -93,10 +93,16 @@ Vagrant.configure("2") do |config|
         echo "--- Setting up the engine ---"
         systemctl stop wazuh-manager
         rm $WAZUH_DIR/queue/sockets/queue
-        mkdir -p $ENGINE_DIR/store
+        mkdir -p $ENGINE_DIR/store/schema
         mkdir $WAZUH_DIR/etc/kvdb/
         mkdir $WAZUH_DIR/etc/kvdb/kvdb_test/
-        cp -r $ENGINE_SRC_DIR/ruleset/store/schema/ $ENGINE_DIR/store/
+        # Copy needed files in the store so the engine can start
+        mkdir $ENGINE_DIR/store/schema/wazuh-logpar-types
+        cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-logpar-types.json $ENGINE_DIR/store/schema/wazuh-logpar-types/0
+        mkdir $ENGINE_DIR/store/schema/wazuh-asset
+        cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-asset.json $ENGINE_DIR/store/schema/wazuh-asset/0
+        mkdir $ENGINE_DIR/store/schema/wazuh-environment
+        cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-environment.json $ENGINE_DIR/store/schema/wazuh-environment/0
 
         echo "--- Enabling the engine ---"
         cp $ENGINE_SRC_DIR/build/main $ENGINE_DIR/wazuh-engine
@@ -157,6 +163,12 @@ Vagrant.configure("2") do |config|
         echo '{"yaml.schemas":{"./ruleset/schemas/wazuh-asset.json":["*/decoders/*.yml","*/rules/*.yml","*/outputs/*.yml","*/filters/*.yml"],"./ruleset/schemas/wazuh-environments.json":["*/environments/*.yml"]}}'| tee $CS_HOME/engine/wazuh/src/engine/.vscode/settings.json
 
         chown -R $CS_USER:$CS_USER $CS_HOME/
+
+        # Install engine-schema python script
+        pip3 install $ENGINE_SRC_DIR/test/scripts/engine-schema
+        if ! engine-schema -h; then
+            echo "Error installing engine-schema"
+        fi
     SHELL
 
 end

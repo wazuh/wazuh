@@ -11,6 +11,6 @@ def configure(subparsers):
 
 def get_args(args):
     modules_dir = args['modules_dir'] if 'modules_dir' in args else None
-    modules = args['module'] if 'modules' in args else []
+    modules = args['module'] if 'module' in args else []
 
     return modules_dir, modules

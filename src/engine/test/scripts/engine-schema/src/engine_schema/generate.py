@@ -35,7 +35,7 @@ def generate(ecs_version: str, modules_dir: str, modules: list, resource_handler
     # Generate field tree from ecs_flat
     print('Building field tree from ecs definition...')
     field_tree = ecs.build_field_tree(ecs_flat)
-    field_tree.add_logpar_overrides(logpar_template)
+    field_tree.add_logpar_overrides(logpar_template['fields'])
     print('Success.')
 
     # Add modules
@@ -65,12 +65,12 @@ def generate(ecs_version: str, modules_dir: str, modules: list, resource_handler
     print('Generating indexer mappings...')
     jmappings = field_tree.get_jmapping()
     mappings_template['mappings']['properties'] = {
-        **mappings_template['mappings']['properties'], **jproperties}
+        **mappings_template['mappings']['properties'], **jmappings}
     print('Success.')
 
     # Get the logpar configuration file
     print('Generating logpar configuration...')
-    jlogpar = field_tree.get_jlogpar()
+    logpar_template['fields'] = field_tree.get_jlogpar()
     print('Success.')
 
-    return jproperties, jmappings, jlogpar
+    return fields_template, mappings_template, logpar_template
