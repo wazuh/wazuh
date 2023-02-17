@@ -2473,12 +2473,12 @@ checks:
       - 'f:/etc/rsyslog.conf -> !r:^\s*# && r:ModLoad imtcp|InputTCPServerRun|load="imtcp"|type="imtcp"'
       - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:\s*# && r:ModLoad imtcp|InputTCPServerRun|load="imtcp"|type="imtcp"'
 
-  ###############################################
+  ################################################
   # 4.2.2 Configure journald
-  ###############################################
-  ###############################################
+  ################################################
+  ################################################
   # 4.2.2.1 Ensure journald is configured to send logs to a remote log host
-  ###############################################
+  ################################################
 
   # 4.2.2.1.1 Ensure systemd-journal-remote is installed (Manual)
   - id: 28092 
