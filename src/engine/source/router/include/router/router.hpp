@@ -140,12 +140,20 @@ public:
     std::optional<base::Error> enqueueEvent(base::Event event);
 
     /**
+     * @brief Push an event to the queue of the router
+     *
+     * @param event event to push to the queue in ossec format: <queue>:<location>:<data>
+     * @return std::optional<base::Error> A error with description if the event can't be pushed
+     */
+    std::optional<base::Error> enqueueOssecEvent(std::string_view event);
+
+    /**
      * @brief Delete a route from the router
      *
      * @param name name of the route
      * @return A error with description if the route can't be deleted
      */
-    std::optional<base::Error> removeRoute(const std::string& name);
+    void removeRoute(const std::string& name);
 
     /**
      * @brief Launch in a new threads the router to ingest data from the queue.
