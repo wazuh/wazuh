@@ -3881,9 +3881,9 @@ checks:
   # 6.1.14 Audit SGID executables (Manual) - Not implemented, requires manual operation.
   # 6.1.15 Audit system file permissions (Manual) - Not implemented, requires manual operation.
 
-  ###############################################
+  ################################################
   # 6.2 Local User and Group Settings
-  ###############################################
+  ################################################
   # 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords (Automated) - Not implemented, requires manual operation.
   # 6.2.2 Ensure /etc/shadow password fields are not empty (Automated)
   - id: 28209
