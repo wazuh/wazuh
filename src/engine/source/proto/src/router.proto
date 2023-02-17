@@ -7,18 +7,16 @@ package com.wazuh.api.engine.router;
 /* Client-facing representation of a route exposed in APIs */
 message Entry
 {
-    optional string name = 1;         // Name of the route
-    optional string filter = 2; // Filter to apply to the route
-    optional string policy = 3; // Policy to end of the route
-    optional int32 priority = 4;      // Priority of the route
+    optional string name = 1;    // Name of the route
+    optional string filter = 2;  // Filter to apply to the route
+    optional string policy = 3;  // Policy to end of the route
+    optional int32 priority = 4; // Priority of the route
 }
 
 /***************************************************
  * Get a route from the router
  *
  * command: router.route/get (<resource>/<accion>)
- * message_req: RouteGet_request (<resource><Accion>_request)
- * message_res: RouteGet_response (<resource><Accion>_response)
  **************************************************/
 message RouteGet_Request
 {
@@ -30,23 +28,73 @@ message RouteGet_Response
 {
     ReturnStatus status = 1;   // Status of the query
     optional string error = 2; // Error message if status is ERROR
-    optional Entry rute = 3;  // Route queried if status is OK
+    optional Entry rute = 3;   // Route queried if status is OK
 }
 
 /***************************************************
- * Set a route to the router
+ * Post a route to the router (Add route)
  *
- * command: router.route/set (<resource>/<accion>)
- * message_req: RouteSet_request (<resource><Accion>_request)
- * message_res: RouteSet_response (<resource><Accion>_response)
+ * command: router.route/post (<resource>/<accion>)
  **************************************************/
- message RouteSet_Request
- {
-    optional Entry route = 1; // Route to set
- }
+message RoutePost_Request
+{
+    optional Entry route = 1; // Route to add
+}
+// message RoutePost_Response -> Return a GenericStatus_Response
 
- message RouteSet_Response
- {
-     ReturnStatus status = 1;   // Status of the query
-     optional string error = 2; // Error message if status is ERROR
- }
+/***************************************************
+ * Patch a route to the router (Parcial update route)
+ *
+ * Actually, it only supports the update of the priority (Name and priority are required)
+ *
+ * command: router.route/patch (<resource>/<accion>)
+ **************************************************/
+message RoutePatch_Request
+{
+    optional Entry route = 1; // Route to update
+}
+// message RoutePatch_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Delete a route to the router if the route not exists, it returns OK
+ *
+ * If the route exists, it returns OK and delete the route
+ * If the route not exists, it returns OK, because the route is not present after the operation
+ * command: router.route/delete (<resource>/<accion>)
+ **************************************************/
+message RouteDelete_Request
+{
+
+    optional string name = 1; // Name of the route to delete
+}
+// message RouteDelete_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Get the table of routes from the router
+ * command: router.table/get (<resource>/<accion>)
+ **************************************************/
+message TableGet_Request
+{
+    // Nothing
+}
+
+message TableGet_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    repeated Entry table = 3;  // Routes queried if status is OK and table is not empty
+}
+
+/***************************************************
+ * Send a event to queue of the router
+ *
+ * Send a Standard OSSEC event -> "<Queue>:<Location>:<Message>"
+ * Standard OSSEC event
+ * command: router.queue/post (<resource>/<accion>)
+ **************************************************/
+message QueuePost_Request
+{
+    optional string ossec_event = 1; // Event to send
+    reserved 2;                      // Reserved for future use (event json position)
+    reserved "event";                // Reserved for event in json format for future use in the engine
+}
