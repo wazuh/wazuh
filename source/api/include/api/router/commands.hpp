@@ -12,6 +12,7 @@ namespace api::router::cmds
 {
 
 api::CommandFn routeGet(std::shared_ptr<::router::Router> router);
+api::CommandFn routeSet(std::shared_ptr<::router::Router> router);
 
 /**
  * @brief Register all router commands

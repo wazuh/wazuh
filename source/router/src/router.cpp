@@ -84,6 +84,21 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
 std::optional<base::Error>
 Router::addRoute(const std::string& routeName, int priority, const std::string& filterName, const std::string& envName)
 {
+    // Validate route name
+    if (routeName.empty())
+    {
+        return base::Error {"Route name cannot be empty"};
+    }
+    // Validate Filter name
+    if (filterName.empty())
+    {
+        return base::Error {"Filter name cannot be empty"};
+    }
+    // Validate environment name
+    if (envName.empty())
+    {
+        return base::Error {"Environment name cannot be empty"};
+    }
     try
     {
         // Build the same route for each thread
@@ -324,92 +339,7 @@ void Router::stop()
     WAZUH_LOG_DEBUG("Router stopped.");
 }
 
-/********************************************************************
- *                  callback API Request
- ********************************************************************/
 /*
-api::CommandFn Router::apiCallbacks()
-{
-    return [this](const json::Json params)
-    {
-        base::utils::wazuhProtocol::WazuhResponse response {};
-        const auto action = params.getString("/action");
-
-        if (!action)
-        {
-            response.message(R"(Missing "action" parameter)");
-        }
-        else if (action.value() == "set")
-        {
-            response = apiSetRoute(params);
-        }
-        else if (action.value() == "get")
-        {
-            response = apiGetRoutes(params);
-        }
-        else if (action.value() == "delete")
-        {
-            response = apiDeleteRoute(params);
-        }
-        else if (action.value() == "change_priority")
-        {
-            response = apiChangeRoutePriority(params);
-        }
-        else if (action.value() == "enqueue_event")
-        {
-            response = apiEnqueueEvent(params);
-        }
-        else
-        {
-            response.message(fmt::format("Invalid action '{}'", action.value()));
-        }
-        return response;
-    };
-}
-*/
-/********************************************************************
- *                  private callback API Request
- ********************************************************************/
-/*
-base::utils::wazuhProtocol::WazuhResponse Router::apiSetRoute(const json::Json& params)
-{
-    base::utils::wazuhProtocol::WazuhResponse response {};
-    const auto name = params.getString(JSON_PATH_NAME);
-    const auto filter = params.getString(JSON_PATH_FILTER);
-    const auto priority = params.getInt(JSON_PATH_PRIORITY);
-    const auto target = params.getString(JSON_PATH_TARGET);
-    if (!name)
-    {
-        response.message(R"(Error: Error: Missing "name" parameter)");
-    }
-    else if (!priority)
-    {
-        response.message(R"(Error: Error: Missing "priority" parameter)");
-    }
-    else if (!target)
-    {
-        response.message(R"(Error: Error: Missing "target" parameter)");
-    }
-    else if (!filter)
-    {
-        response.message(R"(Error: Error: Missing "filter" parameter)");
-    }
-    else
-    {
-
-        const auto err = addRoute(name.value(), priority.value(), filter.value(), target.value());
-        if (err)
-        {
-            response.message(std::string {"Error: "} + err.value().message);
-        }
-        else
-        {
-            response.message(fmt::format("Route '{}' added", name.value()));
-        }
-    }
-    return response;
-}
-
 base::utils::wazuhProtocol::WazuhResponse Router::apiGetRoutes(const json::Json& params)
 {
     json::Json data {};

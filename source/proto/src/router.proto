@@ -7,10 +7,10 @@ package com.wazuh.api.engine.router;
 /* Client-facing representation of a route exposed in APIs */
 message Entry
 {
-    string name = 1;         // Name of the route
-    string asset_filter = 2; // Filter to apply to the route
-    string asset_policy = 3; // Policy to end of the route
-    int32 priority = 4;      // Priority of the route
+    optional string name = 1;         // Name of the route
+    optional string filter = 2; // Filter to apply to the route
+    optional string policy = 3; // Policy to end of the route
+    optional int32 priority = 4;      // Priority of the route
 }
 
 /***************************************************
@@ -23,7 +23,7 @@ message Entry
 message RouteGet_Request
 {
     // Name of the route to query
-    string name = 1;
+    optional string name = 1;
 }
 
 message RouteGet_Response
@@ -32,3 +32,21 @@ message RouteGet_Response
     optional string error = 2; // Error message if status is ERROR
     optional Entry rute = 3;  // Route queried if status is OK
 }
+
+/***************************************************
+ * Set a route to the router
+ *
+ * command: router.route/set (<resource>/<accion>)
+ * message_req: RouteSet_request (<resource><Accion>_request)
+ * message_res: RouteSet_response (<resource><Accion>_response)
+ **************************************************/
+ message RouteSet_Request
+ {
+    optional Entry route = 1; // Route to set
+ }
+
+ message RouteSet_Response
+ {
+     ReturnStatus status = 1;   // Status of the query
+     optional string error = 2; // Error message if status is ERROR
+ }
