@@ -1,7 +1,6 @@
 name: environment/wazuh/0
 
 decoders:
-
   # First level decoders by queue
   - decoder/queue-syscollector/0
   - decoder/queue-sca/0
@@ -20,11 +19,8 @@ decoders:
   - decoder/fim/0
   - decoder/fim-event/0
   - decoder/fim-scan/0
-  - decoder/redis/0
   - decoder/rootcheck/0
   - decoder/sca/0
-  - decoder/sonicwall-firewall/0
-  - decoder/sonicwall-firewall-generated/0
   - decoder/ciscat/0
   - decoder/syscollector-base/0
   - decoder/syscollector-dbsync-network-protocol/0
@@ -71,6 +67,10 @@ decoders:
 
   # Service decoders
   - decoder/syslog/0
+  - decoder/sonicwall-firewall/0
+  # TODO uncomment when the fields are added to the schema
+  # - decoder/sonicwall-firewall-generated/0
+  - decoder/redis/0
 
   # Postgresql decoders
   - decoder/postgresql-csv/0
