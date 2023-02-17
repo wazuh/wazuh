@@ -15,6 +15,7 @@
 #include "headers/defs.h"
 
 #include <openssl/sha.h>
+#include "shared.h"
 
 int OS_SHA256_File(const char *fname, os_sha256 output, int mode)
 {
