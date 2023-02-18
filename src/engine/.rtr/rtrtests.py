@@ -86,6 +86,8 @@ def configure(builddir, sourcedir):
 
 def build(params):
     builddir = params.output + BUILDDIR
+    #Adding safe directory in case the user running the command is not root
+    subprocess.run(f"git config --global --add safe.directory '*'", shell=True)
     if configure(builddir, params.source):
         command = 'cmake'
         args = f'--build {builddir} -j$(nproc)'
@@ -113,4 +115,3 @@ def docs(params):
         logging.info('DOXYGEN GENERATION: fail')
     log(params.output, 'docs', result.stdout, result.stderr)
     return bool(not result.returncode)
-
