@@ -147,18 +147,16 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         self.task_loggers = {'Agent-info sync': self.setup_task_logger('Agent-info sync'),
                              'Agent-groups recv': self.setup_task_logger('Agent-groups recv'),
                              'Agent-groups recv full': self.setup_task_logger('Agent-groups recv full'),
-                             'Agent-groups sync': self.setup_task_logger('Agent-groups sync'),
                              'Integrity check': self.setup_task_logger('Integrity check'),
                              'Integrity sync': self.setup_task_logger('Integrity sync')}
         default_date = datetime.utcfromtimestamp(0)
         self.sync_agent_groups_from_master = {'date_start_worker': default_date, 'date_end_worker': default_date,
                                               'n_synced_chunks': 0}
         self.agent_info_sync_status = {'date_start': 0.0}
-        self.agent_groups_sync_status = {'date_start': 0.0}
         self.integrity_check_status = {'date_start': 0.0}
         self.integrity_sync_status = {'date_start': 0.0}
-        self.agent_groups_checksum_mismatch_counter = 0
-        self.agent_groups_checksum_mismatch_limit = 10
+        self.agent_groups_mismatch_counter = 0
+        self.agent_groups_mismatch_limit = self.cluster_items['intervals']['worker']['agent_groups_mismatch_limit']
 
         # Maximum zip size allowed when syncing Integrity files.
         self.current_zip_limit = self.cluster_items['intervals']['communication']['max_zip_size']
@@ -207,19 +205,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         elif command == b'syn_g_m_w' or command == b'syn_g_m_w_c':
             return self.setup_sync_integrity(command, data)
         elif command == b'syn_m_a_e':
-            logger = self.setup_task_logger('Agent-info sync')
+            logger = self.task_loggers['Agent-info sync']
             start_time = self.agent_info_sync_status['date_start']
-            return c_common.end_sending_agent_information(logger, start_time, data.decode())
-        elif command == b'syn_m_g_e':
-            logger = self.setup_task_logger('Agent-groups sync')
-            start_time = self.agent_groups_sync_status['date_start']
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_m_a_err':
             logger = self.task_loggers['Agent-info sync']
             return c_common.error_receiving_agent_information(logger, data.decode(), info_type='agent-info')
-        elif command == b'syn_m_g_err':
-            logger = self.task_loggers['Agent-groups sync']
-            return c_common.error_receiving_agent_information(logger, data.decode(), info_type='agent-groups')
         elif command == b'dapi_res':
             asyncio.create_task(self.forward_dapi_response(data))
             return b'ok', b'Response forwarded to worker'
@@ -349,9 +340,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
     async def compare_agent_groups_checksums(self, master_checksum, logger):
         """Compare the checksum of the local database with the checksum of the master node to check if these differ.
 
-        If the checksum differs, a counter is incremented which at a certain limit
-        will send a request to the master node asking for all the agent-groups information.
-
         Parameters
         ----------
         master_checksum : str
@@ -361,9 +349,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         Returns
         -------
-        bool
-            True if both checksums are equal, False if these differ or cannot be
-            compared because there are records that need to be synchronized in the local DB.
+        ck_equal : bool
+            True if both checksums are equal.
         """
         wdb_conn = AsyncWazuhDBConnection()
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
@@ -375,26 +362,17 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         if not local_agent_groups:
             return False
 
-        local_agent_groups = json.loads(local_agent_groups[0])
-        if not local_agent_groups[0]['data']:
-            logger.debug2('There is no data requiring synchronization in the local database.')
-            try:
-                # There is no syncreq agent-groups so, the checksums should match
-                local_checksum = local_agent_groups[-1]['hash']
-                ck_equal = master_checksum == local_checksum
-            except KeyError:
-                local_checksum = 'UNABLE TO COLLECT FROM DB'
-                ck_equal = False
-            # If there are no records with syncreq and the checksums are different, it means that the worker database
-            # is in an incorrect state. Therefore, all the information will be requested directly to the master node.
-            if not ck_equal:
-                logger.debug(f'The master\'s checksum and the worker\'s checksum are different. '
-                             f'Local checksum: {local_checksum} | Master checksum: {master_checksum}.')
-                self.agent_groups_checksum_mismatch_counter = self.agent_groups_checksum_mismatch_limit
+        try:
+            local_checksum = json.loads(local_agent_groups[0])[-1]['hash']
+            ck_equal = master_checksum == local_checksum
+        except KeyError:
+            local_checksum = 'UNABLE TO COLLECT FROM DB'
+            ck_equal = False
 
-            return ck_equal
+        if not ck_equal:
+            logger.debug(f"The checksum of master ({master_checksum}) and worker ({local_checksum}) are different.")
 
-        return False
+        return ck_equal
 
     async def check_agent_groups_checksums(self, data, logger):
         """Checksum comparison limit controller function for agent-groups.
@@ -416,21 +394,18 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         same_checksum = await self.compare_agent_groups_checksums(master_checksum=master_checksum, logger=logger)
         if same_checksum:
-            msg = 'The checksum of both databases match.'
-            if self.agent_groups_checksum_mismatch_counter != 0:
-                msg += ' Reset the attempt counter.'
-            logger.debug(msg)
-            self.agent_groups_checksum_mismatch_counter = 0
-        else:
-            self.agent_groups_checksum_mismatch_counter += 1
-            if self.agent_groups_checksum_mismatch_counter <= self.agent_groups_checksum_mismatch_limit:
-                logger.debug(
-                    f'Checksum comparison failed. '
-                    f'Attempt {self.agent_groups_checksum_mismatch_counter}/{self.agent_groups_checksum_mismatch_limit}.')
+            logger.debug(f'The checksum of both databases match. '
+                         f'{"Counter reset." if self.agent_groups_mismatch_counter else ""}')
+            self.agent_groups_mismatch_counter = 0
 
-            if self.agent_groups_checksum_mismatch_counter >= self.agent_groups_checksum_mismatch_limit:
-                await super().send_result_to_manager(b'syn_w_g_c', {})
-                self.agent_groups_checksum_mismatch_counter = 0
+        else:
+            self.agent_groups_mismatch_counter += 1
+            logger.debug(
+                f'Checksum comparison failed ({self.agent_groups_mismatch_counter}/{self.agent_groups_mismatch_limit}).'
+            )
+            if self.agent_groups_mismatch_counter >= self.agent_groups_mismatch_limit:
+                await self.send_request(command=b'syn_w_g_c', data=b'')
+                self.agent_groups_mismatch_counter = 0
                 logger.info('Sent request to obtain all agent-groups information from the master node.')
 
     async def recv_agent_groups_periodic_information(self, task_id: bytes, info_type: str):
@@ -505,7 +480,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         start_time = datetime.utcnow().replace(tzinfo=timezone.utc)
         data = await super().get_chunks_in_task_id(task_id, error_command)
         result = await super().update_chunks_wdb(data, info_type, logger, error_command, timeout)
-        response = await super().send_result_to_manager(command, result)
+        response = await self.send_request(command=command, data=json.dumps(result).encode())
         await self.check_agent_groups_checksums(data, logger)
 
         end_time = datetime.utcnow().replace(tzinfo=timezone.utc)
@@ -553,7 +528,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_integrity'])
 
-    async def setup_sync_agent_info(self):
+    async def sync_agent_info(self):
         """Obtain information from agents reporting this worker and send it to the master.
 
         Asynchronous task that is started when the worker connects to the master. It starts an agent-info
@@ -564,62 +539,24 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         logger = self.task_loggers["Agent-info sync"]
         wdb_conn = AsyncWazuhDBConnection()
-        sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_a_w_m',
-                                           data_retriever=wdb_conn.run_wdb_command,
-                                           get_data_command='global sync-agent-info-get ',
-                                           set_data_command='global sync-agent-info-set')
+        agent_info = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_a_w_m',
+                                          data_retriever=wdb_conn.run_wdb_command,
+                                          get_data_command='global sync-agent-info-get ',
+                                          set_data_command='global sync-agent-info-set')
 
-        await self.general_agent_sync_task(sync_object=sync_object, timer=self.agent_info_sync_status,
-                                           sleep_interval=self.cluster_items['intervals']['worker']['sync_agent_info'])
-
-    async def setup_sync_agent_groups(self):
-        """Obtain information about groups from agents reporting this worker and send it to the master.
-
-        Asynchronous task that is started when the worker connects to the master. It starts an agent-groups
-        synchronization process every 'sync_agent_groups' seconds.
-
-        A list of JSON chunks with the information of all local agents is retrieved from local wazuh-db socket
-        and sent to the master's wazuh-db.
-        """
-        logger = self.task_loggers["Agent-groups sync"]
-        wdb_conn = AsyncWazuhDBConnection()
-        sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_w_m',
-                                           data_retriever=wdb_conn.run_wdb_command,
-                                           get_data_command='global sync-agent-groups-get ',
-                                           get_payload={'condition': 'sync_status', 'last_id': 0}, pivot_key='last_id',
-                                           set_data_command='global set-agent-groups',
-                                           set_payload={'mode': 'empty_only', 'sync_status': 'syncreq'})
-
-        await self.general_agent_sync_task(sync_object=sync_object, timer=self.agent_groups_sync_status,
-                                           sleep_interval=self.cluster_items['intervals']['worker'][
-                                               'sync_agent_groups'])
-
-    async def general_agent_sync_task(self, sync_object, timer, sleep_interval):
-        """General body of the database synchronization tasks. Constant loop that performs the task
-        for which it has been configured every X seconds.
-
-        Parameters
-        ----------
-        sync_object : c_common.SyncWazuhdb
-            Object in charge of synchronization with the database.
-        timer : dict
-            Dictionary with initial task time.
-        sleep_interval : int
-            Waiting time set between iterations.
-        """
         while True:
             try:
                 if self.connected:
                     start_time = get_utc_now().timestamp()
-                    if await sync_object.request_permission():
-                        sync_object.logger.info("Starting.")
-                        timer['date_start'] = start_time
-                        chunks = await sync_object.retrieve_information()
-                        await sync_object.sync(start_time=start_time, chunks=chunks)
+                    if await agent_info.request_permission():
+                        logger.info("Starting.")
+                        self.agent_info_sync_status['date_start'] = start_time
+                        chunks = await agent_info.retrieve_information()
+                        await agent_info.sync(start_time=start_time, chunks=chunks)
             except Exception as e:
-                sync_object.logger.error(f"Error synchronizing agent information: {e}")
+                logger.error(f"Error synchronizing agent info: {e}")
 
-            await asyncio.sleep(sleep_interval)
+            await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_agent_info'])
 
     async def sync_extra_valid(self, extra_valid: Dict):
         """Merge and send files of the worker node that are missing in the master node.
@@ -881,8 +818,8 @@ class Worker(client.AbstractClientManager):
             all coroutines don't need arguments.
         """
         return super().add_tasks() + [(self.client.sync_integrity, tuple()),
-                                      (self.client.setup_sync_agent_info, tuple()),
-                                      (self.client.setup_sync_agent_groups, tuple()), (self.dapi.run, tuple())]
+                                      (self.client.sync_agent_info, tuple()),
+                                      (self.dapi.run, tuple())]
 
     def get_node(self) -> Dict:
         """Get basic information about the worker node. Used in the GET/cluster/node API call.

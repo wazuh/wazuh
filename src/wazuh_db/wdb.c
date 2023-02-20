@@ -186,7 +186,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_DELETE_AGENT_BELONG] = "DELETE FROM belongs WHERE id_agent = ?;",
     [WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG] = "DELETE FROM belongs WHERE id_group = ? and id_agent = ?;",
     [WDB_STMT_GLOBAL_DELETE_GROUP] = "DELETE FROM `group` WHERE name = ?;",
-    [WDB_STMT_GLOBAL_GROUP_BELONG_FIND] = "SELECT 1 FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
+    [WDB_STMT_GLOBAL_GROUP_BELONG_FIND] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
     [WDB_STMT_GLOBAL_GROUP_BELONG_GET] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?) AND id_agent > ?;",
     [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
     [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time, group_config_status FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
@@ -426,41 +426,6 @@ success:
 end:
     w_mutex_unlock(&pool_mutex);
     return wdb;
-}
-
-/* Open database for agent */
-sqlite3* wdb_open_agent(int id_agent, const char *name) {
-    char dir[OS_FLSIZE + 1];
-    sqlite3 *db;
-
-    snprintf(dir, OS_FLSIZE, "%s/agents/%03d-%s.db", WDB_DIR, id_agent, name);
-
-    if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE, NULL)) {
-        mdebug1("No SQLite database found for agent '%s', creating.", name);
-        sqlite3_close_v2(db);
-
-        if (wdb_create_agent_db(id_agent, name) < 0) {
-            merror("Couldn't create SQLite database '%s'", dir);
-            return NULL;
-        }
-
-        // Retry to open
-
-        if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE, NULL)) {
-            merror("Can't open SQLite database '%s': %s", dir, sqlite3_errmsg(db));
-            sqlite3_close_v2(db);
-            return NULL;
-        }
-
-        if (wdb_journal_wal(db) == -1) {
-            merror("Cannot open database '%s': error setting the journalig mode.", dir);
-            sqlite3_close_v2(db);
-            return NULL;
-        }
-    }
-
-    sqlite3_busy_timeout(db, BUSY_SLEEP);
-    return db;
 }
 
 // Open database for agent and store in DB pool. It returns a locked database or NULL

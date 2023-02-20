@@ -149,6 +149,14 @@ STATIC bool group_changed(const char *multi_group);
 STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group, int *wdb_sock);
 
 /**
+ * @brief Redirect the request to the master node to assign a group
+ * @param agent_id. Agent id to assign a group
+ * @param md5. MD5 sum used if guessing is enabled
+ * @return JSON* with group name if successful, NULL otherwise
+ */
+STATIC cJSON *assign_group_to_agent_worker(const char *agent_id, const char *md5);
+
+/**
  * @brief Send a shared file to an agent
  * @param agent_id ID of the destination agent
  * @param group Name of the group where the file is located
@@ -176,9 +184,8 @@ STATIC int validate_shared_files(const char *src_path, FILE *finalfp, OSHash **_
  * @param src_path Source path of the files to copy
  * @param dst_path Destination path of the files
  * @param group Group name
- * @param initial_iteration Flag indicating if it is the first iteration
  */
-STATIC void copy_directory(const char *src_path, const char *dst_path, char *group, bool initial_iteration);
+STATIC void copy_directory(const char *src_path, const char *dst_path, char *group);
 
 /* Groups structures */
 static OSHash *groups;
@@ -487,6 +494,78 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     os_free(clean);
 }
 
+/* Assign a group to an agent without group */
+cJSON *assign_group_to_agent(const char *agent_id, const char *md5) {
+    cJSON *result = NULL;
+    char* group = NULL;
+
+    os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
+
+    mdebug2("Agent '%s' with file '%s' MD5 '%s'", agent_id, SHAREDCFG_FILENAME, md5);
+
+    w_mutex_lock(&files_mutex);
+
+    if (!guess_agent_group || (!find_group_from_sum(md5, group) && !find_multi_group_from_sum(md5, group))) {
+        // If the group could not be guessed, set to "default"
+        // or if the user requested not to guess the group, through the internal
+        // option 'guess_agent_group', set to "default"
+        strncpy(group, "default", OS_SIZE_65536);
+    }
+
+    w_mutex_unlock(&files_mutex);
+
+    wdb_set_agent_groups_csv(atoi(agent_id),
+                            group,
+                            WDB_GROUP_MODE_EMPTY_ONLY,
+                            w_is_single_node(NULL) ? "synced" : "syncreq",
+                            NULL);
+
+    mdebug2("Group assigned: '%s'", group);
+
+    result = cJSON_CreateObject();
+    cJSON_AddStringToObject(result, "group", group);
+
+    os_free(group);
+    return result;
+}
+
+STATIC cJSON *assign_group_to_agent_worker(const char *agent_id, const char *md5) {
+    char response[OS_MAXSTR] = "";
+    char *request = NULL;
+    cJSON *payload_json = NULL;
+    cJSON *response_json = NULL;
+    cJSON *data_json = NULL;
+
+    cJSON *message_json = cJSON_CreateObject();
+    cJSON *parameters_json = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(parameters_json, "agent", agent_id);
+    cJSON_AddStringToObject(parameters_json, "md5", md5);
+
+    cJSON_AddStringToObject(message_json, "command", "assigngroup");
+    cJSON_AddItemToObject(message_json, "parameters", parameters_json);
+
+    payload_json = w_create_sendsync_payload("remoted", message_json);
+
+    request = cJSON_PrintUnformatted(payload_json);
+
+    mdebug2("Sending message to master node: '%s'", request);
+
+    w_send_clustered_message("sendsync", request, response);
+
+    mdebug2("Message received from master node: '%s'", response);
+
+    response_json = cJSON_Parse(response);
+
+    data_json = cJSON_Duplicate(cJSON_GetObjectItem(response_json, "data"), 1);
+
+    os_free(request);
+    cJSON_Delete(payload_json);
+    cJSON_Delete(response_json);
+
+    return data_json;
+}
+
 /* Generate merged file for groups */
 STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, char *sharedcfg_dir, bool create_merged, bool is_multigroup) {
     os_md5 md5sum;
@@ -694,7 +773,7 @@ STATIC void c_multi_group(char *multi_group, OSHash **_f_time, os_md5 *_merged_s
                 return;
             }
 
-            copy_directory(dir, multi_path, group, true);
+            copy_directory(dir, multi_path, group);
 
             group = strtok_r(NULL, delim, &save_ptr);
             closedir(dp);
@@ -1134,7 +1213,7 @@ STATIC int validate_shared_files(const char *src_path, FILE *finalfp, OSHash **_
     return 1;
 }
 
-STATIC void copy_directory(const char *src_path, const char *dst_path, char *group, bool initial_iteration) {
+STATIC void copy_directory(const char *src_path, const char *dst_path, char *group) {
     unsigned int i;
     time_t *modify_time = NULL;
     int ignored;
@@ -1143,12 +1222,7 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, char *gro
 
     if (files = wreaddir(src_path), !files) {
         if (errno != ENOTDIR) {
-            if (initial_iteration) {
-                mwarn("Could not open directory '%s'. Group folder was deleted.", src_path);
-                wdb_remove_group_db(group, NULL);
-            } else {
-                mdebug2("Could not open directory '%s': %s (%d)", src_path, strerror(errno), errno);
-            }
+            mwarn("Could not open directory '%s'. Group folder was deleted.", src_path);
         }
         return;
     }
@@ -1216,7 +1290,7 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, char *gro
                 }
             }
 
-            copy_directory(source_path, destination_path, group, false);
+            copy_directory(source_path, destination_path, group);
             closedir(dir);
         }
     }
@@ -1400,31 +1474,25 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
 
         /* New agents only have merged.mg */
         if (strcmp(file, SHAREDCFG_FILENAME) == 0) {
+            cJSON *group_json = NULL;
+            cJSON *value = NULL;
 
-            // If group was not got, guess it by matching sum
-            os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
-            mdebug2("Agent '%s' with file '%s' MD5 '%s'", agent_id, SHAREDCFG_FILENAME, md5);
-
-            w_mutex_lock(&files_mutex);
-
-            if (!guess_agent_group || (!find_group_from_sum(md5, group) && !find_multi_group_from_sum(md5, group))) {
-                // If the group could not be guessed, set to "default"
-                // or if the user requested not to guess the group, through the internal
-                // option 'guess_agent_group', set to "default"
-                strncpy(group, "default", OS_SIZE_65536);
+            if (!logr.worker_node) {
+                group_json = assign_group_to_agent(agent_id, md5);
+            } else {
+                group_json = assign_group_to_agent_worker(agent_id, md5);
             }
 
-            w_mutex_unlock(&files_mutex);
+            value = cJSON_GetObjectItem(group_json, "group");
+            if (cJSON_IsString(value) && value->valuestring != NULL) {
+                os_strdup(value->valuestring, *r_group);
+            } else {
+                merror("Agent '%s' invalid or empty group assigned.", agent_id);
+                cJSON_Delete(group_json);
+                break;
+            }
 
-            wdb_set_agent_groups_csv(atoi(agent_id),
-                                 group,
-                                 WDB_GROUP_MODE_EMPTY_ONLY,
-                                 w_is_single_node(NULL) ? "synced" : "syncreq",
-                                 NULL);
-            *r_group = group;
-
-            mdebug2("Group assigned: '%s'", group);
-
+            cJSON_Delete(group_json);
             os_free(fmsg);
             return OS_SUCCESS;
         }

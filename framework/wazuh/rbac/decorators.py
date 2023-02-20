@@ -488,7 +488,13 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                             kwargs[target_param] = list()
                         else:
                             skip_execution = True
-            result = func(*args, **kwargs) if not skip_execution else None
+
+            # If func is still decorated by expose_resources, do not remove 'call_func'
+            if hasattr(func, '__wrapped__') or kwargs.pop('call_func', True):
+                result = func(*args, **kwargs) if not skip_execution else None
+            else:
+                result = AffectedItemsWazuhResult()
+
             if post_proc_func is None:
                 return result
             else:

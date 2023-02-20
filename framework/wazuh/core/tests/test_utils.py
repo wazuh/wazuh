@@ -786,41 +786,6 @@ def test_failed_test_get_timeframe_in_seconds():
         utils.get_timeframe_in_seconds('error')
 
 
-@pytest.mark.parametrize('value', [
-    True,
-    False
-])
-@patch('sqlite3.connect')
-@patch("wazuh.core.database.isfile", return_value=True)
-@patch('socket.socket.connect')
-def test_WazuhDBQuery__init__(mock_socket_conn, mock_isfile, mock_sqli_conn, value):
-    """Test WazuhDBQuery.__init__."""
-    with patch('wazuh.core.utils.glob.glob', return_value=value):
-        if value:
-            utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
-                               search=None, select=None, filters=None,
-                               fields={'1': None, '2': None}, default_sort_field=None,
-                               default_sort_order='ASC', query=None,
-                               backend=utils.SQLiteBackend(utils.common.DATABASE_PATH),
-                               min_select_fields=1, count=5, get_data=None,
-                               date_fields={'lastKeepAlive', 'dateAdd'},
-                               extra_fields={'internal_key'})
-
-            mock_sqli_conn.assert_called_once()
-
-        else:
-            with pytest.raises(exception.WazuhException, match=".* 1600 .*"):
-                utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
-                                   search=None, select=None, filters=None,
-                                   fields={'1': None, '2': None},
-                                   default_sort_field=None, default_sort_order='ASC',
-                                   query=None, get_data=None,
-                                   backend=utils.SQLiteBackend(utils.common.DATABASE_PATH),
-                                   min_select_fields=1, count=5,
-                                   date_fields={'lastKeepAlive', 'dateAdd'},
-                                   extra_fields={'internal_key'})
-
-
 @pytest.mark.parametrize('query_filter, expected_query_filter, expected_wef', [
     ({'operator': 'LIKE', 'value': 'user\'s'}, {'operator': 'LIKE', 'value': 'user_s'}, set()),
     ({'operator': '=', 'value': 'user\'s', 'field': 'description'},
@@ -1268,25 +1233,6 @@ def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_isfile, mock_conn
     query._get_total_items()
 
     mock_conn_db.assert_called_once_with()
-
-
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
-@patch('wazuh.core.utils.SQLiteBackend.connect_to_db')
-@patch("wazuh.core.database.isfile", return_value=True)
-@patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_get_data(mock_socket_conn, mock_isfile, mock_sqli_conn, mock_glob, mock_exists):
-    """Test SQLiteBackend._get_data function."""
-    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
-                               search=None, select={'fields': set(['os.name'])},
-                               fields={'os.name': 'ubuntu', 'os.version': '18.04'},
-                               default_sort_field=None, query=None,
-                               backend=utils.SQLiteBackend(utils.common.DATABASE_PATH), count=5,
-                               get_data=None, min_select_fields=set(['os.version']))
-
-    query.backend._get_data()
-
-    mock_sqli_conn.assert_called_once_with()
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)

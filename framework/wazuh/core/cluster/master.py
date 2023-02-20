@@ -10,7 +10,7 @@ import shutil
 from calendar import timegm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from time import perf_counter
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
@@ -125,7 +125,7 @@ class ReceiveAgentInfoTask(c_common.ReceiveStringTask):
 
     def set_up_coro(self) -> Callable:
         """Set up the function to be called when the worker sends its Agent info."""
-        return self.wazuh_common.setup_sync_wazuh_db_information
+        return self.wazuh_common.sync_wazuh_db_info
 
     def done_callback(self, future=None):
         """Check whether the synchronization process was correct and free its lock.
@@ -137,42 +137,6 @@ class ReceiveAgentInfoTask(c_common.ReceiveStringTask):
         """
         super().done_callback(future)
         self.wazuh_common.sync_agent_info_free = True
-
-
-class ReceiveAgentGroupsTask(c_common.ReceiveStringTask):
-    """
-    Define the process and variables necessary to receive and process agent-groups from the worker.
-
-    This task is created when the worker finishes sending agent-groups chunks and its destroyed once the master has
-    updated all the received information.
-    """
-
-    def __init__(self, *args, **kwargs):
-        """Class constructor.
-
-        Parameters
-        ----------
-        args
-            Positional arguments for parent constructor class.
-        kwargs
-            Keyword arguments for parent constructor class.
-        """
-        super().__init__(*args, **kwargs, info_type='agent-groups')
-
-    def set_up_coro(self) -> Callable:
-        """Set up the function to be called when the worker sends its agent-groups."""
-        return self.wazuh_common.setup_sync_wazuh_db_information
-
-    def done_callback(self, future=None):
-        """Check whether the synchronization process was correct and free its lock.
-
-        Parameters
-        ----------
-        future : asyncio.Future object
-            Synchronization process result.
-        """
-        super().done_callback(future)
-        self.wazuh_common.sync_agent_groups_free = True
 
 
 class SendEntireAgentGroupsTask(c_common.SendStringTask):
@@ -215,7 +179,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         super().__init__(**kwargs, tag="Worker")
         # Sync availability variables. Used to prevent sync process from overlapping.
         self.sync_agent_info_free = True
-        self.sync_agent_groups_free = True
         self.sync_integrity_free = [True, utils.get_utc_now()]
 
         # Variable used to check whether integrity sync process includes extra_valid files.
@@ -229,8 +192,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                       'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
         self.sync_agent_info_status = {'date_start_master': default_date, 'date_end_master': default_date,
                                        'n_synced_chunks': 0}
-        self.sync_agent_groups_status = {'date_start_master': default_date, 'date_end_master': default_date,
-                                         'n_synced_chunks': 0}
         self.send_agent_groups_status = {'date_start': 0.0}
 
         # Variables which will be filled when the worker sends the hello request.
@@ -260,9 +221,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                            'last_sync_integrity': {key: value for key, value in self.integrity_sync_status.items() if
                                                    not key.startswith('tmp')},
                            'sync_agent_info_free': self.sync_agent_info_free,
-                           'sync_agent_groups_free': self.sync_agent_groups_free,
                            'last_sync_agentinfo': self.sync_agent_info_status,
-                           'last_sync_agentgroups': self.sync_agent_groups_status,
                            'last_keep_alive': self.last_keepalive}
                 }
 
@@ -284,9 +243,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         self.logger.debug(f"Command received: {command}")
-        if command == b'syn_i_w_m_p' or command == b'syn_a_w_m_p' or command == b'syn_g_w_m_p':
+        if command == b'syn_i_w_m_p' or command == b'syn_a_w_m_p':
             return self.get_permission(command)
-        elif command == b'syn_i_w_m' or command == b'syn_e_w_m' or command == b'syn_a_w_m' or command == b'syn_g_w_m':
+        elif command == b'syn_i_w_m' or command == b'syn_e_w_m' or command == b'syn_a_w_m':
             return self.setup_sync_integrity(command, data)
         elif command == b'syn_w_g_c':
             return self.setup_send_info(command)
@@ -409,7 +368,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.task_loggers = {'Integrity check': self.setup_task_logger('Integrity check'),
                              'Integrity sync': self.setup_task_logger('Integrity sync'),
                              'Agent-info sync': self.setup_task_logger('Agent-info sync'),
-                             'Agent-groups sync': self.setup_task_logger('Agent-groups sync'),
                              'Agent-groups send': self.setup_task_logger('Agent-groups send'),
                              'Agent-groups send full': self.setup_task_logger('Agent-groups send full')}
 
@@ -544,8 +502,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             permission = self.sync_integrity_free[0]
         elif sync_type == b'syn_a_w_m_p':
             permission = self.sync_agent_info_free
-        elif sync_type == b'syn_g_w_m_p':
-            permission = self.sync_agent_groups_free
         else:
             permission = False
 
@@ -579,10 +535,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             self.sync_agent_info_free = False
             sync_function = ReceiveAgentInfoTask
             logger_tag = 'Agent-info sync'
-        elif sync_type == b'syn_g_w_m':
-            self.sync_agent_groups_free = False
-            sync_function = ReceiveAgentGroupsTask
-            logger_tag = 'Agent-groups sync'
         else:
             sync_function = None
             logger_tag = ''
@@ -650,7 +602,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         return super().end_receiving_file(task_and_file_names=task_and_file_names, logger_tag='Integrity check')
 
-    async def setup_sync_wazuh_db_information(self, task_id: bytes, info_type: str):
+    async def sync_wazuh_db_info(self, task_id: bytes, info_type: str):
         """Create a process to send to the local wazuh-db the chunks of data received from a worker.
 
         Parameters
@@ -665,27 +617,24 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         result : bytes
             Worker's response after finishing the synchronization.
         """
-        logger = ''
-        command = ''
-        error_command = ''
-        timeout = 0
-        sync_dict = {}
-        if info_type == 'agent-info':
-            logger = self.task_loggers['Agent-info sync']
-            command = b'syn_m_a_e'
-            error_command = b'syn_m_a_err'
-            sync_dict = self.sync_agent_info_status
-            timeout = self.cluster_items['intervals']['master']['timeout_agent_info']
-        elif info_type == 'agent-groups':
-            logger = self.task_loggers['Agent-groups sync']
-            command = b'syn_m_g_e'
-            error_command = b'syn_m_g_err'
-            sync_dict = self.sync_agent_groups_status
-            timeout = self.cluster_items['intervals']['master']['timeout_agent_groups']
+        logger = self.task_loggers['Agent-info sync']
+        logger.info('Starting.')
+        start_time = datetime.utcnow().replace(tzinfo=timezone.utc)
 
-        return await super().sync_wazuh_db_information(
-            task_id=task_id, info_type=info_type, error_command=error_command,
-            logger=logger, command=command, sync_dict=sync_dict, timeout=timeout)
+        data = await self.get_chunks_in_task_id(task_id, b'syn_m_a_err')
+        result = await self.update_chunks_wdb(data, 'agent-info', logger, b'syn_m_a_err',
+                                              self.cluster_items['intervals']['master']['timeout_agent_info'])
+
+        # Send result to worker.
+        response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
+        end_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+        self.sync_agent_info_status.update({'date_start_master': start_time.strftime(DECIMALS_DATE_FORMAT),
+                                            'date_end_master': end_time.strftime(DECIMALS_DATE_FORMAT),
+                                            'n_synced_chunks': result['updated_chunks']})
+        logger.info(f'Finished in {(end_time - start_time).total_seconds():.3f}s. '
+                    f'Updated {result["updated_chunks"]} chunks.')
+
+        return response
 
     async def send_entire_agent_groups_information(self):
         """Method in charge of sending all the information related to
@@ -694,24 +643,20 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         This method is activated when the worker node requests this information to the master node.
         """
         logger = self.task_loggers['Agent-groups send full']
-        sync_object = c_common.SyncWazuhdb(manager=self, logger=logger,
-                                           data_retriever=AsyncWazuhDBConnection().run_wdb_command,
-                                           get_data_command='global sync-agent-groups-get ',
-                                           get_payload={"condition": "all", "set_synced": False,
-                                                        "get_global_hash": False, "last_id": 0}, pivot_key='last_id')
-        local_agent_groups_information = await sync_object.retrieve_information()
+        start_time = get_utc_now().timestamp()
+        logger.info('Starting.')
 
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w_c',
                                            data_retriever=AsyncWazuhDBConnection().run_wdb_command,
+                                           get_data_command='global sync-agent-groups-get ',
+                                           get_payload={"condition": "all", "set_synced": False,
+                                                        "get_global_hash": False, "last_id": 0},
+                                           pivot_key='last_id',
                                            set_data_command='global set-agent-groups',
                                            set_payload={'mode': 'override', 'sync_status': 'synced'})
 
-        logger.info("Requested entire agent-groups information by the worker node. Starting.")
-        start_time = get_utc_now().timestamp()
-        logger.info("Sending all agent-groups information from the master node database.")
+        local_agent_groups_information = await sync_object.retrieve_information()
         await sync_object.sync(start_time=start_time, chunks=local_agent_groups_information)
-
-        return b'ok', b'Sent'
 
     async def send_agent_groups_information(self):
         """Function in charge of sending the group information to the worker node.
@@ -729,7 +674,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             info = self.server.get_agent_groups_info(self.name)
             if info != {}:
                 try:
-                    logger.info("Starting.")
+                    logger.info('Starting.')
                     self.send_agent_groups_status['date_start'] = get_utc_now().timestamp()
                     await sync_object.sync(start_time=self.send_agent_groups_status['date_start'], chunks=info)
                 except Exception as e:

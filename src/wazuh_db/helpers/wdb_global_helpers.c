@@ -419,6 +419,40 @@ int* wdb_get_all_agents(bool include_manager, int *sock) {
     return array;
 }
 
+rb_tree* wdb_get_all_agents_rbtree(bool include_manager, int *sock) {
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int last_id = include_manager ? -1 : 0;
+    rb_tree *tree = NULL;
+    wdbc_result status = WDBC_DUE;
+    int aux_sock = -1;
+
+    tree = rbtree_init();
+
+    while (status == WDBC_DUE) {
+        // Query WazuhDB
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_ALL_AGENTS], last_id);
+        if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
+            status = wdb_parse_chunk_to_rbtree(wdboutput, &tree, "id", &last_id);
+        }
+        else {
+            status = WDBC_ERROR;
+        }
+    }
+
+    if (status == WDBC_ERROR) {
+        merror("Error querying Wazuh DB to get agent's IDs.");
+        rbtree_destroy(tree);
+        tree = NULL;
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    return tree;
+}
+
 int wdb_find_agent(const char *name, const char *ip, int *sock) {
     int output = OS_INVALID;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -932,6 +966,47 @@ wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, 
     return status;
 }
 
+wdbc_result wdb_parse_chunk_to_rbtree(char* input, rb_tree** output, const char* item, int* last_item) {
+    int _last_item = 0;
+    char* payload = NULL;
+
+    if (output == NULL || *output == NULL) {
+        mdebug1("Invalid RB tree.");
+        return WDBC_ERROR;
+    }
+
+    if (item == NULL) {
+        mdebug1("Invalid item.");
+        return WDBC_ERROR;
+    }
+
+    wdbc_result status = wdbc_parse_result(input, &payload);
+    if (status == WDBC_OK || status == WDBC_DUE) {
+        cJSON* response = cJSON_Parse(payload);
+        if (response != NULL) {
+            //Add items to RB tree
+            cJSON* agent = NULL;
+            cJSON_ArrayForEach(agent, response) {
+                cJSON* json_item = cJSON_GetObjectItem(agent, item);
+                if (cJSON_IsNumber(json_item)) {
+                    char c_agent_id[OS_SIZE_16];
+                    snprintf(c_agent_id, OS_SIZE_16, "%03d", json_item->valueint);
+                    rbtree_insert(*output, c_agent_id, &(json_item->valueint));
+                    _last_item = json_item->valueint;
+                }
+            }
+            cJSON_Delete(response);
+        }
+        else {
+            status = WDBC_ERROR;
+        }
+    }
+
+    if (last_item) *last_item = _last_item;
+
+    return status;
+}
+
 int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -961,117 +1036,6 @@ int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
     }
 
     return array;
-}
-
-int wdb_create_agent_db(int id, const char *name) {
-    const char *ROOT = "root";
-    char src_path[OS_FLSIZE + 1];
-    char dst_path[OS_FLSIZE + 1];
-    char buffer[4096];
-    struct stat st_buffer;
-    FILE *source;
-    FILE *dest;
-    size_t nbytes;
-    int result = 0;
-    uid_t uid;
-    gid_t gid;
-
-    if (!name) {
-        return OS_INVALID;
-    }
-
-    snprintf(dst_path, OS_FLSIZE, "%s/agents/%03d-%s.db", WDB_DIR, id, name);
-
-    snprintf(src_path, OS_FLSIZE, "%s/%s", WDB_DIR, WDB_PROF_NAME);
-    if (!(source = fopen(src_path, "r"))) {
-        if (errno != ENOENT) // If we get any other error other than 'file does not exits'
-        {
-            merror("Error accessing file (%s): (%s)", src_path, strerror(errno));
-            return OS_INVALID;
-        }
-
-        mdebug1("Profile database not found, creating.");
-
-        if (wdb_create_profile(src_path) < 0) {
-            return OS_INVALID;
-        }
-
-        if (!(source = fopen(src_path, "r"))) {
-            merror("Couldn't open profile '%s'.", src_path);
-            return OS_INVALID;
-        }
-    }
-
-    if (!(dest = fopen(dst_path, "wx"))) {
-        fclose(source);
-
-        switch (errno) {
-        case EEXIST:
-            mdebug2("Agent database already exists.");
-            return OS_SUCCESS;
-        default:
-            merror("Couldn't create database '%s': %s (%d).", dst_path, strerror(errno), errno);
-            return OS_INVALID;
-        }
-
-    }
-
-    while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
-        if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
-            result = -1;
-            break;
-        }
-    }
-
-    fclose(source);
-    if (fclose(dest) == -1 || result < 0) {
-        merror("Couldn't write/close file '%s' completely.", dst_path);
-        return OS_INVALID;
-    }
-
-    uid = Privsep_GetUser(ROOT);
-    gid = Privsep_GetGroup(GROUPGLOBAL);
-
-    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, ROOT, GROUPGLOBAL, strerror(errno), errno);
-        return OS_INVALID;
-    }
-
-    if (chown(dst_path, uid, gid) < 0) {
-        merror(CHOWN_ERROR, dst_path, errno, strerror(errno));
-        return OS_INVALID;
-    }
-
-    if (chmod(dst_path, 0660) < 0) {
-        merror(CHMOD_ERROR, dst_path, errno, strerror(errno));
-        return OS_INVALID;
-    }
-
-    return OS_SUCCESS;
-}
-
-int wdb_remove_agent_db(int id, const char * name) {
-    char path[PATH_MAX];
-    char path_aux[PATH_MAX];
-
-    if (NULL == name || *name == '\0' || id <= 0) {
-        return OS_INVALID;
-    }
-
-    snprintf(path, PATH_MAX, "%s/agents/%03d-%s.db", WDB_DIR, id, name);
-
-    if (!remove(path)) {
-        snprintf(path_aux, PATH_MAX, "%s/agents/%03d-%s.db-shm", WDB_DIR, id, name);
-        if (remove(path_aux) < 0) {
-            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
-        }
-        snprintf(path_aux, PATH_MAX, "%s/agents/%03d-%s.db-wal", WDB_DIR, id, name);
-        if (remove(path_aux) < 0) {
-            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
-        }
-        return OS_SUCCESS;
-    } else
-        return OS_INVALID;
 }
 
 time_t get_agent_date_added(int agent_id) {
