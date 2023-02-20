@@ -1,0 +1,23 @@
+name: decoder/azure_ActivityLogs/0
+
+sources: 
+  - decoder/azure_base_decoder/0
+
+metadata:
+  description: ActivityLog decoder for Azure events
+  module: Azure
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2023/02/14
+  title: This decoder normalizes basic field from Azure ActivityLogs
+  references:
+    - https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/platform-logs-overview
+
+check:
+   - ~json.Type: AzureActivity
+
+normalize:
+  - map:
+   -    
