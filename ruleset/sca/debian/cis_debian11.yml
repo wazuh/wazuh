@@ -4756,10 +4756,9 @@ checks:
   # 5.4.1 Ensure password creation requirements are configured (Automated)
   - id: 29682
     title: "Ensure password creation requirements are configured."
-    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: Password Length: minlen = 14 - password must be 14 characters or more .Password complexity: minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR dcredit = -1 - provide at least one digit .ucredit = -1 - provide at least one uppercase character .ocredit = -1 - provide at least one special character .lcredit = -1 - provide at least one lowercase character."
+    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following options are set in the /etc/security/pwquality.conf file: - Password Length: > minlen = 14 - password must be 14 characters or more. - Password complexity: > minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR > dcredit = -1 - provide at least one digit. > ucredit = -1 - provide at least one uppercase character. > ocredit = -1 - provide at least one special character. > lcredit = -1 - provide at least one lowercase character."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
-    remediation: "The following setting is a recommend example policy. Alter these values to conform to your own organization's password policies. Run the following command to install the pam_pwquality module: # apt install libpam-pwquality Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 .Edit the file /etc/security/pwquality.conf and add or modify the following line for .password complexity to conform to site policy: Option 1 .minclass = 4 .Option 2 .dcredit = -1 .ucredit = -1 .ocredit = -1 .lcredit = -1"
-    additional information: "Additional module options may be set, recommendation requirements only cover including try_first_pass and minlen set to 14 or more. NOTE: As of this writing it is not possible to customize the maximum number of retries for the creation of a password within recommended methods. The command pam-auth-update is used to manage certain PAM configurations via profiles, such as /etc/pam.d/common-password. Making a manual change to this file will cause pam-auth-update to overwrite it on the next run and is thus against recommendations. Alternatively, pam_pwquality (via /etc/security/pwquality.conf) fully supports the configuration of the maximum number of retries for a password change with the configuration entry retry = XXX. The issue is that the template /usr/share/pam-configs/pwquality contains retry=3 which will override any retry setting in /etc/security/pwquality.conf as PAM entries takes precedence. This template file should not be modified as any package update will overwrite the change. Thus it is not possible, in any recommended way, to modify password retries."
+    remediation: "The following setting is a recommend example policy. Alter these values to conform to your own organization's password policies. Run the following command to install the pam_pwquality module: # apt install libpam-pwquality Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 .Edit the file /etc/security/pwquality.conf and add or modify the following line for .password complexity to conform to site policy: Option 1 minclass = 4 Option 2 dcredit = -1, ucredit = -1, ocredit = -1, lcredit = -1"
     compliance:
       - cis: ["5.4.1"]
       - cis_csc_v8: ["5.2"]
@@ -4774,16 +4773,15 @@ checks:
     condition: all
     rules:
       - 'f:/etc/security/pwquality.conf -> !r:^# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
-      - 'f:/etc/pam.d/common-password -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+) compare <=3'
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:minclass\s*\t*=\s*\t*(\d+) compare >=4'
 
   # 5.4.2 Ensure lockout for failed password attempts is configured (Automated)
   - id: 29683
     title: "Ensure lockout for failed password attempts is configured."
-    description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. deny - Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries.fail_interval - The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out unlock_time - The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be re-enabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
+    description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. - deny -> Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries. - fail_interval -> The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out. - unlock_time -> The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be re-enabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
-    remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file.# here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth# Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail# Added to enable faillock auth sufficient pam_faillock.so authsucc# Added to enable faillock# here is the fallback if no module succeeds auth requisite pam_deny.so# prime the stack with a positive return value if there is not one already;# this avoids us returning an error just because nothing sets a success code# since the modules above will each just jump around auth required pam_permit.so# and here are more per-package modules (the "Additional" block) auth optional pam_cap.so# end of pam-auth-update config Common account .Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. account required .pam_faillock.so .Fail lock configuration .Edit /etc/security/faillock.conf and configure it per your site policy. Example:Page 703deny = 4 .fail_interval = 900 unlock time = 600'
     impact: "It is critical to test and validate any PAM changes before deploying. Any misconfiguration could cause the system to be inaccessible."
-    additional information: "If a user has been locked out because they have reached the maximum consecutive failure count defined by deny= in the pam_faillock.so module, the user can be unlocked by issuing the command /usr/sbin/faillock --user username --reset. This command sets the failed count to 0, effectively unlocking the user."
+    remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth: Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file. # here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth # Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail # Added to enable faillock auth sufficient pam_faillock.so authsucc # Added to enable faillock # here is the fallback if no module succeeds auth requisite pam_deny.so # prime the stack with a positive return value if there is not one already; # this avoids us returning an error just because nothing sets a success code # since the modules above will each just jump around auth required pam_permit.so # and here are more per-package modules (the "Additional" block) auth optional pam_cap.so # end of pam-auth-update config Common account: Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. > account > required > pam_faillock.so. Fail lock configuration: Edit /etc/security/faillock.conf and configure it per your site policy. Example: deny = 4 > fail_interval = 900 > unlock time = 600'
     compliance:
       - cis: ["5.4.2"]
       - cis_csc_v8: ["6.2"]
@@ -4800,9 +4798,12 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-auth -> !r:^# && r:auth\s*\t*required\s*\t*pam_tally2.so && r:onerr=fail && r:audit && r:silent && r:deny\s*=\s*\d+ && r:unlock_time\s*=\s*\d+'
-      - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*requisite\s*\t*pam_deny.so'
-      - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*required\s*\t*pam_tally2.so'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:auth\s*\t*required\s*\t*pam_faillock.so\s*preauth'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:auth\s*\t*\(default=die\)\s*t*pam_faillock.so\s*authfail'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:auth\s*\t*sufficient\s*\t*pam_faillock.so\s*authsucc'
+      - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*required\s*\t*pam_faillock.so'
+
+
 
   # 5.4.3 Ensure password reuse is limited (Automated)
   - id: 29684
@@ -4810,7 +4811,6 @@ checks:
     description: "The /etc/security/opasswd file stores the users old passwords and can be checked to ensure that users are not recycling recent passwords."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password."
     remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Edit the /etc/pam.d/common-password file to include the remember= option of 5 or more. If this line doesn't exist, add the line directly above the line: password [success=1 default=ignore] pam_unix.so obscure yescrypt: Example: password required pam_pwhistory.so use_authtok remember=5"
-    additional information: "Changes only apply to accounts configured on the local system."
     compliance:
       - cis: ["5.4.3"]
       - cis_csc_v8: ["5.2"]
@@ -4830,8 +4830,7 @@ checks:
     title: "Ensure password hashing algorithm is up to date with the latest standards."
     description: "The commands below change password encryption to yescrypt. All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The yescrypt algorithm provides much stronger hashing than previous available algorithms, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: these change only apply to accounts configured on the local system."
-    remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. PAM Edit the /etc/pam.d/common-password file and ensure that no hashing algorithm option for pam_unix.so is set: password [success=1 default=ignore] try_first_pass remember=5 pam_unix.so obscure use_authtok Login definitions .Edit /etc/login.defs and ensure that ENCRYPT_METHOD is set to yescrypt."
-    additional information: "Additional module options may be set, recommendation only covers those listed here."
+    remediation: "NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. PAM Edit the /etc/pam.d/common-password file and ensure that no hashing algorithm option for pam_unix.so is set: password [success=1 default=ignore] try_first_pass remember=5 pam_unix.so obscure use_authtok - Login definitions: Edit /etc/login.defs and ensure that ENCRYPT_METHOD is set to yescrypt."
     compliance:
       - cis: ["5.4.4"]
       - cis_csc_v8: ["3.11"]
@@ -4846,9 +4845,10 @@ checks:
       - mitre_techniques: ["T1003", "T1003.008", "T1110", "T1110.002"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
-    condition: none
+    condition: any
     rules:
-      - 'f:/etc/pam.d/common-password -> r:"(yescrypt|md5|bigcrypt|sha256|sha512|blowfish)"'
+      - 'not f:/etc/pam.d/common-password -> !r:^# && r:yescrypt|md5|bigcrypt|sha256|sha512|blowfish'
+      - 'f:/etc/login.defs -> r:^\s*ENCRYPT_METHOD\s*yescrypt\s*$'
 
   # 5.4.5 Ensure all current passwords uses the configured hashing algorithm (Manual) - Not Implemented
 
@@ -4889,7 +4889,6 @@ checks:
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity. It is recommended that the PASS_MAX_DAYS parameter does not exceed 365 days and is greater than the value of PASS_MIN_DAYS."
     remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs : PASS_MAX_DAYS 365 Modify user parameters for all users with a password set to match: # chage --maxdays 365 <user>"
     default value: "PASS_MAX_DAYS 99999"
-    additional information: "A value of -1 will disable password expiration .The password expiration must be greater than the minimum days between password changes or users will be unable to change their password"
     references:
       - https://www.cisecurity.org/white-papers/cis-password-policy-guide/
     compliance:
@@ -4932,7 +4931,6 @@ checks:
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
     remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30 Modify user parameters for all users with a password set to match: # chage --inactive 30 <user>"
-    additional information: "A value of -1 would disable this setting"
     default value: "INACTIVE=-1"
     compliance:
       - cis: ["5.5.1.4"]
@@ -4948,10 +4946,9 @@ checks:
     condition: all
     rules:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 30'
-      - 'not c:useradd -D -> n:^INACTIVE=(\d+) compare < 0'
+      - 'not c:useradd -D -> n:^INACTIVE=(-\d+) compare < 0'
 
   # 5.5.1.5 Ensure all users last password change date is in the past (Automated) - Not Implemented
-
   # 5.5.2 Ensure system accounts are secured (Automated) - Not Implemented
 
   # 5.5.3 Ensure default group for the root account is GID 0 (Automated)
