@@ -16,7 +16,8 @@ from wazuh.core.wdb import WazuhDBConnection
 from wazuh.rbac.decorators import expose_resources
 
 
-@expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"])
+@expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1707]})
 def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
     """Run a syscheck scan in the specified agents.
 
