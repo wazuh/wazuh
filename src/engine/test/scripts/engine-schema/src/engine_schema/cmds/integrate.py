@@ -1,5 +1,5 @@
 from engine_schema.generate import generate
-import engine_schema.resource_handler as rs
+import shared.resource_handler as rs
 from ._modules import configure as modules_configure
 from ._modules import get_args as modules_get_args
 
