@@ -1,7 +1,7 @@
 import json
 from typing import Tuple
 
-import engine_schema.resource_handler as rs
+import shared.resource_handler as rs
 
 from .drivers import ecs, wazuh
 
