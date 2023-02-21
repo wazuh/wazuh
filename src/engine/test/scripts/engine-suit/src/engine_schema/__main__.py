@@ -2,20 +2,22 @@ import sys
 import argparse
 from importlib.metadata import metadata
 
+from engine_schema.cmds.generate import configure as configure_generate_parser
+from engine_schema.cmds.integrate import configure as configure_integrate_parser
 import shared.resource_handler as rs
-from .cmds.list_extracted import configure as list_ext_configure
 
 
 def parse_args():
-    meta = metadata('engine-schema')
-    parser = argparse.ArgumentParser(prog='engine-decoder')
+    meta = metadata('engine-suit')
+    parser = argparse.ArgumentParser(prog='engine-schema')
     parser.add_argument('--version', action='version',
                         version=f'%(prog)s {meta.get("Version")}')
 
     # dest used because of bug: https://bugs.python.org/issue29298
-    subparsers = parser.add_subparsers(
-        title='subcommands', required=True, dest='subcommand')
-    list_ext_configure(subparsers)
+    subparsers = parser.add_subparsers(title='subcommands', required=True, dest='subcommand')
+
+    configure_generate_parser(subparsers)
+    configure_integrate_parser(subparsers)
 
     return parser.parse_args()
 
