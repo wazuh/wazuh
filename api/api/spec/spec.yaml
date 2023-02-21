@@ -1472,7 +1472,7 @@ components:
       properties:
         affected_items:
           type: array
-          description: "List of removed groups"
+          description: "List of removed groups, agents belonging exclusively to the removed groups will be reassigned to group default"
 
     AgentIdKey:
       type: object
