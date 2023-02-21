@@ -99,6 +99,7 @@
                 "title",
                 "description",
                 "compatibility",
+                "versions",
                 "author",
                 "references"
             ],
@@ -118,6 +119,13 @@
                 "compatibility": {
                     "type": "string",
                     "description": "Description of the supported services and versions of the logs processed by this item"
+                },
+                "versions": {
+                    "type": "array",
+                    "description": "A list of the service versions supported",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "author": {
                     "type": "object",
@@ -211,7 +219,7 @@
                 }
             ]
         },
-        "_logpar":{
+        "_logpar": {
             "type": "array",
             "description": "Try to parse a field of the event. Terminates once a parser expression matches. If no parser expression matches, this asset will not continue processing the event. Parser expressions are defined using the `field`: `logpar_expression`, where `field` is the field name and `logpar_expression` is the Logpar expression to be evaluated.",
             "minItems": 1,
