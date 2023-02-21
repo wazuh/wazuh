@@ -80,6 +80,10 @@ class ResourceHandler:
 
         return readed
 
+    def load_file(self, path_str: str, format: Format = Format.YML) -> dict:
+        path = Path(path_str)
+        return self._load_file(path, format)
+
     def load_module_files(self, root_dir: str, module_name: str) -> Tuple[dict, dict]:
         module_path = Path(root_dir)/module_name
         fields_definition = self._load_file(
