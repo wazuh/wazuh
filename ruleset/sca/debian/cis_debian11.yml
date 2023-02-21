@@ -4677,8 +4677,8 @@ checks:
       - iso_27001-2013: ["A.9.2.3"]
     condition: none
     rules:
-      - 'f:/etc/sudoers -> !r:^# && r:*NOPASSWD'
-      - 'd:/etc/sudoers.d -> r:* -> !r:^# && r:*NOPASSWD'
+      - 'f:/etc/sudoers -> !r:^\s*\t*# && r:*NOPASSWD'
+      - 'd:/etc/sudoers.d -> r:* -> !r:^\s*\t*# && r:*NOPASSWD'
 
   # 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally (Automated)
   - id: 29679
@@ -4697,8 +4697,8 @@ checks:
       - iso_27001-2013: ["A.9.2.3"]
     condition: none
     rules:
-      - 'f:/etc/sudoers -> !r:^# && r:*\!authenticate'
-      - 'd:/etc/sudoers.d -> r:* -> !r:^# && r:*\!authenticate'
+      - 'f:/etc/sudoers -> !r:^\s*\t*# && r:*\!authenticate'
+      - 'd:/etc/sudoers.d -> r:* -> !r:^\s*\t*# && r:*\!authenticate'
 
   # 5.3.6 Ensure sudo authentication timeout is configured correctly (Automated)
   - id: 29680
@@ -4744,7 +4744,7 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/su -> !r:^# && r:auth\s*\t*required\s*\t*pam_wheel.so && r:use_uid && r:group=\w+'
+      - 'f:/etc/pam.d/su -> !r:^\s*\t*# && r:auth\s*\t*required\s*\t*pam_wheel.so && r:use_uid && r:group=\w+'
 
   ############################################################
   # 5.4 Configure PAM
@@ -4769,8 +4769,8 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> !r:^# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
-      - 'f:/etc/security/pwquality.conf -> !r:^# && n:minclass\s*\t*=\s*\t*(\d+) compare >=4'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:minclass\s*\t*=\s*\t*(\d+) compare >=4'
 
   # 5.4.2 Ensure lockout for failed password attempts is configured (Automated)
   - id: 29683
@@ -4795,10 +4795,10 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-auth -> !r:^# && r:auth\s*\t*required\s*\t*pam_faillock.so\s*preauth'
-      - 'f:/etc/pam.d/common-auth -> !r:^# && r:auth\s*\t*\(default=die\)\s*t*pam_faillock.so\s*authfail'
-      - 'f:/etc/pam.d/common-auth -> !r:^# && r:auth\s*\t*sufficient\s*\t*pam_faillock.so\s*authsucc'
-      - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*required\s*\t*pam_faillock.so'
+      - 'f:/etc/pam.d/common-auth -> !r:^\s*\t*# && r:auth\s*\t*required\s*\t*pam_faillock.so\s*preauth'
+      - 'f:/etc/pam.d/common-auth -> !r:^\s*\t*# && r:auth\s*\t*\(default=die\)\s*t*pam_faillock.so\s*authfail'
+      - 'f:/etc/pam.d/common-auth -> !r:^\s*\t*# && r:auth\s*\t*sufficient\s*\t*pam_faillock.so\s*authsucc'
+      - 'f:/etc/pam.d/common-account -> !r:^\s*\t*# && r:account\s*\t*required\s*\t*pam_faillock.so'
 
 
 
@@ -4819,8 +4819,8 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.004"]
     condition: none
     rules:
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare < 5'
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && !r:remember'
+      - 'f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare < 5'
+      - 'f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:password\s*\t*required\s*\t*pam_pwhistory.so && !r:remember'
 
   # 5.4.4 Ensure password hashing algorithm is up to date with the latest standards (Automated)
   - id: 29685
@@ -4842,9 +4842,9 @@ checks:
       - mitre_techniques: ["T1003", "T1003.008", "T1110", "T1110.002"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
-    condition: any
+    condition: all
     rules:
-      - 'not f:/etc/pam.d/common-password -> !r:^# && r:yescrypt|md5|bigcrypt|sha256|sha512|blowfish'
+      - 'not f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:yescrypt|md5|bigcrypt|sha256|sha512|blowfish'
       - 'f:/etc/login.defs -> r:^\s*ENCRYPT_METHOD\s*yescrypt\s*$'
 
   # 5.4.5 Ensure all current passwords uses the configured hashing algorithm (Manual) - Not Implemented
@@ -4921,6 +4921,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
+      - 'not c:sh -c "awk -F: ''(/^[^:]+:[^!*]/ && $6<7){print $1 \" \" $6}'' /etc/shadow" -> r:^\w+'
 
   # 5.5.1.4 Ensure inactive password lock is 30 days or less (Automated)
   - id: 29689
@@ -4944,6 +4945,7 @@ checks:
     rules:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 30'
       - 'not c:useradd -D -> n:^INACTIVE=(-\d+) compare < 0'
+      - 'not c:sh -c "awk -F: ''(/^[^:]+:[^!*]/ && ($7~/(\\s*$|-1)/ || $7>30)){print $1 \" \" $7}'' /etc/shadow" -> r:^\w+'
 
   # 5.5.1.5 Ensure all users last password change date is in the past (Automated) - Not Implemented
   # 5.5.2 Ensure system accounts are secured (Automated) - Not Implemented
@@ -4970,7 +4972,7 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - 'f:/etc/passwd -> !r:^# && r:root:\w+:\w+:0:'
+      - 'f:/etc/passwd -> !r:^\s*\t*# && r:root:\w+:\w+:0:'
 
   # 5.5.4 Ensure default user umask is 027 or more restrictive (Automated) - Not Implemented
 
@@ -5300,7 +5302,7 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> !r:^# && r:\.+'
+      - 'f:/etc/shadow -> !r:^\s*\t*# && r:\.+'
 
   # 6.2.3 Ensure all groups in /etc/passwd exist in /etc/group (Automated) - Not Implemented
 
@@ -5326,7 +5328,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'f:/etc/group -> !r:^# && r:shadow:\w*:\w*:\S+'
+      - 'f:/etc/group -> !r:^\s*\t*# && r:shadow:\w*:\w*:\S+'
 
   # 6.2.5 Ensure no duplicate UIDs exist (Automated)" - Not Implemented
 
@@ -5351,7 +5353,7 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - 'f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:'
+      - 'f:/etc/passwd -> !r:^\s*\t*# && !r:^root: && r:^\w+:\w+:0:'
 
   # 6.2.11 Ensure local interactive user home directories exist (Automated) - Not Implemented
 
