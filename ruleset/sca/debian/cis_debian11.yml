@@ -1256,7 +1256,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1040", "T1040.000", "T1056", "T1056.001", "T1557"]
+      - mitre_techniques: ["T1040", "T1056", "T1056.001", "T1557"]
       - mitre_tactics: ["TA0002"]
       - mitre_mitigations: ["M1050"]
     condition: none
@@ -1269,7 +1269,6 @@ checks:
     description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
     rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
     remediation: "Run the following command to update all packages following local site policy guidance on applying updates and patches: # apt upgrade OR # apt dist-upgrade"
-    additional information: "Site policy may mandate a testing period before install onto production systems for available updates.upgrade - is used to install the newest versions of all packages currently installed on the system from the sources enumerated in /etc/apt/sources.list. Packages currently installed with new versions available are retrieved and upgraded; under no circumstances are currently installed packages removed, or packages not already installed retrieved and installed. New versions of currently installed packages that cannot be upgraded without changing the install status of another package will be left at their current version. An update must be performed first so that apt knows that new versions of packages are available. dist-upgrade - in addition to performing the function of upgrade, also intelligently handles changing dependencies with new versions of packages; apt has a smart conflict resolution system, and it will attempt to upgrade the most important packages at the expense of less important ones if necessary. So, dist-upgrade command may remove some packages. The /etc/apt/sources.list file contains a list of locations from which to retrieve desired package files. See also apt_preferences(5) for a mechanism for overriding the general settings for individual packages."
     compliance:
       - cis: ["1.9"]
       - cis_csc_v8: ["7.3"]
