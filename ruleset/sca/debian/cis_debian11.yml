@@ -1562,7 +1562,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1203.000", "T1210", "T1210.000", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -1693,7 +1693,6 @@ checks:
     description: "The File Transfer Protocol (FTP) provides networked computers with the ability to transfer files."
     rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended SFTP be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be deleted to reduce the potential attack surface."
     remediation: "Run the following command to remove vsftpd: # apt purge vsftpd"
-    additional information: "Additional FTP servers also exist and should be audited."
     compliance:
       - cis: ["2.2.8"]
       - cis_csc_v8: ["4.8"]
@@ -1717,7 +1716,6 @@ checks:
     description: "HTTP or web servers provide the ability to host web site content."
     rationale: "Unless there is a need to run the system as a web server, it is recommended that the package be deleted to reduce the potential attack surface."
     remediation: "Run the following command to remove apache: # apt purge apache2"
-    additional information: "Several httpd servers exist and can use other service names. apache2 and nginx are example services that provide an HTTP server. These and other services should also be audited"
     compliance:
       - cis: ["2.2.9"]
       - cis_csc_v8: ["4.8"]
@@ -1741,7 +1739,6 @@ checks:
     description: "dovecot-imapd and dovecot-pop3d are an open source IMAP and POP3 server for Linux based systems."
     rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run one of the following commands to remove dovecot-imapd and dovecot-pop3d: # apt purge dovecot-imapd dovecot-pop3d"
-    additional information: "Several IMAP/POP3 servers exist and can use other service names. courier-imap and cyrus-imap are example services that provide a mail server. These and other services should also be audited."
     compliance:
       - cis: ["2.2.10"]
       - cis_csc_v8: ["4.8"]
