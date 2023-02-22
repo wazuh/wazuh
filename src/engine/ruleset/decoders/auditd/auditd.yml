@@ -66,8 +66,8 @@ normalize:
       - event.kind: event
       - event.module: auditd
       - fileset.name: log
-      - auditd.log.old-auid: $auditd.log.old_auid
-      - auditd.log.old-ses: $auditd.log.old_ses
+      - auditd.log.old_auid: $auditd.log.old_auid
+      - auditd.log.old_ses: $auditd.log.old_ses
 
       # TODO: we need a HF that parses a date from epoch in secs
       - timestamp: $~log.epoch
