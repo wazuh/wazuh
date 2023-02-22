@@ -3,10 +3,7 @@
 #include <eMessages/eMessage.h>
 #include <eMessages/router.pb.h>
 
-namespace
-{
 
-}
 namespace api::router::cmds
 {
 // Using the engine protobuffer namespace
@@ -60,13 +57,13 @@ api::CommandFn routeGet(std::shared_ptr<::router::Router> router)
 
         if (errorMsg.has_value() || !entry.has_value())
         {
-            eResponse.set_status(com::wazuh::api::engine::ReturnStatus::ERROR);
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
             eResponse.set_error(errorMsg.value_or("Route not found"));
         }
         else
         {
             const auto& [name, priority, filterName, envName] = entry.value();
-            eResponse.set_status(com::wazuh::api::engine::ReturnStatus::OK);
+            eResponse.set_status(eEngine::ReturnStatus::OK);
             eResponse.mutable_rute()->set_name(name);
             eResponse.mutable_rute()->set_filter(filterName);
             eResponse.mutable_rute()->set_policy(envName);
@@ -98,13 +95,13 @@ api::CommandFn routePost(std::shared_ptr<::router::Router> router)
 
         if (std::holds_alternative<base::Error>(result))
         {
-            eResponse.set_status(com::wazuh::api::engine::ReturnStatus::ERROR);
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
             eResponse.set_error(std::get<base::Error>(result).message);
         }
         else
         {
             const auto& eRequest = std::get<eRouter::RoutePost_Request>(result);
-            // Valida the request
+            // Validate the request
             errorMsg = !eRequest.has_route()              ? std::make_optional("Missing /route")
                        : !eRequest.route().has_name()     ? std::make_optional("Missing /route/name")
                        : !eRequest.route().has_filter()   ? std::make_optional("Missing /route/filter")
@@ -121,12 +118,12 @@ api::CommandFn routePost(std::shared_ptr<::router::Router> router)
 
             if (errorMsg.has_value())
             {
-                eResponse.set_status(com::wazuh::api::engine::ReturnStatus::ERROR);
+                eResponse.set_status(eEngine::ReturnStatus::ERROR);
                 eResponse.set_error(errorMsg.value());
             }
             else
             {
-                eResponse.set_status(com::wazuh::api::engine::ReturnStatus::OK);
+                eResponse.set_status(eEngine::ReturnStatus::OK);
             }
         }
 
@@ -155,13 +152,13 @@ api::CommandFn routePatch(std::shared_ptr<::router::Router> router)
 
         if (std::holds_alternative<base::Error>(result))
         {
-            eResponse.set_status(com::wazuh::api::engine::ReturnStatus::ERROR);
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
             eResponse.set_error(std::get<base::Error>(result).message);
         }
         else
         {
             const auto& eRequest = std::get<eRouter::RoutePatch_Request>(result);
-            // Valida the request
+            // Validate the request
             errorMsg = !eRequest.has_route()              ? std::make_optional("Missing /route")
                        : !eRequest.route().has_name()     ? std::make_optional("Missing /route/name")
                        : !eRequest.route().has_priority() ? std::make_optional("Missing /route/priority")
@@ -176,12 +173,12 @@ api::CommandFn routePatch(std::shared_ptr<::router::Router> router)
 
             if (errorMsg.has_value())
             {
-                eResponse.set_status(com::wazuh::api::engine::ReturnStatus::ERROR);
+                eResponse.set_status(eEngine::ReturnStatus::ERROR);
                 eResponse.set_error(errorMsg.value());
             }
             else
             {
-                eResponse.set_status(com::wazuh::api::engine::ReturnStatus::OK);
+                eResponse.set_status(eEngine::ReturnStatus::OK);
             }
         }
 
@@ -208,21 +205,21 @@ api::CommandFn routeDelete(std::shared_ptr<::router::Router> router)
 
         if (std::holds_alternative<base::Error>(result))
         {
-            eResponse.set_status(com::wazuh::api::engine::ReturnStatus::ERROR);
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
             eResponse.set_error(std::get<base::Error>(result).message);
         }
         else
         {
             const auto& eRequest = std::get<eRouter::RouteDelete_Request>(result);
-            // Valida the request
+            // Validate the request
             if (eRequest.has_name())
             {
                 router->removeRoute(eRequest.name());
-                eResponse.set_status(com::wazuh::api::engine::ReturnStatus::OK);
+                eResponse.set_status(eEngine::ReturnStatus::OK);
             }
             else
             {
-                eResponse.set_status(com::wazuh::api::engine::ReturnStatus::ERROR);
+                eResponse.set_status(eEngine::ReturnStatus::ERROR);
                 eResponse.set_error("Missing /name");
             }
         }
@@ -250,7 +247,7 @@ api::CommandFn tableGet(std::shared_ptr<::router::Router> router)
 
         if (std::holds_alternative<base::Error>(result))
         {
-            eResponse.set_status(com::wazuh::api::engine::ReturnStatus::ERROR);
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
             eResponse.set_error(std::get<base::Error>(result).message);
         }
         else
@@ -265,7 +262,7 @@ api::CommandFn tableGet(std::shared_ptr<::router::Router> router)
                 eEntry.set_priority(priority);
                 eTable->Add(std::move(eEntry));
             }
-            eResponse.set_status(com::wazuh::api::engine::ReturnStatus::OK);
+            eResponse.set_status(eEngine::ReturnStatus::OK);
         }
 
         // Adapt the response to wazuh api
@@ -291,29 +288,29 @@ api::CommandFn queuePost(std::shared_ptr<::router::Router> router)
 
         if (std::holds_alternative<base::Error>(result))
         {
-            eResponse.set_status(com::wazuh::api::engine::ReturnStatus::ERROR);
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
             eResponse.set_error(std::get<base::Error>(result).message);
         }
         else
         {
             const auto& eRequest = std::get<eRouter::QueuePost_Request>(result);
-            // Valida the request
+            // Validate the request
             if (eRequest.has_ossec_event())
             {
                 auto err = router->enqueueOssecEvent(eRequest.ossec_event());
                 if (err)
                 {
-                    eResponse.set_status(com::wazuh::api::engine::ReturnStatus::ERROR);
+                    eResponse.set_status(eEngine::ReturnStatus::ERROR);
                     eResponse.set_error(err.value().message);
                 }
                 else
                 {
-                    eResponse.set_status(com::wazuh::api::engine::ReturnStatus::OK);
+                    eResponse.set_status(eEngine::ReturnStatus::OK);
                 }
             }
             else
             {
-                eResponse.set_status(com::wazuh::api::engine::ReturnStatus::ERROR);
+                eResponse.set_status(eEngine::ReturnStatus::ERROR);
                 eResponse.set_error("Missing /ossec_event");
             }
         }
