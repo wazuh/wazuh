@@ -10771,6 +10771,30 @@
                 "string"
             ],
             "pattern": "^[\\+\\$].+"
+        },
+        "auditd.log.new_auid": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFor login events this is the new audit ID. The audit ID can be used to trace future events to the user even if their identity changes (like becoming root).\n",
+            "type": [
+                "string"
+            ]
+        },
+        "auditd.log.old_auid": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFor login events this is the old audit ID used for the user  prior to this login.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "auditd.log.new_ses": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFor login events this is the new session ID. It can be used to tie a user to future events by session ID.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "auditd.log.old_ses": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFor login events this is the old session ID usedfor the user prior to this login.\n",
+            "type": [
+                "string"
+            ]
         }
     }
 }
