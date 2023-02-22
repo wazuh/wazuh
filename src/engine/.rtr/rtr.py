@@ -110,6 +110,8 @@ def main():
 
     for test in args.tests:
         results = TESTS[test](args) and results
+        if(not results):
+            break
     restore_permissions([args.source])
     set_output_permissions([args.output], args.uid, args.gid)
     sys.exit(not int(results))
