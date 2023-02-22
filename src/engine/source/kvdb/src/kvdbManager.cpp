@@ -238,6 +238,18 @@ std::variant<json::Json, base::Error> KVDBManager::jDumpDB(const std::string& na
     return kvdb->jDump();
 }
 
+std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBManager::rDumpDB(const std::string& name)
+{
+    auto handle = getHandler(name);
+    if (std::holds_alternative<base::Error>(handle))
+    {
+        return std::get<base::Error>(handle);
+    }
+    auto& kvdb = std::get<KVDBHandle>(handle);
+
+    return kvdb->rDump();
+}
+
 std::optional<base::Error> KVDBManager::writeRaw(const std::string& name,
                                                  const std::string& key,
                                                  const std::string value)

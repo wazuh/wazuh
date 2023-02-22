@@ -20,8 +20,7 @@ message Entry
  **************************************************/
 message RouteGet_Request
 {
-    // Name of the route to query
-    optional string name = 1;
+    optional string name = 1; // Name of the route to query
 }
 
 message RouteGet_Response
@@ -98,3 +97,4 @@ message QueuePost_Request
     reserved 2;                      // Reserved for future use (event json position)
     reserved "event";                // Reserved for event in json format for future use in the engine
 }
+// message RoutePatch_Response -> Return a GenericStatus_Response
