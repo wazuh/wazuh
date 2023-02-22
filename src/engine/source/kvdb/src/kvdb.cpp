@@ -566,7 +566,33 @@ struct KVDB::Impl
         return true;
     }
 
-    json::Json dumpContent()
+    std::unordered_map<std::string, std::string> dumpRawContent()
+    {
+        std::unordered_map<std::string, std::string> content {};
+
+        std::shared_ptr<rocksdb::Iterator> iter(m_db->NewIterator(kOptions.read));
+
+        iter->Refresh(); // TODO: Check if this is needed, i think it is not and its
+                         // expensive
+        for (iter->SeekToFirst(); iter->Valid(); iter->Next())
+        {
+            content[iter->key().ToString()] = iter->value().ToString();
+        }
+
+        // check for error
+        if (!iter->status().ok())
+        {
+            WAZUH_LOG_WARN("Engine KVDB: Database '{}': Couldn't iterate over "
+                           "database: '{}'",
+                           m_name,
+                           iter->status().ToString());
+            return {};
+        }
+
+        return content;
+    }
+
+    json::Json jDumpContent()
     {
         json::Json dump {};
         dump.setArray();
@@ -736,5 +762,10 @@ std::string_view KVDB::getName() const
 
 json::Json KVDB::jDump()
 {
-    return mImpl->dumpContent();
+    return mImpl->jDumpContent();
+}
+
+std::unordered_map<std::string, std::string> KVDB::rDump()
+{
+    return mImpl->dumpRawContent();
 }
