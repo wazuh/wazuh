@@ -10,6 +10,7 @@ import logging
 import os
 
 BUILDDIR = '/build'
+THREADS_DEFAULT = 2
 
 def log(outputdir, module, stdout, stderr):
     with open(outputdir + f'/{module}.stdout.log', 'w') as f:
@@ -62,8 +63,14 @@ def clangformat(params):
 def unittests(params):
     command = 'ctest'
     builddir = params.output + BUILDDIR
-    args = f'--test-dir {builddir}'
+    args = f'--test-dir {builddir} --output-on-failure'
     logging.debug(f'Executing {command} {args}')
+    # Creating directory tree for tests
+    os.makedirs('/var/ossec', exist_ok=True)
+    os.makedirs('/var/ossec/queue', exist_ok=True)
+    os.makedirs('/var/ossec/queue/db', exist_ok=True)
+    os.makedirs('/var/ossec/queue/alerts', exist_ok=True)
+
     result = subprocess.run(
         f'{command} {args}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     if result.returncode == 0 and not result.stderr:
@@ -90,7 +97,7 @@ def build(params):
     subprocess.run(f"git config --global --add safe.directory '*'", shell=True)
     if configure(builddir, params.source):
         command = 'cmake'
-        args = f'--build {builddir} -j$(nproc)'
+        args = f'--build {builddir} -j{THREADS_DEFAULT}'
         logging.debug(f'Executing {command} {args}')
         result = subprocess.run(
             f'{command} {args}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
