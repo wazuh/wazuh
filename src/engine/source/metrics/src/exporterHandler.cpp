@@ -2,6 +2,7 @@
 #include "opentelemetry/exporters/zipkin/zipkin_exporter_factory.h"
 #include "opentelemetry/exporters/ostream/span_exporter_factory.h"
 #include "opentelemetry/exporters/memory/in_memory_span_exporter_factory.h"
+#include "opentelemetry/exporters/ostream/metric_exporter.h"
 #include <fstream>
 
 std::shared_ptr<MetricsContext> ExporterHandler::handleRequest(std::shared_ptr<MetricsContext> data)
@@ -20,13 +21,12 @@ void ExporterHandler::create(std::shared_ptr<MetricsContext> data)
                 {
                     data->file.open(data->outputFile);
                     data->exporter = opentelemetry::exporter::trace::OStreamSpanExporterFactory::Create(data->file);
-                    break;
                 }
                 else
                 {
                     data->exporter = opentelemetry::exporter::trace::OStreamSpanExporterFactory::Create();
-                    break;
                 }
+                break;
             }
         case ExportersTypes::Memory:
             {
@@ -38,6 +38,23 @@ void ExporterHandler::create(std::shared_ptr<MetricsContext> data)
             {
                 opentelemetry::exporter::zipkin::ZipkinExporterOptions opts;
                 data->exporter = opentelemetry::exporter::zipkin::ZipkinExporterFactory::Create(opts);
+                break;
+            }
+        case ExportersTypes::Metrics:
+            {
+                if (data->loggingFileExport)
+                {
+                    data->file.open(data->outputFile);
+                    std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter> exporter {
+                        new opentelemetry::exporter::metrics::OStreamMetricExporter(data->file)};
+                    data->metricExporter = std::move(exporter);
+                }
+                else
+                {
+                    std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter> exporter {
+                        new opentelemetry::exporter::metrics::OStreamMetricExporter()};
+                    data->metricExporter = std::move(exporter);
+                }
                 break;
             }
         default:
