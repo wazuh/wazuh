@@ -50,6 +50,10 @@ protected:
     {
       std::shared_ptr<opentelemetry::trace::TracerProvider> none;
       opentelemetry::trace::Provider::SetTracerProvider(none);
+      if (m_spContext->file.is_open())
+      {
+        m_spContext->file.close();
+      }
     }
 };
 
