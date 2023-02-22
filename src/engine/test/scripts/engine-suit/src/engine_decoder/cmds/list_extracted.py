@@ -30,9 +30,10 @@ def run(args, resource_handler: rs.ResourceHandler):
                 for entry in block['logpar']:
                     for _, expr in entry.items():
                         extracted = extracted.union(get_logpar_fields(expr))
-            for entry in block['map']:
-                for f, _ in entry.items():
-                    extracted.add(f)
+            if 'map' in block:
+                for entry in block['map']:
+                    for f, _ in entry.items():
+                        extracted.add(f)
 
     for f in sorted(extracted):
         print(f)
