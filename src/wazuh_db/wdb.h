@@ -373,7 +373,6 @@ typedef struct wdb_config {
     int free_pages_percentage;
     int max_fragmentation;
     int check_fragmentation_interval;
-    int is_worker;
     wdb_backup_settings_node** wdb_backup_settings;
 } wdb_config;
 
