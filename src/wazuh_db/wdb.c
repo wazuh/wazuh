@@ -170,7 +170,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_FIND_AGENT] = "SELECT id FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
     [WDB_STMT_GLOBAL_FIND_GROUP] = "SELECT id FROM `group` WHERE name = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH] = "UPDATE agent SET group_hash = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_INSERT_AGENT_GROUP] = "INSERT OR IGNORE INTO `group` (name) VALUES(?);",
+    [WDB_STMT_GLOBAL_INSERT_AGENT_GROUP] = "INSERT INTO `group` (name) VALUES(?);",
     [WDB_STMT_GLOBAL_SELECT_GROUP_BELONG] = "SELECT name FROM belongs JOIN `group` ON id = id_group WHERE id_agent = ? order by priority;",
     [WDB_STMT_GLOBAL_INSERT_AGENT_BELONG] = "INSERT OR REPLACE INTO belongs (id_group, id_agent, priority) VALUES(?,?,?);",
     [WDB_STMT_GLOBAL_DELETE_AGENT_BELONG] = "DELETE FROM belongs WHERE id_agent = ?;",

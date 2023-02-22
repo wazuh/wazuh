@@ -96,8 +96,6 @@ static void wm_sync_agents_artifacts();
 static void wm_clean_dangling_legacy_dbs();
 static void wm_clean_dangling_wdb_dbs();
 
-static void wm_sync_multi_groups(const char *dirname);
-
 #endif // LOCAL
 
 static int wm_sync_shared_group(const char *fname);
@@ -130,16 +128,29 @@ void* wm_database_main(wm_database *data) {
     is_worker = w_is_worker();
 
     // Manager name synchronization
-    if (data->sync_agents) {
-        wm_sync_manager();
-    }
+    wm_sync_manager();
 
     // During the startup, both workers and master nodes should perform the
     // agents synchronization with the database using the keys. In advance,
     // the master will only synchronize the artifacts and the agent addition
     // and removal from the database will be held by authd.
     wm_sync_agents();
+
+    // Synchronize agent artifacts only in master node
+    if (!is_worker) {
+        wm_sync_agents_artifacts();
+    }
+
+    // Groups synchronization with the database
+    wdb_update_groups(SHAREDCFG_DIR, &wdb_wmdb_sock);
+
+    // Legacy agent-group files need to be synchronized with the database
+    // and then removed in case an upgrade has just been performed.
     wm_sync_legacy_groups_files();
+
+    // Remove dangling agent databases
+    wm_clean_dangling_legacy_dbs();
+    wm_clean_dangling_wdb_dbs();
 
 #ifdef INOTIFY_ENABLED
     if (data->real_time) {
@@ -184,6 +195,9 @@ void* wm_database_main(wm_database *data) {
         struct timespec spec0;
         struct timespec spec1;
 
+        // Initial wait
+        sleep(data->interval);
+
         while (1) {
             tstart = (long long) time(NULL);
             cstart = clock();
@@ -192,9 +206,7 @@ void* wm_database_main(wm_database *data) {
 #ifndef LOCAL
             if (data->sync_agents) {
                 wm_check_agents();
-                wm_sync_multi_groups(SHAREDCFG_DIR);
-                wm_clean_dangling_legacy_dbs();
-                wm_clean_dangling_wdb_dbs();
+                wdb_update_groups(SHAREDCFG_DIR, &wdb_wmdb_sock);
             }
 #endif
             gettime(&spec1);
@@ -544,11 +556,6 @@ void wm_clean_dangling_wdb_dbs() {
     closedir(dir);
 }
 
-void wm_sync_multi_groups(const char *dirname) {
-
-    wdb_update_groups(dirname, &wdb_wmdb_sock);
-}
-
 void wm_sync_legacy_groups_files() {
     DIR *dir = opendir(GROUPS_DIR);
 
@@ -826,26 +833,17 @@ void wm_inotify_setup(wm_database * data) {
     char * keysfile_dir = dirname(keysfile_path);
 
     if (data->sync_agents) {
-        if ((wd_agents = inotify_add_watch(inotify_fd, keysfile_dir, IN_CLOSE_WRITE | IN_MOVED_TO)) < 0)
+        if ((wd_agents = inotify_add_watch(inotify_fd, keysfile_dir, IN_CLOSE_WRITE | IN_MOVED_TO)) < 0) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch client.keys file: %s.", strerror(errno));
+        }
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_agents='%d'", wd_agents);
 
-        if ((wd_shared_groups = inotify_add_watch(inotify_fd, SHAREDCFG_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0)
+        if ((wd_shared_groups = inotify_add_watch(inotify_fd, SHAREDCFG_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the shared groups directory: %s.", strerror(errno));
+        }
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_shared_groups='%d'", wd_shared_groups);
-
-        // The syncronization with client.keys only happens in worker nodes
-        if (is_worker) {
-            wm_sync_agents();
-        }
-        else {
-            wm_sync_agents_artifacts();
-        }
-        wm_sync_multi_groups(SHAREDCFG_DIR);
-        wm_clean_dangling_legacy_dbs();
-        wm_clean_dangling_wdb_dbs();
     }
 
 #endif
