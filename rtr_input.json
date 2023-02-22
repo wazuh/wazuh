@@ -8,6 +8,13 @@
             ]
         },
         {
+            "description": "Cppcheck",
+            "parameters": [
+                "--test cppcheck",
+                "--ignore build"
+            ]
+        },
+        {
             "description": "Build",
             "parameters": [
                 "--test build"
