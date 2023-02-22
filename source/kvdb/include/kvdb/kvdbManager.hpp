@@ -110,6 +110,16 @@ public:
     std::variant<json::Json, base::Error> jDumpDB(const std::string& name);
 
     /**
+     * @brief Dumps the KVDB named name to a json array or error if it does not dumped.
+     *
+     * @param name of the KVDB to be dumped
+     * @return std::variant<json::Json, base::Error>  json array or error if it does not
+     * dumped.
+     */
+    std::variant<std::unordered_map<std::string, std::string>, base::Error> rDumpDB(const std::string& name);
+
+
+    /**
      * @brief Writes a key or a key value to the KVDB named name.
      *
      * @param name of the KVDB where to write the key

@@ -186,10 +186,15 @@ public:
     /**
      * @brief Returns a JSON array of all pair key-values of a CF
      *
-     * @param dump where the result will be stored.
-     * @return std::string error message if it could finish properly.
+     * @return json::Json array of all pair key-values of a CF
      */
     json::Json jDump();
+
+    /**
+     * @brief Returns a map of all pair key-values (as strings) of a CF
+     * @return std::map<std::string, std::string> map of all pair key-values of a CF
+     */
+    std::unordered_map<std::string, std::string> rDump();
 
     /**
      * @brief DB closing cleaning all elements used to acces it

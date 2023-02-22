@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <eMessages/eMessage.h>
+#include <eMessages/kbdb.pb.h>
 #include <fmt/format.h>
 #include <json/json.hpp>
 
@@ -9,303 +11,435 @@
 
 namespace api::kvdb::cmds
 {
+namespace eKVDB = ::com::wazuh::api::engine::kvdb;
+namespace eEngine = ::com::wazuh::api::engine;
 
-namespace
-{
-/**
- * @brief Get the KVDB's name from the params or return an error
- *
- * @param params The json /data from the request
- * @return [bool, std::string] True if the name is valid, false otherwise
- *                             The name if it's valid, the error message otherwise.
- */
-std::tuple<bool, std::string> getNameOrError(const json::Json& params)
-{
-    const auto kvdbName = params.getString("/name");
-    if (!kvdbName)
-    {
-        if (params.exists("/name"))
-        {
-            return {false, KVDB_NAME_NOT_A_STRING};
-        }
-        return {false, KVDB_NAME_MISSING};
-    }
 
-    if (kvdbName.value().empty())
-    {
-        return {false, KVDB_NAME_EMPTY};
-    }
+/* Manager Endpoint */
 
-    return {true, kvdbName.value()};
-}
-
-/**
- * @brief Get the KVDB's key from the params or return an error
- *
- * @param params The json /data from the request
- * @return [bool, std::string] True if the key is valid, false otherwise
- *                            The key if it's valid, the error message otherwise.
- */
-std::tuple<bool, std::string> getKeyOrError(const json::Json& params)
-{
-    const auto key = params.getString("/key");
-    if (!key)
-    {
-        if (params.exists("/key"))
-        {
-            return {false, KVDB_KEY_NOT_A_STRING};
-        }
-        return {false, KVDB_KEY_MISSING};
-    }
-
-    if (key.value().empty())
-    {
-        return {false, KVDB_KEY_EMPTY};
-    }
-
-    return {true, key.value()};
-}
-
-} // namespace
-
-api::CommandFn kvdbCreateCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+api::CommandFn managerGet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
     return [kvdbManager](api::wpRequest request) -> api::wpResponse
     {
-        const auto params = request.getParameters().value(); // The request is validated by the server
+        eKVDB::managerGet_Response eResponse;
 
-        // Get KVDB's name
-        const auto [ok, kvdbName] = getNameOrError(params);
-        if (!ok)
-        {
-            return api::wpResponse {kvdbName};
-        }
+        const auto params = request.getParameters().value().str(); // The request is validated by the server
+        const auto result = eMessage::eMessageFromJson<eKVDB::managerGet_Request>(params);
 
-        // Get KVDB's path
-        const auto kvdbPath = params.getString("/path");
+        std::optional<std::string> errorMsg = std::nullopt;
 
-        const auto error = kvdbManager->createFromJFile(kvdbName, kvdbPath.value_or(""));
-        if (error)
-        {
-            return api::wpResponse {error.value().message};
-        }
-
-        return api::wpResponse {
-            fmt::format("KVDB '{}' successfully created", kvdbName)};
-    };
-}
-
-api::CommandFn kvdbDeleteCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
-{
-    return [kvdbManager](api::wpRequest request) -> api::wpResponse
-    {
-        const auto params = request.getParameters().value(); // The request is validated by the server
-
-        // Get KVDB's name
-        const auto [ok, kvdbName] = getNameOrError(params);
-        if (!ok)
-        {
-            return api::wpResponse {kvdbName};
-        }
-
-        const auto error = kvdbManager->deleteDB(kvdbName);
-        if (error)
-        {
-            return api::wpResponse {error.value().message};
-        }
-
-        return api::wpResponse {
-            fmt::format("KVDB '{}' successfully deleted", kvdbName)};
-    };
-}
-
-api::CommandFn kvdbDumpCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
-{
-    return [kvdbManager](api::wpRequest request) -> api::wpResponse
-    {
-        const auto params = request.getParameters().value(); // The request is validated by the server
-
-        // Get KVDB's name
-        const auto [ok, kvdbName] = getNameOrError(params);
-        if (!ok)
-        {
-            return api::wpResponse {kvdbName};
-        }
-
-        auto result = kvdbManager->jDumpDB(kvdbName);
         if (std::holds_alternative<base::Error>(result))
         {
-            return api::wpResponse {std::get<base::Error>(result).message};
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_error(std::get<base::Error>(result).message);
         }
-
-        return api::wpResponse {
-            std::get<json::Json>(result),
-            fmt::format("KVDB '{}' successfully dumped", kvdbName)};
-    };
-}
-
-api::CommandFn kvdbGetKeyCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
-{
-    return [kvdbManager](api::wpRequest request) -> api::wpResponse
-    {
-        const auto params = request.getParameters().value(); // The request is validated by the server
-
-        // Get KVDB's name
-        const auto [ok, kvdbName] = getNameOrError(params);
-        if (!ok)
+        else
         {
-            return api::wpResponse {kvdbName};
-        }
+            eResponse.set_status(eEngine::ReturnStatus::OK);
+            const auto& eRequest = std::get<eKVDB::managerGet_Request>(result);
+            // TODO: The filter should be applied in the KVDB manager not here
+            auto kvdbLists = kvdbManager->listDBs(eRequest.must_be_loaded());
 
-       // get key
-        const auto [okKey, key] = getKeyOrError(params);
-        if (!okKey)
-        {
-            return api::wpResponse {key};
-        }
-
-        const auto result = kvdbManager->getJValue(kvdbName, key);
-        if (std::holds_alternative<base::Error>(result))
-        {
-            return api::wpResponse {std::get<base::Error>(result).message};
-        }
-        const auto& value {std::get<json::Json>(result)};
-
-        json::Json data {};
-        data.setObject();
-        data.setString(key, "/key");
-        data.set("/value", value);
-        return api::wpResponse {std::move(data), 0, ""};
-    };
-}
-
-api::CommandFn kvdbInsertKeyCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
-{
-    return [kvdbManager](api::wpRequest request) -> api::wpResponse
-    {
-        const auto params = request.getParameters().value(); // The request is validated by the server
-
-        // Get KVDB's name
-        const auto [ok, kvdbName] = getNameOrError(params);
-        if (!ok)
-        {
-            return api::wpResponse {kvdbName};
-        }
-
-       // Get key
-        const auto [okKey, key] = getKeyOrError(params);
-        if (!okKey)
-        {
-            return api::wpResponse {key};
-        }
-
-        const auto optValue = params.getJson("/value").value_or(json::Json("null"));
-        const auto error = kvdbManager->writeKey(kvdbName, key, optValue);
-
-        if (error)
-        {
-            auto msg = std::string {"Key-value could not be written to the database: "}
-                       + error.value().message;
-            return api::wpResponse {std::move(msg)};
-        }
-
-        return api::wpResponse {"Key-value successfully written to the database"};
-    };
-}
-
-api::CommandFn kvdbListCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
-{
-    return [kvdbManager](api::wpRequest request) -> api::wpResponse
-    {
-        const auto params = request.getParameters().value(); // The request is validated by the server
-
-        // get json params
-        const auto kvdbNameToMatch = params.getString("/name");
-        bool filtered {false};
-        if (kvdbNameToMatch.has_value() && !kvdbNameToMatch.value().empty())
-        {
-            filtered = true;
-        }
-
-        const auto filterLoadedKVDB = params.getBool("/mustBeLoaded");
-        bool listOnlyLoaded {false};
-        if (filterLoadedKVDB.has_value())
-        {
-            listOnlyLoaded = filterLoadedKVDB.value();
-        }
-
-        auto kvdbLists = kvdbManager->listDBs(listOnlyLoaded);
-        json::Json data;
-        data.setArray();
-
-        for (const std::string& dbName : kvdbLists)
-        {
-            if (filtered)
+            auto eList = eResponse.mutable_dbs();
+            for (const std::string& dbName : kvdbLists)
             {
-                if (dbName.find(kvdbNameToMatch.value()) == 0)
+                eList->Add(dbName.c_str());
+            }
+        }
+
+        // Adapt the response to the engine
+        const auto resJson = eMessage::eMessageToJson<eKVDB::managerGet_Response>(eResponse);
+        if (std::holds_alternative<base::Error>(resJson))
+        {
+            const auto& error = std::get<base::Error>(resJson);
+            return api::wpResponse::internalError(error.message);
+        }
+        return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
+    };
+}
+
+api::CommandFn managerPost(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+{
+    return [kvdbManager](api::wpRequest request) -> api::wpResponse
+    {
+        eEngine::GenericStatus_Response eResponse;
+
+        const auto params = request.getParameters().value().str(); // The request is validated by the server
+        const auto result = eMessage::eMessageFromJson<eKVDB::managerPost_Request>(params);
+
+        std::optional<std::string> errorMsg = std::nullopt;
+
+        if (std::holds_alternative<base::Error>(result))
+        {
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_error(std::get<base::Error>(result).message);
+        }
+        else
+        {
+            const auto& eRequest = std::get<eKVDB::managerPost_Request>(result);
+            errorMsg = !eRequest.has_name() ? std::make_optional("Missing /name") : std::nullopt;
+
+            if (!errorMsg.has_value())
+            {
+                const auto path = eRequest.has_path() ? eRequest.path() : std::string {""};
+                auto result = kvdbManager->createFromJFile(eRequest.name(), path);
+                if (result.has_value())
                 {
-                    // Filter according to name start
-                    data.appendString(dbName);
+                    errorMsg = std::make_optional(result.value().message);
                 }
             }
-            else
-            {
-                data.appendString(dbName);
-            }
         }
 
-        return api::wpResponse {std::move(data), 0};
+        if (errorMsg.has_value())
+        {
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_error(errorMsg.value());
+        }
+        else
+        {
+            eResponse.set_status(eEngine::ReturnStatus::OK);
+        }
+
+        // Adapt the response to the engine
+        const auto resJson = eMessage::eMessageToJson<eEngine::GenericStatus_Response>(eResponse);
+        if (std::holds_alternative<base::Error>(resJson))
+        {
+            const auto& error = std::get<base::Error>(resJson);
+            return api::wpResponse::internalError(error.message);
+        }
+        return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
     };
 }
 
-api::CommandFn kvdbRemoveKeyCmd(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+api::CommandFn managerDelete(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
     return [kvdbManager](api::wpRequest request) -> api::wpResponse
     {
-        const auto params = request.getParameters().value(); // The request is validated by the server
+        eEngine::GenericStatus_Response eResponse;
 
-        // Get KVDB's name
-        const auto [ok, kvdbName] = getNameOrError(params);
-        if (!ok)
+        const auto params = request.getParameters().value().str(); // The request is validated by the server
+        const auto result = eMessage::eMessageFromJson<eKVDB::managerDelete_Request>(params);
+
+        std::optional<std::string> errorMsg = std::nullopt;
+
+        if (std::holds_alternative<base::Error>(result))
         {
-            return api::wpResponse {kvdbName};
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_error(std::get<base::Error>(result).message);
+        }
+        else
+        {
+            const auto& eRequest = std::get<eKVDB::managerDelete_Request>(result);
+            errorMsg = !eRequest.has_name() ? std::make_optional("Missing /name") : std::nullopt;
+
+            if (!errorMsg.has_value())
+            {
+                auto result = kvdbManager->deleteDB(eRequest.name());
+                if (result.has_value())
+                {
+                    errorMsg = std::make_optional(result.value().message);
+                }
+            }
         }
 
-        // Get key
-        const auto [okKey, key] = getKeyOrError(params);
-        if (!okKey)
+        if (errorMsg.has_value())
         {
-            return api::wpResponse {key};
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_error(errorMsg.value());
+        }
+        else
+        {
+            eResponse.set_status(eEngine::ReturnStatus::OK);
         }
 
-        const auto retVal = kvdbManager->deleteKey(kvdbName, key);
-
-        if (retVal)
+        // Adapt the response to the engine
+        const auto resJson = eMessage::eMessageToJson<eEngine::GenericStatus_Response>(eResponse);
+        if (std::holds_alternative<base::Error>(resJson))
         {
-            return api::wpResponse {retVal.value().message};
+            const auto& error = std::get<base::Error>(resJson);
+            return api::wpResponse::internalError(error.message);
         }
-
-        return api::wpResponse {"ok"};
+        return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
     };
 }
 
-void registerAllCmds(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager,
-                     std::shared_ptr<api::Registry> registry)
+api::CommandFn managerDump(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+{
+    return [kvdbManager](api::wpRequest request) -> api::wpResponse
+    {
+        eKVDB::managerDump_Response eResponse;
+
+        const auto params = request.getParameters().value().str(); // The request is validated by the server
+        const auto result = eMessage::eMessageFromJson<eKVDB::managerDump_Request>(params);
+
+        std::optional<std::string> errorMsg = std::nullopt;
+
+        if (std::holds_alternative<base::Error>(result))
+        {
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_error(std::get<base::Error>(result).message);
+        }
+        else
+        {
+            const auto& eRequest = std::get<eKVDB::managerDump_Request>(result);
+            errorMsg = !eRequest.has_name() ? std::make_optional("Missing /name") : std::nullopt;
+
+            if (!errorMsg.has_value())
+            {
+                auto result = kvdbManager->rDumpDB(eRequest.name());
+                if (std::holds_alternative<base::Error>(result))
+                {
+                    errorMsg = std::make_optional(std::get<base::Error>(result).message);
+                }
+                else
+                {
+                    const auto& dump = std::get<std::unordered_map<std::string, std::string>>(result);
+
+                    auto entries = eResponse.mutable_entries();
+                    for (const auto& [key, value] : dump)
+                    {
+                        auto entry = eKVDB::Entry();
+                        entry.mutable_key()->assign(key);
+
+                        const auto res = eMessage::eMessageFromJson<google::protobuf::Value>(value);
+                        if (std::holds_alternative<base::Error>(res)) // Should not happen but just in case
+                        {
+                            errorMsg = std::make_optional(std::get<base::Error>(res).message + ". For key '" + key
+                                                          + "' and value " + value);
+                            break;
+                        }
+                        const auto json_value = std::get<google::protobuf::Value>(res);
+                        entry.mutable_value()->CopyFrom(json_value);
+                        entries->Add(std::move(entry));
+                    }
+                    eResponse.set_status(eEngine::ReturnStatus::OK);
+                }
+            }
+        }
+
+        if (errorMsg.has_value())
+        {
+            eResponse.Clear();
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_error(errorMsg.value());
+        }
+
+        // Adapt the response to the engine
+        const auto resJson = eMessage::eMessageToJson<eKVDB::managerDump_Response>(eResponse);
+        if (std::holds_alternative<base::Error>(resJson))
+        {
+            const auto& error = std::get<base::Error>(resJson);
+            return api::wpResponse::internalError(error.message);
+        }
+        return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
+    };
+}
+
+/* Specific DB endpoint */
+api::CommandFn dbGet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+{
+    return [kvdbManager](api::wpRequest request) -> api::wpResponse
+    {
+        eKVDB::dbGet_Response eResponse;
+
+        const auto params = request.getParameters().value().str(); // The request is validated by the server
+        const auto result = eMessage::eMessageFromJson<eKVDB::dbGet_Request>(params);
+
+        std::optional<std::string> errorMsg = std::nullopt;
+
+        if (std::holds_alternative<base::Error>(result))
+        {
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_error(std::get<base::Error>(result).message);
+        }
+        else
+        {
+            const auto& eRequest = std::get<eKVDB::dbGet_Request>(result);
+            errorMsg = !eRequest.has_name()  ? std::make_optional("Missing /name")
+                       : !eRequest.has_key() ? std::make_optional("Missing /key")
+                                             : std::nullopt;
+
+            if (!errorMsg.has_value())
+            {
+                auto result = kvdbManager->getRawValue(eRequest.name(), eRequest.key());
+                if (std::holds_alternative<base::Error>(result))
+                {
+                    errorMsg = std::make_optional(std::get<base::Error>(result).message);
+                }
+                else
+                {
+                    const auto res = eMessage::eMessageFromJson<google::protobuf::Value>(std::get<std::string>(result));
+                    if (std::holds_alternative<base::Error>(res)) // Should not happen but just in case
+                    {
+                        errorMsg = std::make_optional(std::get<base::Error>(res).message + ". For value "
+                                                      + std::get<std::string>(result));
+                    }
+                    else
+                    {
+                        const auto json_value = std::get<google::protobuf::Value>(res);
+                        eResponse.mutable_value()->CopyFrom(json_value);
+                        eResponse.set_status(eEngine::ReturnStatus::OK);
+                    }
+                }
+            }
+        }
+
+        if (errorMsg.has_value())
+        {
+            eResponse.Clear();
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_error(errorMsg.value());
+        }
+
+        // Adapt the response to the engine
+        const auto resJson = eMessage::eMessageToJson<eKVDB::dbGet_Response>(eResponse);
+        if (std::holds_alternative<base::Error>(resJson))
+        {
+            const auto& error = std::get<base::Error>(resJson);
+            return api::wpResponse::internalError(error.message);
+        }
+        return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
+    };
+}
+
+api::CommandFn dbDelete(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+{
+    return [kvdbManager](api::wpRequest request) -> api::wpResponse
+    {
+        eEngine::GenericStatus_Response eResponse;
+
+        const auto params = request.getParameters().value().str(); // The request is validated by the server
+        const auto result = eMessage::eMessageFromJson<eKVDB::dbDelete_Request>(params);
+
+        std::optional<std::string> errorMsg = std::nullopt;
+
+        if (std::holds_alternative<base::Error>(result))
+        {
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_error(std::get<base::Error>(result).message);
+        }
+        else
+        {
+            const auto& eRequest = std::get<eKVDB::dbDelete_Request>(result);
+            errorMsg = !eRequest.has_name()  ? std::make_optional("Missing /name")
+                       : !eRequest.has_key() ? std::make_optional("Missing /key")
+                                             : std::nullopt;
+
+            if (!errorMsg.has_value())
+            {
+                auto err = kvdbManager->deleteKey(eRequest.name(), eRequest.key());
+                if (err.has_value())
+                {
+                    errorMsg = std::make_optional(err.value().message);
+                }
+                else
+                {
+                    eResponse.set_status(eEngine::ReturnStatus::OK);
+                }
+            }
+        }
+
+        if (errorMsg.has_value())
+        {
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_error(errorMsg.value());
+        }
+
+        // Adapt the response to the engine
+        const auto resJson = eMessage::eMessageToJson<eEngine::GenericStatus_Response>(eResponse);
+        if (std::holds_alternative<base::Error>(resJson))
+        {
+            const auto& error = std::get<base::Error>(resJson);
+            return api::wpResponse::internalError(error.message);
+        }
+        return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
+    };
+}
+
+api::CommandFn dbPut(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager) {
+    return [kvdbManager](api::wpRequest request) -> api::wpResponse
+    {
+        eEngine::GenericStatus_Response eResponse;
+
+        const auto params = request.getParameters().value().str(); // The request is validated by the server
+        const auto result = eMessage::eMessageFromJson<eKVDB::dbPut_Request>(params);
+
+        std::optional<std::string> errorMsg = std::nullopt;
+
+        if (std::holds_alternative<base::Error>(result))
+        {
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_error(std::get<base::Error>(result).message);
+        }
+        else
+        {
+            const auto& eRequest = std::get<eKVDB::dbPut_Request>(result);
+
+            errorMsg = !eRequest.has_name()            ? std::make_optional("Missing /name")
+                       : !eRequest.has_entry()         ? std::make_optional("Missing /entry")
+                       : !eRequest.entry().has_key()   ? std::make_optional("Missing /entry/key")
+                       : !eRequest.entry().has_value() ? std::make_optional("Missing /entry/value")
+                                                       : std::nullopt;
+
+            if (!errorMsg.has_value())
+            {
+                // get the value as a string
+                const auto value = eMessage::eMessageToJson<google::protobuf::Value>(eRequest.entry().value());
+                if (std::holds_alternative<base::Error>(value))
+                {
+                    errorMsg = std::make_optional(std::get<base::Error>(value).message);
+                }
+                else
+                {
+                    const auto err = kvdbManager->writeRaw(eRequest.name(), eRequest.entry().key(), std::get<std::string>(value));
+                    if (err.has_value())
+                    {
+                        errorMsg = std::make_optional(err.value().message);
+                    }
+                    else
+                    {
+                        eResponse.set_status(eEngine::ReturnStatus::OK);
+                    }
+                }
+
+            }
+        }
+
+        if (errorMsg.has_value())
+        {
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_error(errorMsg.value());
+        }
+
+        // Adapt the response to the engine
+        const auto resJson = eMessage::eMessageToJson<eEngine::GenericStatus_Response>(eResponse);
+        if (std::holds_alternative<base::Error>(resJson))
+        {
+            const auto& error = std::get<base::Error>(resJson);
+            return api::wpResponse::internalError(error.message);
+        }
+        return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
+    };
+}
+
+void registerAllCmds(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager, std::shared_ptr<api::Registry> registry)
 {
     try // TODO: TRY ????
     {
-        registry->registerCommand("create_kvdb", kvdbCreateCmd(kvdbManager));
-        registry->registerCommand("delete_kvdb", kvdbDeleteCmd(kvdbManager));
-        registry->registerCommand("dump_kvdb", kvdbDumpCmd(kvdbManager));
-        registry->registerCommand("get_kvdb", kvdbGetKeyCmd(kvdbManager));
-        registry->registerCommand("insert_kvdb", kvdbInsertKeyCmd(kvdbManager));
-        registry->registerCommand("list_kvdb", kvdbListCmd(kvdbManager));
-        registry->registerCommand("remove_kvdb", kvdbRemoveKeyCmd(kvdbManager));
+        // Manager (Works on the KVDB manager, create/delete/list/dump KVDBs)
+        registry->registerCommand("kvdb.manager/post", managerPost(kvdbManager));
+        registry->registerCommand("kvdb.manager/delete", managerDelete(kvdbManager));
+        registry->registerCommand("kvdb.manager/get", managerGet(kvdbManager));
+        registry->registerCommand("kvdb.manager/dump", managerDump(kvdbManager));
+
+        // Specific KVDB (Works on a specific KVDB instance, not on the manager, create/delete/modify keys)
+        registry->registerCommand("kvdb.db/put", dbPut(kvdbManager));
+        registry->registerCommand("kvdb.db/delete", dbDelete(kvdbManager));
+        registry->registerCommand("kvdb.db/get", dbGet(kvdbManager));
     }
     catch (const std::exception& e)
     {
-        throw std::runtime_error(
-            fmt::format("KVDB API commands could not be registered: {}", e.what()));
+        throw std::runtime_error(fmt::format("KVDB API commands could not be registered: {}", e.what()));
     }
 }
 } // namespace api::kvdb::cmds
