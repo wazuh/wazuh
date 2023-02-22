@@ -107,7 +107,7 @@ Vagrant.configure("2") do |config|
         echo "--- Enabling the engine ---"
         cp $ENGINE_SRC_DIR/build/main $ENGINE_DIR/wazuh-engine
         chmod 755 $ENGINE_DIR/wazuh-engine
-        cp $ENGINE_SRC_DIR/test/scripts/wazuh-bin-engine.sh $WAZUH_DIR/bin/wazuh-engine
+        cp $ENGINE_SRC_DIR/test/scripts/vagrant/wazuh-bin-engine.sh $WAZUH_DIR/bin/wazuh-engine
         chmod 755 $WAZUH_DIR/bin/wazuh-engine
         chown -R wazuh:wazuh $ENGINE_DIR
         chown wazuh:wazuh $WAZUH_DIR/bin/wazuh-engine
@@ -160,7 +160,7 @@ Vagrant.configure("2") do |config|
         # extension: redhat yml
         su - vagrant -c 'code-server --install-extension redhat.vscode-yaml'
         # code-server --install-extension redhat.vscode-yaml
-        echo '{"yaml.schemas":{"./ruleset/schemas/wazuh-asset.json":["*/decoders/*.yml","*/rules/*.yml","*/outputs/*.yml","*/filters/*.yml"],"./ruleset/schemas/wazuh-environments.json":["*/environments/*.yml"]}}'| tee $CS_HOME/engine/wazuh/src/engine/.vscode/settings.json
+        cat $CS_HOME/engine/wazuh/src/engine/test/scripts/vagrant/vscode-settings.json | tee $CS_HOME/engine/wazuh/src/engine/.vscode/settings.json
 
         chown -R $CS_USER:$CS_USER $CS_HOME/
 
