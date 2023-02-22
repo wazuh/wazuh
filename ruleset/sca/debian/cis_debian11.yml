@@ -1867,7 +1867,7 @@ checks:
       - mitre_techniques: ["T1018", "T1210"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
-    condition: none
+    condition: all
     rules:
       - 'c:ss -lntu -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.+LISTEN|::1:25\.*LISTEN'
 
