@@ -1,6 +1,13 @@
 {
     "steps": [
         {
+            "description": "Coding style",
+            "parameters": [
+                "--test format",
+                "--ignore build"
+            ]
+        },
+        {
             "description": "Build",
             "parameters": [
                 "--test build"
