@@ -13,52 +13,50 @@ std::shared_ptr<MetricsContext> ExporterHandler::handleRequest(std::shared_ptr<M
 
 void ExporterHandler::create(std::shared_ptr<MetricsContext> data)
 {
-    switch (data->exporterType)
+    switch (data->providerType)
     {
-        case ExportersTypes::Logging:
+        case ProviderTypes::Tracer:
+        {
+            switch (data->exporterType)
             {
-                if (data->loggingFileExport)
+                case ExportersTypes::Logging:
                 {
-                    data->file.open(data->outputFile);
-                    data->exporter = opentelemetry::exporter::trace::OStreamSpanExporterFactory::Create(data->file);
+                    if (data->loggingFileExport)
+                    {
+                        data->file.open(data->outputFile);
+                        data->exporter = opentelemetry::exporter::trace::OStreamSpanExporterFactory::Create(data->file);
+                    }
+                    else
+                    {
+                        data->exporter = opentelemetry::exporter::trace::OStreamSpanExporterFactory::Create();
+                    }
+                    break;
                 }
-                else
+                case ExportersTypes::Memory:
                 {
-                    data->exporter = opentelemetry::exporter::trace::OStreamSpanExporterFactory::Create();
+                    data->inMemorySpanData = std::make_shared<opentelemetry::exporter::memory::InMemorySpanData>(data->bufferSizeMemoryExporter);
+                    data->exporter = opentelemetry::exporter::memory::InMemorySpanExporterFactory::Create(data->inMemorySpanData, data->bufferSizeMemoryExporter);
+                    break;
                 }
-                break;
+                case ExportersTypes::Zipkin:
+                {
+                    opentelemetry::exporter::zipkin::ZipkinExporterOptions opts;
+                    data->exporter = opentelemetry::exporter::zipkin::ZipkinExporterFactory::Create(opts);
+                    break;
+                }
             }
-        case ExportersTypes::Memory:
+        }
+        case ProviderTypes::Meter:
+        {
+            if (data->loggingFileExport)
             {
-                data->inMemorySpanData = std::make_shared<opentelemetry::exporter::memory::InMemorySpanData>(data->bufferSizeMemoryExporter);
-                data->exporter = opentelemetry::exporter::memory::InMemorySpanExporterFactory::Create(data->inMemorySpanData, data->bufferSizeMemoryExporter);
-                break;
+                data->file.open(data->outputFile);
+                data->metricExporter = std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter>(new opentelemetry::exporter::metrics::OStreamMetricExporter(data->file));
             }
-        case ExportersTypes::Zipkin:
+            else
             {
-                opentelemetry::exporter::zipkin::ZipkinExporterOptions opts;
-                data->exporter = opentelemetry::exporter::zipkin::ZipkinExporterFactory::Create(opts);
-                break;
+                data->metricExporter = std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter>(new opentelemetry::exporter::metrics::OStreamMetricExporter);
             }
-        case ExportersTypes::Metrics:
-            {
-                if (data->loggingFileExport)
-                {
-                    data->file.open(data->outputFile);
-                    std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter> exporter {
-                        new opentelemetry::exporter::metrics::OStreamMetricExporter(data->file)};
-                    data->metricExporter = std::move(exporter);
-                }
-                else
-                {
-                    std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter> exporter {
-                        new opentelemetry::exporter::metrics::OStreamMetricExporter()};
-                    data->metricExporter = std::move(exporter);
-                }
-                break;
-            }
-        default:
-            data->exporter = nullptr;
-            break;
+        }
     }
 }
