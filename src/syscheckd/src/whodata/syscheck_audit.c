@@ -367,6 +367,9 @@ int audit_init(void) {
     audit_queue = queue_init(syscheck.whodata_queue_size);
     w_create_thread(audit_parse_thread, NULL);
 
+    // Print audit queue size
+    minfo(FIM_AUDIT_QUEUE_SIZE, syscheck.whodata_queue_size);
+
     // Perform Audit healthcheck
     if (syscheck.audit_healthcheck) {
         if(audit_health_check(audit_data.socket)) {
@@ -558,7 +561,9 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
         case 0:
             if (cache_i) {
                 // Flush cache
-                queue_push_ex(audit_queue, strdup(cache));
+                if (queue_push_ex(audit_queue, strdup(cache))) {
+                    mwarn(FIM_FULL_AUDIT_QUEUE);
+                }
                 cache_i = 0;
             }
 
@@ -621,7 +626,9 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
 
                 if (cache_id && strcmp(cache_id, id) && cache_i) {
                     if (!event_too_long_id) {
-                        queue_push_ex(audit_queue, strdup(cache));
+                        if (queue_push_ex(audit_queue, strdup(cache))) {
+                            mwarn(FIM_FULL_AUDIT_QUEUE);
+                        }
                     }
                     cache_i = 0;
                 }
@@ -650,7 +657,9 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
 
         // If some audit log remains in the cache and it is complet (line "end of event" is found), flush cache
         if (eoe_found && !event_too_long_id){
-            queue_push_ex(audit_queue, strdup(cache));
+            if (queue_push_ex(audit_queue, strdup(cache))) {
+                mwarn(FIM_FULL_AUDIT_QUEUE);
+            }
             cache_i = 0;
         }
 

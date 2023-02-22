@@ -64,6 +64,7 @@
 #define FIM_DISK_QUOTA_LIMIT_DISABLED       "(6043): Disk quota limit disabled."
 #define FIM_NO_DIFF_REGISTRY                "(6044): Option nodiff enabled for %s '%s'."
 #define FIM_AUDIT_CREATED_RULE_FILE         "(6045): Created audit rules file, due to audit immutable mode rules will be loaded in the next reboot."
+#define FIM_AUDIT_QUEUE_SIZE                "(6046): Internal audit queue size set to '%d'"
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"
