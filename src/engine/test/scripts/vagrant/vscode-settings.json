@@ -1,0 +1,26 @@
+{
+    "yaml.schemas": {
+        "./ruleset/schemas/wazuh-asset.json": [
+            "*/decoders/*.yml",
+            "*/decoders/*/*.yml",
+            "*/decoders/*/*/*.yml",
+            "*/decoders/*/*/*/*.yml",
+            "*/rules/*.yml",
+            "*/rules/*/*.yml",
+            "*/rules/*/*/*.yml",
+            "*/rules/*/*/*/*.yml",
+            "*/outputs/*.yml",
+            "*/outputs/*/*.yml",
+            "*/outputs/*/*/*.yml",
+            "*/outputs/*/*/*/*.yml",
+            "*/filters/*.yml",
+            "*/filters/*/*.yml",
+            "*/filters/*/*/*.yml",
+            "*/filters/*/*/*/*.yml"
+        ],
+        "./ruleset/schemas/wazuh-environments.json": [
+            "*/environments/*.yml"
+        ]
+    },
+    "files.insertFinalNewline": true
+}
