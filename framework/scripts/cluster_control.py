@@ -7,6 +7,7 @@
 import argparse
 import asyncio
 import itertools
+import json
 import logging
 import operator
 import sys
@@ -77,6 +78,13 @@ async def print_agents(filter_status: list, filter_node: list):
                'node_name': 'Node name'}
     data = map(operator.itemgetter(*headers.keys()), result['items'])
     __print_table(data, list(headers.values()), True)
+
+
+async def print_cluster_json_conf():
+    """Print internal active cluster configuration (cluster.json) of local node."""
+    lc = local_client.LocalClient()
+    result = await control.get_cluster_json_conf(lc)
+    print(json.dumps(result, indent=4))
 
 
 async def print_nodes(filter_node: list):
@@ -240,6 +248,7 @@ def main():
     exclusive.add_argument('-l', '--list-nodes', action='store_const', const='list_nodes', help='List nodes')
     exclusive.add_argument('-i', '--health', action='store', nargs='?', const='health', help='Show cluster health')
     exclusive.add_argument('-u', '--usage', action='store_true', help='Show usage')
+    exclusive.add_argument('-c', '--cluster-conf', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
@@ -258,6 +267,8 @@ def main():
             sys.exit(1)
         elif args.list_agents:
             my_function, my_args = print_agents, (args.filter_status, args.filter_node,)
+        elif args.cluster_conf:
+            my_function, my_args = print_cluster_json_conf, ()
         elif args.list_nodes:
             my_function, my_args = print_nodes, (args.filter_node,)
         elif args.health:

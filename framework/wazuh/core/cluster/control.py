@@ -12,6 +12,32 @@ from wazuh.core.exception import WazuhError
 from wazuh.core.utils import filter_array_by_query
 
 
+async def get_cluster_data(lc: local_client.LocalClient, command: str, data: str = '') -> dict:
+    """Send command to cluster, obtain and process the response.
+
+    Parameters
+    ----------
+    lc : LocalClient object
+        LocalClient with which to send the request.
+    command : str
+        Command to be sent in the request.
+    data : str, optional
+        Extra parameters to be included in the request.
+
+    Returns
+    -------
+    result : dict
+        Request response.
+    """
+    response = await lc.execute(command=command.encode(), data=data.encode())
+    result = json.loads(response, object_hook=as_wazuh_object)
+
+    if isinstance(result, Exception):
+        raise result
+
+    return result
+
+
 async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, limit=common.DATABASE_LIMIT,
                     sort=None, search=None, select=None, filter_type='all', q=''):
     """Get basic information of each of the cluster nodes.
@@ -50,11 +76,7 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
         arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
                      'select': select, 'filter_type': filter_type}
 
-    response = await lc.execute(command=b'get_nodes', data=json.dumps(arguments).encode())
-    result = json.loads(response, object_hook=as_wazuh_object)
-
-    if isinstance(result, Exception):
-        raise result
+    result = await get_cluster_data(lc, 'get_nodes', json.dumps(arguments))
 
     if q:
         result['items'] = filter_array_by_query(q, result['items'])
@@ -86,11 +108,7 @@ async def get_node(lc: local_client.LocalClient, filter_node=None, select=None):
     arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.DATABASE_LIMIT, 'sort': None, 'search': None,
                  'select': select, 'filter_type': 'all'}
 
-    response = await lc.execute(command=b'get_nodes', data=json.dumps(arguments).encode())
-    node_info_array = json.loads(response, object_hook=as_wazuh_object)
-
-    if isinstance(node_info_array, Exception):
-        raise node_info_array
+    node_info_array = await get_cluster_data(lc, 'get_nodes', json.dumps(arguments))
 
     if len(node_info_array['items']) > 0:
         return node_info_array['items'][0]
@@ -113,13 +131,7 @@ async def get_health(lc: local_client.LocalClient, filter_node=None):
     result : dict
         Basic information of each node and synchronization process related information.
     """
-    response = await lc.execute(command=b'get_health', data=json.dumps(filter_node).encode())
-    result = json.loads(response, object_hook=as_wazuh_object)
-
-    if isinstance(result, Exception):
-        raise result
-
-    return result
+    return await get_cluster_data(lc, 'get_health', json.dumps(filter_node))
 
 
 async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_status=None):
@@ -153,12 +165,9 @@ async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_stat
                   'wait_for_complete': False
                   }
 
-    response = await lc.execute(command=b'dapi', data=json.dumps(input_json, cls=WazuhJSONEncoder).encode())
-    result = json.loads(response, object_hook=as_wazuh_object)
+    result = await get_cluster_data(lc, 'dapi', json.dumps(input_json, cls=WazuhJSONEncoder))
 
-    if isinstance(result, Exception):
-        raise result
-    # add unknown value to unfilled variables in result. For example, never_connected agents will miss the 'version'
+    # Add unknown value to unfilled variables in result. For example, never_connected agents will miss the 'version'
     # variable.
     filled_result = [{**r, **{key: 'unknown' for key in select_fields - r.keys()}} for r in result['items']]
     result['items'] = filled_result
@@ -196,10 +205,20 @@ async def get_node_ruleset_integrity(lc: local_client.LocalClient) -> dict:
     dict
         Dictionary with results
     """
-    response = await lc.execute(command=b"get_hash", data=b"")
-    result = json.loads(response, object_hook=as_wazuh_object)
+    return await get_cluster_data(lc, 'get_hash')
 
-    if isinstance(result, Exception):
-        raise result
 
-    return result
+async def get_cluster_json_conf(lc: local_client.LocalClient) -> dict:
+    """Get active cluster configuration contained inside 'cluster.json' file.
+
+    Parameters
+    ----------
+    lc : LocalClient
+        LocalClient instance.
+
+    Returns
+    -------
+    dict
+        Dictionary with results
+    """
+    return await get_cluster_data(lc, 'get_cl_conf')

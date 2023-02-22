@@ -58,6 +58,10 @@ def test_LocalServerHandler_process_request(process_request_mock):
         lsh.process_request(command=b"get_config", data=b"test")
         get_config_mock.assert_called_once()
 
+    with patch.object(lsh, "get_cluster_config") as get_cl_config_mock:
+        lsh.process_request(command=b"get_cl_conf", data=b"test")
+        get_cl_config_mock.assert_called_once()
+
     with patch.object(lsh, "get_nodes") as get_nodes_mock:
         lsh.process_request(command=b"get_nodes", data=b"test")
         get_nodes_mock.assert_called_once()
@@ -83,6 +87,13 @@ def test_LocalServerHandler_get_config():
 
     lsh = LocalServerHandler(server=ServerMock(), loop=loop, fernet_key=None, cluster_items={})
     assert lsh.get_config() == (b"ok", b'{"test": "get_config"}')
+
+
+def test_LocalServerHandler_get_cluster_config():
+    """Set the behavior of the get_cluster_config function."""
+    lsh = LocalServerHandler(server=MagicMock(), loop=loop, fernet_key=None,
+                             cluster_items={'files': {}, 'intervals': {}})
+    assert lsh.get_cluster_config() == (b'ok', b'{"files": {}, "intervals": {}}')
 
 
 def test_LocalServerHandler_get_node():

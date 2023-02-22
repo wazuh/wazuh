@@ -60,6 +60,8 @@ class LocalServerHandler(server.AbstractServerHandler):
         """
         if command == b'get_config':
             return self.get_config()
+        elif command == b'get_cl_conf':
+            return self.get_cluster_config()
         elif command == b'get_nodes':
             return self.get_nodes(data)
         elif command == b'get_health':
@@ -73,7 +75,7 @@ class LocalServerHandler(server.AbstractServerHandler):
             return super().process_request(command, data)
 
     def get_config(self) -> Tuple[bytes, bytes]:
-        """Get active cluster configuration.
+        """Get active cluster configuration contained in the 'ossec.conf' file.
 
         Returns
         -------
@@ -83,6 +85,18 @@ class LocalServerHandler(server.AbstractServerHandler):
             JSON-like configuration.
         """
         return b'ok', json.dumps(self.server.configuration).encode()
+
+    def get_cluster_config(self):
+        """Get active cluster configuration contained inside 'cluster.json' file.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            JSON-like configuration.
+        """
+        return b'ok', json.dumps(self.cluster_items).encode()
 
     def get_node(self):
         """Get basic information about the node.

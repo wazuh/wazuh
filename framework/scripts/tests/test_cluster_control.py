@@ -57,6 +57,18 @@ async def test_print_agents(local_client_mock, get_agents_mock, print_table_mock
 
 
 @pytest.mark.asyncio
+@patch('builtins.print')
+@patch('scripts.cluster_control.control.get_cluster_json_conf', return_value={'files': {}, 'intervals': {}})
+@patch('scripts.cluster_control.local_client.LocalClient', return_value='LocalClient return value')
+async def test_print_cluster_json_conf(local_client_mock, get_cluster_conf_mock, print_mock):
+    await cluster_control.print_cluster_json_conf()
+
+    local_client_mock.assert_called_once()
+    get_cluster_conf_mock.assert_called_once_with(local_client_mock.return_value)
+    print_mock.assert_called_once_with('{\n    "files": {},\n    "intervals": {}\n}')
+
+
+@pytest.mark.asyncio
 @patch('builtins.map', return_value="")
 @patch('scripts.cluster_control.__print_table')
 @patch('scripts.cluster_control.control.get_nodes', return_value={'items': ''})
@@ -237,6 +249,7 @@ def test_main(get_cluster_status_mock, read_config_mock, check_cluster_config, p
             self.usage = False
             self.debug = False
             self.filter_node = False
+            self.cluster_conf = False
 
     class ExclusiveMock:
         """Auxiliary class."""
@@ -298,22 +311,17 @@ def test_main(get_cluster_status_mock, read_config_mock, check_cluster_config, p
 
         assert exclusive_mock.exclusive == [{'action': 'store_const', 'const': 'list_agents', 'dest': None,
                                              'flag': '-a', 'help': 'List agents', 'name': '--list-agents',
-                                             'nargs': None, 'type': None}, {'action': 'store_const',
-                                                                            'const': 'list_nodes',
-                                                                            'dest': None, 'flag': '-l',
-                                                                            'help': 'List nodes',
-                                                                            'name': '--list-nodes', 'nargs': None,
-                                                                            'type': None}, {'action': 'store',
-                                                                                            'const': 'health',
-                                                                                            'dest': None,
-                                                                                            'flag': '-i',
-                                                                                            'help': 'Show cluster '
-                                                                                                    'health',
-                                                                                            'name': '--health',
-                                                                                            'nargs': '?',
-                                                                                            'type': None},
+                                             'nargs': None, 'type': None},
+                                            {'action': 'store_const', 'const': 'list_nodes', 'dest': None, 'flag': '-l',
+                                             'help': 'List nodes', 'name': '--list-nodes', 'nargs': None, 'type': None},
+                                            {'action': 'store', 'const': 'health', 'dest': None, 'flag': '-i',
+                                             'help': 'Show cluster ' 'health', 'name': '--health', 'nargs': '?',
+                                             'type': None},
                                             {'action': 'store_true', 'const': None, 'dest': None, 'flag': '-u',
-                                             'help': 'Show usage', 'name': '--usage', 'nargs': None, 'type': None}]
+                                             'help': 'Show usage', 'name': '--usage', 'nargs': None, 'type': None},
+                                            {'action': 'store_true', 'const': None, 'dest': None, 'flag': '-c',
+                                             'help': '==SUPPRESS==', 'name': '--cluster-conf', 'nargs': None,
+                                             'type': None}]
 
         # Test the fifth condition
         get_cluster_status_mock.return_value['enabled'] = 'yes'
