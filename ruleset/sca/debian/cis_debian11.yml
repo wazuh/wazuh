@@ -5368,3 +5368,4 @@ checks:
   # 6.2.16 Ensure no local interactive user has .rhosts files (Automated) - Not Implemented
 
   # 6.2.17 Ensure local interactive user dot files are not group or world writable (Automated) - Not Implemented
+  # finished review
