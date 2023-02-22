@@ -1867,7 +1867,7 @@ checks:
       - mitre_techniques: ["T1018", "T1210"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
-    condition: all
+    condition: none
     rules:
       - 'c:ss -lntu -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.+LISTEN|::1:25\.*LISTEN'
 
@@ -1887,7 +1887,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1105", "T1203", "T1210", "T1543", "T1543.002", "T1570", "T1570.000"]
+      - mitre_techniques: ["T1105", "T1203", "T1210", "T1543", "T1543.002", "T1570", ]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: any
@@ -5368,4 +5368,3 @@ checks:
   # 6.2.16 Ensure no local interactive user has .rhosts files (Automated) - Not Implemented
 
   # 6.2.17 Ensure local interactive user dot files are not group or world writable (Automated) - Not Implemented
-  # finished review
