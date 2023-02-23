@@ -24,6 +24,16 @@ def _flat_entry_to_field(entry_name: str, entry_value: dict) -> Field:
     indexer_details = None
     if 'ignore_above' in entry_value:
         indexer_details = {'ignore_above': entry_value['ignore_above']}
+    if 'scaling_factor' in entry_value:
+        indexer_details = {'scaling_factor': entry_value['scaling_factor']}
+
+    if 'multi_fields' in entry_value:
+        if not indexer_details:
+            indexer_details = dict()
+
+        indexer_details['multi_fields'] = entry_value['multi_fields']
+        for field in indexer_details['multi_fields']:
+            field['type'] = str(_ecs_to_indexer_type(field['type']))
 
     return Field('ecs', entry_name, description, indexer_type, "array" in entry_value['normalize'], indexer_details)
 

@@ -132,6 +132,26 @@ class Field:
         self.json_type = indexer_to_json_type(indexer_type)
         self.indexer_details = indexer_details
 
+        # Assert additional info is passed if needed
+        if self.indexer_type == IndexerType.SCALED_FLOAT:
+            if not (self.indexer_details and 'scaling_factor' in self.indexer_details):
+                raise Exception(
+                    f'Indexer type {self.indexer_type} requires scaling_factor in indexer_details for field {self.name}')
+
+        # if self.indexer_type == IndexerType.KEYWORD:
+        #     if not (self.indexer_details and 'ignore_above' in self.indexer_details):
+        #         raise Exception(
+        #             f'Indexer type {self.indexer_type} requires ignore_above in indexer_details for field {self.name}')
+
+        # Transform multi_fields to the mappings format
+        if self.indexer_details and 'multi_fields' in self.indexer_details:
+            self.indexer_details['fields'] = dict()
+            for multi_field in self.indexer_details['multi_fields']:
+                self.indexer_details['fields'][multi_field['name']] = {
+                    'type': multi_field['type']
+                }
+            self.indexer_details.pop('multi_fields')
+
     def to_jschema(self) -> dict:
         """Obtains the json that describes this field in the schema
 
