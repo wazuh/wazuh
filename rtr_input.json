@@ -25,6 +25,12 @@
             "parameters": [
                 "--test ut"
             ]
+        },
+        {
+            "description": "Doxygen",
+            "parameters": [
+                "--test docs"
+            ]
         }
     ]
 }
