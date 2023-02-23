@@ -50,6 +50,19 @@ void ProviderHandler::create(std::shared_ptr<MetricsContext> data)
                     opentelemetry::metrics::Provider::SetMeterProvider(provider);
                     break;
                 }
+                case opentelemetry::sdk::metrics::InstrumentType::kCounter:
+                {
+                    std::string version{"1.2.0"};
+                    std::string schema{"https://opentelemetry.io/schemas/1.2.0"};
+                    auto name = data->counterName + "_counter";
+                    auto instrumentSelector = std::unique_ptr<opentelemetry::sdk::metrics::InstrumentSelector>(new opentelemetry::sdk::metrics::InstrumentSelector(data->instrumentType, name));
+                    auto meterSelector = std::unique_ptr<opentelemetry::sdk::metrics::MeterSelector>(new opentelemetry::sdk::metrics::MeterSelector(data->counterName, version, schema));
+                    std::unique_ptr<opentelemetry::sdk::metrics::View> counterView{new opentelemetry::sdk::metrics::View{
+                    data->counterName, "description", opentelemetry::sdk::metrics::AggregationType::kDefault}};
+                    data->meterProvider->AddView(std::move(instrumentSelector), std::move(meterSelector), std::move(counterView));
+                    opentelemetry::metrics::Provider::SetMeterProvider(provider);
+                    break;
+                }
                 default:
                     break;
             }

@@ -2,25 +2,22 @@
 #include "exporterHandler.hpp"
 #include "readerHandler.hpp"
 #include "providerHandler.hpp"
+#include "opentelemetry/metrics/provider.h"
 #include "gtest/gtest.h"
 
-namespace counter_test
+void counterExample(const std::string &name)
 {
+    std::string counter_name = name + "_counter";
+    auto provider = opentelemetry::metrics::Provider::GetMeterProvider();
+    opentelemetry::nostd::shared_ptr<opentelemetry::metrics::Meter> meter = provider->GetMeter(name, "1.2.0");
+    auto double_counter = meter->CreateDoubleCounter(counter_name);
 
-void f1()
-{
-    std::cout << "f1\n";
-}
-
-void f2()
-{
-    std::cout << "f2\n";
-}
-
-void f3()
-{
-    f1();
-    f2();
+    for (uint32_t i = 0; i < 20; ++i)
+    {
+        double val = (rand() % 700) + 1.1;
+        double_counter->Add(val);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
 }
 
 class MetricsInstrumentationTest : public ::testing::Test
@@ -39,25 +36,24 @@ protected:
 
 TEST_F(MetricsInstrumentationTest, CounterTest)
 {
-    std::string name {"ostream_metric_example"};
-    std::string version {"1.2.0"};
-    std::string schema {"https://opentelemetry.io/schemas/1.2.0"};
-
     /*
     Initialize an exporter and a reader.
     In this case, we initialize an OStream Exporter which will print to stdout by
     default. The reader periodically collects metrics from the Aggregation Store and
     exports them.
     */
-
-    m_spContext->exporterType = ExportersTypes::Metrics;
-    m_spContext->processorType = ProcessorsTypes::Simple;
-    auto exporter = std::make_shared<ExporterHandler>();
-    auto reader = std::make_shared<ReaderHandler>();
+    m_spContext->exporterType = ExportersTypes::Logging;
+    m_spContext->loggingFileExport = true;
+    m_spContext->outputFile = "counter.txt";
+    m_spContext->providerType = ProviderTypes::Meter;
+    m_spContext->instrumentType = opentelemetry::sdk::metrics::InstrumentType::kCounter;
     m_spContext->export_interval_millis = std::chrono::milliseconds(1000);
     m_spContext->export_timeout_millis = std::chrono::milliseconds(500);
+    m_spContext->counterName = "example";
+    auto exporter = std::make_shared<ExporterHandler>();
+    auto reader = std::make_shared<ReaderHandler>();
     auto provider = std::make_shared<ProviderHandler>();
     exporter->setNext(reader)->setNext(provider);
     exporter->handleRequest(m_spContext);
+    counterExample(m_spContext->counterName);
 }
-} // namespace counter_test
