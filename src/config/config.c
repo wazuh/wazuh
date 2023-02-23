@@ -470,7 +470,6 @@ void PrintErrorAcordingToModules(int modules, const char *cfgfile) {
     switch (BITMASK(modules)) {
         case CSYSCHECK:
         case CROOTCHECK:
-        case CWMODULE:
             mwarn(CONFIG_ERROR, cfgfile);
             break;
         default:

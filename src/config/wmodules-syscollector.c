@@ -127,7 +127,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.enabled = 1;
             else {
-                mwarn("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_SYS_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_NETWORK)) {
@@ -136,7 +136,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.netinfo = 0;
             else {
-                mwarn("Invalid content for tag '%s' at module '%s'.", XML_NETWORK, WM_SYS_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_NETWORK, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_OS_SCAN)) {
@@ -145,7 +145,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.osinfo = 0;
             else {
-                mwarn("Invalid content for tag '%s' at module '%s'.", XML_OS_SCAN, WM_SYS_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_OS_SCAN, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_HARDWARE)) {
@@ -154,7 +154,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.hwinfo = 0;
             else {
-                mwarn("Invalid content for tag '%s' at module '%s'.", XML_HARDWARE, WM_SYS_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_HARDWARE, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_PACKAGES)) {
@@ -163,7 +163,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.programinfo = 0;
             else {
-                mwarn("Invalid content for tag '%s' at module '%s'.", XML_PACKAGES, WM_SYS_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_PACKAGES, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_HOTFIXES)) {
@@ -173,11 +173,11 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 else if (!strcmp(node[i]->content, "no"))
                     syscollector->flags.hotfixinfo = 0;
                 else {
-                    mwarn("Invalid content for tag '%s' at module '%s'.", XML_HOTFIXES, WM_SYS_CONTEXT.name);
+                    merror("Invalid content for tag '%s' at module '%s'.", XML_HOTFIXES, WM_SYS_CONTEXT.name);
                     return OS_INVALID;
                 }
 #else
-                mwarn("The '%s' option is only available on Windows systems. Ignoring it.", XML_HOTFIXES);
+                merror("The '%s' option is only available on Windows systems. Ignoring it.", XML_HOTFIXES);
 #endif
         } else if (!strcmp(node[i]->element, XML_PROCS)) {
             if (!strcmp(node[i]->content, "yes"))
@@ -185,7 +185,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.procinfo = 0;
             else {
-                mwarn("Invalid content for tag '%s' at module '%s'.", XML_PROCS, WM_SYS_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_PROCS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_PORTS)) {
@@ -196,11 +196,11 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                     } else if (!strcmp(node[i]->values[0], "yes")) {
                         syscollector->flags.allports = 1;
                     } else {
-                        mwarn("Invalid content for attribute '%s' at module '%s'.", node[i]->attributes[0], WM_SYS_CONTEXT.name);
+                        merror("Invalid content for attribute '%s' at module '%s'.", node[i]->attributes[0], WM_SYS_CONTEXT.name);
                         return OS_INVALID;
                     }
                 } else {
-                    mwarn("Invalid attribute for tag '%s' at module '%s'.", XML_PORTS, WM_SYS_CONTEXT.name);
+                    merror("Invalid attribute for tag '%s' at module '%s'.", XML_PORTS, WM_SYS_CONTEXT.name);
                     return OS_INVALID;
                 }
             }
@@ -209,7 +209,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.portsinfo = 0;
             else {
-                mwarn("Invalid content for tag '%s' at module '%s'.", XML_PORTS, WM_SYS_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_PORTS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_SYNC)) {
@@ -221,7 +221,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 OS_ClearNode(children);
             }
         } else {
-            mwarn("No such tag '%s' at module '%s'.", node[i]->element, WM_SYS_CONTEXT.name);
+            merror("No such tag '%s' at module '%s'.", node[i]->element, WM_SYS_CONTEXT.name);
             return OS_INVALID;
         }
     }
