@@ -19,5 +19,16 @@
             }
         ],
         "properties": {}
+    },
+    "order": 1,
+    "settings": {
+        "index": {
+            "mapping": {
+                "total_fields": {
+                    "limit": 10000
+                }
+            },
+            "refresh_interval": "5s"
+        }
     }
 }

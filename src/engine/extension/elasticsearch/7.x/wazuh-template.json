@@ -74,7 +74,12 @@
                                 "properties": {
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -184,7 +189,12 @@
                             },
                             "full_name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "group": {
                                 "type": "object",
@@ -213,7 +223,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "risk": {
                                 "type": "object",
@@ -477,7 +492,8 @@
                         "type": "object",
                         "properties": {
                             "usage": {
-                                "type": "scaled_float"
+                                "type": "scaled_float",
+                                "scaling_factor": 1000
                             }
                         }
                     },
@@ -535,7 +551,8 @@
                         "type": "object",
                         "properties": {
                             "usage": {
-                                "type": "scaled_float"
+                                "type": "scaled_float",
+                                "scaling_factor": 1000
                             }
                         }
                     },
@@ -602,7 +619,12 @@
                                 "properties": {
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -712,7 +734,12 @@
                             },
                             "full_name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "group": {
                                 "type": "object",
@@ -741,7 +768,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "risk": {
                                 "type": "object",
@@ -1115,7 +1147,12 @@
                     },
                     "subject": {
                         "type": "keyword",
-                        "ignore_above": 1024
+                        "ignore_above": 1024,
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "to": {
                         "type": "object",
@@ -1147,7 +1184,12 @@
                         "type": "text"
                     },
                     "stack_trace": {
-                        "type": "keyword"
+                        "type": "keyword",
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "type": {
                         "type": "keyword",
@@ -1549,7 +1591,12 @@
                     },
                     "path": {
                         "type": "keyword",
-                        "ignore_above": 1024
+                        "ignore_above": 1024,
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "pe": {
                         "type": "object",
@@ -1593,7 +1640,12 @@
                     },
                     "target_path": {
                         "type": "keyword",
-                        "ignore_above": 1024
+                        "ignore_above": 1024,
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "type": {
                         "type": "keyword",
@@ -1749,7 +1801,8 @@
                         "type": "object",
                         "properties": {
                             "usage": {
-                                "type": "scaled_float"
+                                "type": "scaled_float",
+                                "scaling_factor": 1000
                             }
                         }
                     },
@@ -1881,7 +1934,12 @@
                             },
                             "full": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "kernel": {
                                 "type": "keyword",
@@ -1889,7 +1947,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "platform": {
                                 "type": "keyword",
@@ -1956,7 +2019,12 @@
                                         "type": "long"
                                     },
                                     "content": {
-                                        "type": "keyword"
+                                        "type": "keyword",
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -1991,7 +2059,12 @@
                                         "type": "long"
                                     },
                                     "content": {
-                                        "type": "keyword"
+                                        "type": "keyword",
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -2347,7 +2420,12 @@
                             },
                             "full": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "kernel": {
                                 "type": "keyword",
@@ -2355,7 +2433,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "platform": {
                                 "type": "keyword",
@@ -2473,7 +2556,12 @@
                     },
                     "name": {
                         "type": "keyword",
-                        "ignore_above": 1024
+                        "ignore_above": 1024,
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     }
                 }
             },
@@ -2580,7 +2668,12 @@
                         }
                     },
                     "command_line": {
-                        "type": "keyword"
+                        "type": "keyword",
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "elf": {
                         "type": "object",
@@ -2736,12 +2829,22 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
                             "command_line": {
-                                "type": "keyword"
+                                "type": "keyword",
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "entity_id": {
                                 "type": "keyword",
@@ -2766,7 +2869,12 @@
                             },
                             "executable": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "group": {
                                 "type": "object",
@@ -2786,7 +2894,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "parent": {
                                 "type": "object",
@@ -2843,7 +2956,12 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -2872,7 +2990,12 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -2917,13 +3040,23 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
                             "working_directory": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             }
                         }
                     },
@@ -2933,7 +3066,12 @@
                     },
                     "executable": {
                         "type": "keyword",
-                        "ignore_above": 1024
+                        "ignore_above": 1024,
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "exit_code": {
                         "type": "long"
@@ -2949,7 +3087,12 @@
                                 "type": "long"
                             },
                             "command_line": {
-                                "type": "keyword"
+                                "type": "keyword",
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "entity_id": {
                                 "type": "keyword",
@@ -2957,7 +3100,12 @@
                             },
                             "executable": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "group": {
                                 "type": "object",
@@ -2977,7 +3125,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "pid": {
                                 "type": "long"
@@ -3004,7 +3157,12 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -3033,7 +3191,12 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -3078,13 +3241,23 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
                             "working_directory": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             }
                         }
                     },
@@ -3126,7 +3299,12 @@
                     },
                     "name": {
                         "type": "keyword",
-                        "ignore_above": 1024
+                        "ignore_above": 1024,
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "parent": {
                         "type": "object",
@@ -3176,7 +3354,12 @@
                                 }
                             },
                             "command_line": {
-                                "type": "keyword"
+                                "type": "keyword",
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "elf": {
                                 "type": "object",
@@ -3306,7 +3489,12 @@
                             },
                             "executable": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "exit_code": {
                                 "type": "long"
@@ -3377,7 +3565,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "pe": {
                                 "type": "object",
@@ -3444,7 +3637,12 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -3470,7 +3668,12 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -3504,7 +3707,12 @@
                             },
                             "title": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "tty": {
                                 "type": "object",
@@ -3534,13 +3742,23 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
                             "working_directory": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             }
                         }
                     },
@@ -3599,7 +3817,12 @@
                             },
                             "executable": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             }
                         }
                     },
@@ -3625,7 +3848,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             }
                         }
                     },
@@ -3651,7 +3879,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             }
                         }
                     },
@@ -3666,7 +3899,12 @@
                                 "type": "long"
                             },
                             "command_line": {
-                                "type": "keyword"
+                                "type": "keyword",
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "entity_id": {
                                 "type": "keyword",
@@ -3674,7 +3912,12 @@
                             },
                             "executable": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "group": {
                                 "type": "object",
@@ -3694,7 +3937,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "parent": {
                                 "type": "object",
@@ -3751,7 +3999,12 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -3780,7 +4033,12 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -3825,13 +4083,23 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             },
                             "working_directory": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             }
                         }
                     },
@@ -3865,7 +4133,12 @@
                     },
                     "title": {
                         "type": "keyword",
-                        "ignore_above": 1024
+                        "ignore_above": 1024,
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "tty": {
                         "type": "object",
@@ -3901,13 +4174,23 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             }
                         }
                     },
                     "working_directory": {
                         "type": "keyword",
-                        "ignore_above": 1024
+                        "ignore_above": 1024,
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     }
                 }
             },
@@ -4031,7 +4314,12 @@
                                 "properties": {
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -4141,7 +4429,12 @@
                             },
                             "full_name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "group": {
                                 "type": "object",
@@ -4170,7 +4463,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "risk": {
                                 "type": "object",
@@ -4385,7 +4683,12 @@
                                 "properties": {
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -4495,7 +4798,12 @@
                             },
                             "full_name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "group": {
                                 "type": "object",
@@ -4524,7 +4832,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "risk": {
                                 "type": "object",
@@ -4592,7 +4905,12 @@
                                                 "properties": {
                                                     "name": {
                                                         "type": "keyword",
-                                                        "ignore_above": 1024
+                                                        "ignore_above": 1024,
+                                                        "fields": {
+                                                            "text": {
+                                                                "type": "text"
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -4873,7 +5191,12 @@
                                             },
                                             "path": {
                                                 "type": "keyword",
-                                                "ignore_above": 1024
+                                                "ignore_above": 1024,
+                                                "fields": {
+                                                    "text": {
+                                                        "type": "text"
+                                                    }
+                                                }
                                             },
                                             "pe": {
                                                 "type": "object",
@@ -4917,7 +5240,12 @@
                                             },
                                             "target_path": {
                                                 "type": "keyword",
-                                                "ignore_above": 1024
+                                                "ignore_above": 1024,
+                                                "fields": {
+                                                    "text": {
+                                                        "type": "text"
+                                                    }
+                                                }
                                             },
                                             "type": {
                                                 "type": "keyword",
@@ -5179,10 +5507,20 @@
                                                 "ignore_above": 1024
                                             },
                                             "full": {
-                                                "type": "keyword"
+                                                "type": "keyword",
+                                                "fields": {
+                                                    "text": {
+                                                        "type": "text"
+                                                    }
+                                                }
                                             },
                                             "original": {
-                                                "type": "keyword"
+                                                "type": "keyword",
+                                                "fields": {
+                                                    "text": {
+                                                        "type": "text"
+                                                    }
+                                                }
                                             },
                                             "password": {
                                                 "type": "keyword",
@@ -5419,7 +5757,12 @@
                                         "properties": {
                                             "name": {
                                                 "type": "keyword",
-                                                "ignore_above": 1024
+                                                "ignore_above": 1024,
+                                                "fields": {
+                                                    "text": {
+                                                        "type": "text"
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -5700,7 +6043,12 @@
                                     },
                                     "path": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     },
                                     "pe": {
                                         "type": "object",
@@ -5744,7 +6092,12 @@
                                     },
                                     "target_path": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     },
                                     "type": {
                                         "type": "keyword",
@@ -6006,10 +6359,20 @@
                                         "ignore_above": 1024
                                     },
                                     "full": {
-                                        "type": "keyword"
+                                        "type": "keyword",
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     },
                                     "original": {
-                                        "type": "keyword"
+                                        "type": "keyword",
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     },
                                     "password": {
                                         "type": "keyword",
@@ -6211,7 +6574,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "reference": {
                                 "type": "keyword",
@@ -6226,7 +6594,12 @@
                                     },
                                     "name": {
                                         "type": "keyword",
-                                        "ignore_above": 1024
+                                        "ignore_above": 1024,
+                                        "fields": {
+                                            "text": {
+                                                "type": "text"
+                                            }
+                                        }
                                     },
                                     "reference": {
                                         "type": "keyword",
@@ -6621,10 +6994,20 @@
                         "ignore_above": 1024
                     },
                     "full": {
-                        "type": "keyword"
+                        "type": "keyword",
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "original": {
-                        "type": "keyword"
+                        "type": "keyword",
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "password": {
                         "type": "keyword",
@@ -6678,7 +7061,12 @@
                             },
                             "full_name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "group": {
                                 "type": "object",
@@ -6707,7 +7095,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "risk": {
                                 "type": "object",
@@ -6757,7 +7150,12 @@
                             },
                             "full_name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "group": {
                                 "type": "object",
@@ -6786,7 +7184,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "risk": {
                                 "type": "object",
@@ -6825,7 +7228,12 @@
                     },
                     "full_name": {
                         "type": "keyword",
-                        "ignore_above": 1024
+                        "ignore_above": 1024,
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "group": {
                         "type": "object",
@@ -6854,7 +7262,12 @@
                     },
                     "name": {
                         "type": "keyword",
-                        "ignore_above": 1024
+                        "ignore_above": 1024,
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "risk": {
                         "type": "object",
@@ -6898,7 +7311,12 @@
                             },
                             "full_name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "group": {
                                 "type": "object",
@@ -6927,7 +7345,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "risk": {
                                 "type": "object",
@@ -6980,7 +7403,12 @@
                     },
                     "original": {
                         "type": "keyword",
-                        "ignore_above": 1024
+                        "ignore_above": 1024,
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "os": {
                         "type": "object",
@@ -6991,7 +7419,12 @@
                             },
                             "full": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "kernel": {
                                 "type": "keyword",
@@ -6999,7 +7432,12 @@
                             },
                             "name": {
                                 "type": "keyword",
-                                "ignore_above": 1024
+                                "ignore_above": 1024,
+                                "fields": {
+                                    "text": {
+                                        "type": "text"
+                                    }
+                                }
                             },
                             "platform": {
                                 "type": "keyword",
@@ -7034,7 +7472,12 @@
                     },
                     "description": {
                         "type": "keyword",
-                        "ignore_above": 1024
+                        "ignore_above": 1024,
+                        "fields": {
+                            "text": {
+                                "type": "text"
+                            }
+                        }
                     },
                     "enumeration": {
                         "type": "keyword",
@@ -7115,6 +7558,17 @@
                     }
                 }
             }
+        }
+    },
+    "order": 1,
+    "settings": {
+        "index": {
+            "mapping": {
+                "total_fields": {
+                    "limit": 10000
+                }
+            },
+            "refresh_interval": "5s"
         }
     }
 }
