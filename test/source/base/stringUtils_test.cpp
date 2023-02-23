@@ -208,7 +208,7 @@ TEST(splitEscaped, SuccessEmptyFields)
 TEST(splitEscaped, EndingScaped)
 {
     std::string input = R"(ABCD\\)";
-    std::vector<std::string> expected = {R"(ABCD\\)"};
+    std::vector<std::string> expected = {R"(ABCD\)"};
     std::vector<std::string> result = utils::string::splitEscaped(input);
     ASSERT_EQ(result, expected);
 }
@@ -247,6 +247,14 @@ TEST(splitEscaped, AnotherEscapedCharacters)
 {
     std::string input = R"(#!ABC!DEFGH!IJKLM!N#?OP!QRST!UVWX!YZ#!)";
     std::vector<std::string> expected = {"!ABC", "DEFGH", "IJKLM", "N#?OP", "QRST", "UVWX", "YZ!"};
+    std::vector<std::string> result = utils::string::splitEscaped(input, '!', '#');
+    ASSERT_EQ(result, expected);
+}
+
+TEST(splitEscaped, EcapeEscapedChar)
+{
+    std::string input = R"(#!ABC!DE##FGH)";
+    std::vector<std::string> expected = {"!ABC", "DE#FGH"};
     std::vector<std::string> result = utils::string::splitEscaped(input, '!', '#');
     ASSERT_EQ(result, expected);
 }
