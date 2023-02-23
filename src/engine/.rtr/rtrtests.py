@@ -52,8 +52,7 @@ def clangformat(params):
                       for path in params.ignore]
         find_ignoredir = f'-path {" -o -path ".join(abs_ignore)}'
     find_cmd = f'find {params.source} -type f \( {find_extensions} \) -print -o \( {find_ignoredir} \) -prune'
-    clangformat_dry_cmd = 'clang-format --dry-run -style=file -i'
-    clangformat_cmd = 'clang-format -style=file -i'
+    clangformat_dry_cmd = 'clang-format --dry-run -Werror -style=file -i'
     logging.debug(f'Executing {find_cmd} | xargs {clangformat_dry_cmd}')
     result = subprocess.run(f'{find_cmd} | xargs {clangformat_dry_cmd}',
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
