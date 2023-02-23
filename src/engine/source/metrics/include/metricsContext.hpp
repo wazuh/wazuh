@@ -46,6 +46,7 @@ struct MetricsContext
     ProcessorsTypes processorType;
     ProviderTypes providerType;
     opentelemetry::sdk::metrics::InstrumentType instrumentType;
+    opentelemetry::sdk::metrics::AggregationType aggregationType;
     std::vector<double> histogramVector;
     std::unique_ptr<opentelemetry::sdk::trace::SpanExporter> exporter;
     std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter> metricExporter;

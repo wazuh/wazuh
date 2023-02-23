@@ -33,6 +33,7 @@ void ProviderHandler::create(std::shared_ptr<MetricsContext> data)
             auto provider = std::shared_ptr<opentelemetry::metrics::MeterProvider>(new opentelemetry::sdk::metrics::MeterProvider());
             data->meterProvider = std::static_pointer_cast<opentelemetry::sdk::metrics::MeterProvider>(provider);
             data->meterProvider->AddMetricReader(std::move(data->reader));
+
             switch (data->instrumentType)
             {
                 case opentelemetry::sdk::metrics::InstrumentType::kHistogram:
@@ -58,7 +59,7 @@ void ProviderHandler::create(std::shared_ptr<MetricsContext> data)
                     auto instrumentSelector = std::unique_ptr<opentelemetry::sdk::metrics::InstrumentSelector>(new opentelemetry::sdk::metrics::InstrumentSelector(data->instrumentType, name));
                     auto meterSelector = std::unique_ptr<opentelemetry::sdk::metrics::MeterSelector>(new opentelemetry::sdk::metrics::MeterSelector(data->counterName, version, schema));
                     std::unique_ptr<opentelemetry::sdk::metrics::View> counterView{new opentelemetry::sdk::metrics::View{
-                    data->counterName, "description", opentelemetry::sdk::metrics::AggregationType::kDefault}};
+                    data->counterName, "description", data->aggregationType }};
                     data->meterProvider->AddView(std::move(instrumentSelector), std::move(meterSelector), std::move(counterView));
                     opentelemetry::metrics::Provider::SetMeterProvider(provider);
                     break;

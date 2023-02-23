@@ -36,12 +36,6 @@ protected:
 
 TEST_F(MetricsInstrumentationTest, CounterTest)
 {
-    /*
-    Initialize an exporter and a reader.
-    In this case, we initialize an OStream Exporter which will print to stdout by
-    default. The reader periodically collects metrics from the Aggregation Store and
-    exports them.
-    */
     m_spContext->exporterType = ExportersTypes::Logging;
     m_spContext->loggingFileExport = true;
     m_spContext->outputFile = "counter.txt";
@@ -50,6 +44,101 @@ TEST_F(MetricsInstrumentationTest, CounterTest)
     m_spContext->export_interval_millis = std::chrono::milliseconds(1000);
     m_spContext->export_timeout_millis = std::chrono::milliseconds(500);
     m_spContext->counterName = "example";
+    auto exporter = std::make_shared<ExporterHandler>();
+    auto reader = std::make_shared<ReaderHandler>();
+    auto provider = std::make_shared<ProviderHandler>();
+    exporter->setNext(reader)->setNext(provider);
+    exporter->handleRequest(m_spContext);
+    counterExample(m_spContext->counterName);
+}
+
+TEST_F(MetricsInstrumentationTest, counterDefaultExample)
+{
+    m_spContext->exporterType = ExportersTypes::Logging;
+    m_spContext->loggingFileExport = true;
+    m_spContext->outputFile = "counter-kDefault.txt";
+    m_spContext->providerType = ProviderTypes::Meter;
+    m_spContext->instrumentType = opentelemetry::sdk::metrics::InstrumentType::kCounter;
+    m_spContext->aggregationType = opentelemetry::sdk::metrics::AggregationType::kDefault;
+    m_spContext->export_interval_millis = std::chrono::milliseconds(500);
+    m_spContext->export_timeout_millis = std::chrono::milliseconds(250);
+    m_spContext->counterName = "counter-kDefault";
+    auto exporter = std::make_shared<ExporterHandler>();
+    auto reader = std::make_shared<ReaderHandler>();
+    auto provider = std::make_shared<ProviderHandler>();
+    exporter->setNext(reader)->setNext(provider);
+    exporter->handleRequest(m_spContext);
+    counterExample(m_spContext->counterName);
+}
+
+TEST_F(MetricsInstrumentationTest, counterkDropExample)
+{
+    m_spContext->exporterType = ExportersTypes::Logging;
+    m_spContext->loggingFileExport = true;
+    m_spContext->outputFile = "counter-kDrop.txt";
+    m_spContext->providerType = ProviderTypes::Meter;
+    m_spContext->instrumentType = opentelemetry::sdk::metrics::InstrumentType::kCounter;
+    m_spContext->aggregationType = opentelemetry::sdk::metrics::AggregationType::kDrop;
+    m_spContext->export_interval_millis = std::chrono::milliseconds(500);
+    m_spContext->export_timeout_millis = std::chrono::milliseconds(250);
+    m_spContext->counterName = "counter-kDrop";
+    auto exporter = std::make_shared<ExporterHandler>();
+    auto reader = std::make_shared<ReaderHandler>();
+    auto provider = std::make_shared<ProviderHandler>();
+    exporter->setNext(reader)->setNext(provider);
+    exporter->handleRequest(m_spContext);
+    counterExample(m_spContext->counterName);
+}
+
+TEST_F(MetricsInstrumentationTest, counterkHistogramExample)
+{
+    m_spContext->exporterType = ExportersTypes::Logging;
+    m_spContext->loggingFileExport = true;
+    m_spContext->outputFile = "counter-kHistogram.txt";
+    m_spContext->providerType = ProviderTypes::Meter;
+    m_spContext->instrumentType = opentelemetry::sdk::metrics::InstrumentType::kCounter;
+    m_spContext->aggregationType = opentelemetry::sdk::metrics::AggregationType::kHistogram;
+    m_spContext->export_interval_millis = std::chrono::milliseconds(500);
+    m_spContext->export_timeout_millis = std::chrono::milliseconds(250);
+    m_spContext->counterName = "counter-kHistogram";
+    auto exporter = std::make_shared<ExporterHandler>();
+    auto reader = std::make_shared<ReaderHandler>();
+    auto provider = std::make_shared<ProviderHandler>();
+    exporter->setNext(reader)->setNext(provider);
+    exporter->handleRequest(m_spContext);
+    counterExample(m_spContext->counterName);
+}
+
+TEST_F(MetricsInstrumentationTest, counterkLastValueExample)
+{
+    m_spContext->exporterType = ExportersTypes::Logging;
+    m_spContext->loggingFileExport = true;
+    m_spContext->outputFile = "counter-kLastValue.txt";
+    m_spContext->providerType = ProviderTypes::Meter;
+    m_spContext->instrumentType = opentelemetry::sdk::metrics::InstrumentType::kCounter;
+    m_spContext->aggregationType = opentelemetry::sdk::metrics::AggregationType::kLastValue;
+    m_spContext->export_interval_millis = std::chrono::milliseconds(500);
+    m_spContext->export_timeout_millis = std::chrono::milliseconds(250);
+    m_spContext->counterName = "counter-kLastValue";
+    auto exporter = std::make_shared<ExporterHandler>();
+    auto reader = std::make_shared<ReaderHandler>();
+    auto provider = std::make_shared<ProviderHandler>();
+    exporter->setNext(reader)->setNext(provider);
+    exporter->handleRequest(m_spContext);
+    counterExample(m_spContext->counterName);
+}
+
+TEST_F(MetricsInstrumentationTest, counterkSumExample)
+{
+    m_spContext->exporterType = ExportersTypes::Logging;
+    m_spContext->loggingFileExport = true;
+    m_spContext->outputFile = "counter-kSum.txt";
+    m_spContext->providerType = ProviderTypes::Meter;
+    m_spContext->instrumentType = opentelemetry::sdk::metrics::InstrumentType::kCounter;
+    m_spContext->aggregationType = opentelemetry::sdk::metrics::AggregationType::kSum;
+    m_spContext->export_interval_millis = std::chrono::milliseconds(500);
+    m_spContext->export_timeout_millis = std::chrono::milliseconds(250);
+    m_spContext->counterName = "counter-kSum";
     auto exporter = std::make_shared<ExporterHandler>();
     auto reader = std::make_shared<ReaderHandler>();
     auto provider = std::make_shared<ProviderHandler>();
