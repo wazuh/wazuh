@@ -1786,6 +1786,14 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
     else if (strcmp(w_expression_get_regex_type(regex_engine), PCRE2_STR) == 0) {
             w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
     }
+    else{
+        if (*reason == NULL) {
+            os_malloc(snprintf(NULL, 0, "Invalid regex type.") + 1, *reason);
+            sprintf(*reason, "Invalid regex type.");
+        }
+        return RETURN_INVALID;
+    }
+
     if (!w_expression_compile(regex, "(\\d+)", OS_RETURN_SUBSTRING)) {
         if (*reason == NULL) {
             os_malloc(snprintf(NULL, 0, "Cannot compile regex.") + 1, *reason);
