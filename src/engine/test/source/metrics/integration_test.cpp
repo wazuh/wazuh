@@ -61,6 +61,7 @@ protected:
 // and then reassign the ports to access the browser http://localhost:new_port.
 TEST_F(IntegrationTest, exporterZipkin)
 {
+    m_spContext->providerType = ProviderTypes::Tracer;
     m_spContext->exporterType = ExportersTypes::Zipkin;
     m_spContext->processorType = ProcessorsTypes::Simple;
     auto exporter = std::make_shared<ExporterHandler>();
@@ -73,6 +74,7 @@ TEST_F(IntegrationTest, exporterZipkin)
 
 TEST_F(IntegrationTest, exporterLoggingCout)
 {
+    m_spContext->providerType = ProviderTypes::Tracer;
     m_spContext->exporterType = ExportersTypes::Logging;
     m_spContext->processorType = ProcessorsTypes::Simple;
     auto exporter = std::make_shared<ExporterHandler>();
@@ -85,6 +87,7 @@ TEST_F(IntegrationTest, exporterLoggingCout)
 
 TEST_F(IntegrationTest, exporterLoggingFile)
 {
+    m_spContext->providerType = ProviderTypes::Tracer;
     m_spContext->exporterType = ExportersTypes::Logging;
     m_spContext->processorType = ProcessorsTypes::Simple;
     m_spContext->loggingFileExport = true;
@@ -99,6 +102,7 @@ TEST_F(IntegrationTest, exporterLoggingFile)
 
 TEST_F(IntegrationTest, exporterMemory)
 {
+    m_spContext->providerType = ProviderTypes::Tracer;
     m_spContext->exporterType = ExportersTypes::Memory;
     m_spContext->processorType = ProcessorsTypes::Simple;
     m_spContext->bufferSizeMemoryExporter = 100;

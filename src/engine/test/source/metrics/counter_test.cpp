@@ -50,6 +50,7 @@ TEST_F(MetricsInstrumentationTest, CounterTest)
     exports them.
     */
 
+    m_spContext->providerType = ProviderTypes::Meter;
     m_spContext->exporterType = ExportersTypes::Metrics;
     m_spContext->processorType = ProcessorsTypes::Simple;
     auto exporter = std::make_shared<ExporterHandler>();

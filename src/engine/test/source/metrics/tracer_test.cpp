@@ -77,6 +77,7 @@ TEST(TracerTest, GetCurrentSpan)
 
 TEST_F(TracerInstrumentationTest, SetTracerOutputFile)
 {
+    m_spContext->providerType = ProviderTypes::Tracer;
     m_spContext->exporterType = ExportersTypes::Logging;
     m_spContext->processorType = ProcessorsTypes::Simple;
     m_spContext->loggingFileExport = true;
@@ -91,6 +92,7 @@ TEST_F(TracerInstrumentationTest, SetTracerOutputFile)
 
 TEST_F(TracerInstrumentationTest, SetTracerOutputStd)
 {
+    m_spContext->providerType = ProviderTypes::Tracer;
     m_spContext->exporterType = ExportersTypes::Logging;
     m_spContext->processorType = ProcessorsTypes::Simple;
     auto exporter = std::make_shared<ExporterHandler>();
