@@ -42,6 +42,7 @@ w_queue_t * audit_queue;
 //This variable controls if the the modification of the rule is made by syscheck.
 
 volatile int audit_db_consistency_flag = 0;
+volatile int audit_parse_thread_active = 0;
 atomic_int_t audit_thread_active = ATOMIC_INT_INITIALIZER(0);
 
 #ifdef ENABLE_AUDIT
@@ -365,6 +366,7 @@ int audit_init(void) {
 
     // Initialize audit queue
     audit_queue = queue_init(syscheck.whodata_queue_size);
+    audit_parse_thread_active = 1;
     w_create_thread(audit_parse_thread, NULL);
 
     // Print audit queue size
@@ -503,7 +505,7 @@ void *audit_main(audit_data_t *audit_data) {
 
     w_rwlock_unlock(&syscheck.directories_lock);
 
-
+    audit_parse_thread_active = 0;
 
     // Clean Audit added rules.
     if (audit_data->mode == AUDIT_ENABLED) {
@@ -517,11 +519,12 @@ void *audit_main(audit_data_t *audit_data) {
 void *audit_parse_thread() {
     char * audit_logs;
 
-    while (1) {
+    while (audit_parse_thread_active) {
         audit_logs = queue_pop_ex(audit_queue);
         audit_parse(audit_logs);
         os_free(audit_logs);
     }
+    queue_free(audit_queue);
 
     return NULL;
 }
