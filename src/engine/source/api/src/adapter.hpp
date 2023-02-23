@@ -1,0 +1,74 @@
+#ifndef _API_UTILS_HPP
+#define _API_UTILS_HPP
+
+#include <type_traits>
+#include <variant>
+
+#include <eMessages/eMessage.h>
+#include <utils/wazuhProtocol/wazuhRequest.hpp>
+#include <utils/wazuhProtocol/wazuhResponse.hpp>
+
+namespace api::adapter
+{
+
+
+/**
+ * @brief Return a WazuhResponse with de eMessage serialized or a WazuhResponse with the error if it fails
+ * @tparam T
+ * @param eMessage
+ * @return base::utils::wazuhProtocol::WazuhResponse
+ */
+template<typename T>
+base::utils::wazuhProtocol::WazuhResponse toWazuhResponse(const T& eMessage)
+{
+    // Check that T is derived from google::protobuf::Message
+    static_assert(std::is_base_of<google::protobuf::Message, T>::value, "T must be a derived class of proto::Message");
+
+    const auto res = eMessage::eMessageToJson<T>(eMessage);
+
+    if (std::holds_alternative<base::Error>(res))
+    {
+        const auto& error = std::get<base::Error>(res);
+        return api::wpResponse::internalError(error.message);
+    }
+    return api::wpResponse {json::Json {std::get<std::string>(res).c_str()}};
+}
+
+/**
+ * @brief Return a variant with the parsed eMessage or a WazuhResponse with the error
+ *
+ * @tparam T Request type
+ * @tparam U Response type
+ * @param json
+ * @return std::variant<base::utils::wazuhProtocol::WazuhResponse, T>
+ */
+template<typename T, typename U>
+std::variant<base::utils::wazuhProtocol::WazuhResponse, T>
+fromWazuhRequest(const base::utils::wazuhProtocol::WazuhRequest& wRequest)
+{
+    // Check that T and U are derived from google::protobuf::Message
+    static_assert(std::is_base_of<google::protobuf::Message, T>::value, "T must be a derived class of proto::Message");
+    static_assert(std::is_base_of<google::protobuf::Message, U>::value, "U must be a derived class of proto::Message");
+    // Check that U has set_status and set_error functions
+    static_assert(std::is_invocable_v<decltype(&U::set_status), U,::com::wazuh::api::engine::ReturnStatus>,
+                  "U must have set_status function");
+    //static_assert(std::is_invocable_v<decltype(&U::set_error), U, const std::string&>,
+    //              "U must have set_error function");
+
+    const auto json = wRequest.getParameters().value_or(json::Json {"{}"}).str();
+
+    auto res = eMessage::eMessageFromJson<T>(json);
+    if (std::holds_alternative<base::Error>(res))
+    {
+        U eResponse;
+        eResponse.set_status(::com::wazuh::api::engine::ReturnStatus::ERROR);
+        eResponse.set_error(std::get<base::Error>(res).message);
+        return toWazuhResponse<U>(eResponse);
+    }
+
+    return std::move(std::get<T>(res));
+}
+
+} // namespace api::adapter
+
+#endif // _API_UTILS_HPP

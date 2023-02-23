@@ -3,6 +3,7 @@
 #include <eMessages/eMessage.h>
 #include <eMessages/router.pb.h>
 
+#include "../adapter.hpp"
 
 namespace api::router::cmds
 {
@@ -29,55 +30,47 @@ api::CommandFn routeGet(std::shared_ptr<::router::Router> router)
 {
     return [router](api::wpRequest wRequest) -> api::wpResponse
     {
-        eRouter::RouteGet_Response eResponse;
+        auto res = ::api::adapter::fromWazuhRequest<eRouter::RouteGet_Request, eRouter::RouteGet_Response>(wRequest);
 
-        // Adapt the request to the engine, the request is validated by the server
-        const auto params = wRequest.getParameters().value().str();
-        const auto result = eMessage::eMessageFromJson<eRouter::RouteGet_Request>(params);
-
-        std::optional<std::string> errorMsg = std::nullopt;
-        std::optional<::router::Router::Entry> entry = std::nullopt;
-
-        if (std::holds_alternative<base::Error>(result))
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
         {
-            errorMsg = std::get<base::Error>(result).message;
+            return std::move(std::get<api::wpResponse>(res));
         }
-        else
+
+        // Validate the command request
+        const auto& eRequest = std::get<eRouter::RouteGet_Request>(res);
+        eRouter::RouteGet_Response eResponse;
+        std::optional<std::string> errorMsg = eRequest.has_name() ? std::nullopt : std::make_optional("Missing /name");
+
+        if (!errorMsg.has_value())
         {
-            const auto& eRequest = std::get<eRouter::RouteGet_Request>(result);
-            if (eRequest.has_name())
+            // Execute the command
+            const auto& entry = router->getEntry(eRequest.name());
+
+            if (!entry.has_value())
             {
-                entry = router->getEntry(eRequest.name());
+                errorMsg = "Route not found";
             }
             else
             {
-                errorMsg = "Missing name";
+                const auto& [name, priority, filterName, envName] = entry.value();
+                eResponse.set_status(eEngine::ReturnStatus::OK);
+                eResponse.mutable_rute()->set_name(name);
+                eResponse.mutable_rute()->set_filter(filterName);
+                eResponse.mutable_rute()->set_policy(envName);
+                eResponse.mutable_rute()->set_priority(priority);
             }
         }
 
-        if (errorMsg.has_value() || !entry.has_value())
+        if (errorMsg.has_value())
         {
             eResponse.set_status(eEngine::ReturnStatus::ERROR);
-            eResponse.set_error(errorMsg.value_or("Route not found"));
-        }
-        else
-        {
-            const auto& [name, priority, filterName, envName] = entry.value();
-            eResponse.set_status(eEngine::ReturnStatus::OK);
-            eResponse.mutable_rute()->set_name(name);
-            eResponse.mutable_rute()->set_filter(filterName);
-            eResponse.mutable_rute()->set_policy(envName);
-            eResponse.mutable_rute()->set_priority(priority);
+            eResponse.set_error(errorMsg.value());
         }
 
         // Adapt the response to wazuh api
-        const auto resJson = eMessage::eMessageToJson<eRouter::RouteGet_Response>(eResponse);
-        if (std::holds_alternative<base::Error>(resJson))
-        {
-            const auto& error = std::get<base::Error>(resJson);
-            return api::wpResponse::internalError(error.message);
-        }
-        return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
+        return ::api::adapter::toWazuhResponse<eRouter::RouteGet_Response>(eResponse);
     };
 }
 
