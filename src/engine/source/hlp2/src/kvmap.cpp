@@ -106,8 +106,7 @@ parsec::Parser<json::Json> getKVParser(std::string name, Stop endTokens, Options
                     index);
             }
             end = kv[i + 1].end();
-            updateDoc(
-                doc, fmt::format("/{}", k), v, kv[i + 1].isEscaped(), std::string {esc});
+            updateDoc(doc, fmt::format("/{}", k), v, kv[i + 1].isEscaped(), std::string {esc}, kv[i + 1].isQuoted());
         }
 
         if (start - 1 != end)
