@@ -40,6 +40,7 @@ struct MetricsContext
     bool loggingFileExport;
     std::string outputFile;
     std::string histogramName;
+    std::string counterName;
     size_t bufferSizeMemoryExporter;
     ExportersTypes exporterType;
     ProcessorsTypes processorType;
