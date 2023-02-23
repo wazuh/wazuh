@@ -491,6 +491,11 @@ void remove_audit_rule_syscheck(const char *path);
 void audit_read_events(int *audit_sock, atomic_int_t *running);
 
 /**
+ * @brief Thread in charge of pulling messages from the audit queue and parse them to generate events.
+ */
+void *audit_parse_thread();
+
+/**
  * @brief Makes Audit thread to wait for audit healthcheck to be performed
  *
  */

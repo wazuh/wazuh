@@ -34,6 +34,8 @@
 extern atomic_int_t audit_health_check_creation;
 extern atomic_int_t hc_thread_active;
 extern atomic_int_t audit_thread_active;
+extern atomic_int_t audit_parse_thread_active;
+extern w_queue_t * audit_queue;
 
 #define AUDIT_RULES_FILE            "etc/audit_rules_wazuh.rules"
 #define AUDIT_RULES_LINK            "/etc/audit/rules.d/audit_rules_wazuh.rules"
@@ -63,6 +65,9 @@ static int setup_group(void **state) {
     w_mutex_init(&(audit_health_check_creation.mutex), NULL);
     w_mutex_init(&(hc_thread_active.mutex), NULL);
     w_mutex_init(&(audit_thread_active.mutex), NULL);
+    w_mutex_init(&(audit_parse_thread_active.mutex), NULL);
+    audit_queue = queue_init(2);
+
     return 0;
 }
 
@@ -887,6 +892,9 @@ void test_audit_read_events_select_case_0(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
     will_return(__wrap_atomic_int_get, 1);
 
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
     will_return(__wrap_atomic_int_get, 0);
 
@@ -899,7 +907,6 @@ void test_audit_read_events_select_case_0(void **state) {
     will_return(__wrap_recv, strlen(buffer));
     will_return(__wrap_recv, buffer);
 
-    expect_function_call(__wrap_audit_parse);
     audit_read_events(audit_sock, &audit_thread_active);
 }
 
@@ -1022,6 +1029,12 @@ void test_audit_read_events_select_success_recv_success(void **state) {
     expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 2);
     will_return_count(__wrap_atomic_int_get, 1, 2);
 
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mwarn, formatted_msg, FIM_FULL_AUDIT_QUEUE);
+    expect_string(__wrap__mwarn, formatted_msg, FIM_FULL_AUDIT_QUEUE);
+
     expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
     will_return(__wrap_atomic_int_get, 0);
     // Switch
@@ -1031,8 +1044,6 @@ void test_audit_read_events_select_success_recv_success(void **state) {
     expect_value(__wrap_recv, __fd, *audit_sock);
     will_return(__wrap_recv, strlen(buffer));
     will_return(__wrap_recv, buffer);
-
-    expect_function_calls(__wrap_audit_parse, 2);
 
     audit_read_events(audit_sock, &audit_thread_active);
 }
@@ -1137,6 +1148,25 @@ void test_audit_read_events_select_success_recv_success_too_long(void **state) {
     audit_read_events(audit_sock, &audit_thread_active);
 
     os_free(buffer);
+}
+
+void test_audit_parse_thread(void **state) {
+    audit_parse_thread_active.data = 1;
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_parse_thread_active);
+    will_return(__wrap_atomic_int_get, 1);
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    //expect_value(__wrap_pthread_cond_wait, cond, &audit_queue->available);
+    //expect_value(__wrap_pthread_cond_wait, mutex, &audit_queue->mutex);
+
+    expect_function_call(__wrap_audit_parse);
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_parse_thread_active);
+    will_return(__wrap_atomic_int_get, 0);
+
+    audit_parse_thread();
 }
 
 void test_audit_rules_to_realtime(void **state) {
@@ -1491,6 +1521,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_endline, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_id, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_too_long, test_audit_read_events_setup, test_audit_read_events_teardown),
+        cmocka_unit_test(test_audit_parse_thread),
         cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime, setup_syscheck_dir_links, teardown_rules_to_realtime),
         cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime_first_search_audit_rule_fail, setup_syscheck_dir_links, teardown_rules_to_realtime),
         cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime_second_search_audit_rule_fail, setup_syscheck_dir_links, teardown_rules_to_realtime),
