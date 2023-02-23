@@ -81,15 +81,16 @@ decoders:
   - decoder/nginx-access/0
   - decoder/nginx-error/0
 
+  # TODO uncomment when the fields are added to the schema
   # AWS decoder
-  - decoder/aws/0
-  - decoder/aws-s3/0
-  - decoder/aws-cloudtrail/0
-  - decoder/aws-elb/0
+  # - decoder/aws/0
+  # - decoder/aws-s3/0
+  # - decoder/aws-cloudtrail/0
+  # - decoder/aws-elb/0
 
   # Auditd
-  - decoder/auditd/0
-  - decoder/auditd-kv/0
+  # - decoder/auditd/0
+  # - decoder/auditd-kv/0
 
 outputs:
   - output/file-output/0
