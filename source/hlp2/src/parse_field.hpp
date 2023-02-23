@@ -39,6 +39,8 @@ public:
 
     inline const bool isEscaped() const { return m_isEscaped; }
 
+    inline const bool isQuoted() const { return m_isQuoted; }
+
     inline void addOffset(const int offset)
     {
         m_start += offset;
@@ -72,7 +74,8 @@ void updateDoc(json::Json& doc,
                std::string_view hdr,
                std::string_view val,
                bool is_escaped,
-               std::string_view escape);
+               std::string_view escape,
+               bool is_quoted);
 
 } // namespace hlp
 #endif // WAZUH_ENGINE_PARSE_FIELD_HPP

@@ -72,7 +72,7 @@ inline auto dsvParserFunction(std::string name,
             auto fValue = field.value();
 
             auto v = remaining.substr(fValue.start(), fValue.len());
-            updateDoc(doc, headers[i], v, fValue.isEscaped(), R"(")");
+            updateDoc(doc, headers[i], v, fValue.isEscaped(), R"(")", fValue.isQuoted());
 
             start += fValue.end() + 1;
             i++;

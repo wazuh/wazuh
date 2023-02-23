@@ -90,7 +90,8 @@ void updateDoc(json::Json& doc,
                std::string_view hdr,
                std::string_view val,
                bool is_escaped,
-               std::string_view escape)
+               std::string_view escape,
+               bool is_quoted)
 {
     if (val.empty())
     {
@@ -98,21 +99,24 @@ void updateDoc(json::Json& doc,
         return;
     }
 
-    int64_t i;
-    auto [ptr, ec] {utils::from_chars(val.data(), val.data() + val.size(), i)};
-    if (std::errc() == ec && (val.data() + val.size()) == ptr)
+    if(!is_quoted)
     {
-        doc.setInt64(i, hdr);
-        return;
-    }
-    else
-    {
-        double_t d;
-        auto [ptr, ec] {utils::from_chars(val.data(), val.data() + val.size(), d)};
+        int64_t i;
+        auto [ptr, ec] {utils::from_chars(val.data(), val.data() + val.size(), i)};
         if (std::errc() == ec && (val.data() + val.size()) == ptr)
         {
-            doc.setDouble(d, hdr);
+            doc.setInt64(i, hdr);
             return;
+        }
+        else
+        {
+            double_t d;
+            auto [ptr, ec] {utils::from_chars(val.data(), val.data() + val.size(), d)};
+            if (std::errc() == ec && (val.data() + val.size()) == ptr)
+            {
+                doc.setDouble(d, hdr);
+                return;
+            }
         }
     }
 
