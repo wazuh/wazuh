@@ -1904,8 +1904,8 @@ checks:
     title: "Ensure NIS Client is not installed."
     description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client was used to bind a machine to an NIS server and receive the distributed configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
-    remediation: "Uninstall nis: # apt purge nis"
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Uninstall nis: # apt purge nis"
     compliance:
       - cis: ["2.3.1"]
       - cis_csc_v8: ["4.8"]
@@ -1952,8 +1952,8 @@ checks:
     title: "Ensure talk client is not installed."
     description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talk client, which allows initialization of talk sessions, is installed by default."
     rationale: "The software presents a security risk as it uses unencrypted protocols for communication."
-    remediation: "Uninstall talk: # apt purge talk"
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Uninstall talk: # apt purge talk"
     compliance:
       - cis: ["2.3.3"]
       - cis_csc_v8: ["4.8"]
@@ -1976,8 +1976,8 @@ checks:
     title: "Ensure telnet client is not installed."
     description: "The telnet package contains the telnet client, which allows users to start connections to other systems via the telnet protocol."
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow an unauthorized user to steal credentials. The ssh package provides an encrypted session and stronger security and is included in most Linux distributions."
-    remediation: "Uninstall telnet: # apt purge telnet"
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Uninstall telnet: # apt purge telnet"
     compliance:
       - cis: ["2.3.4"]
       - cis_csc_v8: ["4.8"]
@@ -2001,7 +2001,6 @@ checks:
     description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
     rationale: "If the system will not need to act as an LDAP client, it is recommended that the software be removed to reduce the potential attack surface."
     remediation: "Uninstall ldap-utils: # apt purge ldap-utils"
-    impact: "Removing the LDAP client will prevent or inhibit using LDAP for authentication in your environment."
     compliance:
       - cis: ["2.3.5"]
       - cis_csc_v8: ["4.8"]
@@ -2024,6 +2023,7 @@ checks:
     title: "Ensure RPC is not installed."
     description: "Remote Procedure Call (RPC) is a method for creating low level client server applications across different system architectures. It requires an RPC compliant client listening on a network port. The supporting package is rpcbind."
     rationale: "If RPC is not required, it is recommended that this services be removed to reduce the remote attack surface."
+    impact: "Removing the LDAP client will prevent or inhibit using LDAP for authentication in your environment."
     remediation: "Run the following command to remove rpcbind: # apt purge rpcbind"
     compliance:
       - cis: ["2.3.6"]
