@@ -363,12 +363,12 @@ int audit_init(void) {
     }
 
     // Initialize audit queue
-    audit_queue = queue_init(syscheck.whodata_queue_size);
+    audit_queue = queue_init(syscheck.queue_size);
     atomic_int_set(&audit_parse_thread_active, 1);
     w_create_thread(audit_parse_thread, NULL);
 
     // Print audit queue size
-    minfo(FIM_AUDIT_QUEUE_SIZE, syscheck.whodata_queue_size);
+    minfo(FIM_AUDIT_QUEUE_SIZE, syscheck.queue_size);
 
     // Perform Audit healthcheck
     if (syscheck.audit_healthcheck) {

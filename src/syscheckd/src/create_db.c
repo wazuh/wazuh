@@ -312,7 +312,6 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON* changed_attributes = NULL;
     cJSON* old_data = NULL;
     cJSON *attributes = NULL;
-    cJSON *aux = NULL;
     cJSON* timestamp = NULL;
     directory_t *configuration = NULL;
     fim_txn_context_t *txn_context = (fim_txn_context_t *) user_data;

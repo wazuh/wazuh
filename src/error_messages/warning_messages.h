@@ -71,7 +71,7 @@
 #define FIM_WHODATA_POLICY_CHANGE_CHECKER       "(6952): Audit policy change detected. Switching directories to realtime."
 #define FIM_WHODATA_POLICY_CHANGE_CHANNEL       "(6953): Event 4719 received due to changes in audit policy. Switching directories to realtime."
 #define FIM_EMPTY_CHANGED_ATTRIBUTES            "(6954): Entry '%s' does not have any modified fields. No event will be generated."
-#define FIM_FULL_AUDIT_QUEUE                    "(6955): Internal audit queue is full. Some events may be lost."
+#define FIM_FULL_AUDIT_QUEUE                    "(6955): Internal audit queue is full. Some events may be lost. Next scheduled scan will recover lost data."
 
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."

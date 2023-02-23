@@ -435,7 +435,7 @@ typedef struct _config {
     pthread_mutex_t fim_realtime_mutex;
 #ifndef WIN32
     pthread_mutex_t fim_symlink_mutex;
-    unsigned int whodata_queue_size;                   /* Linux Audit message queue size for whodata */
+    unsigned int queue_size;                           /* Linux Audit message queue size for whodata */
 #endif
     rtfim *realtime;
     fdb_t *database;
