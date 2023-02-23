@@ -85,6 +85,11 @@ Vagrant.configure("2") do |config|
         cd $HOME
         cp $ENGINE_SRC_DIR/extension/elasticsearch/7.x/wazuh-template.json /etc/filebeat/
         cp $ENGINE_SRC_DIR/extension/filebeat/7.x/filebeat.yml /etc/filebeat/
+
+        # Create index pattern
+        echo "--- Setting up dashboards index pattern  ---"
+        sudo curl -s --cacert /etc/filebeat/certs/root-ca.pem -u 'admin:wazuhEngine5+' -X POST "https://127.0.0.1/api/saved_objects/index-pattern/wazuh-alerts-5x-*" -H 'osd-xsrf: true' -H 'Content-Type: application/json' -d   '{"attributes": {"title": "wazuh-alerts-5.x-*", "timeFieldName": "@timestamp" }}'
+
         systemctl restart filebeat.service
 
         WAZUH_DIR=/var/ossec
@@ -132,10 +137,6 @@ Vagrant.configure("2") do |config|
 
         # Create folder for engine core dumps
         mkdir -p /coredumps
-
-        # Create index pattern
-        echo "--- Setting up dashboards index pattern  ---"
-        sudo curl -s --cacert /etc/filebeat/certs/root-ca.pem -u 'admin:wazuhEngine5+' -X POST "https://127.0.0.1/api/saved_objects/index-pattern/wazuh-alerts-5x-*" -H 'osd-xsrf: true' -H 'Content-Type: application/json' -d   '{"attributes": {"title": "wazuh-alerts-5.x-*", "timeFieldName": "@timestamp" }}'
 
         # Install code-server
         CS_USER=vagrant
