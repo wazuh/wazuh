@@ -4,7 +4,6 @@
 #include <variant>
 #include <type_traits>
 
-
 #include <error.hpp>
 #include <google/protobuf/message.h>
 #include <google/protobuf/util/json_util.h>
