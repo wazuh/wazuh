@@ -877,7 +877,7 @@ checks:
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
-      - 'f:/etc/systemd/coredump.conf -> r:^\s*^ProcessSizeMax\s*=\s*0'
+      - 'f:/etc/systemd/coredump.conf -> r:^\s*ProcessSizeMax\s*=\s*0'
 
   # 1.5.3 Ensure address space layout randomization (ASLR) is enabled (Automated) - Not implemented - needs a script.
   ###############################################
@@ -2017,7 +2017,7 @@ checks:
       - "c:systemctl is-enabled nftables.service -> r:enabled"
       - "c:nft list ruleset -> r:hook input"
       - "c:nft list ruleset -> r:hook forward"
-      - "c:nft list ruleset -> r:policy drop"
+      - "not c:nft list ruleset -> r:policy drop"
 
   ############################################################
   # 4 Logging and Auditing.
@@ -2192,8 +2192,10 @@ checks:
       - mitre_mitigations: ["M1047"]
     condition: all
     rules:
-      - "f:/etc/audit/audit.rules -> r:-w /etc/sudoers && r:-p wa && r:-k scope"
-      - "f:/etc/audit/audit.rules -> r:-w /etc/sudoers.d/ && r:-p wa && r:-k scope"
+      - d:/etc/audit/rules.d/ -> r:\.* -> r:-w /etc/sudoers -p wa -k scope|-w /etc/sudoers -p wa key=scope
+      - d:/etc/audit/rules.d/ -> r:\.* -> r:-w /etc/sudoers.d -p wa -k scope|-w /etc/sudoers.d -p wa key=scope
+      - c:auditctl -l -> r:-w /etc/sudoers -p wa -k scope|-w /etc/sudoers -p wa key=scope
+      - c:auditctl -l -> r:-w /etc/sudoers.d -p wa -k scope|-w /etc/sudoers.d -p wa key=scope
 
   # 4.1.3.2 Ensure actions as another user are always logged (Automated) - Not implemented
   # 4.1.3.3 Ensure events that modify the sudo log file are collected (Automated) - Not implemented
@@ -2852,7 +2854,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*usepam\s+yes'
-      - 'not f:/etc/ssh/sshd_config -> r:^\sUsePAM\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*UsePAM\s+no'
 
   # 5.2.7 Ensure SSH root login is disabled (Automated)
   - id: 28110
@@ -2875,7 +2877,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitRootLogin\s*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitRootLogin\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitRootLogin\s+yes'
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled (Automated)
   - id: 28111
@@ -2898,7 +2900,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*HostbasedAuthentication\s*\t*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\sHostbasedAuthentication\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*HostbasedAuthentication\s+yes'
 
   # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled (Automated)
   - id: 28112
@@ -2921,7 +2923,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitEmptyPasswords\s*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitEmptyPasswords\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitEmptyPasswords\s+yes'
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled (Automated)
   - id: 28113
@@ -2945,7 +2947,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitUserEnvironment\s*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitUserEnvironment\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitUserEnvironment\s+yes'
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled (Automated)
   - id: 28114
@@ -2969,7 +2971,7 @@ checks:
     condition: all
     rules:
       - 'not c:sshd -T -C user=root -> r:^# && r:ignorerhosts\s*yes'
-      - 'not f:/etc/ssh/sshd_config -> r:^\signorerhosts\s+no\b'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*ignorerhosts\s+no\b'
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 28115
@@ -2993,7 +2995,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*X11Forwarding\s*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\sx11forwarding\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*x11forwarding\s+yes'
 
   # 5.2.13 Ensure SSH AllowTcpForwarding is disabled (Automated)
   - id: 28116
@@ -3020,7 +3022,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*AllowTcpForwarding\s+no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\sAllowTcpForwarding\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*AllowTcpForwarding\s+yes'
 
   # 5.2.14 Ensure system-wide crypto policy is not over-ridden (Automated)
   - id: 28117
