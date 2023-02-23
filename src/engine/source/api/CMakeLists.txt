@@ -25,6 +25,7 @@ add_library(api STATIC
     ${ENGINE_API_SOURCE_DIR}/catalog/commands.cpp
     ${ENGINE_API_SOURCE_DIR}/kvdb/commands.cpp
     ${ENGINE_API_SOURCE_DIR}/router/commands.cpp
+    ${ENGINE_API_SOURCE_DIR}/adapter.hpp
 )
 
 target_include_directories(api
