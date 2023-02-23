@@ -278,6 +278,10 @@ int local_start()
 
     // Read wodle configuration and start modules
 
+    if (wm_config() < 0) {
+        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
+    }
+
     if (!wm_config() && !wm_check()) {
         wmodule * cur_module;
 
