@@ -717,6 +717,11 @@ int wdb_global_adjust_v4(wdb_t* wdb) {
         }
     } while(step_result == SQLITE_ROW && update_result == OS_SUCCESS);
 
+    if (result == OS_SUCCESS && wdb_commit2(wdb) < 0) {
+        merror("DB(%s) The commit statement could not be executed.", wdb->id);
+        return -1;
+    }
+
     return result;
 }
 
