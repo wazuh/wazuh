@@ -19,7 +19,7 @@ json::Json getConfig()
     return config;
 }
 
-parsec::Parser<json::Json> __dummyTextParser(std::string endToken, std::vector<std::string> args)
+parsec::Parser<json::Json> _dummyTextParser(std::string endToken, std::vector<std::string> args)
 {
     return parsec::Parser<json::Json> {[end = endToken](std::string_view txt, size_t i)
                                        {
