@@ -135,7 +135,7 @@ Vagrant.configure("2") do |config|
 
         # Create index pattern
         echo "--- Setting up dashboards index pattern  ---"
-        curl -s --cacert /etc/filebeat/certs/root-ca.pem -u 'admin:wazuhEngine5+' -X POST "https://127.0.0.1/api/saved_objects/index-pattern/wazuh-alerts-5x-*" -H 'osd-xsrf: true' -H 'Content-Type: application/json' -d   '{"attributes": {"title": "wazuh-alerts-5.x-*", "timeFieldName": "@timestamp" }}'
+        sudo curl -s --cacert /etc/filebeat/certs/root-ca.pem -u 'admin:wazuhEngine5+' -X POST "https://127.0.0.1/api/saved_objects/index-pattern/wazuh-alerts-5x-*" -H 'osd-xsrf: true' -H 'Content-Type: application/json' -d   '{"attributes": {"title": "wazuh-alerts-5.x-*", "timeFieldName": "@timestamp" }}'
 
         # Install code-server
         CS_USER=vagrant
@@ -165,7 +165,7 @@ Vagrant.configure("2") do |config|
         chown -R $CS_USER:$CS_USER $CS_HOME/
 
         # Install engine-schema python script
-        pip3 install $ENGINE_SRC_DIR/test/scripts/engine-schema
+        pip3 install $ENGINE_SRC_DIR/test/scripts/engine-suit
         if ! engine-schema -h; then
             echo "Error installing engine-schema"
         fi
