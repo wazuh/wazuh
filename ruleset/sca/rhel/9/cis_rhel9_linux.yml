@@ -1786,7 +1786,6 @@ checks:
   ###############################################
   # 2.3 Service Clients
   ###############################################
-
   # 2.3.1 Ensure telnet client is not installed (Automated)
   - id: 28071
     title: "Ensure telnet client is not installed."
@@ -1946,7 +1945,6 @@ checks:
   # 3.4.2 Configure firewall rules
   ###############################################
   # 3.4.2.1 Ensure firewalld default zone is set (Automated) - Not implemented
-
   # 3.4.2.2 Ensure at least one nftables table exists (Automated)
   - id: 28076
     title: "Ensure at least one nftables table exists."
@@ -2016,8 +2014,10 @@ checks:
       - iso_27001-2013: ["A.13.1.1"]
     condition: all
     rules:
-      - "c: systemctl --quiet is-enabled nftables.service && nft list ruleset -> !r:'hook input' && !r:'policy drop'"
-      - "c: systemctl --quiet is-enabled nftables.service && nft list ruleset -> !r:'hook forward' && !r:'policy drop'"
+      - "c:systemctl is-enabled nftables.service -> r:enabled"
+      - "c:nft list ruleset -> r:hook input"
+      - "c:nft list ruleset -> r:hook forward"
+      - "c:nft list ruleset -> r:policy drop"
 
   ############################################################
   # 4 Logging and Auditing.
@@ -2758,7 +2758,7 @@ checks:
     compliance:
       - cis: ["5.2.1"]
       - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]      - 
+      - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
@@ -2817,17 +2817,17 @@ checks:
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2", "6.3"]
       - nist_800_53: ["AU-2", "AU-12", "SI-5"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - iso_27001-2013: ["A.12.4.1"]
+        mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*LogLevel\s+VERBOSE|^\s*LogLevel\s+INFO'
-      - "f:/etc/ssh/sshd_config -> !r:'(VERBOSE|INFO)'"
+      - "not f:/etc/ssh/sshd_config -> r:'loglevel'"
 
   # 5.2.6 Ensure SSH PAM is enabled (Automated)
   - id: 28109
@@ -2836,25 +2836,23 @@ checks:
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
     impact: "If UsePAM is enabled, you will not be able to run sshd(8) as a non-root user."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.6"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
-      - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - mitre_techniques: ["T1021", "T1021.004"]
-      - mitre_tactics: ["TA0001"]
-      - mitre_mitigations: ["M1035"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+        nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - mitre_techniques: ["T1021", "T1021.004"]
+      - mitre_tactics: ["TA0001"]
+      - mitre_mitigations: ["M1035"]
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*usepam\s+yes'
-      - 'f:/etc/ssh/sshd_config -> !r:^\s*UsePAM\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sUsePAM\s+no'
 
   # 5.2.7 Ensure SSH root login is disabled (Automated)
   - id: 28110
@@ -2862,24 +2860,22 @@ checks:
     description: "The PermitRootLogin parameter specifies if the root user can log in using ssh. The default is no."
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.7"]
       - cis_csc_v8: ["5.4"]
       - cis_csc_v7: ["4.3"]
       - nist_800_53: ["AC-6(2)", "AC-6(5)"]
-      - mitre_techniques: ["T1078"]
-      - mitre_tactics: ["TA0001"]
-      - mitre_mitigations: ["M1026"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
       - iso_27001-2013: ["A.9.2.3"]
+        mitre_techniques: ["T1078"]
+      - mitre_tactics: ["TA0001"]
+      - mitre_mitigations: ["M1026"]
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitRootLogin\s*no'
-      - 'f:/etc/ssh/sshd_config -> !r:^\s*PermitRootLogin\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitRootLogin\s+yes'
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled (Automated)
   - id: 28111
@@ -2887,24 +2883,22 @@ checks:
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts , or /etc/hosts.equiv, along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.8"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["16.3"]
       - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
+        mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
+      - mitre_tactics: ["TA0008"]
+        mitre_mitigations: ["M1042"]
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*HostbasedAuthentication\s*\t*no'
-      - 'f:/etc/ssh/sshd_config -> !r:^\s*HostbasedAuthentication\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sHostbasedAuthentication\s+yes'
 
   # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled (Automated)
   - id: 28112
@@ -2912,24 +2906,22 @@ checks:
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.9"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["16.3"]
       - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - mitre_techniques: ["T1021"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
+        mitre_techniques: ["T1021"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_mitigations: ["M1042"]
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitEmptyPasswords\s*no'
-      - 'f:/etc/ssh/sshd_config -> !r:^\s*PermitEmptyPasswords\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitEmptyPasswords\s+yes'
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled (Automated)
   - id: 28113
@@ -2937,25 +2929,23 @@ checks:
     description: "The PermitUserEnvironment option allows users to present environment options to the ssh daemon."
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing trojan'd programs)."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.10"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
       - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - mitre_techniques: ["T1021"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
+        mitre_techniques: ["T1021"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_mitigations: ["M1042"]
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitUserEnvironment\s*no'
-      - 'f:/etc/ssh/sshd_config -> !r:^\s*PermitUserEnvironment\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitUserEnvironment\s+yes'
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled (Automated)
   - id: 28114
@@ -2963,25 +2953,23 @@ checks:
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.11"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["9.2"]
       - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-      - mitre_tactics: ["TA0001"]
-      - mitre_mitigations: ["M1027"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
       - iso_27001-2013: ["A.13.1.3"]
+        mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
+      - mitre_tactics: ["TA0001"]
+      - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> !r:^# && r:ignorerhosts\s*yes'
-      - 'f:/etc/ssh/sshd_config -> !r:^\s*ignorerhosts\s+no\b'
+      - 'not c:sshd -T -C user=root -> r:^# && r:ignorerhosts\s*yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\signorerhosts\s+no\b'
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 28115
@@ -2994,18 +2982,18 @@ checks:
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - nist_800_53: ["CM-7"]
-      - mitre_techniques: ["T1210"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
+        mitre_techniques: ["T1210"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_mitigations: ["M1042"]
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*X11Forwarding\s*no'
-      - 'f:/etc/ssh/sshd_config -> !r:^\s*x11forwarding\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sx11forwarding\s+yes'
 
   # 5.2.13 Ensure SSH AllowTcpForwarding is disabled (Automated)
   - id: 28116
@@ -3021,18 +3009,18 @@ checks:
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["9.2"]
       - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - mitre_techniques: ["T1048", "T1048.002", "T1572"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
       - iso_27001-2013: ["A.13.1.3"]
+        mitre_techniques: ["T1048", "T1048.002", "T1572"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_mitigations: ["M1042"]
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*AllowTcpForwarding\s+no'
-      - 'f:/etc/ssh/sshd_config -> !r:^\s*AllowTcpForwarding\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sAllowTcpForwarding\s+yes'
 
   # 5.2.14 Ensure system-wide crypto policy is not over-ridden (Automated)
   - id: 28117
@@ -3082,20 +3070,18 @@ checks:
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.16"]
       - cis_csc_v8: ["8.5"]
       - cis_csc_v7: ["16.13"]
       - nist_800_53: ["AU-3", "AU-3(1)"]
-      - mitre_techniques: ["T1110", "T1110.001", "T1110.003"]
-      - mitre_tactics: ["TA0006"]
-      - mitre_mitigations: ["M1036"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - soc_2: ["CC5.2", "CC7.2"]
+        mitre_techniques: ["T1110", "T1110.001", "T1110.003"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_mitigations: ["M1036"]
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
@@ -3109,18 +3095,16 @@ checks:
     description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.18"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
       - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - mitre_techniques: ["T1499", "T1499.002"]
-      - mitre_tactics: ["TA0040"]
       - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
       - pci_dss_4.0: ["8.3.4"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+        mitre_techniques: ["T1499", "T1499.002"]
+      - mitre_tactics: ["TA0040"]
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
@@ -3132,8 +3116,6 @@ checks:
     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.19"]
       - mitre_techniques: ["T1110", "T1110.001", "T1110.003", "T1110.004"]
