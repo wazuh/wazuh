@@ -8,6 +8,7 @@
 import subprocess
 import logging
 import os
+import contextlib
 
 BUILDDIR = '/build'
 THREADS_DEFAULT = 2
@@ -120,13 +121,15 @@ def docs(params):
     command = 'make'
     args = f'-C {params.output}{BUILDDIR} {DOXYGEN_TARGET} -j{THREADS_DEFAULT}'
     logging.debug(f'Executing {command} {args}')
+    # Creating a symbolic link to the source folder
+    with contextlib.suppress(FileNotFoundError):
+        os.remove(params.output + params.source)
+    os.symlink(params.source, params.output + params.source, target_is_directory=True)
     result = subprocess.run(
         f'{command} {args}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, cwd=params.output)
     if result.returncode == 0 and not result.stderr:
         logging.info('DOXYGEN GENERATION: successful')
     else:
         logging.info('DOXYGEN GENERATION: fail')
-        # Forcing the return code to 1 in case of any message in stderr
-        result.returncode = 1
     log(params.output, 'docs', result.stdout, result.stderr)
     return bool(not result.returncode)
