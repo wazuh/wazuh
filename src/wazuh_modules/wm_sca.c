@@ -1067,7 +1067,7 @@ static int wm_sca_do_scan(cJSON * checks,
             if(!rule_ref->valuestring) {
                 mdebug1("Field 'rule' must be a string.");
                 ret_val = 1;
-                w_free_expression_t(&regex_engine);
+                os_free(regex_engine);
                 goto clean_return;
             }
 
@@ -1103,7 +1103,7 @@ static int wm_sca_do_scan(cJSON * checks,
                 merror("Invalid rule: '%s'. Skipping policy.", rule_ref->valuestring);
                 os_free(rule_cp);
                 ret_val = 1;
-                w_free_expression_t(&regex_engine);
+                os_free(regex_engine);
                 goto clean_return;
             }
 
@@ -1320,6 +1320,7 @@ static int wm_sca_do_scan(cJSON * checks,
                 free(data->alert_msg[i]);
                 data->alert_msg[i] = NULL;
             }
+            os_free(regex_engine);
             goto clean_return;
         }
 
