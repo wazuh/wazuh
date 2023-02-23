@@ -1158,8 +1158,6 @@ void test_audit_parse_thread(void **state) {
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    //expect_value(__wrap_pthread_cond_wait, cond, &audit_queue->available);
-    //expect_value(__wrap_pthread_cond_wait, mutex, &audit_queue->mutex);
 
     expect_function_call(__wrap_audit_parse);
 

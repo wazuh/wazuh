@@ -58,8 +58,6 @@ typedef struct _audit_data_s {
  */
 static void *audit_main(audit_data_t *audit_data);
 
-static void *audit_parse_thread();
-
 int check_auditd_enabled(void) {
     PROCTAB *proc = openproc(PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM );
     proc_t *proc_info;
@@ -543,6 +541,7 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
     count_reload_retries = 0;
     int conn_retries;
     char * eoe_found = NULL;
+    char * cache_dup = NULL;
 
     char *buffer;
     os_malloc(BUF_SIZE * sizeof(char), buffer);
@@ -564,8 +563,10 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
         case 0:
             if (cache_i) {
                 // Flush cache
-                if (queue_push_ex(audit_queue, strdup(cache))) {
+                os_strdup(cache, cache_dup);
+                if (queue_push_ex(audit_queue, cache_dup)) {
                     mwarn(FIM_FULL_AUDIT_QUEUE);
+                    os_free(cache_dup);
                 }
                 cache_i = 0;
             }
@@ -629,8 +630,10 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
 
                 if (cache_id && strcmp(cache_id, id) && cache_i) {
                     if (!event_too_long_id) {
-                        if (queue_push_ex(audit_queue, strdup(cache))) {
+                        os_strdup(cache, cache_dup);
+                        if (queue_push_ex(audit_queue, cache_dup)) {
                             mwarn(FIM_FULL_AUDIT_QUEUE);
+                            os_free(cache_dup);
                         }
                     }
                     cache_i = 0;
@@ -660,8 +663,10 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
 
         // If some audit log remains in the cache and it is complet (line "end of event" is found), flush cache
         if (eoe_found && !event_too_long_id){
-            if (queue_push_ex(audit_queue, strdup(cache))) {
+            os_strdup(cache, cache_dup);
+            if (queue_push_ex(audit_queue, cache_dup)) {
                 mwarn(FIM_FULL_AUDIT_QUEUE);
+                os_free(cache_dup);
             }
             cache_i = 0;
         }
