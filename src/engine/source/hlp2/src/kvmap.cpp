@@ -65,7 +65,7 @@ parsec::Parser<json::Json> getKVParser(std::string name, Stop endTokens, Options
         while (start <= fp.size())
         {
             auto remaining = fp.substr(start, fp.size() - start);
-            auto f = getField(remaining, dlm, quote, '\\', false);
+            auto f = getField(remaining, dlm, quote, '\\', true);
             if (!f.has_value())
             {
                 break;
