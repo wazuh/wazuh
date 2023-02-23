@@ -56,7 +56,7 @@ std::optional<Field> getField(std::string_view input,
                 }
                 else
                 {
-                    bool escaped = (last_escape_location + 1 == i);
+                    bool escaped = (last_escape_location + 1 == i) && (i > 1);
                     isEscaped = isEscaped || escaped;
                     last_escape_location += (i - last_escape_location) * size_t(!escaped);
                     quote_opened = escaped || (input[i + 1] != delimiter);
