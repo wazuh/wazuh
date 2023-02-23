@@ -236,7 +236,7 @@ int main(int argc, char **argv)
                         merror_exit("-%c needs an argument", c);
                     }
                     else {
-                        if(w_str_is_number(optarg)){
+                        if (w_str_is_number(optarg)) {
                             merror_exit("-%c needs a valid SSL cipher", c); 
                         }
                         ciphers = optarg;
