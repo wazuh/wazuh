@@ -292,6 +292,8 @@ cJSON *getSyscheckConfig(void) {
     } else {
         cJSON_AddStringToObject(whodata,"startup_healthcheck","no");
     }
+    cJSON_AddNumberToObject(whodata, "whodata_queue_size", syscheck.whodata_queue_size);
+
     cJSON_AddItemToObject(syscfg,"whodata",whodata);
 #endif
 
