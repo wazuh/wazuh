@@ -69,6 +69,47 @@ fromWazuhRequest(const base::utils::wazuhProtocol::WazuhRequest& wRequest)
     return std::move(std::get<T>(res));
 }
 
+/**
+ * @brief Return a WazuhResponse with the genericError in WazuhResponse
+ *
+ * @tparam T Response type
+ * @param std::string Error message
+ * @return std::variant<base::utils::wazuhProtocol::WazuhResponse, T>
+ */
+template<typename T>
+base::utils::wazuhProtocol::WazuhResponse genericError(const std::string& message)
+{
+    // Check that T is derived from google::protobuf::Message
+    static_assert(std::is_base_of<google::protobuf::Message, T>::value, "T must be a derived class of proto::Message");
+    static_assert(std::is_invocable_v<decltype(&T::set_status), T, ::com::wazuh::api::engine::ReturnStatus>,
+                  "T must have set_status function");
+
+    T eResponse;
+    eResponse.set_status(::com::wazuh::api::engine::ReturnStatus::ERROR);
+    eResponse.set_error(message.data());
+    return toWazuhResponse<T>(eResponse);
+}
+
+
+/**
+ * @brief Return a WazuhResponse with the status OK in WazuhResponse
+ *
+ * @tparam T Response type
+ * @return std::variant<base::utils::wazuhProtocol::WazuhResponse, T>
+ */
+template<typename T>
+base::utils::wazuhProtocol::WazuhResponse genericSuccess()
+{
+    // Check that T is derived from google::protobuf::Message
+    static_assert(std::is_base_of<google::protobuf::Message, T>::value, "T must be a derived class of proto::Message");
+    static_assert(std::is_invocable_v<decltype(&T::set_status), T, ::com::wazuh::api::engine::ReturnStatus>,
+                  "T must have set_status function");
+
+    T eResponse;
+    eResponse.set_status(::com::wazuh::api::engine::ReturnStatus::OK);
+    return toWazuhResponse<T>(eResponse);
+}
+
 } // namespace api::adapter
 
 #endif // _API_UTILS_HPP

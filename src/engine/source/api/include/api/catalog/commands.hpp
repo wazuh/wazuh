@@ -10,11 +10,11 @@
 namespace api::catalog::cmds
 {
 
-api::CommandFn postResourceCmd(std::shared_ptr<Catalog> catalog);
-api::CommandFn getResourceCmd(std::shared_ptr<Catalog> catalog);
-api::CommandFn deleteResourceCmd(std::shared_ptr<Catalog> catalog);
-api::CommandFn putResourceCmd(std::shared_ptr<Catalog> catalog);
-api::CommandFn validateResourceCmd(std::shared_ptr<Catalog> catalog);
+api::Handler postResourceCmd(std::shared_ptr<Catalog> catalog);
+api::Handler getResourceCmd(std::shared_ptr<Catalog> catalog);
+api::Handler deleteResourceCmd(std::shared_ptr<Catalog> catalog);
+api::Handler putResourceCmd(std::shared_ptr<Catalog> catalog);
+api::Handler validateResourceCmd(std::shared_ptr<Catalog> catalog);
 
 /**
  * @brief Register all available Catalog commands in the API registry.

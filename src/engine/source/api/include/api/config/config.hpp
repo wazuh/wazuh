@@ -15,25 +15,27 @@ namespace api::config::cmds
 {
 template<typename ConfDriver>
 using ConfHandler = std::shared_ptr<conf::IConf<ConfDriver>>;
+
 namespace eConfig = ::com::wazuh::api::engine::config;
 namespace eEngine = ::com::wazuh::api::engine;
 
 /* Runtime endpoint */
 template<typename ConfDriver>
-api::CommandFn runtimeGet(ConfHandler<ConfDriver> confHandler)
+api::Handler runtimeGet(ConfHandler<ConfDriver> confHandler)
 {
     return [confHandler](api::wpRequest wRequest) -> api::wpResponse
     {
-        // Validate the request
-        auto res =
-            ::api::adapter::fromWazuhRequest<eConfig::RuntimeGet_Request, eConfig::RuntimeGet_Response>(wRequest);
+        using RequestType = eConfig::RuntimeGet_Request;
+        using ResponseType = eConfig::RuntimeGet_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+
         if (std::holds_alternative<api::wpResponse>(res))
         {
             return std::move(std::get<api::wpResponse>(res));
         }
 
-        const auto& request = std::get<eConfig::RuntimeGet_Request>(res);
-        eConfig::RuntimeGet_Response response;
+        const auto& request = std::get<RequestType>(res);
+        ResponseType response;
         // Execute the command
         try
         {
@@ -48,36 +50,35 @@ api::CommandFn runtimeGet(ConfHandler<ConfDriver> confHandler)
             response.set_status(eEngine::ReturnStatus::ERROR);
         }
 
-        return ::api::adapter::toWazuhResponse<eConfig::RuntimeGet_Response>(response);
+        return ::api::adapter::toWazuhResponse<ResponseType>(response);
     };
 }
 
 template<typename ConfDriver>
-api::CommandFn runtimePut(ConfHandler<ConfDriver> confHandler)
+api::Handler runtimePut(ConfHandler<ConfDriver> confHandler)
 {
     return [confHandler](api::wpRequest wRequest) -> api::wpResponse
     {
-        // Validate the request
-        auto res =
-            ::api::adapter::fromWazuhRequest<eConfig::RuntimePut_Request, eEngine::GenericStatus_Response>(wRequest);
+        using RequestType = eConfig::RuntimePut_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+
         if (std::holds_alternative<api::wpResponse>(res))
         {
             return std::move(std::get<api::wpResponse>(res));
         }
 
-        const auto& request = std::get<eConfig::RuntimePut_Request>(res);
-        eEngine::GenericStatus_Response response;
+        const auto& request = std::get<RequestType>(res);
         // Validate the engine request
         std::optional<std::string> error = !request.has_name()    ? std::make_optional("Missing /name")
                                            : !request.has_content() ? std::make_optional("Missing /value")
                                                                   : std::nullopt;
         if (error)
         {
-            response.set_error(error.value());
-            response.set_status(eEngine::ReturnStatus::ERROR);
-            return ::api::adapter::toWazuhResponse<eEngine::GenericStatus_Response>(response);
+            return ::api::adapter::genericError<ResponseType>(error.value());
         }
 
+        ResponseType response;
         try
         {
             confHandler->put(request.name(), request.content());
@@ -89,25 +90,26 @@ api::CommandFn runtimePut(ConfHandler<ConfDriver> confHandler)
             response.set_status(eEngine::ReturnStatus::ERROR);
         }
 
-        return ::api::adapter::toWazuhResponse<eEngine::GenericStatus_Response>(response);
+        return ::api::adapter::toWazuhResponse<ResponseType>(response);
     };
 }
 
 template<typename ConfDriver>
-api::CommandFn runtimeSave(ConfHandler<ConfDriver> confHandler)
+api::Handler runtimeSave(ConfHandler<ConfDriver> confHandler)
 {
     return [confHandler](api::wpRequest wRequest) -> api::wpResponse
     {
-        // Validate the request
-        auto res =
-            ::api::adapter::fromWazuhRequest<eConfig::RuntimeSave_Request, eEngine::GenericStatus_Response>(wRequest);
+        using RequestType = eConfig::RuntimeSave_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+
         if (std::holds_alternative<api::wpResponse>(res))
         {
             return std::move(std::get<api::wpResponse>(res));
         }
 
-        const auto& request = std::get<eConfig::RuntimeSave_Request>(res);
-        eEngine::GenericStatus_Response response;
+        const auto& request = std::get<RequestType>(res);
+        ResponseType response;
 
         try
         {
@@ -127,7 +129,7 @@ api::CommandFn runtimeSave(ConfHandler<ConfDriver> confHandler)
             response.set_status(eEngine::ReturnStatus::ERROR);
         }
 
-        return ::api::adapter::toWazuhResponse<eEngine::GenericStatus_Response>(response);
+        return ::api::adapter::toWazuhResponse<ResponseType>(response);
     };
 }
 

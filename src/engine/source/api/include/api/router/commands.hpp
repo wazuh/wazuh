@@ -11,12 +11,12 @@ namespace {
 namespace api::router::cmds
 {
 
-api::CommandFn routeGet(std::shared_ptr<::router::Router> router);
-api::CommandFn routePost(std::shared_ptr<::router::Router> router);
-api::CommandFn routePatch(std::shared_ptr<::router::Router> router);
-api::CommandFn routeDelete(std::shared_ptr<::router::Router> router);
-api::CommandFn tableGet(std::shared_ptr<::router::Router> router);
-api::CommandFn queuePost(std::shared_ptr<::router::Router> router);
+api::Handler routeGet(std::shared_ptr<::router::Router> router);
+api::Handler routePost(std::shared_ptr<::router::Router> router);
+api::Handler routePatch(std::shared_ptr<::router::Router> router);
+api::Handler routeDelete(std::shared_ptr<::router::Router> router);
+api::Handler tableGet(std::shared_ptr<::router::Router> router);
+api::Handler queuePost(std::shared_ptr<::router::Router> router);
 
 /**
  * @brief Register all router commands

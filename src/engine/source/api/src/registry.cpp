@@ -4,7 +4,7 @@
 namespace api
 {
 
-bool Registry::registerCommand(const std::string& command, const CommandFn callback)
+bool Registry::registerCommand(const std::string& command, const Handler callback)
 {
     if (command.empty() || callback == nullptr)
     {
@@ -21,7 +21,7 @@ bool Registry::registerCommand(const std::string& command, const CommandFn callb
     return true;
 };
 
-CommandFn Registry::getCallback(const std::string& command)
+Handler Registry::getCallback(const std::string& command)
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
     if (m_commands.find(command) != m_commands.end())
@@ -31,7 +31,9 @@ CommandFn Registry::getCallback(const std::string& command)
     return [command](const base::utils::wazuhProtocol::WazuhRequest& req)
     {
         return base::utils::wazuhProtocol::WazuhResponse {
-            json::Json {"{}"}, -1, fmt::format(R"(Command "{}" not found)", command)};
+            json::Json {"{}"},
+            static_cast<int>(base::utils::wazuhProtocol::RESPONSE_ERROR_CODES::COMMAND_NOT_FOUND),
+            fmt::format(R"(Command "{}" not found)", command)};
     };
 };
 
