@@ -144,7 +144,7 @@ All notable changes to this project will be documented in this file.
 - Fixed AWS integration database maintenance error managament. ([#13185](https://github.com/wazuh/wazuh/pull/13185))
 - The default delay at GitHub integration has been increased to 30 seconds. ([#13674](https://github.com/wazuh/wazuh/pull/13674))
 - Logcollector has been fixed to allow locations containing colons (:). ([#14706](https://github.com/wazuh/wazuh/pull/14706))
-- Fixed system architecture reporting in Logcollector on Apple Silicon devices. ([#13835](https://github.com/wazuh/wazuh/pull/13835))
+- Fixed system architecture reporting in Syscollector on Apple Silicon devices. ([#13835](https://github.com/wazuh/wazuh/pull/13835))
 - The C++ standard library and the GCC runtime library is included with Wazuh. ([#14190](https://github.com/wazuh/wazuh/pull/14190))
 - Fixed missing inventory cleaning message in Syscollector. ([#13877](https://github.com/wazuh/wazuh/pull/13877))
 - Fixed WPK upgrade issue on Windows agents due to process locking. ([#15322](https://github.com/wazuh/wazuh/pull/15322))
