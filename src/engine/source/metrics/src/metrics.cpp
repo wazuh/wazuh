@@ -159,13 +159,12 @@ void Metrics::initCounter(const std::string& name)
 
 void Metrics::addCounterValue(std::string counterName, const double& value) const
 {
-    if (value < 0)
-    {
-        throw std::runtime_error {"The increment amount. MUST be non-negative."};
-    }
-
     if ((m_doubleCounter.find(counterName)) != m_doubleCounter.end())
     {
+        if (value < 0)
+        {
+            throw std::runtime_error {"The increment amount. MUST be non-negative."};
+        }
         if(controller.at(counterName))
         {
             m_doubleCounter.at(counterName)->Add(value);

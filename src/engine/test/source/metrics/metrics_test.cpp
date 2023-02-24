@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 #include <filesystem>
 
-const auto INPUT_PATH {(std::filesystem::current_path() / "source/metrics/input_files/context.json").string()};
+const auto INPUT_PATH {(std::filesystem::current_path() / "source/metrics/input_files/metrics-config.json").string()};
 
 class MetricsTest : public ::testing::Test
 {
@@ -32,8 +32,7 @@ TEST_F(MetricsTest, sucessCounter)
     for (auto i = 0; i < 10; i ++)
     {
         m_spMetrics->addCounterValue("Sockets", 1);
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        std::this_thread::sleep_for(std::chrono::milliseconds(900));
         m_spMetrics->addCounterValue("Request", 1);
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
     }
 }
