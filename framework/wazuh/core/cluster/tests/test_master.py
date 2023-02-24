@@ -1941,7 +1941,7 @@ async def test_master_file_status_update_ok(run_in_pool_mock, asyncio_sleep_mock
 
 
 @patch('asyncio.get_running_loop', return_value=loop)
-@patch("wazuh.core.agent.Agent.get_agents_overview", return_value={'items': [{'node_name': '1'}]})
+@patch("wazuh.core.agent.Agent.get_agents_overview", return_value={'totalItems': 5})
 def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
     """Check if nodes and the synchronization information is properly obtained."""
 
@@ -1950,7 +1950,7 @@ def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
             super().__init__(**kwargs)
 
         def to_dict(self):
-            return {'info': {'n_active_agents': 4, 'type': 'worker'}, 'status': {'last_keep_alive': 0}}
+            return {'info': {'type': 'worker'}, 'status': {'last_keep_alive': 0}}
 
     class MockMaster(master.Master):
         def to_dict(self):
@@ -1968,7 +1968,7 @@ def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
                                                              'status':
                                                                  {'last_keep_alive': '1970-01-01T00:00:00.000000Z'}},
                                                        'master': {'testing': 'get_health',
-                                                                  'info': {'type': 'master', 'n_active_agents': 0}}}}
+                                                                  'info': {'type': 'master', 'n_active_agents': 5}}}}
 
 
 @patch('asyncio.get_running_loop', return_value=loop)
