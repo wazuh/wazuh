@@ -173,7 +173,7 @@ class WazuhIntegration:
         # GovCloud regions
         self.gov_regions = {'us-gov-east-1', 'us-gov-west-1'}
 
-        self.connection_config = self.default_config()
+        self.connection_config = self.default_config(profile=aws_profile)
 
         self.client = self.get_client(access_key=access_key,
                                       secret_key=secret_key,
@@ -232,7 +232,28 @@ class WazuhIntegration:
                 self.db_connector.execute(self.sql_drop_table.format(table='trail_progress'))
 
     @staticmethod
-    def default_config():
+    def default_config(profile: str):
+        """Sets a default configuration in case retry parameters are missing.
+
+        This method is called when Wazuh Integration is instantiated and sets the configuration for received param
+
+        If there is no configuration in config path a Config object is created and default configuration is set.
+    Else, if max_attempts and mode configuration are not within the param configuration dict
+
+        Parameters
+        ----------
+        profile : string
+                Aws profile configuration to use
+        Returns
+        -------
+        dict
+            Configuration dictionary
+
+        Raises
+        ------
+
+
+        """
         args = {}
         if not path.exists(DEFAULT_AWS_CONFIG_PATH):
             args['config'] = botocore.config.Config(
@@ -245,8 +266,28 @@ class WazuhIntegration:
                 f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",
                 2)
         else:
-            debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',
-                  2)
+            aws_config = get_aws_config_params()
+
+            config_dict = dict(aws_config.items(profile))
+
+            if config_dict['retry_mode'] and config_dict['max_attempts']:
+                debug(
+                    f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',
+                    2)
+            else:
+
+                if not config_dict['max_attempts']:
+                    config_dict['retries'].update({
+                        'max_attempts': 10
+                    })
+                    debug("")
+
+                if not config_dict['retry_mode']:
+                    config_dict['retries'].update({
+                        'mode': 'standard'
+                    })
+
+                args['config'] = botocore.config.Config(config_dict)
 
         return args
 
@@ -991,7 +1032,7 @@ class AWSBucket(WazuhIntegration):
 
         def _event_should_be_skipped(event_):
             return self.discard_field and self.discard_regex \
-                   and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
+                and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
 
         if event_list is not None:
             for event in event_list:
@@ -1838,7 +1879,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
     def get_vpc_prefix(self, aws_account_id, aws_region, date, flow_log_id):
         return self.get_full_prefix(aws_account_id, aws_region) + date \
-               + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
+            + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
 
     def build_s3_filter_args(self, aws_account_id, aws_region, date, flow_log_id, iterating=False):
         filter_marker = ''
@@ -2227,8 +2268,8 @@ class AWSGuardDutyBucket(AWSCustomBucket):
     def check_guardduty_type(self):
         try:
             return \
-                'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=f'{self.prefix}AWSLogs',
-                                                                Delimiter='/', MaxKeys=1)
+                    'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=f'{self.prefix}AWSLogs',
+                                                                    Delimiter='/', MaxKeys=1)
         except Exception as err:
             if hasattr(err, 'message'):
                 debug(f"+++ Unexpected error: {err.message}", 2)
