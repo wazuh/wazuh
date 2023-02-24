@@ -3017,8 +3017,8 @@ checks:
       - tsc: ["CC6.1", "CC6.7"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/password-auth -> r:^password\s*sufficient\s*pam_unix.so\s*sha512\s*'
-      - 'f:/etc/pam.d/system-auth -> r:^password\s*sufficient\s*pam_unix.so\s*sha512\s*'
+      - 'f:/etc/pam.d/password-auth -> r:^password\.*sufficient\.*pam_unix.so\.*sha512\.*'
+      - 'f:/etc/pam.d/system-auth -> r:^password\.*sufficient\.*pam_unix.so\.*sha512\.*'
 
   # 5.4.4 Ensure password reuse is limited.
   - id: 20665
