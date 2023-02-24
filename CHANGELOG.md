@@ -73,6 +73,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug masking as Timeout any error that might occur while waiting to receive files in the cluster. ([#14922](https://github.com/wazuh/wazuh/pull/14922))
 - Fixed a read buffer overflow in wazuh-authd when parsing requests. ([#15876](https://github.com/wazuh/wazuh/pull/15876))
 - Applied workaround for bpo-46309 used in cluster to wazuh-db communication.([#16012](https://github.com/wazuh/wazuh/pull/16012))
+- Let the database module synchronize the agent groups data before assignments. ([#16233](https://github.com/wazuh/wazuh/pull/16233))
 
 #### Removed
 
@@ -199,6 +200,7 @@ All notable changes to this project will be documented in this file.
 - Improved exception handling when trying to connect to Wazuh sockets. ([#15334](https://github.com/wazuh/wazuh/pull/15334))
 - Modified _group_names and _group_names_or_all regexes to avoid invalid group names. ([#15671](https://github.com/wazuh/wazuh/pull/15671))
 - Changed `GET /sca/{agent_id}/checks/{policy_id}` endpoint filters and response to remove `status` field. ([#15747](https://github.com/wazuh/wazuh/pull/15747))
+- Removed RBAC group assignments' related permissions from `DELETE /groups` to improve performance and changed response structure. ([#16231](https://github.com/wazuh/wazuh/pull/16231))
 
 #### Fixed
 
