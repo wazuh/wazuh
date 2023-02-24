@@ -5,12 +5,12 @@
 #include <variant>
 
 #include <eMessages/eMessage.h>
+#include <eMessages/engine.pb.h>
 #include <utils/wazuhProtocol/wazuhRequest.hpp>
 #include <utils/wazuhProtocol/wazuhResponse.hpp>
 
 namespace api::adapter
 {
-
 
 /**
  * @brief Return a WazuhResponse with de eMessage serialized or a WazuhResponse with the error if it fails
@@ -29,9 +29,9 @@ base::utils::wazuhProtocol::WazuhResponse toWazuhResponse(const T& eMessage)
     if (std::holds_alternative<base::Error>(res))
     {
         const auto& error = std::get<base::Error>(res);
-        return api::wpResponse::internalError(error.message);
+        return base::utils::wazuhProtocol::WazuhResponse::internalError(error.message);
     }
-    return api::wpResponse {json::Json {std::get<std::string>(res).c_str()}};
+    return base::utils::wazuhProtocol::WazuhResponse {json::Json {std::get<std::string>(res).c_str()}};
 }
 
 /**
