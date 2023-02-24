@@ -2,106 +2,141 @@
 #define _API_CONFIG_CMDS_HPP
 
 #include <memory>
+#include <optional>
 
 #include <api/registry.hpp>
 #include <conf/iconf.hpp>
 #include <json/json.hpp>
 
+#include <api/adapter.hpp>
+#include <eMessages/config.pb.h>
+
 namespace api::config::cmds
 {
 template<typename ConfDriver>
 using ConfHandler = std::shared_ptr<conf::IConf<ConfDriver>>;
+namespace eConfig = ::com::wazuh::api::engine::config;
+namespace eEngine = ::com::wazuh::api::engine;
 
+/* Runtime endpoint */
 template<typename ConfDriver>
-api::CommandFn configGetCmd(ConfHandler<ConfDriver> confHandler)
+api::CommandFn runtimeGet(ConfHandler<ConfDriver> confHandler)
 {
-    return [confHandler](api::wpRequest request) -> api::wpResponse
+    return [confHandler](api::wpRequest wRequest) -> api::wpResponse
     {
-        const auto params = request.getParameters().value(); // The request is validated by the server
+        // Validate the request
+        auto res =
+            ::api::adapter::fromWazuhRequest<eConfig::RuntimeGet_Request, eConfig::RuntimeGet_Response>(wRequest);
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
 
+        const auto& request = std::get<eConfig::RuntimeGet_Request>(res);
+        eConfig::RuntimeGet_Response response;
+        // Execute the command
         try
         {
-            auto name = params.getString("/name");
-            if (!name)
-            {
-                auto confStr = confHandler->getConfiguration();
-                json::Json jValue;
-                jValue.setString(confStr, "/content");
-                return api::wpResponse(jValue, 0, "");
-            }
-
-            auto value = confHandler->template get<std::string>(name.value());
-            json::Json jValue;
-            jValue.setString(value, "/content");
-            return api::wpResponse(jValue, 0, "");
+            auto content = request.has_name() ? confHandler->template get<std::string>(request.name())
+                                              : confHandler->getConfiguration();
+            response.set_content(std::move(content));
+            response.set_status(eEngine::ReturnStatus::OK);
         }
         catch (const std::exception& e)
         {
-            return api::wpResponse(e.what());
+            response.set_error(e.what());
+            response.set_status(eEngine::ReturnStatus::ERROR);
         }
+
+        return ::api::adapter::toWazuhResponse<eConfig::RuntimeGet_Response>(response);
     };
 }
 
 template<typename ConfDriver>
-api::CommandFn configSaveCmd(ConfHandler<ConfDriver> confHandler)
+api::CommandFn runtimePut(ConfHandler<ConfDriver> confHandler)
 {
-    return [confHandler](api::wpRequest request) -> api::wpResponse
+    return [confHandler](api::wpRequest wRequest) -> api::wpResponse
     {
-        const auto params = request.getParameters().value(); // The request is validated by the server
+        // Validate the request
+        auto res =
+            ::api::adapter::fromWazuhRequest<eConfig::RuntimePut_Request, eEngine::GenericStatus_Response>(wRequest);
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+
+        const auto& request = std::get<eConfig::RuntimePut_Request>(res);
+        eEngine::GenericStatus_Response response;
+        // Validate the engine request
+        std::optional<std::string> error = !request.has_name()    ? std::make_optional("Missing /name")
+                                           : !request.has_content() ? std::make_optional("Missing /value")
+                                                                  : std::nullopt;
+        if (error)
+        {
+            response.set_error(error.value());
+            response.set_status(eEngine::ReturnStatus::ERROR);
+            return ::api::adapter::toWazuhResponse<eEngine::GenericStatus_Response>(response);
+        }
 
         try
         {
-            auto path = params.getString("/path");
-            if (path)
+            confHandler->put(request.name(), request.content());
+            response.set_status(eEngine::ReturnStatus::OK);
+        }
+        catch (const std::exception& e)
+        {
+            response.set_error(e.what());
+            response.set_status(eEngine::ReturnStatus::ERROR);
+        }
+
+        return ::api::adapter::toWazuhResponse<eEngine::GenericStatus_Response>(response);
+    };
+}
+
+template<typename ConfDriver>
+api::CommandFn runtimeSave(ConfHandler<ConfDriver> confHandler)
+{
+    return [confHandler](api::wpRequest wRequest) -> api::wpResponse
+    {
+        // Validate the request
+        auto res =
+            ::api::adapter::fromWazuhRequest<eConfig::RuntimeSave_Request, eEngine::GenericStatus_Response>(wRequest);
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+
+        const auto& request = std::get<eConfig::RuntimeSave_Request>(res);
+        eEngine::GenericStatus_Response response;
+
+        try
+        {
+            if (request.has_path())
             {
-                confHandler->saveConfiguration(path.value());
+                confHandler->saveConfiguration(request.path());
             }
             else
             {
                 confHandler->saveConfiguration();
             }
+            response.set_status(eEngine::ReturnStatus::OK);
         }
         catch (const std::exception& e)
         {
-            return api::wpResponse(e.what());
+            response.set_error(e.what());
+            response.set_status(eEngine::ReturnStatus::ERROR);
         }
 
-        return api::wpResponse("OK");
-    };
-}
-
-template<typename ConfDriver>
-api::CommandFn configPutCmd(ConfHandler<ConfDriver> confHandler)
-{
-    return [confHandler](api::wpRequest request) -> api::wpResponse
-    {
-        const auto params = request.getParameters().value(); // The request is validated by the server
-
-        try
-        {
-            auto name = params.getString("/name");
-            auto value = params.getString("/value");
-            if (!name || !value)
-            {
-                return api::wpResponse("Missing parameters");
-            }
-
-            confHandler->put(name.value(), value.value());
-            return api::wpResponse("OK");
-        }
-        catch (const std::exception& e)
-        {
-            return api::wpResponse(e.what());
-        }
+        return ::api::adapter::toWazuhResponse<eEngine::GenericStatus_Response>(response);
     };
 }
 
 template<typename ConfDriver>
 bool registerCommands(std::shared_ptr<api::Registry> registry, ConfHandler<ConfDriver> confHandler)
 {
-    return registry->registerCommand("config_get", configGetCmd(confHandler))
-           && registry->registerCommand("config_save", configSaveCmd(confHandler))
-           && registry->registerCommand("config_put", configPutCmd(confHandler));
+    return registry->registerCommand("config.runtime/get", runtimeGet(confHandler))
+           && registry->registerCommand("config.runtime/put", runtimePut(confHandler))
+           && registry->registerCommand("config.runtime/save", runtimeSave(confHandler));
 }
 } // namespace api::config::cmds
 
