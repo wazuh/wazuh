@@ -9,11 +9,13 @@ namespace api::router::cmds
 namespace eRouter = ::com::wazuh::api::engine::router;
 namespace eEngine = ::com::wazuh::api::engine;
 
-api::CommandFn routeGet(std::shared_ptr<::router::Router> router)
+api::Handler routeGet(std::shared_ptr<::router::Router> router)
 {
     return [router](api::wpRequest wRequest) -> api::wpResponse
     {
-        auto res = ::api::adapter::fromWazuhRequest<eRouter::RouteGet_Request, eRouter::RouteGet_Response>(wRequest);
+        using RequestType = eRouter::RouteGet_Request;
+        using ResponseType = eRouter::RouteGet_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
         // If the request is not valid, return the error
         if (std::holds_alternative<api::wpResponse>(res))
@@ -21,284 +23,204 @@ api::CommandFn routeGet(std::shared_ptr<::router::Router> router)
             return std::move(std::get<api::wpResponse>(res));
         }
 
-        // Validate the command request
-        const auto& eRequest = std::get<eRouter::RouteGet_Request>(res);
-        eRouter::RouteGet_Response eResponse;
-        std::optional<std::string> errorMsg = eRequest.has_name() ? std::nullopt : std::make_optional("Missing /name");
-
-        if (!errorMsg.has_value())
+        // Validate the params request
+        const auto& eRequest = std::get<RequestType>(res);
+        if (!eRequest.has_name())
         {
-            // Execute the command
-            const auto& entry = router->getEntry(eRequest.name());
-
-            if (!entry.has_value())
-            {
-                errorMsg = "Route not found";
-            }
-            else
-            {
-                const auto& [name, priority, filterName, envName] = entry.value();
-                eResponse.set_status(eEngine::ReturnStatus::OK);
-                eResponse.mutable_rute()->set_name(name);
-                eResponse.mutable_rute()->set_filter(filterName);
-                eResponse.mutable_rute()->set_policy(envName);
-                eResponse.mutable_rute()->set_priority(priority);
-            }
+            return ::api::adapter::genericError<ResponseType>("Missing /name");
         }
 
+        // Execute the command
+        const auto& entry = router->getEntry(eRequest.name());
+        if (!entry.has_value())
+        {
+            return ::api::adapter::genericError<ResponseType>("Route not found");
+        }
+
+        // Build the response
+        const auto& [name, priority, filterName, envName] = entry.value();
+        ResponseType eResponse;
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+        eResponse.mutable_rute()->set_name(name);
+        eResponse.mutable_rute()->set_filter(filterName);
+        eResponse.mutable_rute()->set_policy(envName);
+        eResponse.mutable_rute()->set_priority(priority);
+
+        // Adapt the response to wazuh api
+        return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
+    };
+}
+
+api::Handler routePost(std::shared_ptr<::router::Router> router)
+{
+    return [router](api::wpRequest wRequest) -> api::wpResponse
+    {
+        using RequestType = eRouter::RoutePost_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+
+        // Validate the params request
+        const auto& eRequest = std::get<RequestType>(res);
+
+        const auto errorMsg = !eRequest.has_route()              ? std::make_optional("Missing /route")
+                              : !eRequest.route().has_name()     ? std::make_optional("Missing /route/name")
+                              : !eRequest.route().has_filter()   ? std::make_optional("Missing /route/filter")
+                              : !eRequest.route().has_policy()   ? std::make_optional("Missing /route/policy")
+                              : !eRequest.route().has_priority() ? std::make_optional("Missing /route/priority")
+                                                                 : std::nullopt;
         if (errorMsg.has_value())
         {
-            eResponse.set_status(eEngine::ReturnStatus::ERROR);
-            eResponse.set_error(errorMsg.value());
+            return ::api::adapter::genericError<ResponseType>(errorMsg.value());
         }
 
-        // Adapt the response to wazuh api
-        return ::api::adapter::toWazuhResponse<eRouter::RouteGet_Response>(eResponse);
+        const auto& eEntry = eRequest.route();
+        auto error = router->addRoute(eEntry.name(), eEntry.priority(), eEntry.filter(), eEntry.policy());
+
+        // Build the response
+        ResponseType eResponse;
+        eResponse.set_status(error.has_value() ? eEngine::ReturnStatus::ERROR : eEngine::ReturnStatus::OK);
+        if (error.has_value())
+        {
+            eResponse.set_error(error.value().message);
+        }
+
+        return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
 }
 
-api::CommandFn routePost(std::shared_ptr<::router::Router> router)
+api::Handler routePatch(std::shared_ptr<::router::Router> router)
 {
     return [router](api::wpRequest wRequest) -> api::wpResponse
     {
-        eEngine::GenericStatus_Response eResponse;
+        using RequestType = eRouter::RoutePatch_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
-        // Adapt the request to the engine, the request is validated by the server
-        const auto params = wRequest.getParameters().value().str();
-        const auto result = eMessage::eMessageFromJson<eRouter::RoutePost_Request>(params);
-
-        std::optional<std::string> errorMsg = std::nullopt;
-
-        if (std::holds_alternative<base::Error>(result))
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
         {
-            eResponse.set_status(eEngine::ReturnStatus::ERROR);
-            eResponse.set_error(std::get<base::Error>(result).message);
-        }
-        else
-        {
-            const auto& eRequest = std::get<eRouter::RoutePost_Request>(result);
-            // Validate the request
-            errorMsg = !eRequest.has_route()              ? std::make_optional("Missing /route")
-                       : !eRequest.route().has_name()     ? std::make_optional("Missing /route/name")
-                       : !eRequest.route().has_filter()   ? std::make_optional("Missing /route/filter")
-                       : !eRequest.route().has_policy()   ? std::make_optional("Missing /route/policy")
-                       : !eRequest.route().has_priority() ? std::make_optional("Missing /route/priority")
-                                                          : std::nullopt;
-
-            if (!errorMsg.has_value())
-            {
-                auto eEntry = eRequest.route();
-                auto error = router->addRoute(eEntry.name(), eEntry.priority(), eEntry.filter(), eEntry.policy());
-                errorMsg = error.has_value() ? std::make_optional(error.value().message) : std::nullopt;
-            }
-
-            if (errorMsg.has_value())
-            {
-                eResponse.set_status(eEngine::ReturnStatus::ERROR);
-                eResponse.set_error(errorMsg.value());
-            }
-            else
-            {
-                eResponse.set_status(eEngine::ReturnStatus::OK);
-            }
+            return std::move(std::get<api::wpResponse>(res));
         }
 
-        // Adapt the response to wazuh api
-        const auto resJson = eMessage::eMessageToJson<eEngine::GenericStatus_Response>(eResponse);
-        if (std::holds_alternative<base::Error>(resJson))
+        // Validate the params request
+        const auto& eRequest = std::get<RequestType>(res);
+
+        const auto errorMsg = !eRequest.has_route()              ? std::make_optional("Missing /route")
+                              : !eRequest.route().has_name()     ? std::make_optional("Missing /route/name")
+                              : !eRequest.route().has_priority() ? std::make_optional("Missing /route/priority")
+                                                                 : std::nullopt;
+        if (errorMsg.has_value())
         {
-            const auto& error = std::get<base::Error>(resJson);
-            return api::wpResponse::internalError(error.message);
+            return ::api::adapter::genericError<ResponseType>(errorMsg.value());
         }
-        return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
+
+        auto eEntry = eRequest.route();
+        auto error = router->changeRoutePriority(eEntry.name(), eEntry.priority());
+
+        // Build the response
+        ResponseType eResponse;
+        eResponse.set_status(error.has_value() ? eEngine::ReturnStatus::ERROR : eEngine::ReturnStatus::OK);
+        if (error.has_value())
+        {
+            eResponse.set_error(error.value().message);
+        }
+
+        return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
 }
 
-api::CommandFn routePatch(std::shared_ptr<::router::Router> router)
+api::Handler routeDelete(std::shared_ptr<::router::Router> router)
 {
     return [router](api::wpRequest wRequest) -> api::wpResponse
     {
-        eEngine::GenericStatus_Response eResponse;
+        using RequestType = eRouter::RouteDelete_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
-        // Adapt the request to the engine, the request is validated by the server
-        const auto params = wRequest.getParameters().value().str();
-        const auto result = eMessage::eMessageFromJson<eRouter::RoutePatch_Request>(params);
-
-        std::optional<std::string> errorMsg = std::nullopt;
-
-        if (std::holds_alternative<base::Error>(result))
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
         {
-            eResponse.set_status(eEngine::ReturnStatus::ERROR);
-            eResponse.set_error(std::get<base::Error>(result).message);
-        }
-        else
-        {
-            const auto& eRequest = std::get<eRouter::RoutePatch_Request>(result);
-            // Validate the request
-            errorMsg = !eRequest.has_route()              ? std::make_optional("Missing /route")
-                       : !eRequest.route().has_name()     ? std::make_optional("Missing /route/name")
-                       : !eRequest.route().has_priority() ? std::make_optional("Missing /route/priority")
-                                                          : std::nullopt;
-
-            if (!errorMsg.has_value())
-            {
-                auto eEntry = eRequest.route();
-                auto error = router->changeRoutePriority(eEntry.name(), eEntry.priority());
-                errorMsg = error.has_value() ? std::make_optional(error.value().message) : std::nullopt;
-            }
-
-            if (errorMsg.has_value())
-            {
-                eResponse.set_status(eEngine::ReturnStatus::ERROR);
-                eResponse.set_error(errorMsg.value());
-            }
-            else
-            {
-                eResponse.set_status(eEngine::ReturnStatus::OK);
-            }
+            return std::move(std::get<api::wpResponse>(res));
         }
 
-        // Adapt the response to wazuh api
-        const auto resJson = eMessage::eMessageToJson<eEngine::GenericStatus_Response>(eResponse);
-        if (std::holds_alternative<base::Error>(resJson))
+        // Validate the params request
+        const auto& eRequest = std::get<RequestType>(res);
+        if (!eRequest.has_name())
         {
-            const auto& error = std::get<base::Error>(resJson);
-            return api::wpResponse::internalError(error.message);
+            return ::api::adapter::genericError<ResponseType>("Missing /name");
         }
-        return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
+
+        router->removeRoute(eRequest.name());
+        return ::api::adapter::genericSuccess<ResponseType>();
     };
 }
 
-api::CommandFn routeDelete(std::shared_ptr<::router::Router> router)
+api::Handler tableGet(std::shared_ptr<::router::Router> router)
 {
     return [router](api::wpRequest wRequest) -> api::wpResponse
     {
-        eEngine::GenericStatus_Response eResponse;
+        using RequestType = eRouter::TableGet_Request;
+        using ResponseType = eRouter::TableGet_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
-        // Adapt the request to the engine, the request is validated by the server
-        const auto params = wRequest.getParameters().value().str();
-        const auto result = eMessage::eMessageFromJson<eRouter::RouteDelete_Request>(params);
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
 
-        if (std::holds_alternative<base::Error>(result))
+        // Build the response
+        ResponseType eResponse;
+        auto eTable = eResponse.mutable_table(); // Create the empty table
+        for (const auto& [name, priority, filter, policy] : router->getRouteTable())
         {
-            eResponse.set_status(eEngine::ReturnStatus::ERROR);
-            eResponse.set_error(std::get<base::Error>(result).message);
+            auto eEntry = eRouter::Entry();
+            eEntry.mutable_name()->assign(name);
+            eEntry.mutable_filter()->assign(filter);
+            eEntry.mutable_policy()->assign(policy);
+            eEntry.set_priority(priority);
+            eTable->Add(std::move(eEntry));
         }
-        else
-        {
-            const auto& eRequest = std::get<eRouter::RouteDelete_Request>(result);
-            // Validate the request
-            if (eRequest.has_name())
-            {
-                router->removeRoute(eRequest.name());
-                eResponse.set_status(eEngine::ReturnStatus::OK);
-            }
-            else
-            {
-                eResponse.set_status(eEngine::ReturnStatus::ERROR);
-                eResponse.set_error("Missing /name");
-            }
-        }
+        eResponse.set_status(eEngine::ReturnStatus::OK);
 
         // Adapt the response to wazuh api
-        const auto resJson = eMessage::eMessageToJson<eEngine::GenericStatus_Response>(eResponse);
-        if (std::holds_alternative<base::Error>(resJson))
-        {
-            const auto& error = std::get<base::Error>(resJson);
-            return api::wpResponse::internalError(error.message);
-        }
-        return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
+        return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
 }
 
-api::CommandFn tableGet(std::shared_ptr<::router::Router> router)
+api::Handler queuePost(std::shared_ptr<::router::Router> router)
 {
     return [router](api::wpRequest wRequest) -> api::wpResponse
     {
-        eRouter::TableGet_Response eResponse;
+        using RequestType = eRouter::QueuePost_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
-        // Adapt the request to the engine, the request is validated by the server
-        const auto params = wRequest.getParameters().value().str();
-        const auto result = eMessage::eMessageFromJson<eRouter::TableGet_Request>(params);
-
-        if (std::holds_alternative<base::Error>(result))
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
         {
-            eResponse.set_status(eEngine::ReturnStatus::ERROR);
-            eResponse.set_error(std::get<base::Error>(result).message);
-        }
-        else
-        {
-            auto eTable = eResponse.mutable_table(); // Create the empty table
-            for (const auto& [name, priority, filter, policy] : router->getRouteTable())
-            {
-                auto eEntry = eRouter::Entry();
-                eEntry.mutable_name()->assign(name);
-                eEntry.mutable_filter()->assign(filter);
-                eEntry.mutable_policy()->assign(policy);
-                eEntry.set_priority(priority);
-                eTable->Add(std::move(eEntry));
-            }
-            eResponse.set_status(eEngine::ReturnStatus::OK);
+            return std::move(std::get<api::wpResponse>(res));
         }
 
-        // Adapt the response to wazuh api
-        const auto resJson = eMessage::eMessageToJson<eRouter::TableGet_Response>(eResponse);
-        if (std::holds_alternative<base::Error>(resJson))
+        // Validate the params request
+        const auto& eRequest = std::get<RequestType>(res);
+        if (!eRequest.has_ossec_event())
         {
-            const auto& error = std::get<base::Error>(resJson);
-            return api::wpResponse::internalError(error.message);
-        }
-        return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
-    };
-}
-
-api::CommandFn queuePost(std::shared_ptr<::router::Router> router)
-{
-    return [router](api::wpRequest wRequest) -> api::wpResponse
-    {
-        eEngine::GenericStatus_Response eResponse;
-
-        // Adapt the request to the engine, the request is validated by the server
-        const auto params = wRequest.getParameters().value().str();
-        const auto result = eMessage::eMessageFromJson<eRouter::QueuePost_Request>(params);
-
-        if (std::holds_alternative<base::Error>(result))
-        {
-            eResponse.set_status(eEngine::ReturnStatus::ERROR);
-            eResponse.set_error(std::get<base::Error>(result).message);
-        }
-        else
-        {
-            const auto& eRequest = std::get<eRouter::QueuePost_Request>(result);
-            // Validate the request
-            if (eRequest.has_ossec_event())
-            {
-                auto err = router->enqueueOssecEvent(eRequest.ossec_event());
-                if (err)
-                {
-                    eResponse.set_status(eEngine::ReturnStatus::ERROR);
-                    eResponse.set_error(err.value().message);
-                }
-                else
-                {
-                    eResponse.set_status(eEngine::ReturnStatus::OK);
-                }
-            }
-            else
-            {
-                eResponse.set_status(eEngine::ReturnStatus::ERROR);
-                eResponse.set_error("Missing /ossec_event");
-            }
+            return ::api::adapter::genericError<ResponseType>("Missing /event");
         }
 
-        // Adapt the response to wazuh api
-        const auto resJson = eMessage::eMessageToJson<eEngine::GenericStatus_Response>(eResponse);
-        if (std::holds_alternative<base::Error>(resJson))
+        auto err = router->enqueueOssecEvent(eRequest.ossec_event());
+        if (err.has_value())
         {
-            const auto& error = std::get<base::Error>(resJson);
-            return api::wpResponse::internalError(error.message);
+            return ::api::adapter::genericError<ResponseType>(err.value().message);
         }
-        return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
+        return ::api::adapter::genericSuccess<ResponseType>();
     };
 }
 
