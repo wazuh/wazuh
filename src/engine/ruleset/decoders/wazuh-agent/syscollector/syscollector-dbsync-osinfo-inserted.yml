@@ -36,13 +36,13 @@ normalize:
   - map:
       - ~json.data.tmp.hostname: ~json.data.hostname
   - check:
-      - ~json.data.hostname: +s_ne//
+      - ~json.data.hostname: +s_ne/
     map:
       - ~json.data.tmp.hostname: +s_replace/|/$~escaped_pipe_char
       - ~json.data.tmp.hostname: +s_replace/NULL/_NULL_
       - ~do_update_kvdb: true
   - check:
-      - ~json.data.hostname: +s_eq//
+      - ~json.data.hostname: +s_eq/
     map:
       - ~json.data.tmp.hostname: "NULL"
   - check:
@@ -53,13 +53,13 @@ normalize:
   - map:
       - ~json.data.tmp.architecture: ~json.data.architecture
   - check:
-      - ~json.data.architecture: +s_ne//
+      - ~json.data.architecture: +s_ne/
     map:
       - ~json.data.tmp.architecture: +s_replace/|/$~escaped_pipe_char
       - ~json.data.tmp.architecture: +s_replace/NULL/_NULL_
       - ~do_update_kvdb: true
   - check:
-      - ~json.data.architecture: +s_eq//
+      - ~json.data.architecture: +s_eq/
     map:
       - ~json.data.tmp.architecture: "NULL"
   - check:
@@ -70,13 +70,13 @@ normalize:
   - map:
       - ~json.data.tmp.os_name: ~json.data.os_name
   - check:
-      - ~json.data.os_name: +s_ne//
+      - ~json.data.os_name: +s_ne/
     map:
       - ~json.data.tmp.os_name: +s_replace/|/$~escaped_pipe_char
       - ~json.data.tmp.os_name: +s_replace/NULL/_NULL_
       - ~do_update_kvdb: true
   - check:
-      - ~json.data.os_name: +s_eq//
+      - ~json.data.os_name: +s_eq/
     map:
       - ~json.data.tmp.os_name: "NULL"
   - check:
@@ -98,12 +98,12 @@ normalize:
   - map:
       - ~json.data.tmp.os_codename: ~json.data.os_codename
   - check:
-      - ~json.data.os_codename: +s_ne//
+      - ~json.data.os_codename: +s_ne/
     map:
       - ~json.data.tmp.os_codename: +s_replace/|/$~escaped_pipe_char
       - ~json.data.tmp.os_codename: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.os_codename: +s_eq//
+      - ~json.data.os_codename: +s_eq/
     map:
       - ~json.data.tmp.os_codename: "NULL"
   - check:
@@ -124,12 +124,12 @@ normalize:
   - map:
       - ~json.data.tmp.os_patch: ~json.data.os_patch
   - check:
-      - ~json.data.os_patch: +s_ne//
+      - ~json.data.os_patch: +s_ne/
     map:
       - ~json.data.tmp.os_patch: +s_replace/|/$~escaped_pipe_char
       - ~json.data.tmp.os_patch: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.os_patch: +s_eq//
+      - ~json.data.os_patch: +s_eq/
     map:
       - ~json.data.tmp.os_patch: "NULL"
   - check:
@@ -145,13 +145,13 @@ normalize:
   - map:
       - ~json.data.tmp.os_platform: ~json.data.os_platform
   - check:
-      - ~json.data.os_platform: +s_ne//
+      - ~json.data.os_platform: +s_ne/
     map:
       - ~json.data.tmp.os_platform: +s_replace/|/$~escaped_pipe_char
       - ~json.data.tmp.os_platform: +s_replace/NULL/_NULL_
       - ~do_update_kvdb: true
   - check:
-      - ~json.data.os_platform: +s_eq//
+      - ~json.data.os_platform: +s_eq/
     map:
       - ~json.data.tmp.os_platform: "NULL"
   - check:
@@ -162,13 +162,13 @@ normalize:
   - map:
       - ~json.data.tmp.sysname: ~json.data.sysname
   - check:
-      - ~json.data.sysname: +s_ne//
+      - ~json.data.sysname: +s_ne/
     map:
       - ~json.data.tmp.sysname: +s_replace/|/$~escaped_pipe_char
       - ~json.data.tmp.sysname: +s_replace/NULL/_NULL_
       - ~do_update_kvdb: true
   - check:
-      - ~json.data.sysname: +s_eq//
+      - ~json.data.sysname: +s_eq/
     map:
       - ~json.data.tmp.sysname: "NULL"
   - check:
@@ -208,12 +208,12 @@ normalize:
       - ~json.data.os_display_version: ""
 
   - check:
-      - ~json.data.triaged: +s_ne//
+      - ~json.data.triaged: +s_ne/
     map:
       - ~json.data.triaged: +s_replace/|/$~escaped_pipe_char
       - ~json.data.triaged: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.triaged: +s_eq//
+      - ~json.data.triaged: +s_eq/
     map:
       - ~json.data.triaged: "NULL"
   - check:
@@ -222,12 +222,12 @@ normalize:
       - ~json.data.triaged: ""
 
   - check:
-      - ~json.data.reference: +s_ne//
+      - ~json.data.reference: +s_ne/
     map:
       - ~json.data.reference: +s_replace/|/$~escaped_pipe_char
       - ~json.data.reference: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.reference: +s_eq//
+      - ~json.data.reference: +s_eq/
     map:
       - ~json.data.reference: "NULL"
   - check:

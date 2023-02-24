@@ -53,7 +53,7 @@ normalize:
       - ~query_response: +wdb_query/$~query
 
   - check:
-      - ~query_response: +s_ne//
+      - ~query_response: +s_ne/
     map:
       #separate in spaces because answer is "date value1|value2|..."
       - ~query_response_space_splited: "+s_to_array/$~query_response/ "

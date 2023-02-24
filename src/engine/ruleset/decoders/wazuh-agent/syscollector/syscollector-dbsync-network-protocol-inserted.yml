@@ -28,12 +28,12 @@ check:
 
 normalize:
   - check:
-      - ~json.data.iface: +s_ne//
+      - ~json.data.iface: +s_ne/
     map:
       - ~json.data.iface: +s_replace/|/$~escaped_pipe_char
       - ~json.data.iface: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.iface: +s_eq//
+      - ~json.data.iface: +s_eq/
     map:
       - ~json.data.iface: "NULL"
   - check:
@@ -52,12 +52,12 @@ normalize:
       - ~json.data.gateway: ""
 
   - check:
-      - ~json.data.dhcp: +s_ne//
+      - ~json.data.dhcp: +s_ne/
     map:
       - ~json.data.dhcp: +s_replace/|/$~escaped_pipe_char
       - ~json.data.dhcp: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.dhcp: +s_eq//
+      - ~json.data.dhcp: +s_eq/
     map:
       - ~json.data.dhcp: "NULL"
   - check:
@@ -66,12 +66,12 @@ normalize:
       - ~json.data.dhcp: ""
 
   - check:
-      - ~json.data.metric: +s_ne//
+      - ~json.data.metric: +s_ne/
     map:
       - ~json.data.metric: +s_replace/|/$~escaped_pipe_char
       - ~json.data.metric: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.metric: +s_eq//
+      - ~json.data.metric: +s_eq/
     map:
       - ~json.data.metric: "NULL"
   - check:

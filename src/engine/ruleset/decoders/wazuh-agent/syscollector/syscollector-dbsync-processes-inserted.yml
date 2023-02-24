@@ -38,12 +38,12 @@ normalize:
       - ~json.data.pid: ""
 
   - check:
-      - ~json.data.name: +s_ne//
+      - ~json.data.name: +s_ne/
     map:
       - ~json.data.name: +s_replace/|/$~escaped_pipe_char
       - ~json.data.name: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.name: +s_eq//
+      - ~json.data.name: +s_eq/
     map:
       - ~json.data.name: "NULL"
   - check:
@@ -52,12 +52,12 @@ normalize:
       - ~json.data.name: ""
 
   - check:
-      - ~json.data.state: +s_ne//
+      - ~json.data.state: +s_ne/
     map:
       - ~json.data.state: +s_replace/|/$~escaped_pipe_char
       - ~json.data.state: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.state: +s_eq//
+      - ~json.data.state: +s_eq/
     map:
       - ~json.data.state: "NULL"
   - check:
@@ -81,12 +81,12 @@ normalize:
       - ~json.data.stime: ""
 
   - check:
-      - ~json.data.cmd: +s_ne//
+      - ~json.data.cmd: +s_ne/
     map:
       - ~json.data.cmd: +s_replace/|/$~escaped_pipe_char
       - ~json.data.cmd: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.cmd: +s_eq//
+      - ~json.data.cmd: +s_eq/
     map:
       - ~json.data.cmd: "NULL"
   - check:
@@ -95,12 +95,12 @@ normalize:
       - ~json.data.cmd: ""
 
   - check:
-      - ~json.data.argvs: +s_ne//
+      - ~json.data.argvs: +s_ne/
     map:
       - ~json.data.argvs: +s_replace/|/$~escaped_pipe_char
       - ~json.data.argvs: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.argvs: +s_eq//
+      - ~json.data.argvs: +s_eq/
     map:
       - ~json.data.argvs: "NULL"
   - check:
@@ -109,12 +109,12 @@ normalize:
       - ~json.data.argvs: ""
 
   - check:
-      - ~json.data.euser: +s_ne//
+      - ~json.data.euser: +s_ne/
     map:
       - ~json.data.euser: +s_replace/|/$~escaped_pipe_char
       - ~json.data.euser: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.euser: +s_eq//
+      - ~json.data.euser: +s_eq/
     map:
       - ~json.data.euser: "NULL"
   - check:
@@ -123,12 +123,12 @@ normalize:
       - ~json.data.euser: ""
 
   - check:
-      - ~json.data.ruser: +s_ne//
+      - ~json.data.ruser: +s_ne/
     map:
       - ~json.data.ruser: +s_replace/|/$~escaped_pipe_char
       - ~json.data.ruser: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.ruser: +s_eq//
+      - ~json.data.ruser: +s_eq/
     map:
       - ~json.data.ruser: "NULL"
   - check:
@@ -137,12 +137,12 @@ normalize:
       - ~json.data.ruser: ""
 
   - check:
-      - ~json.data.suser: +s_ne//
+      - ~json.data.suser: +s_ne/
     map:
       - ~json.data.suser: +s_replace/|/$~escaped_pipe_char
       - ~json.data.suser: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.suser: +s_eq//
+      - ~json.data.suser: +s_eq/
     map:
       - ~json.data.suser: "NULL"
   - check:
@@ -151,12 +151,12 @@ normalize:
       - ~json.data.suser: ""
 
   - check:
-      - ~json.data.egroup: +s_ne//
+      - ~json.data.egroup: +s_ne/
     map:
       - ~json.data.egroup: +s_replace/|/$~escaped_pipe_char
       - ~json.data.egroup: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.egroup: +s_eq//
+      - ~json.data.egroup: +s_eq/
     map:
       - ~json.data.egroup: "NULL"
   - check:
@@ -165,12 +165,12 @@ normalize:
       - ~json.data.egroup: ""
 
   - check:
-      - ~json.data.rgroup: +s_ne//
+      - ~json.data.rgroup: +s_ne/
     map:
       - ~json.data.rgroup: +s_replace/|/$~escaped_pipe_char
       - ~json.data.rgroup: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.rgroup: +s_eq//
+      - ~json.data.rgroup: +s_eq/
     map:
       - ~json.data.rgroup: "NULL"
   - check:
@@ -179,12 +179,12 @@ normalize:
       - ~json.data.rgroup: ""
 
   - check:
-      - ~json.data.sgroup: +s_ne//
+      - ~json.data.sgroup: +s_ne/
     map:
       - ~json.data.sgroup: +s_replace/|/$~escaped_pipe_char
       - ~json.data.sgroup: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.sgroup: +s_eq//
+      - ~json.data.sgroup: +s_eq/
     map:
       - ~json.data.sgroup: "NULL"
   - check:
@@ -193,12 +193,12 @@ normalize:
       - ~json.data.sgroup: ""
 
   - check:
-      - ~json.data.fgroup: +s_ne//
+      - ~json.data.fgroup: +s_ne/
     map:
       - ~json.data.fgroup: +s_replace/|/$~escaped_pipe_char
       - ~json.data.fgroup: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.fgroup: +s_eq//
+      - ~json.data.fgroup: +s_eq/
     map:
       - ~json.data.fgroup: "NULL"
   - check:
