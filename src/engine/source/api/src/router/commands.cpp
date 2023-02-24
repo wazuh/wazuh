@@ -1,30 +1,13 @@
+#include <api/adapter.hpp>
 #include <api/router/commands.hpp>
 
-#include <eMessages/eMessage.h>
 #include <eMessages/router.pb.h>
-
-#include "../adapter.hpp"
 
 namespace api::router::cmds
 {
 // Using the engine protobuffer namespace
 namespace eRouter = ::com::wazuh::api::engine::router;
 namespace eEngine = ::com::wazuh::api::engine;
-
-void registerCommands(std::shared_ptr<::router::Router> router, std::shared_ptr<api::Registry> registry)
-{
-    // Commands to manage routes
-    registry->registerCommand("router.route/get", routeGet(router));
-    registry->registerCommand("router.route/post", routePost(router));
-    registry->registerCommand("router.route/patch", routePatch(router));
-    registry->registerCommand("router.route/delete", routeDelete(router));
-
-    // Commands to manage the routes table
-    registry->registerCommand("router.table/get", tableGet(router));
-
-    // Commands to manage the queue of events
-    registry->registerCommand("router.queue/post", queuePost(router));
-}
 
 api::CommandFn routeGet(std::shared_ptr<::router::Router> router)
 {
@@ -317,6 +300,21 @@ api::CommandFn queuePost(std::shared_ptr<::router::Router> router)
         }
         return api::wpResponse {json::Json {std::get<std::string>(resJson).c_str()}};
     };
+}
+
+void registerCommands(std::shared_ptr<::router::Router> router, std::shared_ptr<api::Registry> registry)
+{
+    // Commands to manage routes
+    registry->registerCommand("router.route/get", routeGet(router));
+    registry->registerCommand("router.route/post", routePost(router));
+    registry->registerCommand("router.route/patch", routePatch(router));
+    registry->registerCommand("router.route/delete", routeDelete(router));
+
+    // Commands to manage the routes table
+    registry->registerCommand("router.table/get", tableGet(router));
+
+    // Commands to manage the queue of events
+    registry->registerCommand("router.queue/post", queuePost(router));
 }
 
 } // namespace api::router::cmds

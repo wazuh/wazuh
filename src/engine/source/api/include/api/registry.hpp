@@ -25,7 +25,7 @@ namespace api
 // TODO change accept WazuhRequest
 using wpResponse = base::utils::wazuhProtocol::WazuhResponse;
 using wpRequest = base::utils::wazuhProtocol::WazuhRequest;
-using CommandFn = std::function<wpResponse(const wpRequest&)>;
+using CommandFn = std::function<wpResponse(const wpRequest&)>; // TODO change to HANDLER
 
 /**
  * @brief A registry for API commands
