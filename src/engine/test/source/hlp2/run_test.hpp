@@ -58,16 +58,27 @@ std::string to_string(const TestCase& testCase)
 }
 } // namespace
 
-static void runTest(
-    TestCase t,
-    std::function<parsec::Parser<json::Json>(std::string, Stop, Options)> parserBuilder)
+static void runTest(TestCase t,
+                    std::function<parsec::Parser<json::Json>(std::string, Stop, Options)> parserBuilder,
+                    std::string header = "",
+                    std::string tail = "")
 {
     parsec::Parser<json::Json> parser;
     auto expectedSuccess = std::get<1>(t);
     auto expectedDoc = std::get<4>(t);
     try
     {
-        parser = parserBuilder({}, std::get<2>(t), std::get<3>(t));
+        auto stopString = printStop(std::get<2>(t));
+        if(stopString == "")
+        {
+            std::string endString {stopString + tail};
+            std::list<std::string> stopPrueba = {endString};
+            parser = parserBuilder({}, stopPrueba, std::get<3>(t));
+        }
+        else
+        {
+            parser = parserBuilder({}, std::get<2>(t), std::get<3>(t));
+        }
     }
     catch (std::runtime_error& e)
     {
@@ -75,14 +86,15 @@ static void runTest(
             << fmt::format("Error building parser: {}", e.what());
         return;
     }
-    auto r = parser(std::get<0>(t), 0);
+    auto fullEvent = header + std::get<0>(t) + tail;
+    auto r = parser(fullEvent, header.size());
 
     ASSERT_EQ(r.success(), expectedSuccess)
         << (r.success() ? "" : "ParserError: " + r.error() + "\n") << to_string(t);
     if (r.success())
     {
         ASSERT_EQ(expectedDoc, r.value()) << to_string(t);
-        ASSERT_EQ(r.index(), std::get<5>(t)) << to_string(t);
+        ASSERT_EQ(r.index() - header.size(), std::get<5>(t)) << to_string(t);
     }
     else
     {
