@@ -474,9 +474,6 @@ class WazuhException(Exception):
                               'POST /security/roles/{role_id}/policies'},
         4011: {'message': 'The specified role-policy link already exist'},
         4013: {'message': 'The specified name already exists'},
-        4015: {'message': 'Permission denied, could not remove agents from group before deleting it',
-               'remediation': 'Please, make sure you have the right permissions for actions: agent:modify_group and '
-                              'group:modify_assignments before attempting to delete the group'},
         4016: {'message': 'The specified user-role relation does not exist',
                'remediation': 'Please, create the specified user-role relation with the endpoint '
                               'POST /security/user/{username}/roles'},

@@ -69,6 +69,7 @@
   resources:
   - group:id:default
   - group:id:group1
+  - group:id:group2
   - group:id:group3
   - group:id:pepito
   effect: deny
