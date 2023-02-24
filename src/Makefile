@@ -59,6 +59,7 @@ EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
 EXTERNAL_LIBPCRE2=external/libpcre2/
+EXTERNAL_LIBINOTIFY=external/libinotify-kqueue/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
