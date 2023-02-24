@@ -33,12 +33,12 @@ normalize:
       - ~json.data.scan_time: "NULL"
 
   - check:
-      - ~json.data.format: +s_ne//
+      - ~json.data.format: +s_ne/
     map:
       - ~json.data.format: +s_replace/|/$~escaped_pipe_char
       - ~json.data.format: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.format: +s_eq//
+      - ~json.data.format: +s_eq/
     map:
       - ~json.data.format: "NULL"
   - check:
@@ -47,12 +47,12 @@ normalize:
       - ~json.data.format: "NULL"
 
   - check:
-      - ~json.data.name: +s_ne//
+      - ~json.data.name: +s_ne/
     map:
       - ~json.data.name: +s_replace/|/$~escaped_pipe_char
       - ~json.data.name: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.name: +s_eq//
+      - ~json.data.name: +s_eq/
     map:
       - ~json.data.name: "NULL"
   - check:
@@ -61,12 +61,12 @@ normalize:
       - ~json.data.name: "NULL"
 
   - check:
-      - ~json.data.priority: +s_ne//
+      - ~json.data.priority: +s_ne/
     map:
       - ~json.data.priority: +s_replace/|/$~escaped_pipe_char
       - ~json.data.priority: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.priority: +s_eq//
+      - ~json.data.priority: +s_eq/
     map:
       - ~json.data.priority: "NULL"
   - check:
@@ -75,12 +75,12 @@ normalize:
       - ~json.data.priority: "NULL"
 
   - check:
-      - ~json.data.groups: +s_ne//
+      - ~json.data.groups: +s_ne/
     map:
       - ~json.data.groups: +s_replace/|/$~escaped_pipe_char
       - ~json.data.groups: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.groups: +s_eq//
+      - ~json.data.groups: +s_eq/
     map:
       - ~json.data.groups: "NULL"
   - check:
@@ -94,12 +94,12 @@ normalize:
       - ~json.data.size: "NULL"
 
   - check:
-      - ~json.data.vendor: +s_ne//
+      - ~json.data.vendor: +s_ne/
     map:
       - ~json.data.vendor: +s_replace/|/$~escaped_pipe_char
       - ~json.data.vendor: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.vendor: +s_eq//
+      - ~json.data.vendor: +s_eq/
     map:
       - ~json.data.vendor: "NULL"
   - check:
@@ -108,12 +108,12 @@ normalize:
       - ~json.data.vendor: "NULL"
 
   - check:
-      - ~json.data.install_time: +s_ne//
+      - ~json.data.install_time: +s_ne/
     map:
       - ~json.data.install_time: +s_replace/|/$~escaped_pipe_char
       - ~json.data.install_time: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.install_time: +s_eq//
+      - ~json.data.install_time: +s_eq/
     map:
       - ~json.data.install_time: "NULL"
   - check:
@@ -122,12 +122,12 @@ normalize:
       - ~json.data.install_time: "NULL"
 
   - check:
-      - ~json.data.version: +s_ne//
+      - ~json.data.version: +s_ne/
     map:
       - ~json.data.version: +s_replace/|/$~escaped_pipe_char
       - ~json.data.version: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.version: +s_eq//
+      - ~json.data.version: +s_eq/
     map:
       - ~json.data.version: "NULL"
   - check:
@@ -136,12 +136,12 @@ normalize:
       - ~json.data.version: "NULL"
 
   - check:
-      - ~json.data.architecture: +s_ne//
+      - ~json.data.architecture: +s_ne/
     map:
       - ~json.data.architecture: +s_replace/|/$~escaped_pipe_char
       - ~json.data.architecture: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.architecture: +s_eq//
+      - ~json.data.architecture: +s_eq/
     map:
       - ~json.data.architecture: "NULL"
   - check:
@@ -150,12 +150,12 @@ normalize:
       - ~json.data.architecture: "NULL"
 
   - check:
-      - ~json.data.multiarch: +s_ne//
+      - ~json.data.multiarch: +s_ne/
     map:
       - ~json.data.multiarch: +s_replace/|/$~escaped_pipe_char
       - ~json.data.multiarch: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.multiarch: +s_eq//
+      - ~json.data.multiarch: +s_eq/
     map:
       - ~json.data.multiarch: "NULL"
   - check:
@@ -164,12 +164,12 @@ normalize:
       - ~json.data.multiarch: "NULL"
 
   - check:
-      - ~json.data.source: +s_ne//
+      - ~json.data.source: +s_ne/
     map:
       - ~json.data.source: +s_replace/|/$~escaped_pipe_char
       - ~json.data.source: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.source: +s_eq//
+      - ~json.data.source: +s_eq/
     map:
       - ~json.data.source: "NULL"
   - check:
@@ -178,12 +178,12 @@ normalize:
       - ~json.data.source: "NULL"
 
   - check:
-      - ~json.data.description: +s_ne//
+      - ~json.data.description: +s_ne/
     map:
       - ~json.data.description: +s_replace/|/$~escaped_pipe_char
       - ~json.data.description: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.description: +s_eq//
+      - ~json.data.description: +s_eq/
     map:
       - ~json.data.description: "NULL"
   - check:
@@ -192,12 +192,12 @@ normalize:
       - ~json.data.description: "NULL"
 
   - check:
-      - ~json.data.location: +s_ne//
+      - ~json.data.location: +s_ne/
     map:
       - ~json.data.location: +s_replace/|/$~escaped_pipe_char
       - ~json.data.location: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.location: +s_eq//
+      - ~json.data.location: +s_eq/
     map:
       - ~json.data.location: "NULL"
   - check:
@@ -206,12 +206,12 @@ normalize:
       - ~json.data.location: "NULL"
 
   - check:
-      - ~json.data.triaged: +s_ne//
+      - ~json.data.triaged: +s_ne/
     map:
       - ~json.data.triaged: +s_replace/|/$~escaped_pipe_char
       - ~json.data.triaged: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.triaged: +s_eq//
+      - ~json.data.triaged: +s_eq/
     map:
       - ~json.data.triaged: "NULL"
   - check:
@@ -220,12 +220,12 @@ normalize:
       - ~json.data.triaged: "NULL"
 
   - check:
-      - ~json.data.cpe: +s_ne//
+      - ~json.data.cpe: +s_ne/
     map:
       - ~json.data.cpe: +s_replace/|/$~escaped_pipe_char
       - ~json.data.cpe: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.cpe: +s_eq//
+      - ~json.data.cpe: +s_eq/
     map:
       - ~json.data.cpe: "NULL"
   - check:
@@ -234,12 +234,12 @@ normalize:
       - ~json.data.cpe: "NULL"
 
   - check:
-      - ~json.data.msu_name: +s_ne//
+      - ~json.data.msu_name: +s_ne/
     map:
       - ~json.data.msu_name: +s_replace/|/$~escaped_pipe_char
       - ~json.data.msu_name: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.msu_name: +s_eq//
+      - ~json.data.msu_name: +s_eq/
     map:
       - ~json.data.msu_name: "NULL"
   - check:
@@ -253,12 +253,12 @@ normalize:
       - ~json.data.checksum: "NULL"
 
   - check:
-      - ~json.data.item_id: +s_ne//
+      - ~json.data.item_id: +s_ne/
     map:
       - ~json.data.item_id: +s_replace/|/$~escaped_pipe_char
       - ~json.data.item_id: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.item_id: +s_eq//
+      - ~json.data.item_id: +s_eq/
     map:
       - ~json.data.item_id: "NULL"
   - check:
@@ -272,7 +272,7 @@ normalize:
       - ~query_response: +wdb_query/$~query
 
   - check:
-      - ~query_response: +s_ne//
+      - ~query_response: +s_ne/
     map:
       - ~query_response_values: +r_ext/$~query_response/\|(.*)
       - ~array_of_field: +s_to_array/$~query_response_values/|

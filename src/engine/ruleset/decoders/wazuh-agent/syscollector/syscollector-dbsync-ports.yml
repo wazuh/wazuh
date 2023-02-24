@@ -73,12 +73,12 @@ normalize:
       - ~json.data.inode: "NULL"
 
   - check:
-      - ~json.data.state: +s_ne//
+      - ~json.data.state: +s_ne/
     map:
       - ~json.data.state: +s_replace/|/$~escaped_pipe_char
       - ~json.data.state: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.state: +s_eq//
+      - ~json.data.state: +s_eq/
     map:
       - ~json.data.state: "NULL"
   - check:
@@ -92,12 +92,12 @@ normalize:
       - ~json.data.pid: "NULL"
 
   - check:
-      - ~json.data.process: +s_ne//
+      - ~json.data.process: +s_ne/
     map:
       - ~json.data.process: +s_replace/|/$~escaped_pipe_char
       - ~json.data.process: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.process: +s_eq//
+      - ~json.data.process: +s_eq/
     map:
       - ~json.data.process: "NULL"
   - check:
@@ -121,7 +121,7 @@ normalize:
       - ~query_response: +wdb_query/$~query
 
   - check:
-      - ~query_response: +s_ne//
+      - ~query_response: +s_ne/
     map:
       - ~query_response_values: +r_ext/$~query_response/\|(.*)
       - ~array_of_field: +s_to_array/$~query_response_values/|

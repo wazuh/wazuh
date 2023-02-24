@@ -36,7 +36,7 @@ normalize:
       - http.request.method: $~request_fields.0
       - url.original: $~request_fields.1
       - ~http_slash: 'HTTP/'
-      - ~request_fields.2: +s_replace/$~http_slash//
+      - ~request_fields.2: +s_replace/$~http_slash/
       - http.version: $~request_fields.2
       - related.user: +a_append/$user.name
       - ~http_slash: +ef_delete
