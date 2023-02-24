@@ -111,13 +111,12 @@ TEST(CSVParser, parser)
                   Options {"field_1", "field_2", "field_3", "field_4"},
                   fn(R"({"field_1":null,"field_2":null, "field_3":null,"field_4":null})"),
                   3},
-        // TODO Should this case be valid? RFC 4180 says that an empty field must be quoted?
-        //TestCase {R"("","","","")",
-        //          true,
-        //          {""},
-        //          Options {"field_1", "field_2", "field_3", "field_4"},
-        //          fn(R"({"field_1":null,"field_2":null, "field_3":null,"field_4":null})"),
-        //          11},
+        TestCase {R"("","","","")",
+                 true,
+                 {""},
+                 Options {"field_1", "field_2", "field_3", "field_4"},
+                 fn(R"({"field_1":null,"field_2":null, "field_3":null,"field_4":null})"),
+                 11},
         TestCase {R"(, bye)",
                   true,
                   {" "},
@@ -240,6 +239,10 @@ TEST(CSVParser, parser)
     {
         auto testCase = std::get<0>(t);
         runTest(t, hlp::getCSVParser);
+        runTest(t, hlp::getCSVParser, "header", "");
+        runTest(t, hlp::getCSVParser, "header", "tail");
+        runTest(t, hlp::getCSVParser, "", "tail");
+
     }
 }
 
@@ -391,7 +394,7 @@ TEST(DSVParser, parser)
                   true,
                   {""},
                   Options {"|", "'", "'", "out1", "out2", "out3", "out4"},
-                  fn(R"({"out1":"val1","out2":"val2","out3":"val3","out4":"--''--"})"),
+                  fn(R"({"out1":"val1","out2":"val2","out3":"val3","out4":"--'--"})"),
                   strlen("val1,val2,val3,'--''--'")},
         // should be terminated by ' and not by ,
         TestCase {
@@ -419,7 +422,6 @@ TEST(DSVParser, parser)
                   Options {"|", "'", "'", "out1", "out2"},
                   fn(R"({"out1":"val1","out2":"val2;x"})"),
                   strlen("val1|val2;x")},
-        // A single field CSV is just a field, use other parsers for it
         TestCase {R"(|||hi)",
                   true,
                   {""},
@@ -444,38 +446,60 @@ TEST(DSVParser, parser)
                   Options {"|", "\"", "\"", "out1", "out2", "out3", "out4"},
                   fn(R"({})"),
                   0},
-        // TODO: Is necessary to support this?, even if it is not a valid CSV (empty field
-        // with quotes)
-        //
-        // TestCase {R"(""|""|""|"")",
-        //          true,
-        //          {""},
-        //          Options {"|", "\"", "\"", "out1", "out2", "out3", "out4"},
-        //          fn(R"({"out1":null,"out2":null,"out3":null,"out4":null})"),
-        //          11},
+        TestCase {R"(""|""|""|"")",
+                 true,
+                 {""},
+                 Options {"|", "\"", "\"", "out1", "out2", "out3", "out4"},
+                 fn(R"({"out1":null,"out2":null,"out3":null,"out4":null})"),
+                 11},
         TestCase {"| bye",
                   true,
                   {" "},
                   Options {"|", "\"", "\"", "out1", "out2"},
                   fn(R"({"out1":null,"out2":null})"),
                   1},
-        // TODO: is it '' a valid DSV?
-        // TestCase {"0|1.0||''",
-        //           true,
-        //           {""},
-        //           Options {"|", "'", "'", "out1", "out2", "out3", "out4"},
-        //           fn(R"({"out1":0,"out2":1.0,"out3":null,"out4":"'"})"),
-        //           strlen("0|1.0||''")},
-        // scaped symbol?
+        TestCase {"0|1.0||''",
+                  true,
+                  {""},
+                  Options {"|", "'", "'", "out1", "out2", "out3", "out4"},
+                  fn(R"({"out1":0,"out2":1.0,"out3":null,"out4":null})"),
+                  strlen("0|1.0||''")},
         TestCase {"'val1'|'val2'|'val3'",
                   true,
                   {""},
                   Options {"|", "'", "'", "out1", "out2", "out3"},
                   fn(R"({"out1":"val1","out2":"val2","out3":"val3"})"),
-                  strlen("'val1','val2','val3'")}};
+                  strlen("'val1','val2','val3'")},
+        TestCase {
+            R"(,,hi,"semicolon scaped'\",\"' <-- other here <,>",other value,,,value new,,)",
+            true,
+            {""},
+            Options {",", "\"", "\\",
+                     "null_1",
+                     "null_2",
+                     "word",
+                     "escaped_1",
+                     "no_escape,null_3",
+                     "null_4",
+                     "new",
+                     "null_5",
+                     "null_6",
+                     "null_7"},
+            fn(R"({"null_1":null,"null_2":null,"word":"hi","escaped_1":"semicolon scaped'\",\"' <-- other here <,>","no_escape,null_3":"other value","null_4":null,"new":null,"null_5":"value new","null_6":null,"null_7":null})"),
+            75},
+        TestCase {R"("\"value1\""|value2|value3|valueN)",
+                  true,
+                  {""},
+                  Options {"|", "\"", "\\", "out1", "out2", "out3", "outN"},
+                  fn(R"({"out1":"\"value1\"","out2":"value2","out3":"value3","outN":"valueN"})"),
+                  strlen(R"("\"value1\""|value2|value3|valueN)")}
+    };
 
     for (auto t : testCases)
     {
         runTest(t, hlp::getDSVParser);
+        runTest(t, hlp::getDSVParser, "header", "");
+        runTest(t, hlp::getDSVParser, "header", "tail");
+        runTest(t, hlp::getDSVParser, "", "tail");
     }
 }

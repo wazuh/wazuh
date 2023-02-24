@@ -87,11 +87,11 @@ TEST(KVParser, parser)
                   14},
         // fail if parser do not reach stop or end
         TestCase {R"(key1= key2="" key3=)",
-                  false,
+                  true,
                   {},
                   Options {"=", " ", "\"", "\\"},
                   fn(R"({"key1":null,"key2":null,"key3":null})"),
-                  20},
+                  19},
         TestCase {R"(: ;)", false, {}, Options {":", " ", "'", "\\"}, fn(R"({})"), 0},
         TestCase {R"(: valueX;)", false, {}, Options {":", " ", "'", "\\"}, fn(R"({})"), 0},
         TestCase {R"(: valueX)", false, {}, Options {":", " ", "'", "\\"}, fn(R"({})"), 0},
@@ -167,11 +167,56 @@ TEST(KVParser, parser)
             fn(R"({"pure_letters":"abcdefghijklmnopqrstuvwxyz","integer":1234567890,"double":12345.67890,"mixed_string_a":"1234abcde","mixed_string_b":"1234.567890abcde"})"),
             strlen("pure_letters=abcdefghijklmnopqrstuvwxyz integer=1234567890 "
                    "double=12345.67890 mixed_string_a=1234abcde "
-                   "mixed_string_b=1234.567890abcde")}};
-
+                   "mixed_string_b=1234.567890abcde")},
+        TestCase {R"(key1=value1 key2=value2 key3="")",
+                  true,
+                  {},
+                  Options {"=", " ", "\"", "'"},
+                  fn(R"({"key1":"value1","key2":"value2","key3":null})"),
+                  31},
+        TestCase {R"(key1=value1 key2="" key3=value3)",
+                  true,
+                  {},
+                  Options {"=", " ", "\"", "'"},
+                  fn(R"({"key1":"value1","key2":null,"key3":"value3"})"),
+                  31},
+        TestCase {R"(key1=value1 key2=value2 key3=)",
+                  true,
+                  {},
+                  Options {"=", " ", "\"", "'"},
+                  fn(R"({"key1":"value1","key2":"value2","key3":null})"),
+                  29},
+        TestCase {R"(key1=value1 key2= key3=value3)",
+                  true,
+                  {},
+                  Options {"=", " ", "\"", "'"},
+                  fn(R"({"key1":"value1","key2":null,"key3":"value3"})"),
+                  29},
+        TestCase {R"(key1="value1" key2="123")",
+                  true,
+                  {},
+                  Options {"=", " ", "\"", "'"},
+                  fn(R"({"key1":"value1","key2":"123"})"),
+                  24},
+        TestCase {R"(key1="123" key2=456)",
+                  true,
+                  {},
+                  Options {"=", " ", "\"", "'"},
+                  fn(R"({"key1":"123","key2":456})"),
+                  19},
+        TestCase {R"(key1='value=1',key2=value''2,key3='value,3',key4='value=,''4')",
+                  false,
+                  {},
+                  Options {"=", ",", "'", "'"},
+                  fn(R"({"key1":"value=1","key2":"value'2","key3":"value,3","key4":"value=,'4"})"),
+                  61}
+        };
     for (auto t : testCases)
     {
         runTest(t, hlp::getKVParser);
+        runTest(t, hlp::getKVParser, "header", "");
+        runTest(t, hlp::getKVParser, "header", "tail");
+        runTest(t, hlp::getKVParser, "", "tail");
     }
 }
 
@@ -200,6 +245,5 @@ TEST(KVParser, build)
         ASSERT_THROW(hlp::getKVParser({}, {""}, Options {"=", "  ", "'", "\\"}), std::runtime_error);
         ASSERT_THROW(hlp::getKVParser({}, {""}, Options {"=", " ", "''", "\\"}), std::runtime_error);
         ASSERT_THROW(hlp::getKVParser({}, {""}, Options {"=", " ", "'", "\\\\"}), std::runtime_error);
-        
 
 }
