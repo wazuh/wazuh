@@ -998,7 +998,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
 
             gettime(&t0);
-            if (wdb_insert_agent(atoi(cur->id), cur->name, NULL, cur->ip, cur->raw_key, cur->group, 1, &wdb_sock)) {
+            if (wdb_insert_agent(atoi(cur->id), cur->name, NULL, cur->ip, cur->raw_key, 1, &wdb_sock)) {
                 mdebug2("The agent %s '%s' already exists in the database.", cur->id, cur->name);
             }
             gettime(&t1);

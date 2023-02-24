@@ -317,7 +317,7 @@ void sync_keys_with_wdb(keystore *keys) {
             mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing agent %s '%s'.", entry->id, entry->name);
 
             if (wdb_insert_agent(agent_id, entry->name, NULL, OS_CIDRtoStr(entry->ip, agent_cidr, IPSIZE) ?
-                                entry->ip->ip : agent_cidr, entry->raw_key, NULL, 1, &wdb_wmdb_sock)) {
+                                entry->ip->ip : agent_cidr, entry->raw_key, 1, &wdb_wmdb_sock)) {
                 mtdebug1(WM_DATABASE_LOGTAG, "Couldn't insert agent '%s' in the database.", entry->id);
             }
         }

@@ -239,7 +239,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
     WDB_STMT_GLOBAL_FIND_AGENT,
     WDB_STMT_GLOBAL_FIND_GROUP,
-    WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH,
     WDB_STMT_GLOBAL_INSERT_AGENT_GROUP,
     WDB_STMT_GLOBAL_SELECT_GROUP_BELONG,
     WDB_STMT_GLOBAL_INSERT_AGENT_BELONG,
@@ -253,15 +252,12 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET,
-    WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND,
     WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_SET,
     WDB_STMT_GLOBAL_GROUP_PRIORITY_GET,
-    WDB_STMT_GLOBAL_GROUP_CSV_GET,
-    WDB_STMT_GLOBAL_GROUP_CTX_SET,
     WDB_STMT_GLOBAL_GROUP_HASH_GET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
-    WDB_STMT_GLOBAL_GET_GROUPS,
+    WDB_STMT_GLOBAL_GET_MULTI_GROUPS,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
@@ -1169,17 +1165,6 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
 int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to get the groups integrity information in global.db.
- *
- * @param wdb The global struct database.
- * @param input String with 'hash'.
- * @param output Response of the query in JSON format.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_get_groups_integrity(wdb_t * wdb, char * input, char* output);
-
-/**
  * @brief Function to get all the agent information.
  *
  * @param wdb The global struct database.
@@ -1255,17 +1240,6 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output);
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the select agent group request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with 'agent_id'.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the find agent request.
@@ -1351,17 +1325,6 @@ int wdb_parse_global_get_group_agents(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output);
 
 /**
- * @brief Function to recalculate the agent group hash.
- *
- * @param [in] wdb The global struct database.
- * @param [in] agent_id Int with the agent id.
- * @param [in] sync_status String with the sync_status to be set.
- * @return WDBC_OK Success.
- *         WDBC_ERROR On error.
- */
-int wdb_global_recalculate_agent_groups_hash(wdb_t* wdb, int agent_id, char* sync_status);
-
-/**
  * @brief Function to parse sync-agent-info-get params and set next ID to iterate on further calls.
  *        If no last_id is provided. Last obtained ID is used.
  *
@@ -1414,14 +1377,14 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output);
 int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output);
 
 /**
- * @brief Function to parse the get-distinct-groups command data.
+ * @brief Function to parse the get-distinct-multi-groups command data.
  *
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'last_group_hash'.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
  */
-int wdb_parse_global_get_distinct_agent_groups(wdb_t* wdb, char *input, char* output);
+int wdb_parse_global_get_distinct_agent_multi_groups(wdb_t* wdb, char *input, char* output);
 
 /**
  * @brief Function to parse the reset agent connection status request.
@@ -1745,11 +1708,10 @@ int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
  * @param [in] ip The agent IP address
  * @param [in] register_ip The agent registration IP address
  * @param [in] internal_key The agent key
- * @param [in] group The agent group
  * @param [in] date_add The agent addition date.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add);
+int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, int date_add);
 
 /**
  * @brief Function to update an agent name.
@@ -1888,15 +1850,6 @@ int wdb_global_delete_agent(wdb_t *wdb, int id);
 cJSON* wdb_global_select_agent_name(wdb_t *wdb, int id);
 
 /**
- * @brief Function to get the group of a particular agent.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id Agent id.
- * @return JSON with the agent group on success. NULL on error.
- */
-cJSON* wdb_global_select_agent_group(wdb_t *wdb, int id);
-
-/**
  * @brief Function to delete an agent from the belongs table.
  *
  * @param [in] wdb The Global struct database.
@@ -1914,27 +1867,6 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id);
  * @return JSON with id on success. NULL on error.
  */
 cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
-
-/**
- * @brief Function to update the agent's groups_hash column. It reads the group column, calculates and stores its hash
- *        but if the group column is NULL, the method returns without modifying groups_hash.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id The agent ID
- * @param [in] groups_string The comma separated groups string to hash and store in groups_hash column. If not set,
- *                           it will be read from 'group' column.
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string);
-
-/**
- * @brief Function to update the agent's groups_hash column for all agents. It gets all agents and calls
- *        wdb_global_update_agent_groups_hash() for each one.
- *
- * @param [in] wdb The Global struct database.
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_global_adjust_v4(wdb_t* wdb);
 
 /**
  * @brief Function to get a group id using the group name.
@@ -2065,7 +1997,7 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
  *              WDB_GROUP_CKS_MISMATCH for agents with difference between the CKS in the master and the worker.
  * @param [in] last_agent_id ID where to start querying.
  * @param [in] set_synced Indicates if the obtained groups must be set as synced.
- * @param [in] get_hash Indicates if the response must append the group_hash once all the groups have been obtained.
+ * @param [in] get_hash Indicates if the response must append the groups hash once all the groups have been obtained.
  * @param [in] agent_registration_delta Minimum amount of seconds since the registration time for the agent to be included in the result.
  * @param [out] output A cJSON pointer where the response is written. Must be de-allocated by the caller.
  * @return wdbc_result to represent if all agents has being obtained.
@@ -2099,36 +2031,6 @@ int wdb_global_add_global_group_hash_to_response(wdb_t *wdb, cJSON** response, s
 int wdb_global_set_agent_groups_sync_status(wdb_t *wdb,
                                             int id,
                                             const char* sync_status);
-
-/**
- * @brief It gets all the groups of an agent and returns them in a comma sepparated string
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id ID of the agent to obtain the group.
- * @return char* String with the groups of the agent in CSV format. Must be de-allocated by the caller. It returns NULL on error.
- */
-char* wdb_global_calculate_agent_group_csv(wdb_t *wdb, int id);
-
-/**
- * @brief Sets the group information in the agent table.
- * @param [in] wdb The Global struct database.
- * @param [in] id ID of the agent to set the information.
- * @param [in] csv String with all the groups sepparated by comma to be inserted in the group column.
- * @param [in] hash Hash calculus from the csv string to be inserted in the group_hash column.
- * @param [in] sync_status Tag of the sync status to be inserted in the group_sync_status column.
- * @return wdbc_result representing the status of the command.
- */
-wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, char* hash, char* sync_status);
-
-/**
- * @brief Verifies if at least one entry in the Global DB has the group_sync_status as "syncreq".
- *        If not, it compares a received hash that represents the group column against a calculated hash.
- *
- * @param wdb The Global struct database.
- * @param hash Received group column hash.
- * @return cJSON* Returns a cJSON object with the groups integrity status or NULL on error.
- */
-cJSON* wdb_global_get_groups_integrity(wdb_t *wdb, os_sha1 hash);
 
 /**
  * @brief Gets the maximum priority of the groups of an agent.
@@ -2305,16 +2207,16 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
 int wdb_global_check_manager_keepalive(wdb_t *wdb);
 
 /**
- * @brief Returns a JSON array containing the group and group_hash assigned to all agents,
- *        if two agents have the same group assigned it is only included once
+ * @brief Returns a JSON array containing the multi-groups assigned to all agents,
+ *        if two agents have the same multi-group assigned it is only included once
  *
  * @param [in] wdb The Global struct database.
- * @param [in] group_hash Group hash where to start querying.
- * @param [out] status wdbc_result to represent if all group/group_hash has being obtained or any error occurred.
- * @retval JSON with group/group_hash on success.
+ * @param [in] group_name Group name where to start querying.
+ * @param [out] status wdbc_result to represent if all group has being obtained or any error occurred.
+ * @retval JSON with multi-groups on success.
  * @retval NULL on error.
  */
-cJSON* wdb_global_get_distinct_agent_groups(wdb_t *wdb, char *group_hash, wdbc_result* status);
+cJSON* wdb_global_get_distinct_agent_multi_groups(wdb_t *wdb, char *group_name, wdbc_result* status);
 
 /**
  * @brief Function to insert or update rows with a dynamic query based on metadata.
