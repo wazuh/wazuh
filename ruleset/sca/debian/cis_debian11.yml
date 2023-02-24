@@ -2148,8 +2148,8 @@ checks:
     title: "Ensure ufw service is enabled."
     description: "UncomplicatedFirewall (ufw) is a frontend for iptables. ufw provides a framework for managing netfilter, as well as a command-line and available graphical user interface for manipulating the firewall. Notes: When running ufw enable or starting ufw via its initscript, ufw will flush its chains. This is required so ufw can maintain a consistent state, but it may drop existing connections (eg ssh). ufw does support adding rules before enabling the firewall. Run the following command before running ufw enable. # ufw allow proto tcp from any to any port 22 .The rules will still be flushed, but the ssh port will be open after enabling the firewall. Please note that once ufw is 'enabled', ufw will not flush the chains when adding or removing rules (but will when modifying a rule or changing the default policy) By default, ufw will prompt when enabling the firewall while running under ssh. This can be disabled by using ufw --force enable."
     rationale: "The ufw service must be enabled and running in order for ufw to protect the system."
-    remediation: "Run the following command to unmask the ufw daemon: # systemctl unmask ufw.service .Run the following command to enable and start the ufw daemon: # systemctl --now enable ufw.service active Run the following command to enable ufw: # ufw enable"
     impact: "Changing firewall settings while connected over network can result in being locked out of the system."
+    remediation: "Run the following command to unmask the ufw daemon: # systemctl unmask ufw.service .Run the following command to enable and start the ufw daemon: # systemctl --now enable ufw.service active Run the following command to enable ufw: # ufw enable"
     referencces:
       - http://manpages.ubuntu.com/manpages/precise/en/man8/ufw.8.html
     compliance:
@@ -2207,8 +2207,8 @@ checks:
     title: "Ensure ufw default deny firewall policy."
     description: "A default deny policy on connections ensures that any unconfigured network usage will be rejected. Note: Any port or protocol without a explicit allow before the default deny will be blocked."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
-    remediation: "Run the following commands to implement a default deny policy: # ufw default deny incoming # ufw default deny outgoing # ufw default deny routed"
     impact: "Any port and protocol not explicitly allowed will be blocked. The following rules should be considered before applying the default deny. ufw allow git, ufw allow in http, ufw allow out http <- required for apt to connect to repository, ufw allow in https, ufw allow out https ,ufw allow out 53 ,ufw logging on."
+    remediation: "Run the following commands to implement a default deny policy: # ufw default deny incoming # ufw default deny outgoing # ufw default deny routed"
     compliance:
       - cis: ["3.5.1.7"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2275,7 +2275,7 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: any
     rules:
-      - "c:dpkg-query -s ufw -> r:package 'ufw' is not installed"
+      - "c:dpkg-query -s ufw -> r:package 'ufw' is not installed and no information is available"
       - "c:ufw status -> r:inactive"
 
   # 3.5.2.3 Ensure iptables are flushed with nftables (Manual) - Not Implemented
