@@ -29,12 +29,12 @@ check:
 
 normalize:
   - check:
-      - ~json.data.iface: +s_ne//
+      - ~json.data.iface: +s_ne/
     map:
       - ~json.data.iface: +s_replace/|/$~escaped_pipe_char
       - ~json.data.iface: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.iface: +s_eq//
+      - ~json.data.iface: +s_eq/
     map:
       - ~json.data.iface: "NULL"
   - check:
@@ -89,7 +89,7 @@ normalize:
       - ~do_update_kvdb: false
 
   - check:
-      - ~query_response: +s_ne//
+      - ~query_response: +s_ne/
     map:
       - ~query_response_space_splited: "+s_to_array/$~query_response/ "
       - ~query_response_values: $~query_response_space_splited/1

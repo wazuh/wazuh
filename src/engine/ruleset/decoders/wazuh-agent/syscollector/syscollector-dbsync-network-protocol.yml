@@ -29,12 +29,12 @@ check:
 
 normalize:
   - check:
-      - ~json.data.iface: +s_ne//
+      - ~json.data.iface: +s_ne/
     map:
       - ~json.data.iface: +s_replace/|/$~escaped_pipe_char
       - ~json.data.iface: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.iface: +s_eq//
+      - ~json.data.iface: +s_eq/
     map:
       - ~json.data.iface: "NULL"
   - check:
@@ -53,12 +53,12 @@ normalize:
       - ~json.data.gateway: "NULL"
 
   - check:
-      - ~json.data.dhcp: +s_ne//
+      - ~json.data.dhcp: +s_ne/
     map:
       - ~json.data.dhcp: +s_replace/|/$~escaped_pipe_char
       - ~json.data.dhcp: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.dhcp: +s_eq//
+      - ~json.data.dhcp: +s_eq/
     map:
       - ~json.data.dhcp: "NULL"
   - check:
@@ -67,12 +67,12 @@ normalize:
       - ~json.data.dhcp: "NULL"
 
   - check:
-      - ~json.data.metric: +s_ne//
+      - ~json.data.metric: +s_ne/
     map:
       - ~json.data.metric: +s_replace/|/$~escaped_pipe_char
       - ~json.data.metric: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.metric: +s_eq//
+      - ~json.data.metric: +s_eq/
     map:
       - ~json.data.metric: "NULL"
   - check:
@@ -96,7 +96,7 @@ normalize:
       - ~query_response: +wdb_query/$~query
 
   - check:
-      - ~query_response: +s_ne//
+      - ~query_response: +s_ne/
     map:
       - ~query_response_space_splited: "+s_to_array/$~query_response/ "
       - ~query_response_values: $~query_response_space_splited/1

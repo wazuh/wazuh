@@ -33,12 +33,12 @@ normalize:
       - ~json.data.scan_time: "NULL"
 
   - check:
-      - ~json.data.board_serial: +s_ne//
+      - ~json.data.board_serial: +s_ne/
     map:
       - ~json.data.board_serial: +s_replace/|/$~escaped_pipe_char
       - ~json.data.board_serial: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.board_serial: +s_eq//
+      - ~json.data.board_serial: +s_eq/
     map:
       - ~json.data.board_serial: "NULL"
   - check:
@@ -52,13 +52,13 @@ normalize:
       - ~json.data.cpu_name: "NULL"
 
   - check:
-      - ~json.data.cpu_name: +s_ne//
+      - ~json.data.cpu_name: +s_ne/
     map:
       - ~json.data.cpu_name: +s_replace/|/$~escaped_pipe_char
       - ~json.data.cpu_name: +s_replace/NULL/_NULL_
 
   - check:
-      - ~json.data.cpu_name: +s_eq//
+      - ~json.data.cpu_name: +s_eq/
     map:
       - ~json.data.cpu_name: "NULL"
 
@@ -99,7 +99,7 @@ normalize:
       - ~query_response: +wdb_query/$~query
 
   - check:
-      - ~query_response: +s_ne//
+      - ~query_response: +s_ne/
     map:
       - ~query_response_values: +r_ext/$~query_response/\|(.*)
       - ~array_of_field: +s_to_array/$~query_response_values/|

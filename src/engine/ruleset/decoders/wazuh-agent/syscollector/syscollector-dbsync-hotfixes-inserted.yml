@@ -33,12 +33,12 @@ normalize:
       - ~json.data.scan_time: ""
 
   - check:
-      - ~json.data.hotfix: +s_ne//
+      - ~json.data.hotfix: +s_ne/
     map:
       - ~json.data.hotfix: +s_replace/|/$~escaped_pipe_char
       - ~json.data.hotfix: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.hotfix: +s_eq//
+      - ~json.data.hotfix: +s_eq/
     map:
       - ~json.data.hotfix: "NULL"
   - check:

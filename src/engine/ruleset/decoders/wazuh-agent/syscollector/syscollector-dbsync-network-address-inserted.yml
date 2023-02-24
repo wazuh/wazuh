@@ -28,12 +28,12 @@ check:
 
 normalize:
   - check:
-      - ~json.data.iface: +s_ne//
+      - ~json.data.iface: +s_ne/
     map:
       - ~json.data.iface: +s_replace/|/$~escaped_pipe_char
       - ~json.data.iface: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.iface: +s_eq//
+      - ~json.data.iface: +s_eq/
     map:
       - ~json.data.iface: "NULL"
   - check:

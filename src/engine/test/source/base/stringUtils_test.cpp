@@ -194,7 +194,7 @@ TEST(splitEscaped, SuccessDefaultValues)
 TEST(splitEscaped, SuccessEmptyFields)
 {
     std::string input = R"(+123456/ABC\/DE\/12/test/!//)";
-    std::vector<std::string> expected = {"+123456", R"(ABC/DE/12)", "test", "!", ""};
+    std::vector<std::string> expected = {"+123456", R"(ABC/DE/12)", "test", "!", "", ""};
     std::vector<std::string> result = utils::string::splitEscaped(input);
     ASSERT_EQ(result, expected);
 
