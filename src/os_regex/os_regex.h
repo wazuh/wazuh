@@ -15,6 +15,7 @@
 
 /* size_t */
 #include <stddef.h>
+#include <stdbool.h>
 #include <pthread.h>
 
 /* OSRegex_Compile flags */
@@ -56,6 +57,7 @@ typedef struct _OSRegex {
     char **patterns;
     const char ** *prts_closure;
     pthread_mutex_t mutex;
+    bool mutex_initialised;
     // Dynamic variables
     char **d_sub_strings;
     const char ***d_prts_str;

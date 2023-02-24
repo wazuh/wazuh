@@ -65,7 +65,8 @@ void OSRegex_FreePattern(OSRegex *reg)
     }
 
     os_free(reg->d_size.prts_str_size);
-    w_mutex_destroy(&reg->mutex);
+    if (reg->mutex_initialised)
+        w_mutex_destroy(&reg->mutex);
 
     return;
 }

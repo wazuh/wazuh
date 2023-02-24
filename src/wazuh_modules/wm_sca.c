@@ -1320,7 +1320,7 @@ static int wm_sca_do_scan(cJSON * checks,
                 free(data->alert_msg[i]);
                 data->alert_msg[i] = NULL;
             }
-            os_free(regex_engine);
+            w_free_expression_t(&regex_engine);
             goto clean_return;
         }
 
