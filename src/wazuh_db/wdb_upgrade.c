@@ -15,7 +15,6 @@
 // This function performs those data migrations between
 // updates that cannot be resolved with queries
 static int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step);
-static int wdb_adjust_global_upgrade(wdb_t *wdb, int upgrade_step);
 
 // Migrate to the fourth version of the database:
 // - The attributes field of the fim_entry table is decoded
@@ -147,8 +146,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         else {
             for (int i = version; i < updates_length; i++) {
                 mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
-                if (wdb_sql_exec(wdb, UPDATES[i]) == OS_INVALID ||
-                    wdb_adjust_global_upgrade(wdb, i)) {
+                if (wdb_sql_exec(wdb, UPDATES[i]) == OS_INVALID) {
                     if (OS_INVALID != wdb_global_restore_backup(&wdb, NULL, false, output)) {
                         merror("Failed to update global.db to version %d. The global.db was "
                                "restored to the original state.",
@@ -294,15 +292,6 @@ int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step) {
     switch (upgrade_step) {
         case 3:
             return wdb_adjust_v4(wdb);
-        default:
-            return 0;
-    }
-}
-
-int wdb_adjust_global_upgrade(wdb_t *wdb, int upgrade_step) {
-    switch (upgrade_step) {
-        case 3:
-            return wdb_global_adjust_v4(wdb);
         default:
             return 0;
     }

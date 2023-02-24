@@ -1027,20 +1027,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_select_agent_name_time(diff);
             }
-        } else if (strcmp(query, "select-agent-group") == 0) {
-            w_inc_global_agent_select_agent_group();
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for select-agent-group.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                gettimeofday(&begin, 0);
-                result = wdb_parse_global_select_agent_group(wdb, next, output);
-                gettimeofday(&end, 0);
-                timersub(&end, &begin, &diff);
-                w_inc_global_agent_select_agent_group_time(diff);
-            }
         } else if (strcmp(query, "find-agent") == 0) {
             w_inc_global_agent_find_agent();
             if (!next) {
@@ -1197,20 +1183,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_sync_agent_info_set_time(diff);
             }
-        } else if (strcmp(query, "get-groups-integrity") == 0) {
-            w_inc_global_agent_get_groups_integrity();
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for get-groups-integrity.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                gettimeofday(&begin, 0);
-                result = wdb_parse_get_groups_integrity(wdb, next, output);
-                gettimeofday(&end, 0);
-                timersub(&end, &begin, &diff);
-                w_inc_global_agent_get_groups_integrity_time(diff);
-            }
         } else if (strcmp(query, "disconnect-agents") == 0) {
             w_inc_global_agent_disconnect_agents();
             if (!next) {
@@ -1239,13 +1211,13 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_get_all_agents_time(diff);
             }
-        } else if (strcmp(query, "get-distinct-groups") == 0) {
-            w_inc_global_agent_get_distinct_groups();
+        } else if (strcmp(query, "get-distinct-multi-groups") == 0) {
+            w_inc_global_agent_get_distinct_multi_groups();
             gettimeofday(&begin, 0);
-            result = wdb_parse_global_get_distinct_agent_groups(wdb, next, output);
+            result = wdb_parse_global_get_distinct_agent_multi_groups(wdb, next, output);
             gettimeofday(&end, 0);
             timersub(&end, &begin, &diff);
-            w_inc_global_agent_get_distinct_groups_time(diff);
+            w_inc_global_agent_get_distinct_multi_groups_time(diff);
         } else if (strcmp(query, "get-agent-info") == 0) {
             w_inc_global_agent_get_agent_info();
             if (!next) {
@@ -5075,7 +5047,6 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
     cJSON *j_ip = NULL;
     cJSON *j_register_ip = NULL;
     cJSON *j_internal_key = NULL;
-    cJSON *j_group = NULL;
     cJSON *j_date_add = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
@@ -5090,7 +5061,6 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
         j_ip = cJSON_GetObjectItem(agent_data, "ip");
         j_register_ip = cJSON_GetObjectItem(agent_data, "register_ip");
         j_internal_key = cJSON_GetObjectItem(agent_data, "internal_key");
-        j_group = cJSON_GetObjectItem(agent_data, "group");
         j_date_add = cJSON_GetObjectItem(agent_data, "date_add");
 
         // These are the only constraints defined in the database for this
@@ -5104,10 +5074,9 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
             char* ip = cJSON_IsString(j_ip) ? j_ip->valuestring : NULL;
             char* register_ip = cJSON_IsString(j_register_ip) ? j_register_ip->valuestring : NULL;
             char* internal_key = cJSON_IsString(j_internal_key) ? j_internal_key->valuestring : NULL;
-            char* group = cJSON_IsString(j_group) ? j_group->valuestring : NULL;
             int date_add = j_date_add->valueint;
 
-            if (OS_SUCCESS != wdb_global_insert_agent(wdb, id, name, ip, register_ip, internal_key, group, date_add)) {
+            if (OS_SUCCESS != wdb_global_insert_agent(wdb, id, name, ip, register_ip, internal_key, date_add)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
@@ -5523,27 +5492,6 @@ int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output)
     if (name = wdb_global_select_agent_name(wdb, agent_id), !name) {
         mdebug1("Error getting agent name from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agent name from global.db.");
-        return OS_INVALID;
-    }
-
-    out = cJSON_PrintUnformatted(name);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(name);
-
-    return OS_SUCCESS;
-}
-
-int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output) {
-    int agent_id = 0;
-    cJSON *name = NULL;
-    char *out = NULL;
-
-    agent_id = atoi(input);
-
-    if (name = wdb_global_select_agent_group(wdb, agent_id), !name) {
-        mdebug1("Error getting agent group from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting agent group from global.db.");
         return OS_INVALID;
     }
 
@@ -5978,37 +5926,6 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
     return OS_SUCCESS;
 }
 
-int wdb_parse_get_groups_integrity(wdb_t* wdb, char* input, char* output) {
-    int input_len = strlen(input);
-    if (input_len < OS_SHA1_HEXDIGEST_SIZE) {
-        mdebug1("Hash hex-digest does not have the expected length. Expected (%d) got (%d)",
-                OS_SHA1_HEXDIGEST_SIZE,
-                input_len);
-        snprintf(output,
-                 OS_MAXSTR + 1,
-                 "err Hash hex-digest does not have the expected length. Expected (%d) got (%d)",
-                 OS_SHA1_HEXDIGEST_SIZE,
-                 input_len);
-        return OS_INVALID;
-    }
-
-    os_sha1 hash = {0};
-    strncpy(hash, input, OS_SHA1_HEXDIGEST_SIZE);
-
-    cJSON *j_result = wdb_global_get_groups_integrity(wdb, hash);
-    if (j_result == NULL) {
-        mdebug1("Error getting groups integrity information from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting groups integrity information from global.db.");
-        return OS_INVALID;
-    }
-
-    char* out = cJSON_PrintUnformatted(j_result);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(j_result);
-    return OS_SUCCESS;
-}
-
 int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
     int agent_id = 0;
     cJSON *agent_info = NULL;
@@ -6130,11 +6047,11 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
     return OS_SUCCESS;
 }
 
-int wdb_parse_global_get_distinct_agent_groups(wdb_t* wdb, char* input, char* output) {
+int wdb_parse_global_get_distinct_agent_multi_groups(wdb_t* wdb, char* input, char* output) {
 
     // Execute command
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_distinct_agent_groups(wdb, input, &status);
+    cJSON* result = wdb_global_get_distinct_agent_multi_groups(wdb, input, &status);
     if (!result) {
         mdebug1("Error getting agent groups from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agent groups from global.db.");

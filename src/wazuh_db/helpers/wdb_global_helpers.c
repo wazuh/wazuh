@@ -30,7 +30,7 @@ static const char *global_db_commands[] = {
     [WDB_GET_AGENT_INFO] = "global get-agent-info %d",
     [WDB_GET_AGENT_LABELS] = "global get-labels %d",
     [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
-    [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
+    [WDB_SELECT_GROUP_BELONG] = "global select-group-belong %d",
     [WDB_FIND_GROUP] = "global find-group %s",
     [WDB_SELECT_GROUPS] = "global select-groups",
     [WDB_DELETE_AGENT] = "global delete-agent %d",
@@ -40,7 +40,7 @@ static const char *global_db_commands[] = {
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "global get-agents-by-connection-status %d %s %s %d",
     [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s",
-    [WDB_GET_DISTINCT_AGENT_GROUP] = "global get-distinct-groups %s"
+    [WDB_GET_DISTINCT_AGENT_MULTI_GROUP] = "global get-distinct-multi-groups %s"
 };
 
 int wdb_insert_agent(int id,
@@ -48,7 +48,6 @@ int wdb_insert_agent(int id,
                      const char *ip,
                      const char *register_ip,
                      const char *internal_key,
-                     const char *group,
                      int keep_date,
                      int *sock) {
     int result = 0;
@@ -78,7 +77,6 @@ int wdb_insert_agent(int id,
     cJSON_AddStringToObject(data_in, "ip", ip);
     cJSON_AddStringToObject(data_in, "register_ip", register_ip);
     cJSON_AddStringToObject(data_in, "internal_key", internal_key);
-    cJSON_AddStringToObject(data_in, "group", group);
     cJSON_AddNumberToObject(data_in, "date_add", date_add);
 
     data_in_str = cJSON_PrintUnformatted(data_in);
@@ -650,7 +648,7 @@ char* wdb_get_agent_group(int id, int *sock) {
     cJSON *json_group = NULL;
     int aux_sock = -1;
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_AGENT_GROUP], id);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_GROUP_BELONG], id);
     root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
@@ -662,9 +660,8 @@ char* wdb_get_agent_group(int id, int *sock) {
         return NULL;
     }
 
-    json_group = cJSON_GetObjectItem(root->child,"group");
-    if (cJSON_IsString(json_group) && json_group->valuestring != NULL) {
-        os_strdup(json_group->valuestring, output);
+    cJSON_ArrayForEach(json_group, root) {
+        wm_strcat(&output, cJSON_GetStringValue(json_group), MULTIGROUP_SEPARATOR);
     }
 
     cJSON_Delete(root);
@@ -1245,28 +1242,28 @@ wdbc_result wdb_parse_chunk_to_json_by_string_item(char* input, cJSON** output_j
     return status;
 }
 
-cJSON* wdb_get_distinct_agent_groups(int *sock) {
+cJSON* wdb_get_distinct_agent_multi_groups(int *sock) {
     cJSON *root = NULL;
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char wdbquery[WDBQUERY_SIZE] = "";
     int aux_sock = -1;
     wdbc_result status = WDBC_DUE;
-    char *tmp_last_hash_group = NULL;
+    char *tmp_last_name_group = NULL;
 
     root = cJSON_CreateArray();
 
-    os_strdup("", tmp_last_hash_group);
+    os_strdup("", tmp_last_name_group);
     while (status == WDBC_DUE) {
-        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_DISTINCT_AGENT_GROUP], tmp_last_hash_group);
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_DISTINCT_AGENT_MULTI_GROUP], tmp_last_name_group);
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
-            os_free(tmp_last_hash_group);
-            status = wdb_parse_chunk_to_json_by_string_item(wdboutput, &root, "group_hash", &tmp_last_hash_group);
+            os_free(tmp_last_name_group);
+            status = wdb_parse_chunk_to_json_by_string_item(wdboutput, &root, "group", &tmp_last_name_group);
         }
         else {
             status = WDBC_ERROR;
         }
     }
-    os_free(tmp_last_hash_group);
+    os_free(tmp_last_name_group);
 
     if (status == WDBC_ERROR) {
         merror("Error querying Wazuh DB to get agent's groups.");

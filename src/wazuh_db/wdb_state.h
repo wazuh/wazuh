@@ -129,11 +129,9 @@ typedef struct _global_agent_t {
     uint64_t get_agent_info_queries;
     uint64_t get_agents_by_connection_status_queries;
     uint64_t get_all_agents_queries;
-    uint64_t get_distinct_groups_queries;
-    uint64_t get_groups_integrity_queries;
+    uint64_t get_distinct_multi_groups_queries;
     uint64_t insert_agent_queries;
     uint64_t reset_agents_connection_queries;
-    uint64_t select_agent_group_queries;
     uint64_t select_agent_name_queries;
     uint64_t set_agent_groups_queries;
     uint64_t sync_agent_groups_get_queries;
@@ -150,11 +148,9 @@ typedef struct _global_agent_t {
     struct timeval get_agent_info_time;
     struct timeval get_agents_by_connection_status_time;
     struct timeval get_all_agents_time;
-    struct timeval get_distinct_groups_time;
-    struct timeval get_groups_integrity_time;
+    struct timeval get_distinct_multi_groups_time;
     struct timeval insert_agent_time;
     struct timeval reset_agents_connection_time;
-    struct timeval select_agent_group_time;
     struct timeval select_agent_name_time;
     struct timeval set_agent_groups_time;
     struct timeval sync_agent_groups_get_time;
@@ -842,19 +838,6 @@ void w_inc_global_agent_select_agent_name();
 void w_inc_global_agent_select_agent_name_time(struct timeval time);
 
 /**
- * @brief Increment select-agent-group global agent queries counter
- *
- */
-void w_inc_global_agent_select_agent_group();
-
-/**
- * @brief Increment select-agent-group global agent time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_global_agent_select_agent_group_time(struct timeval time);
-
-/**
  * @brief Increment find-agent global agent queries counter
  *
  */
@@ -894,17 +877,17 @@ void w_inc_global_agent_get_all_agents();
 void w_inc_global_agent_get_all_agents_time(struct timeval time);
 
 /**
- * @brief Increment get-distinct-groups global agent queries counter
+ * @brief Increment get-distinct-multi-groups global agent queries counter
  *
  */
-void w_inc_global_agent_get_distinct_groups();
+void w_inc_global_agent_get_distinct_multi_groups();
 
 /**
- * @brief Increment get-distinct-groups global agent time counter
+ * @brief Increment get-distinct-multi-groups global agent time counter
  *
  * @param time Value to increment the counter.
  */
-void w_inc_global_agent_get_distinct_groups_time(struct timeval time);
+void w_inc_global_agent_get_distinct_multi_groups_time(struct timeval time);
 
 /**
  * @brief Increment get-agents-by-connection-status global agent queries counter
@@ -983,19 +966,6 @@ void w_inc_global_agent_set_agent_groups();
  * @param time Value to increment the counter.
  */
 void w_inc_global_agent_set_agent_groups_time(struct timeval time);
-
-/**
- * @brief Increment get-groups-integrity global agent queries counter
- *
- */
-void w_inc_global_agent_get_groups_integrity();
-
-/**
- * @brief Increment get-groups-integrity global agent time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_global_agent_get_groups_integrity_time(struct timeval time);
 
 /**
  * @brief Increment insert-agent-group global group queries counter

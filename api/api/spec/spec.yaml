@@ -3152,16 +3152,10 @@ components:
                                 get-all-agents:
                                   type: integer
                                   format: int32
-                                get-groups-integrity:
-                                  type: integer
-                                  format: int32
                                 insert-agent:
                                   type: integer
                                   format: int32
                                 reset-agents-connection:
-                                  type: integer
-                                  format: int32
-                                select-agent-group:
                                   type: integer
                                   format: int32
                                 select-agent-name:
@@ -3484,16 +3478,10 @@ components:
                                 get-all-agents:
                                   type: integer
                                   format: int32
-                                get-groups-integrity:
-                                  type: integer
-                                  format: int32
                                 insert-agent:
                                   type: integer
                                   format: int32
                                 reset-agents-connection:
-                                  type: integer
-                                  format: int32
-                                select-agent-group:
                                   type: integer
                                   format: int32
                                 select-agent-name:

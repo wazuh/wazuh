@@ -27,7 +27,7 @@ typedef enum global_db_access {
     WDB_GET_AGENT_INFO,
     WDB_GET_AGENT_LABELS,
     WDB_SELECT_AGENT_NAME,
-    WDB_SELECT_AGENT_GROUP,
+    WDB_SELECT_GROUP_BELONG,
     WDB_FIND_GROUP,
     WDB_SELECT_GROUPS,
     WDB_DELETE_AGENT,
@@ -37,7 +37,7 @@ typedef enum global_db_access {
     WDB_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
     WDB_DISCONNECT_AGENTS,
-    WDB_GET_DISTINCT_AGENT_GROUP
+    WDB_GET_DISTINCT_AGENT_MULTI_GROUP
 } global_db_access;
 
 /**
@@ -48,7 +48,6 @@ typedef enum global_db_access {
  * @param[in] ip The agent ip address.
  * @param[in] register_ip The agent register IP.
  * @param[in] internal_key The client key of the agent.
- * @param[in] group The agent group.
  * @param[in] keep_date If 1, the addition date will be taken from agents-timestamp. If 0, the addition date is the current time.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
@@ -58,7 +57,6 @@ int wdb_insert_agent(int id,
                      const char *ip,
                      const char *register_ip,
                      const char *internal_key,
-                     const char *group,
                      int keep_date,
                      int *sock);
 
@@ -320,12 +318,12 @@ time_t get_agent_date_added(int agent_id);
 int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock, int last_id, int limit);
 
 /**
- * @brief Returns a JSON array containing the group and group_hash assigned to all agents,
+ * @brief Returns a JSON array containing the multi-groups assigned to all agents,
  *        if two agents have the same group assigned it is only included once
  *
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns pointer to the array of groups/group_hash, on success. NULL on errors.
+ * @return Returns pointer to the array of multi-groups, on success. NULL on errors.
  */
-cJSON* wdb_get_distinct_agent_groups(int *sock);
+cJSON* wdb_get_distinct_agent_multi_groups(int *sock);
 
 #endif
