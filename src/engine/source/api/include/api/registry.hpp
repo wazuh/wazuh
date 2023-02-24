@@ -25,7 +25,7 @@ namespace api
 // TODO change accept WazuhRequest
 using wpResponse = base::utils::wazuhProtocol::WazuhResponse;
 using wpRequest = base::utils::wazuhProtocol::WazuhRequest;
-using CommandFn = std::function<wpResponse(const wpRequest&)>; // TODO change to HANDLER
+using Handler = std::function<wpResponse(const wpRequest&)>; // TODO change to HANDLER
 
 /**
  * @brief A registry for API commands
@@ -37,7 +37,7 @@ using CommandFn = std::function<wpResponse(const wpRequest&)>; // TODO change to
 class Registry
 {
 
-    std::map<std::string, CommandFn> m_commands; ///< Map of commands and callbacks
+    std::map<std::string, Handler> m_commands; ///< Map of commands and callbacks
     std::shared_mutex m_mutex; ///< A mutex for thread safety (protect m_commands)
 
 public:
@@ -67,7 +67,7 @@ public:
      * @return false If the command was not registered (already exists, the command is
      * empty or the callback is null)
      */
-    bool registerCommand(const std::string& command, const CommandFn callback);
+    bool registerCommand(const std::string& command, const Handler callback);
 
     /**
      * @brief Get the callback function for a command
@@ -76,7 +76,7 @@ public:
      * @return The callback function
      * @return commandNotFound function If the command was not found
      */
-    CommandFn getCallback(const std::string& command);
+    Handler getCallback(const std::string& command);
 };
 
 } // namespace api

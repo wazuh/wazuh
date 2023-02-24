@@ -12,7 +12,7 @@ TEST(CatalogCmdsTest, GetResourceCmd)
          successName.parts()[1],
          successName.parts()[2]});
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::getResourceCmd(catalog));
     json::Json params {
         fmt::format("{{\"name\": \"{}\", \"format\": \"json\"}}", name.fullName())
@@ -25,7 +25,7 @@ TEST(CatalogCmdsTest, GetResourceCmd)
 
 TEST(CatalogCmdsTest, GetResourceCmdPersist)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     base::Name name(
         {api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER),
          successName.parts()[1],
@@ -126,7 +126,7 @@ TEST(CatalogCmdsTest, PostResourceCmd)
     base::Name name(
         api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER));
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::postResourceCmd(catalog));
     json::Json params;
     params.setObject();
@@ -141,7 +141,7 @@ TEST(CatalogCmdsTest, PostResourceCmd)
 
 TEST(CatalogCmdsTest, PostResourceCmdPersist)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     base::Name name(
         api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER));
     {
@@ -166,7 +166,7 @@ TEST(CatalogCmdsTest, PostResourceCmdNotCollectionName)
     auto config = getConfig();
     auto catalog = std::make_shared<api::catalog::Catalog>(config);
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::postResourceCmd(catalog));
     json::Json params;
     params.setObject();
@@ -184,7 +184,7 @@ TEST(CatalogCmdsTest, PostResourceCmdMissingName)
     auto config = getConfig();
     auto catalog = std::make_shared<api::catalog::Catalog>(config);
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::postResourceCmd(catalog));
     json::Json params;
     params.setObject();
@@ -204,7 +204,7 @@ TEST(CatalogCmdsTest, PostResourceCmdMissingFormat)
     base::Name name(
         api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER));
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::postResourceCmd(catalog));
     json::Json params;
     params.setObject();
@@ -224,7 +224,7 @@ TEST(CatalogCmdsTest, PostResourceCmdMissingContent)
     base::Name name(
         api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER));
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::postResourceCmd(catalog));
     json::Json params;
     params.setObject();
@@ -246,7 +246,7 @@ TEST(CatalogCmdsTest, PutResourceCmd)
          successName.parts()[1],
          successName.parts()[2]});
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::putResourceCmd(catalog));
     json::Json params;
     params.setObject();
@@ -261,7 +261,7 @@ TEST(CatalogCmdsTest, PutResourceCmd)
 
 TEST(CatalogCmdsTest, PutResourceCmdPersist)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     base::Name name(
         {api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER),
          successName.parts()[1],
@@ -291,7 +291,7 @@ TEST(CatalogCmdsTest, PutResourceCmdCollection)
     base::Name name(
         api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER));
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::putResourceCmd(catalog));
     json::Json params;
     params.setObject();
@@ -309,7 +309,7 @@ TEST(CatalogCmdsTest, PutResourceCmdMissingName)
     auto config = getConfig();
     auto catalog = std::make_shared<api::catalog::Catalog>(config);
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::putResourceCmd(catalog));
     json::Json params;
     params.setObject();
@@ -329,7 +329,7 @@ TEST(CatalogCmdsTest, PutResourceCmdMissingFormat)
     base::Name name(
         api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER));
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::putResourceCmd(catalog));
     json::Json params;
     params.setObject();
@@ -349,7 +349,7 @@ TEST(CatalogCmdsTest, PutResourceCmdMissingContent)
     base::Name name(
         api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER));
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::putResourceCmd(catalog));
     json::Json params;
     params.setObject();
@@ -371,7 +371,7 @@ TEST(CatalogCmdsTest, DeleteResourceCmd)
          successName.parts()[1],
          successName.parts()[2]});
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::deleteResourceCmd(catalog));
     json::Json params;
     params.setObject();
@@ -384,7 +384,7 @@ TEST(CatalogCmdsTest, DeleteResourceCmd)
 
 TEST(CatalogCmdsTest, DeleteResourceCmdPersist)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     base::Name name(
         {api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER),
          successName.parts()[1],
@@ -412,7 +412,7 @@ TEST(CatalogCmdsTest, DeleteResourceCmdCollection)
     base::Name name(
         api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER));
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::deleteResourceCmd(catalog));
     json::Json params;
     params.setObject();
@@ -428,7 +428,7 @@ TEST(CatalogCmdsTest, DeleteResourceCmdMissingName)
     auto config = getConfig();
     auto catalog = std::make_shared<api::catalog::Catalog>(config);
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = api::catalog::cmds::deleteResourceCmd(catalog));
     json::Json params;
     params.setObject();
@@ -445,7 +445,7 @@ TEST(CatalogCmdsTest, RegisterAllCmds)
     auto apiReg = std::make_shared<api::Registry>();
 
     ASSERT_NO_THROW(api::catalog::cmds::registerAllCmds(catalog, apiReg));
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = apiReg->getCallback("get_catalog"));
     ASSERT_NO_THROW(cmd = apiReg->getCallback("put_catalog"));
     ASSERT_NO_THROW(cmd = apiReg->getCallback("delete_catalog"));

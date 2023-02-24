@@ -126,7 +126,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmd)
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameMissing)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {"{\"not_name\": \"dummyString\"}"};
     const auto response = cmd(params);
@@ -140,7 +140,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameMissing)
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameArrayNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {"{\"name\": [\"dummyName\"]}"};
     const auto response = cmd(params);
@@ -154,7 +154,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameArrayNotString)
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameNumberNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {"{\"name\": 69}"};
     const auto response = cmd(params);
@@ -168,7 +168,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameNumberNotString)
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSimpleAddition)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
     const auto response = cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_2));
 
@@ -182,7 +182,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSimpleAddition)
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdEmptyName)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
     const auto response = cmd(kvdbAPICreateCommand::getParametersInJson(""));
 
@@ -195,7 +195,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdEmptyName)
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdEmptyParams)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {};
     const auto response = cmd(params);
@@ -209,7 +209,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdEmptyParams)
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdDuplicatedDatabase)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
     const auto response = cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME));
 
@@ -223,7 +223,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdDuplicatedDatabase)
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameWithSpaces)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
     const auto response =
         cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_WITH_SPACES));
@@ -241,7 +241,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithFilling)
 {
     createJsonTestFile();
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
     const auto response =
         cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_2, FILE_PATH));
@@ -284,7 +284,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithWrongFilling)
         }
     }
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
     const auto response =
         cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_2, FILE_PATH));
@@ -304,7 +304,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSingleValueFile)
 {
     createKeyOnlyJsonTestFile();
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
     const auto response =
         cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_2, FILE_PATH));
@@ -332,7 +332,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSingleValueFile)
 
 TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNonExistingFile)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
 
     ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
     json::Json params {
@@ -394,7 +394,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmd)
 TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdLoadedOnlyOnMap)
 {
     // DB_NAME is only loaded on map, it will be unloaded and deleted
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
     auto response = cmd(getParametersInJson(DB_NAME));
 
@@ -416,7 +416,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdBlockBecauseLoaded)
     }
     auto kvdbHandleExample = std::get<kvdb_manager::KVDBHandle>(res);
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
     auto response = cmd(getParametersInJson(DB_NAME));
 
@@ -434,7 +434,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdSuccess)
     auto resultString = kvdbAPIDeleteCommand::kvdbManager->createFromJFile(DB_NAME_2);
     ASSERT_FALSE(resultString.has_value());
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
     auto response = cmd(getParametersInJson(DB_NAME_2));
 
@@ -445,7 +445,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdSuccess)
 
 TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdDBDoesntExist)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME_NOT_AVAILABLE));
 
@@ -462,7 +462,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdDBDoesntExist)
 
 TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdNameMissing)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
     json::Json params {"{\"dummy_key\": \"dummy_value\"}"};
     const auto response = cmd(params);
@@ -476,7 +476,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdNameMissing)
 
 TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdNameArrayNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
     json::Json params {"{\"name\": [\"dummy_value\"]}"};
     const auto response = cmd(params);
@@ -490,7 +490,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdNameArrayNotString)
 
 TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdNameNumberNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
     json::Json params {"{\"name\": 69}"};
     const auto response = cmd(params);
@@ -504,7 +504,7 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdNameNumberNotString)
 
 TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdEmptyName)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(""));
 
@@ -560,7 +560,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmd)
 
 TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdNameMissing)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
     json::Json params {"{\"dummy_key\": \"dummy_value\"}"};
     const auto response = cmd(params);
@@ -574,7 +574,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdNameMissing)
 
 TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdNameArrayNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
     json::Json params {"{\"name\": [\"dummy_value\"]}"};
     const auto response = cmd(params);
@@ -588,7 +588,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdNameArrayNotString)
 
 TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdNameNumberNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
     json::Json params {"{\"name\": 69}"};
     const auto response = cmd(params);
@@ -602,7 +602,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdNameNumberNotString)
 
 TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdEmptyName)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(""));
 
@@ -622,7 +622,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleExecution)
         kvdbAPIDumpCommand::kvdbManager->createFromJFile(DB_NAME_2, FILE_PATH);
     ASSERT_FALSE(resultString.has_value());
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME_2));
 
@@ -733,7 +733,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleExecution)
 
 TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdSimpleEmpty)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME));
 
@@ -757,7 +757,7 @@ TEST_F(kvdbAPIDumpCommand, kvdbDumpCmdKVDBOnlyKeys)
         kvdbAPIDumpCommand::kvdbManager->createFromJFile(DB_NAME_2, FILE_PATH);
     ASSERT_FALSE(resultString.has_value());
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbDumpCmd(kvdbAPIDumpCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME_2));
 
@@ -828,7 +828,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmd)
 
 TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdNameMissing)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbGetKeyCmd(kvdbAPIGetCommand::kvdbManager));
     json::Json params {"{\"dummy_key\": \"dummy_value\"}"};
     const auto response = cmd(params);
@@ -842,7 +842,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdNameMissing)
 
 TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdNameArrayNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbGetKeyCmd(kvdbAPIGetCommand::kvdbManager));
     json::Json params {"{\"name\": [\"dummy_value\"]}"};
     const auto response = cmd(params);
@@ -856,7 +856,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdNameArrayNotString)
 
 TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdNameNumberNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbGetKeyCmd(kvdbAPIGetCommand::kvdbManager));
     json::Json params {"{\"name\": 69}"};
     const auto response = cmd(params);
@@ -870,7 +870,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdNameNumberNotString)
 
 TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdEmptyName)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbGetKeyCmd(kvdbAPIGetCommand::kvdbManager));
     const auto response = cmd(getParametersInJson("", ""));
 
@@ -883,7 +883,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdEmptyName)
 
 TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdKeyMissing)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbGetKeyCmd(kvdbAPIGetCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
     const auto response = cmd(params);
@@ -897,7 +897,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdKeyMissing)
 
 TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdKeyArrayNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbGetKeyCmd(kvdbAPIGetCommand::kvdbManager));
     json::Json params {
         fmt::format("{{\"name\": \"{}\", \"key\": [\"dummy_key\"]}}", DB_NAME).c_str()};
@@ -912,7 +912,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdKeyArrayNotString)
 
 TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdKeyNumberNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbGetKeyCmd(kvdbAPIGetCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"key\": 69}}", DB_NAME).c_str()};
     const auto response = cmd(params);
@@ -926,7 +926,7 @@ TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdKeyNumberNotString)
 
 TEST_F(kvdbAPIGetCommand, kvdbGetKeyCmdEmptyKey)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbGetKeyCmd(kvdbAPIGetCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME, ""));
 
@@ -943,7 +943,7 @@ TEST_F(kvdbAPIGetCommand, SimpleExecutionKeyOnly)
     json::Json VAL_JA {"\"valA\""};
     kvdbAPIGetCommand::kvdbManager->writeKey(DB_NAME, KEY_A, VAL_JA);
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbGetKeyCmd(kvdbAPIGetCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME, KEY_A));
 
@@ -1002,7 +1002,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbAPIInsertCommand)
 
 TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdNameMissing)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     json::Json params {"{\"dummy_key\": \"dummy_value\"}"};
     const auto response = cmd(params);
@@ -1016,7 +1016,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdNameMissing)
 
 TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdNameArrayNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     json::Json params {"{\"name\": [\"dummy_value\"]}"};
     const auto response = cmd(params);
@@ -1030,7 +1030,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdNameArrayNotString)
 
 TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdNameNumberNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     json::Json params {"{\"name\": 69}"};
     const auto response = cmd(params);
@@ -1044,7 +1044,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdNameNumberNotString)
 
 TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdEmptyName)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     const auto response = cmd(getParametersInJson("", ""));
 
@@ -1057,7 +1057,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdEmptyName)
 
 TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdKeyMissing)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
     const auto response = cmd(params);
@@ -1071,7 +1071,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdKeyMissing)
 
 TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdKeyArrayNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     json::Json params {
         fmt::format("{{\"name\": \"{}\", \"key\": [\"dummy_key\"]}}", DB_NAME).c_str()};
@@ -1086,7 +1086,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdKeyArrayNotString)
 
 TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdKeyNumberNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"key\": 69}}", DB_NAME).c_str()};
     const auto response = cmd(params);
@@ -1100,7 +1100,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdKeyNumberNotString)
 
 TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdEmptyKey)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME, ""));
 
@@ -1113,7 +1113,7 @@ TEST_F(kvdbAPIInsertCommand, kvdbInsertKeyCmdEmptyKey)
 
 TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyOnly)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME, KEY_A));
 
@@ -1132,7 +1132,7 @@ TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyOnly)
 
 TEST_F(kvdbAPIInsertCommand, SimpleExecutionKeyValue)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME, KEY_A, rawValueKeyA));
 
@@ -1158,7 +1158,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralKeys)
                                             ":;<=>?@",
                                             "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
                                             "[^_`abcdefghijklmnopqrstuvwxyz{|}~"};
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     for (const auto& key : severalKeys)
     {
@@ -1187,7 +1187,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralValues)
                                               ":;<=>?@",
                                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
                                               "[^_`bcdefghijklmnopqrstuvwxyz{|}~"};
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     for (const auto& value : severalValues)
     {
@@ -1209,7 +1209,7 @@ TEST_F(kvdbAPIInsertCommand, ExecutionOKSeveralValues)
 
 TEST_F(kvdbAPIInsertCommand, ExecutionWrongDBName)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbInsertKeyCmd(kvdbAPIInsertCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME_ANOTHER, KEY_A));
 
@@ -1267,7 +1267,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmd)
 
 TEST_F(kvdbAPIListCommand, kvdbListCmdSingleDBLoaded)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbListCmd(kvdbAPIListCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(true));
     ASSERT_TRUE(response.isValid());
@@ -1285,7 +1285,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdNoneLoaded)
     // Deletes the only DB from the list
     kvdbAPIListCommand::kvdbManager->unloadDB(DB_NAME);
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbListCmd(kvdbAPIListCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(true));
     ASSERT_TRUE(response.isValid());
@@ -1303,7 +1303,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdMultipleLoaded)
     auto varHandle = kvdbManager->getHandler(DB_NAME_2, true);
     ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbListCmd(kvdbAPIListCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(true));
     ASSERT_TRUE(response.isValid());
@@ -1323,7 +1323,7 @@ TEST_F(kvdbAPIListCommand, kvdbListCmdWithFilteringLoaded)
     auto varHandle = kvdbManager->getHandler(DB_NAME_DIFFERENT_START, true);
     ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
 
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbListCmd(kvdbAPIListCommand::kvdbManager));
     auto response = cmd(getParametersInJson(true, "NOT"));
     ASSERT_TRUE(response.isValid());
@@ -1405,7 +1405,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmd)
 
 TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdNameMissing)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
     json::Json params {"{\"dummy_key\": \"dummy_value\"}"};
     const auto response = cmd(params);
@@ -1419,7 +1419,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdNameMissing)
 
 TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdNameArrayNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
     json::Json params {"{\"name\": [\"dummy_value\"]}"};
     const auto response = cmd(params);
@@ -1433,7 +1433,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdNameArrayNotString)
 
 TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdNameNumberNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
     json::Json params {"{\"name\": 69}"};
     const auto response = cmd(params);
@@ -1447,7 +1447,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdNameNumberNotString)
 
 TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdEmptyName)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
     json::Json params {"{\"name\": \"\"}"};
     const auto response = cmd(params);
@@ -1461,7 +1461,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdEmptyName)
 
 TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdKeyMissing)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\"}}", DB_NAME).c_str()};
     const auto response = cmd(params);
@@ -1475,7 +1475,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdKeyMissing)
 
 TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdKeyArrayNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
     json::Json params {
         fmt::format("{{\"name\": \"{}\", \"key\": [\"dummy_key\"]}}", DB_NAME).c_str()};
@@ -1490,7 +1490,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdKeyArrayNotString)
 
 TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdKeyNumberNotString)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"key\": 69}}", DB_NAME).c_str()};
     const auto response = cmd(params);
@@ -1504,7 +1504,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdKeyNumberNotString)
 
 TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdEmptyKey)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME, ""));
 
@@ -1517,7 +1517,7 @@ TEST_F(kvdbAPIRemoveCommand, kvdbRemoveKeyCmdEmptyKey)
 
 TEST_F(kvdbAPIRemoveCommand, SimpleExecution)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME, KEY_A));
 
@@ -1533,7 +1533,7 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecution)
 
 TEST_F(kvdbAPIRemoveCommand, SimpleExecutionDoubleRemoveNoError)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
     auto response = cmd(getParametersInJson(DB_NAME, KEY_A));
 
@@ -1554,7 +1554,7 @@ TEST_F(kvdbAPIRemoveCommand, SimpleExecutionDoubleRemoveNoError)
 
 TEST_F(kvdbAPIRemoveCommand, RemoveNonExistingDB)
 {
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME_ANOTHER, KEY_A));
 
@@ -1569,7 +1569,7 @@ TEST_F(kvdbAPIRemoveCommand, RemoveNonExistingDB)
 TEST_F(kvdbAPIRemoveCommand, RemoveReturnsOkWithNonExistingKeyName)
 {
     constexpr auto keyName = "ANOTHER_KEY_NAME";
-    api::CommandFn cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = kvdbRemoveKeyCmd(kvdbAPIRemoveCommand::kvdbManager));
     const auto response = cmd(getParametersInJson(DB_NAME, keyName));
 
