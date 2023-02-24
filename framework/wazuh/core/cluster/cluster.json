@@ -88,7 +88,7 @@
             "keep_alive": 60,
             "connection_retry": 10,
             "max_failed_keepalive_attempts": 2,
-            "agent_groups_mismatch_limit": 10
+            "agent_groups_mismatch_limit": 5
         },
 
         "master": {
