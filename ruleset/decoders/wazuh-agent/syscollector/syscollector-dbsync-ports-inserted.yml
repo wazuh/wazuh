@@ -73,12 +73,12 @@ normalize:
       - ~json.data.inode: ""
 
   - check:
-      - ~json.data.state: +s_ne//
+      - ~json.data.state: +s_ne/
     map:
       - ~json.data.state: +s_replace/|/$~escaped_pipe_char
       - ~json.data.state: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.state: +s_eq//
+      - ~json.data.state: +s_eq/
     map:
       - ~json.data.state: "NULL"
   - check:
@@ -92,12 +92,12 @@ normalize:
       - ~json.data.pid: ""
 
   - check:
-      - ~json.data.process: +s_ne//
+      - ~json.data.process: +s_ne/
     map:
       - ~json.data.process: +s_replace/|/$~escaped_pipe_char
       - ~json.data.process: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.process: +s_eq//
+      - ~json.data.process: +s_eq/
     map:
       - ~json.data.process: "NULL"
   - check:

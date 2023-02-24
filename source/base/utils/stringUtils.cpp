@@ -50,15 +50,14 @@ std::vector<std::string> splitEscaped(std::string_view input, const char& splitC
 {
     std::vector<std::string> splitted;
     // Add first segment
-    splitted.push_back("");
+    splitted.emplace_back("");
 
-    auto i = 0;
-    for (; i < input.size() - 1; ++i)
+    for (std::size_t i = 0; i < input.size(); ++i)
     {
-        auto thisChar = input.at(i);
-        if (thisChar == escape)
+        const auto& thisChar = input[i];
+        if (thisChar == escape && i + 1 < input.size())
         {
-            auto nextChar = input.at(i+1);
+            const auto& nextChar = input[i+1];
             // Escape char
             if (nextChar == escape || nextChar == splitChar)
             {
@@ -79,12 +78,6 @@ std::vector<std::string> splitEscaped(std::string_view input, const char& splitC
         {
             splitted.back() += thisChar;
         }
-    }
-
-    // Handle last character
-    if ((i == input.size() - 1) && input.at(i) != splitChar)
-    {
-        splitted.back() += input.at(i);
     }
 
     return splitted;

@@ -208,7 +208,7 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
                 catch (const std::exception& e)
                 {
                     throw std::runtime_error(
-                        fmt::format("\"{}\" function: Could not convert parameter \"{}\" to int", name, param.m_value));
+                        fmt::format("\"{}\" function: Could not convert parameter \"{}\" to int: {}", name, param.m_value, e.what()));
                 }
                 if (IntOperator::DIV == op && 0 == rValue)
                 {

@@ -33,12 +33,12 @@ normalize:
       - ~json.data.scan_time: "NULL"
 
   - check:
-      - ~json.data.name: +s_ne//
+      - ~json.data.name: +s_ne/
     map:
       - ~json.data.name: +s_replace/|/$~escaped_pipe_char
       - ~json.data.name: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.name: +s_eq//
+      - ~json.data.name: +s_eq/
     map:
       - ~json.data.name: "NULL"
   - check:
@@ -47,12 +47,12 @@ normalize:
       - ~json.data.name: "NULL"
 
   - check:
-      - ~json.data.adapter: +s_ne//
+      - ~json.data.adapter: +s_ne/
     map:
       - ~json.data.adapter: +s_replace/|/$~escaped_pipe_char
       - ~json.data.adapter: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.adapter: +s_eq//
+      - ~json.data.adapter: +s_eq/
     map:
       - ~json.data.adapter: "NULL"
   - check: +ef_not_exists/~json.data.adapter OR +t_is_null/~json.data.adapter
@@ -60,12 +60,12 @@ normalize:
       - ~json.data.adapter: "NULL"
 
   - check:
-      - ~json.data.type: +s_ne//
+      - ~json.data.type: +s_ne/
     map:
       - ~json.data.type: +s_replace/|/$~escaped_pipe_char
       - ~json.data.type: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.type: +s_eq//
+      - ~json.data.type: +s_eq/
     map:
       - ~json.data.type: "NULL"
   - check:
@@ -74,12 +74,12 @@ normalize:
       - ~json.data.type: "NULL"
 
   - check:
-      - ~json.data.state: +s_ne//
+      - ~json.data.state: +s_ne/
     map:
       - ~json.data.state: +s_replace/|/$~escaped_pipe_char
       - ~json.data.state: +s_replace/NULL/_NULL_
   - check:
-      - ~json.data.state: +s_eq//
+      - ~json.data.state: +s_eq/
     map:
       - ~json.data.state: "NULL"
   - check:
@@ -164,7 +164,7 @@ normalize:
       - ~do_update_kvdb: false
 
   - check:
-      - ~query_response: +s_ne//
+      - ~query_response: +s_ne/
     map:
       - ~query_response_values: +r_ext/$~query_response/\|(.*)
       - ~array_of_field: +s_to_array/$~query_response_values/|
