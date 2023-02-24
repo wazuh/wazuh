@@ -55,11 +55,10 @@ protected:
 
 TEST_F(HistogramTest, example)
 {
-  m_spContext->exporterType = ExportersTypes::Logging;
   m_spContext->loggingFileExport = true;
   m_spContext->outputFile = "histrogram.txt";
   m_spContext->providerType = ProviderTypes::Meter;
-  m_spContext->instrumentType = opentelemetry::sdk::metrics::InstrumentType::kHistogram;
+  m_spContext->instrumentType = InstrumentTypes::Histogram;
   m_spContext->histogramVector = {0.0,    50.0,   100.0,  250.0,   500.0,  750.0,
                                           1000.0, 2500.0, 5000.0, 10000.0, 20000.0};
   m_spContext->export_interval_millis = std::chrono::milliseconds(1000);

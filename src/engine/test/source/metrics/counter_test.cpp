@@ -42,11 +42,10 @@ TEST_F(MetricsInstrumentationTest, CounterTest)
     default. The reader periodically collects metrics from the Aggregation Store and
     exports them.
     */
-    m_spContext->exporterType = ExportersTypes::Logging;
     m_spContext->loggingFileExport = true;
     m_spContext->outputFile = "counter.txt";
     m_spContext->providerType = ProviderTypes::Meter;
-    m_spContext->instrumentType = opentelemetry::sdk::metrics::InstrumentType::kCounter;
+    m_spContext->instrumentType = InstrumentTypes::Counter;
     m_spContext->export_interval_millis = std::chrono::milliseconds(1000);
     m_spContext->export_timeout_millis = std::chrono::milliseconds(500);
     m_spContext->counterName = "example";

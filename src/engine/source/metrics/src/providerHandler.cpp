@@ -35,12 +35,12 @@ void ProviderHandler::create(std::shared_ptr<MetricsContext> data)
             data->meterProvider->AddMetricReader(std::move(data->reader));
             switch (data->instrumentType)
             {
-                case opentelemetry::sdk::metrics::InstrumentType::kHistogram:
+                case InstrumentTypes::Histogram:
                 {
                     std::string version{"1.2.0"};
                     std::string schema{"https://opentelemetry.io/schemas/1.2.0"};
                     auto name = data->histogramName + "_histogram";
-                    auto instrumentSelector = std::unique_ptr<opentelemetry::sdk::metrics::InstrumentSelector>(new opentelemetry::sdk::metrics::InstrumentSelector(data->instrumentType, name));
+                    auto instrumentSelector = std::unique_ptr<opentelemetry::sdk::metrics::InstrumentSelector>(new opentelemetry::sdk::metrics::InstrumentSelector(opentelemetry::sdk::metrics::InstrumentType::kHistogram, name));
                     auto meterSelector = std::unique_ptr<opentelemetry::sdk::metrics::MeterSelector>(new opentelemetry::sdk::metrics::MeterSelector(data->histogramName, version, schema));
                     std::shared_ptr<opentelemetry::sdk::metrics::AggregationConfig> aggregation_config {new opentelemetry::sdk::metrics::HistogramAggregationConfig};
                     static_cast<opentelemetry::sdk::metrics::HistogramAggregationConfig *>(aggregation_config.get())->boundaries_ = data->histogramVector;
@@ -50,12 +50,12 @@ void ProviderHandler::create(std::shared_ptr<MetricsContext> data)
                     opentelemetry::metrics::Provider::SetMeterProvider(provider);
                     break;
                 }
-                case opentelemetry::sdk::metrics::InstrumentType::kCounter:
+                case InstrumentTypes::Counter:
                 {
                     std::string version{"1.2.0"};
                     std::string schema{"https://opentelemetry.io/schemas/1.2.0"};
                     auto name = data->counterName + "_counter";
-                    auto instrumentSelector = std::unique_ptr<opentelemetry::sdk::metrics::InstrumentSelector>(new opentelemetry::sdk::metrics::InstrumentSelector(data->instrumentType, name));
+                    auto instrumentSelector = std::unique_ptr<opentelemetry::sdk::metrics::InstrumentSelector>(new opentelemetry::sdk::metrics::InstrumentSelector(opentelemetry::sdk::metrics::InstrumentType::kCounter, name));
                     auto meterSelector = std::unique_ptr<opentelemetry::sdk::metrics::MeterSelector>(new opentelemetry::sdk::metrics::MeterSelector(data->counterName, version, schema));
                     std::unique_ptr<opentelemetry::sdk::metrics::View> counterView{new opentelemetry::sdk::metrics::View{
                     data->counterName, "description", opentelemetry::sdk::metrics::AggregationType::kDefault}};

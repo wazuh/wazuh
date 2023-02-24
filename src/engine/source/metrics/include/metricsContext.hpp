@@ -35,8 +35,16 @@ enum class ProviderTypes
     Tracer
 };
 
+enum class InstrumentTypes
+{
+    Counter,
+    Histogram,
+    Gauge
+};
+
 struct MetricsContext
 {
+    bool enable;
     bool loggingFileExport;
     std::string outputFile;
     std::string histogramName;
@@ -45,7 +53,7 @@ struct MetricsContext
     ExportersTypes exporterType;
     ProcessorsTypes processorType;
     ProviderTypes providerType;
-    opentelemetry::sdk::metrics::InstrumentType instrumentType;
+    InstrumentTypes instrumentType;
     std::vector<double> histogramVector;
     std::unique_ptr<opentelemetry::sdk::trace::SpanExporter> exporter;
     std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter> metricExporter;

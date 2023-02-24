@@ -1,5 +1,6 @@
 set(ENGINE_METRICS_SOURCE_DIR ${ENGINE_SOURCE_DIR}/metrics/src)
 set(ENGINE_METRICS_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/metrics/include)
+file(COPY ${CMAKE_SOURCE_DIR}/source/metrics/input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 ####################################################################################################
 # Dependencies

@@ -1,0 +1,22 @@
+[
+    {
+        "name": "Sockets",
+        "enable": true,
+        "signalType" : "meter",
+        "subtype": "counter",
+        "outputFile": "counterOne.txt",
+        "loggingFileExport": true,
+        "exportIntervalMillis": 1000,
+        "exportTimeoutMillis": 500
+    },
+    {
+        "name": "Request",
+        "enable": true,
+        "signalType" : "meter",
+        "subtype": "counter",
+        "outputFile": "counterTwo.txt",
+        "loggingFileExport": true,
+        "exportIntervalMillis": 1000,
+        "exportTimeoutMillis": 500
+    }
+]
