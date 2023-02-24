@@ -1221,28 +1221,6 @@ class AbstractDatabaseBackend:
         raise NotImplementedError
 
 
-class SQLiteBackend(AbstractDatabaseBackend):
-    """
-    This class describes a sqlite database backend that executes database queries.
-    """
-
-    def __init__(self, db_path):
-        self.db_path = db_path
-        super().__init__()
-
-    def connect_to_db(self):
-        if not glob.glob(self.db_path):
-            raise WazuhInternalError(1600)
-        return Connection(self.db_path)
-
-    def _get_data(self):
-        return [{k: v for k, v in db_tuple.items() if v is not None} for db_tuple in self.conn]
-
-    def execute(self, query, request, count=False):
-        self.conn.execute(query, request)
-        return self._get_data() if not count else self.conn.fetch()
-
-
 class WazuhDBBackend(AbstractDatabaseBackend):
     """
     This class describes a wazuh db backend that executes database queries.

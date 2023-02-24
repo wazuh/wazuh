@@ -213,6 +213,62 @@ TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrectEscapeCharacterEmptyResult
     EXPECT_EQ(Utils::substrOnFirstOccurrence("\n", "\n"), "");
 }
 
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedSimple)
+{
+    std::string stringBase { "hello:world" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "hello");
+    EXPECT_EQ(retVal.second, "world");
+}
+
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedSimpleEnd)
+{
+    std::string stringBase { "hello:" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "hello");
+    EXPECT_EQ(retVal.second, "");
+}
+
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedSimpleDoubleDelimiterEnd)
+{
+    std::string stringBase { "hello:world:" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "hello");
+    EXPECT_EQ(retVal.second, "world:");
+}
+
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedSimpleDoubleEnd)
+{
+    std::string stringBase { "hello::" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "hello");
+    EXPECT_EQ(retVal.second, ":");
+}
+
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedSimpleEmptyDoubleEnd)
+{
+    std::string stringBase { "::" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "");
+    EXPECT_EQ(retVal.second, ":");
+}
+
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedComplex)
+{
+    std::string stringBase { "he\\:llo:world" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "he\\:llo");
+    EXPECT_EQ(retVal.second, "world");
+}
+
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedComplexEnd)
+{
+    std::string stringBase { "he\\:llo:" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "he\\:llo");
+    EXPECT_EQ(retVal.second, "");
+}
+
 TEST_F(StringUtilsTest, findRegexInStringNotStartWith)
 {
     std::string matchedValue;

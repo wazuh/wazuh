@@ -34,6 +34,7 @@ class ConnectionWrapper: public IConnection
         ~ConnectionWrapper() = default;
         MOCK_METHOD(void, execute, (const std::string&), (override));
         MOCK_METHOD(void, close, (), (override));
+        MOCK_METHOD(int64_t, changes, (), (const override));
         MOCK_METHOD((const std::shared_ptr<sqlite3>&), db, (), (const override));
 };
 

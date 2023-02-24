@@ -29,6 +29,7 @@
 #include <thread>
 #include "json.hpp"
 #include "commonDefs.h"
+#include "builder.hpp"
 
 using SyncCallbackData = const std::function<void(const std::string&)>;
 
@@ -110,6 +111,227 @@ private:
     RSYNC_HANDLE m_handle;
     bool m_shouldBeRemoved;
 
+};
+
+template <typename T>
+class EXPORTED Configuration : public Utils::Builder<T>
+{
+    protected:
+        nlohmann::json m_jsConfiguration;
+    public:
+        Configuration() = default;
+        // LCOV_EXCL_START
+        virtual ~Configuration() = default;
+        // LCOV_EXCL_STOP
+        nlohmann::json& config()
+        {
+            return m_jsConfiguration;
+        }
+
+        /**
+         * @brief Set table name.
+         *
+         * @param table Table name to be queried.
+         *
+         */
+        T& table(const std::string& table)
+        {
+            m_jsConfiguration["table"] = table;
+            return static_cast<T&>(*this); // Return reference to self
+        }
+
+        /**
+         * @brief Set component name.
+         *
+         * @param component Component name to be established.
+         *
+         */
+        T& component(const std::string& component)
+        {
+            m_jsConfiguration["component"] = component;
+            return static_cast<T&>(*this); // Return reference to self
+        }
+
+        /**
+         * @brief Set index.
+         *
+         * @param index Index to be established.
+         *
+         */
+        T& index(const std::string& index)
+        {
+            m_jsConfiguration["index"] = index;
+            return static_cast<T&>(*this); // Return reference to self
+        }
+
+        /**
+         * @brief Set last event field.
+         *
+         * @param lastEvent last event field name to be established.
+         *
+         */
+        T& lastEvent(const std::string& lastEvent)
+        {
+            m_jsConfiguration["last_event"] = lastEvent;
+            return static_cast<T&>(*this); // Return reference to self
+        }
+
+        /**
+         * @brief Set checksumField name.
+         *
+         * @param checksumField Component name to be established.
+         *
+         */
+        T& checksumField(const std::string& checksumField)
+        {
+            m_jsConfiguration["checksum_field"] = checksumField;
+            return static_cast<T&>(*this); // Return reference to self
+        }
+};
+
+class EXPORTED QueryParameter final : public Utils::Builder<QueryParameter>
+{
+    protected:
+        nlohmann::json m_jsQueryParameter;
+    public:
+        QueryParameter() = default;
+        // LCOV_EXCL_START
+        virtual ~QueryParameter() = default;
+        // LCOV_EXCL_STOP
+
+        /**
+         * @brief Get query parameter json.
+         *
+         * @return Query parameter json.
+         */
+        const nlohmann::json& queryParameter()
+        {
+            return m_jsQueryParameter;
+        }
+
+        /**
+         * @brief Set row filter field.
+         *
+         * @param rowFilter Field name to be used as a row filter.
+         */
+        QueryParameter & rowFilter(const std::string& filter);
+
+        /**
+         * @brief Set column list to be queried.
+         *
+         * @param columns Column list to be queried.
+         */
+        QueryParameter & columnList(const std::vector<std::string>& fields);
+
+        /**
+         * @brief Set distinct flag.
+         *
+         * @param distinct Distinct flag to be set.
+         */
+        QueryParameter & distinctOpt(const bool distinct);
+
+        /**
+         * @brief Set order by field.
+         *
+         * @param orderBy Field name to be used as order by.
+         */
+        QueryParameter & orderByOpt(const std::string& orderBy);
+
+        /**
+         * @brief Set count field name.
+         *
+         * @param countFieldName Field name to be used as count.
+         */
+        QueryParameter & countFieldName(const std::string& countFieldName);
+
+        /**
+         * @brief Set count limit value.
+         *
+         * @param count Count limit to be set.
+         */
+        QueryParameter & countOpt(const uint32_t count);
+};
+
+class EXPORTED RegisterConfiguration final : public Configuration<RegisterConfiguration>
+{
+    public:
+        RegisterConfiguration() = default;
+        // LCOV_EXCL_START
+        virtual ~RegisterConfiguration() = default;
+        // LCOV_EXCL_STOP
+
+        /**
+        * @brief Set the decoder type to be applied in the received message.
+        *
+        * @param decoderType Decoder type to be applied in the received message.
+        *
+        */
+        RegisterConfiguration & decoderType(const std::string& decoderType);
+
+        /**
+         * @brief Set the nodata object to be used during the selection of data when all data are requested.
+        *
+        * @param parameter Nodata object to be used during the selection of data when all data are requested.
+        *
+        */
+        RegisterConfiguration & noData(QueryParameter& parameter);
+
+        /**
+         * @brief Set the query parameter to be used during the binary search to get the number of rows.
+         *
+         * @param parameter Query parameter to be used during the binary search to get the number of rows.
+         *
+         */
+        RegisterConfiguration & countRange(QueryParameter& parameter);
+
+        /**
+        * @brief Set the query parameter to be used during the single row search.
+        *
+        * @param parameter Query parameter to be used during the single row search.
+        *
+        */
+        RegisterConfiguration & rowData(QueryParameter& parameter);
+
+        /**
+         * @brief Set the query parameter to be used during the selection of data for the binary search.
+         *
+         * @param parameter Query parameter to be used during the selection of data for the binary search.
+         *
+         */
+        RegisterConfiguration & rangeChecksum(QueryParameter& parameter);
+};
+
+class EXPORTED StartSyncConfiguration final : public Configuration<StartSyncConfiguration>
+{
+    public:
+        StartSyncConfiguration() = default;
+        // LCOV_EXCL_START
+        virtual ~StartSyncConfiguration() = default;
+        // LCOV_EXCL_STOP
+
+        /**
+         * @brief Set the query parameter to be used during the selection of data for the binary search on the left side.
+         *
+         * @param parameter Query parameter to be used during the selection of data for the binary search on the left side.
+         *
+         */
+        StartSyncConfiguration & first(QueryParameter& parameter);
+
+        /**
+         * @brief Set the query parameter to be used during the selection of data for the binary search on the right side.
+         *
+         * @param parameter Query parameter to be used during the selection of data for the binary search on the right side.
+         *
+         */
+        StartSyncConfiguration & last(QueryParameter& parameter);
+
+        /**
+         * @brief Set the query parameter to be used during the selection of data used to get the global checksum value.
+         *
+         * @param parameter Query parameter to be used during the selection of data for to get the global checksum value.
+         *
+         */
+        StartSyncConfiguration & rangeChecksum(QueryParameter& parameter);
 };
 
 

@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 - Added a new wazuh-clusterd task for agent-groups info synchronization. ([#11753](https://github.com/wazuh/wazuh/pull/11753))
 - Added unit tests for functions in charge of getting ruleset sync status. ([#14950](https://github.com/wazuh/wazuh/pull/14950))
 - Added auto-vacuum mechanism in wazuh-db. ([#14950](https://github.com/wazuh/wazuh/pull/14950))
-- Delta events in Syscollector when data gets changed may now produce alerts. ([#10843](https://github.com/wazuh/wazuh/pull/10843)) 
+- Delta events in Syscollector when data gets changed may now produce alerts. ([#10843](https://github.com/wazuh/wazuh/pull/10843))
 
 #### Changed
 
@@ -36,13 +36,15 @@ All notable changes to this project will be documented in this file.
 - Added the update field in the CPE Helper for Vulnerability Detector. ([#13741](https://github.com/wazuh/wazuh/pull/13741))
 - Prevented agents with the same ID from connecting to the manager simultaneously. ([#11702](https://github.com/wazuh/wazuh/pull/11702))
 - wazuh-analysisd, wazuh-remoted and wazuh-db metrics have been extended. ([#13713](https://github.com/wazuh/wazuh/pull/13713))
-- Minimized and optimized wazuh-clusterd number of messages from workers to master related to agent-info and agent-groups tasks. ([#11753](https://github.com/wazuh/wazuh/pull/11753))
+- Minimized and optimized wazuh-clusterd number of messages from workers to master related to agent-info tasks. ([#11753](https://github.com/wazuh/wazuh/pull/11753))
 - Improved performance of the `agent_groups` CLI when listing agents belonging to a group. ([#14244](https://github.com/wazuh/wazuh/pull/14244)
 - Changed wazuh-clusterd binary behaviour to kill any existing cluster processes when executed. ([#14475](https://github.com/wazuh/wazuh/pull/14475))
 - Changed wazuh-clusterd tasks to wait asynchronously for responses coming from wazuh-db. ([#14791](https://github.com/wazuh/wazuh/pull/14843))
 - Use zlib for zip compression in cluster synchronization. ([#11190](https://github.com/wazuh/wazuh/pull/11190))
 - Added mechanism to dynamically adjust zip size limit in Integrity sync. ([#12241](https://github.com/wazuh/wazuh/pull/12241))
 - Deprecate status field in SCA. ([#15853](https://github.com/wazuh/wazuh/pull/15853))
+- Agent group guessing (based on configuration hash) now writes the new group directly on the master node. ([#16066](https://github.com/wazuh/wazuh/pull/16066))
+- Added delete on cascade of belongs table entries when a group is deleted. ([#16098](https://github.com/wazuh/wazuh/issues/16098))
 
 
 #### Fixed
@@ -70,6 +72,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Virustotal integration to support non UTF-8 characters. ([#13531](https://github.com/wazuh/wazuh/pull/13531))
 - Fixed a bug masking as Timeout any error that might occur while waiting to receive files in the cluster. ([#14922](https://github.com/wazuh/wazuh/pull/14922))
 - Fixed a read buffer overflow in wazuh-authd when parsing requests. ([#15876](https://github.com/wazuh/wazuh/pull/15876))
+- Applied workaround for bpo-46309 used in cluster to wazuh-db communication.([#16012](https://github.com/wazuh/wazuh/pull/16012))
 
 #### Removed
 
@@ -141,7 +144,7 @@ All notable changes to this project will be documented in this file.
 - Fixed AWS integration database maintenance error managament. ([#13185](https://github.com/wazuh/wazuh/pull/13185))
 - The default delay at GitHub integration has been increased to 30 seconds. ([#13674](https://github.com/wazuh/wazuh/pull/13674))
 - Logcollector has been fixed to allow locations containing colons (:). ([#14706](https://github.com/wazuh/wazuh/pull/14706))
-- Fixed system architecture reporting in Logcollector on Apple Silicon devices. ([#13835](https://github.com/wazuh/wazuh/pull/13835))
+- Fixed system architecture reporting in Syscollector on Apple Silicon devices. ([#13835](https://github.com/wazuh/wazuh/pull/13835))
 - The C++ standard library and the GCC runtime library is included with Wazuh. ([#14190](https://github.com/wazuh/wazuh/pull/14190))
 - Fixed missing inventory cleaning message in Syscollector. ([#13877](https://github.com/wazuh/wazuh/pull/13877))
 - Fixed WPK upgrade issue on Windows agents due to process locking. ([#15322](https://github.com/wazuh/wazuh/pull/15322))
@@ -149,6 +152,9 @@ All notable changes to this project will be documented in this file.
 - Fixed the parse of ALB logs splitting `client_port`, `target_port` and `target_port_list` in separated `ip` and `port` for each key. ([14525](https://github.com/wazuh/wazuh/pull/14525))
 - Fixed a bug that prevent processing Macie logs with problematic ipGeolocation values. ([15335](https://github.com/wazuh/wazuh/pull/15335))
 - Fixed GCP integration module error messages. ([#15584](https://github.com/wazuh/wazuh/pull/15584))
+- Fixed an error that prevented the agent on Windows from stopping correctly. ([#15575](https://github.com/wazuh/wazuh/pull/15575))
+- Fixed Azure integration credentials link. ([#16140](https://github.com/wazuh/wazuh/pull/16140))
+
 
 #### Removed
 
@@ -219,7 +225,7 @@ All notable changes to this project will be documented in this file.
 - Deprecated `GET /agents/{agent_id}/group/is_sync` endpoint. ([#12365](https://github.com/wazuh/wazuh/issues/12365))
 - Deprecated `GET /manager/stats/analysisd`, `GET /manager/stats/remoted`, `GET /cluster/{node_id}stats/analysisd`, and `GET /cluster/{node_id}stats/remoted` API endpoints. ([#14230](https://github.com/wazuh/wazuh/pull/14230))
 
-### Ruleset 
+### Ruleset
 
 #### Added
 
@@ -241,13 +247,13 @@ All notable changes to this project will be documented in this file.
 - Updated 0580-win-security_rules.xml rules. ([#13579](https://github.com/wazuh/wazuh/pull/13579))
 - Updated Wazuh MITRE ATT&CK database to version 11.3. ([#13622](https://github.com/wazuh/wazuh/pull/13622))
 - Updated detection rules in 0840-win_event_channel.xml. ([#13633](https://github.com/wazuh/wazuh/pull/13633))
-- SCA policy for Ubuntu Linux 20.04 rework. ([#15070](https://github.com/wazuh/wazuh/pull/15070)) 
+- SCA policy for Ubuntu Linux 20.04 rework. ([#15070](https://github.com/wazuh/wazuh/pull/15070))
 - Updated Ubuntu Linux 22.04 SCA Policy with CIS Ubuntu Linux 22.04 LTS Benchmark v1.0.0. ([#15051](https://github.com/wazuh/wazuh/pull/15051))
 
 #### Fixed
 
 - Fixed OpenWRT decoder fixed to parse UFW logs. ([#11613](https://github.com/wazuh/wazuh/pull/11613))
-- Bug fix in wazuh-api-fields decoder. ([#14807](https://github.com/wazuh/wazuh/pull/14807)) 
+- Bug fix in wazuh-api-fields decoder. ([#14807](https://github.com/wazuh/wazuh/pull/14807))
 - Fixed deprecated MITRE tags in rules. ([#13567](https://github.com/wazuh/wazuh/pull/13567))
 - SCA checks IDs are not unique. ([#15241](https://github.com/wazuh/wazuh/pull/15241))
 - Fixed regex in check 5.1.1 of Ubuntu 20.04 SCA. ([#14513](https://github.com/wazuh/wazuh/pull/14513))

@@ -90,7 +90,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,-
                             -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,w_get_timestamp -Wl,--wrap,wdb_exec_stmt_silent -Wl,--wrap,w_compress_gzfile \
                             -Wl,--wrap,sqlite3_finalize -Wl,--wrap,unlink -Wl,--wrap,getpid -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,readdir \
                             -Wl,--wrap,stat -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_close -Wl,--wrap,rename -Wl,--wrap,time \
-                            -Wl,--wrap,wdb_exec_stmt_single_column ${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS}")
+                            -Wl,--wrap,wdb_exec_stmt_single_column -Wl,--wrap,w_is_single_node ${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_agents")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_init_stmt_in_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,wdb_exec_stmt_silent  -Wl,--wrap,sqlite3_step \
@@ -110,6 +110,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,strerror \
                              -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,wdbc_query_parse_json -Wl,--wrap,wdbc_query_parse \
                              -Wl,--wrap,wdb_create_profile -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,chown \
                              -Wl,--wrap,chmod -Wl,--wrap,IsDir -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,get_node_name \
+                             -Wl,--wrap,rbtree_insert \
                              -Wl,--wrap,stat -Wl,--wrap,fgetpos ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_agents_helpers")

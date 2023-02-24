@@ -307,5 +307,8 @@ extern const char *__local_name;
 #include "enrollment_op.h"
 #include "buffer_op.h"
 #include "atomic.h"
+#include "logging_helper.h"
+#include "shared_modules/rsync/include/rsync.h"
+#include "shared_modules/dbsync/include/dbsync.h"
 
 #endif /* SHARED_H */

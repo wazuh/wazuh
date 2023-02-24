@@ -254,15 +254,7 @@ void RemoteSync::startSync(const DBSYNC_HANDLE   dbsyncHandle,
                            const nlohmann::json& startConfiguration,
                            SyncCallbackData      callbackData)
 {
-    const auto callbackWrapper
-    {
-        [callbackData](const std::string & payload)
-        {
-            callbackData(payload);
-        }
-    };
-    RSyncImplementation::instance().startRSync(m_handle, std::make_shared<DBSyncWrapper>(dbsyncHandle), startConfiguration, callbackWrapper);
-
+    RSyncImplementation::instance().startRSync(m_handle, std::make_shared<DBSyncWrapper>(dbsyncHandle), startConfiguration, callbackData);
 }
 
 void RemoteSync::registerSyncID(const std::string&    messageHeaderID,
@@ -270,17 +262,94 @@ void RemoteSync::registerSyncID(const std::string&    messageHeaderID,
                                 const nlohmann::json& syncConfiguration,
                                 SyncCallbackData      callbackData)
 {
-    const auto callbackWrapper
-    {
-        [callbackData](const std::string & payload)
-        {
-            callbackData(payload);
-        }
-    };
-    RSyncImplementation::instance().registerSyncId(m_handle, messageHeaderID, std::make_shared<DBSyncWrapper>(dbsyncHandle), syncConfiguration, callbackWrapper);
+    RSyncImplementation::instance().registerSyncId(m_handle, messageHeaderID, std::make_shared<DBSyncWrapper>(dbsyncHandle), syncConfiguration, callbackData);
 }
 
 void RemoteSync::pushMessage(const std::vector<uint8_t>& payload)
 {
     RSyncImplementation::instance().push(m_handle, payload);
+}
+
+QueryParameter& QueryParameter::rowFilter(const std::string& rowFilter)
+{
+    m_jsQueryParameter["row_filter"] = rowFilter;
+    return *this;
+}
+
+QueryParameter& QueryParameter::columnList(const std::vector<std::string>& columns)
+{
+    m_jsQueryParameter["column_list"] = columns;
+    return *this;
+}
+
+QueryParameter& QueryParameter::distinctOpt(const bool distinct)
+{
+    m_jsQueryParameter["distinct_opt"] = distinct;
+    return *this;
+}
+
+QueryParameter& QueryParameter::orderByOpt(const std::string& orderBy)
+{
+    m_jsQueryParameter["order_by_opt"] = orderBy;
+    return *this;
+}
+
+QueryParameter& QueryParameter::countOpt(const uint32_t count)
+{
+    m_jsQueryParameter["count_opt"] = count;
+    return *this;
+}
+
+QueryParameter& QueryParameter::countFieldName(const std::string& fieldName)
+{
+    m_jsQueryParameter["count_field_name"] = fieldName;
+    return *this;
+}
+
+RegisterConfiguration& RegisterConfiguration::decoderType(const std::string& parameter)
+{
+    m_jsConfiguration["decoder_type"] = parameter;
+    return *this;
+}
+
+RegisterConfiguration& RegisterConfiguration::noData(QueryParameter& parameter)
+{
+    m_jsConfiguration["no_data_query_json"] = parameter.queryParameter();
+    return *this;
+}
+
+RegisterConfiguration& RegisterConfiguration::countRange(QueryParameter& parameter)
+{
+    m_jsConfiguration["count_range_query_json"] = parameter.queryParameter();
+    return *this;
+}
+
+RegisterConfiguration& RegisterConfiguration::rowData(QueryParameter& parameter)
+{
+    m_jsConfiguration["row_data_query_json"] = parameter.queryParameter();
+    return *this;
+}
+
+RegisterConfiguration& RegisterConfiguration::rangeChecksum(QueryParameter& parameter)
+{
+    m_jsConfiguration["range_checksum_query_json"] = parameter.queryParameter();
+    return *this;
+}
+
+StartSyncConfiguration& StartSyncConfiguration::first(QueryParameter& parameter)
+{
+    m_jsConfiguration["first_query"] = parameter.queryParameter();
+    return *this;
+}
+
+StartSyncConfiguration& StartSyncConfiguration::last(QueryParameter& parameter)
+{
+    m_jsConfiguration["last_query"] = parameter.queryParameter();
+    return *this;
+}
+
+StartSyncConfiguration& StartSyncConfiguration::rangeChecksum(QueryParameter& parameter)
+{
+    m_jsConfiguration["range_checksum_query_json"] = parameter.queryParameter();
+    return *this;
 }

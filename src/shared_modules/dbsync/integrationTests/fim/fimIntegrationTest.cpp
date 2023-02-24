@@ -16,7 +16,6 @@
 #include "fimIntegrationTest.h"
 #include "fimDbDump.h"
 #include "cjsonSmartDeleter.hpp"
-
 using ::testing::_;
 
 constexpr auto DATABASE_TEMP {"FIM_TEMP.db"};

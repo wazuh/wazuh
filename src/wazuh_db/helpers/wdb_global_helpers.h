@@ -125,6 +125,19 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
 int* wdb_get_all_agents(bool include_manager, int *sock);
 
 /**
+ * @brief Returns a RB tree containing the ID of every agent (except 0).
+ * This method creates and sends a command to WazuhDB to receive the ID of every agent.
+ * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
+ * The RB tree is heap allocated memory that must be freed by the caller.
+ *
+ * @param [in] include_manager flag to include the manager on agents list
+ * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Pointer to the RB tree, on success.
+ * @retval NULL on errors.
+ */
+rb_tree* wdb_get_all_agents_rbtree(bool include_manager, int *sock);
+
+/**
  * @brief Find agent id by name and address.
  *
  * @param[in] name Name of the agent.

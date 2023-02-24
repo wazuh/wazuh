@@ -15,11 +15,13 @@
 #define _REGISTRY_HELPER_H
 
 #include <string>
+#include <winsock2.h>
 #include <windows.h>
 #include <winreg.h>
 #include <cstdio>
 #include <memory>
 #include "encodingWindowsHelper.h"
+#include "windowsHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -194,6 +196,29 @@ namespace Utils
                 catch (...)
                 {
                     ret = false;
+                }
+
+                return ret;
+            }
+
+            std::string keyModificationDate() const
+            {
+                std::string ret;
+                FILETIME lastModificationTime { };
+                const auto result
+                {
+                    RegQueryInfoKey(m_registryKey, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &lastModificationTime)
+                };
+
+                if (ERROR_SUCCESS == result)
+                {
+                    ULARGE_INTEGER time { };
+
+                    time.LowPart = lastModificationTime.dwLowDateTime;
+                    time.HighPart = lastModificationTime.dwHighDateTime;
+
+                    // Use structure values to build 18-digit LDAP/FILETIME number
+                    ret = Utils::buildTimestamp(time.QuadPart);
                 }
 
                 return ret;

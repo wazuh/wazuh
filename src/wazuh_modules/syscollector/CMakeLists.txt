@@ -10,6 +10,12 @@ endif()
 
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+  add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
+else()
+  add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
+endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
@@ -95,6 +101,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 else()
   string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
   string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
+  set_target_properties(syscollector PROPERTIES LINK_FLAGS "-static-libgcc -static-libstdc++")
   target_link_libraries(syscollector dbsync rsync sysinfo wazuhext -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
 endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 

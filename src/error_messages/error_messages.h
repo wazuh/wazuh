@@ -132,6 +132,7 @@
 #define MAX_RK_MSG        "(1255): Maximum number of global files reached: %d"
 
 /* syscheck */
+#define SK_SHUTDOWN     "(1756): Shutdown received. Releasing resources."
 #define SK_INV_REG      "(1757): Invalid syscheck registry entry: '%s'."
 #define SK_REG_OPEN     "(1758): Unable to open registry key: '%s'."
 
@@ -444,10 +445,7 @@
 #define VU_INVALID_CPE_VERSION      "(5593): Couldn't get the version of the CPE for the %s package."
 
 /* File integrity monitoring error messages*/
-#define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
-#define FIM_ERROR_ACCESING                          "(6601): Error accessing '%s': '%s' (%d)"
 #define FIM_ERROR_WHODATA_SUM_MAX                   "(6603): The whodata sum for '%s' file could not be included in the alert as it is too large."
-#define FIM_ERROR_NOTHING_TOCKECK                   "(6604): No directories to check."
 #define FIM_ERROR_CHECK_THREAD                      "(6605): Could not create the Whodata check thread."
 #define FIM_ERROR_SELECT                            "(6606): Select failed (for real time file integrity monitoring)."
 #define FIM_ERROR_INOTIFY_INITIALIZE                "(6607): Unable to initialize inotify."
@@ -458,7 +456,6 @@
 #define FIM_ERROR_REALTIME_READ_BUFFER              "(6612): Unable to read from real time buffer."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK         "(6613): Real time Windows callback process: '%s' (%lx)."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY   "(6614): Real time call back called, but hash is empty."
-#define FIM_ERROR_UPDATE_ENTRY                      "(6615): Can't update entry invalid file '%s'."
 
 #define FIM_ERROR_AUDIT_MODE                        "(6617): Unable to get audit mode: %s (%d)."
 #define FIM_ERROR_REALTIME_INITIALIZE               "(6618): Unable to initialize real time file monitoring."
@@ -486,7 +483,6 @@
 #define FIM_ERROR_WHODATA_MAXNUM_WATCHES            "(6640): Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d)."
 #define FIM_ERROR_WHODATA_COMPILE_REGEX             "(6641): Cannot compile '%s' regular expression."
 #define FIM_ERROR_WHODATA_HEALTHCHECK_START         "(6642): Audit health check couldn't be completed correctly."
-
 
 #define FIM_ERROR_WHODATA_CONTEXT                   "(6645): Error creating the whodata context. Error %lu."
 #define FIM_ERROR_SACL_ACE_DELETE                   "(6646): DeleteAce() failed restoring the SACLs. Error '%ld'"
@@ -539,21 +535,12 @@
 #define FIM_ERROR_WHODATA_ACE_NUMBER                "(6693): The ACE number %i of '%s' could not be copied to the new ACL."
 #define FIM_ERROR_WHODATA_ACE_NOADDED               "(6694): The new ACE could not be added to '%s'. Error: '%ld'."
 #define FIM_ERROR_WHODATA_SETNAMEDSECURITY          "(6695): SetNamedSecurityInfo() failed. Error: '%lu'"
-#define FIM_CRITICAL_ERROR_DB                       "(6696): Unable to create syscheck database. Exiting."
 #define FIM_CRITICAL_ERROR_OUT_MEM                  "(6697): Out of memory. Exiting."
 #define FIM_CRITICAL_DATA_CREATE                    "(6698): Creating Data Structure: %s. Exiting."
 #define FIM_CRITICAL_ERROR_SELECT                   "(6699): At '%s': select(): %s. Exiting."
 #define FIM_ERROR_INOTIFY_ADD_MAX_REACHED           "(6700): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d': The maximum limit of inotify watches has been reached."
 #define FIM_UNKNOWN_ATTRIBUTE                       "(6701): Unknown attribute '%s' for directory option."
-#define FIM_ERROR_INSERT_INODE_HASH                 "(6702): Unable to add inode to db: '%s' => '%s'"
 
-#define FIM_DB_ERROR_COUNT_RANGE                    "(6703): Couldn't get range size between '%s' and '%s'"
-#define FIM_DB_ERROR_GET_PATH                       "(6704): Couldn't get path of '%s'"
-#define FIM_DB_ERROR_SYNC_DB                        "(6705): Failed to synchronize database."
-#define FIM_DB_ERROR_GET_ROW_PATH                   "(6706): Couldn't get %s %s row's path."
-#define FIM_DB_ERROR_CALC_CHECKSUM                  "(6707): Failed to calculate database checksum."
-#define FIM_DB_ERROR_RM_PATTERN                     "(6708): Failed to delete a range of paths using pattern '%s'."
-#define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
 #define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
 #define FIM_ERROR_GET_ABSOLUTE_PATH                 "(6711): Cannot get absolute path of '%s': %s (%d)"
 #define FIM_DIFF_DELETE_DIFF_FOLDER_ERROR           "(6713): Cannot remove diff folder for file: '%s'"
@@ -569,6 +556,7 @@
 #else
 #define FIM_ERROR_EXPAND_ENV_VAR                    "(6718): Could not expand the environment variable %s (%ld)."
 #endif
+#define FIM_ERROR_TRANSACTION                       "(6719): Could not start DBSync transaction (%s)"
 
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"

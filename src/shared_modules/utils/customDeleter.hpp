@@ -23,4 +23,3 @@ struct CustomDeleter
 };
 
 #endif // _CUSTOM_DELETER_HPP
-

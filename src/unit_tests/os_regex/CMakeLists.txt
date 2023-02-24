@@ -28,7 +28,15 @@ target_link_libraries(OS_REGEX_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate os_regex tests
 list(APPEND os_regex_names "test_os_regex")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND os_regex_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                            -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \
+                            -Wl,--wrap,syscom_dispatch -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                            -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+else()
 list(APPEND os_regex_flags " ")
+endif()
+
 list(APPEND os_regex_def " ")
 
 # Generate os_regex_match tests
@@ -38,7 +46,14 @@ list(APPEND os_regex_def " ")
 
 # OS_Regex execute, regex_matching
 list(APPEND os_regex_names "test_os_regex_execute")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND os_regex_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                            -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \
+                            -Wl,--wrap,syscom_dispatch -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                            -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+else()
 list(APPEND os_regex_flags " ")
+endif()
 set(JSON_PATH_TEST "${CMAKE_CURRENT_SOURCE_DIR}/test_os_regex_execute.json")
 list(APPEND os_regex_def "JSON_PATH_TEST=\"${JSON_PATH_TEST}\"")
 

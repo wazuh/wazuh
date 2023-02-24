@@ -6,11 +6,13 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-
+#include <cJSON.h>
 
 #ifndef WIN_REGISTRY_WRAPPERS_H
 #define WIN_REGISTRY_WRAPPERS_H
 
 void __wrap_fim_registry_scan();
+
+cJSON* __wrap_fim_dbsync_registry_value_json_event();
 
 #endif

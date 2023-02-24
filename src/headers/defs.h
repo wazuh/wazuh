@@ -190,9 +190,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Default group name */
 #define DEFAULT_GROUP "default"
 
-/* Syscheck directory */
-#define SYSCHECK_DIR    "queue/syscheck"
-
 /* Syscollector normalization configs */
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32

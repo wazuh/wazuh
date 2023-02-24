@@ -154,28 +154,96 @@
   <rule id="231" level="7">
     <if_sid>230</if_sid>
     <field name="alert_type">80_percentage</field>
-    <description>The file limit set for this agent is $(file_limit). Now, $(file_count) files are being monitored and all files that come after the limit will not be monitored. Change this setting in centralized configuration or locally on the agent.</description>
+    <field name="fim_db_table">file_entry</field>
+    <description>The maximum limit of files monitored is close to being reached. At this moment there are $(file_count) files and the limit is $(file_limit). If the limit is reached some events can be lost. You can modify this setting in the centralized configuration or locally in the agent.</description>
     <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="232" level="9">
     <if_sid>230</if_sid>
     <field name="alert_type">90_percentage</field>
-    <description>The file limit set for this agent is $(file_limit). Now, $(file_count) files are being monitored and all files that come after the limit will not be monitored. Change this setting in centralized configuration or locally on the agent.</description>
+    <field name="fim_db_table">file_entry</field>
+    <description>The maximum limit of files monitored is close to being reached. At this moment there are $(file_count) files and the limit is $(file_limit). If the limit is reached some events can be lost. You can modify this setting in the centralized configuration or locally in the agent.</description>
     <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="233" level="12">
     <if_sid>230</if_sid>
     <field name="alert_type">full</field>
-    <description>The file limit set for this agent is $(file_limit). Now, $(file_count) files are being monitored and no more files will be monitored. Change this setting in centralized configuration or locally on the agent.</description>
+    <field name="fim_db_table">file_entry</field>
+    <description>The maximum limit of files monitored has been reached. At this moment there are $(file_count) files and the limit is $(file_limit). From this moment some events can be lost. You can modify this setting in the centralized configuration or locally in the agent.</description>
     <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="234" level="3">
     <if_sid>230</if_sid>
     <field name="alert_type">normal</field>
-    <description>The file limit set for this agent is $(file_limit). Now, $(file_count) files are being monitored.</description>
+    <field name="fim_db_table">file_entry</field>
+    <description>At this moment there are $(file_count) files monitored and the limit is $(file_limit).</description>
+    <group>syscheck,fim_db_state,</group>
+  </rule>
+
+  <rule id="235" level="7">
+    <if_sid>230</if_sid>
+    <field name="alert_type">80_percentage</field>
+    <field name="fim_db_table">registry_key</field>
+    <description>The maximum limit of registry keys monitored is close to being reached. At this moment there are $(keys_count) registry values and the limit is $(registry_limit). If the limit is reached some events can be lost. You can modify this setting in the centralized configuration or locally in the agent.</description>
+    <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="236" level="9">
+    <if_sid>230</if_sid>
+    <field name="alert_type">90_percentage</field>
+    <field name="fim_db_table">registry_key</field>
+    <description>The maximum limit of registry keys monitored is close to being reached. At this moment there are $(keys_count) registry values and the limit is $(registry_limit). If the limit is reached some events can be lost. You can modify this setting in the centralized configuration or locally in the agent.</description>
+    <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="237" level="12">
+    <if_sid>230</if_sid>
+    <field name="alert_type">full</field>
+    <field name="fim_db_table">registry_key</field>
+    <description>The maximum limit of registry keys monitored has been reached. At this moment there are $(keys_count) registry values and the limit is $(registry_limit). From this moment some events can be lost. You can modify this setting in the centralized configuration or locally in the agent.</description>
+    <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="238" level="3">
+    <if_sid>230</if_sid>
+    <field name="alert_type">normal</field>
+    <field name="fim_db_table">registry_key</field>
+    <description>At this moment there are $(keys_count) registry keys monitored and the limit is $(registry_limit).</description>
+    <group>syscheck,fim_db_state,</group>
+  </rule>
+
+  <rule id="239" level="7">
+    <if_sid>230</if_sid>
+    <field name="alert_type">80_percentage</field>
+    <field name="fim_db_table">registry_data</field>
+    <description>The maximum limit of registry values monitored is close to being reached. At this moment there are $(values_count) registry values and the limit is $(registry_limit). If the limit is reached some events can be lost. You can modify this setting in the centralized configuration or locally in the agent.</description>
+    <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="240" level="9">
+    <if_sid>230</if_sid>
+    <field name="alert_type">90_percentage</field>
+    <field name="fim_db_table">registry_data</field>
+    <description>The maximum limit of registry values monitored is close to being reached. At this moment there are $(values_count) registry values and the limit is $(registry_limit). If the limit is reached some events can be lost. You can modify this setting in the centralized configuration or locally in the agent.</description>
+    <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="241" level="12">
+    <if_sid>230</if_sid>
+    <field name="alert_type">full</field>
+    <field name="fim_db_table">registry_data</field>
+    <description>The maximum limit of registry values monitored has been reached. At this moment there are $(values_count) registry values and the limit is $(registry_limit). From this moment some events can be lost. You can modify this setting in the centralized configuration or locally in the agent.</description>
+    <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="242" level="3">
+    <if_sid>230</if_sid>
+    <field name="alert_type">normal</field>
+    <field name="fim_db_table">registry_data</field>
+    <description>At this moment there are $(values_count) registry values monitored and the limit is $(registry_limit).</description>
     <group>syscheck,fim_db_state,</group>
   </rule>
 

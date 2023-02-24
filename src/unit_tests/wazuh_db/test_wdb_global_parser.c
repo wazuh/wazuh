@@ -2329,15 +2329,29 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_json(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_sync_agent_groups_get_missing_condition_field(void **state)
+void test_wdb_parse_global_sync_agent_groups_without_condition_field_succes(void **state)
 {
     int ret = 0;
     test_struct_t *data = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"last_id\":1,\"set_synced\":true,\"get_global_hash\":true,\"agent_registration_delta\":0}";
+    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"get_global_hash\":true}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"last_id\":1,\"set_synced\":true,\"get_global_hash\":true,\"agent_registration_delta\":0}");
-    expect_string(__wrap__mdebug1, formatted_msg, "Missing mandatory 'condition' field in sync-agent-groups-get command.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"get_global_hash\":true}");
+
+    cJSON *output = cJSON_CreateArray();
+    cJSON *j_response = cJSON_CreateObject();
+    cJSON *j_data = cJSON_CreateArray();
+    cJSON_AddItemToArray(output, j_response);
+    cJSON_AddItemToObject(j_response, "data", j_data);
+    cJSON_AddStringToObject(j_response, "hash", "random_hash");
+
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, condition, WDB_GROUP_NO_CONDITION);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, last_agent_id, 0);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, set_synced, false);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, get_hash, true);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, agent_registration_delta, 0);
+    will_return(__wrap_wdb_global_sync_agent_groups_get, output);
+    will_return(__wrap_wdb_global_sync_agent_groups_get, WDBC_OK);
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
@@ -2348,8 +2362,8 @@ void test_wdb_parse_global_sync_agent_groups_get_missing_condition_field(void **
 
     ret = wdb_parse(query, data->output, 0);
 
-    assert_string_equal(data->output, "err Invalid JSON data, missing required 'condition' field");
-    assert_int_equal(ret, OS_INVALID);
+    assert_string_equal(data->output, "ok [{\"data\":[],\"hash\":\"random_hash\"}]");
+    assert_int_equal(ret, OS_SUCCESS);
 }
 
 void test_wdb_parse_global_sync_agent_groups_get_invalid_last_id_data_type(void **state)
@@ -2383,6 +2397,29 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_last_id_negative(void *
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"sync_status\",\"last_id\":-1}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid alternative fields data in sync-agent-groups-get command.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get_time);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_sync_agent_groups_get_invalid_condition_data_type(void **state)
+{
+    int ret = 0;
+    test_struct_t *data = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"condition\":10}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":10}");
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid alternative fields data in sync-agent-groups-get command.");
 
     expect_function_call(__wrap_w_inc_queries_total);
@@ -4007,9 +4044,10 @@ int main()
         /* Tests wdb_parse_global_sync_agent_groups_get */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_json, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_missing_condition_field, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_without_condition_field_succes, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_last_id_data_type, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_last_id_negative, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_condition_data_type, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_set_synced_data_type, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_get_hash_data_type, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_agent_registration_delta_data_type, test_setup, test_teardown),

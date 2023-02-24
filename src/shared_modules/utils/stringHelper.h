@@ -256,6 +256,30 @@ namespace Utils
 
         return str;
     }
+
+    static std::pair<std::string, std::string> splitKeyValueNonEscapedDelimiter(const std::string& str,
+                                                                                const char delimiter,
+                                                                                const char escapeChar)
+    {
+        std::pair<std::string, std::string> retVal { std::make_pair(str, "") };
+        const auto findText { std::string{escapeChar} + std::string{delimiter} };
+        auto found { str.find_first_of(findText) };
+        constexpr auto DELIMITER_ESCAPE_LENGTH { 2 };
+
+        while (std::string::npos != found)
+        {
+            if (str.at(found) == delimiter)
+            {
+                retVal = std::make_pair(str.substr(0, found), str.substr(found + 1));
+                break;
+            }
+
+            found = str.find_first_of(findText, found + DELIMITER_ESCAPE_LENGTH);
+        }
+
+        return retVal;
+    }
+
     static bool findRegexInString(const std::string& in,
                                   std::string& match,
                                   const std::regex& pattern,

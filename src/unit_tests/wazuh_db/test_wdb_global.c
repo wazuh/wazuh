@@ -15,6 +15,7 @@
 #include "../wrappers/wazuh/shared/time_op_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/posix/time_wrappers.h"
+#include "../wrappers/wazuh/shared/cluster_op_wrappers.h"
 #include "wazuhdb_op.h"
 
 #define GROUPS_SIZE 10
@@ -92,6 +93,125 @@ void wrap_wdb_exec_stmt_sized_socket_full_call(cJSON* j_array, int column_mode) 
     expect_value(__wrap_wdb_exec_stmt_sized, column_mode, column_mode);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ROW);
     will_return(__wrap_wdb_exec_stmt_sized, j_array);
+}
+
+/**
+ * @brief Configure all the wrappers to simulate a successful call to wdb_global_get_agent_max_group_priority() method
+ * @param agent_id The id of the agent to get the max priority of its groups
+ * @param j_priority_resp The response of the priority query
+ */
+void create_wdb_global_get_agent_max_group_priority_success_call(int agent_id, cJSON* j_priority_resp) {
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_PRIORITY_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, j_priority_resp);
+    expect_function_call(__wrap_cJSON_Delete);
+}
+
+/**
+ * @brief Configure all the wrappers to simulate a successful call to create_wdb_global_validate_groups_success_call() method
+ *
+ * @param agent_id The agent ID the new groups will be assigned to.
+ * @param j_groups_number Existent groups number of agent_id.
+ * @param j_groups Groups to be assigned to agent_id
+ */
+void create_wdb_global_validate_groups_success_call(int agent_id, cJSON *j_groups_number) {
+    /* wdb_global_groups_number_get */
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, j_groups_number);
+    expect_function_call(__wrap_cJSON_Delete);
+}
+
+/**
+ * @brief Configure all the wrappers to simulate a successful call to wdb_global_delete_agent_belong() method
+ * @param agent_id The id of the agent whose groups are being deleted
+ */
+void create_wdb_global_delete_agent_belong_success_call(int agent_id) {
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+}
+
+/**
+ * @brief Configure all the wrappers to simulate a successful call to _wdb_global_unassign_agent_group() method
+ * @param agent_id The id of the agent being removed from the belongs table
+ * @param group_id The id of the group being removed from the the belongs table
+ * @param group_name The name of the group being searched for remove
+ * @param find_group_resp The response of the find group query
+ */
+void create_wdb_global_unassign_agent_group_success_call(int agent_id, int group_id, char* group_name, cJSON* find_group_resp) {
+    // wdb_global_find_group
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, find_group_resp);
+    expect_function_call(__wrap_cJSON_Delete);
+    // wdb_global_delete_tuple_belong
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, group_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+}
+
+/**
+ * @brief Configure all the wrappers to simulate a successful call to wdb_global_calculate_agent_group_csv() method
+ * @param agent_id The id of the agent to calculate its groups csv
+ * @param find_group_resp The response of the find select group query
+ */
+void create_wdb_global_calculate_agent_group_csv_success_call(int agent_id, cJSON* j_group_resp) {
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    /* wdb_exec_stmt_sized */
+    wrap_wdb_exec_stmt_sized_success_call(j_group_resp, STMT_SINGLE_COLUMN);
+    expect_function_call(__wrap_cJSON_Delete);
+}
+
+/**
+ * @brief Configure all the wrappers to simulate a successful call to wdb_global_set_agent_group_context() method
+ * @param agent_id The id of the agent to set its group context
+ * @param csv The groups csv to be written in the groups column
+ * @param hash The hash to be written in the group_hash column
+ * @param sync_status The sync status to be written in the group_sync_status column
+ */
+void create_wdb_global_set_agent_group_context_success_call(int agent_id, char* csv, char* hash, char* sync_status) {
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CTX_SET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    if (csv) {
+        expect_string(__wrap_sqlite3_bind_text, buffer, csv);
+    }
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    if (hash) {
+        expect_string(__wrap_sqlite3_bind_text, buffer, hash);
+    }
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 4);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 }
 
 /* Tests wdb_global_get_agent_labels */
@@ -1007,21 +1127,29 @@ void test_wdb_global_get_agent_max_group_priority_success(void **state)
 
 /* Tests wdb_global_sync_agent_groups_get */
 
-void test_wdb_global_sync_agent_groups_get_invalid_condition(void **state)
+void test_wdb_global_sync_agent_groups_get_no_condition_get_hash_true(void **state)
 {
     wdbc_result result = WDBC_OK;
     test_struct_t *data  = (test_struct_t *)*state;
-    wdb_groups_sync_condition_t condition = 3;
+    wdb_groups_sync_condition_t condition = WDB_GROUP_NO_CONDITION;
     int last_agent_id = 0;
-    bool set_synced = true;
+    bool set_synced = false;
     bool get_hash = true;
-    int agent_registration_delta = 10;
+    cJSON *j_output = NULL;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid groups sync condition");
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
-    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, agent_registration_delta, NULL);
+    expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
+    will_return(__wrap_wdb_get_global_group_hash, OS_SUCCESS);
 
-    assert_int_equal(result, WDBC_ERROR);
+    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, 10, &j_output);
+
+    char *output = cJSON_PrintUnformatted(j_output);
+    assert_string_equal(output, "[{\"data\":[],\"hash\":null}]");
+    os_free(output);
+    assert_int_equal(result, WDBC_OK);
+    __real_cJSON_Delete(j_output);
 }
 
 void test_wdb_global_sync_agent_groups_get_transaction_fail(void **state)
@@ -1033,13 +1161,18 @@ void test_wdb_global_sync_agent_groups_get_transaction_fail(void **state)
     bool set_synced = true;
     bool get_hash = true;
     int agent_registration_delta = 10;
+    cJSON *j_output = NULL;
+
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
     will_return(__wrap_wdb_begin2, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, agent_registration_delta, NULL);
+    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, agent_registration_delta, &j_output);
 
     assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_output);
 }
 
 void test_wdb_global_sync_agent_groups_get_cache_fail(void **state)
@@ -1175,7 +1308,7 @@ void test_wdb_global_sync_agent_groups_get_no_agents_get_hash_false(void **state
     expect_function_call(__wrap_cJSON_Delete);
 
     /* wdb_global_select_group_belong */
-    cJSON *j_groups = __real_cJSON_CreateArray();
+    cJSON *j_groups = NULL;
     will_return(__wrap_wdb_begin2, OS_SUCCESS);
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
@@ -1184,6 +1317,7 @@ void test_wdb_global_sync_agent_groups_get_no_agents_get_hash_false(void **state
     /* wdb_exec_stmt_sized */
     wrap_wdb_exec_stmt_sized_success_call(j_groups, STMT_SINGLE_COLUMN);
     expect_function_call(__wrap_cJSON_Delete);
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
     /* Next agent */
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
@@ -1199,7 +1333,7 @@ void test_wdb_global_sync_agent_groups_get_no_agents_get_hash_false(void **state
     result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, agent_registration_delta, &j_output);
 
     char *output = cJSON_PrintUnformatted(j_output);
-    assert_string_equal(output, "[{\"data\":[]}]");
+    assert_string_equal(output, "[{\"data\":[{\"id\":1,\"groups\":[]}]}]");
     os_free(output);
     assert_int_equal(result, WDBC_OK);
     __real_cJSON_Delete(j_exec_response);
@@ -1404,6 +1538,82 @@ void test_wdb_global_sync_agent_groups_get_due_buffer_full(void **state)
     assert_int_equal(result, WDBC_DUE);
     __real_cJSON_Delete(j_exec_response);
     __real_cJSON_Delete(j_output);
+}
+
+/* Tests wdb_global_add_global_group_hash_to_response */
+
+void test_wdb_global_sync_agent_groups_get_invalid_condition(void **state)
+{
+    wdbc_result result = WDBC_OK;
+    test_struct_t *data  = (test_struct_t *)*state;
+    wdb_groups_sync_condition_t condition = WDB_GROUP_INVALID_CONDITION;
+    int last_agent_id = 0;
+    bool set_synced = true;
+    bool get_hash = true;
+    int agent_registration_delta = 10;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid groups sync condition");
+
+    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, agent_registration_delta, NULL);
+
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_add_global_group_hash_to_resposne_response_null(void **state) {
+    wdbc_result result = WDBC_OK;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid JSON object.");
+
+    result = wdb_global_add_global_group_hash_to_response(data->wdb, NULL, 1);
+
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_add_global_group_hash_to_resposne_get_hash_return_null(void **state)
+{
+    wdbc_result result = WDBC_OK;
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON *j_response = cJSON_CreateObject();
+
+    expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
+    will_return(__wrap_wdb_get_global_group_hash, OS_SUCCESS);
+
+    result = wdb_global_add_global_group_hash_to_response(data->wdb, &j_response, 1);
+
+    char *output = cJSON_PrintUnformatted(j_response);
+    assert_string_equal(output, "{\"hash\":null}");
+    os_free(output);
+    assert_int_equal(result, WDBC_OK);
+    __real_cJSON_Delete(j_response);
+}
+
+void test_wdb_global_add_global_group_hash_to_resposne_response_due(void **state) {
+    wdbc_result result = WDBC_OK;
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON *j_response = cJSON_CreateObject();
+
+    result = wdb_global_add_global_group_hash_to_response(data->wdb, &j_response, WDB_MAX_RESPONSE_SIZE-1);
+
+    assert_int_equal(result, WDBC_DUE);
+    __real_cJSON_Delete(j_response);
+}
+
+void test_wdb_global_add_global_group_hash_to_resposne_get_hash_error(void **state)
+{
+    wdbc_result result = WDBC_OK;
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON *j_response = cJSON_CreateObject();
+
+    expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
+    will_return(__wrap_wdb_get_global_group_hash, OS_INVALID);
+
+    expect_string(__wrap__merror, formatted_msg, "Cannot obtain the global group hash");
+
+    result = wdb_global_add_global_group_hash_to_response(data->wdb, &j_response, 1);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_response);
 }
 
 /* Tests wdb_global_sync_agent_info_set */
@@ -2282,7 +2492,6 @@ void test_wdb_global_update_agent_version_bind3_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, os_major);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
 
-
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
@@ -2333,7 +2542,6 @@ void test_wdb_global_update_agent_version_bind4_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 4);
     expect_value(__wrap_sqlite3_bind_text, buffer, os_minor);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2388,7 +2596,6 @@ void test_wdb_global_update_agent_version_bind5_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 5);
     expect_value(__wrap_sqlite3_bind_text, buffer, os_codename);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2446,7 +2653,6 @@ void test_wdb_global_update_agent_version_bind6_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 6);
     expect_value(__wrap_sqlite3_bind_text, buffer, os_platform);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2507,7 +2713,6 @@ void test_wdb_global_update_agent_version_bind7_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 7);
     expect_value(__wrap_sqlite3_bind_text, buffer, os_build);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2571,7 +2776,6 @@ void test_wdb_global_update_agent_version_bind8_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_value(__wrap_sqlite3_bind_text, buffer, os_uname);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2638,7 +2842,6 @@ void test_wdb_global_update_agent_version_bind9_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 9);
     expect_value(__wrap_sqlite3_bind_text, buffer, os_arch);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2708,7 +2911,6 @@ void test_wdb_global_update_agent_version_bind10_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 10);
     expect_value(__wrap_sqlite3_bind_text, buffer, version);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2781,7 +2983,6 @@ void test_wdb_global_update_agent_version_bind11_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 11);
     expect_value(__wrap_sqlite3_bind_text, buffer, config_sum);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2857,7 +3058,6 @@ void test_wdb_global_update_agent_version_bind12_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 12);
     expect_value(__wrap_sqlite3_bind_text, buffer, merged_sum);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -2936,7 +3136,6 @@ void test_wdb_global_update_agent_version_bind13_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 13);
     expect_value(__wrap_sqlite3_bind_text, buffer, manager_host);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -3018,7 +3217,6 @@ void test_wdb_global_update_agent_version_bind14_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 14);
     expect_value(__wrap_sqlite3_bind_text, buffer, node_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -3103,7 +3301,6 @@ void test_wdb_global_update_agent_version_bind15_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 15);
     expect_value(__wrap_sqlite3_bind_text, buffer, agent_ip);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -3191,7 +3388,6 @@ void test_wdb_global_update_agent_version_bind16_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 16);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -3282,7 +3478,6 @@ void test_wdb_global_update_agent_version_bind17_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 17);
     expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -3376,7 +3571,6 @@ void test_wdb_global_update_agent_version_bind18_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 18);
     expect_value(__wrap_sqlite3_bind_text, buffer, group_config_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
@@ -3473,7 +3667,6 @@ void test_wdb_global_update_agent_version_bind19_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 19);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
-
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
@@ -5164,6 +5357,7 @@ void test_wdb_is_group_empty_stmt_init_group_not_found(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
     char *group_name = "test_name";
+    cJSON *result = NULL;
 
     //wdb_is_group_empty
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
@@ -5171,31 +5365,36 @@ void test_wdb_is_group_empty_stmt_init_group_not_found(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt, SQLITE_OK);
 
-    bool result = wdb_is_group_empty(data->wdb, group_name);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
 
-    assert_true(result);
+    result = wdb_is_group_empty(data->wdb, group_name);
+
+    assert_null(result);
 }
 
 void test_wdb_is_group_empty_stmt_init_fail(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
     char *group_name = "test_name";
+    cJSON *result = NULL;
 
     //wdb_is_group_empty
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
     will_return(__wrap_wdb_init_stmt_in_cache, NULL);
 
-    bool result = wdb_is_group_empty(data->wdb, group_name);
+    result = wdb_is_group_empty(data->wdb, group_name);
 
-    assert_false(result);
+    assert_null(result);
 }
 
 void test_wdb_is_group_empty_stmt_init_group_found(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
     char *group_name = "test_name";
+    cJSON *result = NULL;
 
     //wdb_is_group_empty
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
@@ -5203,17 +5402,18 @@ void test_wdb_is_group_empty_stmt_init_group_found(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
 
-    bool result = wdb_is_group_empty(data->wdb, group_name);
+    result = wdb_is_group_empty(data->wdb, group_name);
 
-    assert_false(result);
+    assert_non_null(result);
 }
 
 void test_wdb_is_group_empty_stmt_invalid_result(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
     char *group_name = "test_name";
+    cJSON *result = NULL;
 
     //wdb_is_group_empty
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
@@ -5221,36 +5421,15 @@ void test_wdb_is_group_empty_stmt_invalid_result(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ERROR);
-    expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
+    result = wdb_is_group_empty(data->wdb, group_name);
 
-    bool result = wdb_is_group_empty(data->wdb, group_name);
-
-    assert_false(result);
+    assert_null(result);
 }
 
 /* Tests wdb_global_delete_group */
-
-void test_wdb_global_delete_group_group_not_empty(void **state)
-{
-    int result = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *group_name = "test_name";
-
-    //wdb_is_group_empty
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Unable to delete group 'test_name', the group isn't empty");
-
-    result = wdb_global_delete_group(data->wdb, group_name);
-
-    assert_int_equal(result, OS_INVALID);
-}
 
 void test_wdb_global_delete_group_transaction_fail(void **state)
 {
@@ -5264,10 +5443,11 @@ void test_wdb_global_delete_group_transaction_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+    expect_function_call(__wrap_cJSON_Delete);
 
     result = wdb_global_delete_group(data->wdb, group_name);
 
@@ -5286,10 +5466,11 @@ void test_wdb_global_delete_group_cache_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+    expect_function_call(__wrap_cJSON_Delete);
 
     result = wdb_global_delete_group(data->wdb, group_name);
 
@@ -5308,7 +5489,7 @@ void test_wdb_global_delete_group_bind_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -5318,6 +5499,7 @@ void test_wdb_global_delete_group_bind_fail(void **state)
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+    expect_function_call(__wrap_cJSON_Delete);
 
     result = wdb_global_delete_group(data->wdb, group_name);
 
@@ -5336,7 +5518,7 @@ void test_wdb_global_delete_group_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -5348,17 +5530,22 @@ void test_wdb_global_delete_group_step_fail(void **state)
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
+    expect_function_call(__wrap_cJSON_Delete);
 
     result = wdb_global_delete_group(data->wdb, group_name);
 
     assert_int_equal(result, OS_INVALID);
 }
 
-void test_wdb_global_delete_group_success(void **state)
+void test_wdb_global_delete_group_recalculate_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char *group_name = "test_name";
+    char *group_name = "GROUP";
+    cJSON *sql_agents_id = cJSON_Parse("[{\"id_agent\":1}]");
+    cJSON* j_priority_resp = cJSON_Parse("[{\"id\":0}]");
+    cJSON* j_group_array = __real_cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
 
     //wdb_is_group_empty
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
@@ -5366,7 +5553,7 @@ void test_wdb_global_delete_group_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt, sql_agents_id);
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -5376,9 +5563,86 @@ void test_wdb_global_delete_group_success(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
+    will_return(__wrap_w_is_single_node, 1);
+    will_return(__wrap_w_is_single_node, 1);
+
+    /* wdb_global_get_agent_max_group_priority */
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_PRIORITY_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+
+    cJSON* j_path = __real_cJSON_CreateArray();
+    will_return(__wrap_cJSON_CreateArray, j_path);
+
+    // wdb_global_find_group
+    will_return(__wrap_wdb_begin2, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to find the id of the group 'default'");
+    expect_function_call(__wrap_cJSON_Delete);
+
+    expect_string(__wrap__merror, formatted_msg, "There was an error assigning the agent '001' to default group");
+    expect_function_call(__wrap_cJSON_Delete);
+
+    expect_string(__wrap__merror, formatted_msg, "Couldn't recalculate hash group for agent: '001'");
+    expect_function_call(__wrap_cJSON_Delete);
+
     result = wdb_global_delete_group(data->wdb, group_name);
 
     assert_int_equal(result, OS_SUCCESS);
+    __real_cJSON_Delete(j_priority_resp);
+    __real_cJSON_Delete(j_group_array);
+    __real_cJSON_Delete(sql_agents_id);
+    __real_cJSON_Delete(j_path);
+}
+
+void test_wdb_global_delete_group_success(void **state)
+{
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *group_name = "GROUP";
+    char *sync_status = "syncreq";
+    cJSON *sql_agents_id = cJSON_Parse("[{\"id_agent\":1}]");
+    int agent_id = 1;
+    cJSON* j_priority_resp = cJSON_Parse("[{\"id\":0}]");
+    cJSON* j_group_array = __real_cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
+    char hash[] = "19dcd0dd"; //"GROUP" hash
+
+    //wdb_is_group_empty
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, sql_agents_id);
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    will_return(__wrap_w_is_single_node, 0);
+    will_return(__wrap_w_is_single_node, 0);
+
+    /* wdb_global_get_agent_max_group_priority */
+    create_wdb_global_get_agent_max_group_priority_success_call(agent_id, j_priority_resp);
+
+    /* wdb_global_calculate_agent_group_csv */
+    create_wdb_global_calculate_agent_group_csv_success_call(agent_id, j_group_array);
+
+    /* wdb_global_set_agent_group_context */
+    create_wdb_global_set_agent_group_context_success_call(agent_id, group_name, hash, sync_status);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    result = wdb_global_delete_group(data->wdb, group_name);
+
+    assert_int_equal(result, OS_SUCCESS);
+    __real_cJSON_Delete(j_priority_resp);
+    __real_cJSON_Delete(j_group_array);
+    __real_cJSON_Delete(sql_agents_id);
 }
 
 /* Tests wdb_global_delete_agent_belong */
@@ -5484,7 +5748,6 @@ void test_wdb_global_delete_tuple_belong_init_stmt_fail(void **state)
 
     assert_int_equal(result, OS_INVALID);
 }
-
 
 void test_wdb_global_delete_tuple_belong_exec_stmt_fail(void **state)
 {
@@ -6435,7 +6698,6 @@ void test_wdb_global_get_agents_by_connection_status_and_node_due(void **state)
     __real_cJSON_Delete(root);
 }
 
-
 void test_wdb_global_get_agents_by_connection_status_err(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
@@ -7237,14 +7499,6 @@ void test_wdb_global_assign_agent_group_success(void **state) {
         snprintf(group_name[i], OS_SIZE_128, "GROUP%d", i);
         cJSON_AddItemToArray(j_groups, cJSON_CreateString(group_name[i]));
 
-        // wdb_global_insert_agent_group
-        will_return(__wrap_wdb_begin2, 1);
-        will_return(__wrap_wdb_stmt_cache, 1);
-        expect_value(__wrap_sqlite3_bind_text, pos, 1);
-        expect_string(__wrap_sqlite3_bind_text, buffer, group_name[i]);
-        will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-        will_return(__wrap_wdb_step, SQLITE_DONE);
-
         // wdb_global_find_group
         will_return(__wrap_wdb_begin2, 1);
         will_return(__wrap_wdb_stmt_cache, 1);
@@ -7291,14 +7545,6 @@ void test_wdb_global_assign_agent_group_insert_belong_error(void **state) {
         snprintf(group_name[i], OS_SIZE_128, "GROUP%d", i);
         cJSON_AddItemToArray(j_groups, cJSON_CreateString(group_name[i]));
 
-        // wdb_global_insert_agent_group
-        will_return(__wrap_wdb_begin2, 1);
-        will_return(__wrap_wdb_stmt_cache, 1);
-        expect_value(__wrap_sqlite3_bind_text, pos, 1);
-        expect_string(__wrap_sqlite3_bind_text, buffer, group_name[i]);
-        will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-        will_return(__wrap_wdb_step, SQLITE_DONE);
-
         // wdb_global_find_group
         will_return(__wrap_wdb_begin2, 1);
         will_return(__wrap_wdb_stmt_cache, 1);
@@ -7328,7 +7574,7 @@ void test_wdb_global_assign_agent_group_find_error(void **state) {
     int agent_id = 1;
     int initial_priority = 0;
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    char debug_message[GROUPS_SIZE][OS_MAXSTR] = {0};
+    char warn_message[GROUPS_SIZE][OS_MAXSTR] = {0};
     char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
     cJSON* j_groups = __real_cJSON_CreateArray();
 
@@ -7336,70 +7582,12 @@ void test_wdb_global_assign_agent_group_find_error(void **state) {
         snprintf(group_name[i], OS_SIZE_128, "GROUP%d", i);
         cJSON_AddItemToArray(j_groups, cJSON_CreateString(group_name[i]));
 
-        // wdb_global_insert_agent_group
-        will_return(__wrap_wdb_begin2, 1);
-        will_return(__wrap_wdb_stmt_cache, 1);
-        expect_value(__wrap_sqlite3_bind_text, pos, 1);
-        expect_string(__wrap_sqlite3_bind_text, buffer, group_name[i]);
-        will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-        will_return(__wrap_wdb_step, SQLITE_DONE);
-
         // wdb_global_find_group
         will_return(__wrap_wdb_begin2, OS_INVALID);
         expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
-        snprintf(debug_message[i], OS_MAXSTR, "Unable to find the id of the group '%s'", group_name[i]);
-        expect_string(__wrap__mdebug1, formatted_msg, debug_message[i]);
-    }
-
-    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority);
-
-    assert_int_equal(result, WDBC_ERROR);
-    __real_cJSON_Delete(j_groups);
-    __real_cJSON_Delete(find_group_resp);
-}
-
-void test_wdb_global_assign_agent_group_insert_error(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
-    int group_id = 1;
-    int initial_priority = 0;
-    int current_priority = initial_priority;
-    cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
-    cJSON* j_groups = __real_cJSON_CreateArray();
-
-    for (int i=0; i<GROUPS_SIZE; i++) {
-        snprintf(group_name[i], OS_SIZE_128, "GROUP%d", i);
-        cJSON_AddItemToArray(j_groups, cJSON_CreateString(group_name[i]));
-
-        // wdb_global_insert_agent_group
-        will_return(__wrap_wdb_begin2, OS_INVALID);
-        expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
-
-        // wdb_global_find_group
-        will_return(__wrap_wdb_begin2, 1);
-        will_return(__wrap_wdb_stmt_cache, 1);
-        expect_value(__wrap_sqlite3_bind_text, pos, 1);
-        expect_string(__wrap_sqlite3_bind_text, buffer, group_name[i]);
-        will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-        will_return(__wrap_wdb_exec_stmt, find_group_resp);
-
+        snprintf(warn_message[i], OS_MAXSTR, "Unable to find the id of the group '%s'", group_name[i]);
+        expect_string(__wrap__mwarn, formatted_msg, warn_message[i]);
         expect_function_call(__wrap_cJSON_Delete);
-
-        // wdb_global_insert_agent_belong
-        will_return(__wrap_wdb_begin2, 1);
-        will_return(__wrap_wdb_stmt_cache, 1);
-        expect_value(__wrap_sqlite3_bind_int, index, 1);
-        expect_value(__wrap_sqlite3_bind_int, value, group_id);
-        will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-        expect_value(__wrap_sqlite3_bind_int, index, 2);
-        expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-        will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-        expect_value(__wrap_sqlite3_bind_int, index, 3);
-        expect_value(__wrap_sqlite3_bind_int, value, current_priority);
-        current_priority++;
-        will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-        will_return(__wrap_wdb_step, SQLITE_DONE);
     }
 
     wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority);
@@ -7426,21 +7614,6 @@ void test_wdb_global_assign_agent_group_invalid_json(void **state) {
     assert_int_equal(result, WDBC_ERROR);
     __real_cJSON_Delete(j_groups);
     __real_cJSON_Delete(find_group_resp);
-}
-
-/**
- * @brief Configure all the wrappers to simulate a successful call to wdb_global_get_agent_max_group_priority() method
- * @param agent_id The id of the agent to get the max priority of its groups
- * @param j_priority_resp The response of the priority query
- */
-void create_wdb_global_get_agent_max_group_priority_success_call(int agent_id, cJSON* j_priority_resp) {
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_PRIORITY_GET);
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, j_priority_resp);
-    expect_function_call(__wrap_cJSON_Delete);
 }
 
 /* wdb_global_unassign_agent_group */
@@ -7500,13 +7673,6 @@ void test_wdb_global_unassign_agent_group_success(void **state) {
  */
 void create_wdb_global_assign_agent_group_success_call(int agent_id, int group_id, char* group_name, cJSON* find_group_resp) {
     int actual_priority = 0;
-    // wdb_global_insert_agent_group
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
     // wdb_global_find_group
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -7622,7 +7788,7 @@ void test_wdb_global_unassign_agent_group_find_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    char debug_message[GROUPS_SIZE][OS_MAXSTR] = {0};
+    char warn_message[GROUPS_SIZE][OS_MAXSTR] = {0};
     char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
     cJSON* j_groups = __real_cJSON_CreateArray();
 
@@ -7633,8 +7799,39 @@ void test_wdb_global_unassign_agent_group_find_error(void **state) {
         // wdb_global_find_group
         will_return(__wrap_wdb_begin2, OS_INVALID);
         expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
-        snprintf(debug_message[i], OS_MAXSTR, "Unable to find the id of the group '%s'", group_name[i]);
-        expect_string(__wrap__mdebug1, formatted_msg, debug_message[i]);
+        snprintf(warn_message[i], OS_MAXSTR, "Unable to find the id of the group '%s'", group_name[i]);
+        expect_string(__wrap__mwarn, formatted_msg, warn_message[i]);
+        expect_function_call(__wrap_cJSON_Delete);
+    }
+
+    wdbc_result result = wdb_global_unassign_agent_group(data->wdb, agent_id, j_groups);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_groups);
+    __real_cJSON_Delete(find_group_resp);
+}
+
+void test_wdb_global_unassign_agent_group_find_invalid_response(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    cJSON* find_group_resp = cJSON_Parse("[{\"id\":\"invalid\"}]");
+    char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
+    cJSON* j_groups = __real_cJSON_CreateArray();
+
+    for (int i=0; i<GROUPS_SIZE; i++) {
+        snprintf(group_name[i], OS_SIZE_128, "GROUP%d", i);
+        cJSON_AddItemToArray(j_groups, cJSON_CreateString(group_name[i]));
+
+        // wdb_global_find_group
+        will_return(__wrap_wdb_begin2, 1);
+        will_return(__wrap_wdb_stmt_cache, 1);
+        expect_value(__wrap_sqlite3_bind_text, pos, 1);
+        expect_string(__wrap_sqlite3_bind_text, buffer, group_name[i]);
+        will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+        will_return(__wrap_wdb_exec_stmt, find_group_resp);
+
+        expect_string(__wrap__mwarn, formatted_msg, "Invalid response from wdb_global_find_group.");
+        expect_function_call(__wrap_cJSON_Delete);
     }
 
     wdbc_result result = wdb_global_unassign_agent_group(data->wdb, agent_id, j_groups);
@@ -7660,6 +7857,68 @@ void test_wdb_global_unassign_agent_group_invalid_json(void **state) {
     assert_int_equal(result, WDBC_ERROR);
     __real_cJSON_Delete(j_groups);
     __real_cJSON_Delete(find_group_resp);
+}
+
+void test_wdb_global_unassign_agent_group_error_assign_default_group(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    int group_id = 1;
+    cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
+    cJSON* j_groups = __real_cJSON_CreateArray();
+    cJSON* j_priority_resp = cJSON_Parse("[{\"id\":-1}]");
+
+    cJSON_AddItemToArray(j_groups, cJSON_CreateString("random_group"));
+
+    // wdb_global_find_group
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "random_group");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, j_find_group_resp);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // wdb_global_delete_tuple_belong
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, group_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    /* wdb_global_get_agent_max_group_priority */
+    create_wdb_global_get_agent_max_group_priority_success_call(agent_id, j_priority_resp);
+
+    cJSON* j_default_group = __real_cJSON_CreateArray();
+    will_return(__wrap_cJSON_CreateArray, j_default_group);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    /* wdb_global_if_empty_set_default_agent_group */
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "default");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, j_find_group_resp);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to insert group 'default' for agent '1'");
+
+    expect_string(__wrap__merror, formatted_msg, "There was an error assigning the agent '001' to default group");
+
+    wdbc_result result = wdb_global_unassign_agent_group(data->wdb, agent_id, j_groups);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_groups);
+    __real_cJSON_Delete(j_find_group_resp);
+    __real_cJSON_Delete(j_priority_resp);
+    __real_cJSON_Delete(j_default_group);
 }
 
 /* wdb_global_set_agent_group_context */
@@ -7954,106 +8213,6 @@ void test_wdb_global_validate_groups_success(void **state) {
     assert_int_equal(result, OS_SUCCESS);
     __real_cJSON_Delete(j_groups);
     __real_cJSON_Delete(j_groups_number);
-}
-
-/**
- * @brief Configure all the wrappers to simulate a successful call to create_wdb_global_validate_groups_success_call() method
- *
- * @param agent_id The agent ID the new groups will be assigned to.
- * @param j_groups_number Existent groups number of agent_id.
- * @param j_groups Groups to be assigned to agent_id
- */
-void create_wdb_global_validate_groups_success_call(int agent_id, cJSON *j_groups_number) {
-    /* wdb_global_groups_number_get */
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET);
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, j_groups_number);
-    expect_function_call(__wrap_cJSON_Delete);
-}
-
-/**
- * @brief Configure all the wrappers to simulate a successful call to wdb_global_delete_agent_belong() method
- * @param agent_id The id of the agent whose groups are being deleted
- */
-void create_wdb_global_delete_agent_belong_success_call(int agent_id) {
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
-}
-
-/**
- * @brief Configure all the wrappers to simulate a successful call to _wdb_global_unassign_agent_group() method
- * @param agent_id The id of the agent being removed from the belongs table
- * @param group_id The id of the group being removed from the the belongs table
- * @param group_name The name of the group being searched for remove
- * @param find_group_resp The response of the find group query
- */
-void create_wdb_global_unassign_agent_group_success_call(int agent_id, int group_id, char* group_name, cJSON* find_group_resp) {
-    // wdb_global_find_group
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, find_group_resp);
-    expect_function_call(__wrap_cJSON_Delete);
-    // wdb_global_delete_tuple_belong
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG);
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, group_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
-}
-
-/**
- * @brief Configure all the wrappers to simulate a successful call to wdb_global_calculate_agent_group_csv() method
- * @param agent_id The id of the agent to calculate its groups csv
- * @param find_group_resp The response of the find select group query
- */
-void create_wdb_global_calculate_agent_group_csv_success_call(int agent_id, cJSON* j_group_resp) {
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    /* wdb_exec_stmt_sized */
-    wrap_wdb_exec_stmt_sized_success_call(j_group_resp, STMT_SINGLE_COLUMN);
-    expect_function_call(__wrap_cJSON_Delete);
-}
-
-/**
- * @brief Configure all the wrappers to simulate a successful call to wdb_global_set_agent_group_context() method
- * @param agent_id The id of the agent to set its group context
- * @param csv The groups csv to be written in the groups column
- * @param hash The hash to be written in the group_hash column
- * @param sync_status The sync status to be written in the group_sync_status column
- */
-void create_wdb_global_set_agent_group_context_success_call(int agent_id, char* csv, char* hash, char* sync_status) {
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CTX_SET);
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, csv);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, hash);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 4);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 }
 
 /* wdb_global_set_agent_groups */
@@ -8426,7 +8585,7 @@ void test_wdb_global_set_agent_groups_invalid_json(void **state) {
     __real_cJSON_Delete(j_agents_group_info);
 }
 
-void test_wdb_global_set_agent_groups_calculate_csv_error(void **state) {
+void test_wdb_global_set_agent_groups_calculate_csv_empty(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int group_id = 1;
@@ -8455,12 +8614,15 @@ void test_wdb_global_set_agent_groups_calculate_csv_error(void **state) {
         will_return(__wrap_wdb_begin2, -1);
         expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
         expect_string(__wrap__mdebug1, formatted_msg, "Unable to get groups of agent '001'");
-        expect_string(__wrap__mdebug1, formatted_msg, "The agent groups where empty right after the set");
+        expect_string(__wrap__mwarn, formatted_msg, "The groups were empty right after the set for agent '001'");
+
+        /* wdb_global_set_agent_group_context */
+        create_wdb_global_set_agent_group_context_success_call(agent_id, NULL, NULL, sync_status);
     }
 
     wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
 
-    assert_int_equal(result, WDBC_ERROR);
+    assert_int_equal(result, WDBC_OK);
     __real_cJSON_Delete(j_agents_group_info);
     __real_cJSON_Delete(j_find_group_resp);
     __real_cJSON_Delete(j_group_array);
@@ -8499,6 +8661,7 @@ void test_wdb_global_set_agent_groups_set_group_ctx_error(void **state) {
         expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CTX_SET);
         will_return(__wrap_wdb_init_stmt_in_cache, NULL);
         expect_string(__wrap__merror, formatted_msg, "There was an error assigning the groups context to agent '001'");
+        expect_string(__wrap__merror,formatted_msg, "Couldn't recalculate hash group for agent: '001'");
     }
 
     wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
@@ -8755,6 +8918,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_success, test_setup, test_teardown),
         /* Tests wdb_global_sync_agent_groups_get */
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_invalid_condition, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_no_condition_get_hash_true, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_bind_fail, test_setup, test_teardown),
@@ -8764,6 +8928,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_exec_fail_get_hash_true_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_set_synced_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_due_buffer_full, test_setup, test_teardown),
+        /* Tests wdb_global_add_global_group_hash_to_response */
+        cmocka_unit_test_setup_teardown(test_wdb_global_add_global_group_hash_to_resposne_response_null, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_add_global_group_hash_to_resposne_response_due, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_add_global_group_hash_to_resposne_get_hash_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_add_global_group_hash_to_resposne_get_hash_return_null, test_setup, test_teardown),
         /* Tests wdb_global_sync_agent_info_set */
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_set_transaction_fail,
                                         test_setup,
@@ -8927,11 +9096,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_is_group_empty_stmt_init_group_found, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_is_group_empty_stmt_invalid_result, test_setup, test_teardown),
         /* Tests wdb_global_delete_group */
-        cmocka_unit_test_setup_teardown(test_wdb_global_delete_group_group_not_empty, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_delete_group_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_delete_group_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_delete_group_bind_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_delete_group_step_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_delete_group_recalculate_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_delete_group_success, test_setup, test_teardown),
         /* Tests wdb_global_delete_agent_belong */
         cmocka_unit_test_setup_teardown(test_wdb_global_delete_agent_belong_transaction_fail,
@@ -9079,7 +9248,6 @@ int main()
                                         test_setup,
                                         test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_find_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_insert_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_invalid_json, test_setup, test_teardown),
         /* Tests wdb_global_unassign_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_success, test_setup, test_teardown),
@@ -9088,7 +9256,9 @@ int main()
                                         test_setup,
                                         test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_find_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_find_invalid_response, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_error_assign_default_group, test_setup, test_teardown),
         /* Tests wdb_global_set_agent_group_context */
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_init_stmt_error, test_setup, test_teardown),
@@ -9118,7 +9288,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_remove_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_remove_unassign_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_invalid_json, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_calculate_csv_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_calculate_csv_empty, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_set_group_ctx_error, test_setup, test_teardown),
         /* Tests wdb_global_set_agent_groups_sync_status*/
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_sync_status_invalid_stmt, test_setup, test_teardown),

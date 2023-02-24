@@ -70,6 +70,7 @@
 typedef enum wdb_groups_sync_condition_t {
         WDB_GROUP_SYNC_STATUS,      ///< Get groups by their sync status
         WDB_GROUP_ALL,              ///< Get all groups
+        WDB_GROUP_NO_CONDITION,     ///< No condition
         WDB_GROUP_INVALID_CONDITION ///< Invalid condition
 } wdb_groups_sync_condition_t;
 
@@ -201,6 +202,16 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_REGISTRY_CLEAR,
     WDB_STMT_FIM_REGISTRY_DELETE_AROUND,
     WDB_STMT_FIM_REGISTRY_DELETE_RANGE,
+    WDB_STMT_FIM_REGISTRY_KEY_SELECT_CHECKSUM,
+    WDB_STMT_FIM_REGISTRY_KEY_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_FIM_REGISTRY_KEY_CLEAR,
+    WDB_STMT_FIM_REGISTRY_KEY_DELETE_AROUND,
+    WDB_STMT_FIM_REGISTRY_KEY_DELETE_RANGE,
+    WDB_STMT_FIM_REGISTRY_VALUE_SELECT_CHECKSUM,
+    WDB_STMT_FIM_REGISTRY_VALUE_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_FIM_REGISTRY_VALUE_CLEAR,
+    WDB_STMT_FIM_REGISTRY_VALUE_DELETE_AROUND,
+    WDB_STMT_FIM_REGISTRY_VALUE_DELETE_RANGE,
     WDB_STMT_FIM_REGISTRY_DELETE_BY_PK,
     WDB_STMT_ROOTCHECK_INSERT_PM,
     WDB_STMT_ROOTCHECK_UPDATE_PM,
@@ -380,6 +391,8 @@ typedef enum {
     WDB_FIM,                         ///< File integrity monitoring.
     WDB_FIM_FILE,                    ///< File integrity monitoring.
     WDB_FIM_REGISTRY,                ///< Registry integrity monitoring.
+    WDB_FIM_REGISTRY_KEY,            ///< Registry key integrity monitoring.
+    WDB_FIM_REGISTRY_VALUE,          ///< Registry value integrity monitoring.
     WDB_SYSCOLLECTOR_PROCESSES,      ///< Processes integrity monitoring.
     WDB_SYSCOLLECTOR_PACKAGES,       ///< Packages integrity monitoring.
     WDB_SYSCOLLECTOR_HOTFIXES,       ///< Hotfixes integrity monitoring.
@@ -503,9 +516,6 @@ wdb_t * wdb_open_global();
  */
 wdb_t * wdb_open_mitre();
 
-/* Open database for agent */
-sqlite3* wdb_open_agent(int id_agent, const char *name);
-
 // Open database for agent and store in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_agent2(int agent_id);
 
@@ -618,7 +628,7 @@ void wdb_free_agent_info_data(agent_info_data *agent_data);
  * @param [in] item Json string to search elements on the chunks.
  * @param [out] last_item Value of the last parsed item. If NULL no value is written.
  * @param [out] last_size Size of the returned array. If NULL no value is written.
- * @return JSON array with the statement execution results. NULL On error.
+ * @return wdbc_result representing the status of the command.
  */
 wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, int* last_item, int* last_size);
 
@@ -635,6 +645,18 @@ wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, 
 wdbc_result wdb_parse_chunk_to_json_by_string_item(char* input, cJSON** output_json, const char* item, char** last_item_value);
 
 /**
+ * @brief Function to parse a chunk response that contains the status of the query and a json array.
+ *        This function will add the parsed response to the output RB tree.
+ *
+ * @param [in] input The chunk obtained from WazuhDB to be parsed.
+ * @param [out] output RB tree in which the new elements will be added.
+ * @param [in] item Json string to search elements on the chunks.
+ * @param [out] last_item Value of the last parsed item. If NULL no value is written.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_parse_chunk_to_rbtree(char* input, rb_tree** output, const char* item, int* last_item);
+
+/**
  * @brief Function to initialize a new transaction and cache the statement.
  *
  * @param [in] wdb The global struct database.
@@ -646,28 +668,10 @@ sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index);
 /**
  * @brief Create database for agent from profile.
  *
- * @param[in] id Id of the agent.
- * @param[in] name Name of the agent.
- * @return OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_create_agent_db(int id, const char *name);
-
-/**
- * @brief Create database for agent from profile.
- *
  * @param[in] agent_id Id of the agent.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_create_agent_db2(const char * agent_id);
-
-/**
- * @brief Remove an agent's database.
- *
- * @param[in] id Id of the agent for whom its database must be deleted.
- * @param[in] name Name of the agent for whom its database must be deleted.
- * @return OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_remove_agent_db(int id, const char * name);
 
 /* Remove agents databases from id's list. */
 cJSON *wdb_remove_multiple_agents(char *agent_list);
@@ -1305,6 +1309,17 @@ int wdb_parse_global_get_group_agents(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output);
 
 /**
+ * @brief Function to recalculate the agent group hash.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] agent_id Int with the agent id.
+ * @param [in] sync_status String with the sync_status to be set.
+ * @return WDBC_OK Success.
+ *         WDBC_ERROR On error.
+ */
+int wdb_global_recalculate_agent_groups_hash(wdb_t* wdb, int agent_id, char* sync_status);
+
+/**
  * @brief Function to parse sync-agent-info-get params and set next ID to iterate on further calls.
  *        If no last_id is provided. Last obtained ID is used.
  *
@@ -1921,9 +1936,9 @@ int wdb_global_delete_tuple_belong(wdb_t *wdb, int id_group, int id_agent);
  *
  * @param [in] wdb The Global struct database.
  * @param [in] group_name The group name.
- * @return Returns true if the group is empty, false if it isn´t empty or error.
+ * @return Returns cJSON* with agents id.
  */
-bool wdb_is_group_empty(wdb_t *wdb, char* group_name);
+cJSON* wdb_is_group_empty(wdb_t *wdb, char* group_name);
 
 /**
  * @brief Function to delete a group by using the name.
@@ -2011,6 +2026,16 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t* wdb,
                                              cJSON** output);
 
 /**
+ * @brief Add global group hash to JSON response.
+ *
+ * @param wdb The Global struct database.
+ * @param response JSON response to fill with global group hash.
+ * @param response_size Current size of JSON response.
+ * @return int result to represent if global hash has being added to JSON response.
+ */
+int wdb_global_add_global_group_hash_to_response(wdb_t *wdb, cJSON** response, size_t response_size);
+
+/**
  * @brief Function to update group_sync_status of a particular agent.
  *
  * @param [in] wdb The Global struct database.
@@ -2082,6 +2107,15 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
  * @return wdbc_result representing the status of the command.
  */
 wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups);
+
+/**
+ * @brief Sets default group to an agent if it doesn't have any.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to set default group.
+ * @return wdbc_result representing the status of the command.
+ */
+int wdb_global_if_empty_set_default_agent_group(wdb_t *wdb, int id);
 
 /**
  * @brief Returns the number of groups that are assigned to an agent.

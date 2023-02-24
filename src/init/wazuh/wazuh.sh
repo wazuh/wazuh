@@ -100,7 +100,7 @@ WazuhUpgrade()
     # Remove/relocate existing SQLite databases
     rm -f $PREINSTALLEDDIR/var/db/.profile.db*
     rm -f $PREINSTALLEDDIR/var/db/.template.db*
-    rm -f $PREINSTALLEDDIR/var/db/agents/*
+    rm -rf $PREINSTALLEDDIR/var/db/agents
 
     if [ -f "$PREINSTALLEDDIR/var/db/global.db" ]; then
         cp $PREINSTALLEDDIR/var/db/global.db $PREINSTALLEDDIR/queue/db/

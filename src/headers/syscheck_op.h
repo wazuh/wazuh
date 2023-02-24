@@ -69,7 +69,7 @@ extern const char *SYSCHECK_EVENT_STRINGS[];
 
 #endif
 
-#include "../syscheckd/syscheck.h"
+#include "../syscheckd/include/syscheck.h"
 #include "analysisd/eventinfo.h"
 #include "os_net/os_net.h"
 
@@ -130,6 +130,7 @@ typedef enum fim_fields {
     FIM_REGISTRY_ARCH,
     FIM_REGISTRY_VALUE_NAME,
     FIM_REGISTRY_VALUE_TYPE,
+    FIM_REGISTRY_HASH,
     FIM_ENTRY_TYPE,
     FIM_EVENT_TYPE,
     FIM_NFIELDS

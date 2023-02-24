@@ -1,0 +1,61 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml class-testtool
+title FIMDB - Test tool
+package "testtool" <<folder>> #DDDDDD {
+    package "action" <<Folder>> {
+        abstract IAction {
+            + void execute()
+            + void ~IAction()
+        }
+        class "RemoveFileAction" {
+            +void execute()
+        }
+        class "GetFileAction" {
+            +void execute()
+        }
+        class "CountEntriesAction" {
+            +void execute()
+        }
+        class "UpdateFileAction" {
+            +void execute()
+        }
+        class "SearchFileAction" {
+            +void execute()
+        }
+        class "RunIntegrityAction" {
+            +void execute()
+        }
+        class "PushMessageAction" {
+            +void execute()
+        }
+        class "StartTransactionAction" {
+            +void execute()
+        }
+        class "SyncTxnRowsAction" {
+            +void execute()
+        }
+        class "GetDeletedRowsAction" {
+            +void execute()
+        }
+    }
+    interface "Main" <<(F,#FF7700)>> {
+        +void main()
+    }
+}
+
+IAction <|-- RemoveFileAction
+IAction <|-- GetFileAction
+IAction <|-- CountEntriesAction
+IAction <|-- UpdateFileAction
+IAction <|-- SearchFileAction
+IAction <|-- RunIntegrityAction
+IAction <|-- PushMessageAction
+IAction <|-- StartTransactionAction
+IAction <|-- SyncTxnRowsAction
+IAction <|-- GetDeletedRowsAction
+Main -- IAction
+@enduml
+

@@ -52,7 +52,7 @@ TEST_F(RSyncImplementationTest, InvalidDecoder)
 TEST_F(RSyncImplementationTest, ValidDecoder)
 {
     const auto handle { RSync::RSyncImplementation::instance().create() };
-    const auto config { R"({"decoder_type":"JSON_RANGE"})" };
+    const auto config { R"({"decoder_type":"JSON_RANGE", "component":"test_decoder"})" };
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle, "test_id", nullptr, nlohmann::json::parse(config), {}));
 
@@ -62,7 +62,7 @@ TEST_F(RSyncImplementationTest, ValidDecoder)
 TEST_F(RSyncImplementationTest, ValidDecoderPushedNoData)
 {
     const auto handle { RSync::RSyncImplementation::instance().create() };
-    const auto config { R"({"decoder_type":"JSON_RANGE","table":"test","no_data_query_json":{"row_filter":"","column_list":"","distinct_opt":"","order_by_opt":""}})" };
+    const auto config { R"({"decoder_type":"JSON_RANGE", "component":"test_decoder","table":"test","no_data_query_json":{"row_filter":"","column_list":"","distinct_opt":"","order_by_opt":""}})" };
     auto mockDbSync { std::make_shared<MockDBSync>() };
 
     EXPECT_CALL(*mockDbSync, select(_, _));

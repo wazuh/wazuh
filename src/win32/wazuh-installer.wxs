@@ -144,10 +144,10 @@
             <Custom Action="SetOSVersion10" Before="SetCustomActionDataValue">MAJORVERSION = "#10" AND MsiNTProductType = 1</Custom>
             <Custom Action="SetOSVersion11" Before="SetCustomActionDataValue">BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Custom>
             <Custom Action="SetOSVersion12" Before="SetCustomActionDataValue">BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Custom>
-            
+
             <!-- Close the GUI -->
             <Custom Action="CloseGUI" Before="InstallFinalize"></Custom>
-            
+
             <!-- Set deployment values -->
             <Custom Action="SetWazuhManager" Before="SetCustomActionDataValue">ADDRESS &lt;&gt; "" AND WAZUH_MANAGER = ""</Custom>
             <Custom Action="SetWazuhManagerPort" Before="SetCustomActionDataValue">SERVER_PORT &lt;&gt; "" AND WAZUH_MANAGER_PORT = ""</Custom>
@@ -174,7 +174,7 @@
 
             <!-- Start services if necessary -->
             <Custom Action="StartWazuhSvc" After="InstallServices">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>
-            
+
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
 			<Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
  		    <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>

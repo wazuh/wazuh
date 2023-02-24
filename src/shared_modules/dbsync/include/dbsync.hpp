@@ -29,10 +29,11 @@
 #include "json.hpp"
 #include "db_exception.h"
 #include "commonDefs.h"
+#include "builder.hpp"
 
 using ResultCallbackData = const std::function<void(ReturnTypeCallback, const nlohmann::json&) >;
 
-class EXPORTED DBSync 
+class EXPORTED DBSync
 {
 public:
     /**
@@ -92,8 +93,8 @@ public:
      *
      * @details The table will work as a queue if the limit is exceeded.
      */
-    virtual void setTableMaxRow(const std::string&       table,
-                                const unsigned long long maxRows);
+    virtual void setTableMaxRow(const std::string& table,
+                                const long long    maxRows);
 
     /**
      * @brief Inserts (or modifies) a database record.
@@ -160,7 +161,7 @@ private:
     bool m_shouldBeRemoved;
 };
 
-class EXPORTED DBSyncTxn 
+class EXPORTED DBSyncTxn
 {
 public:
     /**
@@ -224,5 +225,169 @@ private:
     bool m_shouldBeRemoved;
 };
 
+template <typename T>
+class EXPORTED Query : public Utils::Builder<T>
+{
+    protected:
+        nlohmann::json m_jsQuery;
+    public:
+        Query() = default;
+        // LCOV_EXCL_START
+        virtual ~Query() = default;
+        // LCOV_EXCL_STOP
+        nlohmann::json& query()
+        {
+            return m_jsQuery;
+        }
+
+        /**
+         * @brief Set table name.
+         *
+         * @param table Table name to be queried.
+         *
+         */
+        T& table(const std::string& table)
+        {
+            m_jsQuery["table"] = table;
+            return static_cast<T&>(*this); // Return reference to self
+        }
+
+};
+
+class EXPORTED SelectQuery final : public Query<SelectQuery>
+{
+    public:
+        SelectQuery() = default;
+        // LCOV_EXCL_START
+        virtual ~SelectQuery() = default;
+        // LCOV_EXCL_STOP
+
+        /**
+         * @brief Set fields to be queried.
+         *
+         * @param fields Fields to be queried.
+         *
+         */
+        SelectQuery & columnList(const std::vector<std::string>& fields);
+
+        /**
+        * @brief Set filter to be applied in the query.
+        *
+        * @param filter Filter to be applied in the query.
+        *
+        */
+        SelectQuery & rowFilter(const std::string& filter);
+
+        /**
+         * @brief Set distinct flag to be applied in the query.
+         *
+         * @param distinct Distinct flag.
+         *
+         */
+        SelectQuery & distinctOpt(const bool distinct);
+
+        /**
+         * @brief Set order by field to be applied in the query.
+         *
+         * @param orderBy Order by field.
+         *
+         */
+        SelectQuery & orderByOpt(const std::string& orderBy);
+
+        /**
+         * @brief Set count/limit to be applied in the query.
+         *
+         * @param count Count/limit flag.
+         *
+         */
+        SelectQuery & countOpt(const uint32_t count);
+
+};
+
+class EXPORTED DeleteQuery final : public Query<DeleteQuery>
+{
+    public:
+        DeleteQuery() = default;
+        // LCOV_EXCL_START
+        virtual ~DeleteQuery() = default;
+        // LCOV_EXCL_STOP
+        /**
+         * @brief Set data to be deleted.
+         *
+         * @param filter Filter to be applied in the query.
+         *
+         */
+        DeleteQuery & data(const nlohmann::json& data);
+
+        /**
+         * @brief Set filter to be applied in the query.
+         *
+         * @param filter Filter to be applied in the query.
+         *
+         */
+        DeleteQuery & rowFilter(const std::string& filter);
+
+        /**
+         * @brief Reset all data to be deleted.
+         *
+         */
+        DeleteQuery & reset();
+};
+
+class EXPORTED InsertQuery final : public Query<InsertQuery>
+{
+    public:
+        InsertQuery() = default;
+        // LCOV_EXCL_START
+        virtual ~InsertQuery() = default;
+        // LCOV_EXCL_STOP
+
+        /**
+         * @brief Set data to be inserted.
+         *
+         * @param data Data to be inserted.
+         */
+        InsertQuery & data(const nlohmann::json& data);
+
+        /**
+         * @brief Reset all data to be inserted.
+         *
+         */
+        InsertQuery & reset();
+};
+
+class EXPORTED SyncRowQuery final : public Query<SyncRowQuery>
+{
+    public:
+        SyncRowQuery() = default;
+        // LCOV_EXCL_START
+        virtual ~SyncRowQuery() = default;
+        // LCOV_EXCL_STOP
+
+        /**
+         * @brief Set data to be updated.
+         *
+         * @param data Data to be updated.
+         */
+        SyncRowQuery & data(const nlohmann::json& data);
+
+        /**
+         * @brief Set column to be ignored when comparing row values.
+         *
+         * @param column Name of the column to be ignored.
+         */
+        SyncRowQuery & ignoreColumn(const std::string &column);
+
+        /**
+         * @brief Make this query return the old data as well.
+         */
+        SyncRowQuery & returnOldData();
+
+        /**
+         * @brief Reset all data to be inserted.
+         *
+         */
+        SyncRowQuery & reset();
+};
 
 #endif // _DBSYNC_HPP_

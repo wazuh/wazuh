@@ -45,7 +45,7 @@ info:
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/4.4/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/v4.4.1/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -2020,16 +2020,6 @@ components:
                     n_synced_chunks:
                       type: integer
                       format: int32
-                last_sync_agentgroups:
-                  type: object
-                  properties:
-                    date_start_master:
-                      type: string
-                    date_end_master:
-                      type: string
-                    n_synced_chunks:
-                      type: integer
-                      format: int32
                 last_sync_integrity:
                   type: object
                   properties:
@@ -2053,8 +2043,6 @@ components:
                           type: integer
                           format: int32
                 sync_agent_info_free:
-                  type: boolean
-                sync_agent_groups_free:
                   type: boolean
                 sync_integrity_free:
                   type: boolean
@@ -7076,7 +7064,7 @@ paths:
                 api_version: "v4.3.0"
                 revision: '40100'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/4.4/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/v4.4.1/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -9231,8 +9219,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/current/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/current/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/4.4/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/4.4/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
@@ -9641,12 +9629,7 @@ paths:
                             extra_valid: 0
                             shared: 0
                         sync_agent_info_free: true
-                        sync_agent_groups_free: true
                         last_sync_agentinfo:
-                          date_start_master: 2021-05-27T10:50:49.174463Z
-                          date_end_master: 2021-05-27T10:50:49.175921Z
-                          n_synced_chunks: 1
-                        last_sync_agentgroups:
                           date_start_master: 2021-05-27T10:50:49.174463Z
                           date_end_master: 2021-05-27T10:50:49.175921Z
                           n_synced_chunks: 1
@@ -9673,12 +9656,7 @@ paths:
                             extra_valid: 0
                             shared: 0
                         sync_agent_info_free: true
-                        sync_agent_groups_free: true
                         last_sync_agentinfo:
-                          date_start_master: 2021-05-27T10:50:48.832800Z
-                          date_end_master: 2021-05-27T10:50:48.833854Z
-                          n_synced_chunks: 1
-                        last_sync_agentgroups:
                           date_start_master: 2021-05-27T10:50:48.832800Z
                           date_end_master: 2021-05-27T10:50:48.833854Z
                           n_synced_chunks: 1
@@ -10310,7 +10288,6 @@ paths:
                         synchronization:
                           enabled: yes
                           interval: "5m"
-                          max_interval: "1h"
                           max_eps: 10
                       command:
                         - name: disable-account
