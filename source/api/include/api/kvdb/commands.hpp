@@ -11,14 +11,14 @@ namespace api::kvdb::cmds
 {
 
 // New commands
-api::CommandFn managerGet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
-api::CommandFn managerPost(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
-api::CommandFn managerDelete(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
-api::CommandFn managerDump(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+api::Handler managerGet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+api::Handler managerPost(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+api::Handler managerDelete(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+api::Handler managerDump(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
-api::CommandFn dbGet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
-api::CommandFn dbDelete(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
-api::CommandFn dbPut(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+api::Handler dbGet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+api::Handler dbDelete(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
+api::Handler dbPut(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 
 void registerAllCmds(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager,

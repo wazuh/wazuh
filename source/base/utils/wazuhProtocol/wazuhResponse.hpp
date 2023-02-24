@@ -7,8 +7,7 @@
 namespace base::utils::wazuhProtocol
 {
 
-namespace
-{
+
 enum class RESPONSE_ERROR_CODES
 {
     OK = 0,
@@ -16,10 +15,10 @@ enum class RESPONSE_ERROR_CODES
     INVALID_JSON_REQUEST,
     INVALID_MSG_SIZE,
     INVALID_REQUEST,
+    COMMAND_NOT_FOUND,
     INTERNAL_ERROR // This never happens, its only for coverage, the code should never reach this point
 };
 
-}
 
 /**
  * @brief A standard protocol for internal communication between Wazuh components
