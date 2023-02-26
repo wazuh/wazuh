@@ -397,13 +397,13 @@ int main_analysisd(int argc, char **argv)
     /* Initialize Active response */
     AR_Init();
     if (AR_ReadConfig(cfg) < 0) {
-        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
     mdebug1(ASINIT);
 
     /* Read configuration file */
     if (GlobalConf(cfg) < 0) {
-        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
     mdebug1(READ_CONFIG);

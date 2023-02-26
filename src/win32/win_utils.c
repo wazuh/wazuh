@@ -152,7 +152,7 @@ int local_start()
     } else {
         /* Check auth keys */
         if (!OS_CheckKeys()) {
-            mlerror_exit(LOGLEVEL_ERROR, AG_NOKEYS_EXIT);
+            merror_exit(AG_NOKEYS_EXIT);
         }
     }
     /* Read keys */
@@ -282,7 +282,7 @@ int local_start()
         mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
     }
 
-    if (!wm_config() && !wm_check()) {
+    if (!wm_check()) {
         wmodule * cur_module;
 
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {

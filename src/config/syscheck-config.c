@@ -421,7 +421,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                 os_free(tag);
 
                 if (tag = os_strip_char(values[i], ' '), !tag) {
-                    merror("Processing tag for registry entry '%s'.", entries);
+                    mwarn("Processing tag for registry entry '%s'.", entries);
                 }
             } else if (strcmp(attributes[i], xml_arch) == 0) {
                 if (strcmp(values[i], xml_32bit) == 0) {
@@ -430,12 +430,12 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                 } else if (strcmp(values[i], xml_both) == 0) {
                     arch = ARCH_BOTH;
                 } else {
-                    merror(XML_INVATTR, attributes[i], entries);
+                    mwarn(XML_INVATTR, attributes[i], entries);
                     goto clean_reg;
                 }
             } else if (strcmp(attributes[i], xml_recursion_level) == 0) {
                 if (!OS_StrIsNum(values[i])) {
-                    merror(XML_VALUEERR, xml_recursion_level, entries);
+                    mwarn(XML_VALUEERR, xml_recursion_level, entries);
                     goto clean_reg;
                 }
                 recursion_level = atoi(values[i]);
@@ -574,7 +574,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                 }
 
             } else {
-                merror(XML_INVATTR, attributes[i], entries);
+                mwarn(XML_INVATTR, attributes[i], entries);
                 goto clean_reg;
             }
         }
@@ -962,7 +962,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         /* Check recursion limit */
         else if (strcmp(*attrs, xml_recursion_level) == 0) {
             if (!OS_StrIsNum(*values)) {
-                merror(XML_VALUEERR, xml_recursion_level, *values);
+                mwarn(XML_VALUEERR, xml_recursion_level, *values);
                 goto out_free;
             }
             recursion_limit = (unsigned int) atoi(*values);
@@ -1368,7 +1368,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
             os_calloc(2048, sizeof(char), new_nodiff);
 
             if (!ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047)){
-                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                mwarn("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
                 free(new_nodiff);
                 continue;
             }
@@ -1404,12 +1404,12 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
 
                     if (!OSMatch_Compile(node[i]->content, syscheck->nodiff_regex[nodiff_size], 0)) {
                         mt_pt = (OSMatch *)syscheck->nodiff_regex[nodiff_size];
-                        merror(REGEX_COMPILE, node[i]->content, mt_pt->error);
+                        mwarn(REGEX_COMPILE, node[i]->content, mt_pt->error);
                         return;
                     }
                 }
                 else {
-                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
+                    mwarn(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
                     return;
                 }
             }
@@ -1441,7 +1441,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
             os_calloc(2048, sizeof(char), new_nodiff);
 
             if (!ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047)){
-                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                mwarn("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
                 free(new_nodiff);
                 continue;
             }
@@ -1468,11 +1468,11 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         else if (strcmp(node[i]->values[j], xml_both) == 0)
                             arch = ARCH_BOTH;
                         else {
-                            merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
+                            mwarn(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                             return;
                         }
                     } else {
-                        merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
+                        mwarn(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                         return;
                     }
                 }
@@ -1510,7 +1510,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         syscheck->disk_quota_enabled = false;
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
                         return;
                     }
@@ -1520,7 +1520,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         syscheck->disk_quota_limit = read_data_unit(children[j]->content);
 
                         if (syscheck->disk_quota_limit == -1) {
-                            merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                            mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                             OS_ClearNode(children);
                             return;
                         }
@@ -1530,7 +1530,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         }
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, "");     // Null children[j]->content
+                        mwarn(XML_VALUEERR, children[j]->element, "");     // Null children[j]->content
                         OS_ClearNode(children);
                         return;
                     }
@@ -1553,7 +1553,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         syscheck->file_size_enabled = false;
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
                         return;
                     }
@@ -1563,7 +1563,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         syscheck->file_size_limit = read_data_unit(children[j]->content);
 
                         if (syscheck->file_size_limit == -1) {
-                            merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                            mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                             OS_ClearNode(children);
                             return;
                         }
@@ -1573,7 +1573,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         }
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, "");     // Null children[j]->content
+                        mwarn(XML_VALUEERR, children[j]->element, "");     // Null children[j]->content
                         OS_ClearNode(children);
                         return;
                     }
@@ -1802,14 +1802,14 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         syscheck->registry_limit_enabled = false;
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
                         return (OS_INVALID);
                     }
                 }
                 else if (strcmp(children[j]->element, xml_entries) == 0) {
                     if (!OS_StrIsNum(children[j]->content)) {
-                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
                         return (OS_INVALID);
                     }
@@ -2273,7 +2273,7 @@ int Test_Syscheck(const char * path){
     }
 
     if (ReadConfig(CAGENT_CONFIG | CSYSCHECK, path, &test_syscheck, NULL) < 0) {
-		mwarn(RCONFIG_ERROR,"Syscheckk", path);
+		merror(RCONFIG_ERROR,"Syscheck", path);
 		fail = 1;
 	}
 
