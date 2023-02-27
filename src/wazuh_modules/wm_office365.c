@@ -60,6 +60,7 @@ STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, size_t max_s
 /**
  * @brief Start/stop a subscription through Office365 API
  * @param subscription Office365 subscription node
+ * @param management_fqdn Office365 management API endpoint domain
  * @param client_id Client ID
  * @param token Authentication token
  * @param start Whether to start/end a subscription
