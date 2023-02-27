@@ -21,6 +21,13 @@
             ]
         },
         {
+            "description": "Clang-tidy",
+            "parameters": [
+                "--test clangtidy",
+                "--ignore build"
+            ]
+        },
+        {
             "description": "Unit tests",
             "parameters": [
                 "--test ut"

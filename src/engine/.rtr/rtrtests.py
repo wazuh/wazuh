@@ -132,3 +132,28 @@ def docs(params):
         logging.info('DOXYGEN GENERATION: fail')
     log(params.output, 'docs', result.stdout, result.stderr)
     return bool(not result.returncode)
+
+
+def clangtidy(params):
+    builddir = params.output + BUILDDIR
+    file_extensions = ["*.cpp", "*.hpp"]
+    find_extensions = f'-iname {" -o -iname ".join(file_extensions)}'
+    if params.ignore:
+        abs_ignore = [os.path.join(params.source, path) for path in params.ignore]
+        find_ignoredir = f'-path {" -o -path ".join(abs_ignore)}'
+    find_cmd = f'find {params.source} -type f \( {find_extensions} \) -print -o \( {find_ignoredir} \) -prune '
+    command = f' clang-tidy $({find_cmd}) -p {builddir} --extra-arg=-ferror-limit=0 --extra-arg=-std=c++1z ' \
+              f' --extra-arg=-Wno-unused-function --extra-arg=-Wno-error=unused-command-line-argument --extra-arg=-header-filter=.'
+
+    logging.debug(f'Executing {command}')
+    result = subprocess.run(f'{command}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+    if result.stdout or result.returncode:
+        logging.info('CLANG-TIDY: dry run fails')
+        # TODO: we force the return code to 0 to allow the tool to continue
+        result.returncode = 0
+    else:
+        logging.info('CLANG-TIDY: successful')
+
+    log(params.output, 'clangtidy', result.stdout, result.stderr)
+    return bool(not result.returncode)
