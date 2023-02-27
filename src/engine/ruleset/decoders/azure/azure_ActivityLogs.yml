@@ -20,4 +20,31 @@ check:
 
 normalize:
   - map:
-   -    
+   - azure.resource_id: $~json.ResourceId
+   - log.level: $~json.Level
+   - event.duration: $~json.DurationMs
+   - azure.activitylogs.properties: +parse_json/$~json.Properties
+   - event.outcome: $~json.ResultType
+   - event.outcome: $azure.activitylogs.properties.result
+
+  - logpar:
+    - ~json.CallerIpAddress: <source.ip>:<source.port>
+    - ~json.CallerIpAddress: "[<source.ip>]:<source.port>"
+    - ~json.CallerIpAddress: <source.ip>
+
+  - map:  
+    - client.ip: $source.ip
+    - related.ip: $source.ip
+
+
+  - check: $azure.activitylogs.properties.EventCategory
+    map:
+     - azure.activitylogs.event_category: $azure.activitylogs.properties.eventCategory
+
+  - check: NOT $azure.activitylogs.properties.EventCategory AND $azure.activitylogs.Policies
+    map:
+     - azure.activitylogs.event_category: Policy
+
+  - check: NOT $azure.activitylogs.properties.EventCategory AND NOT $azure.activitylogs.Policies
+    map:
+     - azure.activitylogs.event_category: Administrative
