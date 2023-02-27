@@ -22,6 +22,12 @@
 #define WM_OFFICE365_DEFAULT_API_LOGIN_FQDN "login.microsoftonline.com"
 #define WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN "manage.office.com"
 
+#define WM_OFFICE365_GCC_API_LOGIN_FQDN "login.microsoftonline.com"
+#define WM_OFFICE365_GCC_API_MANAGEMENT_FQDN "manage-gcc.office.com"
+
+#define WM_OFFICE365_GGC_HIGH_API_LOGIN_FQDN "login.microsoftonline.us"
+#define WM_OFFICE365_GCC_HIGH_API_MANAGEMENT_FQDN "manage.office365.us"
+
 #define WM_OFFICE365_MSG_DELAY 1000000 / wm_max_eps
 #define WM_OFFICE365_RETRIES_TO_SEND_ERROR 3
 #define WM_OFFICE365_NEXT_PAGE_REGEX "NextPageUri:\\s*(\\S+)"
