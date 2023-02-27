@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+package com.wazuh.api.engine.catalog;
+
+/***************************************************
+ * Post a resource in the catalog
+ *
+ * command: catalog.resource/post (<resource>/<accion>)
+ **************************************************/
+message ResourcePost_Request
+{
+    optional string name = 1;    // Name of the resource
+    optional string format = 2;  // Format of the resource (xml, json, etc)
+    optional string content = 3; // Content of the resource
+}
+
+// message ResourcePost_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Get a resource from the catalog
+ *
+ * command: catalog.resource/get (<resource>/<accion>)
+ **************************************************/
+message ResourceGet_Request
+{
+    optional string name = 1;   // Name of the resource
+    optional string format = 2; // Format of the resource (xml, json, etc)
+}
+
+message ResourceGet_Response
+{
+    ReturnStatus status = 1;     // Status of the query
+    optional string error = 2;   // Error message if status is ERROR
+    optional string content = 3; // Content of the resource if status is OK
+}
+
+/***************************************************
+ * Put a resource in the catalog
+ *
+ * command: catalog.resource/put (<resource>/<accion>)
+ **************************************************/
+message ResourcePut_Request
+{
+    optional string name = 1;    // Name of the resource
+    optional string format = 2;  // Format of the resource (xml, json, etc)
+    optional string content = 3; // Content of the resource
+}
+
+// message ResourcePut_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Delete a resource from the catalog
+ *
+ * command: catalog.resource/delete (<resource>/<accion>)
+ **************************************************/
+message ResourceDelete_Request
+{
+    optional string name = 1; // Name of the resource
+}
+
+// message ResourceDelete_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Validate a resource from the catalog
+ *
+ * command: catalog.resource/validate (<resource>/<accion>)
+ **************************************************/
+message ResourceValidate_Request
+{
+    optional string name = 1;    // Name of the resource
+    optional string format = 2;  // Format of the resource (xml, json, etc)
+    optional string content = 3; // Content of the resource
+}
+
+// message ResourceValidate_Response -> Return a GenericStatus_Response
