@@ -18,11 +18,8 @@
 void *read_json(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
     int __ms_reported = 0;
-    int i;
-    char *jsonParsed;
     char str[OS_MAXSTR + 1];
     int lines = 0;
-    cJSON * obj;
     int64_t offset = 0;
     int64_t rbytes = 0;
 
@@ -101,21 +98,33 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 
-        const char *jsonErrPtr;
-        if (obj = cJSON_ParseWithOpts(str, &jsonErrPtr, 0), obj && cJSON_IsObject(obj)) {
-          for (i = 0; lf->labels && lf->labels[i].key; i++) {
-              W_JSON_AddField(obj, lf->labels[i].key, lf->labels[i].value);
-          }
+        const char * jsonErrPtr;
+        cJSON * obj = cJSON_ParseWithOpts(str, &jsonErrPtr, 0);
 
-          jsonParsed = cJSON_PrintUnformatted(obj);
-          cJSON_Delete(obj);
-        } else {
-          cJSON_Delete(obj);
-          mdebug1("Line '%.*s'%s read from '%s' is not a JSON object.", sample_log_length, str, rbytes > sample_log_length ? "..." : "", lf->file);
-          continue;
+        if (!cJSON_IsObject(obj)) {
+            mdebug2("JSON input is not a json object.");
+            if (NULL != obj) {
+                cJSON_Delete(obj);
+            }
+            obj = cJSON_CreateObject();
+            W_JSON_AddField(obj, LOGCOLLECTOR_JSON_EVENT_FIELD, str);
         }
 
-        mdebug2("Reading json message: '%.*s'%s", sample_log_length, jsonParsed, strlen(jsonParsed) > (size_t)sample_log_length ? "..." : "");
+        if (NULL == obj) {
+            mdebug1("Line '%.*s'%s read from '%s' could not be converted to a JSON object.",
+                                            sample_log_length, str, rbytes > sample_log_length ? "..." : "", lf->file);
+            continue;
+        }
+
+        for (int i = 0; lf->labels && lf->labels[i].key; i++) {
+            W_JSON_AddField(obj, lf->labels[i].key, lf->labels[i].value);
+        }
+
+        char * jsonParsed = cJSON_PrintUnformatted(obj);
+        cJSON_Delete(obj);
+
+        mdebug2("Reading json message: '%.*s'%s",
+                            sample_log_length, jsonParsed, strlen(jsonParsed) > (size_t)sample_log_length ? "..." : "");
 
         /* Send message to queue */
         if (drop_it == 0) {
