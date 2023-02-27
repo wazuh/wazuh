@@ -309,6 +309,7 @@ restart)
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
+    testconfig
     lock
     stop_service
     sleep 1
