@@ -2743,15 +2743,6 @@ FILE * wfopen(const char * pathname, const char * mode) {
         return NULL;
     }
 
-    /*
-      CreateFile SECURITY_ATTRIBUTES Parameter:
-
-      SECURITY_ATTRIBUTES (sa) structure that contains two separate but related data members:
-      an optional security descriptor, and a Boolean value that determines whether the returned handle can be inherited by child processes.
-
-      If this parameter is NULL, the handle returned by CreateFile cannot be inherited by any child processes the application
-      may create and the file or device associated with the returned handle gets a default security descriptor.
-    */
     sa.nLength = sizeof(SECURITY_ATTRIBUTES);
     sa.lpSecurityDescriptor = NULL;
     sa.bInheritHandle = FALSE;
@@ -2776,9 +2767,11 @@ FILE * wfopen(const char * pathname, const char * mode) {
 
 #else
     FILE *fp = fopen(pathname, mode);
+    
     if(fp) {
     	w_file_cloexec(fp);
     }
+
     return fp;
 
 #endif
