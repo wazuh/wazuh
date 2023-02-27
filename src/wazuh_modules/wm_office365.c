@@ -252,13 +252,13 @@ cJSON *wm_office365_dump(const wm_office365* office365_config) {
             }
             // The management API FQDN is unique between API types, so the login FQDN can be safely ignored
             if (iter->management_fqdn) {
-                if (!strncmp(iter->management_fqdn, "manage.office.com", 17)) {
+                if (!strncmp(iter->management_fqdn, WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, 17)) {
                     cJSON_AddStringToObject(api_auth, "api_type", "commercial");
                 }
-                if (!strncmp(iter->management_fqdn, "manage-gcc.office.com", 21)) {
+                if (!strncmp(iter->management_fqdn, WM_OFFICE365_GCC_API_MANAGEMENT_FQDN, 21)) {
                     cJSON_AddStringToObject(api_auth, "api_type", "gcc");
                 }
-                if (!strncmp(iter->management_fqdn, "manage.office365.us", 19)) {
+                if (!strncmp(iter->management_fqdn, WM_OFFICE365_GCC_HIGH_API_MANAGEMENT_FQDN, 19)) {
                     cJSON_AddStringToObject(api_auth, "api_type", "gcc-high");
                 }
             }
