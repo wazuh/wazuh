@@ -42,7 +42,7 @@ TEST(Registry, addComand)
               R"({"data":{},"error":-1,"message":"Command \"test\" not found"})");
 
     // Add command
-    registry.registerCommand(command,
+    registry.registerHandler(command,
                              [](const json::Json& json) -> base::utils::wazuhProtocol::WazuhResponse {
                                  return base::utils::wazuhProtocol::WazuhResponse {json, 0, "OK"};
                              });
@@ -72,7 +72,7 @@ TEST(Registry, addComandEmpty)
               R"({"data":{},"error":-1,"message":"Command \"\" not found"})");
 
     // Attempt to add command
-    bool res = registry.registerCommand(command,
+    bool res = registry.registerHandler(command,
                                         [](const json::Json& json) -> base::utils::wazuhProtocol::WazuhResponse {
                                             return base::utils::wazuhProtocol::WazuhResponse {json, 0, "OK"};
                                         });
@@ -101,7 +101,7 @@ TEST(Registry, addNullCommand)
               R"({"data":{},"error":-1,"message":"Command \"test\" not found"})");
 
     // Add command
-    bool res = registry.registerCommand(command, nullptr);
+    bool res = registry.registerHandler(command, nullptr);
     ASSERT_FALSE(res); // Fail
 
     // Get callback in registry
@@ -126,7 +126,7 @@ TEST(Registry, AddduplicateCommand)
 
     // Add command for the first time
     bool res =
-        registry.registerCommand(command,
+        registry.registerHandler(command,
                                  [](const json::Json& json) -> base::utils::wazuhProtocol::WazuhResponse {
                                      return base::utils::wazuhProtocol::WazuhResponse {json, 1, "OK cmd1"};
                                  });
@@ -138,7 +138,7 @@ TEST(Registry, AddduplicateCommand)
               R"({"data":{"testArgKey":"testArgValue"},"error":1,"message":"OK cmd1"})");
 
     // Add command
-    res = registry.registerCommand(command,
+    res = registry.registerHandler(command,
                                    [](const json::Json& json) -> base::utils::wazuhProtocol::WazuhResponse {
                                        return base::utils::wazuhProtocol::WazuhResponse {json, 2, "OK cmd2"};
                                    });
@@ -167,14 +167,14 @@ TEST(Registry, AddMultipleCommands)
 
     // Add command for the first time
     bool res =
-        registry.registerCommand(command,
+        registry.registerHandler(command,
                                  [](const json::Json& json) -> base::utils::wazuhProtocol::WazuhResponse {
                                      return base::utils::wazuhProtocol::WazuhResponse {json, 1, "OK cmd1"};
                                  });
     ASSERT_TRUE(res); // OK
 
     // Add command for the first time
-    res = registry.registerCommand(command2,
+    res = registry.registerHandler(command2,
                                    [](const json::Json& json) -> base::utils::wazuhProtocol::WazuhResponse {
                                        return base::utils::wazuhProtocol::WazuhResponse {json, 2, "OK cmd2"};
                                    });

@@ -4,12 +4,13 @@
 #include <memory>
 #include <optional>
 
-#include <api/registry.hpp>
 #include <conf/iconf.hpp>
 #include <json/json.hpp>
-
-#include <api/adapter.hpp>
 #include <eMessages/config.pb.h>
+
+#include <api/registry.hpp>
+#include <api/adapter.hpp>
+
 
 namespace api::config::cmds
 {
@@ -134,11 +135,11 @@ api::Handler runtimeSave(ConfHandler<ConfDriver> confHandler)
 }
 
 template<typename ConfDriver>
-bool registerCommands(std::shared_ptr<api::Registry> registry, ConfHandler<ConfDriver> confHandler)
+bool registerHandlers(std::shared_ptr<api::Registry> registry, ConfHandler<ConfDriver> confHandler)
 {
-    return registry->registerCommand("config.runtime/get", runtimeGet(confHandler))
-           && registry->registerCommand("config.runtime/put", runtimePut(confHandler))
-           && registry->registerCommand("config.runtime/save", runtimeSave(confHandler));
+    return registry->registerHandler("config.runtime/get", runtimeGet(confHandler))
+           && registry->registerHandler("config.runtime/put", runtimePut(confHandler))
+           && registry->registerHandler("config.runtime/save", runtimeSave(confHandler));
 }
 } // namespace api::config::cmds
 

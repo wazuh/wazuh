@@ -11,7 +11,7 @@ package com.wazuh.api.engine.catalog;
  **************************************************/
 message ResourcePost_Request
 {
-    optional string name = 1;    // Name of the resource
+    optional string type = 1;    // Type of the resource (rule, decoder, etc)
     optional string format = 2;  // Format of the resource (xml, json, etc)
     optional string content = 3; // Content of the resource
 }

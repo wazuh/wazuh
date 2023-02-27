@@ -1,14 +1,15 @@
-#include <api/adapter.hpp>
 #include <api/kvdb/commands.hpp>
 
 #include <string>
 
+#include <fmt/format.h>
+
 #include <eMessages/eMessage.h>
 #include <eMessages/kbdb.pb.h>
-#include <fmt/format.h>
 #include <json/json.hpp>
-
 #include <utils/stringUtils.hpp>
+
+#include <api/adapter.hpp>
 
 namespace api::kvdb::cmds
 {
@@ -53,7 +54,7 @@ api::Handler managerPost(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
     return [kvdbManager](api::wpRequest wRequest) -> api::wpResponse
     {
-                using RequestType = eKVDB::managerPost_Request;
+        using RequestType = eKVDB::managerPost_Request;
         using ResponseType = eEngine::GenericStatus_Response;
         auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
@@ -288,20 +289,20 @@ api::Handler dbPut(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
     };
 }
 
-void registerAllCmds(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager, std::shared_ptr<api::Registry> registry)
+void registerHandlers(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager, std::shared_ptr<api::Registry> registry)
 {
     try // TODO: TRY ????
     {
         // Manager (Works on the KVDB manager, create/delete/list/dump KVDBs)
-        registry->registerCommand("kvdb.manager/post", managerPost(kvdbManager));
-        registry->registerCommand("kvdb.manager/delete", managerDelete(kvdbManager));
-        registry->registerCommand("kvdb.manager/get", managerGet(kvdbManager));
-        registry->registerCommand("kvdb.manager/dump", managerDump(kvdbManager));
+        registry->registerHandler("kvdb.manager/post", managerPost(kvdbManager));
+        registry->registerHandler("kvdb.manager/delete", managerDelete(kvdbManager));
+        registry->registerHandler("kvdb.manager/get", managerGet(kvdbManager));
+        registry->registerHandler("kvdb.manager/dump", managerDump(kvdbManager));
 
         // Specific KVDB (Works on a specific KVDB instance, not on the manager, create/delete/modify keys)
-        registry->registerCommand("kvdb.db/put", dbPut(kvdbManager));
-        registry->registerCommand("kvdb.db/delete", dbDelete(kvdbManager));
-        registry->registerCommand("kvdb.db/get", dbGet(kvdbManager));
+        registry->registerHandler("kvdb.db/put", dbPut(kvdbManager));
+        registry->registerHandler("kvdb.db/delete", dbDelete(kvdbManager));
+        registry->registerHandler("kvdb.db/get", dbGet(kvdbManager));
     }
     catch (const std::exception& e)
     {
