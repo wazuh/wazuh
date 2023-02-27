@@ -4,7 +4,7 @@
 namespace api
 {
 
-bool Registry::registerCommand(const std::string& command, const Handler callback)
+bool Registry::registerHandler(const std::string& command, const Handler callback)
 {
     if (command.empty() || callback == nullptr)
     {

@@ -29,7 +29,7 @@ PROTOBUF_CONSTEXPR ResourcePost_Request::ResourcePost_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.type_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.format_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.content_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
 struct ResourcePost_RequestDefaultTypeInternal {
@@ -134,7 +134,7 @@ const uint32_t TableStruct_catalog_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourcePost_Request, _impl_.name_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourcePost_Request, _impl_.type_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourcePost_Request, _impl_.format_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourcePost_Request, _impl_.content_),
   0,
@@ -216,8 +216,8 @@ static const ::_pb::Message* const file_default_instances[] = {
 const char descriptor_table_protodef_catalog_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
   "\n\rcatalog.proto\022\034com.wazuh.api.engine.ca"
   "talog\032\014engine.proto\"t\n\024ResourcePost_Requ"
-  "est\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\023\n\006format\030\002 \001(\tH\001"
-  "\210\001\001\022\024\n\007content\030\003 \001(\tH\002\210\001\001B\007\n\005_nameB\t\n\007_f"
+  "est\022\021\n\004type\030\001 \001(\tH\000\210\001\001\022\023\n\006format\030\002 \001(\tH\001"
+  "\210\001\001\022\024\n\007content\030\003 \001(\tH\002\210\001\001B\007\n\005_typeB\t\n\007_f"
   "ormatB\n\n\010_content\"Q\n\023ResourceGet_Request"
   "\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\023\n\006format\030\002 \001(\tH\001\210\001\001"
   "B\007\n\005_nameB\t\n\007_format\"\212\001\n\024ResourceGet_Res"
@@ -262,7 +262,7 @@ namespace catalog {
 class ResourcePost_Request::_Internal {
  public:
   using HasBits = decltype(std::declval<ResourcePost_Request>()._impl_._has_bits_);
-  static void set_has_name(HasBits* has_bits) {
+  static void set_has_type(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
   static void set_has_format(HasBits* has_bits) {
@@ -285,17 +285,17 @@ ResourcePost_Request::ResourcePost_Request(const ResourcePost_Request& from)
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.name_){}
+    , decltype(_impl_.type_){}
     , decltype(_impl_.format_){}
     , decltype(_impl_.content_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.name_.InitDefault();
+  _impl_.type_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.name_.Set("", GetArenaForAllocation());
+    _impl_.type_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (from._internal_has_name()) {
-    _this->_impl_.name_.Set(from._internal_name(), 
+  if (from._internal_has_type()) {
+    _this->_impl_.type_.Set(from._internal_type(), 
       _this->GetArenaForAllocation());
   }
   _impl_.format_.InitDefault();
@@ -324,13 +324,13 @@ inline void ResourcePost_Request::SharedCtor(
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.name_){}
+    , decltype(_impl_.type_){}
     , decltype(_impl_.format_){}
     , decltype(_impl_.content_){}
   };
-  _impl_.name_.InitDefault();
+  _impl_.type_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.name_.Set("", GetArenaForAllocation());
+    _impl_.type_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   _impl_.format_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -353,7 +353,7 @@ ResourcePost_Request::~ResourcePost_Request() {
 
 inline void ResourcePost_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.name_.Destroy();
+  _impl_.type_.Destroy();
   _impl_.format_.Destroy();
   _impl_.content_.Destroy();
 }
@@ -371,7 +371,7 @@ void ResourcePost_Request::Clear() {
   cached_has_bits = _impl_._has_bits_[0];
   if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
-      _impl_.name_.ClearNonDefaultToEmpty();
+      _impl_.type_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
       _impl_.format_.ClearNonDefaultToEmpty();
@@ -391,13 +391,13 @@ const char* ResourcePost_Request::_InternalParse(const char* ptr, ::_pbi::ParseC
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // optional string name = 1;
+      // optional string type = 1;
       case 1:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
-          auto str = _internal_mutable_name();
+          auto str = _internal_mutable_type();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.catalog.ResourcePost_Request.name"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.catalog.ResourcePost_Request.type"));
         } else
           goto handle_unusual;
         continue;
@@ -451,14 +451,14 @@ uint8_t* ResourcePost_Request::_InternalSerialize(
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // optional string name = 1;
-  if (_internal_has_name()) {
+  // optional string type = 1;
+  if (_internal_has_type()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_name().data(), static_cast<int>(this->_internal_name().length()),
+      this->_internal_type().data(), static_cast<int>(this->_internal_type().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.catalog.ResourcePost_Request.name");
+      "com.wazuh.api.engine.catalog.ResourcePost_Request.type");
     target = stream->WriteStringMaybeAliased(
-        1, this->_internal_name(), target);
+        1, this->_internal_type(), target);
   }
 
   // optional string format = 2;
@@ -499,11 +499,11 @@ size_t ResourcePost_Request::ByteSizeLong() const {
 
   cached_has_bits = _impl_._has_bits_[0];
   if (cached_has_bits & 0x00000007u) {
-    // optional string name = 1;
+    // optional string type = 1;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-          this->_internal_name());
+          this->_internal_type());
     }
 
     // optional string format = 2;
@@ -542,7 +542,7 @@ void ResourcePost_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, c
   cached_has_bits = from._impl_._has_bits_[0];
   if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
-      _this->_internal_set_name(from._internal_name());
+      _this->_internal_set_type(from._internal_type());
     }
     if (cached_has_bits & 0x00000002u) {
       _this->_internal_set_format(from._internal_format());
@@ -572,8 +572,8 @@ void ResourcePost_Request::InternalSwap(ResourcePost_Request* other) {
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.name_, lhs_arena,
-      &other->_impl_.name_, rhs_arena
+      &_impl_.type_, lhs_arena,
+      &other->_impl_.type_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.format_, lhs_arena,
