@@ -28,7 +28,7 @@ docker-pycreds==0.4.0
 docutils==0.15.2
 ecdsa==0.16.1
 envparse==0.2.0
-Flask==1.1.2
+Flask==2.0.0
 frozenlist==1.2.0
 future==0.18.3
 google-api-core==1.30.0
@@ -44,7 +44,7 @@ grpcio==1.38.1
 hiredis==1.1.0
 idna==2.9
 inflection==0.3.1
-itsdangerous==1.1.0
+itsdangerous==2.0.0
 Jinja2==3.0.0
 jmespath==0.9.5
 jsonschema==2.6.0
