@@ -176,8 +176,8 @@ void test_read_configuration(void **state) {
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
-    assert_string_equal(module_data->auth->login_fqdn, "login.microsoftonline.com"); // retrocompatability test
-    assert_string_equal(module_data->auth->management_fqdn, "manage.office.com"); // retrocompatability test
+    assert_string_equal(module_data->auth->login_fqdn, WM_OFFICE365_DEFAULT_API_LOGIN_FQDN); // retrocompatability test
+    assert_string_equal(module_data->auth->management_fqdn, WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN); // retrocompatability test
     assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
     assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
     assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
@@ -230,18 +230,18 @@ void test_read_configuration_1(void **state) {
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
-    assert_string_equal(module_data->auth->login_fqdn, "login.microsoftonline.com");
-    assert_string_equal(module_data->auth->management_fqdn, "manage.office.com");
+    assert_string_equal(module_data->auth->login_fqdn, WM_OFFICE365_DEFAULT_API_LOGIN_FQDN);
+    assert_string_equal(module_data->auth->management_fqdn, WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN);
     assert_string_equal(module_data->auth->next->tenant_id, "your_tenant_id_1");
     assert_string_equal(module_data->auth->next->client_id, "your_client_id_1");
     assert_string_equal(module_data->auth->next->client_secret, "your_secret_1");
-    assert_string_equal(module_data->auth->next->login_fqdn, "login.microsoftonline.com");
-    assert_string_equal(module_data->auth->next->management_fqdn, "manage-gcc.office.com");
+    assert_string_equal(module_data->auth->next->login_fqdn, WM_OFFICE365_GCC_API_LOGIN_FQDN);
+    assert_string_equal(module_data->auth->next->management_fqdn, WM_OFFICE365_GCC_API_MANAGEMENT_FQDN);
     assert_string_equal(module_data->auth->next->next->tenant_id, "your_tenant_id_2");
     assert_string_equal(module_data->auth->next->next->client_id, "your_client_id_2");
     assert_string_equal(module_data->auth->next->next->client_secret_path, "/path/to/secret");
-    assert_string_equal(module_data->auth->next->next->login_fqdn, "login.microsoftonline.us");
-    assert_string_equal(module_data->auth->next->next->management_fqdn, "manage.office365.us");
+    assert_string_equal(module_data->auth->next->next->login_fqdn, WM_OFFICE365_GCC_HIGH_API_LOGIN_FQDN);
+    assert_string_equal(module_data->auth->next->next->management_fqdn, WM_OFFICE365_GCC_HIGH_API_MANAGEMENT_FQDN);
     assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
     assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
     assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
@@ -295,8 +295,8 @@ void test_read_interval(void **state) {
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
-    assert_string_equal(module_data->auth->login_fqdn, "login.microsoftonline.com");
-    assert_string_equal(module_data->auth->management_fqdn, "manage.office.com");
+    assert_string_equal(module_data->auth->login_fqdn, WM_OFFICE365_DEFAULT_API_LOGIN_FQDN);
+    assert_string_equal(module_data->auth->management_fqdn, WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN);
     assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
     assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
     assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
@@ -547,8 +547,8 @@ void test_read_curl_max_size(void **state) {
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
-    assert_string_equal(module_data->auth->login_fqdn, "login.microsoftonline.com");
-    assert_string_equal(module_data->auth->management_fqdn, "manage.office.com");
+    assert_string_equal(module_data->auth->login_fqdn, WM_OFFICE365_DEFAULT_API_LOGIN_FQDN);
+    assert_string_equal(module_data->auth->management_fqdn, WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN);
     assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
     assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
     assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
@@ -1158,8 +1158,8 @@ void test_wm_office365_dump_yes_options(void **state) {
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret_path", data->office365_config->auth->client_secret_path);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -1209,8 +1209,8 @@ void test_wm_office365_main_enable(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
     data->office365_config->only_future_events = 1;
@@ -1269,8 +1269,8 @@ void test_wm_office365_get_access_token_with_auth_secret(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1306,8 +1306,8 @@ void test_wm_office365_get_access_token_with_auth_secret_path(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret_path", data->office365_config->auth->client_secret_path);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1340,8 +1340,8 @@ void test_wm_office365_get_access_token_with_auth_secret_response_400(void **sta
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 400;
@@ -1384,8 +1384,8 @@ void test_wm_office365_get_access_token_with_auth_secret_response_null(void **st
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 400;
@@ -1425,8 +1425,8 @@ void test_wm_office365_get_access_token_with_auth_secret_response_max_size_reach
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 400;
@@ -1469,8 +1469,8 @@ void test_wm_office365_get_access_token_with_auth_secret_error_json_response(voi
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 400;
@@ -1512,8 +1512,8 @@ void test_wm_office365_get_access_token_with_auth_secret_response_200(void **sta
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 200;
@@ -1552,15 +1552,15 @@ void test_wm_office365_manage_subscription_start_response_null(void **state) {
 
     char *token = "test_token";
     char* client_id = "test_client_id";
-    char* management_fqdn = "manage.office.com";
+    char* management_fqdn = WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
     int start = 1;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -1606,15 +1606,15 @@ void test_wm_office365_manage_subscription_start_code_200(void **state) {
 
     char *token = "test_token";
     char* client_id = "test_client_id";
-    char* management_fqdn = "manage.office.com";
+    char* management_fqdn = WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
     int start = 1;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -1660,15 +1660,15 @@ void test_wm_office365_manage_subscription_stop_error_json_response(void **state
 
     char *token = "test_token";
     char* client_id = "test_client_id";
-    char* management_fqdn = "manage.office.com";
+    char* management_fqdn = WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
     int start = 0;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -1716,15 +1716,15 @@ void test_wm_office365_manage_subscription_stop_error_max_size_reached(void **st
 
     char *token = "test_token";
     char* client_id = "test_client_id";
-    char* management_fqdn = "manage.office.com";
+    char* management_fqdn = WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
     int start = 0;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -1773,15 +1773,15 @@ void test_wm_office365_manage_subscription_stop_code_400_error_AF20024(void **st
 
     char *token = "test_token";
     char* client_id = "test_client_id";
-    char* management_fqdn = "manage.office.com";
+    char* management_fqdn = WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
     int start = 0;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -1827,15 +1827,15 @@ void test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024
 
     char *token = "test_token";
     char* client_id = "test_client_id";
-    char* management_fqdn = "manage.office.com";
+    char* management_fqdn = WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
     int start = 0;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -2555,8 +2555,8 @@ void test_wm_office365_execute_scan_all(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     data->office365_config->auth->next = NULL;
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
@@ -2595,7 +2595,8 @@ void test_wm_office365_execute_scan_all(void **state) {
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Office 365 API access token URL: 'https://login.microsoftonline.com/test_tenant_id/oauth2/v2.0/token'");
+    const char expected_token_url[] = "Office 365 API access token URL: 'https://" WM_OFFICE365_DEFAULT_API_LOGIN_FQDN "/test_tenant_id/oauth2/v2.0/token'";
+    expect_string(__wrap__mtdebug1, formatted_msg, expected_token_url);
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
@@ -2620,7 +2621,8 @@ void test_wm_office365_execute_scan_all(void **state) {
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Office 365 API subscription URL: 'https://manage.office.com/api/v1.0/test_client_id/activity/feed/subscriptions/start?contentType=test_subscription_name'");
+    const char expected_subscription_url[] = "Office 365 API subscription URL: 'https://" WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN "/api/v1.0/test_client_id/activity/feed/subscriptions/start?contentType=test_subscription_name'";
+    expect_string(__wrap__mtdebug1, formatted_msg, expected_subscription_url);
 
     #ifndef WIN32
         will_return(__wrap_gmtime_r, 1);
@@ -2649,7 +2651,8 @@ void test_wm_office365_execute_scan_all(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Office 365 API content blobs URL: 'https://manage.office.com/api/v1.0/test_client_id/activity/feed/subscriptions/content?contentType=test_subscription_name&startTime=2021-05-07 12:24:56&endTime=2021-05-07 12:24:56'");
+    const char expected_blob_url[] = "Office 365 API content blobs URL: 'https://" WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN "/api/v1.0/test_client_id/activity/feed/subscriptions/content?contentType=test_subscription_name&startTime=2021-05-07 12:24:56&endTime=2021-05-07 12:24:56'";
+    expect_string(__wrap__mtdebug1, formatted_msg, expected_blob_url);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Office 365 API content URI: 'https://contentUri1.com'");
@@ -2709,8 +2712,8 @@ void test_wm_office365_execute_scan_initial_scan_only_future_events(void **state
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
     data->office365_config->only_future_events = 1;
@@ -2753,8 +2756,8 @@ void test_wm_office365_execute_scan_access_token_null(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
     data->office365_config->only_future_events = 1;
@@ -2800,8 +2803,8 @@ void test_wm_office365_execute_scan_manage_subscription_error(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
     data->office365_config->only_future_events = 0;
@@ -2867,8 +2870,8 @@ void test_wm_office365_execute_scan_saving_running_state_error(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -2928,8 +2931,8 @@ void test_wm_office365_execute_scan_content_blobs_fail(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     data->office365_config->only_future_events = 0;
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
@@ -3031,8 +3034,8 @@ void test_wm_office365_execute_scan_get_logs_from_blob_response_null(void **stat
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    os_strdup("login.microsoftonline.com", data->office365_config->auth->login_fqdn);
-    os_strdup("manage.office.com", data->office365_config->auth->management_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
     data->office365_config->only_future_events = 0;
