@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Enable compile commands output for clang-tidy
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Project settings
 project(wazuh-engine
     VERSION 0.1
