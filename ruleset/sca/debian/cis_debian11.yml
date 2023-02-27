@@ -2285,8 +2285,8 @@ checks:
     title: "Ensure a nftables table exists."
     description: "Tables hold chains. Each table only has one address family and only applies to packets of this family. Tables can have one of five families."
     rationale: "nftables doesn't have any default tables. Without a table being build, nftables will not filter network traffic."
-    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter"
     impact: "Adding rules to a running nftables can cause loss of connectivity to the system."
+    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter"
     compliance:
       - cis: ["3.5.2.4"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2309,8 +2309,8 @@ checks:
     title: "Ensure nftables base chains exist."
     description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
     rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
-    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 } Example: # nft create chain inet filter input { type filter hook input priority 0 } # nft create chain inet filter forward { type filter hook forward priority 0 } # nft create chain inet filter output { type filter hook output priority 0 }"
     impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chains policy to drop."
+    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 } Example: # nft create chain inet filter input { type filter hook input priority 0 } # nft create chain inet filter forward { type filter hook forward priority 0 } # nft create chain inet filter output { type filter hook output priority 0 }"
     compliance:
       - cis: ["3.5.2.5"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2360,11 +2360,9 @@ checks:
     title: "Ensure nftables default deny firewall policy."
     description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
     rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue transversing the network stack. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \\ } Example: # nft chain inet filter input { policy drop \\ } # nft chain inet filter forward { policy drop \\ } # nft chain inet filter output { policy drop \\ }."
     impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
+    remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \\ } Example: # nft chain inet filter input { policy drop \\ } # nft chain inet filter forward { policy drop \\ } # nft chain inet filter output { policy drop \\ }."
     default value: "accept"
-    references:
-      - Manual Page nft
     compliance:
       - cis: ["3.5.2.8"]
       - cis_csc_v8: ["4.4", "4.5"]
