@@ -421,7 +421,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                 os_free(tag);
 
                 if (tag = os_strip_char(values[i], ' '), !tag) {
-                    mwarn("Processing tag for registry entry '%s'.", entries);
+                    merror("Processing tag for registry entry '%s'.", entries);
                 }
             } else if (strcmp(attributes[i], xml_arch) == 0) {
                 if (strcmp(values[i], xml_32bit) == 0) {
@@ -1368,7 +1368,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
             os_calloc(2048, sizeof(char), new_nodiff);
 
             if (!ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047)){
-                mwarn("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
                 free(new_nodiff);
                 continue;
             }
@@ -1404,7 +1404,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
 
                     if (!OSMatch_Compile(node[i]->content, syscheck->nodiff_regex[nodiff_size], 0)) {
                         mt_pt = (OSMatch *)syscheck->nodiff_regex[nodiff_size];
-                        mwarn(REGEX_COMPILE, node[i]->content, mt_pt->error);
+                        merror(REGEX_COMPILE, node[i]->content, mt_pt->error);
                         return;
                     }
                 }
@@ -1441,7 +1441,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
             os_calloc(2048, sizeof(char), new_nodiff);
 
             if (!ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047)){
-                mwarn("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
                 free(new_nodiff);
                 continue;
             }
@@ -2006,7 +2006,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
 #ifdef WIN32
             if(!ExpandEnvironmentStrings(node[i]->content, prefilter_cmd, sizeof(prefilter_cmd) - 1)){
-                mwarn("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
                 continue;
             }
             str_lowercase(prefilter_cmd);

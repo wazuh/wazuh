@@ -170,7 +170,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 #else
                 if (!OSMatch_Compile(rootcheck->ignore[j], rootcheck->ignore_sregex[j], OS_CASE_SENSITIVE)) {
 #endif
-                    mwarn(REGEX_COMPILE, rootcheck->ignore[j], rootcheck->ignore_sregex[j]->error);
+                    merror(REGEX_COMPILE, rootcheck->ignore[j], rootcheck->ignore_sregex[j]->error);
                     return OS_INVALID;
                 }
             }

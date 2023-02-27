@@ -70,7 +70,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     wm_aws_service *cur_service = NULL;
 
     if (!nodes) {
-        mwarn("Tag <%s> not found at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+        merror("Tag <%s> not found at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
         return OS_INVALID;
     }
 
