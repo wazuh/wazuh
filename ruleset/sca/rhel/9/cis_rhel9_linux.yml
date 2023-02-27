@@ -728,7 +728,7 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - "f:/etc/dnf/dnf.conf -> r:gpgcheck=1"
+      - 'f:/etc/dnf/dnf.conf -> r:^\s*gpgcheck\s*=\s*1'
       - 'not c:grep -Rh ^gpgcheck /etc/yum.repos.d/ -> r:gpgcheck\s*=\s*0'
 
   # 1.2.3 Ensure package manager repositories are configured (Manual) - Not implemented
@@ -1400,7 +1400,7 @@ checks:
       - cis: ["2.2.2"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1426,7 +1426,7 @@ checks:
       - cis: ["2.2.3"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1449,7 +1449,7 @@ checks:
       - cis: ["2.2.4"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1472,7 +1472,7 @@ checks:
       - cis: ["2.2.5"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1495,7 +1495,7 @@ checks:
       - cis: ["2.2.6"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1519,7 +1519,7 @@ checks:
       - cis: ["2.2.7"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1542,7 +1542,7 @@ checks:
       - cis: ["2.2.8"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1566,7 +1566,7 @@ checks:
       - cis: ["2.2.9"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1590,7 +1590,7 @@ checks:
       - cis: ["2.2.10"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1613,7 +1613,7 @@ checks:
       - cis: ["2.2.11"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1636,7 +1636,7 @@ checks:
       - cis: ["2.2.12"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["2.6", "9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1659,7 +1659,7 @@ checks:
       - cis: ["2.2.13"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["2.6", "9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1680,7 +1680,7 @@ checks:
     remediation: "Run the following command to remove dnsmasq: # dnf remove dnsmasq."
     compliance:
       - cis: ["2.2.14"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
@@ -1797,7 +1797,7 @@ checks:
       - cis: ["2.3.1"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["2.6"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1821,7 +1821,7 @@ checks:
       - cis: ["2.3.2"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["2.6"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1844,7 +1844,7 @@ checks:
       - cis: ["2.3.3"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1867,7 +1867,7 @@ checks:
       - cis: ["2.3.4"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1925,7 +1925,7 @@ checks:
       - cis: ["3.4.1.1"]
       - cis_csc_v8: ["4.4"]
       - cis_csc_v7: ["9.4"]
-      - nist_800_53: ["CA-9"]
+      - nist_sp_800-53: ["CA-9"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_4.0: ["1.2.1", "1.4.1"]
@@ -1956,7 +1956,7 @@ checks:
       - cis: ["3.4.2.2"]
       - cis_csc_v8: ["4.4"]
       - cis_csc_v7: ["9.4"]
-      - nist_800_53: ["CA-9"]
+      - nist_sp_800-53: ["CA-9"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_4.0: ["1.2.1", "1.4.1"]
@@ -1978,7 +1978,7 @@ checks:
       - cis: ["3.4.2.3"]
       - cis_csc_v8: ["4.4"]
       - cis_csc_v7: ["9.4"]
-      - nist_800_53: ["CA-9"]
+      - nist_sp_800-53: ["CA-9"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_4.0: ["1.2.1", "1.4.1"]
@@ -2006,7 +2006,7 @@ checks:
       - cis: ["3.4.2.7"]
       - cis_csc_v8: ["4.4"]
       - cis_csc_v7: ["9.4"]
-      - nist_800_53: ["CA-9"]
+      - nist_sp_800-53: ["CA-9"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_4.0: ["1.2.1", "1.4.1"]
@@ -2597,7 +2597,7 @@ checks:
       - cis: ["5.1.1"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - mitre_techniques: ["T1562", "T1562.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1018"]
@@ -2615,7 +2615,7 @@ checks:
       - cis: ["5.1.2"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - nist_800_53: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
@@ -2731,7 +2731,7 @@ checks:
       - cis: ["5.1.7"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - nist_800_53: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
@@ -2789,7 +2789,7 @@ checks:
       - cis: ["5.2.4"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["4.3"]
-      - nist_800_53: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
@@ -2801,10 +2801,8 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: any
     rules:
-      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers'
-      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowGroups'
-      - 'f:/etc/ssh/sshd_config -> r:^\s*DenyUsers'
-      - 'f:/etc/ssh/sshd_config -> r:^\s*DenyGroups'
+      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
+      - f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
 
   # 5.2.5 Ensure SSH LogLevel is appropriate (Automated)
   - id: 28108
@@ -2818,7 +2816,7 @@ checks:
       - cis: ["5.2.5"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2", "6.3"]
-      - nist_800_53: ["AU-2", "AU-12", "SI-5"]
+      - nist_sp_800-53: ["AU-2", "AU-12", "SI-5"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
@@ -2847,14 +2845,14 @@ checks:
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
-        nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+        nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - mitre_techniques: ["T1021", "T1021.004"]
       - mitre_tactics: ["TA0001"]
       - mitre_mitigations: ["M1035"]
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*usepam\s+yes'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*UsePAM\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sUsePAM\s+no'
 
   # 5.2.7 Ensure SSH root login is disabled (Automated)
   - id: 28110
@@ -2866,7 +2864,7 @@ checks:
       - cis: ["5.2.7"]
       - cis_csc_v8: ["5.4"]
       - cis_csc_v7: ["4.3"]
-      - nist_800_53: ["AC-6(2)", "AC-6(5)"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
@@ -2877,7 +2875,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitRootLogin\s*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitRootLogin\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitRootLogin\s+yes'
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled (Automated)
   - id: 28111
@@ -2889,7 +2887,7 @@ checks:
       - cis: ["5.2.8"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["16.3"]
-      - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
@@ -2900,7 +2898,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*HostbasedAuthentication\s*\t*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*HostbasedAuthentication\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sHostbasedAuthentication\s+yes'
 
   # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled (Automated)
   - id: 28112
@@ -2912,7 +2910,7 @@ checks:
       - cis: ["5.2.9"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["16.3"]
-      - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
@@ -2923,7 +2921,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitEmptyPasswords\s*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitEmptyPasswords\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitEmptyPasswords\s+yes'
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled (Automated)
   - id: 28113
@@ -2935,7 +2933,7 @@ checks:
       - cis: ["5.2.10"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
-      - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
@@ -2947,7 +2945,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitUserEnvironment\s*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitUserEnvironment\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitUserEnvironment\s+yes'
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled (Automated)
   - id: 28114
@@ -2959,7 +2957,7 @@ checks:
       - cis: ["5.2.11"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
@@ -2971,7 +2969,7 @@ checks:
     condition: all
     rules:
       - 'not c:sshd -T -C user=root -> r:^# && r:ignorerhosts\s*yes'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*ignorerhosts\s+no\b'
+      - 'not f:/etc/ssh/sshd_config -> r:^\signorerhosts\s+no\b'
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 28115
@@ -2983,7 +2981,7 @@ checks:
       - cis: ["5.2.12"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -2995,7 +2993,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*X11Forwarding\s*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*x11forwarding\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sx11forwarding\s+yes'
 
   # 5.2.13 Ensure SSH AllowTcpForwarding is disabled (Automated)
   - id: 28116
@@ -3010,7 +3008,7 @@ checks:
       - cis: ["5.2.13"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["9.2"]
-      - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
@@ -3022,7 +3020,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*AllowTcpForwarding\s+no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*AllowTcpForwarding\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sAllowTcpForwarding\s+yes'
 
   # 5.2.14 Ensure system-wide crypto policy is not over-ridden (Automated)
   - id: 28117
@@ -3034,7 +3032,7 @@ checks:
       - cis: ["5.2.14"]
       - cis_csc_v8: ["3.10"]
       - cis_csc_v7: ["14.4"]
-      - nist_800_53: ["SC-8"]
+      - nist_sp_800-53: ["SC-8"]
       - cmmc_v2.0: ["AC.L2-3.1.17", "AC.L2-3.1.13", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.8", "SC.L2-3.13.15"]
       - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
       - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
@@ -3054,7 +3052,7 @@ checks:
       - cis: ["5.2.15"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
-      - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - mitre_tactics: ["TA0001", "TA0007"]
       - mitre_mitigations: ["M1035"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
@@ -3076,7 +3074,7 @@ checks:
       - cis: ["5.2.16"]
       - cis_csc_v8: ["8.5"]
       - cis_csc_v7: ["16.13"]
-      - nist_800_53: ["AU-3", "AU-3(1)"]
+      - nist_sp_800-53: ["AU-3", "AU-3(1)"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
@@ -3087,7 +3085,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
-      - 'f:/etc/ssh/sshd_config -> !r:^\s*maxauthtries\s+([5-9]|[1-9][0-9]+)'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
 
   # 5.2.17 Ensure SSH MaxStartups is configured (Automated) - Not implemented
 
@@ -3101,7 +3099,7 @@ checks:
       - cis: ["5.2.18"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
-      - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
       - pci_dss_4.0: ["8.3.4"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
@@ -3140,7 +3138,7 @@ checks:
       - "https://github.com/openssh/openssh-portable/blob/V_8_9/serverloop.c#L137"
     compliance:
       - cis: ["5.2.20"]
-      - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003"]
       - mitre_tactics: ["TA0001"]
       - mitre_mitigations: ["M1026"]
@@ -3159,13 +3157,11 @@ checks:
     description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
     rationale: "sudo supports a plug-in architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plug-ins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers and any entries in /etc/sudoers.d. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
     remediation: "Run the following command to install sudo. # dnf install sudo."
-    references:
-      - SUDO(8)
     compliance:
       - cis: ["5.3.1"]
       - cis_csc_v8: ["5.4"]
       - cis_csc_v7: ["4.3"]
-      - nist_800_53: ["AC-6(2)", "AC-6(5)"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
@@ -3181,21 +3177,18 @@ checks:
     rationale: "Attackers can run a malicious program using sudo which would fork a background process that remains even when the main program has finished executing."
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
     remediation: "Edit the file /etc/sudoers with visudo or a file in /etc/sudoers.d/ with visudo -f <PATH TO FILE> and add the following line: Defaults use_pty."
-    references:
-      - SUDO(8)
-      - VISUDO(8)
     compliance:
       - cis: ["5.3.2"]
       - cis_csc_v8: ["5.4"]
       - cis_csc_v7: ["5.1"]
-      - nist_800_53: ["AC-6(2)", "AC-6(5)"]
-      - mitre_techniques: ["T1078", "T1078.003", "T1548", "T1548.003"]
-      - mitre_tactics: ["TA0001", "TA0003"]
-      - mitre_mitigations: ["M1026", "M1038"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1078", "T1078.003", "T1548", "T1548.003"]
+      - mitre_tactics: ["TA0001", "TA0003"]
+      - mitre_mitigations: ["M1026", "M1038"]
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:^\s*Defaults\s+use_pty'
@@ -3208,22 +3201,19 @@ checks:
     rationale: "A sudo log file simplifies auditing of sudo commands."
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files. Creation of additional log files can cause disk space exhaustion if not correctly managed. You should configure logrotate to manage the sudo log in accordance with your local policy."
     remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f and add the following line: Defaults logfile="<PATH TO CUSTOM LOG FILE>" Example: Defaults logfile="/var/log/sudo.log".'
-    references:
-      - SUDO(8)
-      - VISUDO(8)
     compliance:
       - cis: ["5.3.3"]
       - cis_csc_v8: ["8.5"]
       - cis_csc_v7: ["6.3"]
-      - nist_800_53: ["AC-3", "AC-3(1)"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - mitre_tactics: ["TA0004"]
-      - mitre_mitigations: ["M1026"]
+      - nist_sp_800-53: ["AU-3", "AU-3(1)"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - soc_2: ["CC5.2", "CC7.2"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0004"]
+      - mitre_mitigations: ["M1026"]
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:^Defaults logfile="'
@@ -3247,8 +3237,8 @@ checks:
       - iso_27001-2013: ["A.9.2.3"]
     condition: all
     rules:
-      - "f:/etc/sudoers -> !r:^# && r:NOPASSWD"
-      - 'd:/etc/sudoers.d -> r:\. -> !r:^# && r:NOPASSWD'
+      - 'f:/etc/sudoers -> !r:^\s*# && r:NOPASSWD'
+      - 'd:/etc/sudoers.d -> r:\. -> !r:^\s*# && r:NOPASSWD'
 
   # 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally (Automated)
   - id: 28127
@@ -3267,8 +3257,8 @@ checks:
       - iso_27001-2013: ["A.9.2.3"]
     condition: none
     rules:
-      - "f:/etc/sudoers -> !r:^# && r:!authenticate"
-      - 'd:/etc/sudoers.d -> r:\. -> !r:^# && r:!authenticate'
+      - 'f:/etc/sudoers -> !r:^\s*# && r:!authenticate'
+      - 'd:/etc/sudoers.d -> r:\. -> !r:^\s*# && r:!authenticate'
 
   # 5.3.6 Ensure sudo authentication timeout is configured correctly (Automated) - Not implemented
 
@@ -3282,16 +3272,16 @@ checks:
       - cis: ["5.3.7"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["5.1"]
-      - nist_800_53: ["AC-3", "MP-2"]
-      - mitre_techniques: ["T1078"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: ["M1026"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1078"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1026"]
     condition: all
     rules:
       - 'f:/etc/pam.d/su -> r:^auth\s*\t*required\s*\t*pam_wheel.so\s*\t*use_uid'
@@ -3305,8 +3295,6 @@ checks:
     description: "A custom profile can be created by copying and customizing one of the default profiles. The default profiles include: sssd, winbind, or the nis. This profile can then be customized to follow site specific requirements. You can select a profile for the authselect utility for a specific host. The profile will be applied to every user logging into the host."
     rationale: "A custom profile is required to customize many of the pam options. When you deploy a profile, the profile is applied to every user logging into the given host."
     remediation: "Run the following command to create a custom authselect profile: # authselect create-profile <custom-profile name> <options> Example: # authselect create-profile custom-profile -b sssd --symlink-meta Run the following command to select a custom authselect profile: # authselect select custom/<CUSTOM PROFILE NAME> {with-<OPTIONS>} Example: # authselect select custom/custom-profile with-sudo with-faillock without-nullok."
-    references:
-      - authselect(8)
     compliance:
       - cis: ["5.4.1"]
       - cis_csc_v8: ["16.2"]
@@ -3322,17 +3310,14 @@ checks:
   # 5.4.2 Ensure authselect includes with-faillock (Automated)
   - id: 28130
     title: "Ensure authselect includes with-faillock."
-    description: "The pam_faillock.so module maintains a list of failed authentication attempts per user during a specified interval and locks the account in case there were more than deny consecutive failed authentications. It stores the failure records into per-user files in the tally directory."
+    description: "The pam_faillock.so module maintains a list of failed authentication attempts per user during a specified interval and locks the account in case there were more than the configured number of consecutive failed authentications (this is defined by the deny parameter in the faillock configuration). It stores the failure records into per-user files in the tally directory."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
     remediation: "Run the following commands to include the with-faillock option to the current authselect profile: # authselect enable-feature with-faillock # authselect apply-changes."
-    references:
-      - faillock(8) - Linux man page
-      - pam_faillock(8) - Linux man page
     compliance:
       - cis: ["5.4.2"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["16.7"]
-      - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
@@ -3349,20 +3334,20 @@ checks:
   # 5.5.1 Ensure password creation requirements are configured (Automated)
   - id: 28131
     title: "Ensure password creation requirements are configured."
-    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options. - try_first_pass - retrieve the password from a previous stacked PAM module. If not available, then prompt the user for a password. - retry=3 - Allow 3 tries before sending back a failure. - minlen=14 - password must be 14 characters or more ** Either of the following can be used to enforce complex passwords:** - minclass=4 - provide at least four classes of characters for the new password OR - dcredit=-1 - provide at least one digit - ucredit=-1 - provide at least one uppercase character - ocredit=-1 - provide at least one special character - lcredit=-1 - provide at least one lowercase character The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies."
+    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options. - try_first_pass - retrieve the password from a previous stacked PAM module. If not available, then prompt the user for a password. - retry=3 - Allow 3 tries before sending back a failure. - minlen=14 - password must be 14 characters or more. Either of the following can be used to enforce complex passwords: - minclass=4 - provide at least four classes of characters for the new password. OR - dcredit=-1 - provide at least one digit. - ucredit=-1 - provide at least one uppercase character. - ocredit=-1 - provide at least one special character. - lcredit=-1 - provide at least one lowercase character. - The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
     remediation: "Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy: minclass = 4 OR dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1. Run the following script to update the system-auth and password-auth files: #!/usr/bin/env bash for fn in system-auth password-auth; do file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn\" if ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+.*enforce_for_r oot\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 enforce_for_root/' \"$file\" fi if grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=([4- 9]|[1-9][0-9]+)\\b.*$' \"$file\"; then sed -ri '/pwquality/s/retry=\\S+/retry=3/' \"$file\" elif ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 retry=3/' \"$file\" fi done authselect apply-changes."
     compliance:
       - cis: ["5.5.1"]
       - cis_csc_v8: ["5.2"]
       - cis_csc_v7: ["4.4"]
-      - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
-      - mitre_tactics: ["TA0006"]
-      - mitre_mitigations: ["M1027"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
       - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_mitigations: ["M1027"]
     condition: all
     rules:
       - "f:/etc/pam.d/password-auth -> r:pam_pwquality.so && r:try_first_pass && r:retry="
@@ -3381,16 +3366,16 @@ checks:
       - cis: ["5.5.2"]
       - cis_csc_v8: ["6.2"]
       - cis_csc_v7: ["16.7"]
-      - mitre_techniques: ["T1110", "T1110.001", "T1110.003"]
-      - mitre_tactics: ["TA0006"]
-      - mitre_mitigations: ["M1027"]
+      - nist_sp_800-53: ["AC-2(1)"]
       - cmmc_v2.0: ["AC.L1-3.1.1"]
       - hipaa: ["164.308(a)(3)(ii)(C)"]
       - pci_dss_3.2.1: ["8.1.3"]
       - pci_dss_4.0: ["8.2.4", "8.2.5"]
-      - nist_sp_800-53: ["AC-2(1)"]
       - soc_2: ["CC6.2", "CC6.3"]
       - iso_27001-2013: ["A.9.2.6"]
+      - mitre_techniques: ["T1110", "T1110.001", "T1110.003"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_mitigations: ["M1027"]
     condition: all
     rules:
       - "f:/etc/security/faillock.conf -> n:deny = (d+) compare <= 5"
@@ -3406,12 +3391,12 @@ checks:
       - cis: ["5.5.3"]
       - cis_csc_v8: ["5.2"]
       - cis_csc_v7: ["4.4"]
-      - nist_800_53: ["IA-5(1)"]
-      - mitre_techniques: ["T1078,T1078.001,T1078.002,T1078.003,T1078.004,T1110,T1110.004"]
+      - nist_sp_800-53: ["IA-5(1)"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
       - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1078,T1078.001,T1078.002,T1078.003,T1078.004,T1110,T1110.004"]
     condition: all
     rules:
       - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+requisite\.+pam_pwhistory\.so\.+ && n:remember=(\d+) compare >= 5'
@@ -3427,22 +3412,22 @@ checks:
       - cis: ["5.5.4"]
       - cis_csc_v8: ["3.11"]
       - cis_csc_v7: ["16.4"]
-      - nist_800_53: ["IA-5(1)"]
-      - mitre_techniques: ["T1003", "T1003.008", "T1110", "T1110.002"]
-      - mitre_tactics: ["TA0006"]
-      - mitre_mitigations: ["M1041"]
+      - nist_sp_800-53: ["IA-5(1)"]
       - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
       - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
       - pci_dss_3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.10.1.1"]
+      - mitre_techniques: ["T1003", "T1003.008", "T1110", "T1110.002"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_mitigations: ["M1041"]
     condition: all
     rules:
       - 'f:/etc/login.defs -> r:\s*ENCRYPT_METHOD SHA512'
       - 'f:/etc/libuser.conf -> r:\s*crypt_style = sha512'
-      - 'f:/etc/pam.d/password-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so && r:sha512'
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so && r:sha512'
+      - 'f:/etc/pam.d/password-auth -> r:\s*password\.+sufficient\.+pam_unix\.so && r:sha512'
+      - 'f:/etc/pam.d/system-auth -> r:\s*password\.+sufficient\.+pam_unix\.so && r:sha512'
 
   ###############################################
   # 5.6 User Accounts and Environment
@@ -3460,13 +3445,13 @@ checks:
       - cis: ["5.6.1.1"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["4.4"]
-      - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
       - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
@@ -3481,13 +3466,13 @@ checks:
       - cis: ["5.6.1.2"]
       - cis_csc_v8: ["5.2"]
       - cis_csc_v7: ["4.4"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110.004"]
-      - mitre_tactics: ["TA0006"]
-      - mitre_mitigations: ["M1027"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
       - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110.004"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_mitigations: ["M1027"]
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
@@ -3502,14 +3487,14 @@ checks:
       - cis: ["5.6.1.3"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["4.4"]
-      - mitre_techniques: ["T1078"]
-      - mitre_tactics: ["TA0006"]
-      - mitre_mitigations: ["M1027"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
       - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1078"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_mitigations: ["M1027"]
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
@@ -3524,20 +3509,19 @@ checks:
       - cis: ["5.6.1.4"]
       - cis_csc_v8: ["5.2"]
       - cis_csc_v7: ["4.4"]
-      - mitre_techniques: ["T1078", "T1078.002", "T1078.003"]
-      - mitre_tactics: ["TA0001"]
-      - mitre_mitigations: ["M1027"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
       - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1078", "T1078.002", "T1078.003"]
+      - mitre_tactics: ["TA0001"]
+      - mitre_mitigations: ["M1027"]
     condition: all
     rules:
       - 'c:useradd -D -> n:^\s*INACTIVE\s*=\s*\t*(\d+) compare <= 30'
 
   # 5.6.1.5 Ensure all users last password change date is in the past (Automated) - Not implemented
   # 5.6.2 Ensure system accounts are secured (Automated) - Not implemented
-
   # 5.6.3 Ensure default user shell timeout is 900 seconds or less (Automated) - Not Implemented
 
   # 5.6.4 Ensure default group for the root account is GID 0 (Automated)
@@ -3550,18 +3534,18 @@ checks:
       - cis: ["5.6.4"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
-      - nist_800_53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - mitre_techniques: ["T1548"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: ["M1026"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       - pci_dss_3.2.1: ["2.2", "11.5"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1548"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - 'f:/etc/passwd -> r:^root:\w:\w:0'
+      - 'f:/etc/passwd -> r:^root:\w:0\w:0'
 
   # 5.6.5 Ensure default user umask is 027 or more restrictive (Automated) - Not Implemented
 
@@ -3576,15 +3560,15 @@ checks:
       - cis: ["5.6.6"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - mitre_techniques: ["T1078"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_mitigations: ["M1026"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
+      - mitre_techniques: ["T1078"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1026"]
     condition: all
     rules:
       - "c:passwd -S root -> r:Password set"
@@ -3605,7 +3589,7 @@ checks:
       - cis: ["6.1.1"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["16.4"]
-      - nist_800_53: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
@@ -3629,7 +3613,7 @@ checks:
       - cis: ["6.1.2"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["16.4"]
-      - nist_800_53: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
@@ -3653,7 +3637,7 @@ checks:
       - cis: ["6.1.3"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["16.4"]
-      - nist_800_53: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
@@ -3677,7 +3661,7 @@ checks:
       - cis: ["6.1.4"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["16.4"]
-      - nist_800_53: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
@@ -3701,7 +3685,7 @@ checks:
       - cis: ["6.1.5"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["16.4"]
-      - nist_800_53: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
@@ -3725,7 +3709,7 @@ checks:
       - cis: ["6.1.6"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["16.4"]
-      - nist_800_53: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
@@ -3749,7 +3733,7 @@ checks:
       - cis: ["6.1.7"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["16.4"]
-      - nist_800_53: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
