@@ -162,7 +162,7 @@ void runStart(ConfHandler confManager)
             });
 
         // Register KVDB commands
-        api::kvdb::cmds::registerAllCmds(kvdb, server->getRegistry());
+        api::kvdb::cmds::registerHandlers(kvdb, server->getRegistry());
         WAZUH_LOG_DEBUG("KVDB API registered.")
 
         store = std::make_shared<store::FileDriver>(fileStorage);
@@ -200,7 +200,7 @@ void runStart(ConfHandler confManager)
         catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
         WAZUH_LOG_INFO("Catalog initialized.");
 
-        api::catalog::cmds::registerAllCmds(catalog, server->getRegistry());
+        api::catalog::cmds::registerHandlers(catalog, server->getRegistry());
         WAZUH_LOG_DEBUG("Catalog API registered.")
 
         router = std::make_shared<router::Router>(builder, store, threads);
@@ -209,8 +209,8 @@ void runStart(ConfHandler confManager)
         WAZUH_LOG_INFO("Router initialized.");
 
         // Register the API command
-        //server->getRegistry()->registerCommand("router", router->apiCallbacks());
-        api::router::cmds::registerCommands(router, server->getRegistry());
+        //server->getRegistry()->registerHandler("router", router->apiCallbacks());
+        api::router::cmds::registerHandlers(router, server->getRegistry());
         WAZUH_LOG_DEBUG("Router API registered.")
 
         // If the router table is empty or the force flag is passed, load from the command line
@@ -225,7 +225,7 @@ void runStart(ConfHandler confManager)
         }
 
         // Register Configuration API commands
-        api::config::cmds::registerCommands(server->getRegistry(), confManager);
+        api::config::cmds::registerHandlers(server->getRegistry(), confManager);
         WAZUH_LOG_DEBUG("Configuration manager API registered.");
     }
     catch (const std::exception& e)

@@ -1580,15 +1580,15 @@ TEST_F(kvdbAPIRemoveCommand, RemoveReturnsOkWithNonExistingKeyName)
     ASSERT_STREQ(response.message().value().c_str(), "ok");
 }
 
-// registerAllCmds section
+// registerHandlers section
 
-TEST(kvdbAPICmdsTest, RegisterAllCmds)
+TEST(kvdbAPICmdsTest, registerHandlers)
 {
     auto kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
 
     auto apiReg = std::make_shared<api::Registry>();
 
-    ASSERT_NO_THROW(registerAllCmds(kvdbManager, apiReg));
+    ASSERT_NO_THROW(registerHandlers(kvdbManager, apiReg));
 
     ASSERT_NO_THROW(apiReg->getCallback("create_kvdb"));
     ASSERT_NO_THROW(apiReg->getCallback("create_kvdb"));

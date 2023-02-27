@@ -224,19 +224,19 @@ api::Handler queuePost(std::shared_ptr<::router::Router> router)
     };
 }
 
-void registerCommands(std::shared_ptr<::router::Router> router, std::shared_ptr<api::Registry> registry)
+void registerHandlers(std::shared_ptr<::router::Router> router, std::shared_ptr<api::Registry> registry)
 {
     // Commands to manage routes
-    registry->registerCommand("router.route/get", routeGet(router));
-    registry->registerCommand("router.route/post", routePost(router));
-    registry->registerCommand("router.route/patch", routePatch(router));
-    registry->registerCommand("router.route/delete", routeDelete(router));
+    registry->registerHandler("router.route/get", routeGet(router));
+    registry->registerHandler("router.route/post", routePost(router));
+    registry->registerHandler("router.route/patch", routePatch(router));
+    registry->registerHandler("router.route/delete", routeDelete(router));
 
     // Commands to manage the routes table
-    registry->registerCommand("router.table/get", tableGet(router));
+    registry->registerHandler("router.table/get", tableGet(router));
 
     // Commands to manage the queue of events
-    registry->registerCommand("router.queue/post", queuePost(router));
+    registry->registerHandler("router.queue/post", queuePost(router));
 }
 
 } // namespace api::router::cmds

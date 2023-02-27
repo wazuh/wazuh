@@ -5,7 +5,7 @@
 
 #include <kvdb/kvdbManager.hpp>
 
-#include "api/registry.hpp"
+#include <api/registry.hpp>
 
 namespace api::kvdb::cmds
 {
@@ -20,8 +20,7 @@ api::Handler dbGet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 api::Handler dbDelete(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 api::Handler dbPut(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
-
-void registerAllCmds(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager,
+void registerHandlers(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager,
                      std::shared_ptr<api::Registry> registry);
 } // namespace api::kvdb::cmds
 

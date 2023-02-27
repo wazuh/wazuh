@@ -210,26 +210,26 @@ class ResourcePost_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kNameFieldNumber = 1,
+    kTypeFieldNumber = 1,
     kFormatFieldNumber = 2,
     kContentFieldNumber = 3,
   };
-  // optional string name = 1;
-  bool has_name() const;
+  // optional string type = 1;
+  bool has_type() const;
   private:
-  bool _internal_has_name() const;
+  bool _internal_has_type() const;
   public:
-  void clear_name();
-  const std::string& name() const;
+  void clear_type();
+  const std::string& type() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_name(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_name();
-  PROTOBUF_NODISCARD std::string* release_name();
-  void set_allocated_name(std::string* name);
+  void set_type(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_type();
+  PROTOBUF_NODISCARD std::string* release_type();
+  void set_allocated_type(std::string* type);
   private:
-  const std::string& _internal_name() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_name(const std::string& value);
-  std::string* _internal_mutable_name();
+  const std::string& _internal_type() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_type(const std::string& value);
+  std::string* _internal_mutable_type();
   public:
 
   // optional string format = 2;
@@ -278,7 +278,7 @@ class ResourcePost_Request final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr type_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr format_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr content_;
   };
@@ -1217,72 +1217,72 @@ class ResourceValidate_Request final :
 #endif  // __GNUC__
 // ResourcePost_Request
 
-// optional string name = 1;
-inline bool ResourcePost_Request::_internal_has_name() const {
+// optional string type = 1;
+inline bool ResourcePost_Request::_internal_has_type() const {
   bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
   return value;
 }
-inline bool ResourcePost_Request::has_name() const {
-  return _internal_has_name();
+inline bool ResourcePost_Request::has_type() const {
+  return _internal_has_type();
 }
-inline void ResourcePost_Request::clear_name() {
-  _impl_.name_.ClearToEmpty();
+inline void ResourcePost_Request::clear_type() {
+  _impl_.type_.ClearToEmpty();
   _impl_._has_bits_[0] &= ~0x00000001u;
 }
-inline const std::string& ResourcePost_Request::name() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourcePost_Request.name)
-  return _internal_name();
+inline const std::string& ResourcePost_Request::type() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourcePost_Request.type)
+  return _internal_type();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void ResourcePost_Request::set_name(ArgT0&& arg0, ArgT... args) {
+void ResourcePost_Request::set_type(ArgT0&& arg0, ArgT... args) {
  _impl_._has_bits_[0] |= 0x00000001u;
- _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourcePost_Request.name)
+ _impl_.type_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourcePost_Request.type)
 }
-inline std::string* ResourcePost_Request::mutable_name() {
-  std::string* _s = _internal_mutable_name();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourcePost_Request.name)
+inline std::string* ResourcePost_Request::mutable_type() {
+  std::string* _s = _internal_mutable_type();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourcePost_Request.type)
   return _s;
 }
-inline const std::string& ResourcePost_Request::_internal_name() const {
-  return _impl_.name_.Get();
+inline const std::string& ResourcePost_Request::_internal_type() const {
+  return _impl_.type_.Get();
 }
-inline void ResourcePost_Request::_internal_set_name(const std::string& value) {
+inline void ResourcePost_Request::_internal_set_type(const std::string& value) {
   _impl_._has_bits_[0] |= 0x00000001u;
-  _impl_.name_.Set(value, GetArenaForAllocation());
+  _impl_.type_.Set(value, GetArenaForAllocation());
 }
-inline std::string* ResourcePost_Request::_internal_mutable_name() {
+inline std::string* ResourcePost_Request::_internal_mutable_type() {
   _impl_._has_bits_[0] |= 0x00000001u;
-  return _impl_.name_.Mutable(GetArenaForAllocation());
+  return _impl_.type_.Mutable(GetArenaForAllocation());
 }
-inline std::string* ResourcePost_Request::release_name() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourcePost_Request.name)
-  if (!_internal_has_name()) {
+inline std::string* ResourcePost_Request::release_type() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourcePost_Request.type)
+  if (!_internal_has_type()) {
     return nullptr;
   }
   _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.name_.Release();
+  auto* p = _impl_.type_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
+  if (_impl_.type_.IsDefault()) {
+    _impl_.type_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   return p;
 }
-inline void ResourcePost_Request::set_allocated_name(std::string* name) {
-  if (name != nullptr) {
+inline void ResourcePost_Request::set_allocated_type(std::string* type) {
+  if (type != nullptr) {
     _impl_._has_bits_[0] |= 0x00000001u;
   } else {
     _impl_._has_bits_[0] &= ~0x00000001u;
   }
-  _impl_.name_.SetAllocated(name, GetArenaForAllocation());
+  _impl_.type_.SetAllocated(type, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
+  if (_impl_.type_.IsDefault()) {
+    _impl_.type_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourcePost_Request.name)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourcePost_Request.type)
 }
 
 // optional string format = 2;

@@ -7,7 +7,6 @@
 #include <string>
 
 #include <json/json.hpp>
-
 #include <utils/wazuhProtocol/wazuhResponse.hpp>
 #include <utils/wazuhProtocol/wazuhRequest.hpp>
 
@@ -25,7 +24,7 @@ namespace api
 // TODO change accept WazuhRequest
 using wpResponse = base::utils::wazuhProtocol::WazuhResponse;
 using wpRequest = base::utils::wazuhProtocol::WazuhRequest;
-using Handler = std::function<wpResponse(const wpRequest&)>; // TODO change to HANDLER
+using Handler = std::function<wpResponse(const wpRequest&)>;
 
 /**
  * @brief A registry for API commands
@@ -67,7 +66,7 @@ public:
      * @return false If the command was not registered (already exists, the command is
      * empty or the callback is null)
      */
-    bool registerCommand(const std::string& command, const Handler callback);
+    bool registerHandler(const std::string& command, const Handler callback);
 
     /**
      * @brief Get the callback function for a command

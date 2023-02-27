@@ -4,10 +4,6 @@
 #include <api/registry.hpp>
 #include <router/router.hpp>
 
-namespace {
-
-}
-
 namespace api::router::cmds
 {
 
@@ -24,7 +20,7 @@ api::Handler queuePost(std::shared_ptr<::router::Router> router);
  * @param registry Registry to register commands to
  * @param router Router to use for commands
  */
-void registerCommands(std::shared_ptr<::router::Router> router, std::shared_ptr<api::Registry> registry);
+void registerHandlers(std::shared_ptr<::router::Router> router, std::shared_ptr<api::Registry> registry);
 
 }
 

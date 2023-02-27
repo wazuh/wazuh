@@ -438,13 +438,13 @@ TEST(CatalogCmdsTest, DeleteResourceCmdMissingName)
     ASSERT_EQ(response.error(), 400);
 }
 
-TEST(CatalogCmdsTest, RegisterAllCmds)
+TEST(CatalogCmdsTest, registerHandlers)
 {
     auto config = getConfig();
     auto catalog = std::make_shared<api::catalog::Catalog>(config);
     auto apiReg = std::make_shared<api::Registry>();
 
-    ASSERT_NO_THROW(api::catalog::cmds::registerAllCmds(catalog, apiReg));
+    ASSERT_NO_THROW(api::catalog::cmds::registerHandlers(catalog, apiReg));
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = apiReg->getCallback("get_catalog"));
     ASSERT_NO_THROW(cmd = apiReg->getCallback("put_catalog"));
