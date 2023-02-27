@@ -1,6 +1,59 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.5.0]
+
+### Manager
+
+#### Added
+
+- Added support for Amazon Linux 2022 in Vulnerability Detector. [#13034](https://github.com/wazuh/wazuh/issue/13034)
+- wazuh-authd can now generate X509 certificates. [#13559](https://github.com/wazuh/wazuh/pull/13559)
+
+#### Changed
+
+- wazuh-remoted now checks the size of the files to avoid malformed merged.mg. [#14659](https://github.com/wazuh/wazuh/pull/14659)
+- Added a limit option for the Rsync dispatch queue size. [#14024](https://github.com/wazuh/wazuh/pull/14024)
+- Added a limit option for the Rsync thread pool. [#14026](https://github.com/wazuh/wazuh/pull/14026)
+- wazuh-authd now shows a warning when deprecated forcing options are present in the configuration. [#14549](https://github.com/wazuh/wazuh/pull/14549)
+- The agent now notifies the manager when Active Reponse fails to run `netsh`. [#14804](https://github.com/wazuh/wazuh/pull/14804)
+
+#### Fixed
+
+- Fixed wazuh-remoted not updating total bytes sent in UDP. [#13979](https://github.com/wazuh/wazuh/pull/13979)
+- Fixed translation of packages with a missing version in CPE Helper for Vulnerability Detector. [#14356](https://github.com/wazuh/wazuh/pull/14356)
+- Fixed undefined behavior issues in Vulnerability Detector unit tests. [#14174](https://github.com/wazuh/wazuh/pull/14174)
+- Fixed permission error when producing FIM alerts. [#14019](https://github.com/wazuh/wazuh/pull/14019)
+- Fixed memory leaks wazuh-authd. [#15164](https://github.com/wazuh/wazuh/pull/15164)
+
+### Agent
+
+#### Added
+
+- Added Audit policy change detection in FIM for Windows. [#14763](https://github.com/wazuh/wazuh/pull/14763)
+
+#### Changed
+
+- FIM option fim_check_ignore now applies to files and directories. [#13264](https://github.com/wazuh/wazuh/pull/13264)
+- Unit tests have been added to the shared JSON handling library. [#14784](https://github.com/wazuh/wazuh/pull/14784)
+- Unit tests have been added to the shared SQLite handling library. [#14476](https://github.com/wazuh/wazuh/pull/14476)
+
+#### Fixed
+
+- Fixed the architecture of the dependency URL for macOS. [#13534](https://github.com/wazuh/wazuh/pull/13534)
+- Fixed a path length limitation that prevented FIM from reporting changes on Windows. [#13588](https://github.com/wazuh/wazuh/pull/13588)
+
+#### Removed
+
+- Unused option `local_ip` for agent configuration has been deleted. [#13878](https://github.com/wazuh/wazuh/pull/13878)
+
+### Ruleset
+
+#### Changed
+
+- The SSHD decoder has been improved to catch disconnection events. [#14138](https://github.com/wazuh/wazuh/pull/14138)
+
+
 ## [v4.4.0]
 
 ### Manager
