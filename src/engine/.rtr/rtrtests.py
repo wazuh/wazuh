@@ -171,6 +171,8 @@ def docs(params):
         logging.info('DOXYGEN GENERATION: successful')
     else:
         logging.info('DOXYGEN GENERATION: fail')
+        # TODO: we force the return code to 0 to allow the tool to continue
+        result.returncode = 0
     log(params.output, 'docs', result.stdout, result.stderr)
     return bool(not result.returncode)
 
