@@ -49,30 +49,43 @@ public:
 };
 
 /**
- * @brief Get the Field object
+ * @brief Parses a field from a string using the given delimiter, quote, and escape characters.
  *
- * @param in
- * @param pos
- * @param size
- * @param delimiter
- * @param quote
- * @param escape
- * @param s
- * @return std::optional<Field>
+ * @param input The string to parse the field from.
+ * @param delimiter The delimiter character used to separate fields.
+ * @param quote The quote character used to enclose fields that contain delimiter characters.
+ * @param escape The escape character used to escape quote or escape characters inside a field.
+ * @param strict Whether strict parsing should be used. If true, fields not enclosed in quotes cannot contain quotes.
+ * @return An optional Field object containing the parsed field, or std::nullopt if the input is invalid.
  */
 std::optional<Field> getField(std::string_view input,
                               const char delimiter,
                               const char quote,
-                              const char ecsape,
-                              bool s);
+                              const char escape,
+                              bool strict);
 
-// TODO:DOC THIS
+/**
+ * @brief Unescapes a string
+ *
+ * @param is_escaped Whether the string is escaped.
+ * @param vs The string to be unescaped.
+ * @param escape The escape character
+ */
 void unescape(bool is_escaped, std::string& vs, std::string_view escape);
 
-// TODO:DOC THIS
+/**
+ * @brief Adds a key:value pair to a JSON document. Unescapes the value if necessary.
+ *
+ * @param doc The JSON document to update.
+ * @param key The key to be added to the document.
+ * @param value The value to be added to the document.
+ * @param is_escaped Whether the value should be unescaped.
+ * @param escape The character used to unescape quote or escape characters inside the string value.
+ * @param is_quoted Whether the value is quoted. If false, it tries to parse the value as int or double.
+ */
 void updateDoc(json::Json& doc,
-               std::string_view hdr,
-               std::string_view val,
+               std::string_view key,
+               std::string_view value,
                bool is_escaped,
                std::string_view escape,
                bool is_quoted);
