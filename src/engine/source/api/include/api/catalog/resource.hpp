@@ -7,25 +7,17 @@
 
 #include <fmt/format.h>
 
+#include <eMessages/catalog.pb.h>
 #include <name.hpp>
 
 namespace api::catalog
 {
 class Resource
 {
-public:
-    constexpr static auto ASSET = 0;
 
-    /**
-     * @brief Supported formats by the catalog resources
-     *
-     */
-    enum class Format
-    {
-        JSON,
-        YAML,
-        ERROR_FORMAT
-    };
+public:
+    using Format = ::com::wazuh::api::engine::catalog::ResourceFormat;
+    constexpr static auto ASSET = 0;
 
     /**
      * @brief Get string representation of the Format
@@ -40,28 +32,6 @@ public:
             case Format::JSON: return "json";
             case Format::YAML: return "yaml";
             default: return "error_format";
-        }
-    }
-
-    /**
-     * @brief Get Format from string representation
-     *
-     * @param format String representation of the format
-     * @return Format
-     */
-    constexpr static auto strToFormat(const char* format)
-    {
-        if (std::strcmp(format, formatToStr(Format::JSON)) == 0)
-        {
-            return Format::JSON;
-        }
-        else if (std::strcmp(format, formatToStr(Format::YAML)) == 0)
-        {
-            return Format::YAML;
-        }
-        else
-        {
-            return Format::ERROR_FORMAT;
         }
     }
 
