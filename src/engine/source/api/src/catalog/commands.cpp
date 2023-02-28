@@ -30,19 +30,12 @@ api::Handler resourcePost(std::shared_ptr<Catalog> catalog)
 
         // Validate the params request
         const auto error = !eRequest.has_type()      ? std::make_optional("Missing /type parameter")
-                           : !eRequest.has_format()  ? std::make_optional("Missing /format parameter")
+                           : !eRequest.has_format()  ? std::make_optional("Missing /format parameter or is invalid")
                            : !eRequest.has_content() ? std::make_optional("Missing /content parameter")
                                                      : std::nullopt;
         if (error)
         {
             return ::api::adapter::genericError<ResponseType>(error.value());
-        }
-
-        // Validate the format
-        const auto format = catalog::Resource::strToFormat(eRequest.format().c_str());
-        if (format == catalog::Resource::Format::ERROR_FORMAT)
-        {
-            return ::api::adapter::genericError<ResponseType>("Format not supported");
         }
 
         // Validate the name
@@ -60,7 +53,7 @@ api::Handler resourcePost(std::shared_ptr<Catalog> catalog)
         catalog::Resource targetResource;
         try
         {
-            targetResource = catalog::Resource {name, format};
+            targetResource = catalog::Resource {name, eRequest.format()};
         }
         catch (const std::exception& e)
         {
@@ -95,18 +88,11 @@ api::Handler resourceGet(std::shared_ptr<Catalog> catalog)
 
         // Validate the params request
         const auto error = !eRequest.has_name()     ? std::make_optional("Missing /name parameter")
-                           : !eRequest.has_format() ? std::make_optional("Missing /format parameter")
+                           : !eRequest.has_format()  ? std::make_optional("Missing or invalid /format parameter")
                                                     : std::nullopt;
         if (error)
         {
             return ::api::adapter::genericError<ResponseType>(error.value());
-        }
-
-        // Validate the format
-        const auto format = catalog::Resource::strToFormat(eRequest.format().c_str());
-        if (format == catalog::Resource::Format::ERROR_FORMAT)
-        {
-            return ::api::adapter::genericError<ResponseType>("Format not supported");
         }
 
         // Validate the name
@@ -124,7 +110,7 @@ api::Handler resourceGet(std::shared_ptr<Catalog> catalog)
         catalog::Resource targetResource;
         try
         {
-            targetResource = catalog::Resource {name, format};
+            targetResource = catalog::Resource {name, eRequest.format()};
         }
         catch (const std::exception& e)
         {
@@ -215,19 +201,12 @@ api::Handler resourcePut(std::shared_ptr<Catalog> catalog)
 
         // Validate the params request
         const auto error = !eRequest.has_name()      ? std::make_optional("Missing /name parameter")
-                           : !eRequest.has_format()  ? std::make_optional("Missing /format parameter")
+                           : !eRequest.has_format()  ? std::make_optional("Missing or invalid /format parameter")
                            : !eRequest.has_content() ? std::make_optional("Missing /content parameter")
                                                      : std::nullopt;
         if (error)
         {
             return ::api::adapter::genericError<ResponseType>(error.value());
-        }
-
-        // Validate the format
-        const auto format = catalog::Resource::strToFormat(eRequest.format().c_str());
-        if (format == catalog::Resource::Format::ERROR_FORMAT)
-        {
-            return ::api::adapter::genericError<ResponseType>("Format not supported");
         }
 
         // Validate the name
@@ -245,7 +224,7 @@ api::Handler resourcePut(std::shared_ptr<Catalog> catalog)
         catalog::Resource targetResource;
         try
         {
-            targetResource = catalog::Resource {name, format};
+            targetResource = catalog::Resource {name, eRequest.format()};
         }
         catch (const std::exception& e)
         {
@@ -279,19 +258,12 @@ api::Handler resourceValidate(std::shared_ptr<Catalog> catalog)
 
         // Validate the params request
         const auto error = !eRequest.has_name()      ? std::make_optional("Missing /name parameter")
-                           : !eRequest.has_format()  ? std::make_optional("Missing /format parameter")
+                           : !eRequest.has_format()  ? std::make_optional("Missing or invalid /format parameter")
                            : !eRequest.has_content() ? std::make_optional("Missing /content parameter")
                                                      : std::nullopt;
         if (error)
         {
             return ::api::adapter::genericError<ResponseType>(error.value());
-        }
-
-        // Validate the format
-        const auto format = catalog::Resource::strToFormat(eRequest.format().c_str());
-        if (format == catalog::Resource::Format::ERROR_FORMAT)
-        {
-            return ::api::adapter::genericError<ResponseType>("Format not supported");
         }
 
         // Validate the name
@@ -309,7 +281,7 @@ api::Handler resourceValidate(std::shared_ptr<Catalog> catalog)
         catalog::Resource targetResource;
         try
         {
-            targetResource = catalog::Resource {name, format};
+            targetResource = catalog::Resource {name, eRequest.format()};
         }
         catch (const std::exception& e)
         {

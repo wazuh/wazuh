@@ -29,6 +29,7 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>  // IWYU pragma: export
 #include <google/protobuf/extension_set.h>  // IWYU pragma: export
+#include <google/protobuf/generated_enum_reflection.h>
 #include <google/protobuf/unknown_field_set.h>
 #include "engine.pb.h"
 // @@protoc_insertion_point(includes)
@@ -87,6 +88,33 @@ namespace api {
 namespace engine {
 namespace catalog {
 
+enum ResourceFormat : int {
+  ERROR_FORMAT = 0,
+  JSON = 1,
+  YAML = 2,
+  YML = 2,
+  ResourceFormat_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
+  ResourceFormat_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
+};
+bool ResourceFormat_IsValid(int value);
+constexpr ResourceFormat ResourceFormat_MIN = ERROR_FORMAT;
+constexpr ResourceFormat ResourceFormat_MAX = YAML;
+constexpr int ResourceFormat_ARRAYSIZE = ResourceFormat_MAX + 1;
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ResourceFormat_descriptor();
+template<typename T>
+inline const std::string& ResourceFormat_Name(T enum_t_value) {
+  static_assert(::std::is_same<T, ResourceFormat>::value ||
+    ::std::is_integral<T>::value,
+    "Incorrect type passed to function ResourceFormat_Name.");
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ResourceFormat_descriptor(), enum_t_value);
+}
+inline bool ResourceFormat_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ResourceFormat* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ResourceFormat>(
+    ResourceFormat_descriptor(), name, value);
+}
 // ===================================================================
 
 class ResourcePost_Request final :
@@ -211,8 +239,8 @@ class ResourcePost_Request final :
 
   enum : int {
     kTypeFieldNumber = 1,
-    kFormatFieldNumber = 2,
     kContentFieldNumber = 3,
+    kFormatFieldNumber = 2,
   };
   // optional string type = 1;
   bool has_type() const;
@@ -230,24 +258,6 @@ class ResourcePost_Request final :
   const std::string& _internal_type() const;
   inline PROTOBUF_ALWAYS_INLINE void _internal_set_type(const std::string& value);
   std::string* _internal_mutable_type();
-  public:
-
-  // optional string format = 2;
-  bool has_format() const;
-  private:
-  bool _internal_has_format() const;
-  public:
-  void clear_format();
-  const std::string& format() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_format(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_format();
-  PROTOBUF_NODISCARD std::string* release_format();
-  void set_allocated_format(std::string* format);
-  private:
-  const std::string& _internal_format() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_format(const std::string& value);
-  std::string* _internal_mutable_format();
   public:
 
   // optional string content = 3;
@@ -268,6 +278,19 @@ class ResourcePost_Request final :
   std::string* _internal_mutable_content();
   public:
 
+  // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
+  bool has_format() const;
+  private:
+  bool _internal_has_format() const;
+  public:
+  void clear_format();
+  ::com::wazuh::api::engine::catalog::ResourceFormat format() const;
+  void set_format(::com::wazuh::api::engine::catalog::ResourceFormat value);
+  private:
+  ::com::wazuh::api::engine::catalog::ResourceFormat _internal_format() const;
+  void _internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value);
+  public:
+
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.catalog.ResourcePost_Request)
  private:
   class _Internal;
@@ -279,8 +302,8 @@ class ResourcePost_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr type_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr format_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr content_;
+    int format_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_catalog_2eproto;
@@ -429,22 +452,17 @@ class ResourceGet_Request final :
   std::string* _internal_mutable_name();
   public:
 
-  // optional string format = 2;
+  // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
   bool has_format() const;
   private:
   bool _internal_has_format() const;
   public:
   void clear_format();
-  const std::string& format() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_format(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_format();
-  PROTOBUF_NODISCARD std::string* release_format();
-  void set_allocated_format(std::string* format);
+  ::com::wazuh::api::engine::catalog::ResourceFormat format() const;
+  void set_format(::com::wazuh::api::engine::catalog::ResourceFormat value);
   private:
-  const std::string& _internal_format() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_format(const std::string& value);
-  std::string* _internal_mutable_format();
+  ::com::wazuh::api::engine::catalog::ResourceFormat _internal_format() const;
+  void _internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value);
   public:
 
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.catalog.ResourceGet_Request)
@@ -458,7 +476,7 @@ class ResourceGet_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr format_;
+    int format_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_catalog_2eproto;
@@ -776,8 +794,8 @@ class ResourcePut_Request final :
 
   enum : int {
     kNameFieldNumber = 1,
-    kFormatFieldNumber = 2,
     kContentFieldNumber = 3,
+    kFormatFieldNumber = 2,
   };
   // optional string name = 1;
   bool has_name() const;
@@ -795,24 +813,6 @@ class ResourcePut_Request final :
   const std::string& _internal_name() const;
   inline PROTOBUF_ALWAYS_INLINE void _internal_set_name(const std::string& value);
   std::string* _internal_mutable_name();
-  public:
-
-  // optional string format = 2;
-  bool has_format() const;
-  private:
-  bool _internal_has_format() const;
-  public:
-  void clear_format();
-  const std::string& format() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_format(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_format();
-  PROTOBUF_NODISCARD std::string* release_format();
-  void set_allocated_format(std::string* format);
-  private:
-  const std::string& _internal_format() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_format(const std::string& value);
-  std::string* _internal_mutable_format();
   public:
 
   // optional string content = 3;
@@ -833,6 +833,19 @@ class ResourcePut_Request final :
   std::string* _internal_mutable_content();
   public:
 
+  // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
+  bool has_format() const;
+  private:
+  bool _internal_has_format() const;
+  public:
+  void clear_format();
+  ::com::wazuh::api::engine::catalog::ResourceFormat format() const;
+  void set_format(::com::wazuh::api::engine::catalog::ResourceFormat value);
+  private:
+  ::com::wazuh::api::engine::catalog::ResourceFormat _internal_format() const;
+  void _internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value);
+  public:
+
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.catalog.ResourcePut_Request)
  private:
   class _Internal;
@@ -844,8 +857,8 @@ class ResourcePut_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr format_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr content_;
+    int format_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_catalog_2eproto;
@@ -1132,8 +1145,8 @@ class ResourceValidate_Request final :
 
   enum : int {
     kNameFieldNumber = 1,
-    kFormatFieldNumber = 2,
     kContentFieldNumber = 3,
+    kFormatFieldNumber = 2,
   };
   // optional string name = 1;
   bool has_name() const;
@@ -1151,24 +1164,6 @@ class ResourceValidate_Request final :
   const std::string& _internal_name() const;
   inline PROTOBUF_ALWAYS_INLINE void _internal_set_name(const std::string& value);
   std::string* _internal_mutable_name();
-  public:
-
-  // optional string format = 2;
-  bool has_format() const;
-  private:
-  bool _internal_has_format() const;
-  public:
-  void clear_format();
-  const std::string& format() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_format(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_format();
-  PROTOBUF_NODISCARD std::string* release_format();
-  void set_allocated_format(std::string* format);
-  private:
-  const std::string& _internal_format() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_format(const std::string& value);
-  std::string* _internal_mutable_format();
   public:
 
   // optional string content = 3;
@@ -1189,6 +1184,19 @@ class ResourceValidate_Request final :
   std::string* _internal_mutable_content();
   public:
 
+  // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
+  bool has_format() const;
+  private:
+  bool _internal_has_format() const;
+  public:
+  void clear_format();
+  ::com::wazuh::api::engine::catalog::ResourceFormat format() const;
+  void set_format(::com::wazuh::api::engine::catalog::ResourceFormat value);
+  private:
+  ::com::wazuh::api::engine::catalog::ResourceFormat _internal_format() const;
+  void _internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value);
+  public:
+
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.catalog.ResourceValidate_Request)
  private:
   class _Internal;
@@ -1200,8 +1208,8 @@ class ResourceValidate_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr format_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr content_;
+    int format_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_catalog_2eproto;
@@ -1285,77 +1293,37 @@ inline void ResourcePost_Request::set_allocated_type(std::string* type) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourcePost_Request.type)
 }
 
-// optional string format = 2;
+// optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
 inline bool ResourcePost_Request::_internal_has_format() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
   return value;
 }
 inline bool ResourcePost_Request::has_format() const {
   return _internal_has_format();
 }
 inline void ResourcePost_Request::clear_format() {
-  _impl_.format_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000002u;
+  _impl_.format_ = 0;
+  _impl_._has_bits_[0] &= ~0x00000004u;
 }
-inline const std::string& ResourcePost_Request::format() const {
+inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourcePost_Request::_internal_format() const {
+  return static_cast< ::com::wazuh::api::engine::catalog::ResourceFormat >(_impl_.format_);
+}
+inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourcePost_Request::format() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourcePost_Request.format)
   return _internal_format();
 }
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void ResourcePost_Request::set_format(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000002u;
- _impl_.format_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+inline void ResourcePost_Request::_internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_.format_ = value;
+}
+inline void ResourcePost_Request::set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
+  _internal_set_format(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourcePost_Request.format)
-}
-inline std::string* ResourcePost_Request::mutable_format() {
-  std::string* _s = _internal_mutable_format();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourcePost_Request.format)
-  return _s;
-}
-inline const std::string& ResourcePost_Request::_internal_format() const {
-  return _impl_.format_.Get();
-}
-inline void ResourcePost_Request::_internal_set_format(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  _impl_.format_.Set(value, GetArenaForAllocation());
-}
-inline std::string* ResourcePost_Request::_internal_mutable_format() {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  return _impl_.format_.Mutable(GetArenaForAllocation());
-}
-inline std::string* ResourcePost_Request::release_format() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourcePost_Request.format)
-  if (!_internal_has_format()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000002u;
-  auto* p = _impl_.format_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.format_.IsDefault()) {
-    _impl_.format_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
-}
-inline void ResourcePost_Request::set_allocated_format(std::string* format) {
-  if (format != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000002u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000002u;
-  }
-  _impl_.format_.SetAllocated(format, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.format_.IsDefault()) {
-    _impl_.format_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourcePost_Request.format)
 }
 
 // optional string content = 3;
 inline bool ResourcePost_Request::_internal_has_content() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
   return value;
 }
 inline bool ResourcePost_Request::has_content() const {
@@ -1363,7 +1331,7 @@ inline bool ResourcePost_Request::has_content() const {
 }
 inline void ResourcePost_Request::clear_content() {
   _impl_.content_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000002u;
 }
 inline const std::string& ResourcePost_Request::content() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourcePost_Request.content)
@@ -1372,7 +1340,7 @@ inline const std::string& ResourcePost_Request::content() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void ResourcePost_Request::set_content(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000004u;
+ _impl_._has_bits_[0] |= 0x00000002u;
  _impl_.content_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourcePost_Request.content)
 }
@@ -1385,11 +1353,11 @@ inline const std::string& ResourcePost_Request::_internal_content() const {
   return _impl_.content_.Get();
 }
 inline void ResourcePost_Request::_internal_set_content(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_._has_bits_[0] |= 0x00000002u;
   _impl_.content_.Set(value, GetArenaForAllocation());
 }
 inline std::string* ResourcePost_Request::_internal_mutable_content() {
-  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_._has_bits_[0] |= 0x00000002u;
   return _impl_.content_.Mutable(GetArenaForAllocation());
 }
 inline std::string* ResourcePost_Request::release_content() {
@@ -1397,7 +1365,7 @@ inline std::string* ResourcePost_Request::release_content() {
   if (!_internal_has_content()) {
     return nullptr;
   }
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000002u;
   auto* p = _impl_.content_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (_impl_.content_.IsDefault()) {
@@ -1408,9 +1376,9 @@ inline std::string* ResourcePost_Request::release_content() {
 }
 inline void ResourcePost_Request::set_allocated_content(std::string* content) {
   if (content != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000004u;
+    _impl_._has_bits_[0] |= 0x00000002u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000004u;
+    _impl_._has_bits_[0] &= ~0x00000002u;
   }
   _impl_.content_.SetAllocated(content, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -1493,7 +1461,7 @@ inline void ResourceGet_Request::set_allocated_name(std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourceGet_Request.name)
 }
 
-// optional string format = 2;
+// optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
 inline bool ResourceGet_Request::_internal_has_format() const {
   bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
   return value;
@@ -1502,63 +1470,23 @@ inline bool ResourceGet_Request::has_format() const {
   return _internal_has_format();
 }
 inline void ResourceGet_Request::clear_format() {
-  _impl_.format_.ClearToEmpty();
+  _impl_.format_ = 0;
   _impl_._has_bits_[0] &= ~0x00000002u;
 }
-inline const std::string& ResourceGet_Request::format() const {
+inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourceGet_Request::_internal_format() const {
+  return static_cast< ::com::wazuh::api::engine::catalog::ResourceFormat >(_impl_.format_);
+}
+inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourceGet_Request::format() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourceGet_Request.format)
   return _internal_format();
 }
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void ResourceGet_Request::set_format(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000002u;
- _impl_.format_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+inline void ResourceGet_Request::_internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.format_ = value;
+}
+inline void ResourceGet_Request::set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
+  _internal_set_format(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourceGet_Request.format)
-}
-inline std::string* ResourceGet_Request::mutable_format() {
-  std::string* _s = _internal_mutable_format();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourceGet_Request.format)
-  return _s;
-}
-inline const std::string& ResourceGet_Request::_internal_format() const {
-  return _impl_.format_.Get();
-}
-inline void ResourceGet_Request::_internal_set_format(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  _impl_.format_.Set(value, GetArenaForAllocation());
-}
-inline std::string* ResourceGet_Request::_internal_mutable_format() {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  return _impl_.format_.Mutable(GetArenaForAllocation());
-}
-inline std::string* ResourceGet_Request::release_format() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourceGet_Request.format)
-  if (!_internal_has_format()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000002u;
-  auto* p = _impl_.format_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.format_.IsDefault()) {
-    _impl_.format_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
-}
-inline void ResourceGet_Request::set_allocated_format(std::string* format) {
-  if (format != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000002u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000002u;
-  }
-  _impl_.format_.SetAllocated(format, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.format_.IsDefault()) {
-    _impl_.format_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourceGet_Request.format)
 }
 
 // -------------------------------------------------------------------
@@ -1793,77 +1721,37 @@ inline void ResourcePut_Request::set_allocated_name(std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourcePut_Request.name)
 }
 
-// optional string format = 2;
+// optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
 inline bool ResourcePut_Request::_internal_has_format() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
   return value;
 }
 inline bool ResourcePut_Request::has_format() const {
   return _internal_has_format();
 }
 inline void ResourcePut_Request::clear_format() {
-  _impl_.format_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000002u;
+  _impl_.format_ = 0;
+  _impl_._has_bits_[0] &= ~0x00000004u;
 }
-inline const std::string& ResourcePut_Request::format() const {
+inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourcePut_Request::_internal_format() const {
+  return static_cast< ::com::wazuh::api::engine::catalog::ResourceFormat >(_impl_.format_);
+}
+inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourcePut_Request::format() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourcePut_Request.format)
   return _internal_format();
 }
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void ResourcePut_Request::set_format(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000002u;
- _impl_.format_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+inline void ResourcePut_Request::_internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_.format_ = value;
+}
+inline void ResourcePut_Request::set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
+  _internal_set_format(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourcePut_Request.format)
-}
-inline std::string* ResourcePut_Request::mutable_format() {
-  std::string* _s = _internal_mutable_format();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourcePut_Request.format)
-  return _s;
-}
-inline const std::string& ResourcePut_Request::_internal_format() const {
-  return _impl_.format_.Get();
-}
-inline void ResourcePut_Request::_internal_set_format(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  _impl_.format_.Set(value, GetArenaForAllocation());
-}
-inline std::string* ResourcePut_Request::_internal_mutable_format() {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  return _impl_.format_.Mutable(GetArenaForAllocation());
-}
-inline std::string* ResourcePut_Request::release_format() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourcePut_Request.format)
-  if (!_internal_has_format()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000002u;
-  auto* p = _impl_.format_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.format_.IsDefault()) {
-    _impl_.format_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
-}
-inline void ResourcePut_Request::set_allocated_format(std::string* format) {
-  if (format != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000002u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000002u;
-  }
-  _impl_.format_.SetAllocated(format, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.format_.IsDefault()) {
-    _impl_.format_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourcePut_Request.format)
 }
 
 // optional string content = 3;
 inline bool ResourcePut_Request::_internal_has_content() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
   return value;
 }
 inline bool ResourcePut_Request::has_content() const {
@@ -1871,7 +1759,7 @@ inline bool ResourcePut_Request::has_content() const {
 }
 inline void ResourcePut_Request::clear_content() {
   _impl_.content_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000002u;
 }
 inline const std::string& ResourcePut_Request::content() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourcePut_Request.content)
@@ -1880,7 +1768,7 @@ inline const std::string& ResourcePut_Request::content() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void ResourcePut_Request::set_content(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000004u;
+ _impl_._has_bits_[0] |= 0x00000002u;
  _impl_.content_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourcePut_Request.content)
 }
@@ -1893,11 +1781,11 @@ inline const std::string& ResourcePut_Request::_internal_content() const {
   return _impl_.content_.Get();
 }
 inline void ResourcePut_Request::_internal_set_content(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_._has_bits_[0] |= 0x00000002u;
   _impl_.content_.Set(value, GetArenaForAllocation());
 }
 inline std::string* ResourcePut_Request::_internal_mutable_content() {
-  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_._has_bits_[0] |= 0x00000002u;
   return _impl_.content_.Mutable(GetArenaForAllocation());
 }
 inline std::string* ResourcePut_Request::release_content() {
@@ -1905,7 +1793,7 @@ inline std::string* ResourcePut_Request::release_content() {
   if (!_internal_has_content()) {
     return nullptr;
   }
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000002u;
   auto* p = _impl_.content_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (_impl_.content_.IsDefault()) {
@@ -1916,9 +1804,9 @@ inline std::string* ResourcePut_Request::release_content() {
 }
 inline void ResourcePut_Request::set_allocated_content(std::string* content) {
   if (content != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000004u;
+    _impl_._has_bits_[0] |= 0x00000002u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000004u;
+    _impl_._has_bits_[0] &= ~0x00000002u;
   }
   _impl_.content_.SetAllocated(content, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -2073,77 +1961,37 @@ inline void ResourceValidate_Request::set_allocated_name(std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourceValidate_Request.name)
 }
 
-// optional string format = 2;
+// optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
 inline bool ResourceValidate_Request::_internal_has_format() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
   return value;
 }
 inline bool ResourceValidate_Request::has_format() const {
   return _internal_has_format();
 }
 inline void ResourceValidate_Request::clear_format() {
-  _impl_.format_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000002u;
+  _impl_.format_ = 0;
+  _impl_._has_bits_[0] &= ~0x00000004u;
 }
-inline const std::string& ResourceValidate_Request::format() const {
+inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourceValidate_Request::_internal_format() const {
+  return static_cast< ::com::wazuh::api::engine::catalog::ResourceFormat >(_impl_.format_);
+}
+inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourceValidate_Request::format() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourceValidate_Request.format)
   return _internal_format();
 }
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void ResourceValidate_Request::set_format(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000002u;
- _impl_.format_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+inline void ResourceValidate_Request::_internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_.format_ = value;
+}
+inline void ResourceValidate_Request::set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
+  _internal_set_format(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourceValidate_Request.format)
-}
-inline std::string* ResourceValidate_Request::mutable_format() {
-  std::string* _s = _internal_mutable_format();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourceValidate_Request.format)
-  return _s;
-}
-inline const std::string& ResourceValidate_Request::_internal_format() const {
-  return _impl_.format_.Get();
-}
-inline void ResourceValidate_Request::_internal_set_format(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  _impl_.format_.Set(value, GetArenaForAllocation());
-}
-inline std::string* ResourceValidate_Request::_internal_mutable_format() {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  return _impl_.format_.Mutable(GetArenaForAllocation());
-}
-inline std::string* ResourceValidate_Request::release_format() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourceValidate_Request.format)
-  if (!_internal_has_format()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000002u;
-  auto* p = _impl_.format_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.format_.IsDefault()) {
-    _impl_.format_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
-}
-inline void ResourceValidate_Request::set_allocated_format(std::string* format) {
-  if (format != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000002u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000002u;
-  }
-  _impl_.format_.SetAllocated(format, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.format_.IsDefault()) {
-    _impl_.format_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourceValidate_Request.format)
 }
 
 // optional string content = 3;
 inline bool ResourceValidate_Request::_internal_has_content() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
   return value;
 }
 inline bool ResourceValidate_Request::has_content() const {
@@ -2151,7 +1999,7 @@ inline bool ResourceValidate_Request::has_content() const {
 }
 inline void ResourceValidate_Request::clear_content() {
   _impl_.content_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000002u;
 }
 inline const std::string& ResourceValidate_Request::content() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourceValidate_Request.content)
@@ -2160,7 +2008,7 @@ inline const std::string& ResourceValidate_Request::content() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void ResourceValidate_Request::set_content(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000004u;
+ _impl_._has_bits_[0] |= 0x00000002u;
  _impl_.content_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourceValidate_Request.content)
 }
@@ -2173,11 +2021,11 @@ inline const std::string& ResourceValidate_Request::_internal_content() const {
   return _impl_.content_.Get();
 }
 inline void ResourceValidate_Request::_internal_set_content(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_._has_bits_[0] |= 0x00000002u;
   _impl_.content_.Set(value, GetArenaForAllocation());
 }
 inline std::string* ResourceValidate_Request::_internal_mutable_content() {
-  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_._has_bits_[0] |= 0x00000002u;
   return _impl_.content_.Mutable(GetArenaForAllocation());
 }
 inline std::string* ResourceValidate_Request::release_content() {
@@ -2185,7 +2033,7 @@ inline std::string* ResourceValidate_Request::release_content() {
   if (!_internal_has_content()) {
     return nullptr;
   }
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000002u;
   auto* p = _impl_.content_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (_impl_.content_.IsDefault()) {
@@ -2196,9 +2044,9 @@ inline std::string* ResourceValidate_Request::release_content() {
 }
 inline void ResourceValidate_Request::set_allocated_content(std::string* content) {
   if (content != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000004u;
+    _impl_._has_bits_[0] |= 0x00000002u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000004u;
+    _impl_._has_bits_[0] &= ~0x00000002u;
   }
   _impl_.content_.SetAllocated(content, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -2230,6 +2078,16 @@ inline void ResourceValidate_Request::set_allocated_content(std::string* content
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
+
+PROTOBUF_NAMESPACE_OPEN
+
+template <> struct is_proto_enum< ::com::wazuh::api::engine::catalog::ResourceFormat> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::com::wazuh::api::engine::catalog::ResourceFormat>() {
+  return ::com::wazuh::api::engine::catalog::ResourceFormat_descriptor();
+}
+
+PROTOBUF_NAMESPACE_CLOSE
 
 // @@protoc_insertion_point(global_scope)
 
