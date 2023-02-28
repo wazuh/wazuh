@@ -1,22 +1,56 @@
 [
     {
-        "name": "Sockets",
+        "name": "CountExample",
         "enable": true,
-        "signalType" : "meter",
-        "subtype": "counter",
-        "outputFile": "counterOne.txt",
-        "loggingFileExport": true,
+        "signalType": "meter",
+        "instrumentType" : "counter",
+        "subType": "uint64",
+        "outputFile": "countExample.txt",
         "exportIntervalMillis": 1000,
         "exportTimeoutMillis": 500
     },
     {
-        "name": "Request",
+        "name": "HistogramExample",
         "enable": true,
-        "signalType" : "meter",
-        "subtype": "counter",
-        "outputFile": "counterTwo.txt",
-        "loggingFileExport": true,
+        "signalType": "meter",
+        "instrumentType" : "histogram",
+        "subType": "double",
+        "outputFile": "histogramExample.txt",
         "exportIntervalMillis": 1000,
         "exportTimeoutMillis": 500
+    },
+    {
+        "name": "UpDownCountExample",
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "upDownCounter",
+        "subType": "int64",
+        "outputFile": "upDownCounterExample.txt",
+        "exportIntervalMillis": 1000,
+        "exportTimeoutMillis": 500
+    },
+    {
+        "name": "ObservableGaugeExample",
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "observableGauge",
+        "subType": "double",
+        "outputFile": "observableGauge.txt",
+        "exportIntervalMillis": 1000,
+        "exportTimeoutMillis": 500
+    },
+    {
+        "name": "TracerExampleOne",
+        "enable": true,
+        "signalType": "tracer",
+        "exporterType": "logging",
+        "processorType": "simple"
+    },
+    {
+        "name": "TracerExampleTwo",
+        "enable": true,
+        "signalType": "tracer",
+        "exporterType": "logging",
+        "processorType": "simple"
     }
 ]

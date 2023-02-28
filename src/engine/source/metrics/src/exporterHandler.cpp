@@ -21,7 +21,7 @@ void ExporterHandler::create(std::shared_ptr<MetricsContext> data)
             {
                 case ExportersTypes::Logging:
                 {
-                    if (data->loggingFileExport)
+                    if (!data->outputFile.empty())
                     {
                         data->file.open(data->outputFile);
                         data->exporter = opentelemetry::exporter::trace::OStreamSpanExporterFactory::Create(data->file);
@@ -48,7 +48,7 @@ void ExporterHandler::create(std::shared_ptr<MetricsContext> data)
         }
         case ProviderTypes::Meter:
         {
-            if (data->loggingFileExport)
+            if (!data->outputFile.empty())
             {
                 data->file.open(data->outputFile);
                 data->metricExporter = std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter>(new opentelemetry::exporter::metrics::OStreamMetricExporter(data->file));

@@ -63,11 +63,11 @@ TEST_F(HistogramTest, example)
                                           1000.0, 2500.0, 5000.0, 10000.0, 20000.0};
   m_spContext->export_interval_millis = std::chrono::milliseconds(1000);
   m_spContext->export_timeout_millis = std::chrono::milliseconds(500);
-  m_spContext->histogramName = "example";
+  m_spContext->name = "example";
   auto exporter = std::make_shared<ExporterHandler>();
   auto reader = std::make_shared<ReaderHandler>();
   auto provider = std::make_shared<ProviderHandler>();
   exporter->setNext(reader)->setNext(provider);
   exporter->handleRequest(m_spContext);
-  histogramExample(m_spContext->histogramName);
+  histogramExample(m_spContext->name);
 }

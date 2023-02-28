@@ -16,7 +16,6 @@ enum class ExportersTypes
 {
     Logging,
     Memory,
-    Metrics,
     OtlpRPC,
     OtlpHTTP,
     Zipkin
@@ -39,22 +38,31 @@ enum class InstrumentTypes
 {
     Counter,
     Histogram,
-    Gauge
+    UpDownCounter,
+    ObservableCounter,
+    ObservableGauge,
+    ObservableUpDownCounter
+};
+
+enum class SubType
+{
+    Double,
+    Int64,
+    UInt64
 };
 
 struct MetricsContext
 {
     bool enable;
-    bool loggingFileExport;
     std::string outputFile;
-    std::string histogramName;
-    std::string counterName;
+    std::string name;
     size_t bufferSizeMemoryExporter;
     ExportersTypes exporterType;
     ProcessorsTypes processorType;
     ProviderTypes providerType;
     InstrumentTypes instrumentType;
     std::vector<double> histogramVector;
+    SubType subType;
     std::unique_ptr<opentelemetry::sdk::trace::SpanExporter> exporter;
     std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter> metricExporter;
     std::unique_ptr<opentelemetry::sdk::metrics::MetricReader> reader;

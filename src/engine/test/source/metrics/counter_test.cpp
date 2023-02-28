@@ -48,11 +48,11 @@ TEST_F(MetricsInstrumentationTest, CounterTest)
     m_spContext->instrumentType = InstrumentTypes::Counter;
     m_spContext->export_interval_millis = std::chrono::milliseconds(1000);
     m_spContext->export_timeout_millis = std::chrono::milliseconds(500);
-    m_spContext->counterName = "example";
+    m_spContext->name = "example";
     auto exporter = std::make_shared<ExporterHandler>();
     auto reader = std::make_shared<ReaderHandler>();
     auto provider = std::make_shared<ProviderHandler>();
     exporter->setNext(reader)->setNext(provider);
     exporter->handleRequest(m_spContext);
-    counterExample(m_spContext->counterName);
+    counterExample(m_spContext->name);
 }

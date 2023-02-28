@@ -9,6 +9,7 @@
 #include "readerHandler.hpp"
 #include "providerHandler.hpp"
 #include "opentelemetry/metrics/provider.h"
+#include <logging/logging.hpp>
 
 std::unordered_map<std::string, ProviderTypes> const PROVIDER_TYPES =
 {
@@ -19,7 +20,29 @@ std::unordered_map<std::string, ProviderTypes> const PROVIDER_TYPES =
 std::unordered_map<std::string, InstrumentTypes> const INSTRUMENT_TYPES =
 {
     {"counter", InstrumentTypes::Counter},
-    {"histrogram", InstrumentTypes::Histogram}
+    {"histogram", InstrumentTypes::Histogram},
+    {"upDownCounter", InstrumentTypes::UpDownCounter},
+    {"observableGauge", InstrumentTypes::ObservableGauge}
+};
+
+std::unordered_map<std::string, SubType> const SUB_TYPES =
+{
+    {"double", SubType::Double},
+    {"int64", SubType::Int64},
+    {"uint64", SubType::UInt64}
+};
+
+std::unordered_map<std::string, ExportersTypes> const EXPORTER_TYPES =
+{
+    {"logging", ExportersTypes::Logging},
+    {"memory", ExportersTypes::Memory},
+    {"zipkin", ExportersTypes::Zipkin}
+};
+
+std::unordered_map<std::string, ProcessorsTypes> const PROCESSOR_TYPES =
+{
+    {"simple", ProcessorsTypes::Simple},
+    {"batch", ProcessorsTypes::Batch}
 };
 
 Metrics::~Metrics()
@@ -40,9 +63,10 @@ nlohmann::json Metrics::loadJson(const std::filesystem::path& file)
     return nlohmann::json::parse(jsonFile);
 }
 
-void Metrics::createContext(const std::filesystem::path& file)
+void Metrics::createCommonChain(const std::filesystem::path& file)
 {
     m_contextFile = loadJson(file);
+
     for (auto& config : m_contextFile)
     {
         m_upContext.push_back(std::make_shared<MetricsContext>());
@@ -51,32 +75,39 @@ void Metrics::createContext(const std::filesystem::path& file)
     }
 }
 
-void Metrics::setContext()
+void Metrics::setMetricsConfig()
 {
     auto particularContext = m_upContext.begin();
 
     for (auto& config : m_contextFile)
     {
         (*particularContext)->providerType = PROVIDER_TYPES.at(config.at("signalType"));
-        (*particularContext)->instrumentType = INSTRUMENT_TYPES.at(config.at("subtype"));
-        (*particularContext)->loggingFileExport = config.at("loggingFileExport");
-        (*particularContext)->export_interval_millis = static_cast<std::chrono::milliseconds>(config.at("exportIntervalMillis"));
-        (*particularContext)->export_timeout_millis = static_cast<std::chrono::milliseconds>(config.at("exportTimeoutMillis"));
-        (*particularContext)->outputFile = config.at("outputFile");
-        (*particularContext)->counterName = config.at("name");
+        (*particularContext)->name = config.at("name");
         (*particularContext)->enable = config.at("enable");
+        if (config.contains("outputFile"))
+        {
+            (*particularContext)->outputFile = config.at("outputFile");
+        }
 
-        controller.insert({(*particularContext)->counterName, (*particularContext)->enable});
+        controller.insert({(*particularContext)->name, (*particularContext)->enable});
 
         switch ((*particularContext)->providerType)
         {
             case ProviderTypes::Tracer:
             {
+                (*particularContext)->exporterType = EXPORTER_TYPES.at(config.at("exporterType"));
+                (*particularContext)->processorType = PROCESSOR_TYPES.at(config.at("processorType"));
+
                 m_upProcessor.push_back(std::make_shared<ProcessorHandler>());
                 break;
             }
             case ProviderTypes::Meter:
             {
+                (*particularContext)->instrumentType = INSTRUMENT_TYPES.at(config.at("instrumentType"));
+                (*particularContext)->subType = SUB_TYPES.at(config.at("subType"));
+                (*particularContext)->export_interval_millis = static_cast<std::chrono::milliseconds>(config.at("exportIntervalMillis"));
+                (*particularContext)->export_timeout_millis = static_cast<std::chrono::milliseconds>(config.at("exportTimeoutMillis"));
+
                 m_upReader.push_back(std::make_shared<ReaderHandler>());
                 break;
             }
@@ -92,9 +123,9 @@ void Metrics::initMetrics(const std::string& moduleName, const std::filesystem::
 {
     m_moduleName = moduleName;
 
-    createContext(file);
+    createCommonChain(file);
 
-    setContext();
+    setMetricsConfig();
 
     auto particularContext = m_upContext.begin();
     auto particularExporter = m_upExporter.begin();
@@ -128,12 +159,24 @@ void Metrics::initMetrics(const std::string& moduleName, const std::filesystem::
         {
             if ((*particularContext)->instrumentType == InstrumentTypes::Counter)
             {
-                initCounter((*particularContext)->counterName);
+                initCounter((*particularContext)->name, (*particularContext)->subType);
             }
             else if ((*particularContext)->instrumentType == InstrumentTypes::Histogram)
             {
-                initHistogram((*particularContext)->histogramName, "const std::string& description", "");
+                initHistogram((*particularContext)->name, (*particularContext)->subType);
             }
+            else if ((*particularContext)->instrumentType == InstrumentTypes::UpDownCounter)
+            {
+                initUpDownCounter((*particularContext)->name, (*particularContext)->subType);
+            }
+            else if ((*particularContext)->instrumentType == InstrumentTypes::ObservableGauge)
+            {
+                initObservableGauge((*particularContext)->name, (*particularContext)->subType);
+            }
+        }
+        else if ((*particularContext)->providerType == ProviderTypes::Tracer)
+        {
+            initTracer((*particularContext)->name);
         }
 
         std::advance(particularContext, 1);
@@ -142,29 +185,69 @@ void Metrics::initMetrics(const std::string& moduleName, const std::filesystem::
     }
 }
 
-void Metrics::setScopeSpam(const std::string& spamName) const
+void Metrics::initTracer(const std::string& name)
 {
     auto provider = opentelemetry::trace::Provider::GetTracerProvider();
-    auto tracer = provider->GetTracer(m_moduleName, OPENTELEMETRY_SDK_VERSION);
-    opentelemetry::trace::Scope(tracer->StartSpan(spamName));
+    m_tracers.insert({name, provider->GetTracer(name)});
 }
 
-void Metrics::initCounter(const std::string& name)
+void Metrics::setScopeSpam(const std::string& name) const
+{
+    if (m_tracers.find(name) != m_tracers.end())
+    {
+        if(controller.at(name))
+        {
+            opentelemetry::trace::Scope(m_tracers.at(name)->StartSpan(name));
+        }
+    }
+    else
+    {
+        throw std::runtime_error {"The Tracer" + name + " has not been created."};
+    }
+}
+
+void Metrics::initCounter(const std::string& name, SubType subType)
 {
     auto counterName = name + "_counter";
     auto provider = opentelemetry::metrics::Provider::GetMeterProvider();
     opentelemetry::nostd::shared_ptr<opentelemetry::metrics::Meter> meter = provider->GetMeter(name);
-    m_doubleCounter.insert({name, meter->CreateDoubleCounter(counterName)});
+
+    switch (subType)
+    {
+        case SubType::Double:
+        {
+            if (m_doubleCounter.find(name) == m_doubleCounter.end())
+            {
+                m_doubleCounter.insert({name, meter->CreateDoubleCounter(counterName)});
+            }
+            else
+            {
+                throw std::runtime_error {"The Counter " + name + " has already been created."};
+            }
+            break;
+        }
+        case SubType::Int64:
+        {
+            throw std::runtime_error {"Counter type instrument does not accept integers."};
+        }
+        case SubType::UInt64:
+        {
+            if (m_uint64Counter.find(name) == m_uint64Counter.end())
+            {
+                m_uint64Counter.insert({name, meter->CreateUInt64Counter(counterName)});
+            }
+            else
+            {
+                throw std::runtime_error {"The Counter " + name + " has already been created."};
+            }
+        }
+    }
 }
 
-void Metrics::addCounterValue(std::string counterName, const double& value) const
+void Metrics::addCounterValue(std::string counterName, const double value) const
 {
-    if ((m_doubleCounter.find(counterName)) != m_doubleCounter.end())
+    if (m_doubleCounter.find(counterName) != m_doubleCounter.end())
     {
-        if (value < 0)
-        {
-            throw std::runtime_error {"The increment amount. MUST be non-negative."};
-        }
         if(controller.at(counterName))
         {
             m_doubleCounter.at(counterName)->Add(value);
@@ -172,20 +255,66 @@ void Metrics::addCounterValue(std::string counterName, const double& value) cons
     }
     else
     {
-        throw std::runtime_error {"The counter" + counterName + " has not been created."};
+        throw std::runtime_error {"The Counter" + counterName + " has not been created."};
     }
 }
 
-void Metrics::initHistogram(const std::string& name, const std::string& description, const std::string& unit)
+void Metrics::addCounterValue(std::string counterName, const uint64_t value) const
+{
+    if (m_uint64Counter.find(counterName) != m_uint64Counter.end())
+    {
+        if(controller.at(counterName))
+        {
+            m_uint64Counter.at(counterName)->Add(value);
+        }
+    }
+    else
+    {
+        throw std::runtime_error {"The Counter" + counterName + " has not been created."};
+    }
+}
+
+void Metrics::initHistogram(const std::string& name, SubType subType)
 {
     auto histogramName = name + "_histogram";
     auto provider = opentelemetry::metrics::Provider::GetMeterProvider();
     opentelemetry::nostd::shared_ptr<opentelemetry::metrics::Meter> meter = provider->GetMeter(name);
-    m_doubleHistogram.insert({name, meter->CreateDoubleHistogram(histogramName, description, unit)});
+
+    switch (subType)
+    {
+        case SubType::Double:
+        {
+            if (m_doubleHistogram.find(name) == m_doubleHistogram.end())
+            {
+                m_doubleHistogram.insert({name, meter->CreateDoubleHistogram(histogramName)});
+            }
+            else
+            {
+                throw std::runtime_error {"The Histogram " + name + " has already been created."};
+            }
+            break;
+        }
+        case SubType::Int64:
+        {
+            throw std::runtime_error {"Histogram type instrument does not accept integers."};
+        }
+        case SubType::UInt64:
+        {
+            if (m_uint64Histogram.find(name) == m_uint64Histogram.end())
+            {
+                m_uint64Histogram.insert({name, meter->CreateUInt64Histogram(histogramName)});
+            }
+            else
+            {
+                throw std::runtime_error {"The Histogram " + name + " has already been created."};
+            }
+        }
+    }
+
     m_context = opentelemetry::context::Context{};
 }
 
-void Metrics::addHistogramValue(std::string histogramName, const double& value) const
+void Metrics::addHistogramValue(std::string histogramName, const double value) const
 {
     if (m_doubleHistogram.find(histogramName) != m_doubleHistogram.end())
     {
@@ -198,6 +327,151 @@ void Metrics::addHistogramValue(std::string histogramName, const double& value) 
     }
     else
     {
-        throw std::runtime_error {"The counter" + histogramName + " has not been created."};
+        throw std::runtime_error {"The Histogram" + histogramName + " has not been created."};
+    }
+}
+
+void Metrics::addHistogramValue(std::string histogramName, const uint64_t value) const
+{
+    if (m_uint64Histogram.find(histogramName) != m_uint64Histogram.end())
+    {
+        if(controller.at(histogramName))
+        {
+            std::map<std::string, std::string> labels;
+            auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
+            m_uint64Histogram.at(histogramName)->Record(value, labelkv, m_context);
+        }
+    }
+    else
+    {
+        throw std::runtime_error {"The Histogram" + histogramName + " has not been created."};
+    }
+}
+
+void Metrics::initUpDownCounter(const std::string& name, SubType subType)
+{
+    auto UpDownCounterName = name + "_upDownCounter";
+    auto provider = opentelemetry::metrics::Provider::GetMeterProvider();
+    opentelemetry::nostd::shared_ptr<opentelemetry::metrics::Meter> meter = provider->GetMeter(name);
+
+    switch (subType)
+    {
+        case SubType::Double:
+        {
+            if (m_doubleUpDownCounter.find(name) == m_doubleUpDownCounter.end())
+            {
+                m_doubleUpDownCounter.insert({name, meter->CreateDoubleUpDownCounter(UpDownCounterName)});
+            }
+            else
+            {
+                throw std::runtime_error {"The UpDownCounter " + name + " has already been created."};
+            }
+            break;
+        }
+        case SubType::UInt64:
+        {
+            throw std::runtime_error {"UpDownCounter  type instrument does not accept unsigned integers."};
+        }
+        case SubType::Int64:
+        {
+            if (m_int64UpDownCounter.find(name) == m_int64UpDownCounter.end())
+            {
+                m_int64UpDownCounter.insert({name, meter->CreateInt64UpDownCounter(UpDownCounterName)});
+            }
+            else
+            {
+                throw std::runtime_error {"The UpDownCounter " + name + " has already been created."};
+            }
+        }
+    }
+}
+
+void Metrics::addUpDownCounterValue(std::string upDownCounterName, const double value) const
+{
+    if (m_doubleUpDownCounter.find(upDownCounterName) != m_doubleUpDownCounter.end())
+    {
+        if(controller.at(upDownCounterName))
+        {
+            m_doubleUpDownCounter.at(upDownCounterName)->Add(value);
+        }
+    }
+    else
+    {
+        throw std::runtime_error {"The UpDownCounter" + upDownCounterName + " has not been created."};
+    }
+}
+
+void Metrics::addUpDownCounterValue(std::string upDownCounterName, const int64_t value) const
+{
+    if (m_int64UpDownCounter.find(upDownCounterName) != m_int64UpDownCounter.end())
+    {
+        if(controller.at(upDownCounterName))
+        {
+            m_int64UpDownCounter.at(upDownCounterName)->Add(value);
+        }
+    }
+    else
+    {
+        throw std::runtime_error {"The UpDownCounter" + upDownCounterName + " has not been created."};
+    }
+}
+
+void Metrics::initObservableGauge(const std::string& name, SubType subType)
+{
+    auto UpDownCounterName = name + "_observableGauge";
+    auto provider = opentelemetry::metrics::Provider::GetMeterProvider();
+    opentelemetry::nostd::shared_ptr<opentelemetry::metrics::Meter> meter = provider->GetMeter(name);
+
+    switch (subType)
+    {
+        case SubType::Double:
+        {
+            if (m_doubleObservableGauge.find(name) == m_doubleObservableGauge.end())
+            {
+                m_doubleObservableGauge.insert({name, meter->CreateDoubleObservableGauge(UpDownCounterName)});
+            }
+            else
+            {
+                throw std::runtime_error {"The ObservableGauge " + name + " has already been created."};
+            }
+            break;
+        }
+        case SubType::UInt64:
+        {
+            throw std::runtime_error {"ObservableGauge type instrument does not accept unsigned integers."};
+        }
+        case SubType::Int64:
+        {
+            if (m_int64ObservableGauge.find(name) == m_int64ObservableGauge.end())
+            {
+                m_int64ObservableGauge.insert({name, meter->CreateInt64ObservableGauge(UpDownCounterName)});
+            }
+            else
+            {
+                throw std::runtime_error {"The ObservableGauge " + name + " has already been created."};
+            }
+        }
+    }
+}
+
+void Metrics::addObservableGauge(std::string observableGaugeName, opentelemetry::v1::metrics::ObservableCallbackPtr callback) const
+{
+    if (m_doubleObservableGauge.find(observableGaugeName) != m_doubleObservableGauge.end())
+    {
+        if(controller.at(observableGaugeName))
+        {
+            m_doubleObservableGauge.at(observableGaugeName)->AddCallback(callback, nullptr);
+        }
+    }
+    else if (m_int64ObservableGauge.find(observableGaugeName) != m_int64ObservableGauge.end())
+    {
+        if(controller.at(observableGaugeName))
+        {
+            m_int64ObservableGauge.at(observableGaugeName)->AddCallback(callback, nullptr);
+        }
+    }
+    else
+    {
+        throw std::runtime_error {"The UpDownCounter" + observableGaugeName + " has not been created."};
     }
 }
