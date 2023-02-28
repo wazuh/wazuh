@@ -2330,8 +2330,6 @@ checks:
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
     impact: "The systems global umask could override, but only making the file permissions stricter, what is configured in RSyslog with the FileCreateMode directive. RSyslog also has its own $umask directive that can alter the intended file creation mode. In addition, consideration should be given to how FileCreateMode is used. Thus it is critical to ensure that the intended file creation mode is not overridden with less restrictive settings in /etc/rsyslog.conf, /etc/rsyslog.d/*conf files and that FileCreateMode is set before any file is created."
     remediation: "Edit either /etc/rsyslog.conf or a dedicated .conf file in /etc/rsyslog.d/ and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640 Restart the service: # systemctl restart rsyslog."
-    references:
-      - See the rsyslog.conf(5) man page for more information.
     compliance:
       - cis: ["4.2.1.4"]
       - cis_csc_v8: ["3.3", "8.2"]
@@ -2358,8 +2356,6 @@ checks:
     description: "RSyslog supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add the following line (where loghost.example.com is the name of your central log host). The target directive may either be a fully qualified domain name or an IP address. *.* action(type="omfwd" target="192.168.2.100" port="514" protocol="tcp" action.resumeRetryCount="100" queue.type="LinkedList" queue.size="1000") Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog'
-    references:
-      - See the rsyslog.conf(5) man page for more information.
     compliance:
       - cis: ["4.2.1.6"]
       - cis_csc_v8: ["8.2"]
@@ -2780,8 +2776,6 @@ checks:
     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. - DenyGroups: The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows: AllowUsers <userlist> OR AllowGroups <grouplist> OR DenyUsers <userlist> OR DenyGroups <grouplist>."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.4"]
       - cis_csc_v8: ["3.3"]
@@ -2796,10 +2790,10 @@ checks:
         mitre_techniques: ["T1021", "T1021.004"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1018"]
-    condition: any
+    condition: all
     rules:
       - 'c:sshd -T -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
-      - f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
 
   # 5.2.5 Ensure SSH LogLevel is appropriate (Automated)
   - id: 28108
@@ -2824,12 +2818,12 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*LogLevel\s+VERBOSE|^\s*LogLevel\s+INFO'
-      - "not f:/etc/ssh/sshd_config -> r:'loglevel'"
+      - "f:/etc/ssh/sshd_config -> r:loglevel"
 
   # 5.2.6 Ensure SSH PAM is enabled (Automated)
   - id: 28109
     title: "Ensure SSH PAM is enabled."
-    description: 'UsePAM Enables the Pluggable Authentication Module interface. If set to "yes" this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types.'
+    description: "UsePAM Enables the Pluggable Authentication Module interface. If set to 'yes' this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types."
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
     impact: "If UsePAM is enabled, you will not be able to run sshd(8) as a non-root user."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes."
@@ -3105,7 +3099,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
-      - 'f:/etc/ssh/sshd_config -> !r:^\s*MaxSessions\s+(1[1-9]|[2-9][0-9]|[1-9][0-9][0-9]+)'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
 
   # 5.2.19 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 28121
@@ -3121,7 +3115,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
-      - 'f:/etc/ssh/sshd_config -> !r:^\s*LoginGraceTime\s+(0|6[1-9]|[7-9][0-9]|[1-9][0-9][0-9]+|[^1]m)'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
 
   # 5.2.20 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 28122
@@ -3141,7 +3135,7 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare <= 900 && n:^\s*ClientAliveInterval\s*\t*(\d+) compare > 0'
+      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare > 0'
       - 'c:sshd -T -C user=root -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare > 0'
 
   ############################################################
@@ -3302,7 +3296,8 @@ checks:
       - iso_27001-2013: ["A.9.2.6"]
     condition: all
     rules:
-      - 'c:authselect current -> r:^Profile ID: custom/\w+'
+      - 'c:authselect list -> r:^\w*\s*custom'
+      - "f:/etc/authselect/authselect.conf -> r:custom"
 
   # 5.4.2 Ensure authselect includes with-faillock (Automated)
   - id: 28130
@@ -3421,10 +3416,10 @@ checks:
       - mitre_mitigations: ["M1041"]
     condition: all
     rules:
-      - 'f:/etc/login.defs -> r:\s*ENCRYPT_METHOD SHA512'
-      - 'f:/etc/libuser.conf -> r:\s*crypt_style = sha512'
-      - 'f:/etc/pam.d/password-auth -> r:\s*password\.+sufficient\.+pam_unix\.so && r:sha512'
-      - 'f:/etc/pam.d/system-auth -> r:\s*password\.+sufficient\.+pam_unix\.so && r:sha512'
+      - 'f:/etc/libuser.conf -> r:^\s*crypt_style = sha512'
+      - 'f:/etc/login.defs -> r:^\s*ENCRYPT_METHOD SHA512'
+      - 'f:/etc/pam.d/password-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so'
 
   ###############################################
   # 5.6 User Accounts and Environment
@@ -3542,7 +3537,7 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - 'f:/etc/passwd -> r:^root:\w:0\w:0'
+      - "f:/etc/passwd -> r:^root:x:0:0"
 
   # 5.6.5 Ensure default user umask is 027 or more restrictive (Automated) - Not Implemented
 
