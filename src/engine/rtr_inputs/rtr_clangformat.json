@@ -1,0 +1,11 @@
+{
+    "steps": [
+        {
+            "description": "Coding style",
+            "parameters": [
+                "--test format",
+                "--exclude build"
+            ]
+        }
+    ]
+}
