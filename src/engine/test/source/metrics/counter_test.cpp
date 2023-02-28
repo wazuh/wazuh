@@ -42,7 +42,6 @@ TEST_F(MetricsInstrumentationTest, CounterTest)
     default. The reader periodically collects metrics from the Aggregation Store and
     exports them.
     */
-    m_spContext->loggingFileExport = true;
     m_spContext->outputFile = "counter.txt";
     m_spContext->providerType = ProviderTypes::Meter;
     m_spContext->instrumentType = InstrumentTypes::Counter;

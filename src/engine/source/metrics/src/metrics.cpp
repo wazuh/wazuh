@@ -47,8 +47,10 @@ std::unordered_map<std::string, ProcessorsTypes> const PROCESSOR_TYPES =
 
 Metrics::~Metrics()
 {
-    std::shared_ptr<opentelemetry::metrics::MeterProvider> none;
-    opentelemetry::metrics::Provider::SetMeterProvider(none);
+    std::shared_ptr<opentelemetry::metrics::MeterProvider> noneMeter;
+    std::shared_ptr<opentelemetry::trace::TracerProvider> noneTracer;
+    opentelemetry::metrics::Provider::SetMeterProvider(noneMeter);
+    opentelemetry::trace::Provider::SetTracerProvider(noneTracer);
 }
 
 nlohmann::json Metrics::loadJson(const std::filesystem::path& file)

@@ -55,7 +55,6 @@ protected:
 
 TEST_F(HistogramTest, example)
 {
-  m_spContext->loggingFileExport = true;
   m_spContext->outputFile = "histrogram.txt";
   m_spContext->providerType = ProviderTypes::Meter;
   m_spContext->instrumentType = InstrumentTypes::Histogram;

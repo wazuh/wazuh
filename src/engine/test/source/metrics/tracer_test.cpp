@@ -80,7 +80,6 @@ TEST_F(TracerInstrumentationTest, SetTracerOutputFile)
     m_spContext->providerType = ProviderTypes::Tracer;
     m_spContext->exporterType = ExportersTypes::Logging;
     m_spContext->processorType = ProcessorsTypes::Simple;
-    m_spContext->loggingFileExport = true;
     m_spContext->outputFile = "output.json";
     auto exporter = std::make_shared<ExporterHandler>();
     auto processor = std::make_shared<ProcessorHandler>();
