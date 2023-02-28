@@ -22,3 +22,15 @@ auditd.log.old_ses:
     For login events this is the old session ID usedfor the user
     prior to this login.
   type: keyword
+
+auditd.log.record_type:
+  description: >
+    Alias of event.action. This describes the information in the event.
+    It is more specific than event.category. Examples are group-add, 
+    process-started, file-created. The value is normally defined by the 
+    implementer.
+  type: keyword
+
+auditd.log.sequence:
+  description: 'The audit event sequence number.'
+  type: long
