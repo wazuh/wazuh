@@ -12,21 +12,21 @@ bool Registry::registerHandler(const std::string& command, const Handler callbac
     }
 
     std::unique_lock<std::shared_mutex> lock(m_mutex);
-    if (m_commands.find(command) != m_commands.end())
+    if (m_handlers.find(command) != m_handlers.end())
     {
         return false;
     }
-    m_commands[command] = callback;
+    m_handlers[command] = callback;
 
     return true;
 };
 
-Handler Registry::getCallback(const std::string& command)
+Handler Registry::getHandler(const std::string& command)
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
-    if (m_commands.find(command) != m_commands.end())
+    if (m_handlers.find(command) != m_handlers.end())
     {
-        return m_commands[command];
+        return m_handlers[command];
     }
     return [command](const base::utils::wazuhProtocol::WazuhRequest& req)
     {

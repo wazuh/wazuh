@@ -95,8 +95,7 @@ TEST(Router, add_list_remove_routes)
     std::get<0>(list[1]) == "filter/allow_all/0";
 
     // Remove a route
-    error = router.removeRoute("e_wazuh_queue");
-    ASSERT_FALSE(error.has_value());
+    router.removeRoute("e_wazuh_queue");
 
     // List routes
     routes = router.getRouteTable();
@@ -104,8 +103,7 @@ TEST(Router, add_list_remove_routes)
     ASSERT_EQ(std::get<0>(routes[0]), "allow_all");
 
     // Remove a route
-    error = router.removeRoute("allow_all");
-    ASSERT_FALSE(error.has_value());
+    router.removeRoute("allow_all");
 
     // List routes
     routes = router.getRouteTable();
@@ -388,8 +386,7 @@ TEST(Router, checkRouting) {
     ASSERT_STREQ(decoder.value().c_str(), ENV_A1) << std::get<0>(router.getRouteTable()[0]);
 
     // Delete route 3
-    error = router.removeRoute("allow_all_C3");
-    ASSERT_FALSE(error.has_value()) << error.value().message;
+    router.removeRoute("allow_all_C3");
 
     list = router.getRouteTable();
     ASSERT_EQ(list.size(), 2);

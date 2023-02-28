@@ -5,8 +5,7 @@
 
 #include <CLI/CLI.hpp>
 
-#include <base/utils/wazuhProtocol/wazuhRequest.hpp>
-#include <base/utils/wazuhProtocol/wazuhResponse.hpp>
+#include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 #include <json/json.hpp>
 
 namespace cmd::router

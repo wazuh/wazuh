@@ -9,8 +9,7 @@
 
 #include <uvw/pipe.hpp>
 
-#include <base/utils/wazuhProtocol/wazuhRequest.hpp>
-#include <base/utils/wazuhProtocol/wazuhResponse.hpp>
+#include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 #include <error.hpp>
 
 namespace cmd::apiclnt
