@@ -11,13 +11,14 @@ std::optional<Field> getField(std::string_view input,
                               const char delimiter,
                               const char quote,
                               const char escape,
-                              bool s)
+                              bool strict)
 {
     size_t last_escape_location = 0;
 
     if (input.empty())
     {
-        return Field {0,0,false,false};
+        // Empty field
+        return Field {0, 0, false, false};
     }
 
     bool quote_opened {false};
@@ -28,25 +29,25 @@ std::optional<Field> getField(std::string_view input,
     {
         if (input[i] == delimiter && !quote_opened)
         {
+            // Found delimiter outside quotes, return field
             return Field {0, i, isEscaped, isQuoted};
         }
         else
         {
             if (quote_opened && quote != escape && input[i] == escape)
             {
+                // Handle escape character
                 last_escape_location = i;
             }
-            // TODO: If it does not begin with quotation marks, why does it advance until
-            // it is found?
             if (input[i] == quote)
             {
                 if (!quote_opened)
                 {
+                    // Handle opening quote
                     quote_opened = true;
-                    // If fields are not enclosed with double quotes, then
-                    // double quotes may not appear inside the fields.
-                    if (s && (i > 1) && input[i - 1] != delimiter)
+                    if (strict && (i > 1) && input[i - 1] != delimiter)
                     {
+                        // Invalid field if strict parsing is enabled and there is no delimiter before opening quote
                         return {};
                     }
                     if (quote == escape)
@@ -56,6 +57,7 @@ std::optional<Field> getField(std::string_view input,
                 }
                 else
                 {
+                    // Handle closing quote
                     bool escaped = (last_escape_location + 1 == i) && (i > 1);
                     isEscaped = isEscaped || escaped;
                     last_escape_location += (i - last_escape_location) * size_t(!escaped);
@@ -65,12 +67,13 @@ std::optional<Field> getField(std::string_view input,
             }
         }
     }
-    // unclosed quote
+    // Unclosed quote
     if (quote_opened && input.back() != quote)
     {
         return {};
     }
 
+    // Return field
     return Field {0, input.size(), isEscaped, isQuoted};
 };
 
@@ -87,42 +90,44 @@ void unescape(bool is_escaped, std::string& vs, std::string_view escape)
 }
 
 void updateDoc(json::Json& doc,
-               std::string_view hdr,
-               std::string_view val,
+               std::string_view key,
+               std::string_view value,
                bool is_escaped,
                std::string_view escape,
                bool is_quoted)
 {
-    if (val.empty())
+    if (value.empty())
     {
-        doc.setNull(hdr);
+        doc.setNull(key);
         return;
     }
 
-    if(!is_quoted)
+    // If the value is not quoted, try parsing it as an int or double
+    if (!is_quoted)
     {
+        // Try parsing as int
         int64_t i;
-        auto [ptr, ec] {utils::from_chars(val.data(), val.data() + val.size(), i)};
-        if (std::errc() == ec && (val.data() + val.size()) == ptr)
+        auto [ptr, ec] {utils::from_chars(value.data(), value.data() + value.size(), i)};
+        if (std::errc() == ec && (value.data() + value.size()) == ptr)
         {
-            doc.setInt64(i, hdr);
+            doc.setInt64(i, key);
             return;
         }
-        else
+
+        // Try parsing as double
+        double_t d;
+        auto [ptr2, ec2] {utils::from_chars(value.data(), value.data() + value.size(), d)};
+        if (std::errc() == ec2 && (value.data() + value.size()) == ptr2)
         {
-            double_t d;
-            auto [ptr, ec] {utils::from_chars(val.data(), val.data() + val.size(), d)};
-            if (std::errc() == ec && (val.data() + val.size()) == ptr)
-            {
-                doc.setDouble(d, hdr);
-                return;
-            }
+            doc.setDouble(d, key);
+            return;
         }
     }
 
-    auto vs = std::string {val.data(), val.size()};
+    // If the value is a string, unescape it if necessary and add it to the JSON document
+    auto vs = std::string {value.data(), value.size()};
     unescape(is_escaped, vs, escape);
-    doc.setString(vs, hdr);
+    doc.setString(vs, key);
 }
 
 } // namespace hlp
