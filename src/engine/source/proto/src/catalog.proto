@@ -4,6 +4,15 @@ import "engine.proto";
 
 package com.wazuh.api.engine.catalog;
 
+enum ResourceFormat
+{
+    option allow_alias = true;
+    ERROR_FORMAT = 0; // Error format
+    JSON = 1;         // JSON format
+    YAML = 2;         // YAML format
+    YML = 2;          // Alias for YAML
+}
+
 /***************************************************
  * Post a resource in the catalog
  *
@@ -11,9 +20,9 @@ package com.wazuh.api.engine.catalog;
  **************************************************/
 message ResourcePost_Request
 {
-    optional string type = 1;    // Type of the resource (rule, decoder, etc)
-    optional string format = 2;  // Format of the resource (xml, json, etc)
-    optional string content = 3; // Content of the resource
+    optional string type = 1;           // Type of the resource (rule, decoder, etc)
+    optional ResourceFormat format = 2; // Format of the resource
+    optional string content = 3;        // Content of the resource
 }
 
 // message ResourcePost_Response -> Return a GenericStatus_Response
@@ -25,8 +34,8 @@ message ResourcePost_Request
  **************************************************/
 message ResourceGet_Request
 {
-    optional string name = 1;   // Name of the resource
-    optional string format = 2; // Format of the resource (xml, json, etc)
+    optional string name = 1;           // Name of the resource
+    optional ResourceFormat format = 2; // Format of the resource (xml, json, etc)
 }
 
 message ResourceGet_Response
@@ -43,9 +52,9 @@ message ResourceGet_Response
  **************************************************/
 message ResourcePut_Request
 {
-    optional string name = 1;    // Name of the resource
-    optional string format = 2;  // Format of the resource (xml, json, etc)
-    optional string content = 3; // Content of the resource
+    optional string name = 1;           // Name of the resource
+    optional ResourceFormat format = 2; // Format of the resource (xml, json, etc)
+    optional string content = 3;        // Content of the resource
 }
 
 // message ResourcePut_Response -> Return a GenericStatus_Response
@@ -69,9 +78,9 @@ message ResourceDelete_Request
  **************************************************/
 message ResourceValidate_Request
 {
-    optional string name = 1;    // Name of the resource
-    optional string format = 2;  // Format of the resource (xml, json, etc)
-    optional string content = 3; // Content of the resource
+    optional string name = 1;           // Name of the resource
+    optional ResourceFormat format = 2; // Format of the resource (xml, json, etc)
+    optional string content = 3;        // Content of the resource
 }
 
 // message ResourceValidate_Response -> Return a GenericStatus_Response
