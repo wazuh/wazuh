@@ -1,0 +1,11 @@
+{
+    "steps": [
+        {
+            "description": "Clang tidy",
+            "parameters": [
+                "--test clangtidy",
+                "--exclude build"
+            ]
+        }
+    ]
+}

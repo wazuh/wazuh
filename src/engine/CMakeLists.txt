@@ -31,6 +31,7 @@ option(ENGINE_BUILD_TSAN "Enable thread sanitizer" OFF)
 option(ENGINE_BUILD_UBSAN "Enable undefined behavior sanitizer" OFF)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" ON)
+option(ENGINE_BUILD_COVERAGE "Enables the coverage report" OFF)
 option(ENGINE_PROFILE_BUILD "Enables profiling through Tracy" OFF)
 option(ENGINE_PROFILE_MEMORY "Enables memory profiling in Tracy" OFF)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
@@ -58,6 +59,12 @@ endif()
 if (ENGINE_BUILD_UBSAN)
     add_compile_options(-fsanitize=undefined -fno-omit-frame-pointer)
     add_link_options(-fsanitize=undefined -fno-omit-frame-pointer)
+endif()
+
+# Add the coverage report
+if (ENGINE_BUILD_COVERAGE)
+    add_compile_options(-g -fprofile-arcs -ftest-coverage -lgcov --coverage)
+    add_link_options(-lgcov --coverage)
 endif()
 
 # Ensures that we do an out of source build

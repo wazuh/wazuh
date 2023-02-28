@@ -4,33 +4,35 @@
             "description": "Coding style",
             "parameters": [
                 "--test format",
-                "--ignore build"
+                "--exclude build"
             ]
         },
         {
             "description": "Cppcheck",
             "parameters": [
                 "--test cppcheck",
-                "--ignore build"
+                "--exclude build"
             ]
         },
         {
             "description": "Build",
             "parameters": [
-                "--test build"
-            ]
-        },
-        {
-            "description": "Clang-tidy",
-            "parameters": [
-                "--test clangtidy",
-                "--ignore build"
+                "--test build",
+                "--option ENGINE_BUILD_COVERAGE=ON",
+                "--threads 1"
             ]
         },
         {
             "description": "Unit tests",
             "parameters": [
                 "--test ut"
+            ]
+        },
+        {
+            "description": "Coverage",
+            "parameters": [
+                "--test coverage",
+                "--include source"
             ]
         },
         {
