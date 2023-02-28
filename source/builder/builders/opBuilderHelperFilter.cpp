@@ -326,12 +326,12 @@ base::Expression opBuilderComparison(const std::any& definition, Operator op, Ty
     {
         case Type::INT:
         {
-            auto opFn = getIntCmpFunction(targetField, op, parameters.at(0), name);
+            auto opFn = getIntCmpFunction(targetField, op, parameters[0], name);
             return base::Term<base::EngineOp>::create(name, opFn);
         }
         case Type::STRING:
         {
-            auto opFn = getStringCmpFunction(targetField, op, parameters.at(0), name);
+            auto opFn = getStringCmpFunction(targetField, op, parameters[0], name);
             return base::Term<base::EngineOp>::create(name, opFn);
         }
         default:
@@ -460,17 +460,17 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
     // Assert expected number of parameters
     helper::base::checkParametersSize(name, parameters, 1);
     // Parameter type check
-    helper::base::checkParameterType(name, parameters.at(0), helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(name, parameters[0], helper::base::Parameter::Type::VALUE);
     // Format name for the tracer
     name = helper::base::formatHelperName(name, targetField, parameters);
 
-    auto regex_ptr {std::make_shared<RE2>(parameters.at(0).m_value, RE2::Quiet)};
+    auto regex_ptr {std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet)};
     if (!regex_ptr->ok())
     {
         throw std::runtime_error(fmt::format("\"{}\" function: "
                                              "Invalid regex: \"{}\".",
                                              name,
-                                             parameters.at(0).m_value));
+                                             parameters[0].m_value));
     }
 
     // Tracing
@@ -512,17 +512,17 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
     // Assert expected number of parameters
     helper::base::checkParametersSize(name, parameters, 1);
     // Parameter type check
-    helper::base::checkParameterType(name, parameters.at(0), helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(name, parameters[0], helper::base::Parameter::Type::VALUE);
     // Format name for the tracer
     name = helper::base::formatHelperName(name, targetField, parameters);
 
-    auto regex_ptr {std::make_shared<RE2>(parameters.at(0).m_value, RE2::Quiet)};
+    auto regex_ptr {std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet)};
     if (!regex_ptr->ok())
     {
         throw std::runtime_error(fmt::format("\"{}\" function: "
                                              "Invalid regex: \"{}\".",
                                              name,
-                                             parameters.at(0).m_value));
+                                             parameters[0].m_value));
     }
 
     // Tracing
@@ -578,7 +578,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     uint32_t network {};
     try
     {
-        network = utils::ip::IPv4ToUInt(parameters.at(0).m_value);
+        network = utils::ip::IPv4ToUInt(parameters[0].m_value);
     }
     catch (std::exception& e)
     {
@@ -592,14 +592,14 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     uint32_t mask {};
     try
     {
-        mask = utils::ip::IPv4MaskUInt(parameters.at(1).m_value);
+        mask = utils::ip::IPv4MaskUInt(parameters[1].m_value);
     }
     catch (std::exception& e)
     {
         throw std::runtime_error(fmt::format("\"{}\" function: IPv4 Mask \"{}\" "
                                              "could not be converted to int: {}",
                                              name,
-                                             parameters.at(1).m_value,
+                                             parameters[1].m_value,
                                              e.what()));
     }
 
