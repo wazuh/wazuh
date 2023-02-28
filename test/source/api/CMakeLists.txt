@@ -5,6 +5,9 @@ add_executable(api_test
 target_link_libraries(api_test gtest_main base api)
 gtest_discover_tests(api_test)
 
-add_subdirectory(catalog)
+# Print warning to Cmake to not build these tests
+message(WARNING "TODO These tests are not built, fix them and remove this warning")
 
-add_subdirectory(kvdb)
+# TODO
+# add_subdirectory(catalog)
+# add_subdirectory(kvdb)

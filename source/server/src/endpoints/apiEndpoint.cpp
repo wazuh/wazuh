@@ -95,7 +95,7 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                         base::utils::wazuhProtocol::WazuhRequest wrequest {jrequest};
                         if (wrequest.isValid())
                         {
-                            wresponse = m_registry->getCallback(wrequest.getCommand().value())(wrequest);
+                            wresponse = m_registry->getHandler(wrequest.getCommand().value())(wrequest);
                         }
                         else
                         {

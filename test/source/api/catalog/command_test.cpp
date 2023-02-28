@@ -446,8 +446,8 @@ TEST(CatalogCmdsTest, registerHandlers)
 
     ASSERT_NO_THROW(api::catalog::cmds::registerHandlers(catalog, apiReg));
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = apiReg->getCallback("get_catalog"));
-    ASSERT_NO_THROW(cmd = apiReg->getCallback("put_catalog"));
-    ASSERT_NO_THROW(cmd = apiReg->getCallback("delete_catalog"));
-    ASSERT_NO_THROW(cmd = apiReg->getCallback("post_catalog"));
+    ASSERT_NO_THROW(cmd = apiReg->getHandler("get_catalog"));
+    ASSERT_NO_THROW(cmd = apiReg->getHandler("put_catalog"));
+    ASSERT_NO_THROW(cmd = apiReg->getHandler("delete_catalog"));
+    ASSERT_NO_THROW(cmd = apiReg->getHandler("post_catalog"));
 }
