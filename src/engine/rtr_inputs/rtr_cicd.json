@@ -36,6 +36,13 @@
             ]
         },
         {
+            "description": "Clang tidy",
+            "parameters": [
+                "--test clangtidy",
+                "--exclude build"
+            ]
+        },
+        {
             "description": "Doxygen",
             "parameters": [
                 "--test docs"
