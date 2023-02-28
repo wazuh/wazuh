@@ -47,7 +47,8 @@ checks:
     title: "Ensure /tmp is separate partition."
     description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
     rationale: "Making /tmp its own file system allows an administrator to set additional mount options such as the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hard link to a system setuid program and wait for it to be updated. Once the program was updated, the hard link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
-    remediation: "First ensure that systemd is correctly configured to ensure that /tmp will be mounted at boot time.   # systemctl unmask tmp.mount. For specific configuration requirements of the /tmp mount for your environment, modify /etc/fstab or tmp.mount. Example of /etc/fstab configured tmpfs file system with specific mount options: tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 0 Example of tmp.mount configured tmpfs file system with specific mount options: [Unit] Description=Temporary Directory /tmp ConditionPathIsSymbolicLink=!/tmp DefaultDependencies=no Conflicts=umount.targetBefore=local-fs.target umount.target After=swap.target [Mount] What=tmpfs Where=/tmp Type=tmpfs"
+    impact: "Since the /tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. Running out of /tmp space is a problem regardless of what kind of filesystem lies under it, but in a configuration where /tmp is not a separate file system it will essentially have the whole disk available, as the default installation only creates a single / partition. On the other hand, a RAM-based /tmp (as with tmpfs) will almost certainly be much smaller, which can lead to applications filling up the filesystem much more easily. Another alternative is to create a dedicated partition for /tmp from a separate volume or disk. One of the downsides of a disk-based dedicated partition is that it will be slower than tmpfs which is RAM-based. /tmp utilizing tmpfs can be resized using the size={size} parameter in the relevant entry in /etc/fstab."
+    remediation: "First ensure that systemd is correctly configured to ensure that /tmp will be mounted at boot time. # systemctl unmask tmp.mount. For specific configuration requirements of the /tmp mount for your environment, modify /etc/fstab or tmp.mount. Example of /etc/fstab configured tmpfs file system with specific mount options: tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 0 Example of tmp.mount configured tmpfs file system with specific mount options: [Unit] Description=Temporary Directory /tmp ConditionPathIsSymbolicLink=!/tmp DefaultDependencies=no Conflicts=umount.targetBefore=local-fs.target umount.target After=swap.target [Mount] What=tmpfs Where=/tmp Type=tmpfs"
     references:
       - https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/
       - https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html
@@ -69,6 +70,7 @@ checks:
     rules:
       - "c:findmnt --kernel /tmp -> r:/tmp"
       - "c:systemctl is-enabled tmp.mount -> r:enabled"
+      - "c:systemctl is-enabled tmp.mount -> r:enabled|generated"
 
   # 1.1.2.2 Ensure nodev option set on /tmp partition (Automated)
   - id: 29501
@@ -76,8 +78,6 @@ checks:
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0. Run the following command to remount /tmp with the configured options: # mount -o remount /tmp"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.2.2"]
       - cis_csc_v8: ["3.3"]
@@ -94,16 +94,14 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /tmp -> r:/tmp && r:nodev"
+      - "c:findmnt --kernel /tmp -> r:^/tmp && r:nodev"
 
   # 1.1.2.3 Ensure noexec option set on /tmp partition (Automated)
   - id: 29502
     title: "Ensure noexec option set on /tmp partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
-    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
+    rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp."
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0. Run the following command to remount /tmp with the configured options: # mount -o remount /tmp"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.2.3"]
       - cis_csc_v8: ["3.3"]
@@ -120,7 +118,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /tmp -> r:/tmp && r:noexec"
+      - "c:findmnt --kernel /tmp -> r:^/tmp && r:noexec"
 
   # 1.1.2.4 Ensure nosuid option set on /tmp partition (Automated)
   - id: 29503
@@ -128,8 +126,6 @@ checks:
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0. Run the following command to remount /tmp with the configured options: # mount -o remount /tmp"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.2.4"]
       - cis_csc_v8: ["3.3"]
@@ -146,7 +142,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /tmp -> r:/tmp && r:nosuid"
+      - "c:findmnt --kernel /tmp -> r:^/tmp && r:nosuid"
 
   ############################################################
   # 1.1.3 Configure /var
@@ -157,8 +153,8 @@ checks:
     title: "Ensure separate partition exists for /var."
     description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
     rationale: "The reasoning for mounting /var on a separate partition is as follow.(1) Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. (2) Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behaviour. See man mount for exact details regarding filesystem-independent and filesystem-specific options. (3) Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
-    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     compliance:
@@ -176,7 +172,7 @@ checks:
       - mitre_tactics: ["TA0006"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var -> r:/var"
+      - "c:findmnt --kernel /var -> r:^/var"
 
   # 1.1.3.2 Ensure nodev option set on /var partition (Automated)
   - id: 29505
@@ -184,8 +180,6 @@ checks:
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var."
     remediation: "IF the /var partition exists, edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var partition. Example: <device> /var <fstype> defaults,rw,nosuid,nodev,relatime 0 0 . Run the following command to remount /var with the configured options: # mount -o remount /var."
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.3.2"]
       - cis_csc_v8: ["3.3"]
@@ -202,7 +196,7 @@ checks:
       - mitre_mitigations: ["M1038"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var -> r:/var && r:nodev"
+      - "c:findmnt --kernel /var -> r:^/var && r:nodev"
 
   # 1.1.3.3 Ensure nosuid option set on /var partition (Automated)
   - id: 29506
@@ -210,8 +204,6 @@ checks:
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var filesystem is only intended for variable files such as logs, set this option to ensure that users cannot create setuid files in /var."
     remediation: "IF the /var partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var partition. Example: <device> /var <fstype> defaults,rw,nosuid,nodev,relatime 0 0 . Run the following command to remount /var with the configured options: # mount -o remount /var"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.3.3"]
       - cis_csc_v8: ["3.3"]
@@ -228,7 +220,7 @@ checks:
       - mitre_mitigations: ["M1038"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var -> r:/var && r:nosuid"
+      - "c:findmnt --kernel /var -> r:/^var && r:nosuid"
 
   ############################################################
   # 1.1.4 Configure /var/tmp
@@ -239,9 +231,8 @@ checks:
     title: "Ensure separate partition exists for /var/tmp."
     description: "The /var/tmp directory is a world-writable directory used for temporary storage by all users and some applications. Temporary files residing in /var/tmp are to be preserved between reboots."
     rationale: "The reasoning for mounting /var/tmp on a separate partition is as follows. (1) Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var/tmp directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var/tmp and cause the potential disruption to daemons as the disk is full. (2) Fine grained control over the mount: Configuring /var/tmp as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. (3) Protection from exploitation: An example of exploiting /var/tmp may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
-    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
-    additional information: "When modifying /var/tmp it is advisable to bring the system to emergency mode (so auditd is not running), rename the existing directory, mount the new file system, and migrate the data over before returning to multi-user mode."
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     compliance:
@@ -267,9 +258,8 @@ checks:
     title: "Ensure noexec option set on /var/tmp partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /var/tmp."
+    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "IF the /var/tmp partition exists, edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/tmp partition. Example: <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.4.2"]
       - cis_csc_v8: ["3.3"]
@@ -286,7 +276,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var/tmp -> r:/var/tmp && r:noexec"
+      - "c:findmnt --kernel /var/tmp -> r:^/var/tmp && r:noexec"
 
   # 1.1.4.3 Ensure nosuid option set on /var/tmp partition (Automated)
   - id: 29509
@@ -294,8 +284,6 @@ checks:
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /var/tmp."
     remediation: "IF the /var/tmp partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/tmp partition. Example: <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.4.3"]
       - cis_csc_v8: ["3.3"]
@@ -312,7 +300,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var/tmp -> r:/var/tmp && r:nosuid"
+      - "c:findmnt --kernel /var/tmp -> r:^/var/tmp && r:nosuid"
 
   # 1.1.4.4 Ensure nodev option set on /var/tmp partition (Automated)
   - id: 29510
@@ -320,8 +308,6 @@ checks:
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/tmp."
     remediation: "IF the /var/tmp partition exists, edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. Example: <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.4.4"]
       - cis_csc_v8: ["3.3"]
@@ -333,12 +319,12 @@ checks:
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1200", "T1200.000"]
+      - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var/tmp -> r:/var/tmp && r:nodev"
+      - "c:findmnt --kernel /var/tmp -> r:^/var/tmp && r:nodev"
 
   ############################################################
   # 1.1.5 Configure /var/log
@@ -348,9 +334,8 @@ checks:
     title: "Ensure separate partition exists for /var/log/."
     description: "The /var/log directory is used by system services to store log data."
     rationale: "The reasoning for mounting /var/log on a separate partition is as follows. (1) Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var/log directory contains log files which can grow quite large, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. (2) Fine grained control over the mount: Configuring /var/log as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. (3) Protection of log data: As /var/log contains log files, care should be taken to ensure the security and integrity of the data and mount point."
-    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
-    additional information: "When modifying /var/log it is advisable to bring the system to emergency mode (so auditd is not running), rename the existing directory, mount the new file system, and migrate the data over before returning to multiuser mode."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     compliance:
@@ -374,8 +359,6 @@ checks:
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/log filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log."
     remediation: "IF the /var/log partition exists, edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log with the configured options: # mount -o remount /var/log"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.5.2"]
       - cis_csc_v8: ["3.3"]
@@ -392,7 +375,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var/log -> r:/var/log && r:nodev"
+      - "c:findmnt --kernel /var/log -> r:^/var/log && r:nodev"
 
   # 1.1.5.3 Ensure noexec option set on /var/log/ partition (Automated)
   - id: 29513
@@ -400,8 +383,6 @@ checks:
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot run executable binaries from /var/log."
     remediation: "IF the /var/log partition exists, edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log with the configured options: # mount -o remount /var/log"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.5.3"]
       - cis_csc_v8: ["3.3"]
@@ -418,7 +399,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var/log -> r:/var/log && r:noexec"
+      - "c:findmnt --kernel /var/log -> r:^/var/log && r:noexec"
 
   # 1.1.5.4 Ensure nosuid option set on /var/log/ partition (Automated)
   - id: 29514
@@ -426,8 +407,6 @@ checks:
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot create setuid files in /var/log."
     remediation: "IF the /var/log partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log with the configured options: # mount -o remount /var/log"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.5.4"]
       - cis_csc_v8: ["3.3"]
@@ -444,7 +423,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var/log -> r:/var/log && r:nosuid"
+      - "c:findmnt --kernel /var/log -> r:^/var/log && r:nosuid"
 
   ############################################################
   # 1.1.6 Configure /var/log/audit
@@ -453,9 +432,10 @@ checks:
   # 1.1.6.1 Ensure separate partition exists for /var/log/audit (Automated)
   - id: 29515
     title: "Ensure separate partition exists for /var/log/audit."
-    description: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
-    remediation: "IF the /var/log partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log with the configured options: # mount -o remount /var/log"
+    description: "The auditing daemon, auditd, stores log data in the /var/log/audit directory."
+    rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follows."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     compliance:
@@ -479,8 +459,6 @@ checks:
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/log/audit filesystem is only intended for audit logs, set this option to ensure that users cannot run executable binaries from /var/log/audit."
     remediation: "IF the /var/log/audit partition exists, edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.6.2"]
       - cis_csc_v8: ["3.3"]
@@ -497,7 +475,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var/log/audit -> r:/var/log/audit && r:noexec"
+      - "c:findmnt --kernel /var/log/audit -> r:^/var/log/audit && r:noexec"
 
   # 1.1.6.3 Ensure nodev option set on /var/log/audit partition (Automated)
   - id: 29517
@@ -505,8 +483,6 @@ checks:
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/log/audit filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log/audit."
     remediation: "IF the /var/log/audit partition exists, edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log/audit partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.6.3"]
       - cis_csc_v8: ["3.3"]
@@ -523,7 +499,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var/log/audit -> r:/var/log/audit && r:nodev"
+      - "c:findmnt --kernel /var/log/audit -> r:^/var/log/audit && r:nodev"
 
   # 1.1.6.4 Ensure nosuid option set on /var/log/audit partition (Automated)
   - id: 29518
@@ -531,8 +507,6 @@ checks:
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/log/audit filesystem is only intended for variable files such as logs, set this option to ensure that users cannot create setuid files in /var/log/audit."
     remediation: "IF the /var/log/audit partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log/audit partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.6.4"]
       - cis_csc_v8: ["3.3"]
@@ -549,7 +523,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var/log/audit -> r:/var/log/audit && r:nosuid"
+      - "c:findmnt --kernel /var/log/audit -> r:^/var/log/audit && r:nosuid"
 
   ############################################################
   # 1.1.7 Configure /home
@@ -560,8 +534,8 @@ checks:
     title: "Ensure separate partition exists for /home."
     description: "The /home directory is used to support disk storage needs of local users."
     rationale: "The reasoning for mounting /home on a separate partition is as follows. (1) Protection from resource exhaustion: The default installation only creates a single / partition. Since the /home directory contains user generated data, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /home and impact all local users. (2) Fine grained control over the mount: Configuring /home as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. In the case of /home options such as usrquota/grpquota may be considered to limit the impact that users can have on each other with regards to disk resource exhaustion. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. (3) Protection of user data: As /home contains user data, care should be taken to ensure the security and integrity of the data and mount point."
-    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     compliance:
@@ -588,8 +562,6 @@ checks:
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /home filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /home."
     remediation: "IF the /home partition exists, edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,relatime 0 0. Run the following command to remount /home with the configured options: # mount -o remount /home"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.7.2"]
       - cis_csc_v8: ["3.3"]
@@ -606,7 +578,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /home -> r:/home && r:nodev"
+      - "c:findmnt --kernel /home -> r:^/home && r:nodev"
 
   # 1.1.7.3 Ensure nosuid option set on /home partition (Automated)
   - id: 29521
@@ -614,8 +586,6 @@ checks:
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /home filesystem is only intended for user file storage, set this option to ensure that users cannot create setuid files in /home."
     remediation: "IF the /home partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,relatime 0 0. Run the following command to remount /home with the configured options: # mount -o remount /home"
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.7.3"]
       - cis_csc_v8: ["3.3"]
@@ -632,7 +602,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /home -> r:/home && r:nosuid"
+      - "c:findmnt --kernel /home -> r:^/home && r:nosuid"
 
   ############################################################
   # 1.1.8 Configure /dev/shm
@@ -660,7 +630,7 @@ checks:
       - mitre_mitigations: ["M1038"]
     condition: all
     rules:
-      - "c:findmnt --kernel /dev/shm -> r:/dev/shm && r:nodev"
+      - "c:findmnt --kernel /dev/shm -> r:^/dev/shm && r:nodev"
 
   # 1.1.8.2 Ensure noexec option set on /dev/shm partition (Automated)
   - id: 29523
@@ -668,8 +638,6 @@ checks:
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. Example: <device> /dev/shm <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0. Run the following command to remount /dev/shm with the configured options: # mount -o remount /dev/shm. NOTE It is recommended to use tmpfs as the device/filesystem type as /dev/shm is used as shared memory space by applications."
-    references:
-      - See the fstab(5) manual page for more information.
     compliance:
       - cis: ["1.1.8.2"]
       - cis_csc_v8: ["3.3"]
@@ -686,7 +654,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /dev/shm -> r:/dev/shm && r:noexec"
+      - "c:findmnt --kernel /dev/shm -> r:^/dev/shm && r:noexec"
 
   # 1.1.8.3 Ensure nosuid option set on /dev/shm partition (Automated)
   - id: 29524
@@ -694,7 +662,6 @@ checks:
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm using the updated options from /etc/fstab: # mount -o remount /dev/shm"
-    additional information: "/dev/shm should be added to /etc/fstab even though it is already being mounted on boot to add additional mount options."
     compliance:
       - cis: ["1.1.8.3"]
       - cis_csc_v8: ["3.3"]
@@ -711,15 +678,15 @@ checks:
       - mitre_mitigations: ["M1038"]
     condition: all
     rules:
-      - "c:findmnt --kernel /dev/shm -> r:/dev/shm && r:nosuid"
+      - "c:findmnt --kernel /dev/shm -> r:^/dev/shm && r:nosuid"
 
   # 1.1.9 Disable Automounting (Automated)
   - id: 29525
     title: "Disable Automounting."
     description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
-    remediation: "If there are no other packages that depends on autofs, remove the package with: # apt purge autofs OR if there are dependencies on the autofs package: Run the following commands to mask autofs: # systemctl stop autofs # systemctl mask autofs"
     impact: "The use of portable hard drives is very common for workstation users. If your organization allows the use of portable storage or media on workstations and physical access controls to workstations is considered adequate there is little value add in turning off automounting."
+    remediation: "If there are no other packages that depends on autofs, remove the package with: # apt purge autofs OR if there are dependencies on the autofs package: Run the following commands to mask autofs: # systemctl stop autofs # systemctl mask autofs"
     compliance:
       - cis: ["1.1.9"]
       - cis_csc_v8: ["10.3"]
@@ -810,8 +777,8 @@ checks:
     title: "Ensure bootloader password is set."
     description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters."
     rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off AppArmor at boot time)."
-    remediation: 'Create an encrypted password with grub-mkpasswd-pbkdf2: # grub-mkpasswd-pbkdf2 Enter password: <password> Reenter password: <password> PBKDF2 hash of your password is <encrypted-password>. Add the following into a custom /etc/grub.d configuration file: cat <<EOF set superusers="<username>" password_pbkdf2 <username> <encrypted-password> EOF. The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS= Example: CLASS="--class gnu-linux --class gnu --class os --unrestricted". Run the following command to update the grub2 configuration: # update-grub.'
     impact: "If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing 'e' or access the GRUB 2 command line by pressing 'c' If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem You can add --unrestricted to the menu entries to allow the system to boot without entering a password. Password will still be required to edit menu items. More Information - https://help.ubuntu.com/community/Grub2/Passwords."
+    remediation: 'Create an encrypted password with grub-mkpasswd-pbkdf2: # grub-mkpasswd-pbkdf2 Enter password: <password> Reenter password: <password> PBKDF2 hash of your password is <encrypted-password>. Add the following into a custom /etc/grub.d configuration file: cat <<EOF set superusers="<username>" password_pbkdf2 <username> <encrypted-password> EOF. The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS= Example: CLASS="--class gnu-linux --class gnu --class os --unrestricted". Run the following command to update the grub2 configuration: # update-grub.'
     default value: "This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment."
     references:
       - https://help.ubuntu.com/community/Grub2/Passwords
