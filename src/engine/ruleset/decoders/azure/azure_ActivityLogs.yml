@@ -20,12 +20,18 @@ check:
 
 normalize:
   - map:
-   - azure.resource_id: $~json.ResourceId
-   - log.level: $~json.Level
-   - event.duration: $~json.DurationMs
-   - azure.activitylogs.properties: +parse_json/$~json.Properties
-   - event.outcome: $~json.ResultType
-   - event.outcome: $azure.activitylogs.properties.result
+    - azure.resource_id: $~json.ResourceId
+    - log.level: $~json.Level
+    - event.duration: $~json.DurationMs
+    - azure.activitylogs.properties: +parse_json/$~json.Properties
+    - event.outcome: $~json.ResultType
+    - event.outcome: $azure.activitylogs.properties.result
+    - azure.activitylogs.operation_name: $~json.OperationName
+    - event.action: $azure.activitylogs.operation_name
+    - azure.activitylogs.operation_version: $~json.OperationVersion
+    - azure.activitylogs.tenant_id: $~json.TenantId
+    - azure.activitylogs.level: $log.level
+    - azure.activitylogs.result_signature: $~json.ResultSignature
 
   - logpar:
     - ~json.CallerIpAddress: <source.ip>:<source.port>
