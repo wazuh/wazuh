@@ -1590,12 +1590,12 @@ TEST(kvdbAPICmdsTest, registerHandlers)
 
     ASSERT_NO_THROW(registerHandlers(kvdbManager, apiReg));
 
-    ASSERT_NO_THROW(apiReg->getCallback("create_kvdb"));
-    ASSERT_NO_THROW(apiReg->getCallback("create_kvdb"));
-    ASSERT_NO_THROW(apiReg->getCallback("delete_kvdb"));
-    ASSERT_NO_THROW(apiReg->getCallback("dump_kvdb"));
-    ASSERT_NO_THROW(apiReg->getCallback("get_kvdb"));
-    ASSERT_NO_THROW(apiReg->getCallback("insert_kvdb"));
-    ASSERT_NO_THROW(apiReg->getCallback("list_kvdb"));
-    ASSERT_NO_THROW(apiReg->getCallback("remove_kvdb"));
+    ASSERT_NO_THROW(apiReg->getHandler("create_kvdb"));
+    ASSERT_NO_THROW(apiReg->getHandler("create_kvdb"));
+    ASSERT_NO_THROW(apiReg->getHandler("delete_kvdb"));
+    ASSERT_NO_THROW(apiReg->getHandler("dump_kvdb"));
+    ASSERT_NO_THROW(apiReg->getHandler("get_kvdb"));
+    ASSERT_NO_THROW(apiReg->getHandler("insert_kvdb"));
+    ASSERT_NO_THROW(apiReg->getHandler("list_kvdb"));
+    ASSERT_NO_THROW(apiReg->getHandler("remove_kvdb"));
 }
