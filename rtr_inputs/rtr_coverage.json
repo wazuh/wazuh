@@ -1,0 +1,11 @@
+{
+    "steps": [
+        {
+            "description": "Coverage",
+            "parameters": [
+                "--test coverage",
+                "--include source"
+            ]
+        }
+    ]
+}

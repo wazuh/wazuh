@@ -1,0 +1,10 @@
+{
+    "steps": [
+        {
+            "description": "Doxygen",
+            "parameters": [
+                "--test docs"
+            ]
+        }
+    ]
+}
