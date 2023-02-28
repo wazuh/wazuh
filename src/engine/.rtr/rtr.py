@@ -9,7 +9,7 @@ import logging
 import sys
 import os
 
-from rtrtests import (cppcheck, clangformat, build, unittests, docs, clangtidy)
+from rtrtests import (cppcheck, clangformat, build, unittests, docs, clangtidy, coverage, clean)
 
 TESTS = {
     "cppcheck": cppcheck,
@@ -17,7 +17,9 @@ TESTS = {
     "build": build,
     "ut": unittests,
     "docs": docs,
-    "clangtidy": clangtidy
+    "clangtidy": clangtidy,
+    "coverage": coverage,
+    "clean": clean
 }
 
 
@@ -42,9 +44,14 @@ def init_argparse():
         choices=list(TESTS.keys())
     )
     parser.add_argument(
-        "-i", "--ignore", help='Ignore directories',
+        "-e", "--exclude", help='Exclude directories',
         action="append",
-        dest='ignore',
+        dest='exclude',
+    )
+    parser.add_argument(
+        "-i", "--include", help='Include directories',
+        action="append",
+        dest='include',
     )
     parser.add_argument(
         "-q", help='Quiet execution',
@@ -75,6 +82,21 @@ def init_argparse():
         '-g', help='Output owner group id',
         dest='gid',
         required=True
+    )
+    parser.add_argument(
+        '-j', '--threads', help='Overwrite default number of threads for building command',
+        action="store",
+        dest='threads',
+    )
+    parser.add_argument(
+        "--option", help='Options for Cmake configure',
+        action="append",
+        dest='options',
+    )
+    parser.add_argument(
+        "-f", "--fix", help='Fix in case the test allow it',
+        dest='fix',
+        action="store_true"
     )
 
     return parser
