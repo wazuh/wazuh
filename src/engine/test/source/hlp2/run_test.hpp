@@ -58,47 +58,63 @@ std::string to_string(const TestCase& testCase)
 }
 } // namespace
 
-static void runTest(TestCase t,
-                    std::function<parsec::Parser<json::Json>(std::string, Stop, Options)> parserBuilder,
-                    std::string header = "",
-                    std::string tail = "")
+/**
+ * @brief Builds and runs a test case. The execution is repeated four times adding different combinations of header and
+ * tail to the input string to be parsed
+ *
+ * @param t The tuple containing the test case parameters
+ * @param parserBuilder The parser builder
+ */
+static void runTest(TestCase t, std::function<parsec::Parser<json::Json>(std::string, Stop, Options)> parserBuilder)
 {
     parsec::Parser<json::Json> parser;
     auto expectedSuccess = std::get<1>(t);
     auto expectedDoc = std::get<4>(t);
-    try
+
+    std::string emptyString = "";
+    std::string headerString = "header";
+    std::string tailString = "tail";
+    std::string matrix[4][2] = {{emptyString, emptyString},
+                                {headerString, emptyString},
+                                {emptyString, tailString},
+                                {headerString, tailString}};
+
+    for (int i = 0; i < 4; i++)
     {
-        auto stopString = printStop(std::get<2>(t));
-        if(stopString == "")
+        try
         {
-            std::string endString {stopString + tail};
-            std::list<std::string> stopPrueba = {endString};
-            parser = parserBuilder({}, stopPrueba, std::get<3>(t));
+            auto stopString = printStop(std::get<2>(t));
+            if(stopString == emptyString)
+            {
+                std::string endString {stopString + matrix[i][1]};
+                std::list<std::string> stopPrueba = {endString};
+                parser = parserBuilder({}, stopPrueba, std::get<3>(t));
+            }
+            else
+            {
+                parser = parserBuilder({}, std::get<2>(t), std::get<3>(t));
+            }
+        }
+        catch (std::runtime_error& e)
+        {
+            ASSERT_FALSE(expectedSuccess)
+                << fmt::format("Error building parser: {}", e.what());
+            return;
+        }
+        auto fullEvent = matrix[i][0] + std::get<0>(t) + matrix[i][1];
+        auto r = parser(fullEvent, matrix[i][0].size());
+
+        ASSERT_EQ(r.success(), expectedSuccess)
+            << (r.success() ? "" : "ParserError: " + r.error() + "\n") << to_string(t);
+        if (r.success())
+        {
+            ASSERT_EQ(expectedDoc, r.value()) << to_string(t);
+            ASSERT_EQ(r.index() - matrix[i][0].size(), std::get<5>(t)) << to_string(t);
         }
         else
         {
-            parser = parserBuilder({}, std::get<2>(t), std::get<3>(t));
+            ASSERT_FALSE(r.error().empty());
         }
-    }
-    catch (std::runtime_error& e)
-    {
-        ASSERT_FALSE(expectedSuccess)
-            << fmt::format("Error building parser: {}", e.what());
-        return;
-    }
-    auto fullEvent = header + std::get<0>(t) + tail;
-    auto r = parser(fullEvent, header.size());
-
-    ASSERT_EQ(r.success(), expectedSuccess)
-        << (r.success() ? "" : "ParserError: " + r.error() + "\n") << to_string(t);
-    if (r.success())
-    {
-        ASSERT_EQ(expectedDoc, r.value()) << to_string(t);
-        ASSERT_EQ(r.index() - header.size(), std::get<5>(t)) << to_string(t);
-    }
-    else
-    {
-        ASSERT_FALSE(r.error().empty());
     }
 }
 #endif // WAZUH_ENGINE_HLP_H
