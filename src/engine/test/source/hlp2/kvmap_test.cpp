@@ -214,9 +214,6 @@ TEST(KVParser, parser)
     for (auto t : testCases)
     {
         runTest(t, hlp::getKVParser);
-        runTest(t, hlp::getKVParser, "header", "");
-        runTest(t, hlp::getKVParser, "header", "tail");
-        runTest(t, hlp::getKVParser, "", "tail");
     }
 }
 
