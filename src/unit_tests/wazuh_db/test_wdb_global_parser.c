@@ -313,7 +313,6 @@ void test_wdb_parse_global_insert_agent_query_error(void **state)
     expect_value(__wrap_wdb_global_insert_agent, ip, NULL);
     expect_value(__wrap_wdb_global_insert_agent, register_ip, NULL);
     expect_value(__wrap_wdb_global_insert_agent, internal_key, NULL);
-    expect_value(__wrap_wdb_global_insert_agent, group, NULL);
     expect_value(__wrap_wdb_global_insert_agent, date_add, 123);
     will_return(__wrap_wdb_global_insert_agent, OS_INVALID);
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
@@ -340,18 +339,17 @@ void test_wdb_parse_global_insert_agent_success(void **state)
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":123,\
-    \"ip\":\"0.0.0.0\",\"register_ip\":\"1.1.1.1\",\"internal_key\":\"test_key\",\"group\":\"test_group\"}";
+    \"ip\":\"0.0.0.0\",\"register_ip\":\"1.1.1.1\",\"internal_key\":\"test_key\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":123,\
-    \"ip\":\"0.0.0.0\",\"register_ip\":\"1.1.1.1\",\"internal_key\":\"test_key\",\"group\":\"test_group\"}");
+    \"ip\":\"0.0.0.0\",\"register_ip\":\"1.1.1.1\",\"internal_key\":\"test_key\"}");
 
     expect_value(__wrap_wdb_global_insert_agent, id, 1);
     expect_string(__wrap_wdb_global_insert_agent, name, "test_name");
     expect_string(__wrap_wdb_global_insert_agent, ip, "0.0.0.0");
     expect_string(__wrap_wdb_global_insert_agent, register_ip, "1.1.1.1");
     expect_string(__wrap_wdb_global_insert_agent, internal_key, "test_key");
-    expect_string(__wrap_wdb_global_insert_agent, group, "test_group");
     expect_value(__wrap_wdb_global_insert_agent, date_add, 123);
     will_return(__wrap_wdb_global_insert_agent, OS_SUCCESS);
 
@@ -1365,88 +1363,6 @@ void test_wdb_parse_global_select_agent_name_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_select_agent_name_time);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "ok {\"name\":\"test_name\"}");
-    assert_int_equal(ret, OS_SUCCESS);
-}
-
-/* Tests wdb_parse_global_select_agent_group */
-
-void test_wdb_parse_global_select_agent_group_syntax_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global select-agent-group";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-group");
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for select-agent-group.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: select-agent-group");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_select_agent_group);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid DB query syntax, near 'select-agent-group'");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_select_agent_group_query_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global select-agent-group 1";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-group 1");
-    expect_value(__wrap_wdb_global_select_agent_group, id, 1);
-    will_return(__wrap_wdb_global_select_agent_group, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent group from global.db.");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_select_agent_group);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_agent_select_agent_group_time);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Error getting agent group from global.db.");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_select_agent_group_success(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global select-agent-group 1";
-    cJSON *j_object = NULL;
-
-    j_object = cJSON_CreateObject();
-    cJSON_AddStringToObject(j_object, "name", "test_name");
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-group 1");
-    expect_value(__wrap_wdb_global_select_agent_group, id, 1);
-    will_return(__wrap_wdb_global_select_agent_group, j_object);
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_select_agent_group);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_agent_select_agent_group_time);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3014,162 +2930,6 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_response(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-/* Tests wdb_parse_global_get_groups_integrity */
-
-void test_wdb_parse_global_get_groups_integrity_syntax_error(void **state)
-{
-    int ret = OS_SUCCESS;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-groups-integrity";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity");
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-groups-integrity.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-groups-integrity");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-groups-integrity'");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_get_groups_integrity_hash_length_expected_fail(void **state)
-{
-    int ret = OS_SUCCESS;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-groups-integrity small_hash";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity small_hash");
-    // Expected hash should be OS_SHA1_HEXDIGEST_SIZE (40) characters long, and the received hash, "small_hash", is 10 characters long.
-    expect_string(__wrap__mdebug1, formatted_msg, "Hash hex-digest does not have the expected length. Expected (40) got (10)");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity_time);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Hash hex-digest does not have the expected length. Expected (40) got (10)");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_get_groups_integrity_query_error(void **state)
-{
-    int ret = OS_SUCCESS;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    will_return(__wrap_wdb_global_get_groups_integrity, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error getting groups integrity information from global.db.");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity_time);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Error getting groups integrity information from global.db.");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_get_groups_integrity_success_syncreq(void **state)
-{
-    int ret = OS_SUCCESS;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-    cJSON* j_response = cJSON_Parse("[\"syncreq\"]");
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    will_return(__wrap_wdb_global_get_groups_integrity, j_response);
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity_time);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "ok [\"syncreq\"]");
-    assert_int_equal(ret, OS_SUCCESS);
-}
-
-void test_wdb_parse_global_get_groups_integrity_success_synced(void **state)
-{
-    int ret = OS_SUCCESS;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-    cJSON* j_response = cJSON_Parse("[\"synced\"]");
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    will_return(__wrap_wdb_global_get_groups_integrity, j_response);
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity_time);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "ok [\"synced\"]");
-    assert_int_equal(ret, OS_SUCCESS);
-}
-
-void test_wdb_parse_global_get_groups_integrity_success_hash_mismatch(void **state)
-{
-    int ret = OS_SUCCESS;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-    cJSON* j_response = cJSON_Parse("[\"hash_mismatch\"]");
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    will_return(__wrap_wdb_global_get_groups_integrity, j_response);
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity_time);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "ok [\"hash_mismatch\"]");
-    assert_int_equal(ret, OS_SUCCESS);
-}
-
 /* Tests wdb_parse_global_disconnect_agents */
 
 void test_wdb_parse_global_disconnect_agents_syntax_error(void **state)
@@ -4279,21 +4039,21 @@ void test_wdb_parse_global_get_distinct_agent_groups_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-distinct-groups";
+    char query[OS_BUFFER_SIZE] = "global get-distinct-multi-groups";
     cJSON *group_info = cJSON_Parse("[\"GROUP INFO\"]");
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-groups");
-    expect_value(__wrap_wdb_global_get_distinct_agent_groups, group_hash, NULL);
-    will_return(__wrap_wdb_global_get_distinct_agent_groups, WDBC_OK);
-    will_return(__wrap_wdb_global_get_distinct_agent_groups, group_info);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-multi-groups");
+    expect_value(__wrap_wdb_global_get_distinct_agent_multi_groups, group_hash, NULL);
+    will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, WDBC_OK);
+    will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, group_info);
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_multi_groups);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_multi_groups_time);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -4305,21 +4065,21 @@ void test_wdb_parse_global_get_distinct_agent_groups_success_with_last_hash(void
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-distinct-groups abcdef";
+    char query[OS_BUFFER_SIZE] = "global get-distinct-multi-groups abcdef";
     cJSON *group_info = cJSON_Parse("[\"GROUP INFO\"]");
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-groups abcdef");
-    expect_string(__wrap_wdb_global_get_distinct_agent_groups, group_hash, "abcdef");
-    will_return(__wrap_wdb_global_get_distinct_agent_groups, WDBC_OK);
-    will_return(__wrap_wdb_global_get_distinct_agent_groups, group_info);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-multi-groups abcdef");
+    expect_string(__wrap_wdb_global_get_distinct_agent_multi_groups, group_hash, "abcdef");
+    will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, WDBC_OK);
+    will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, group_info);
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_multi_groups);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_multi_groups_time);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -4331,22 +4091,22 @@ void test_wdb_parse_global_get_distinct_agent_groups_result_null(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-distinct-groups";
+    char query[OS_BUFFER_SIZE] = "global get-distinct-multi-groups";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-groups");
-    expect_value(__wrap_wdb_global_get_distinct_agent_groups, group_hash, NULL);
-    will_return(__wrap_wdb_global_get_distinct_agent_groups, WDBC_ERROR);
-    will_return(__wrap_wdb_global_get_distinct_agent_groups, NULL);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-multi-groups");
+    expect_value(__wrap_wdb_global_get_distinct_agent_multi_groups, group_hash, NULL);
+    will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, WDBC_ERROR);
+    will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent groups from global.db.");
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_multi_groups);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_multi_groups_time);
 
     expect_string(__wrap_w_is_file, file, "queue/db/global.db");
     will_return(__wrap_w_is_file, 1);
@@ -4361,22 +4121,22 @@ void test_wdb_parse_global_get_distinct_agent_groups_result_null_with_last_hash(
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-distinct-groups abcdef";
+    char query[OS_BUFFER_SIZE] = "global get-distinct-multi-groups abcdef";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-groups abcdef");
-    expect_string(__wrap_wdb_global_get_distinct_agent_groups, group_hash, "abcdef");
-    will_return(__wrap_wdb_global_get_distinct_agent_groups, WDBC_ERROR);
-    will_return(__wrap_wdb_global_get_distinct_agent_groups, NULL);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-multi-groups abcdef");
+    expect_string(__wrap_wdb_global_get_distinct_agent_multi_groups, group_hash, "abcdef");
+    will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, WDBC_ERROR);
+    will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent groups from global.db.");
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_multi_groups);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_distinct_multi_groups_time);
 
     expect_string(__wrap_w_is_file, file, "queue/db/global.db");
     will_return(__wrap_w_is_file, 1);
@@ -4477,10 +4237,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_name_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_name_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_name_success, test_setup, test_teardown),
-        /* Tests wdb_parse_global_select_agent_group */
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_group_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_group_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_group_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_find_agent */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_agent_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_agent_invalid_json, test_setup, test_teardown),
@@ -4546,13 +4302,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_null_response, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_response, test_setup, test_teardown),
-        /* Tests wdb_parse_global_get_groups_integrity */
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_hash_length_expected_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_success_syncreq, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_success_synced, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_success_hash_mismatch, test_setup, test_teardown),
         /* Tests wdb_parse_global_disconnect_agents */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_last_id_error, test_setup, test_teardown),
