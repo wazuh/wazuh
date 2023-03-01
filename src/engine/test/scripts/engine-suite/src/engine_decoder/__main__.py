@@ -8,7 +8,7 @@ from .cmds.syntax_update import configure as syntax_ext_configure
 
 
 def parse_args():
-    meta = metadata('engine-suit')
+    meta = metadata('engine-suite')
     parser = argparse.ArgumentParser(prog='engine-decoder')
     parser.add_argument('--version', action='version',
                         version=f'%(prog)s {meta.get("Version")}')
