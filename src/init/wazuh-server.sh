@@ -544,6 +544,21 @@ info()
     fi
 }
 
+restart_service()
+{
+    touch ${DIR}/var/run/.restart
+    testconfig
+    lock
+    if [ $USE_JSON = true ]; then
+        stop_service > /dev/null 2>&1
+    else
+        stop_service
+    fi
+    start_service
+    rm -f ${DIR}/var/run/.restart
+    unlock
+}
+
 ### MAIN HERE ###
 
 if [ "$1" = "-j" ]; then
@@ -568,25 +583,11 @@ stop)
     unlock
     ;;
 restart)
-    touch ${DIR}/var/run/.restart
-    testconfig
-    lock
-    if [ $USE_JSON = true ]; then
-        stop_service > /dev/null 2>&1
-    else
-        stop_service
-    fi
-    start_service
-    rm -f ${DIR}/var/run/.restart
-    unlock
+    restart_service
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
-    testconfig
-    lock
-    stop_service
-    start_service
-    unlock
+    restart_service
     ;;
 status)
     lock
