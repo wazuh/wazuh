@@ -363,7 +363,7 @@ def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.D
     Parameters
     ----------
     group_list : list
-        List containing the group ID.
+        List containing group IDs.
     offset : int
         First element to return in the collection.
     limit : int
@@ -648,7 +648,7 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
     Parameters
     ----------
     group_list : list
-        List of Group names.
+        List of group names.
     search_text : str
         Text to search.
     complementary_search : bool
@@ -791,7 +791,7 @@ def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
     Parameters
     ----------
     group_list : list
-        List of Group names.
+        List of group names.
 
     Returns
     -------
@@ -899,7 +899,7 @@ def remove_agent_from_group(group_list: list = None, agent_list: list = None) ->
     Parameters
     ----------
     group_list : list
-        List with the group ID.
+        List with group names.
     agent_list : list
         List with the agent ID.
 
