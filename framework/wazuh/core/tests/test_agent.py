@@ -378,7 +378,7 @@ def test_WazuhDBQueryGroup__add_sort_to_query(mock_socket_conn, send_mock):
     query_group = WazuhDBQueryGroup()
     query_group._add_sort_to_query()
 
-    assert 'count' in query_group.fields and query_group.fields['count'] == 'count(id_group)'
+    assert 'count' in query_group.fields and query_group.fields['count'] == 'count(name_group)'
 
 
 @patch('socket.socket.connect')
@@ -1106,8 +1106,8 @@ def test_agent_set_agent_group_relationship(socket_connect_mock, send_mock, remo
     """
     agent_id = '001'
     group_id = 'default'
-    wdb_command = r'global set-agent-groups {\"mode\":\"(.+)\",\"sync_status\":\"syncreq\",\"data\":\[{\"id\":(.+),' \
-                  r'\"groups\":\[\"(.+)\"]}]}'
+    wdb_command = r'global set-agent-groups {\"mode\":\"(.+)\",\"sync_status\":\"syncreq\",\"data\":\[{' \
+        r'\"id\":(.+),\"groups\":\[\"(.+)\"\]}]}'
 
     # Default relationship -> add an agent to a group
     Agent.set_agent_group_relationship(agent_id, group_id, remove, override)

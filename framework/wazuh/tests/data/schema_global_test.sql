@@ -32,7 +32,6 @@ CREATE TABLE IF NOT EXISTS agent (
     connection_status TEXT NOT NULL CHECK (connection_status IN ('active', 'pending', 'disconnected', 'never_connected')) DEFAULT 'never_connected',
     fim_offset INTEGER NOT NULL DEFAULT 0,
     reg_offset INTEGER NOT NULL DEFAULT 0,
-    `group` TEXT DEFAULT 'default',
     disconnection_time INTEGER DEFAULT 0,
     group_config_status TEXT NOT NULL CHECK (group_config_status IN ('synced', 'not synced')) DEFAULT 'not synced'
 );
@@ -42,56 +41,55 @@ CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
 
 CREATE TABLE IF NOT EXISTS `group`
     (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT
+    name TEXT PRIMARY KEY
     );
 
 CREATE TABLE IF NOT EXISTS belongs
     (
     id_agent INTEGER,
-    id_group INTEGER,
-    PRIMARY KEY (id_agent, id_group)
+    name_group TEXT,
+    PRIMARY KEY (id_agent, name_group)
 );
 
 -- manager
 INSERT INTO agent (id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_uname, os_arch,
-                   version, manager_host, node_name, date_add, last_keepalive, status, connection_status, `group`, group_config_status) VALUES
+                   version, manager_host, node_name, date_add, last_keepalive, status, connection_status, group_config_status) VALUES
                    (0,'master','127.0.0.1','Ubuntu','20.04.1 LTS','20','04','Bionic Beaver','ubuntu',
                    'Linux |master |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.9.0','master','node01',strftime('%s','now','-10 days'),253402300799,
-                    'updated','active',NULL, 'synced');
+                    'updated','active','synced');
 
 -- Connected agent with IP and Registered IP filled
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
-                   last_keepalive, status, connection_status, `group`, group_config_status) VALUES (1,'agent-1','172.17.0.202','any',
+                   last_keepalive, status, connection_status, group_config_status) VALUES (1,'agent-1','172.17.0.202','any',
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Ubuntu','16.06.1 LTS','16','06',
                    'Bionic Beaver','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-4 days'),
-                    strftime('%s','now','-5 seconds'),'updated','active', 'default,group-0', 'synced');
+                    strftime('%s','now','-5 seconds'),'updated','active', 'synced');
 
 -- Connected agent with just Registered IP filled
 INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
-                   last_keepalive, status, connection_status, `group`, group_config_status) VALUES (2,'agent-2','172.17.0.201',
+                   last_keepalive, status, connection_status, group_config_status) VALUES (2,'agent-2','172.17.0.201',
                    'b3650e11eba2f27er4d160c69de533ee7eed6016fga85ba2455d53a90927747f', 'Ubuntu','16.04.1 LTS','16','04',
                    'Xenial','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.6.2','ab73af41699f13fgt81903b5f23d8d00','f8d49771911ed9d5c45bdfa40babd065','master',
                    'node01',strftime('%s','now','-3 days'),
-                    strftime('%s','now','-10 minutes'),'updated','active', 'default,group-0', 'synced');
+                    strftime('%s','now','-10 minutes'),'updated','active', 'synced');
 
 -- Never connected agent
-INSERT INTO agent (id, name, register_ip, internal_key, date_add, `group`, group_config_status) VALUES (3,'nc-agent','any',
+INSERT INTO agent (id, name, register_ip, internal_key, date_add, group_config_status) VALUES (3,'nc-agent','any',
                    'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d',
-                   strftime('%s','now','-4 days'), NULL, 'not synced');
+                   strftime('%s','now','-4 days'), 'not synced');
 
 -- Pending agent
-INSERT INTO agent (id, name, register_ip, internal_key, manager_host, date_add, last_keepalive, `group`, connection_status, group_config_status) VALUES
+INSERT INTO agent (id, name, register_ip, internal_key, manager_host, date_add, last_keepalive, connection_status, group_config_status) VALUES
                   (4,'pending-agent', 'any', '2855bcf49273c759ef5b116829cc582f153c6c199df7676e53d5937855ff5902', '',
-                   strftime('%s','now','-1 minute'), strftime('%s','now','-10 seconds'), NULL,'pending', 'not synced');
+                   strftime('%s','now','-1 minute'), strftime('%s','now','-10 seconds'),'pending', 'not synced');
 
 
 -- Disconnected agent
@@ -109,62 +107,62 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
 -- Connected agent in group-1
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
-                   last_keepalive, status, connection_status, `group`, group_config_status) VALUES (6,'agent-6','172.17.0.401','any',
+                   last_keepalive, status, connection_status, group_config_status) VALUES (6,'agent-6','172.17.0.401','any',
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Xubuntu','21.04.1 LTS','21','04',
                    'Bionic Beaver','xubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-4 days'),
-                    strftime('%s','now','-7 seconds'),'updated','active','group-1', 'synced');
+                    strftime('%s','now','-7 seconds'),'updated','active', 'synced');
 
 
 -- Connected agent in group-2
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
-                   last_keepalive, status, connection_status, `group`, group_config_status) VALUES (7,'agent-7','172.17.0.501','any',
+                   last_keepalive, status, connection_status, group_config_status) VALUES (7,'agent-7','172.17.0.501','any',
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Ubuntu','18.04.1 LTS','18','04',
                    'Bionic Beaver','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-4 days'),
-                    strftime('%s','now','-4 seconds'),'updated','active','group-2', 'synced');
+                    strftime('%s','now','-4 seconds'),'updated','active', 'synced');
 
 
 -- Connected agent in group-2
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
-                   last_keepalive, status, connection_status, `group`, group_config_status) VALUES (8,'agent-8','172.17.0.502','any',
+                   last_keepalive, status, connection_status, group_config_status) VALUES (8,'agent-8','172.17.0.502','any',
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Xubuntu','18.04.1 LTS','18','04',
                    'Bionic Beaver','xubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-4 days'),
-                    strftime('%s','now','-12 seconds'),'updated','active','group-2,group-1', 'synced');
+                    strftime('%s','now','-12 seconds'),'updated','active', 'synced');
 
 
 -- Connected agent with a different OS
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
-                   last_keepalive, status, connection_status, `group`, group_config_status) VALUES (9,'agent-9','172.17.0.503','any',
+                   last_keepalive, status, connection_status, group_config_status) VALUES (9,'agent-9','172.17.0.503','any',
                    'b3650e11eba2f27er4d160c69de533ee7ffd601636a85ba2455d53a90927747f', 'Windows','10.0.0 XP','10','00',
                    'XP classic','windows',
                    'Windows |agent-9 |3.14-45 |#46-Windows SMP Thu Dec 32 24:45:28 UTC 2022 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-4 days'),
-                    strftime('%s','now','-5 seconds'),'updated','active','default', 'synced');
+                    strftime('%s','now','-5 seconds'),'updated','active', 'synced');
 
 
 -- Create group-1 and group-2
-INSERT INTO `group` (id, name) VALUES (1, 'group-1');
-INSERT INTO `group` (id, name) VALUES (2, 'group-2');
-INSERT INTO `group` (id, name) VALUES (3, 'group-empty');
+INSERT INTO `group` (name) VALUES ('group-1');
+INSERT INTO `group` (name) VALUES ('group-2');
+INSERT INTO `group` (name) VALUES ('group-empty');
 
+-- agent-6 -> group-1
+INSERT INTO belongs (id_agent, name_group) VALUES (006, 'group-1');
 
--- agent-6 -> group-1 and agent-7 -> group-2
-INSERT INTO belongs (id_agent, id_group) VALUES (6, 1);
-INSERT INTO belongs (id_agent, id_group) VALUES (7, 2);
-
+-- agent-7 -> group-2
+INSERT INTO belongs (id_agent, name_group) VALUES (007, 'group-2');
 
 -- agent-8 -> group-1 and group-2
-INSERT INTO belongs (id_agent, id_group) VALUES (8, 2);
-INSERT INTO belongs (id_agent, id_group) VALUES (8, 1);
+INSERT INTO belongs (id_agent, name_group) VALUES (008, 'group-2');
+INSERT INTO belongs (id_agent, name_group) VALUES (008, 'group-1');
