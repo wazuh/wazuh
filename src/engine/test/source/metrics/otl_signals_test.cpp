@@ -21,12 +21,12 @@ public:
 };
 double Measurement::value_ = 0;
 
-class MetricsTest : public ::testing::Test
+class MetricsOtlMeterTest : public ::testing::Test
 {
 protected:
     std::shared_ptr<Metrics> m_spMetrics;
-    MetricsTest() = default;
-    ~MetricsTest() override = default;
+    MetricsOtlMeterTest() = default;
+    ~MetricsOtlMeterTest() override = default;
     void SetUp() override
     {
         m_spMetrics = std::make_shared<Metrics>();
@@ -34,25 +34,25 @@ protected:
     }
 };
 
-TEST_F(MetricsTest, invalidValueCounter)
+TEST_F(MetricsOtlMeterTest, invalidValueCounter)
 {
     EXPECT_ANY_THROW(m_spMetrics->addCounterValue("Sockets", -1UL));
 }
 
-TEST_F(MetricsTest, nameCounterNotDefined)
+TEST_F(MetricsOtlMeterTest, nameCounterNotDefined)
 {
     EXPECT_ANY_THROW(m_spMetrics->addCounterValue("RandomName", 1UL));
 }
 
-TEST_F(MetricsTest, sucessMeterAndTracer)
+TEST_F(MetricsOtlMeterTest, sucessTracerMeter)
 {
     m_spMetrics->setScopeSpam("TracerExampleOne");
     for (auto i = 0; i < 10; i ++)
     {
         m_spMetrics->addCounterValue("CountExample", 1UL);
-        std::this_thread::sleep_for(std::chrono::milliseconds(900));
         m_spMetrics->addHistogramValue("HistogramExample", 32.7);
         m_spMetrics->addUpDownCounterValue("UpDownCountExample", 1L);
+        std::this_thread::sleep_for(std::chrono::milliseconds(90));
         if (i == 6)
         {
             m_spMetrics->addUpDownCounterValue("UpDownCountExample", -2L); // here the counter is at 7 and when restoring 2 there should be a 5.
@@ -61,7 +61,7 @@ TEST_F(MetricsTest, sucessMeterAndTracer)
     m_spMetrics->setScopeSpam("TracerExampleTwo");
 }
 
-/*TEST_F(MetricsTest, sucessMeterGauge)
+/*TEST_F(MetricsOtlMeterTest, sucessMeterGauge)
 {
     m_spMetrics->addObservableGauge("ObservableGaugeExample", Measurement::Fetcher);
     for (uint32_t i = 0; i < 20; ++i)
