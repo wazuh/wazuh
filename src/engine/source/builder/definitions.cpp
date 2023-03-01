@@ -61,7 +61,7 @@ void substituteDefinitions(Json& asset)
         if (!asset.erase(DEFINITIONS_KEY))
         {
             throw std::runtime_error(fmt::format(
-                "Engine definitions: Field \"{}\" from asset \"{}\" could not be erased.",
+                R"(Engine definitions: Field "{}" from asset "{}" could not be erased.)",
                 DEFINITIONS_KEY,
                 assetName));
         }

@@ -303,7 +303,7 @@ parsec::Parser<json::Json> getIgnoreParser(std::string name, Stop endTokens, Opt
  * provided, the default is " and \
  * @return parsec::Parser<json::Json>
  */
-parsec::Parser<json::Json> getQuotedParser(std::string name, Stop endTokens, Options lst);
+parsec::Parser<json::Json> getQuotedParser(const std::string& name, const Stop& endTokens, Options lst);
 
 /**
  * @brief Get the alphanumeric parser, which will parse a string and return the alphanumeric content
@@ -314,5 +314,6 @@ parsec::Parser<json::Json> getQuotedParser(std::string name, Stop endTokens, Opt
  * @return parsec::Parser<json::Json>
  */
 parsec::Parser<json::Json> getAlphanumericParser(const std::string& name, Stop endTokens, Options lst);
+
 } // namespace hlp
 #endif // _HLP_HPP

@@ -18,14 +18,14 @@
 namespace hlp
 {
 
-parsec::Parser<json::Json> getUriParser(std::string name, Stop endTokens, Options lst)
+parsec::Parser<json::Json> getUriParser(const std::string& name, const Stop& endTokens, const Options& lst)
 {
     if (endTokens.empty())
     {
         throw std::runtime_error(fmt::format("Uri parser needs a stop string"));
     }
 
-    if (lst.size() > 0)
+    if (!lst.empty())
     {
         throw std::runtime_error(fmt::format("URL parser do not accept arguments!"));
     }
@@ -60,7 +60,7 @@ parsec::Parser<json::Json> getUriParser(std::string name, Stop endTokens, Option
         };
         std::unique_ptr<CURLU, decltype(urlCleanup)> url {curl_url(), urlCleanup};
 
-        if (url.get() == nullptr)
+        if (nullptr == url)
         {
             return parsec::makeError<json::Json>(
                 fmt::format("{}: Unable to initialize the url container", name), index);
@@ -99,19 +99,19 @@ parsec::Parser<json::Json> getUriParser(std::string name, Stop endTokens, Option
     };
 }
 
-parsec::Parser<json::Json> getUAParser(std::string name, Stop endTokens, Options lst)
+parsec::Parser<json::Json> getUAParser(const std::string& /*name*/, const Stop& endTokens, const Options& lst)
 {
     if (endTokens.empty())
     {
         throw std::runtime_error(fmt::format("User-agent parser needs a stop string"));
     }
 
-    if (lst.size() != 0)
+    if (!lst.empty())
     {
         throw std::runtime_error(fmt::format("URL parser do not accept arguments!"));
     }
 
-    return [endTokens, name](std::string_view text, int index)
+    return [endTokens](std::string_view text, int index)
     {
         auto res = internal::preProcess<json::Json>(text, index, endTokens);
         if (std::holds_alternative<parsec::Result<json::Json>>(res))
@@ -131,10 +131,10 @@ parsec::Parser<json::Json> getUAParser(std::string name, Stop endTokens, Options
 
 // We validate it is a valid FQDN or PQDN we do not
 // extract any component here.
-parsec::Parser<json::Json> getFQDNParser(std::string name, Stop endTokens, Options lst)
+parsec::Parser<json::Json> getFQDNParser(const std::string& name, const Stop& endTokens, const Options& lst)
 {
 
-    if (lst.size() > 0)
+    if (!lst.empty())
     {
         throw std::runtime_error("FQDN parser do not accept arguments!");
     }

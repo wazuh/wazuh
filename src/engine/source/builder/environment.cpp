@@ -125,18 +125,18 @@ std::string Environment::getGraphivzStr()
     auto removeHyphen = [](const std::string& text)
     {
         auto ret = text;
-        auto pos = ret.find("-");
+        auto pos = ret.find('-');
         while (pos != std::string::npos)
         {
             ret.erase(pos, 1);
-            pos = ret.find("-");
+            pos = ret.find('-');
         }
 
-        pos = ret.find("/");
+        pos = ret.find('/');
         while (pos != std::string::npos)
         {
             ret.erase(pos, 1);
-            pos = ret.find("/");
+            pos = ret.find('/');
         }
 
         return ret;

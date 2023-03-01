@@ -29,7 +29,7 @@ namespace
 std::atomic<bool> gs_doRun = true;
 cmd::details::StackExecutor g_exitHanlder {};
 
-void sigint_handler(const int signum)
+void sigintHandler(const int signum)
 {
     gs_doRun = false;
 }
@@ -123,7 +123,7 @@ void run(const Options& options)
         std::shared_ptr<store::FileDriver> driver;
         json::Json testEnvironment;
 
-        std::variant<json::Json, base::Error> get(const base::Name& name) const
+        std::variant<json::Json, base::Error> get(const base::Name& name) const override
         {
             if ("environment" == name.parts()[0])
             {

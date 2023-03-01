@@ -59,7 +59,7 @@ EngineServer::EngineServer(const std::string& apiEndpointPath,
 
 void EngineServer::run(void)
 {
-    if (m_endpoints.size() > 0)
+    if (!m_endpoints.empty())
     {
         WAZUH_LOG_INFO("Engine server: Starting...");
         m_endpoints.begin()->second->run();
@@ -73,7 +73,7 @@ void EngineServer::run(void)
 
 void EngineServer::close(void)
 {
-    if (0 < m_endpoints.size())
+    if (!m_endpoints.empty())
     {
         m_endpoints.begin()->second->close(); // TODO: All or only the first one?
     }

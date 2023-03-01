@@ -65,7 +65,7 @@ WazuhDB::parseResult(const std::string& result) const noexcept
 
     /* Split code and payload: (<code> | <code> <payload>) */
     std::string_view codeStr {};
-    const auto splitIndex {result.find(" ")};
+    const auto splitIndex {result.find(' ')};
     if (std::string::npos != splitIndex)
     {
         payload = result.length() + 1 > splitIndex ? result.substr(splitIndex + 1) : "";

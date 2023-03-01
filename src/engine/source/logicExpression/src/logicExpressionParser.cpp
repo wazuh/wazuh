@@ -38,7 +38,7 @@ std::queue<Token> tokenize(const std::string& rawExpression)
 // Helper to ensure correct syntax of expression in infix notation
 // Inspired by
 // https://stackoverflow.com/questions/29634992/shunting-yard-validate-expression
-struct syntaxChecker
+struct SyntaxChecker
 {
     // Could be optimized by taking advantage of the fact that shunting-yard
     // algorithm is already doing some comparisons, is as it is for modularity
@@ -56,7 +56,7 @@ struct syntaxChecker
 
     void expectOperator() { m_state = true; }
 
-    syntaxChecker()
+    SyntaxChecker()
         : m_state {false}
     {
     }
@@ -70,7 +70,7 @@ struct syntaxChecker
             if (expectedOperator())
             {
                 throw std::runtime_error(
-                    fmt::format("Unexpected tocken TERM \"{}\" at position \"{}\"",
+                    fmt::format(R"(Unexpected tocken TERM "{}" at position "{}")",
                                 token.m_text,
                                 token.m_position));
             }
@@ -85,7 +85,7 @@ struct syntaxChecker
             if (expectedOperator())
             {
                 throw std::runtime_error(
-                    fmt::format("Unexpected unary operator \"NOT\" at position \"{}\"",
+                    fmt::format(R"(Unexpected unary operator "NOT" at position "{}")",
                                 token.m_position));
             }
 
@@ -99,7 +99,7 @@ struct syntaxChecker
             if (expectedOperand())
             {
                 throw std::runtime_error(
-                    fmt::format("Unexpected binary operator \"{}\" at position \"{}\"",
+                    fmt::format(R"(Unexpected binary operator "{}" at position "{}")",
                                 token.m_text,
                                 token.m_position));
             }
@@ -114,7 +114,7 @@ struct syntaxChecker
             if (expectedOperator())
             {
                 throw std::runtime_error(fmt::format(
-                    "Unexpected parenthesis \"(\" at position \"{}\"", token.m_position));
+                    R"(Unexpected parenthesis "(" at position "{}")", token.m_position));
             }
 
             // Still wanting operand
@@ -143,7 +143,7 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
     std::stack<Token> postfix;
     std::stack<Token> operatorStack;
 
-    syntaxChecker checker;
+    SyntaxChecker checker;
     while (!infix.empty())
     {
         auto token = std::move(infix.front());

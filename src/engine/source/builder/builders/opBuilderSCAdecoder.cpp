@@ -643,8 +643,6 @@ void pushDumpRequest(const DecodeCxt& ctx, const std::string& policyId, bool fir
             ctx.forwarderSocket->socketDisconnect(); // Try to reconnect the next time
             break;
     }
-
-    return;
 }
 
 bool SaveScanInfo(const DecodeCxt& ctx, bool update)
@@ -730,7 +728,6 @@ void insertPolicyInfo(const DecodeCxt& ctx)
             "Engine SCA decoder builder: Error saving policy info for agent \"{}\".",
             ctx.agentID);
     }
-    return;
 }
 
 void updatePolicyInfo(const DecodeCxt& ctx, const std::string& policyId)
@@ -816,8 +813,6 @@ void checkResultsAndDump(const DecodeCxt& ctx,
     {
         pushDumpRequest(ctx, policyId, isFirstScan);
     }
-
-    return;
 }
 
 bool deletePolicyAndCheck(const DecodeCxt& ctx, const std::string& policyId)
@@ -855,10 +850,10 @@ bool deletePolicyAndCheck(const DecodeCxt& ctx, const std::string& policyId)
 }
 
 std::tuple<SearchResult, std::string> findCheckResults(const DecodeCxt& ctx,
-                                                       const std::string& pID)
+                                                       const std::string& policyId)
 {
     // "Find check results for policy id: %s"
-    const auto query = fmt::format("agent {} sca query_results {}", ctx.agentID, pID);
+    const auto query = fmt::format("agent {} sca query_results {}", ctx.agentID, policyId);
 
     return searchAndParse(query, ctx.wdb);
 }
@@ -1085,8 +1080,6 @@ void deletePolicyCheckDistinct(const DecodeCxt& ctx,
                        policyId,
                        ctx.agentID);
     }
-
-    return;
 }
 
 // - Dump Handling - //

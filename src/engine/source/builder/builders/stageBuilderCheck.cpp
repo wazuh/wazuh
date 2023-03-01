@@ -89,10 +89,10 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
         // TODO: handle rest of operators
         else if (syntax::FUNCTION_HELPER_ANCHOR == term[0])
         {
-            auto pos1 = term.find("/");
+            auto pos1 = term.find('/');
             auto pos2 = [&]()
             {
-                auto tmp = term.find("/", pos1 + 1);
+                auto tmp = term.find('/', pos1 + 1);
                 if (std::string::npos != tmp)
                 {
                     return tmp;

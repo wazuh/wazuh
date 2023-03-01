@@ -38,7 +38,7 @@ Builder getStageNormalizeBuilder(std::shared_ptr<Registry> registry)
         if (!jsonDefinition.isArray())
         {
             throw std::runtime_error(fmt::format(
-                "Invalid json definition type: expected \"array\" but got \"{}\"",
+                R"(Invalid json definition type: expected "array" but got "{}")",
                 jsonDefinition.typeName()));
         }
 
@@ -53,7 +53,7 @@ Builder getStageNormalizeBuilder(std::shared_ptr<Registry> registry)
                 if (!block.isObject())
                 {
                     throw std::runtime_error(fmt::format(
-                        "Invalid array item type, expected \"object\" but got \"{}\"",
+                        R"(Invalid array item type, expected "object" but got "{}")",
                         block.typeName()));
                 }
                 auto blockObj = block.getObject().value();

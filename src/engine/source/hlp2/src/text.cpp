@@ -12,7 +12,7 @@
 
 namespace hlp
 {
-parsec::Parser<json::Json> getTextParser(std::string name, Stop endTokens, Options lst)
+parsec::Parser<json::Json> getTextParser(const std::string& name, const Stop& endTokens, const Options& lst)
 {
     if (endTokens.empty())
     {

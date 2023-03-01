@@ -33,7 +33,7 @@ Builder getStageBuilderOutputs(std::shared_ptr<Registry> registry)
         if (!jsonDefinition.isArray())
         {
             throw std::runtime_error(fmt::format(
-                "Invalid json definition type: expected \"array\" but got \"{}\"",
+                R"(Invalid json definition type: expected "array" but got "{}")",
                 jsonDefinition.typeName()));
         }
         if (jsonDefinition.size() == 0)

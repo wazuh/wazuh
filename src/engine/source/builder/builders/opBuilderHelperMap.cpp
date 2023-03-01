@@ -323,7 +323,7 @@ std::optional<std::string> hashStringSHA1(std::string& input)
     constexpr int OS_SHA1_HEXDIGEST_SIZE = (SHA_DIGEST_LENGTH * 2);
     constexpr int OS_SHA1_ARRAY_SIZE_LEN = OS_SHA1_HEXDIGEST_SIZE + 1;
 
-    char* parameter = NULL;
+    char* parameter = nullptr;
     unsigned char digest[EVP_MAX_MD_SIZE];
     unsigned int digest_size;
 
@@ -334,7 +334,7 @@ std::optional<std::string> hashStringSHA1(std::string& input)
         return std::nullopt;
     }
 
-    if (1 != EVP_DigestInit_ex(ctx, EVP_sha1(), NULL))
+    if (1 != EVP_DigestInit_ex(ctx, EVP_sha1(), nullptr))
     {
         // Failed during hash context initialization
         EVP_MD_CTX_destroy(ctx);
@@ -494,7 +494,7 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
         {
             std::string result {};
 
-            for (auto parameter : parameters)
+            for (const auto& parameter : parameters)
             {
                 if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
                 {

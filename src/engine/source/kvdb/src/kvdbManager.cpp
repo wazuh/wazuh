@@ -240,7 +240,7 @@ std::variant<json::Json, base::Error> KVDBManager::jDumpDB(const std::string& na
 
 std::optional<base::Error> KVDBManager::writeRaw(const std::string& name,
                                                  const std::string& key,
-                                                 const std::string value)
+                                                 const std::string& value)
 {
     auto handle = getHandler(name);
     if (std::holds_alternative<base::Error>(handle))

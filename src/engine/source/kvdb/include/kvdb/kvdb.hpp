@@ -164,12 +164,12 @@ public:
      * library from the client, wrapping all the functions and objects needed.
      * @param key key where to find the value
      * @param value value that the result of the proccess will modify
-     * @param ColumnName where to search the key
+     * @param columnName where to search the key
      * @return true If the proccess finished successfully
      * @return false If the proccess didn't finished successfully
      */
     bool readPinned(const std::string& key,
-                    std::string& val,
+                    std::string& value,
                     const std::string& columnName = DEFAULT_CF_NAME);
 
     /**

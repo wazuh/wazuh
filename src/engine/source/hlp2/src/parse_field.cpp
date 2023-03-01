@@ -74,9 +74,9 @@ std::optional<Field> getField(std::string_view input,
     return Field {0, input.size(), isEscaped, isQuoted};
 };
 
-void unescape(bool is_escaped, std::string& vs, std::string_view escape)
+void unescape(bool isEscaped, std::string& vs, std::string_view escape)
 {
-    if (is_escaped)
+    if (isEscaped)
     {
         for (auto j = vs.find(escape, 0); j != std::string::npos; j = vs.find(escape, j))
         {
@@ -89,7 +89,7 @@ void unescape(bool is_escaped, std::string& vs, std::string_view escape)
 void updateDoc(json::Json& doc,
                std::string_view hdr,
                std::string_view val,
-               bool is_escaped,
+               bool isEscaped,
                std::string_view escape)
 {
     if (val.empty())
@@ -117,7 +117,7 @@ void updateDoc(json::Json& doc,
     }
 
     auto vs = std::string {val.data(), val.size()};
-    unescape(is_escaped, vs, escape);
+    unescape(isEscaped, vs, escape);
     doc.setString(vs, hdr);
 }
 

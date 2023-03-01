@@ -61,17 +61,17 @@ public:
 std::optional<Field> getField(std::string_view input,
                               const char delimiter,
                               const char quote,
-                              const char ecsape,
+                              const char escape,
                               bool s);
 
 // TODO:DOC THIS
-void unescape(bool is_escaped, std::string& vs, std::string_view escape);
+void unescape(bool isEscaped, std::string& vs, std::string_view escape);
 
 // TODO:DOC THIS
 void updateDoc(json::Json& doc,
                std::string_view hdr,
                std::string_view val,
-               bool is_escaped,
+               bool isEscaped,
                std::string_view escape);
 
 } // namespace hlp

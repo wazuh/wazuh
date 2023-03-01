@@ -14,7 +14,7 @@
 namespace hlp
 {
 
-parsec::Parser<json::Json> getQuotedParser(std::string name, Stop endTokens, Options lst)
+parsec::Parser<json::Json> getQuotedParser(const std::string& name, const Stop& endTokens, Options lst)
 {
     if (lst.size() > 2)
     {

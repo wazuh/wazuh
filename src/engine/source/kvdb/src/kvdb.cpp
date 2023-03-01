@@ -78,16 +78,14 @@ struct KVDB::Impl
         auto s = rocksdb::DB::ListColumnFamilies(kOptions.open, m_path, &cfNames);
         if (s.ok())
         {
-            for (auto name : cfNames)
+            for (const auto& name : cfNames)
             {
-                m_CFDescriptors.push_back(
-                    rocksdb::ColumnFamilyDescriptor(name, kOptions.CF));
+                m_CFDescriptors.emplace_back(name, kOptions.CF);
             }
         }
         else
         {
-            m_CFDescriptors.push_back(
-                rocksdb::ColumnFamilyDescriptor(DEFAULT_CF_NAME, kOptions.CF));
+            m_CFDescriptors.emplace_back(DEFAULT_CF_NAME, kOptions.CF);
         }
 
         rocksdb::Options dbOptions;
@@ -235,7 +233,8 @@ struct KVDB::Impl
             m_CFDescriptors.erase(std::remove_if(m_CFDescriptors.begin(),
                                                  m_CFDescriptors.end(),
                                                  [&](auto const& des)
-                                                 { return des.name == columnName; }));
+                                                 { return des.name == columnName; }),
+                                  m_CFDescriptors.end());
 
             return true;
         }
@@ -324,7 +323,7 @@ struct KVDB::Impl
             return false;
         }
 
-        if (!pairsVector.size())
+        if (pairsVector.empty())
         {
             WAZUH_LOG_INFO("Engine KVDB: Database '{}': Transaction could not be "
                            "written, at least 1 element is required.",
@@ -714,9 +713,9 @@ bool KVDB::hasKey(const std::string& key, const std::string& columnName)
 
 bool KVDB::readPinned(const std::string& key,
                       std::string& value,
-                      const std::string& colName)
+                      const std::string& columnName)
 {
-    return mImpl->readPinned(key, value, colName);
+    return mImpl->readPinned(key, value, columnName);
 }
 
 bool KVDB::isValid() const

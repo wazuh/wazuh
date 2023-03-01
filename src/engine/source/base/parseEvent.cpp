@@ -64,7 +64,7 @@ Event parseOssecEvent(const std::string& event)
 
     const bool isFullLocation = (FIRST_FULL_LOCATION_CHAR == event[2]);
 
-    const auto secondColonIdx {event.find(":", 2)};
+    const auto secondColonIdx {event.find(':', 2)};
 
     // Case: <Queue_ID>:[<Agent_ID>] (<Agent_Name>) <Registered_IP>-><Origin>:<Log>
     //                  \                                                  /
@@ -77,14 +77,14 @@ Event parseOssecEvent(const std::string& event)
         {
             // Agent_ID index is between '[' and ']'
             // As the format goes like: ...:[<Agent_ID>....
-            endIdx = event.find("]", startIdx);
+            endIdx = event.find(']', startIdx);
             uint32_t valueSize = (endIdx - startIdx) - 1;
             const auto agentId {event.substr(startIdx + 1, valueSize)};
             parseEvent->setString(agentId, EVENT_AGENT_ID);
 
             // Agent_Name is between '(' and ')'
             startIdx = endIdx + 2; // As the format goes like: ...] (<Agent_Name>...
-            endIdx = event.find(")", startIdx);
+            endIdx = event.find(')', startIdx);
             valueSize = (endIdx - startIdx) - 1;
             const auto agentName {event.substr(startIdx + 1, valueSize)};
             parseEvent->setString(agentName, EVENT_AGENT_NAME);
@@ -101,7 +101,7 @@ Event parseOssecEvent(const std::string& event)
             if (registeredIP.find(':') != std::string::npos)
             {
                 // IPv6 case
-                endIdx = event.find(":", endIdx + 2);
+                endIdx = event.find(':', endIdx + 2);
             }
             else
             {
@@ -113,9 +113,9 @@ Event parseOssecEvent(const std::string& event)
         }
         catch (std::runtime_error& e)
         {
-            throw fmt::format(
+            throw std::runtime_error(fmt::format(
                 "An error occurred while parsing the \"location\" field of the event: {}",
-                e.what());
+                e.what()));
         }
 
         msgStartIndex = endIdx + 1;

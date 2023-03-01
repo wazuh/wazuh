@@ -81,7 +81,7 @@ void xmlToJson(pugi::xml_node& docXml,
 namespace hlp
 {
 
-parsec::Parser<json::Json> getXMLParser(std::string name, Stop endTokens, Options lst)
+parsec::Parser<json::Json> getXMLParser(const std::string& name, const Stop& endTokens, const Options& lst)
 {
     if (endTokens.empty())
     {
@@ -96,7 +96,7 @@ parsec::Parser<json::Json> getXMLParser(std::string name, Stop endTokens, Option
     }
     else if (lst.size() == 1)
     {
-        moduleName = lst[0];
+        moduleName = lst.at(0);
         if (xmlModules.count(moduleName) == 0)
         {
             throw std::runtime_error(

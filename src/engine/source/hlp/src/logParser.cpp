@@ -1,7 +1,7 @@
 #include "logParser.hpp"
 
 #include <stdexcept>
-#include <stdio.h>
+#include <cstdio>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -47,7 +47,7 @@ static Token getToken(Tokenizer& tk)
         case '<': return {"<", 1, TokenType::OpenAngle};
         case '>': return {">", 1, TokenType::CloseAngle};
         case '?': return {"?", 1, TokenType::QuestionMark};
-        case '\0': return {0, 0, TokenType::EndOfExpr};
+        case '\0': return {nullptr, 0, TokenType::EndOfExpr};
         default:
         {
             bool escaped = false;
@@ -62,7 +62,7 @@ static Token getToken(Tokenizer& tk)
     }
 
     // TODO unreachable
-    return {0, 0, TokenType::Unknown};
+    return {nullptr, 0, TokenType::Unknown};
 }
 
 static bool requireToken(Tokenizer& tk, TokenType req)

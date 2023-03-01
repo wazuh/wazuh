@@ -35,7 +35,7 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar,
         if (!jsonDefinition.isArray())
         {
             throw std::runtime_error(fmt::format(
-                "Invalid json definition type: Expected \"array\" but got \"{}\"",
+                R"(Invalid json definition type: Expected "array" but got "{}")",
                 jsonDefinition.typeName()));
         }
         if (jsonDefinition.size() < 1)

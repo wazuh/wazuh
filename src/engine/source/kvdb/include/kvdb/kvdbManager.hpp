@@ -123,7 +123,7 @@ public:
      */
     std::optional<base::Error> writeRaw(const std::string& name,
                                         const std::string& key,
-                                        const std::string value = "null");
+                                        const std::string& value = "null");
 
     /**
      * @brief Writes a key or a key value to the KVDB named name.

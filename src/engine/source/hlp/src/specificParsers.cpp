@@ -67,15 +67,15 @@ bool validJsonType(std::string_view type)
 /**
  * @brief Convert and insert a json value into a json object
  *
- * @param output_doc the json object to insert the value into
+ * @param outputDoc the json object to insert the value into
  * @param key the key to insert the value into
  * @param value the value to insert
  */
-void addValueToJson(rapidjson::Document& output_doc,
+void addValueToJson(rapidjson::Document& outputDoc,
                     std::string_view key,
                     std::string_view value)
 {
-    auto& allocator = output_doc.GetAllocator();
+    auto& allocator = outputDoc.GetAllocator();
     // Check the value type and cast it
     auto jsonValue {rapidjson::Value(rapidjson::kNullType)};
     if (!value.empty())
@@ -104,7 +104,7 @@ void addValueToJson(rapidjson::Document& output_doc,
         }
     }
     // TODO Check if every argument is a valid json key
-    output_doc.AddMember(rapidjson::Value(std::string(key).c_str(), allocator),
+    outputDoc.AddMember(rapidjson::Value(std::string(key).c_str(), allocator),
                          jsonValue.Move(),
                          allocator);
 }
@@ -324,18 +324,15 @@ bool configureCSVParser(Parser& parser, std::vector<std::string_view> const& arg
 {
     if (!args.empty())
     {
-        if (args.size() >= 1)
-        {
-            // TODO Check if every argument is a valid json path
-            parser.options = std::vector<std::string>(args.begin(), args.end());
-        }
-        else
-        {
-            throw std::runtime_error(
-                fmt::format("Engine HLP specific parsers: Invalid arguments for \"CVS\" "
-                            "parser. Expected 1 argument at least but got {}.",
-                            args.size()));
-        }
+        // TODO Check if every argument is a valid json path
+        parser.options = std::vector<std::string>(args.begin(), args.end());
+    }
+    else
+    {
+        throw std::runtime_error(
+            fmt::format("Engine HLP specific parsers: Invalid arguments for \"CVS\" "
+                        "parser. Expected 1 argument at least but got {}.",
+                        args.size()));
     }
     return true;
 }
@@ -450,7 +447,7 @@ bool parseFilePath(const char** it, Parser const& parser, ParseResult& result)
     auto extension =
         (std::string::npos == extensionStart) ? "" : name.substr(extensionStart + 1);
 
-    std::string driveLetter;
+    char driveLetter;
     if (hasDriveLetter && ':' == filePath[1]
         && ('\\' == filePath[2] || '/' == filePath[2]))
     {
@@ -517,8 +514,8 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
     const char* lastFoundOk = *it;
 
     /* Json Key-value */
-    rapidjson::Document output_doc;
-    output_doc.SetObject();
+    rapidjson::Document outputDoc;
+    outputDoc.SetObject();
 
     /* -----------------------------------------------
                     Helpers lambdas
@@ -721,7 +718,7 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
         lastFoundOk = strParsePtr;
 
         // Check the value type and cast it
-        addValueToJson(output_doc, key, value);
+        addValueToJson(outputDoc, key, value);
     }
 
     // Validate if the map is valid with the endMapToken
@@ -742,7 +739,7 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
     {
         rapidjson::StringBuffer s;
         rapidjson::Writer<rapidjson::StringBuffer> writer(s);
-        output_doc.Accept(writer);
+        outputDoc.Accept(writer);
         result[parser.name] = hlp::JsonString {s.GetString()};
         *it = lastFoundOk;
     }
@@ -1494,8 +1491,8 @@ bool parseCSV(const char** it, Parser const& parser, ParseResult& result)
     const char escapeChar = '"'; // Escape character is the same as the double quote
     const char endToken = parser.endToken;
 
-    rapidjson::Document output_doc;
-    output_doc.SetObject();
+    rapidjson::Document outputDoc;
+    outputDoc.SetObject();
 
     std::size_t colsQty = parser.options.size(); // Number of columns to parse
     std::size_t colsParsed = 0;                  // Number of columns parsed
@@ -1562,7 +1559,7 @@ bool parseCSV(const char** it, Parser const& parser, ParseResult& result)
 
     if (separator == *str)
     { // First value can be empty
-        addValueToJson(output_doc, parser.options[colsParsed], "");
+        addValueToJson(outputDoc, parser.options[colsParsed], "");
         colsParsed++;
         isExtractComplete = (colsParsed == colsQty) && endToken == *(str + 1);
     }
@@ -1624,7 +1621,7 @@ bool parseCSV(const char** it, Parser const& parser, ParseResult& result)
         }
 
         // Add value to the JSON
-        addValueToJson(output_doc, parser.options[colsParsed], value);
+        addValueToJson(outputDoc, parser.options[colsParsed], value);
         colsParsed++; // new value parsed
     }
 
@@ -1633,7 +1630,7 @@ bool parseCSV(const char** it, Parser const& parser, ParseResult& result)
     {
         rapidjson::StringBuffer s;
         rapidjson::Writer<rapidjson::StringBuffer> writer(s);
-        output_doc.Accept(writer);
+        outputDoc.Accept(writer);
         result[parser.name] = hlp::JsonString {s.GetString()};
         *it = !separatorIsEndToken ? str : str - 1;
     }
