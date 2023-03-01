@@ -1322,7 +1322,7 @@ checks:
       - cis: ["2.1.1"]
       - cis_csc_v8: ["8.4"]
       - cis_csc_v7: ["6.1"]
-        nist_sp_800-53: ["AU-3", "AU-12"]
+      - nist_sp_800-53: ["AU-3", "AU-12"]
       - cmmc_v2.0: ["AU.L2-3.3.7"]
       - pci_dss_3.2.1: ["10.4"]
       - pci_dss_4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
@@ -1344,7 +1344,7 @@ checks:
       - cis: ["2.1.2"]
       - cis_csc_v8: ["8.4"]
       - cis_csc_v7: ["6.1"]
-        nist_sp_800-53: ["AU-3", "AU-12"]
+      - nist_sp_800-53: ["AU-3", "AU-12"]
       - cmmc_v2.0: ["AU.L2-3.3.7"]
       - pci_dss_3.2.1: ["10.4"]
       - pci_dss_4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
@@ -1374,7 +1374,7 @@ checks:
       - cis: ["2.2.1"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-        nist_sp_800-53: ["CM-7"]
+      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
@@ -1486,7 +1486,7 @@ checks:
   - id: 28058
     title: "Ensure VSFTP Server is not installed."
     description: "FTP (File Transfer Protocol) is a traditional and widely used standard tool for transferring files between a server and clients over a network, especially where no authentication is necessary (permits anonymous users to connect to a server)."
-    rationale: "Unless there is a need to run the system as an FTP server, it is recommended that the package be removed to reduce the potential attack surface."
+    rationale: "Unless there is a need to run the system as a FTP server, it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove vsftpd: # dnf remove vsftpd."
     compliance:
       - cis: ["2.2.6"]
@@ -1713,7 +1713,7 @@ checks:
     description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
     rationale: "If the system does not require network shares, it is recommended that the nfs-utils package be removed to reduce the attack surface of the system."
     impact: "Many of the libvirt packages used by Enterprise Linux virtualization are dependent on the nfs-utils package. If the nfs-utils package is required as a dependency, the nfsserver service should be disabled and masked to reduce the attack surface of the system."
-    remediation: "Run the following command to remove nfs-utils: # dnf remove nfs-utils OR If the nfs-package is required as a dependency, run the following command to stop and mask the nfs-server service: # systemctl --now mask nfs-server."
+    remediation: "Run the following command to remove nfs-utils: # dnf remove nfs-utils OR If the nfs-utils package is required as a dependency, run the following command to stop and mask the nfs-server service: # systemctl --now mask nfs-server."
     compliance:
       - cis: ["2.2.16"]
       - cis_csc_v8: ["4.8"]
@@ -1737,7 +1737,7 @@ checks:
     description: "The rpcbind utility maps RPC services to the ports on which they listen. RPC processes notify rpcbind when they start, registering the ports they are listening on and the RPC program numbers they expect to serve. The client system then contacts rpcbind on the server with a particular RPC program number. The rpcbind service redirects the client to the proper port number so it can communicate with the requested service. Portmapper is an RPC service, which always listens on tcp and udp 111, and is used to map other RPC services (such as nfs, nlockmgr, quotad, mountd, etc.) to their corresponding port number on the server. When a remote host makes an RPC call to that server, it first consults with portmap to determine where the RPC server is listening."
     rationale: "A small request (~82 bytes via UDP) sent to the Portmapper generates a large response (7x to 28x amplification), which makes it a suitable tool for DDoS attacks. If rpcbind is not required, it is recommended that the rpcbind package be removed to reduce the attack surface of the system."
     impact: "Many of the libvirt packages used by Enterprise Linux virtualization, and the nfs-utils package used for The Network File System (NFS), are dependent on the rpcbind package. If the rpcbind package is required as a dependency, the services rpcbind.service and rpcbind.socket should be stopped and masked to reduce the attack surface of the system."
-    remediation: "Run the following command to remove rpcbind: # dnf remove rpcbind OR If the rpcbind package is required as a dependency, run the following commands to stop and mask the rpcbind.service and rpcbind.socket services: # systemctl --now mask rpcbind.service # systemctl --now mask rpcbind.socket."
+    remediation: "Run the following command to remove rpcbind: # dnf remove rpcbind OR If the rpcbind package is required as a dependency, run the following commands to stop and mask the rpcbind.service and rpcbind.socket systemd units: # systemctl --now mask rpcbind.service # systemctl --now mask rpcbind.socket."
     compliance:
       - cis: ["2.2.17"]
       - cis_csc_v8: ["4.8"]
