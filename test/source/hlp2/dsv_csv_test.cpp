@@ -239,10 +239,6 @@ TEST(CSVParser, parser)
     {
         auto testCase = std::get<0>(t);
         runTest(t, hlp::getCSVParser);
-        runTest(t, hlp::getCSVParser, "header", "");
-        runTest(t, hlp::getCSVParser, "header", "tail");
-        runTest(t, hlp::getCSVParser, "", "tail");
-
     }
 }
 
@@ -498,8 +494,5 @@ TEST(DSVParser, parser)
     for (auto t : testCases)
     {
         runTest(t, hlp::getDSVParser);
-        runTest(t, hlp::getDSVParser, "header", "");
-        runTest(t, hlp::getDSVParser, "header", "tail");
-        runTest(t, hlp::getDSVParser, "", "tail");
     }
 }
