@@ -186,7 +186,7 @@ def clangtidy(params):
         find_ignoredir = f'-path {" -o -path ".join(abs_ignore)}'
     find_cmd = f'find {params.source} -type f \( {find_extensions} \) -print -o \( {find_ignoredir} \) -prune '
     command = f' clang-tidy $({find_cmd}) -p {builddir} --extra-arg=-ferror-limit=0 --extra-arg=-std=c++1z ' \
-              f' --extra-arg=-Wno-unused-function --extra-arg=-Wno-error=unused-command-line-argument --extra-arg=-header-filter=.'
+              f' --extra-arg=-Wno-unused-function --extra-arg=-Wno-error=unused-command-line-argument --extra-arg=-header-filter=.*'
     if params.fix:
         command += ' -fix-errors'
     logging.debug(f'Executing {command}')
