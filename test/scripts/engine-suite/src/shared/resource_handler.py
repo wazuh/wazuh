@@ -20,7 +20,7 @@ class Format(Enum):
 
 class ResourceHandler:
     def __init__(self):
-        self._files = files('engine-suit')
+        self._files = files('engine-suite')
 
     def _read_json(self, content: str) -> dict:
         return json.loads(content)
