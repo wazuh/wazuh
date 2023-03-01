@@ -166,7 +166,7 @@ Vagrant.configure("2") do |config|
         chown -R $CS_USER:$CS_USER $CS_HOME/
 
         # Install engine-schema python script
-        pip3 install $ENGINE_SRC_DIR/test/scripts/engine-suit
+        pip3 install $ENGINE_SRC_DIR/test/scripts/engine-suite
         if ! engine-schema -h; then
             echo "Error installing engine-schema"
         fi
