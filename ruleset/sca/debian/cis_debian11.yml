@@ -2788,7 +2788,7 @@ checks:
     title: "Ensure actions as another user are always logged."
     description: "sudo provides users with temporary elevated privileges to perform operations, either as the superuser or another user."
     rationale: "Creating an audit log of users with temporary elevated privileges and the operation(s) they performed is essential to reporting. Administrators will want to correlate the events written to the audit trail with the records written to sudo's logfile to verify if unauthorized commands have been executed."
-    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor elevated privileges. 64 Bit systems .Example: # printf " -a always,exit -F arch=b64 -C euid!=uid -F auid!=unset -S execve -k user_emulation -a always,exit -F arch=b32 -C euid!=uid -F auid!=unset -S execve -k user_emulation " >> /etc/audit/rules.d/50-user_emulation.rules Load audit rules .Merge and load the rules into active configuration: # augenrules --load .Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi .32 Bit systems:Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
+    remediation: 'Create audit rules: Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor elevated privileges. - 64 Bit systems Example: # printf " -a always,exit -F arch=b64 -C euid!=uid -F auid!=unset -S execve -k user_emulation -a always,exit -F arch=b32 -C euid!=uid -F auid!=unset -S execve -k user_emulation " >> /etc/audit/rules.d/50-user_emulation.rules - Load audit rules: Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi - 32 Bit systems: Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
     compliance:
       - cis: ["4.1.3.2"]
       - cis_csc_v8: ["8.5"]
@@ -2804,19 +2804,17 @@ checks:
       - mitre_mitigations: ["M1047"]
     condition: all
     rules:
-      - "d:/etc/audit"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid && r:-F auid!=unset && r:-S execve && r:-k user_emulation'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid && r:-F auid!=unset && r:-S execve && r:-k user_emulation'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|b32 && r:-C euid!=uid && r:-F auid!=unset && r:-S execve && r:-k user_emulation'
+      - 'c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|b32 && r:-C euid!=uid && r:-F auid!=unset && r:-S execve && r:-k user_emulation'
 
   # 4.1.3.3 Ensure events that modify the sudo log file are collected (Automated) - Not Implemented
 
   # 4.1.3.4 Ensure events that modify date and time information are collected (Automated)
   - id: 29607
     title: "Ensure events that modify date and time information are collected."
-    description: 'Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the; adjtimex - tune kernel clock settimeofday - set time using timeval and timezone structures stime - using seconds since 1/1/1970 clock_settime - allows for the setting of several internal clocks and timers system calls have been executed. Further, ensure to write an audit record to the configured audit log file upon exit, tagging the records with a unique identifier such as "time-change".'
+    description: 'Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the; - adjtimex: tune kernel clock. - settimeofday: set time using timeval and timezone structures. - stime: using seconds since 1/1/1970. - clock_settime: allows for the setting of several internal clocks and timers system calls have been executed. Further, ensure to write an audit record to the configured audit log file upon exit, tagging the records with a unique identifier such as "time-change".'
     rationale: "Unexpected changes in system date and/or time could be a sign of malicious activity on the system."
-    remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify date and time information. 64 Bit systems .Example: # printf "-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time-change -a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime -k time-change -w /etc/localtime -p wa -k time-change " >> /etc/audit/rules.d/50-time-change.rules .Load audit rules .Merge and load the rules into active configuration:# augenrules --load .Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi 32 Bit systems .Follow the same procedures as for 64 bit systems and ignore any entries with b64. In addition, add stime to the system call audit. Example:-a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime,stime -k time-change'
+    remediation: 'Create audit rules: Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify date and time information. - 64 Bit systems Example: # printf "-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time-change -a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime -k time-change -w /etc/localtime -p wa -k time-change " >> /etc/audit/rules.d/50-time-change.rules - Load audit rules: Merge and load the rules into active configuration: # augenrules --load .Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi 32 Bit systems: Follow the same procedures as for 64 bit systems and ignore any entries with b64. In addition, add stime to the system call audit. Example: -a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime,stime -k time-change'
     compliance:
       - cis: ["4.1.3.4"]
       - cis_csc_v8: ["8.5"]
@@ -2831,18 +2829,17 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - "d:/etc/audit"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S adjtimex && r:-S settimeofday && r:-S stime && r:-k time-change'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-k time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|b32 && r:-S adjtimex,settimeofday && r:-k time-change'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|b32 && r:-S adjtimex,settimeofday && r:-k time-change'
+      - 'c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change'
 
   # 4.1.3.5 Ensure events that modify the system's network environment are collected (Automated)
   - id: 29608
     title: "Ensure events that modify the system's network environment are collected."
-    description: "Record changes to network environment files or system calls. The below parameters monitors the following system calls, and write an audit event on system call exit: sethostname - set the systems host name setdomainname - set the systems domain name .The files being monitored are: /etc/issue and /etc/issue.net - messages displayed pre-login . /etc/hosts - file containing host names and associated IP addresses . /etc/networks - symbolic names for networks . /etc/network/ - directory containing network interface scripts and configurations files."
+    description: "Record changes to network environment files or system calls. The below parameters monitors the following system calls, and write an audit event on system call exit: - sethostname: set the systems host name. - setdomainname: set the systems domain name. The files being monitored are: > /etc/issue and /etc/issue.net - messages displayed pre-login > /etc/hosts - file containing host names and associated IP addresses > /etc/networks - symbolic names for networks > /etc/network/ - directory containing network interface scripts and configurations files."
     rationale: "Monitoring sethostname and setdomainname will identify potential unauthorized changes to host and domainname of a system. The changing of these names could potentially break security parameters that are set based on those names. The /etc/hosts file is monitored for changes that can indicate an unauthorized intruder is trying to change machine associations with IP addresses and trick users and processes into connecting to unintended machines. Monitoring /etc/issue and /etc/issue.net is important, as intruders could put disinformation into those files and trick users into providing information to the intruder. Monitoring /etc/network is important as it can show if network interfaces or scripts are being modified in a way that can lead to the machine becoming unavailable or compromised. All audit records should have a relevant tag associated with them."
-    remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify the systems network environment. 64 Bit systems .Example: # printf " -a always,exit -F arch=b64 -S sethostname,setdomainname -k system-locale -a always,exit -F arch=b32 -S sethostname,setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/networks -p wa -k system-locale -w /etc/network/ -p wa -k system-locale " >> /etc/audit/rules.d/50-system_local.rules .Load audit rules .Merge and load the rules into active configuration: # augenrules --load .Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi .32 Bit systems .Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
+    remediation: 'Create audit rules: Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify the systems network environment. - 64 Bit systems: Example: # printf " -a always,exit -F arch=b64 -S sethostname,setdomainname -k system-locale -a always,exit -F arch=b32 -S sethostname,setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/networks -p wa -k system-locale -w /etc/network/ -p wa -k system-locale " >> /etc/audit/rules.d/50-system_local.rules - Load audit rules: Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi > 32 Bit systems: Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
     compliance:
       - cis: ["4.1.3.5"]
       - cis_csc_v8: ["8.5"]
@@ -2858,24 +2855,21 @@ checks:
       - mitre_mitigations: ["M1047"]
     condition: all
     rules:
-      - "d:/etc/audit"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S sethostname && r:-S setdomainname && r:-k system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|b32 && r:-S sethostname,setdomainname && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale'
 
   # 4.1.3.6 Ensure use of privileged commands are collected (Automated) - Not Implemented
-
   # 4.1.3.7 Ensure unsuccessful file access attempts are collected (Automated) - Not Implemented
 
   # 4.1.3.8 Ensure events that modify user/group information are collected (Automated)
   - id: 29609
     title: "Ensure events that modify user/group information are collected."
-    description: 'Record events affecting the modification of user or group information, including that of passwords and old passwords if in use. /etc/group - system groups /etc/passwd - system users /etc/gshadow - encrypted password for each group /etc/shadow - system user passwords /etc/security/opasswd - storage of old passwords if the relevant PAM module is in use .The parameters in this section will watch the files to see if they have been opened for write or have had attribute changes (e.g. permissions) and tag them with the identifier "identity" in the audit log file.'
+    description: 'Record events affecting the modification of user or group information, including that of passwords and old passwords if in use. - /etc/group: system groups - /etc/passwd: system users - /etc/gshadow: encrypted password for each group - /etc/shadow: system user passwords - /etc/security/opasswd: storage of old passwords if the relevant PAM module is in use. The parameters in this section will watch the files to see if they have been opened for write or have had attribute changes (e.g. permissions) and tag them with the identifier "identity" in the audit log file.'
     rationale: "Unexpected changes to these files could be an indication that the system has been compromised and that an unauthorized user is attempting to hide their activities or compromise additional accounts."
-    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify user/group information. Example: # printf "-w /etc/group -p wa -k identity -w /etc/passwd -p wa -k identity -w /etc/gshadow -p wa -k identity -w /etc/shadow -p wa -k identity -w /etc/security/opasswd -p wa -k identity " >> /etc/audit/rules.d/50-identity.rules .Merge and load the rules into active configuration: # augenrules --load .Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
+    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify user/group information. Example: # printf "-w /etc/group -p wa -k identity -w /etc/passwd -p wa -k identity -w /etc/gshadow -p wa -k identity -w /etc/shadow -p wa -k identity -w /etc/security/opasswd -p wa -k identity " >> /etc/audit/rules.d/50-identity.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
     compliance:
       - cis: ["4.1.3.8"]
       - cis_csc_v8: ["8.5"]
@@ -2906,7 +2900,7 @@ checks:
     title: "Ensure successful file system mounts are collected."
     description: "Monitor the use of the mount system call. The mount (and umount ) system call controls the mounting and unmounting of file systems. The parameters below configure the system to create an audit record when the mount system call is used by a no-privileged user."
     rationale: "It is highly unusual for a non privileged user to mount file systems to the system. While tracking mount commands gives the system administrator evidence that external media may have been mounted (based on a review of the source of the mount and confirming it's an external media type), it does not conclusively indicate that data was exported to the media. System administrators who wish to determine if data were exported, would also have to track successful open, creat and truncate system calls requiring write access to a file under the mount point of the external media file system. This could give a fair indication that a write occurred. The only way to truly prove it, would be to track successful writes to the external media. Tracking write system calls could quickly fill up the audit log and is not recommended. Recommendations on configuration options to track data export to media is beyond the scope of this document."
-    remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful file system mounts. 64 Bit systems .Example: # { UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F arch=b32 -S mount -F auid>=$UID_MIN -F auid!=unset -k mounts -a always,exit -F arch=b64 -S mount -F auid>=$UID_MIN -F auid!=unset -k mounts " >> /etc/audit/rules.d/50-mounts.rules || printf "ERROR: Variable "UID_MIN" is unset.\n"}Load audit rules .Merge and load the rules into active configuration:# augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi .32 Bit systems .Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
+    remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful file system mounts. 64 Bit systems .Example: # { UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F arch=b32 -S mount -F auid>=$UID_MIN -F auid!=unset -k mounts -a always,exit -F arch=b64 -S mount -F auid>=$UID_MIN -F auid!=unset -k mounts " >> /etc/audit/rules.d/50-mounts.rules || printf "ERROR: Variable "UID_MIN" is unset.\n"}Load audit rules .Merge and load the rules into active configuration: # augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi .32 Bit systems .Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
     compliance:
       - cis: ["4.1.3.10"]
       - cis_csc_v8: ["8.5"]
@@ -3004,7 +2998,7 @@ checks:
     title: "Ensure events that modify the system's Mandatory Access Controls are collected."
     description: "Monitor AppArmor, an implementation of mandatory access controls. The parameters below monitor any write access (potential additional, deletion or modification of files in the directory) or attribute changes to the /etc/apparmor/ and /etc/apparmor.d/ directories."
     rationale: "Changes to files in the /etc/apparmor/ and /etc/apparmor.d/ directories could indicate that an unauthorized user is attempting to modify access controls and change security contexts, leading to a compromise of the system."
-    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify the systems Mandatory Access Controls. Example:#printf " -w /etc/apparmor/ -p wa -k MAC-policy -w /etc/apparmor.d/ -p wa -k MAC-policy " >> /etc/audit/rules.d/50-MAC-policy.rules .Merge and load the rules into active configuration: # augenrules --load .Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
+    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify the systems Mandatory Access Controls. Example: #printf " -w /etc/apparmor/ -p wa -k MAC-policy -w /etc/apparmor.d/ -p wa -k MAC-policy " >> /etc/audit/rules.d/50-MAC-policy.rules .Merge and load the rules into active configuration: # augenrules --load .Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
     compliance:
       - cis: ["4.1.3.14"]
       - cis_csc_v8: ["8.5"]
@@ -3030,7 +3024,7 @@ checks:
     title: "Ensure successful and unsuccessful attempts to use the chcon command are recorded."
     description: "The operating system must generate audit records for successful/unsuccessful uses of the chcon command."
     rationale: "The chcon command is used to change file security context. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one. Audit records can be generated from various components within the information system (e.g., module or policy filter)."
-    remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the chcon command.64 Bit systems Example:# {UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k perm_chng">> /etc/audit/rules.d/50-perm_chng.rules || printf "ERROR:Variable "UID_MIN" is unset.\n" } .Load audit rules .Merge and load the rules into active configuration:# augenrules --load .Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi .32 Bit systems .Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
+    remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the chcon command.64 Bit systems Example: # {UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k perm_chng">> /etc/audit/rules.d/50-perm_chng.rules || printf "ERROR:Variable "UID_MIN" is unset.\n" } .Load audit rules .Merge and load the rules into active configuration: # augenrules --load .Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi .32 Bit systems .Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
     compliance:
       - cis: ["4.1.3.15"]
       - cis_csc_v8: ["8.2"]
@@ -3054,7 +3048,7 @@ checks:
     title: "Ensure successful and unsuccessful attempts to use the setfacl command are recorded."
     description: "The operating system must generate audit records for successful/unsuccessful uses of the setfacl command."
     rationale: "This utility sets Access Control Lists (ACLs) of files and directories. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one. Audit records can be generated from various components within the information system (e.g., module or policy filter)."
-    remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the setfacl command. 64 Bit systems Example: { UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k perm_chng " >> /etc/audit/rules.d/50-perm_chng.rules || printf "ERROR:Variable "UID_MIN" is unset.\n" } Load audit rules .Merge and load the rules into active configuration:# augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi 32 Bit systems. Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
+    remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the setfacl command. 64 Bit systems Example: { UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k perm_chng " >> /etc/audit/rules.d/50-perm_chng.rules || printf "ERROR:Variable "UID_MIN" is unset.\n" } Load audit rules .Merge and load the rules into active configuration: # augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi 32 Bit systems. Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
     compliance:
       - cis: ["4.1.3.16"]
       - cis_csc_v8: ["8.2"]
@@ -3076,7 +3070,7 @@ checks:
     title: "Ensure successful and unsuccessful attempts to use the chacl command are recorded."
     description: "The operating system must generate audit records for successful/unsuccessful uses of the chacl command. chacl is an IRIX-compatibility command, and is maintained for those users who are familiar with its use from either XFS or IRIX."
     rationale: "chacl changes the ACL(s) for a file or directory. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one. Audit records can be generated from various components within the information system (e.g., module or policy filter)."
-    remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the chacl command.64 Bit systems Example:# {UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs)[ -n "${UID_MIN}" ] && printf "-a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k perm_chng" >> /etc/audit/rules.d/50-perm_chng.rules || printf "ERROR:Variable "UID_MIN" is unset.\n" } Load audit rules Merge and load the rules into active configuration:# augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi 32 Bit systems Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
+    remediation: 'Create audit rules .Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the chacl command.64 Bit systems Example: # {UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs)[ -n "${UID_MIN}" ] && printf "-a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k perm_chng" >> /etc/audit/rules.d/50-perm_chng.rules || printf "ERROR:Variable "UID_MIN" is unset.\n" } Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi 32 Bit systems Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
     compliance:
       - cis: ["4.1.3.17"]
       - cis_csc_v8: ["8.2"]
@@ -3098,7 +3092,7 @@ checks:
     title: "Ensure successful and unsuccessful attempts to use the usermod command are recorded."
     description: "The operating system must generate audit records for successful/unsuccessful uses of the usermod command."
     rationale: "The usermod command modifies the system account files to reflect the changes that are specified on the command line. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one.Audit records can be generated from various components within the information system (e.g., module or policy filter)."
-    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the usermod command.64 Bit systems Example:# {UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf "-a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k usermod " >> /etc/audit/rules.d/50-usermod.rules || printf "ERROR:Variable "UID_MIN" is unset.\n"}Load audit rules .Merge and load the rules into active configuration:# augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
+    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the usermod command.64 Bit systems Example: # {UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf "-a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k usermod " >> /etc/audit/rules.d/50-usermod.rules || printf "ERROR:Variable "UID_MIN" is unset.\n"}Load audit rules .Merge and load the rules into active configuration: # augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
     compliance:
       - cis: ["4.1.3.18"]
       - cis_csc_v8: ["8.2"]
@@ -3120,7 +3114,7 @@ checks:
     title: "Ensure kernel module loading unloading and modification is collected."
     description: "Monitor the loading and unloading of kernel modules. All the loading / listing / dependency checking of modules is done by kmod via symbolic links. The following system calls control loading and unloading of modules: init_module - load a module .finit_module - load a module (used when the overhead of using. cryptographically signed modules to determine the authenticity of a module can be avoided) .delete_module - delete a module .create_module - create a loadable module entry .query_module - query the kernel for various bits pertaining to modules .Any execution of the loading and unloading module programs and system calls will trigger an audit record with an identifier of modules."
     rationale: "Monitoring the use of all the various ways to manipulate kernel modules could provide system administrators with evidence that an unauthorized change was made to a kernel module, possibly compromising the security of the system."
-    remediation: 'Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor kernel module modification. 64 Bit systemsExample:# {UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F arch=b64 -S init_module,finit_module,delete_module,create_module,query_module -F auid>=${UID_MIN} -F auid!=unset -k kernel_modules -a always,exit -F path=/usr/bin/kmod -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k kernel_modules" >> /etc/audit/rules.d/50-kernel_modules.rules || printf "ERROR:Variable"UID_MIN" is unset.\n"}Load audit rules .Merge and load the rules into active configuration:# augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
+    remediation: 'Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor kernel module modification. 64 Bit systemsExample: # {UID_MIN=$(awk "/^\s*UID_MIN/{print $2}" /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F arch=b64 -S init_module,finit_module,delete_module,create_module,query_module -F auid>=${UID_MIN} -F auid!=unset -k kernel_modules -a always,exit -F path=/usr/bin/kmod -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k kernel_modules" >> /etc/audit/rules.d/50-kernel_modules.rules || printf "ERROR:Variable"UID_MIN" is unset.\n"}Load audit rules .Merge and load the rules into active configuration: # augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
     compliance:
       - cis: ["4.1.3.19"]
       - cis_csc_v8: ["8.5"]
@@ -3146,7 +3140,7 @@ checks:
     title: "Ensure the audit configuration is immutable."
     description: 'Set system audit so that audit rules cannot be modified with auditctl . Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note:This setting will require the system to be rebooted to update the active auditd configuration settings.'
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
-    remediation: 'Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file: Example:# printf -- "-e 2 " >> /etc/audit/rules.d/99-finalize.rules Load audit rules Merge and load the rules into active configuration:# augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
+    remediation: 'Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file: Example: # printf -- "-e 2 " >> /etc/audit/rules.d/99-finalize.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required.# if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
     compliance:
       - cis: ["4.1.3.20"]
       - cis_csc_v8: ["3.3", "8.5"]
@@ -3170,7 +3164,7 @@ checks:
     title: "Ensure the running and on disk configuration is the same."
     description: "The Audit system have both on disk and running configuration. It is possible for these configuration settings to differ. Note: Due to the limitations of augenrules and auditctl, it is not absolutely guaranteed that loading the rule sets via augenrules --load will result in all rules being loaded or even that the user will be informed if there was a problem loading the rules."
     rationale: "Configuration differences between what is currently running and what is on disk could cause unexpected problems or may give a false impression of compliance requirements."
-    remediation: 'If the rules are not aligned across all three () areas, run the following command to merge and load all rules:# augenrules --load Check if reboot is required. if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then echo "Reboot required to load rules"; fi'
+    remediation: 'If the rules are not aligned across all three () areas, run the following command to merge and load all rules: # augenrules --load Check if reboot is required. if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then echo "Reboot required to load rules"; fi'
     compliance:
       - cis: ["4.1.3.21"]
       - cis_csc_v8: ["8.5"]
@@ -3198,7 +3192,7 @@ checks:
     title: "Ensure only authorized groups are assigned ownership of audit log files."
     description: "Audit log files contain information about the system and system activity."
     rationale: "Access to audit records can reveal system and configuration data to attackers, potentially compromising its confidentiality."
-    remediation: "Run the following command to configure the audit log files to be owned by adm group: # find $(dirname $(awk -F'=s*log_file/ {print $2} /etc/audit/auditd.conf | xargs)) -type f \\( ! -group adm -a ! -group root \\) -exec chgrp adm {} + Run the following command to configure the audit log files to be owned by the adm group:# chgrp adm /var/log/audit/ Run the following command to set the log_group parameter in the audit configuration file to log_group = adm:# sed -ri 's/^\\s*#?\\s*log_group\\s*=\\s*\\S+(\\s*#.*)?.*$/log_group = adm\\1/' /etc/audit/auditd.conf Run the following command to restart the audit daemon to reload the configuration file:# systemctl restart auditd"
+    remediation: "Run the following command to configure the audit log files to be owned by adm group: # find $(dirname $(awk -F'=s*log_file/ {print $2} /etc/audit/auditd.conf | xargs)) -type f \\( ! -group adm -a ! -group root \\) -exec chgrp adm {} + Run the following command to configure the audit log files to be owned by the adm group: # chgrp adm /var/log/audit/ Run the following command to set the log_group parameter in the audit configuration file to log_group = adm: # sed -ri 's/^\\s*#?\\s*log_group\\s*=\\s*\\S+(\\s*#.*)?.*$/log_group = adm\\1/' /etc/audit/auditd.conf Run the following command to restart the audit daemon to reload the configuration file: # systemctl restart auditd"
     compliance:
       - cis: ["4.1.4.3"]
       - cis_csc_v8: ["3.3"]
@@ -3222,7 +3216,7 @@ checks:
     title: "Ensure the audit log directory is 0750 or more restrictive."
     description: "The audit log directory contains audit log files."
     rationale: "Audit information includes all information including: audit records, audit settings and audit reports. This information is needed to successfully audit system activity. This information must be protected from unauthorized modification or deletion. If this information were to be compromised, forensic analysis and discovery of the true source of potentially malicious system activity is impossible to achieve."
-    remediation: "Run the following command to configure the audit log directory to have a mode of '0750' or less permissive:# chmod g-w,o-rwx '$(dirname $(awk -F'=' '/^\\s*log_file/ {print $2}' /etc/audit/auditd.conf))'"
+    remediation: "Run the following command to configure the audit log directory to have a mode of '0750' or less permissive: # chmod g-w,o-rwx '$(dirname $(awk -F'=' '/^\\s*log_file/ {print $2}' /etc/audit/auditd.conf))'"
     compliance:
       - cis: ["4.1.4.4"]
       - cis_csc_v8: ["3.3"]
@@ -3245,7 +3239,7 @@ checks:
     title: "Ensure audit configuration files are 640 or more restrictive."
     description: "Audit configuration files control auditd and what events are audited."
     rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
-    remediation: "Run the following command to remove more permissive mode than 0640 from the audit configuration files:# find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -execchmod u-x,g-wx,o-rwx {} +"
+    remediation: "Run the following command to remove more permissive mode than 0640 from the audit configuration files: # find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -execchmod u-x,g-wx,o-rwx {} +"
     compliance:
       - cis: ["4.1.4.5"]
       - cis_csc_v8: ["3.3"]
@@ -3326,7 +3320,7 @@ checks:
     title: "Ensure audit tools are 755 or more restrictive."
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
-    remediation: "Run the following command to remove more permissive mode from the audit tools:# chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace/sbin/auditd /sbin/augenrules"
+    remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace/sbin/auditd /sbin/augenrules"
     compliance:
       - cis: ["4.1.4.8"]
       - cis_csc_v8: ["3.3"]
@@ -3372,7 +3366,7 @@ checks:
     title: "Ensure audit tools belong to group root."
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
-    remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules .Run the following command to change owner and group of the audit tools to root user and group:# chown root:root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace/sbin/auditd /sbin/augenrules"
+    remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules .Run the following command to change owner and group of the audit tools to root user and group: # chown root:root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace/sbin/auditd /sbin/augenrules"
     compliance:
       - cis: ["4.1.4.10"]
       - cis_csc_v8: ["3.3"]
@@ -3389,13 +3383,13 @@ checks:
     condition: all
     rules:
       - 'c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch/sbin/autrace /sbin/auditd /sbin/augenrules -> r:^\h*\H+\h+([0-7][0,1,4,5][0,1,4,5])\h+root\h+root\h*$'
-
+      
   # 4.1.4.1.11 Ensure cryptographic mechanisms are used to protect the integrity of audit tools (Automated)
   - id: 29630
     title: "Ensure cryptographic mechanisms are used to protect the integrity of audit tools."
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting the integrity of the tools used for auditing purposes is a critical step toward ensuring the integrity of audit information. Audit information includes all information (e.g., audit records, audit settings, and audit reports) needed to successfully audit information system activity. Attackers may replace the audit tools or inject code into the existing tools with the purpose of providing the capability to hide or erase system activity from the audit logs. Audit tools should be cryptographically signed in order to provide the capability to identify when the audit tools have been modified, manipulated, or replaced. An example is a checksum hash of the file or files."
-    remediation: "Add or update the following selection lines for to a file ending in .conf in the /etc/aide/aide.conf.d/ or to /etc/aide/aide.conf to protect the integrity of the audit tools:# Audit Tools /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512"
+    remediation: "Add or update the following selection lines for to a file ending in .conf in the /etc/aide/aide.conf.d/ or to /etc/aide/aide.conf to protect the integrity of the audit tools: # Audit Tools /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512"
     compliance:
       - cis: ["4.1.4.11"]
       - cis_csc_v8: ["4.1"]
@@ -3503,7 +3497,7 @@ checks:
     title: "Ensure journald is not configured to recieve logs from a remote client."
     description: "Journald supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts. NOTE: The same package, systemd-journal-remote, is used for both sending logs to remote hosts and receiving incoming logs.With regards to receiving logs, there are two services; systemd-journal-remote.socket and systemd-journal-remote.service."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
-    remediation: "Run the following command to disable systemd-journal-remote.socket:# systemctl --now disable systemd-journal-remote.socket"
+    remediation: "Run the following command to disable systemd-journal-remote.socket: # systemctl --now disable systemd-journal-remote.socket"
     compliance:
       - cis: ["4.2.1.1.4"]
       - cis_csc_v8: ["8.2", "4.8"]
@@ -3741,7 +3735,6 @@ checks:
       - 'd:/etc/rsyslog.d/ -> r:\. -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
 
   # 4.2.2.5 Ensure logging is configured (Manual) - Not Implemented
-  #
   # 4.2.2.6 Ensure rsyslog is configured to send logs to a remote log host (Manual) - Not Implemented
 
   # 4.2.2.7 Ensure rsyslog is not configured to receive logs from a remote client (Automated)
