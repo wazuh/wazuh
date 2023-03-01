@@ -446,7 +446,6 @@ void test_wdb_upgrade_global_full_upgrade_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 4");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v4_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
-    will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
     // Upgrading database from version 4 to 5
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 5");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v5_sql);
@@ -496,7 +495,6 @@ void test_wdb_upgrade_global_full_upgrade_success_from_unversioned_db(void **sta
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 4");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v4_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
-    will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
     // Upgrading database from version 4 to 5
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 5");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v5_sql);
@@ -533,7 +531,6 @@ void test_wdb_upgrade_global_update_v1_to_v5_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 4");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v4_sql);
     will_return(__wrap_wdb_sql_exec, 0);
-    will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 5");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v5_sql);
     will_return(__wrap_wdb_sql_exec, 0);
@@ -595,7 +592,6 @@ void test_wdb_upgrade_global_update_v2_to_v5_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 4");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v4_sql);
     will_return(__wrap_wdb_sql_exec, 0);
-    will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 5");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v5_sql);
     will_return(__wrap_wdb_sql_exec, 0);
@@ -654,7 +650,6 @@ void test_wdb_upgrade_global_update_v3_to_v5_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 4");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v4_sql);
     will_return(__wrap_wdb_sql_exec, 0);
-    will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 5");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v5_sql);
     will_return(__wrap_wdb_sql_exec, 0);

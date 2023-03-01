@@ -712,6 +712,7 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
             }
         }
     } else {
+        result = OS_INVALID;
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
     }
 

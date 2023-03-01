@@ -129,19 +129,16 @@ int __wrap_wdb_remove_agent_db(int id, const char* name) {
     return mock();
 }
 
-cJSON* __wrap_wdb_get_distinct_agent_groups(__attribute__((unused)) int *sock) {
+cJSON* __wrap_wdb_get_distinct_agent_multi_groups(__attribute__((unused)) int *sock) {
     return mock_ptr_type(cJSON*);
 }
 
 int __wrap_wdb_insert_agent(int id, const char *name, __attribute__((unused)) const char *ip, const char *register_ip,
-                            const char *internal_key, const char *group, int keep_date, __attribute__((unused)) int *sock) {
+                            const char *internal_key, int keep_date, __attribute__((unused)) int *sock) {
     check_expected(id);
     check_expected(name);
     check_expected(register_ip);
     check_expected(internal_key);
-    if (group) {
-        check_expected(group);
-    }
     check_expected(keep_date);
     return mock();
 }

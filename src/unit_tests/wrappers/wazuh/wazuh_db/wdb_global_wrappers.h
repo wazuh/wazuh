@@ -13,7 +13,7 @@
 
 #include "../wazuh_db/wdb.h"
 
-int __wrap_wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key,char* group, int date_add);
+int __wrap_wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, int date_add);
 
 int __wrap_wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
 
@@ -54,8 +54,6 @@ int __wrap_wdb_global_delete_agent(wdb_t *wdb, int id);
 
 cJSON* __wrap_wdb_global_select_agent_name(wdb_t *wdb, int id);
 
-cJSON* __wrap_wdb_global_select_agent_group(wdb_t *wdb, int id);
-
 cJSON* __wrap_wdb_global_get_group_agents(wdb_t *wdb, wdbc_result *status, char *group_name, int last_agent_id);
 
 int __wrap_wdb_global_delete_agent_belong(wdb_t *wdb, int id);
@@ -90,13 +88,9 @@ cJSON* __wrap_wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_a
 
 wdbc_result __wrap_wdb_global_sync_agent_groups_get(__attribute__((unused)) wdb_t *wdb, wdb_groups_sync_condition_t condition, int last_agent_id, bool set_synced, bool get_hash, int agent_registration_delta, cJSON **output);
 
-cJSON* __wrap_wdb_global_get_groups_integrity(wdb_t *wdb, os_sha1 hash);
-
 cJSON* __wrap_wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, wdbc_result* status);
 
 int __wrap_wdb_global_agent_exists(wdb_t *wdb, int agent_id);
-
-int __wrap_wdb_global_adjust_v4(wdb_t* wdb);
 
 cJSON* __wrap_wdb_global_get_backups();
 
@@ -108,6 +102,6 @@ int __wrap_wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_
 
 int __wrap_wdb_remove_group_db(const char *name, int *sock);
 
-cJSON* __wrap_wdb_global_get_distinct_agent_groups(   __attribute__((unused)) wdb_t *wdb, char *group_hash, wdbc_result* status);
+cJSON* __wrap_wdb_global_get_distinct_agent_multi_groups(   __attribute__((unused)) wdb_t *wdb, char *group_hash, wdbc_result* status);
 
 #endif
