@@ -8,7 +8,7 @@ import shared.resource_handler as rs
 
 
 def parse_args():
-    meta = metadata('engine-suit')
+    meta = metadata('engine-suite')
     parser = argparse.ArgumentParser(prog='engine-schema')
     parser.add_argument('--version', action='version',
                         version=f'%(prog)s {meta.get("Version")}')
