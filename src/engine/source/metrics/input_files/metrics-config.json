@@ -6,8 +6,8 @@
         "instrumentType" : "counter",
         "subType": "uint64",
         "outputFile": "countExample.txt",
-        "exportIntervalMillis": 1000,
-        "exportTimeoutMillis": 500
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50
     },
     {
         "name": "HistogramExample",
@@ -16,8 +16,8 @@
         "instrumentType" : "histogram",
         "subType": "double",
         "outputFile": "histogramExample.txt",
-        "exportIntervalMillis": 1000,
-        "exportTimeoutMillis": 500
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50
     },
     {
         "name": "UpDownCountExample",
@@ -26,8 +26,8 @@
         "instrumentType" : "upDownCounter",
         "subType": "int64",
         "outputFile": "upDownCounterExample.txt",
-        "exportIntervalMillis": 1000,
-        "exportTimeoutMillis": 500
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50
     },
     {
         "name": "ObservableGaugeExample",
@@ -36,14 +36,15 @@
         "instrumentType" : "observableGauge",
         "subType": "double",
         "outputFile": "observableGauge.txt",
-        "exportIntervalMillis": 1000,
-        "exportTimeoutMillis": 500
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50
     },
     {
         "name": "TracerExampleOne",
         "enable": true,
         "signalType": "tracer",
         "exporterType": "logging",
+        "outputFile": "tracerExampleOne.txt",
         "processorType": "simple"
     },
     {
@@ -51,6 +52,7 @@
         "enable": true,
         "signalType": "tracer",
         "exporterType": "logging",
+        "outputFile": "tracerExampleTwo.txt",
         "processorType": "simple"
     }
 ]
