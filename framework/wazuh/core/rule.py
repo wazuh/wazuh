@@ -127,6 +127,13 @@ def load_rules_from_file(rule_filename: str, rule_relative_path: str, rule_statu
         rules = list()
         root = load_wazuh_xml(os.path.join(common.WAZUH_PATH, rule_relative_path, rule_filename))
 
+        # Get variables in dict format {varname: value} (will only be used for id and level for now)
+        variables = {}
+        for vari in root.findall('var'):
+            name = "$"+vari.attrib.get('name')
+            value = vari.text
+            variables[name] = value
+
         for xml_group in list(root):
             if xml_group.tag.lower() == "group":
                 general_groups = xml_group.attrib['name'].split(',')
@@ -134,10 +141,15 @@ def load_rules_from_file(rule_filename: str, rule_relative_path: str, rule_statu
                     # New rule
                     if xml_rule.tag.lower() == "rule":
                         groups = list()
+
+                        #Replace values of id and level if variables exist
+                        id_value = int(variables.get(xml_rule.attrib['id'], xml_rule.attrib['id']))
+                        level_value = int(variables.get(xml_rule.attrib['level'], xml_rule.attrib['level']))
+
                         rule = {'filename': rule_filename, 'relative_dirname': rule_relative_path,
-                                'id': int(xml_rule.attrib['id']), 'level': int(xml_rule.attrib['level']),
-                                'status': rule_status, 'details': dict(), 'pci_dss': list(), 'gpg13': list(),
-                                'gdpr': list(), 'hipaa': list(), 'nist_800_53': list(), 'tsc': list(), 'mitre': list(),
+                                'id': id_value, 'level': level_value, 'status': rule_status,
+                                'details': dict(), 'pci_dss': list(), 'gpg13': list(), 'gdpr': list(),
+                                'hipaa': list(), 'nist_800_53': list(), 'tsc': list(), 'mitre': list(),
                                 'groups': list(), 'description': ''}
                         for k in xml_rule.attrib:
                             if k != 'id' and k != 'level':
