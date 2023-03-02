@@ -1,5 +1,5 @@
-#ifndef _API_UTILS_HPP
-#define _API_UTILS_HPP
+#ifndef _API_ADAPTER_HPP
+#define _API_ADAPTER_HPP
 
 #include <type_traits>
 #include <variant>
@@ -112,4 +112,4 @@ base::utils::wazuhProtocol::WazuhResponse genericSuccess()
 
 } // namespace api::adapter
 
-#endif // _API_UTILS_HPP
+#endif // _API_ADAPTER_HPP
