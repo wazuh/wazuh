@@ -310,3 +310,38 @@ def coverage(params):
     #return checkCoverage(result.stdout)
     checkCoverage(result.stdout)
     return True
+
+
+def valgrind(params):
+    builddir = params.output + BUILDDIR
+    find_cmd = f'find {builddir} -iname "*_test" -type f '
+    command = f'valgrind -s --leak-check=full --show-leak-kinds=all --num-callers=20 --trace-children=yes ' \
+              f'--track-origins=yes --error-exitcode=1 --errors-for-leak-kinds=all '
+
+    # Creating directory tree for tests
+    os.makedirs('/var/ossec', exist_ok=True)
+    os.makedirs('/var/ossec/queue', exist_ok=True)
+    os.makedirs('/var/ossec/queue/db', exist_ok=True)
+    os.makedirs('/var/ossec/queue/alerts', exist_ok=True)
+
+    logging.debug(f'Executing {find_cmd}')
+    find_result = subprocess.run(f'{find_cmd}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    final_stdout = find_result.stdout
+    final_stderr = find_result.stderr
+    final_result = find_result.returncode
+
+    for test in find_result.stdout.decode('utf-8').splitlines():
+        logging.debug(f'Executing {command} {test}')
+        result = subprocess.run(f'{command} {test}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+        final_stdout += result.stdout
+        final_stderr += result.stderr
+        final_result = final_result or result.returncode
+
+    if final_result == 0:
+        logging.info('Valgrind: successful')
+    else:
+        logging.info('Valgrind: fails')
+
+    log(params.output, 'valgrind', final_stdout, final_stderr)
+    return bool(not result.returncode)

@@ -9,7 +9,7 @@ import logging
 import sys
 import os
 
-from rtrtests import (cppcheck, clangformat, build, unittests, docs, clangtidy, coverage, clean)
+from rtrtests import (cppcheck, clangformat, build, unittests, docs, clangtidy, coverage, clean, valgrind)
 
 TESTS = {
     "cppcheck": cppcheck,
@@ -19,7 +19,8 @@ TESTS = {
     "docs": docs,
     "clangtidy": clangtidy,
     "coverage": coverage,
-    "clean": clean
+    "clean": clean,
+    "valgrind": valgrind
 }
 
 

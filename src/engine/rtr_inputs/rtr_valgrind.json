@@ -8,16 +8,10 @@
             ]
         },
         {
-            "description": "Unit tests",
+            "description": "Valgrind",
             "parameters": [
-                "--test ut"
-            ]
-        },
-        {
-            "description": "Coverage",
-            "parameters": [
-                "--test coverage",
-                "--include source"
+                "--test valgrind",
+                "--include build"
             ]
         }
     ]
