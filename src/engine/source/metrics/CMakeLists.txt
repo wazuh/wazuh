@@ -1,3 +1,6 @@
+set(ENGINE_METRICS_SOURCE_DIR ${ENGINE_SOURCE_DIR}/metrics/src)
+set(ENGINE_METRICS_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/metrics/include)
+
 ####################################################################################################
 # Dependencies
 ####################################################################################################
@@ -10,6 +13,7 @@ CPMAddPackage(
 #    DOWNLOAD_ONLY
     OPTIONS
         "BUILD_TESTING OFF"
+        "WITH_ZIPKIN ON"
 )
 
 add_compile_definitions ( ONLY_C_LOCALE=1 )
@@ -18,13 +22,21 @@ add_compile_definitions ( ONLY_C_LOCALE=1 )
 # Sources - Includes
 ####################################################################################################
 add_library(metrics STATIC
-    include/metrics.hpp
-    src/metrics.cpp
+${ENGINE_METRICS_SOURCE_DIR}/metrics.cpp
+${ENGINE_METRICS_SOURCE_DIR}/exporterHandler.cpp
+${ENGINE_METRICS_SOURCE_DIR}/processorHandler.cpp
+${ENGINE_METRICS_SOURCE_DIR}/providerHandler.cpp
 )
 
-target_link_libraries(metrics PUBLIC opentelemetry_api opentelemetry_sdk opentelemetry_exporter_ostream_span PRIVATE base)
+target_link_libraries(metrics PUBLIC
+opentelemetry_api
+opentelemetry_sdk
+opentelemetry_exporter_ostream_span
+opentelemetry_exporter_in_memory
+opentelemetry_exporter_zipkin_trace
+PRIVATE base)
 
-target_include_directories(metrics
-    PUBLIC
-        ${CMAKE_CURRENT_LIST_DIR}/include
+target_include_directories(metrics PUBLIC
+${ENGINE_METRICS_INCLUDE_DIR}
+${FETCHCONTENT_BASE_DIR}/opentelemetry-src/exporters/zipkin/include
 )
