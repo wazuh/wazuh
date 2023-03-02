@@ -25,16 +25,18 @@ Help() {
     echo "Syntax: rtr.sh [-h|o|s|i|v|b]"
     echo "options:"
     echo "h     Print this Help."
-    echo "o     Output directory."
-    echo "s     Source directory."
-    echo "i     RTR input file."
-    echo "v     Verbose."
-    echo "b     Build docker."
-    echo
+    echo "o     Output directory. It creates a temporary directory in '/tmp/wazuh-rtr-XXXXXX' if not specified."
+    echo "s     Source directory. It uses the directory of this scripts if not specified."
+    echo "i     RTR input file. By default, it uses 'rtr_inputs/rtr_cicd.json'."
+    echo "v     Verbose. Enables debug mode for RTR."
+    echo "b     Build docker. By default, it builds the docker image. Set to 'no' to skip the build."
+    echo ""
+    echo "      Example: ./rtr.sh -i ./rtr_inputs/rtr_ut.json"
+    echo "      Example: ./rtr.sh -o /tmp/rtr -s /home/user/wazuh/src/engine -i ./rtr_inputs/rtr_ut.json -v -b no"
 }
 
 run() {
-    echo "Running RTR on $SRC_DIR. Output directory: $OUTPUT_DIR. RTR input file: $RTR_CONFIG"
+    echo "Running RTR on '$SRC_DIR'. Output directory: '$OUTPUT_DIR'. RTR input file: '$RTR_CONFIG'"
     jq -c '.steps[]' $RTR_CONFIG | while read step
     do
         STEP_DESC=`echo $step | jq -r '.description'`
@@ -66,10 +68,10 @@ do
         b) # build docker
             BUILD_DOCKER=${OPTARG};;
         :) # missing argument
-            echo "Error: Missing argument for option $OPTARG"
+            echo "Error: Missing argument for option '$OPTARG'."
             exit;;
         \?) # Invalid option
-            echo "Error: Invalid option"
+            echo "Error: Invalid option."
             exit;;
     esac
 done
@@ -81,7 +83,7 @@ fi
 run
 if [ $? -ne 0 ]; then
     echo "RTR failed. Results on $OUTPUT_DIR directory."
-    exit $status
+    exit 1
 else
     echo "RTR was succesfull. Results on $OUTPUT_DIR directory."
     exit 0
