@@ -1486,7 +1486,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 created_date 'integer' NOT NULL,
                 PRIMARY KEY (bucket_path, aws_account_id, aws_region, flow_log_id, log_key));"""
 
-        self.sql_find_last_key_processed_of_day = """
+        self.sql_find_last_key_processed = """
             SELECT
                 log_key
             FROM
@@ -1496,7 +1496,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 aws_account_id=:aws_account_id AND
                 aws_region = :aws_region AND
                 flow_log_id = :flow_log_id AND
-                created_date = :created_date
+                log_key LIKE :prefix
             ORDER BY
                 log_key DESC
             LIMIT 1;"""
@@ -1655,9 +1655,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                                        aws_region, profile_name=self.profile_name)
                 # for each flow log id
                 for flow_log_id in flow_logs_ids:
-                    date_list = self.get_date_list(aws_account_id, aws_region, flow_log_id)
-                    for date in date_list:
-                        self.iter_files_in_bucket(aws_account_id, aws_region, date, flow_log_id)
+                    self.iter_files_in_bucket(aws_account_id, aws_region, flow_log_id)
                     self.db_maintenance(aws_account_id, aws_region, flow_log_id)
 
     def db_count_region(self, aws_account_id, aws_region, flow_log_id):
@@ -1696,30 +1694,34 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         return self.get_full_prefix(aws_account_id, aws_region) + date \
                + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
 
-    def build_s3_filter_args(self, aws_account_id, aws_region, date, flow_log_id, iterating=False):
+
+    def build_s3_filter_args(self, aws_account_id, aws_region, flow_log_id, iterating=False):
         filter_marker = ''
         if self.reparse:
-            filter_marker = self.marker_custom_date(aws_region, aws_account_id,
-                                                    datetime.strptime(date, self.date_format))
+            filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
         else:
-            query_last_key_of_day = self.db_connector.execute(
-                self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name), {
+            query_last_key = self.db_connector.execute(
+                self.sql_find_last_key_processed.format(table_name=self.db_table_name), {
                     'bucket_path': self.bucket_path,
                     'aws_account_id': aws_account_id,
                     'aws_region': aws_region,
                     'flow_log_id': flow_log_id,
-                    'created_date': int(date.replace('/', ''))})
+                    'prefix': f'{self.prefix}%'
+                }
+            )
             try:
-                filter_marker = query_last_key_of_day.fetchone()[0]
+                filter_marker = query_last_key.fetchone()[0]
             except (TypeError, IndexError) as e:
                 # if DB is empty for a region
-                filter_marker = self.get_full_prefix(aws_account_id, aws_region) + date
+                filter_marker = (
+                    self.marker_only_logs_after(aws_region, aws_account_id) if self.only_logs_after
+                    else self.marker_custom_date(aws_region, aws_account_id, self.default_date)
+                )
 
-        vpc_prefix = self.get_vpc_prefix(aws_account_id, aws_region, date, flow_log_id)
         filter_args = {
             'Bucket': self.bucket,
             'MaxKeys': 1000,
-            'Prefix': vpc_prefix
+            'Prefix': self.get_full_prefix(aws_account_id, aws_region)
         }
 
         # if nextContinuationToken is not used for processing logs in a bucket
@@ -1732,10 +1734,11 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         return filter_args
 
-    def iter_files_in_bucket(self, aws_account_id, aws_region, date, flow_log_id):
+    def iter_files_in_bucket(self, aws_account_id, aws_region, flow_log_id):
         try:
             bucket_files = self.client.list_objects_v2(
-                **self.build_s3_filter_args(aws_account_id, aws_region, date, flow_log_id))
+                **self.build_s3_filter_args(aws_account_id, aws_region, flow_log_id)
+            )
 
             if 'Contents' not in bucket_files:
                 debug("+++ No logs to process for {} flow log ID in bucket: {}/{}".format(flow_log_id,
@@ -1770,7 +1773,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
             # Iterate if there are more logs
             while bucket_files['IsTruncated']:
-                new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, date, flow_log_id, True)
+                new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, flow_log_id, True)
                 new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
                 bucket_files = self.client.list_objects_v2(**new_s3_args)
 
