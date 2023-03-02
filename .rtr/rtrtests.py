@@ -20,12 +20,30 @@ MIN_LINES_COVERAGE_PERCENT=95.0
 MIN_FUNCTIONS_COVERAGE_PERCENT=95.0
 
 def log(outputdir, module, stdout, stderr):
+    """Method to write the stdout and stderr of a step to a file.
+
+    Args:
+        outputdir: Folder to store the logs.
+        module: Name of the module that is also the name of both files.
+        stdout: stdout of the module.
+        stderr: stderr of the module.
+    """
     with open(outputdir + f'/{module}.stdout.log', 'w') as f:
         f.write(stdout.decode('utf-8'))
     with open(outputdir + f'/{module}.stderr.log', 'w') as f:
         f.write(stderr.decode('utf-8'))
 
 def cppcheck(params):
+    """Step that runs cppcheck over the source folder excluding some optional folders.
+
+    Args:
+        params: Uses 'params.output' to get the path to the build folder.
+                Uses 'params.source' to get the path to the source folder.
+                Uses 'params.exclude' to ignore folders from scan.
+
+    Returns:
+        bool: True on success, False otherwise.
+    """
     command = 'cppcheck'
     # Creating folder for cppcheck build
     os.makedirs(os.path.join(params.output, 'build', 'cppcheck-build'), exist_ok=True)
@@ -50,6 +68,18 @@ def cppcheck(params):
 
 
 def clangformat(params):
+    """ Runs clang-format over the source folder excluding some optional folders.
+        It can also fix the errors found.
+
+    Args:
+        params: Uses 'params.output' to get the path to the build folder.
+                Uses 'params.source' to get the path to the source folder.
+                Uses 'params.exclude' to ignore folders from scan.
+                Uses 'params.fix' to optionally fix the errors found.
+
+    Returns:
+        bool: True on success, False otherwise.
+    """
     file_extensions = ["*.cpp", "*.hpp"]
     find_extensions = f'-iname {" -o -iname ".join(file_extensions)}'
     if params.exclude:
@@ -78,6 +108,15 @@ def clangformat(params):
 
 
 def unittests(params):
+    """ Step that runs the unit tests. It also creates the required folders for Wazuh sockets.
+
+    Args:
+        params: Uses 'params.output' to get the path to the build folder.
+                Uses 'params.logname' to optionally change the default 'unittests' name for output logs.
+
+    Returns:
+        bool: True on success, False otherwise.
+    """
     command = 'ctest'
     builddir = params.output + BUILDDIR
     args = f'--test-dir {builddir} --output-on-failure'
@@ -104,6 +143,14 @@ def unittests(params):
 
 
 def clean(params):
+    """ Step to perform a clean to the 'build' folder using make, it doesn't remove the folder.
+
+    Args:
+        params: Uses 'params.output' to get the path to the build folder.
+
+    Returns:
+        bool: True on success, False otherwise.
+    """
     command = 'make'
     builddir = params.output + BUILDDIR
     args = f'-C {builddir} clean'
@@ -120,10 +167,20 @@ def clean(params):
 
 
 def configure(params):
+    """ Step to configure the project using CMake. It also removes the cache file if it exists.
+
+    Args:
+        params: Uses 'params.output' to get the path to the build folder.
+                Uses 'params.source' to get the path to the source folder.
+                Uses 'params.options' to get the options to pass to CMake.
+
+    Returns:
+        bool: True on success, False otherwise.
+    """
+    builddir = params.output + BUILDDIR
     # Removing cache file
     with contextlib.suppress(FileNotFoundError):
-        os.remove(params.output + BUILDDIR + '/CMakeCache.txt')
-    builddir = params.output + BUILDDIR
+        os.remove(builddir + '/CMakeCache.txt')
     configureOptions = ""
     if params.options:
         for opt in params.options:
@@ -136,17 +193,34 @@ def configure(params):
     log(builddir, 'configure', result.stdout, result.stderr)
     return bool(not result.returncode)
 
+def setThreads(params):
+    """ Overwrites the default number of threads to use if the option is present.
+
+    Args:
+        params: Uses 'params.threads' to get the number of threads to set.
+    """
+    if (params.threads):
+        if (int(params.threads) > 0):
+            global THREADS_DEFAULT
+            THREADS_DEFAULT = params.threads
+            logging.debug(f'Using {params.threads} threads for the building process')
 
 def build(params):
+    """ Step to build the project.
+
+    Args:
+        params: Uses 'params.output' to get the path to the build folder.
+                Uses 'params.logname' to optionally change the default 'build' name for output logs.
+                Uses 'params.threads' to optionally change the default number of threads to use.
+
+    Returns:
+        bool: True on success, False otherwise.
+    """
     builddir = params.output + BUILDDIR
     #Adding safe directory in case the user running the command is not root
     subprocess.run(f"git config --global --add safe.directory '*'", shell=True)
     if configure(params):
-        if (params.threads):
-            if (int(params.threads) > 0):
-                global THREADS_DEFAULT
-                THREADS_DEFAULT = params.threads
-                logging.debug(f'Using {params.threads} threads for the building process')
+        setThreads(params)
 
         command = 'cmake'
         args = f'--build {builddir} -j{THREADS_DEFAULT}'
@@ -173,6 +247,17 @@ def build(params):
         return False
 
 def docs(params):
+    """ Step to build the documentation using Doxygen.
+
+    Args:
+        params: Uses 'params.output' to get the path to the build folder.
+                Uses 'params.source' to get the path to the source folder.
+                Uses 'params.threads' to optionally change the default number of threads to use.
+
+    Returns:
+        bool: True on success, False otherwise.
+    """
+    setThreads(params)
     command = 'make'
     args = f'-C {params.output}{BUILDDIR} {DOXYGEN_TARGET} -j{THREADS_DEFAULT}'
     logging.debug(f'Executing {command} {args}')
@@ -193,6 +278,17 @@ def docs(params):
 
 
 def clangtidy(params):
+    """ Step to run clang-tidy on the project. It can optionally fix the errors found.
+
+    Args:
+        params: Uses 'params.output' to get the path to the build folder.
+                Uses 'params.source' to get the path to the source folder.
+                Uses 'params.fix' to optionally fix the errors found.
+                Uses 'params.exclude' to optionally exclude some folders from the analysis.
+
+    Returns:
+        bool: True on success, False otherwise.
+    """
     builddir = params.output + BUILDDIR
     file_extensions = ["*.cpp", "*.hpp"]
     find_extensions = f'-iname {" -o -iname ".join(file_extensions)}'
@@ -222,6 +318,14 @@ def clangtidy(params):
 
 
 def checkCoverage(output):
+    """ Method to check if the lines and functions coverage are above the minimum required.
+
+    Args:
+        output: stdout of the coverage command.
+
+    Returns:
+        bool: True on success, False otherwise.
+    """
 
     success = True
     #######################
@@ -259,6 +363,18 @@ def checkCoverage(output):
     return success
 
 def coverage(params):
+    """ Step to run the coverage analysis of the UT on the project.
+
+    Args:
+        params: Uses 'params.output' to get the path to the build folder.
+                Uses 'params.source' to get the path to the source folder.
+                Uses 'params.exclude' to optionally exclude some folders from the analysis.
+                Uses 'params.include' to optionally include some folders to the analysis.
+
+
+    Returns:
+        bool: True on success, False otherwise.
+    """
     # Prepare excluded files
     exclude = ''
     if params.exclude:
@@ -328,6 +444,14 @@ def coverage(params):
 
 
 def valgrind(params):
+    """ Runs valgrind over every UT of the project. It also creates the required folders for Wazuh sockets.
+
+    Args:
+        params: Uses 'params.output' to get the path to the build folder.
+
+    Returns:
+        bool: True on success, False otherwise.
+    """
     builddir = params.output + BUILDDIR
     find_cmd = f'find {builddir} -iname "*_test" -type f '
     command = f'valgrind -s --leak-check=full --show-leak-kinds=all --num-callers=20 --trace-children=yes ' \
