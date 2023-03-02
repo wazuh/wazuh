@@ -11,7 +11,7 @@
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 
-#include "apiclnt/client.hpp"
+#include <cmds/apiclnt/client.hpp>
 #include "base/utils/getExceptionStack.hpp"
 #include "defaultSettings.hpp"
 

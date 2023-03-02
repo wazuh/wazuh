@@ -41,13 +41,13 @@ Catalog::Catalog(const Config& config)
                     config.environmentSchema);
 
     // Json handling
-    m_outFormat[Resource::Format::JSON] = [](const json::Json& json)
+    m_outFormat[Resource::Format::json] = [](const json::Json& json)
     {
         return json.str();
     };
 
     // TODO: what is str?
-    m_inFormat[Resource::Format::JSON] = [](const std::string& str)
+    m_inFormat[Resource::Format::json] = [](const std::string& str)
     {
         std::variant<json::Json, base::Error> result;
         try
@@ -64,7 +64,7 @@ Catalog::Catalog(const Config& config)
     };
 
     // Yaml handling
-    m_outFormat[Resource::Format::YAML] = [](const json::Json& json)
+    m_outFormat[Resource::Format::yaml] = [](const json::Json& json)
     {
         std::variant<std::string, base::Error> result;
         try
@@ -86,7 +86,7 @@ Catalog::Catalog(const Config& config)
         return result;
     };
 
-    m_inFormat[Resource::Format::YAML] = [](const std::string& content)
+    m_inFormat[Resource::Format::yaml] = [](const std::string& content)
     {
         std::variant<json::Json, base::Error> result;
         try
@@ -132,10 +132,10 @@ Catalog::Catalog(const Config& config)
                         std::get<base::Error>(assetSchemaJson).message));
     }
 
-    m_schemas[Resource::Type::DECODER] = std::get<json::Json>(assetSchemaJson);
-    m_schemas[Resource::Type::RULE] = std::get<json::Json>(assetSchemaJson);
-    m_schemas[Resource::Type::OUTPUT] = std::get<json::Json>(assetSchemaJson);
-    m_schemas[Resource::Type::FILTER] = std::get<json::Json>(assetSchemaJson);
+    m_schemas[Resource::Type::decoder] = std::get<json::Json>(assetSchemaJson);
+    m_schemas[Resource::Type::rule] = std::get<json::Json>(assetSchemaJson);
+    m_schemas[Resource::Type::output] = std::get<json::Json>(assetSchemaJson);
+    m_schemas[Resource::Type::filter] = std::get<json::Json>(assetSchemaJson);
 
     const auto environmentSchemaJson = m_store->get(environmentSchemaName);
     if (std::holds_alternative<base::Error>(environmentSchemaJson))
@@ -144,7 +144,7 @@ Catalog::Catalog(const Config& config)
             fmt::format("Error while getting the environment schema: {}",
                         std::get<base::Error>(environmentSchemaJson).message));
     }
-    m_schemas[Resource::Type::ENVIRONMENT] = std::get<json::Json>(environmentSchemaJson);
+    m_schemas[Resource::Type::environment] = std::get<json::Json>(environmentSchemaJson);
 }
 
 std::optional<base::Error> Catalog::postResource(const Resource& collection,
@@ -156,12 +156,12 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection,
                     content);
 
     // Specified resource must be a collection
-    if (Resource::Type::COLLECTION != collection.m_type)
+    if (Resource::Type::collection != collection.m_type)
     {
         return base::Error {
             fmt::format("Expected resource type is \"{}\", but got \"{}\"",
                         Resource::typeToStr(collection.m_type),
-                        Resource::typeToStr(Resource::Type::COLLECTION))};
+                        Resource::typeToStr(Resource::Type::collection))};
     }
 
     // content must be a valid resource for the specified collection
@@ -195,7 +195,7 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection,
     try
     {
         contentName = base::Name(contentNameStr.value());
-        contentResource = Resource(contentName, Resource::Format::JSON);
+        contentResource = Resource(contentName, Resource::Format::json);
     }
     // Invalid content name
     catch (const std::exception& e)
@@ -205,7 +205,7 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection,
     }
 
     // Assert content type is not a collection
-    if (Resource::Type::COLLECTION == contentResource.m_type)
+    if (Resource::Type::collection == contentResource.m_type)
     {
         return base::Error {
             fmt::format("The asset \"{}\" cannot be added to the store: The name format "
@@ -259,10 +259,10 @@ std::optional<base::Error> Catalog::putResource(const Resource& item,
                     item.m_name.fullName());
 
     // Specified resource must be a Environment, Schema or Asset
-    if (Resource::Type::ENVIRONMENT != item.m_type
-        && Resource::Type::SCHEMA != item.m_type && Resource::Type::DECODER != item.m_type
-        && Resource::Type::RULE != item.m_type && Resource::Type::FILTER != item.m_type
-        && Resource::Type::OUTPUT != item.m_type)
+    if (Resource::Type::environment != item.m_type
+        && Resource::Type::schema != item.m_type && Resource::Type::decoder != item.m_type
+        && Resource::Type::rule != item.m_type && Resource::Type::filter != item.m_type
+        && Resource::Type::output != item.m_type)
     {
         return base::Error {fmt::format("Invalid resource type \"{}\" for PUT operation",
                                         Resource::typeToStr(item.m_type))};
@@ -389,9 +389,9 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
                                              const json::Json& content) const
 {
     // Assert resource type is Asset or Environment
-    if (Resource::Type::DECODER != item.m_type && Resource::Type::RULE != item.m_type
-        && Resource::Type::FILTER != item.m_type && Resource::Type::OUTPUT != item.m_type
-        && Resource::Type::ENVIRONMENT != item.m_type)
+    if (Resource::Type::decoder != item.m_type && Resource::Type::rule != item.m_type
+        && Resource::Type::filter != item.m_type && Resource::Type::output != item.m_type
+        && Resource::Type::environment != item.m_type)
     {
         return base::Error {fmt::format("Invalid resource type \"{}\"", Resource::typeToStr(item.m_type))};
     }
@@ -418,12 +418,12 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
 
     // Builder validator
     std::optional<base::Error> validationError;
-    if (item.m_type == Resource::Type::DECODER || item.m_type == Resource::Type::RULE
-        || item.m_type == Resource::Type::FILTER || item.m_type == Resource::Type::OUTPUT)
+    if (item.m_type == Resource::Type::decoder || item.m_type == Resource::Type::rule
+        || item.m_type == Resource::Type::filter || item.m_type == Resource::Type::output)
     {
         validationError = m_validator->validateAsset(content);
     }
-    else if (item.m_type == Resource::Type::ENVIRONMENT)
+    else if (item.m_type == Resource::Type::environment)
     {
         validationError = m_validator->validateEnvironment(content);
     }
@@ -445,9 +445,9 @@ std::optional<base::Error> Catalog::validateResource(const Resource& item,
                                                      const std::string& content) const
 {
     // Assert resource is asset or environment
-    if (Resource::Type::DECODER != item.m_type && Resource::Type::RULE != item.m_type
-        && Resource::Type::FILTER != item.m_type && Resource::Type::OUTPUT != item.m_type
-        && Resource::Type::ENVIRONMENT != item.m_type)
+    if (Resource::Type::decoder != item.m_type && Resource::Type::rule != item.m_type
+        && Resource::Type::filter != item.m_type && Resource::Type::output != item.m_type
+        && Resource::Type::environment != item.m_type)
     {
         return base::Error {
             fmt::format("Invalid resource type \"{}\" for VALIDATE operation",

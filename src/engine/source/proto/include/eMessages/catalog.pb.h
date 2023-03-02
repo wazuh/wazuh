@@ -89,16 +89,15 @@ namespace engine {
 namespace catalog {
 
 enum ResourceFormat : int {
-  ERROR_FORMAT = 0,
-  JSON = 1,
-  YAML = 2,
-  YML = 2,
+  json = 0,
+  yaml = 1,
+  yml = 1,
   ResourceFormat_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
   ResourceFormat_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
 };
 bool ResourceFormat_IsValid(int value);
-constexpr ResourceFormat ResourceFormat_MIN = ERROR_FORMAT;
-constexpr ResourceFormat ResourceFormat_MAX = YAML;
+constexpr ResourceFormat ResourceFormat_MIN = json;
+constexpr ResourceFormat ResourceFormat_MAX = yaml;
 constexpr int ResourceFormat_ARRAYSIZE = ResourceFormat_MAX + 1;
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ResourceFormat_descriptor();
@@ -114,6 +113,37 @@ inline bool ResourceFormat_Parse(
     ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ResourceFormat* value) {
   return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ResourceFormat>(
     ResourceFormat_descriptor(), name, value);
+}
+enum ResourceType : int {
+  UNKNOWN = 0,
+  decoder = 1,
+  rule = 2,
+  filter = 3,
+  output = 4,
+  environment = 5,
+  schema = 6,
+  collection = 7,
+  ResourceType_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
+  ResourceType_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
+};
+bool ResourceType_IsValid(int value);
+constexpr ResourceType ResourceType_MIN = UNKNOWN;
+constexpr ResourceType ResourceType_MAX = collection;
+constexpr int ResourceType_ARRAYSIZE = ResourceType_MAX + 1;
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ResourceType_descriptor();
+template<typename T>
+inline const std::string& ResourceType_Name(T enum_t_value) {
+  static_assert(::std::is_same<T, ResourceType>::value ||
+    ::std::is_integral<T>::value,
+    "Incorrect type passed to function ResourceType_Name.");
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ResourceType_descriptor(), enum_t_value);
+}
+inline bool ResourceType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ResourceType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ResourceType>(
+    ResourceType_descriptor(), name, value);
 }
 // ===================================================================
 
@@ -238,28 +268,10 @@ class ResourcePost_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kTypeFieldNumber = 1,
     kContentFieldNumber = 3,
+    kTypeFieldNumber = 1,
     kFormatFieldNumber = 2,
   };
-  // optional string type = 1;
-  bool has_type() const;
-  private:
-  bool _internal_has_type() const;
-  public:
-  void clear_type();
-  const std::string& type() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_type(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_type();
-  PROTOBUF_NODISCARD std::string* release_type();
-  void set_allocated_type(std::string* type);
-  private:
-  const std::string& _internal_type() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_type(const std::string& value);
-  std::string* _internal_mutable_type();
-  public:
-
   // optional string content = 3;
   bool has_content() const;
   private:
@@ -276,6 +288,19 @@ class ResourcePost_Request final :
   const std::string& _internal_content() const;
   inline PROTOBUF_ALWAYS_INLINE void _internal_set_content(const std::string& value);
   std::string* _internal_mutable_content();
+  public:
+
+  // optional .com.wazuh.api.engine.catalog.ResourceType type = 1;
+  bool has_type() const;
+  private:
+  bool _internal_has_type() const;
+  public:
+  void clear_type();
+  ::com::wazuh::api::engine::catalog::ResourceType type() const;
+  void set_type(::com::wazuh::api::engine::catalog::ResourceType value);
+  private:
+  ::com::wazuh::api::engine::catalog::ResourceType _internal_type() const;
+  void _internal_set_type(::com::wazuh::api::engine::catalog::ResourceType value);
   public:
 
   // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
@@ -301,8 +326,8 @@ class ResourcePost_Request final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr type_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr content_;
+    int type_;
     int format_;
   };
   union { Impl_ _impl_; };
@@ -1225,72 +1250,32 @@ class ResourceValidate_Request final :
 #endif  // __GNUC__
 // ResourcePost_Request
 
-// optional string type = 1;
+// optional .com.wazuh.api.engine.catalog.ResourceType type = 1;
 inline bool ResourcePost_Request::_internal_has_type() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
   return value;
 }
 inline bool ResourcePost_Request::has_type() const {
   return _internal_has_type();
 }
 inline void ResourcePost_Request::clear_type() {
-  _impl_.type_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000001u;
+  _impl_.type_ = 0;
+  _impl_._has_bits_[0] &= ~0x00000002u;
 }
-inline const std::string& ResourcePost_Request::type() const {
+inline ::com::wazuh::api::engine::catalog::ResourceType ResourcePost_Request::_internal_type() const {
+  return static_cast< ::com::wazuh::api::engine::catalog::ResourceType >(_impl_.type_);
+}
+inline ::com::wazuh::api::engine::catalog::ResourceType ResourcePost_Request::type() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourcePost_Request.type)
   return _internal_type();
 }
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void ResourcePost_Request::set_type(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000001u;
- _impl_.type_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+inline void ResourcePost_Request::_internal_set_type(::com::wazuh::api::engine::catalog::ResourceType value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.type_ = value;
+}
+inline void ResourcePost_Request::set_type(::com::wazuh::api::engine::catalog::ResourceType value) {
+  _internal_set_type(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourcePost_Request.type)
-}
-inline std::string* ResourcePost_Request::mutable_type() {
-  std::string* _s = _internal_mutable_type();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourcePost_Request.type)
-  return _s;
-}
-inline const std::string& ResourcePost_Request::_internal_type() const {
-  return _impl_.type_.Get();
-}
-inline void ResourcePost_Request::_internal_set_type(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000001u;
-  _impl_.type_.Set(value, GetArenaForAllocation());
-}
-inline std::string* ResourcePost_Request::_internal_mutable_type() {
-  _impl_._has_bits_[0] |= 0x00000001u;
-  return _impl_.type_.Mutable(GetArenaForAllocation());
-}
-inline std::string* ResourcePost_Request::release_type() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourcePost_Request.type)
-  if (!_internal_has_type()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.type_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.type_.IsDefault()) {
-    _impl_.type_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
-}
-inline void ResourcePost_Request::set_allocated_type(std::string* type) {
-  if (type != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000001u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000001u;
-  }
-  _impl_.type_.SetAllocated(type, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.type_.IsDefault()) {
-    _impl_.type_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourcePost_Request.type)
 }
 
 // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
@@ -1323,7 +1308,7 @@ inline void ResourcePost_Request::set_format(::com::wazuh::api::engine::catalog:
 
 // optional string content = 3;
 inline bool ResourcePost_Request::_internal_has_content() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
   return value;
 }
 inline bool ResourcePost_Request::has_content() const {
@@ -1331,7 +1316,7 @@ inline bool ResourcePost_Request::has_content() const {
 }
 inline void ResourcePost_Request::clear_content() {
   _impl_.content_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000002u;
+  _impl_._has_bits_[0] &= ~0x00000001u;
 }
 inline const std::string& ResourcePost_Request::content() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourcePost_Request.content)
@@ -1340,7 +1325,7 @@ inline const std::string& ResourcePost_Request::content() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void ResourcePost_Request::set_content(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000002u;
+ _impl_._has_bits_[0] |= 0x00000001u;
  _impl_.content_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourcePost_Request.content)
 }
@@ -1353,11 +1338,11 @@ inline const std::string& ResourcePost_Request::_internal_content() const {
   return _impl_.content_.Get();
 }
 inline void ResourcePost_Request::_internal_set_content(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_._has_bits_[0] |= 0x00000001u;
   _impl_.content_.Set(value, GetArenaForAllocation());
 }
 inline std::string* ResourcePost_Request::_internal_mutable_content() {
-  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_._has_bits_[0] |= 0x00000001u;
   return _impl_.content_.Mutable(GetArenaForAllocation());
 }
 inline std::string* ResourcePost_Request::release_content() {
@@ -1365,7 +1350,7 @@ inline std::string* ResourcePost_Request::release_content() {
   if (!_internal_has_content()) {
     return nullptr;
   }
-  _impl_._has_bits_[0] &= ~0x00000002u;
+  _impl_._has_bits_[0] &= ~0x00000001u;
   auto* p = _impl_.content_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (_impl_.content_.IsDefault()) {
@@ -1376,9 +1361,9 @@ inline std::string* ResourcePost_Request::release_content() {
 }
 inline void ResourcePost_Request::set_allocated_content(std::string* content) {
   if (content != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000002u;
+    _impl_._has_bits_[0] |= 0x00000001u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000002u;
+    _impl_._has_bits_[0] &= ~0x00000001u;
   }
   _impl_.content_.SetAllocated(content, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -2085,6 +2070,11 @@ template <> struct is_proto_enum< ::com::wazuh::api::engine::catalog::ResourceFo
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::com::wazuh::api::engine::catalog::ResourceFormat>() {
   return ::com::wazuh::api::engine::catalog::ResourceFormat_descriptor();
+}
+template <> struct is_proto_enum< ::com::wazuh::api::engine::catalog::ResourceType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::com::wazuh::api::engine::catalog::ResourceType>() {
+  return ::com::wazuh::api::engine::catalog::ResourceType_descriptor();
 }
 
 PROTOBUF_NAMESPACE_CLOSE
