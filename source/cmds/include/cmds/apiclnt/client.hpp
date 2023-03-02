@@ -12,6 +12,8 @@
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 #include <error.hpp>
 
+#include <cmds/apiExcept.hpp>
+
 namespace cmd::apiclnt
 {
 class Client
@@ -90,7 +92,7 @@ public:
 
         if (std::holds_alternative<base::Error>(res))
         {
-            throw std::runtime_error(std::get<base::Error>(res).message);
+            throw ClientException(std::get<base::Error>(res).message, ClientException::Type::SOCKET_COMMUNICATION_ERROR);
         }
 
         // Parse response
@@ -101,7 +103,8 @@ public:
         }
         catch (const std::exception& e)
         {
-            throw std::runtime_error("Invalid response from server: " + std::string(e.what()));
+            throw ClientException("Invalid response from server: " + std::string(e.what()),
+                                     ClientException::Type::INVALID_RESPONSE_FROM_SERVER);
         }
 
         return parsedResponse;

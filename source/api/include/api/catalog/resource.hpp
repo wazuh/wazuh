@@ -16,7 +16,14 @@ class Resource
 {
 
 public:
+    /**
+     * @brief Format of the resource managed by the catalog
+     */
     using Format = ::com::wazuh::api::engine::catalog::ResourceFormat;
+    /**
+     * @brief Type of the resource managed by the catalog
+     */
+    using Type = ::com::wazuh::api::engine::catalog::ResourceType;
     constexpr static auto ASSET = 0;
 
     /**
@@ -29,27 +36,11 @@ public:
     {
         switch (format)
         {
-            case Format::JSON: return "json";
-            case Format::YAML: return "yaml";
+            case Format::json: return "json";
+            case Format::yaml: return "yaml";
             default: return "error_format";
         }
     }
-
-    /**
-     * @brief Type of the resources handled by the catalog
-     *
-     */
-    enum class Type
-    {
-        DECODER,
-        RULE,
-        FILTER,
-        OUTPUT,
-        ENVIRONMENT,
-        SCHEMA,
-        COLLECTION,
-        ERROR_TYPE
-    };
 
     /**
      * @brief Get string representation of the Type
@@ -61,14 +52,14 @@ public:
     {
         switch (type)
         {
-            case Type::DECODER: return "decoder";
-            case Type::RULE: return "rule";
-            case Type::FILTER: return "filter";
-            case Type::OUTPUT: return "output";
-            case Type::ENVIRONMENT: return "environment";
-            case Type::SCHEMA: return "schema";
-            case Type::COLLECTION: return "collection";
-            default: return "error_type";
+            case Type::decoder: return "decoder";
+            case Type::rule: return "rule";
+            case Type::filter: return "filter";
+            case Type::output: return "output";
+            case Type::environment: return "environment";
+            case Type::schema: return "schema";
+            case Type::collection: return "collection";
+            default: return "unknown";
         }
     }
 
@@ -80,38 +71,35 @@ public:
      */
     constexpr static auto strToType(const char* type)
     {
-        if (std::strcmp(type, typeToStr(Type::DECODER)) == 0)
+        if (std::strcmp(type, typeToStr(Type::decoder)) == 0)
         {
-            return Type::DECODER;
+            return Type::decoder;
         }
-        else if (std::strcmp(type, typeToStr(Type::RULE)) == 0)
+        else if (std::strcmp(type, typeToStr(Type::rule)) == 0)
         {
-            return Type::RULE;
+            return Type::rule;
         }
-        else if (std::strcmp(type, typeToStr(Type::FILTER)) == 0)
+        else if (std::strcmp(type, typeToStr(Type::filter)) == 0)
         {
-            return Type::FILTER;
+            return Type::filter;
         }
-        else if (std::strcmp(type, typeToStr(Type::OUTPUT)) == 0)
+        else if (std::strcmp(type, typeToStr(Type::output)) == 0)
         {
-            return Type::OUTPUT;
+            return Type::output;
         }
-        else if (std::strcmp(type, typeToStr(Type::ENVIRONMENT)) == 0)
+        else if (std::strcmp(type, typeToStr(Type::environment)) == 0)
         {
-            return Type::ENVIRONMENT;
+            return Type::environment;
         }
-        else if (std::strcmp(type, typeToStr(Type::SCHEMA)) == 0)
+        else if (std::strcmp(type, typeToStr(Type::schema)) == 0)
         {
-            return Type::SCHEMA;
+            return Type::schema;
         }
-        else if (std::strcmp(type, typeToStr(Type::COLLECTION)) == 0)
+        else if (std::strcmp(type, typeToStr(Type::collection)) == 0)
         {
-            return Type::COLLECTION;
+            return Type::collection;
         }
-        else
-        {
-            return Type::ERROR_TYPE;
-        }
+        return Type::UNKNOWN; // For unknown types (errors)
     }
 
     base::Name m_name;
@@ -122,19 +110,13 @@ public:
     Resource()
     {
         m_name = base::Name {"ERROR_NAME"};
-        m_format = Format::ERROR_FORMAT;
-        m_type = Type::ERROR_TYPE;
+        m_format = Format::json;
+        m_type = Type::UNKNOWN;
         m_validation = false;
     }
 
     Resource(const base::Name& name, Format format)
     {
-        // Assert we don't have an error enum
-        if (Format::ERROR_FORMAT == format)
-        {
-            throw std::runtime_error(
-                fmt::format("Format of \"{}\" not supported", name.fullName()));
-        }
         m_format = format;
 
         // Factory method to define a resource from a name
@@ -144,10 +126,10 @@ public:
         m_name = name;
         if (name.parts().size() == 1 || name.parts().size() == 2)
         {
-            m_type = Type::COLLECTION;
+            m_type = Type::collection;
 
             // Assert name of the collection is a valid type
-            if (Type::ERROR_TYPE == strToType(name.parts()[0].c_str()))
+            if (Type::UNKNOWN == strToType(name.parts()[0].c_str()))
             {
                 throw std::runtime_error(
                     fmt::format("Invalid collection type \"{}\"", name.parts()[0]));
@@ -163,20 +145,20 @@ public:
             // Get type
             m_type = strToType(name.parts()[0].c_str());
 
-            if (Type::ERROR_TYPE == m_type)
+            if (Type::UNKNOWN == m_type)
             {
                 throw std::runtime_error(
                     fmt::format("Invalid type \"{}\"", name.parts()[0]));
             }
-            else if (Type::COLLECTION == m_type)
+            else if (Type::collection == m_type)
             {
                 throw std::runtime_error(
                     fmt::format("Invalid collection type \"{}\"", name.parts()[0]));
             }
 
             // Assets and Environments needs validation
-            if (Type::ENVIRONMENT == m_type || Type::DECODER == m_type || Type::RULE == m_type
-                || Type::FILTER == m_type || Type::OUTPUT == m_type)
+            if (Type::environment == m_type || Type::decoder == m_type || Type::rule == m_type
+                || Type::filter == m_type || Type::output == m_type)
             {
                 m_validation = true;
             }

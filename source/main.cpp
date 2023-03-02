@@ -9,6 +9,7 @@
 #include <cmds/router.hpp>
 #include <cmds/start.hpp>
 #include <cmds/test.hpp>
+#include <cmds/apiExcept.hpp>
 
 namespace
 {
@@ -20,6 +21,7 @@ constexpr auto CONF_PATH = "/var/ossec/etc/engine.conf";
 
 int main(int argc, char* argv[])
 {
+    auto returnCode = std::make_shared<unsigned char>(EXIT_SUCCESS);
     CLI::App_p app =
         std::make_shared<CLI::App>("The Wazuh engine analyzes all the events received from agents, remote devices "
                                    "and Wazuh integrations. This integrated console application allows to manage "
@@ -47,14 +49,19 @@ int main(int argc, char* argv[])
         // Parse the command line and execute the subcommand callback
         CLI11_PARSE(*app, argc, argv);
     }
+    catch (const cmd::ClientException& e)
+    {
+        std::cerr << e.what() << std::endl;
+        return e.getErrorTypeAsInt();
+    }
     catch (const std::exception& e)
     {
         // Each subcommand should catch its own errors, this global handler is just a
         // fallback
         // TODO: Use a logger?
         std::cerr << "Unknown error occurred: " << e.what() << std::endl;
-        return 1;
+        return EXIT_FAILURE;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
