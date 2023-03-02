@@ -462,11 +462,6 @@ OSSEC_WINDRES =${QUIET_CCBIN}${MING_BASE}windres
 
 ifneq (,$(filter ${USE_INOTIFY},YES auto yes y Y 1))
 	DEFINES+=-DINOTIFY_ENABLED
-	ifeq (${uname_S},FreeBSD)
-		OSSEC_LDFLAGS+=-L/usr/local/lib -I/usr/local/include
-		OSSEC_LIBS+=-linotify
-		OSSEC_CFLAGS+=-I/usr/local/include
-	endif
 endif
 
 ifneq (,$(filter ${USE_BIG_ENDIAN},YES yes y Y 1))
