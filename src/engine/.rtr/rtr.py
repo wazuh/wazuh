@@ -99,6 +99,12 @@ def init_argparse():
         dest='fix',
         action="store_true"
     )
+    parser.add_argument(
+        "--log-name", help='Set a different name for the log file',
+        dest='logname',
+        action="store"
+    )
+
 
     return parser
 
