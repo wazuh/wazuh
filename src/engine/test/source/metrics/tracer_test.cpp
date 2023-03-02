@@ -4,7 +4,7 @@
 #include "gtest/gtest.h"
 #include "opentelemetry/sdk/version/version.h"
 
-namespace test_tracer
+namespace tracer_test
 {
 opentelemetry::nostd::shared_ptr<opentelemetry::trace::Tracer> get_tracer()
 {
