@@ -821,7 +821,7 @@ checks:
 
   # 1.4.2 Ensure permissions on bootloader config are configured (Automated)
   - id: 28030
-    title: "Ensure permissions on bootloader config are configured (Automated)."
+    title: "Ensure permissions on bootloader config are configured."
     description: "The grub files contain information on boot settings and passwords for unlocking boot options."
     rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
     remediation: "Run the following commands to set ownership and permissions on your grub configuration files: Run the following command to set ownership and permissions on grub.cfg: # chown root:root /boot/grub2/grub.cfg # chmod og-rwx /boot/grub2/grub.cfg Run the following command to set ownership and permissions on grubenv: # chown root:root /boot/grub2/grubenv # chmod u-x,og-rwx /boot/grub2/grubenv Run the following command to set ownership and permissions on user.cfg: # chown root:root /boot/grub2/user.cfg # chmod u-x,og-rwx /boot/grub2/user.cfg Note: This may require a re-boot to enable the change."
@@ -1753,8 +1753,7 @@ checks:
     condition: any
     rules:
       - "c:rpm -q rpcbind -> r:^package rpcbind is not installed"
-      - "c:systemctl is-enabled rpcbind -> r:masked|No such file or directory"
-      - "c:systemctl is-enabled rpcbind.socket -> r:masked|No such file or directory"
+      - "not c:systemctl status rpcbind rpcbind.socket -> r:Loaded: && !r: masked"
 
   # 2.2.18 Ensure rsync-daemon is not installed or the rsyncd service is masked (Automated)
   - id: 28070
@@ -1923,11 +1922,11 @@ checks:
       - cis_csc_v8: ["4.4"]
       - cis_csc_v7: ["9.4"]
       - nist_sp_800-53: ["CA-9"]
+      - iso_27001-2013: ["A.13.1.1"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-      - iso_27001-2013: ["A.13.1.1"]
       - mitre_techniques: ["T1562", "T1562.004"]
       - mitre_tactics: ["TA0011"]
       - mitre_mitigations: ["M1031", "M1037"]
@@ -1996,9 +1995,9 @@ checks:
   - id: 28078
     title: "Ensure nftables default deny firewall policy."
     description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
-    rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue traversing the network stack. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over the network can result in being locked out of the system."
+    rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue traversing the network stack. It is easier to explicitly permit acceptable usage than to deny unacceptable usage. Note: Changing firewall settings while connected over the network can result in being locked out of the system."
     impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
-    remediation: 'Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \; } Example: # nft chain inet filter input { policy drop \; } # nft chain inet filter forward { policy drop \; } # nft chain inet filter output { policy drop \; }'
+    remediation: 'Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \; } Example: # nft chain inet filter input { policy drop \; } # nft chain inet filter forward { policy drop \; } # nft chain inet filter output { policy drop \; }.'
     compliance:
       - cis: ["3.4.2.7"]
       - cis_csc_v8: ["4.4"]
