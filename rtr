@@ -45,7 +45,7 @@ run() {
             exit $docker_exit_code
         fi
     done
-    echo "RTR results on $OUTPUT_DIR directory."
+    echo "RTR succesfull. Results on $OUTPUT_DIR directory."
 }
 
 while getopts ":ho:s:i::v" option
