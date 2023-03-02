@@ -57,6 +57,7 @@ TEST_F(MetricsOtlMeterTest, sucessTracerMeter)
         {
             m_spMetrics->addUpDownCounterValue("UpDownCountExample", -2L); // here the counter is at 7 and when restoring 2 there should be a 5.
         }
+        m_spMetrics->dataHub()->dump();
     }
     m_spMetrics->setScopeSpam("TracerExampleTwo");
 }

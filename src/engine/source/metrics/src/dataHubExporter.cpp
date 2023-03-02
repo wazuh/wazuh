@@ -164,7 +164,7 @@ void DataHubExporter::printPointData(json::Json& jsonObj, const opentelemetry::s
     auto histogram_point_data = nostd::get<sdk::metrics::HistogramPointData>(point_data);
     auto count = histogram_point_data.count_;
     jsonObj.setString("HistogramPointData", "/type");
-    jsonObj.setInt64(count, "count");
+    jsonObj.setInt64(count, "/count");
     if (nostd::holds_alternative<double>(histogram_point_data.sum_))
     {
       auto valueData = nostd::get<double>(histogram_point_data.sum_);
@@ -236,7 +236,7 @@ void DataHubExporter::printPointData(json::Json& jsonObj, const opentelemetry::s
     jsonObj.setString("LastValuePointData", "/type");
     auto timestamp = std::to_string(last_point_data.sample_ts_.time_since_epoch().count());
     jsonObj.setString(timestamp, "/timestamp");
-    jsonObj.setBool(last_point_data.is_lastvalue_valid_, "valid");
+    jsonObj.setBool(last_point_data.is_lastvalue_valid_, "/valid");
 
     if (nostd::holds_alternative<double>(last_point_data.value_))
     {
