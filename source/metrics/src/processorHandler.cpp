@@ -44,7 +44,6 @@ void ProcessorHandler::create(std::shared_ptr<MetricsContext> data)
             }
         */
         default:
-            data->processor = nullptr;
-            break;
+            throw std::runtime_error {"Fails to evaluate processor type"};
     }
 }
