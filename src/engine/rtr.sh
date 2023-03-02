@@ -12,7 +12,7 @@ USERNAME=`logname`
 USERID=`id -u $USERNAME`
 GROUPID=`id -g $USERNAME`
 VERBOSE=''
-BUILD_DOCKER=1
+BUILD_DOCKER="yes"
 
 build() {
     docker build -f .rtr/Dockerfile -t $CONTAINER_NAME -q . > /dev/null
@@ -22,7 +22,7 @@ Help() {
     # Display Help
     echo "Run RTR on a directory."
     echo
-    echo "Syntax: rtr.sh [-h|o|s|i]"
+    echo "Syntax: rtr.sh [-h|o|s|i|v|b]"
     echo "options:"
     echo "h     Print this Help."
     echo "o     Output directory."
@@ -43,11 +43,10 @@ run() {
         docker run --rm -v $SRC_DIR:/source -v $OUTPUT_DIR:/output -v $RTR_DIR:/rtr $CONTAINER_NAME /rtr/rtr.py $VERBOSE -u $USERID -g $GROUPID -o /output -s /source $STEP_PARAMS
         docker_exit_code=$?
         if [ $docker_exit_code -ne 0 ]; then
-            echo "Execution fail, RTR step: $STEP_DESC"
-            exit $docker_exit_code
+            echo "Execution fail, RTR step: $STEP_DESC."
+            return $docker_exit_code
         fi
     done
-    echo "RTR succesfull. Results on $OUTPUT_DIR directory."
 }
 
 while getopts ":ho:s:i::vb:" option
@@ -75,7 +74,15 @@ do
     esac
 done
 
-if [ $BUILD_DOCKER -eq 1 ]; then
+if [[ "$BUILD_DOCKER" == "yes" ]]; then
     build
 fi
+
 run
+if [ $? -ne 0 ]; then
+    echo "RTR failed. Results on $OUTPUT_DIR directory."
+    exit $status
+else
+    echo "RTR was succesfull. Results on $OUTPUT_DIR directory."
+    exit 0
+fi

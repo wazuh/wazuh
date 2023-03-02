@@ -66,14 +66,37 @@
             "parameters": [
                 "--test build",
                 "--option ENGINE_BUILD_ASAN=ON",
-                "--threads 1"
+                "--threads 1",
+                "--log-name asan-build"
             ]
         },
         {
-            "description": "Unit tests",
+            "description": "Unit tests (ASAN)",
             "parameters": [
                 "--test ut",
                 "--log-name asan"
+            ]
+        },
+        {
+            "description": "Clean",
+            "parameters": [
+                "--test clean"
+            ]
+        },
+        {
+            "description": "Build (TSAN flag)",
+            "parameters": [
+                "--test build",
+                "--option ENGINE_BUILD_TSAN=ON",
+                "--threads 1",
+                "--log-name tsan-build"
+            ]
+        },
+        {
+            "description": "Unit tests (TSAN)",
+            "parameters": [
+                "--test ut",
+                "--log-name tsan"
             ]
         }
     ]
