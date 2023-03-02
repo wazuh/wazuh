@@ -1,5 +1,6 @@
 set(ENGINE_METRICS_SOURCE_DIR ${ENGINE_SOURCE_DIR}/metrics/src)
 set(ENGINE_METRICS_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/metrics/include)
+file(COPY ${CMAKE_SOURCE_DIR}/source/metrics/input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 ####################################################################################################
 # Dependencies
@@ -27,6 +28,8 @@ ${ENGINE_METRICS_SOURCE_DIR}/exporterHandler.cpp
 ${ENGINE_METRICS_SOURCE_DIR}/processorHandler.cpp
 ${ENGINE_METRICS_SOURCE_DIR}/providerHandler.cpp
 ${ENGINE_METRICS_SOURCE_DIR}/readerHandler.cpp
+${ENGINE_METRICS_SOURCE_DIR}/dataHub.cpp
+${ENGINE_METRICS_SOURCE_DIR}/dataHubExporter.cpp
 )
 
 target_link_libraries(metrics PUBLIC
