@@ -1,6 +1,9 @@
 #include <cmds/router.hpp>
 
-#include "apiclnt/client.hpp"
+#include <eMessages/router.pb.h>
+
+#include "apiclnt/client.hpp" // Remove
+#include "utils.hpp"
 #include "defaultSettings.hpp"
 
 namespace
@@ -19,105 +22,153 @@ struct Options
 namespace cmd::router
 {
 
-namespace details
-{
-json::Json
-getParameters(const std::string& action, const std::string& name, int priority, const std::string& filterName, const std::string& environment)
-{
-    json::Json params;
-    params.setObject();
-    params.setString(action, "/action");
-    if (!name.empty())
-    {
-        params.setString(name, "/name");
-    }
-    if (priority != -1)
-    {
-        params.setInt(priority, "/priority");
-    }
-    if(!filterName.empty())
-    {
-        params.setString(filterName, "/filter");
-    }
-    if (!environment.empty())
-    {
-        params.setString(environment, "/target");
-    }
+namespace eRouter = ::com::wazuh::api::engine::router;
+namespace eEngine = ::com::wazuh::api::engine;
 
-    return params;
-}
-
-json::Json getIngestParameters(const std::string& action, const std::string& event)
+void runGetTable(const std::string& socketPath)
 {
-    json::Json params;
-    params.setObject();
-    params.setString(action, "/action");
-    params.setString(event, "/event");
-    return params;
-}
+    using requestType = eRouter::TableGet_Request;
+    using responseType = eRouter::TableGet_Response;
+    const std::string command = "router.table/get";
 
-void processResponse(const base::utils::wazuhProtocol::WazuhResponse& response)
-{
-    auto content = response.data();
-    auto message = response.message();
-    if (content.size() != 0)
+    // Prepare the request
+    requestType eRequest;
+
+    // Call the API
+    const auto result = utils::callWAPI<requestType, responseType>(socketPath, command, details::ORIGIN_NAME, eRequest);
+    if (std::holds_alternative<std::string>(result))
     {
-        std::cout << content.str() << std::endl;
+        std::cerr << std::get<std::string>(result) << std::endl;
     }
-    else if (message)
+    else
     {
-        std::cout << message.value() << std::endl;
+        // Print as JSON the entry
+        const auto& table = std::get<responseType>(result).table();
+        const auto json = eMessage::eRepeatedFieldToJson<eRouter::Entry>(table);
+        std::cout << std::get<std::string>(json) << std::endl;
     }
 }
-
-void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, const std::string& socketPath)
-{
-    try
-    {
-        apiclnt::Client client {socketPath};
-        auto response = client.send(request);
-        details::processResponse(response);
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << e.what() << std::endl;
-    }
-}
-} // namespace details
 
 void runGet(const std::string& socketPath, const std::string& nameStr)
 {
-    json::Json params = details::getParameters("get", nameStr);
-    auto request = base::utils::wazuhProtocol::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
-    details::singleRequest(request, socketPath);
+    if (nameStr.empty())
+    {
+        runGetTable(socketPath);
+        return;
+    }
+    using requestType = eRouter::RouteGet_Request;
+    using responseType = eRouter::RouteGet_Response;
+    const std::string command = "router.route/get";
+
+    // Prepare the request
+    requestType eRequest;
+    eRequest.set_name(nameStr);
+
+    // Call the API
+    const auto result = utils::callWAPI<requestType, responseType>(socketPath, command, details::ORIGIN_NAME, eRequest);
+    if (std::holds_alternative<std::string>(result))
+    {
+        std::cerr << std::get<std::string>(result) << std::endl;
+    }
+    else
+    {
+        // Print as JSON the entry
+        const auto& route = std::get<responseType>(result).rute();
+        const auto result = eMessage::eMessageToJson<eRouter::Entry>(route);
+        const auto& json = std::get<std::string>(result); // Always can serialize to JSON
+        std::cout << json << std::endl;
+    }
 }
 
 void runAdd(const std::string& socketPath, const std::string& nameStr, int priority, const std::string& filterName, const std::string& environment)
 {
-    json::Json params = details::getParameters("set", nameStr, priority, filterName, environment);
-    auto request = base::utils::wazuhProtocol::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
-    details::singleRequest(request, socketPath);
+    using requestType = eRouter::RoutePost_Request;
+    using responseType = eEngine::GenericStatus_Response;
+    const std::string command = "router.route/post";
+
+    // Prepare the request
+    requestType eRequest;
+    eRequest.mutable_route()->set_name(nameStr);
+    eRequest.mutable_route()->set_priority(priority);
+    eRequest.mutable_route()->set_filter(filterName);
+    eRequest.mutable_route()->set_policy(environment);
+
+    // Call the API
+    const auto result = utils::callWAPI<requestType, responseType>(socketPath, command, details::ORIGIN_NAME, eRequest);
+    if (std::holds_alternative<std::string>(result))
+    {
+        std::cerr << std::get<std::string>(result) << std::endl;
+    }
+    else
+    {
+        std::cout << "ok" << std::endl;
+    }
 }
 
 void runDelete(const std::string& socketPath, const std::string& nameStr)
 {
-    json::Json params = details::getParameters("delete", nameStr);
-    auto request = base::utils::wazuhProtocol::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
-    details::singleRequest(request, socketPath);
+    using requestType = eRouter::RouteDelete_Request;
+    using responseType = eEngine::GenericStatus_Response;
+    const std::string command = "router.route/delete";
+
+    // Prepare the request
+    requestType eRequest;
+    eRequest.set_name(nameStr);
+
+    // Call the API
+    const auto result = utils::callWAPI<requestType, responseType>(socketPath, command, details::ORIGIN_NAME, eRequest);
+    if (std::holds_alternative<std::string>(result))
+    {
+        std::cerr << std::get<std::string>(result) << std::endl;
+    }
+    else
+    {
+        std::cout << "ok" << std::endl;
+    }
 }
 
 void runUpdate(const std::string& socketPath, const std::string& nameStr, int priority)
 {
-    json::Json params = details::getParameters("change_priority", nameStr, priority);
-    auto request = base::utils::wazuhProtocol::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
-    details::singleRequest(request, socketPath);
+    using requestType = eRouter::RoutePatch_Request;
+    using responseType = eEngine::GenericStatus_Response;
+    const std::string command = "router.route/patch";
+
+    // Prepare the request
+    requestType eRequest;
+    eRequest.mutable_route()->set_name(nameStr);
+    eRequest.mutable_route()->set_priority(priority);
+    // Call the API
+    const auto result = utils::callWAPI<requestType, responseType>(socketPath, command, details::ORIGIN_NAME, eRequest);
+    if (std::holds_alternative<std::string>(result))
+    {
+        std::cerr << std::get<std::string>(result) << std::endl;
+    }
+    else
+    {
+        std::cout << "ok" << std::endl;
+    }
 }
 
 void runIngest(const std::string& socketPath, const std::string& event)
 {
-    json::Json params = details::getIngestParameters("enqueue_event", event);
-    auto request = base::utils::wazuhProtocol::WazuhRequest::create(details::ROUTER_COMMAND, details::ORIGIN_NAME, std::move(params));
-    details::singleRequest(request, socketPath);
+    using requestType = eRouter::QueuePost_Request;
+    using responseType = eEngine::GenericStatus_Response;
+    const std::string command = "router.queue/post";
+
+    // Prepare the request
+    requestType eRequest;
+    eRequest.set_ossec_event(event);
+
+    // Call the API
+    const auto result = utils::callWAPI<requestType, responseType>(socketPath, command, details::ORIGIN_NAME, eRequest);
+    if (std::holds_alternative<std::string>(result))
+    {
+        std::cerr << std::get<std::string>(result) << std::endl;
+    }
+    else
+    {
+        std::cout << "ok" << std::endl;
+    }
 }
 
 void configure(CLI::App_p app)

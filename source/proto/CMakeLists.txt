@@ -27,7 +27,7 @@ CPMAddPackage(
 file(GLOB EMESSAGE_AUTO_SOURCES "${ENGINE_EMESSAGES_INCLUDE_DIR}/eMessages/*.cc")
 file(GLOB EMESSAGE_AUTO_HEADERS "${ENGINE_EMESSAGES_INCLUDE_DIR}/eMessages/*.h")
 
-add_library(eMessages STATIC ${EMESSAGE_AUTO_SOURCES})
+add_library(eMessages STATIC ${EMESSAGE_AUTO_SOURCES} ${EMESSAGE_AUTO_HEADERS})
 
 target_sources(eMessages
     PUBLIC
