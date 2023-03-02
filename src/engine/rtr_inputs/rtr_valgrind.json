@@ -1,7 +1,7 @@
 {
     "steps": [
         {
-            "description": "Build",
+            "description": "Build (Coverage flag)",
             "parameters": [
                 "--test build",
                 "--option ENGINE_BUILD_COVERAGE=ON"
