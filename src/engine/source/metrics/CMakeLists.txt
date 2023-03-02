@@ -26,6 +26,7 @@ ${ENGINE_METRICS_SOURCE_DIR}/metrics.cpp
 ${ENGINE_METRICS_SOURCE_DIR}/exporterHandler.cpp
 ${ENGINE_METRICS_SOURCE_DIR}/processorHandler.cpp
 ${ENGINE_METRICS_SOURCE_DIR}/providerHandler.cpp
+${ENGINE_METRICS_SOURCE_DIR}/readerHandler.cpp
 )
 
 target_link_libraries(metrics PUBLIC
@@ -34,9 +35,12 @@ opentelemetry_sdk
 opentelemetry_exporter_ostream_span
 opentelemetry_exporter_in_memory
 opentelemetry_exporter_zipkin_trace
+opentelemetry_exporter_ostream_metrics
+opentelemetry_resources
 PRIVATE base)
 
 target_include_directories(metrics PUBLIC
 ${ENGINE_METRICS_INCLUDE_DIR}
 ${FETCHCONTENT_BASE_DIR}/opentelemetry-src/exporters/zipkin/include
+${FETCHCONTENT_BASE_DIR}/opentelemetry-src/exporters/ostream/include
 )

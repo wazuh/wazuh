@@ -9,11 +9,25 @@ std::shared_ptr<MetricsContext> ProviderHandler::handleRequest(std::shared_ptr<M
 
 void ProviderHandler::create(std::shared_ptr<MetricsContext> data)
 {
-    if (data->processor != nullptr)
+    switch (data->providerTypes)
     {
-        opentelemetry::sdk::resource::ResourceAttributes attributes = {{"service.name", "zipkin_demo_service"}};
-        auto resource = opentelemetry::sdk::resource::Resource::Create(attributes);
-        data->provider = opentelemetry::sdk::trace::TracerProviderFactory::Create(std::move(data->processor), resource);
-        opentelemetry::trace::Provider::SetTracerProvider(data->provider);
-    }
+        case ProviderTypes::Tracer:
+        {
+            if (data->processor != nullptr)
+            {
+                opentelemetry::sdk::resource::ResourceAttributes attributes = {{"service.name", "zipkin_demo_service"}};
+                auto resource = opentelemetry::sdk::resource::Resource::Create(attributes);
+                data->provider = opentelemetry::sdk::trace::TracerProviderFactory::Create(std::move(data->processor), resource);
+                opentelemetry::trace::Provider::SetTracerProvider(data->provider);
+            }
+            break;
+        }
+        case ProviderTypes::Meter:
+        {
+            // TODO
+        }
+        default:
+            data->provider = nullptr;
+            break;
+        }
 }
