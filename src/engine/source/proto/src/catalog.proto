@@ -4,6 +4,12 @@ import "engine.proto";
 
 package com.wazuh.api.engine.catalog;
 
+/*
+ * This API is used to manage the catalog of the Wazuh manager
+ */
+
+
+ /* Supported formats for the resources (Case sensitive) */
 enum ResourceFormat
 {
     option allow_alias = true;

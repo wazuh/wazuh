@@ -20,6 +20,7 @@ target_link_libraries(cmds
     uv_a
     conf::cliconf
     conf::iconf
+    eMessages
 )
 
 target_include_directories(cmds
