@@ -1281,9 +1281,7 @@ class AWSConfigBucket(AWSLogsBucket):
             for aws_region in regions:
                 debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 # for processing logs day by day
-                date_list = self.get_date_list(aws_account_id, aws_region)
-                for date in date_list:
-                    self.iter_files_in_bucket(aws_account_id, aws_region, date)
+                self.iter_files_in_bucket(aws_account_id, aws_region)
                 self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
     def _format_created_date(self, date: str) -> str:
@@ -1371,33 +1369,36 @@ class AWSConfigBucket(AWSLogsBucket):
         return self._remove_padding_zeros_from_marker(AWSBucket.marker_custom_date(self, aws_region, aws_account_id,
                                                                                    date))
 
-    def build_s3_filter_args(self, aws_account_id, aws_region, date, iterating=False):
+    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False):
         filter_marker = ''
         if self.reparse:
-            filter_marker = self.marker_custom_date(aws_region, aws_account_id,
-                                                    datetime.strptime(date, self.date_format))
+            filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
         else:
-            created_date = self._format_created_date(date)
-            query_last_key_of_day = self.db_connector.execute(
-                self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name), {
+            # created_date = self._format_created_date(date)
+            query_last_key = self.db_connector.execute(
+                self.sql_find_last_key_processed.format(table_name=self.db_table_name), {
                     'bucket_path': self.bucket_path,
                     'aws_account_id': aws_account_id,
                     'aws_region': aws_region,
-                    'created_date': created_date,
-                    'prefix': self.prefix})
+                    'prefix': f'{self.prefix}%'
+                }
+            )
             try:
-                filter_marker = query_last_key_of_day.fetchone()[0]
+                filter_marker = query_last_key.fetchone()[0]
             except (TypeError, IndexError) as e:
                 # if DB is empty for a region
-                filter_marker = self.get_full_prefix(aws_account_id, aws_region) + date
+                filter_marker = (
+                    self.marker_only_logs_after(aws_region, aws_account_id) if self.only_logs_after
+                    else self.marker_custom_date(aws_region, aws_account_id, self.default_date)
+                )
 
         # for getting only logs of the current date
-        config_prefix = self.get_full_prefix(aws_account_id, aws_region) + date + '/'
+        # config_prefix = self.get_full_prefix(aws_account_id, aws_region) + date + '/'
 
         filter_args = {
             'Bucket': self.bucket,
             'MaxKeys': 1000,
-            'Prefix': config_prefix
+            'Prefix': self.get_full_prefix(aws_account_id, aws_region)
         }
 
         # if nextContinuationToken is not used for processing logs in a bucket
@@ -1418,9 +1419,9 @@ class AWSConfigBucket(AWSLogsBucket):
 
         return filter_args
 
-    def iter_files_in_bucket(self, aws_account_id, aws_region, date):
+    def iter_files_in_bucket(self, aws_account_id, aws_region):
         try:
-            bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region, date))
+            bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
 
             if 'Contents' not in bucket_files:
                 debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
@@ -1453,7 +1454,7 @@ class AWSConfigBucket(AWSLogsBucket):
                 self.mark_complete(aws_account_id, aws_region, bucket_file)
             # Iterate if there are more logs
             while bucket_files['IsTruncated']:
-                new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, date, True)
+                new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
                 new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
                 bucket_files = self.client.list_objects_v2(**new_s3_args)
 
