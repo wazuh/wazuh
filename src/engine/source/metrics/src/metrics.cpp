@@ -222,6 +222,8 @@ void Metrics::initMetrics(const std::string& moduleName, const std::filesystem::
 {
     m_moduleName = moduleName;
 
+    opentelemetry::sdk::common::internal_log::GlobalLogHandler::SetLogLevel(opentelemetry::sdk::common::internal_log::LogLevel::Error);
+
     createCommonChain(file);
 
     setMetricsConfig();
