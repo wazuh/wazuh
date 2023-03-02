@@ -15,7 +15,7 @@
             ]
         },
         {
-            "description": "Build",
+            "description": "Build (Coverage flag)",
             "parameters": [
                 "--test build",
                 "--option ENGINE_BUILD_COVERAGE=ON",
@@ -53,6 +53,27 @@
             "description": "Doxygen",
             "parameters": [
                 "--test docs"
+            ]
+        },
+        {
+            "description": "Clean",
+            "parameters": [
+                "--test clean"
+            ]
+        },
+        {
+            "description": "Build (ASAN flag)",
+            "parameters": [
+                "--test build",
+                "--option ENGINE_BUILD_ASAN=ON",
+                "--threads 1"
+            ]
+        },
+        {
+            "description": "Unit tests",
+            "parameters": [
+                "--test ut",
+                "--log-name asan"
             ]
         }
     ]
