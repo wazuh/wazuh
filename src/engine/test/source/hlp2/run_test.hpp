@@ -71,29 +71,18 @@ static void runTest(TestCase t, std::function<parsec::Parser<json::Json>(std::st
     auto expectedSuccess = std::get<1>(t);
     auto expectedDoc = std::get<4>(t);
 
-    std::string emptyString = "";
-    std::string headerString = "header";
-    std::string tailString = "tail";
-    std::string matrix[4][2] = {{emptyString, emptyString},
-                                {headerString, emptyString},
-                                {emptyString, tailString},
-                                {headerString, tailString}};
+    const std::string& headerString = "header";
+    const std::string& tailString = "tail";
+    std::string token[4][2] = {{"", ""}, {headerString, ""}, {"", tailString}, {headerString, tailString}};
 
     for (int i = 0; i < 4; i++)
     {
+        auto stopString = printStop(std::get<2>(t));
+        std::list<std::string> tokenList = {token[i][1]};
+        std::list<std::string> stopStringList = stopString.empty() ? tokenList : std::get<2>(t);
         try
         {
-            auto stopString = printStop(std::get<2>(t));
-            if(stopString == emptyString)
-            {
-                std::string endString {stopString + matrix[i][1]};
-                std::list<std::string> stopPrueba = {endString};
-                parser = parserBuilder({}, stopPrueba, std::get<3>(t));
-            }
-            else
-            {
-                parser = parserBuilder({}, std::get<2>(t), std::get<3>(t));
-            }
+            parser = parserBuilder({}, stopStringList, std::get<3>(t));
         }
         catch (std::runtime_error& e)
         {
@@ -101,15 +90,15 @@ static void runTest(TestCase t, std::function<parsec::Parser<json::Json>(std::st
                 << fmt::format("Error building parser: {}", e.what());
             return;
         }
-        auto fullEvent = matrix[i][0] + std::get<0>(t) + matrix[i][1];
-        auto r = parser(fullEvent, matrix[i][0].size());
+        auto fullEvent = token[i][0] + std::get<0>(t) + token[i][1];
+        auto r = parser(fullEvent, token[i][0].size());
 
         ASSERT_EQ(r.success(), expectedSuccess)
             << (r.success() ? "" : "ParserError: " + r.error() + "\n") << to_string(t);
         if (r.success())
         {
             ASSERT_EQ(expectedDoc, r.value()) << to_string(t);
-            ASSERT_EQ(r.index() - matrix[i][0].size(), std::get<5>(t)) << to_string(t);
+            ASSERT_EQ(r.index() - token[i][0].size(), std::get<5>(t)) << to_string(t);
         }
         else
         {
