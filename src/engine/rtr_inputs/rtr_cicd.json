@@ -98,6 +98,28 @@
                 "--test ut",
                 "--log-name tsan"
             ]
+        },
+        {
+            "description": "Clean",
+            "parameters": [
+                "--test clean"
+            ]
+        },
+        {
+            "description": "Build (UBSAN flag)",
+            "parameters": [
+                "--test build",
+                "--option ENGINE_BUILD_UBSAN=ON",
+                "--threads 1",
+                "--log-name ubsan-build"
+            ]
+        },
+        {
+            "description": "Unit tests (UBSAN)",
+            "parameters": [
+                "--test ut",
+                "--log-name ubsan"
+            ]
         }
     ]
 }
