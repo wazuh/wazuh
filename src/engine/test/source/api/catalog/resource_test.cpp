@@ -14,39 +14,39 @@ TEST(CatalogResourceTest, BuildsCollections)
 
     Resource resource;
 
-    ASSERT_NO_THROW(resource = Resource(nameDec, Resource::Format::JSON));
+    ASSERT_NO_THROW(resource = Resource(nameDec, Resource::Format::json));
     ASSERT_EQ(resource.m_name, nameDec);
-    ASSERT_EQ(resource.m_format, Resource::Format::JSON);
+    ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::COLLECTION);
     ASSERT_FALSE(resource.m_validation);
 
-    ASSERT_NO_THROW(resource = Resource(nameRule, Resource::Format::JSON));
+    ASSERT_NO_THROW(resource = Resource(nameRule, Resource::Format::json));
     ASSERT_EQ(resource.m_name, nameRule);
-    ASSERT_EQ(resource.m_format, Resource::Format::JSON);
+    ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::COLLECTION);
     ASSERT_FALSE(resource.m_validation);
 
-    ASSERT_NO_THROW(resource = Resource(nameOuput, Resource::Format::JSON));
+    ASSERT_NO_THROW(resource = Resource(nameOuput, Resource::Format::json));
     ASSERT_EQ(resource.m_name, nameOuput);
-    ASSERT_EQ(resource.m_format, Resource::Format::JSON);
+    ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::COLLECTION);
     ASSERT_FALSE(resource.m_validation);
 
-    ASSERT_NO_THROW(resource = Resource(nameFilter, Resource::Format::JSON));
+    ASSERT_NO_THROW(resource = Resource(nameFilter, Resource::Format::json));
     ASSERT_EQ(resource.m_name, nameFilter);
-    ASSERT_EQ(resource.m_format, Resource::Format::JSON);
+    ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::COLLECTION);
     ASSERT_FALSE(resource.m_validation);
 
-    ASSERT_NO_THROW(resource = Resource(nameEnv, Resource::Format::JSON));
+    ASSERT_NO_THROW(resource = Resource(nameEnv, Resource::Format::json));
     ASSERT_EQ(resource.m_name, nameEnv);
-    ASSERT_EQ(resource.m_format, Resource::Format::JSON);
+    ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::COLLECTION);
     ASSERT_FALSE(resource.m_validation);
 
-    ASSERT_NO_THROW(resource = Resource(nameSchema, Resource::Format::JSON));
+    ASSERT_NO_THROW(resource = Resource(nameSchema, Resource::Format::json));
     ASSERT_EQ(resource.m_name, nameSchema);
-    ASSERT_EQ(resource.m_format, Resource::Format::JSON);
+    ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::COLLECTION);
     ASSERT_FALSE(resource.m_validation);
 }
@@ -56,7 +56,7 @@ TEST(CatalogResourceTest, BuildsCollectionErrorType)
     auto name = base::Name("non_existing_type");
     Resource resource;
 
-    ASSERT_THROW(resource = Resource(name, Resource::Format::JSON), std::runtime_error);
+    ASSERT_THROW(resource = Resource(name, Resource::Format::json), std::runtime_error);
 }
 
 TEST(CatalogResourceTest, BuildsAssetsEnvironment)
@@ -69,33 +69,33 @@ TEST(CatalogResourceTest, BuildsAssetsEnvironment)
 
     Resource resource;
 
-    ASSERT_NO_THROW(resource = Resource(nameDec, Resource::Format::JSON));
+    ASSERT_NO_THROW(resource = Resource(nameDec, Resource::Format::json));
     ASSERT_EQ(resource.m_name, nameDec);
-    ASSERT_EQ(resource.m_format, Resource::Format::JSON);
+    ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::DECODER);
     ASSERT_TRUE(resource.m_validation);
 
-    ASSERT_NO_THROW(resource = Resource(nameRule, Resource::Format::JSON));
+    ASSERT_NO_THROW(resource = Resource(nameRule, Resource::Format::json));
     ASSERT_EQ(resource.m_name, nameRule);
-    ASSERT_EQ(resource.m_format, Resource::Format::JSON);
+    ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::RULE);
     ASSERT_TRUE(resource.m_validation);
 
-    ASSERT_NO_THROW(resource = Resource(nameOuput, Resource::Format::JSON));
+    ASSERT_NO_THROW(resource = Resource(nameOuput, Resource::Format::json));
     ASSERT_EQ(resource.m_name, nameOuput);
-    ASSERT_EQ(resource.m_format, Resource::Format::JSON);
+    ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::OUTPUT);
     ASSERT_TRUE(resource.m_validation);
 
-    ASSERT_NO_THROW(resource = Resource(nameFilter, Resource::Format::JSON));
+    ASSERT_NO_THROW(resource = Resource(nameFilter, Resource::Format::json));
     ASSERT_EQ(resource.m_name, nameFilter);
-    ASSERT_EQ(resource.m_format, Resource::Format::JSON);
+    ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::FILTER);
     ASSERT_TRUE(resource.m_validation);
 
-    ASSERT_NO_THROW(resource = Resource(nameEnv, Resource::Format::JSON));
+    ASSERT_NO_THROW(resource = Resource(nameEnv, Resource::Format::json));
     ASSERT_EQ(resource.m_name, nameEnv);
-    ASSERT_EQ(resource.m_format, Resource::Format::JSON);
+    ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::ENVIRONMENT);
     ASSERT_TRUE(resource.m_validation);
 }
@@ -105,7 +105,7 @@ TEST(CatalogResourceTest, BuildsAssetEnvironmentErrorType)
     auto name = base::Name({"non_existing_type", "name", "version"});
     Resource resource;
 
-    ASSERT_THROW(resource = Resource(name, Resource::Format::JSON), std::runtime_error);
+    ASSERT_THROW(resource = Resource(name, Resource::Format::json), std::runtime_error);
 }
 
 TEST(CatalogResourceTest, BuildsSchema)
@@ -113,9 +113,9 @@ TEST(CatalogResourceTest, BuildsSchema)
     auto name = base::Name({"schema", "name", "version"});
     Resource resource;
 
-    ASSERT_NO_THROW(resource = Resource(name, Resource::Format::JSON));
+    ASSERT_NO_THROW(resource = Resource(name, Resource::Format::json));
     ASSERT_EQ(resource.m_name, name);
-    ASSERT_EQ(resource.m_format, Resource::Format::JSON);
+    ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::SCHEMA);
     ASSERT_FALSE(resource.m_validation);
 }
@@ -125,7 +125,7 @@ TEST(CatalogResourceTest, BuildsSchemaErrorType)
     auto name = base::Name({"non_existing_type", "name", "version"});
     Resource resource;
 
-    ASSERT_THROW(resource = Resource(name, Resource::Format::JSON), std::runtime_error);
+    ASSERT_THROW(resource = Resource(name, Resource::Format::json), std::runtime_error);
 }
 
 TEST(CatalogResourceTest, BuildsErrorNameParts)
@@ -134,8 +134,8 @@ TEST(CatalogResourceTest, BuildsErrorNameParts)
     auto nameMore = base::Name({"first", "second", "third", "fourth"});
     Resource resource;
 
-    ASSERT_THROW(resource = Resource(nameLess, Resource::Format::JSON),
+    ASSERT_THROW(resource = Resource(nameLess, Resource::Format::json),
                  std::runtime_error);
-    ASSERT_THROW(resource = Resource(nameMore, Resource::Format::JSON),
+    ASSERT_THROW(resource = Resource(nameMore, Resource::Format::json),
                  std::runtime_error);
 }

@@ -12,7 +12,7 @@
 #include <cmds/details/kbhit.hpp>
 #include <name.hpp>
 
-#include "apiclnt/client.hpp"
+#include <cmds/apiclnt/client.hpp>
 #include "defaultSettings.hpp"
 
 namespace cmd::catalog

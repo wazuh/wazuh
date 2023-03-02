@@ -25,29 +25,29 @@ const api::catalog::Resource successResourceAssetJson {
     base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER),
                 successName.parts()[1],
                 successName.parts()[2]}),
-    api::catalog::Resource::Format::JSON};
+    api::catalog::Resource::Format::json};
 
 const api::catalog::Resource successResourceAssetYml {
     base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER),
                 successName.parts()[1],
                 successName.parts()[2]}),
-    api::catalog::Resource::Format::YAML};
+    api::catalog::Resource::Format::yaml};
 
 const api::catalog::Resource failResourceAsset {
     base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER),
                 failName.parts()[1],
                 failName.parts()[2]}),
-    api::catalog::Resource::Format::JSON};
+    api::catalog::Resource::Format::json};
 
 const api::catalog::Resource successCollectionAssetJson {
     base::Name(
         {api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER)}),
-    api::catalog::Resource::Format::JSON};
+    api::catalog::Resource::Format::json};
 
 const api::catalog::Resource successCollectionAssetYml {
     base::Name(
         {api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER)}),
-    api::catalog::Resource::Format::YAML};
+    api::catalog::Resource::Format::yaml};
 
 class FakeStore : public store::IStore
 {
