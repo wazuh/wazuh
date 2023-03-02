@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sys/utsname.h>
 #include <unistd.h>
+#include <procfs.h>
 
 #include "osinfo/sysOsParsers.h"
 #include "sharedDefs.h"
@@ -26,6 +27,8 @@
 #include "network/networkFamilyDataAFactory.h"
 #include "UtilsWrapperUnix.hpp"
 #include "uniqueFD.hpp"
+#include "processes/processSolarisWrapper.hpp"
+#include "processes/processFamilyDataFactory.h"
 
 constexpr auto SUN_APPS_PATH {"/var/sadm/pkg/"};
 
@@ -122,7 +125,15 @@ nlohmann::json SysInfo::getOsInfo() const
 }
 nlohmann::json SysInfo::getProcessesInfo() const
 {
-    return nlohmann::json();
+    nlohmann::json jsProcessesList{};
+
+    getProcessesInfo([&jsProcessesList](nlohmann::json & processInfo)
+    {
+        // Append the current json process object to the list of processes
+        jsProcessesList.push_back(processInfo);
+    });
+
+    return jsProcessesList;
 }
 nlohmann::json SysInfo::getNetworks() const
 {
@@ -201,9 +212,43 @@ nlohmann::json SysInfo::getPorts() const
 {
     return nlohmann::json();
 }
-void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> /*callback*/) const
+
+void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
 {
-    // TODO
+    const auto procFiles{Utils::enumerateDir(WM_SYS_PROC_DIR)};
+
+    for (const auto& procFile : procFiles)
+    {
+        if (procFile.at(0) == '.')
+        {
+            continue;
+        }
+
+        std::ifstream ifPsinfoFile{WM_SYS_PROC_DIR + std::string(procFile) + "/psinfo", std::ios::binary};
+        std::ifstream ifStatusFile{WM_SYS_PROC_DIR + std::string(procFile) + "/status", std::ios::binary};
+        std::ifstream ifCredFile{WM_SYS_PROC_DIR + std::string(procFile) + "/cred", std::ios::binary};
+
+        // a relevant info is not available, get out!
+        if (!ifPsinfoFile.is_open())
+        {
+            throw std::runtime_error{"Error psinfo file not open!."};
+        }
+
+        psinfo_t psinfo;
+        pstatus_t status;
+        prcred_t cred;
+
+        ifPsinfoFile.read(reinterpret_cast<char*>(&psinfo), sizeof psinfo);
+        ifStatusFile.read(reinterpret_cast<char*>(&status), sizeof status);
+        ifCredFile.read(reinterpret_cast<char*>(&cred), sizeof cred);
+
+        const auto procWrapper{std::make_shared<ProcessSolarisWrapper>(psinfo, status, cred)};
+
+        nlohmann::json jsProcessInfo{};
+        FactoryProcessFamilyCreator<OSType::SOLARIS>::create(procWrapper)->buildProcessData(jsProcessInfo);
+
+        callback(jsProcessInfo);
+    }
 }
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
