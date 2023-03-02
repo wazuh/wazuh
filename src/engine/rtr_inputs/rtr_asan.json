@@ -1,0 +1,24 @@
+{
+    "steps": [
+        {
+            "description": "Clean",
+            "parameters": [
+                "--test clean"
+            ]
+        },
+        {
+            "description": "Build",
+            "parameters": [
+                "--test build",
+                "--option ENGINE_BUILD_ASAN=ON"
+            ]
+        },
+        {
+            "description": "Unit tests",
+            "parameters": [
+                "--test ut",
+                "--log-name asan"
+            ]
+        }
+    ]
+}

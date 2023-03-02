@@ -12,9 +12,10 @@ USERNAME=`logname`
 USERID=`id -u $USERNAME`
 GROUPID=`id -g $USERNAME`
 VERBOSE=''
+BUILD_DOCKER=1
 
 build() {
-    docker build -f .rtr/Dockerfile -t $CONTAINER_NAME .
+    docker build -f .rtr/Dockerfile -t $CONTAINER_NAME -q . > /dev/null
 }
 
 Help() {
@@ -28,6 +29,7 @@ Help() {
     echo "s     Source directory."
     echo "i     RTR input file."
     echo "v     Verbose."
+    echo "b     Build docker."
     echo
 }
 
@@ -48,7 +50,7 @@ run() {
     echo "RTR succesfull. Results on $OUTPUT_DIR directory."
 }
 
-while getopts ":ho:s:i::v" option
+while getopts ":ho:s:i::vb:" option
 do
     case "${option}" in
         h) # display Help
@@ -62,6 +64,8 @@ do
             RTR_CONFIG=${OPTARG};;
         v) # verbose
             VERBOSE='-v';;
+        b) # build docker
+            BUILD_DOCKER=${OPTARG};;
         :) # missing argument
             echo "Error: Missing argument for option $OPTARG"
             exit;;
@@ -71,5 +75,7 @@ do
     esac
 done
 
-#build
+if [ $BUILD_DOCKER -eq 1 ]; then
+    build
+fi
 run
