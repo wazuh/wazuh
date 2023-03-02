@@ -153,11 +153,21 @@ def build(params):
         logging.debug(f'Executing {command} {args}')
         result = subprocess.run(
             f'{command} {args}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        if result.returncode == 0 and not result.stderr:
-            logging.info('BUILDING: successful')
+
+        if result.returncode == 0:
+            if result.stderr:
+                logging.info('BUILDING: successful but with warnings')
+                # TODO: Uncomment to force a fail for warning messages
+                #result.returncode = 1
+            else:
+                logging.info('BUILDING: successful')
         else:
             logging.info('BUILDING: fail')
-        log(params.output, 'build', result.stdout, result.stderr)
+
+        if params.logname:
+            log(params.output, params.logname, result.stdout, result.stderr)
+        else:
+            log(params.output, 'build', result.stdout, result.stderr)
         return bool(not result.returncode)
     else:
         return False
