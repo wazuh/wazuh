@@ -29,7 +29,7 @@ api::Handler resourcePost(std::shared_ptr<Catalog> catalog)
         const auto& eRequest = std::get<RequestType>(res);
 
         // Validate the params request
-        const auto error = !eRequest.has_type()      ? std::make_optional("Missing /type parameter")
+        const auto error = !eRequest.has_type()      ? std::make_optional("Missing /type parameter or is invalid")
                            : !eRequest.has_format()  ? std::make_optional("Missing /format parameter or is invalid")
                            : !eRequest.has_content() ? std::make_optional("Missing /content parameter")
                                                      : std::nullopt;
@@ -42,7 +42,7 @@ api::Handler resourcePost(std::shared_ptr<Catalog> catalog)
         base::Name name;
         try
         {
-            name = base::Name {eRequest.type()};
+            name = base::Name {Resource::typeToStr(eRequest.type())};
         }
         catch (const std::exception& e)
         {
@@ -167,7 +167,7 @@ api::Handler resourceDelete(std::shared_ptr<Catalog> catalog)
         catalog::Resource targetResource;
         try
         {
-            targetResource = catalog::Resource {name, catalog::Resource::Format::JSON};
+            targetResource = catalog::Resource {name, catalog::Resource::Format::json};
         }
         catch (const std::exception& e)
         {

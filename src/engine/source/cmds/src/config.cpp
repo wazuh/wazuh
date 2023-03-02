@@ -1,6 +1,6 @@
 #include <cmds/config.hpp>
 
-#include "apiclnt/client.hpp"
+#include <cmds/apiclnt/client.hpp>
 #include "defaultSettings.hpp"
 
 namespace

@@ -9,7 +9,7 @@
 #include <eMessages/engine.pb.h>
 #include <json/json.hpp>
 
-#include "apiclnt/client.hpp"
+#include <cmds/apiclnt/client.hpp>
 
 namespace cmd::utils
 {
@@ -19,14 +19,15 @@ using wpRequest = base::utils::wazuhProtocol::WazuhRequest;
 
 namespace apiAdapter
 {
-
 /**
- * @brief Return a WazuhRequest with de eMessage serialized
- * @tparam T
- * @param eMessage eMessage to serialize in the request (parameter)
- * @param command Command to set in the request
- * @param origin Origin to set in the request
- * @return base::utils::wazuhProtocol::WazuhRequest
+ * @brief Converts an eMessage and command into a WazuhRequest.
+ *
+ * @tparam T Type of the eMessage (protobuf message).
+ * @param command Command to set in the request.
+ * @param origin Origin to set in the request.
+ * @param eMessage eMessage to serialize into the request.
+ * @return base::utils::wazuhProtocol::WazuhRequest WazuhRequest containing the serialized eMessage.
+ * @throw ClientException if the serialization fails.
  */
 template<typename T>
 wpRequest toWazuhRequest(const std::string& command, const std::string& origin, const T& eMessage)
@@ -34,29 +35,38 @@ wpRequest toWazuhRequest(const std::string& command, const std::string& origin, 
     // Check that T is derived from google::protobuf::Message
     static_assert(std::is_base_of<google::protobuf::Message, T>::value, "T must be a derived class of proto::Message");
 
+    // Serialize the eMessage object into a JSON string
     const auto res = eMessage::eMessageToJson<T>(eMessage);
 
-    if (std::holds_alternative<base::Error>(res)) // Should never happen
+    // Check if serialization was successful
+    if (std::holds_alternative<base::Error>(res))
     {
-        const auto& error = std::get<base::Error>(res);
-        throw std::runtime_error {error.message};
+        const auto& error = std::string {"Error in serialization (client): "} + std::get<base::Error>(res).message;
+        throw ClientException(error, ClientException::Type::PROTOBUFF_SERIALIZE_ERROR);
     }
+
+    // Create a JSON object from the JSON string
     auto params = json::Json {std::get<std::string>(res).c_str()};
+
+    // Create and return the WazuhRequest object
     return wpRequest::create(command, origin, params);
 }
 
 /**
- * @brief Parses the response data from a Wazuh API call into a variant containing either a T object or an error
- * message.
+ * @brief Parses the response data from a Wazuh API call into a protocol buffer (eMessage of type T).
  *
- * If the protobuf  object its returned, it always has the status field set to OK and no error message.
- * @tparam T Type of the expected eMessage response (protobuf message)
+ * Throws a ClientException if the API call was unsuccessful or if there was an error parsing the response data into
+ * the protocol buffer message.
+ *
+ * @tparam T Type of the expected protocol buffer message
  * @param wResponse The response from the Wazuh API call
- * @return std::variant<const T, std::string> A variant containing either a T object or an error message
+ * @return T The protocol buffer message of type T parsed from the response data
+ * @throw ClientException if the API call was unsuccessful or if there was an error parsing the response data into
  */
 template<typename T>
-std::variant<T, std::string> fromWazuhResponse(const wpResponse& wResponse)
+T fromWazuhResponse(const wpResponse& wResponse)
 {
+    // The status code used in the protocol buffer message to indicate success
     using StatusCode = ::com::wazuh::api::engine::ReturnStatus;
 
     // Ensure T is derived from google::protobuf::Message
@@ -76,11 +86,12 @@ std::variant<T, std::string> fromWazuhResponse(const wpResponse& wResponse)
     // Check if the Wazuh API call was successful
     if (wResponse.error())
     {
-        // Return an error message containing the response string
-        return wResponse.message().value_or(std::string("Unknown error in response:") + wResponse.toString());
+        // Throw an exception with the error message from the Wazuh response
+        throw ClientException(wResponse.message().value_or("Unknown error in response"),
+                              ClientException::Type::WRESPONSE_ERROR);
     }
 
-    // Parse the response data into a protobuf object
+    // Parse the response data into a protocol buffer message of type T
     const auto& data {wResponse.data()};
     const auto res {eMessage::eMessageFromJson<T>(data.str())};
 
@@ -88,55 +99,24 @@ std::variant<T, std::string> fromWazuhResponse(const wpResponse& wResponse)
     if (std::holds_alternative<base::Error>(res))
     {
         // Return the error message from the parsing result
-        return std::get<base::Error>(res).message;
+        const auto error {std::string {"Deserialization error: "} + std::get<base::Error>(res).message};
+        throw ClientException(error, ClientException::Type::PROTOBUFF_DESERIALIZE_ERROR);
     }
 
-    // Extract the protobuf object
+    // Check for errors during parsing
     const auto& eMessage {std::get<T>(res)};
 
     // Check if the request was successful
     if (eMessage.status() != StatusCode::OK)
     {
-        // Return an error message containing the eMessage error, or a generic message if no error message is available
-        return eMessage.has_error() ? eMessage.error() : "Unknown error in response (no error message)";
+        // Throw an exception with the error message from the parsing result
+        throw ClientException(eMessage.has_error() ? eMessage.error() : "Unknown error in response",
+                              ClientException::Type::EMESSAGE_ERROR);
     }
 
-    // Return the protocol buffer object
-    return std::move(eMessage);
+    // Return the parsed protocol buffer message
+    return eMessage;
 }
 } // namespace apiAdapter
-
-/**
- * @brief Calls the Wazuh API and returns a variant containing either a U response object with the status field set to
- * OK and no error message, or an error message string if the call failed.
- *
- * The call can fail if the Wazuh API is not running, the socket path is wrong, the request is malformed, the response
- * is malformed, or the response contains an error.
- * @param socketPath Path to the Wazuh API socket
- * @tparam T Request eMessage type
- * @tparam U Response eMessage type
- * @param command Command to send to the Wazuh API
- * @param origin Origin to send to the Wazuh API
- * @param eMessage eMessage to send to the Wazuh API
- * @return std::variant<U, std::string> A variant containing either a U response object or an error message string
- */
-template<typename T, typename U>
-std::variant<U, std::string>
-callWAPI(const std::string& socketPath, const std::string& command, const std::string& origin, const T& eMessage)
-{
-
-    // The assert is in the subfunction to avoid the compiler warning about unused function parameters
-    try
-    {
-        const auto request {apiAdapter::toWazuhRequest(command, origin, eMessage)};
-        apiclnt::Client client {socketPath};
-        const auto response {client.send(request)};
-        return apiAdapter::fromWazuhResponse<U>(response);
-    }
-    catch (const std::exception& e)
-    {
-        return e.what();
-    }
-}
 } // namespace cmd::utils
 #endif // _CMD_SRC_APICLNT_ADAPTER_HPP
