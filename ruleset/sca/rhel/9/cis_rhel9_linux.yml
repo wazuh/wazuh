@@ -1947,7 +1947,7 @@ checks:
     description: "Tables hold chains. Each table only has one address family and only applies to packets of this family. Tables can have one of five families."
     rationale: "Without a table, nftables will not filter network traffic."
     impact: "Adding or modifying firewall rules can cause loss of connectivity to the system."
-    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter. Note: FirewallD uses the table inet firewalld NFTables table that is created when FirewallD is installed."
+    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example if FirewallD is not in use on the system: # nft create table inet filter Note: FirewallD uses the table inet firewalld NFTables table that is created when FirewallD is installed."
     compliance:
       - cis: ["3.4.2.2"]
       - cis_csc_v8: ["4.4"]
@@ -1969,7 +1969,7 @@ checks:
     description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
     rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
     impact: "If configuring over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
-    remediation: 'Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \; }. Example: # nft create chain inet filter input { type filter hook input priority 0 \; } # nft create chain inet filter forward { type filter hook forward priority 0 \; } # nft create chain inet filter output { type filter hook output priority 0 \; }.'
+    remediation: 'If NFTables utility is in use on your system: Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \; } Example: # nft chain inet filter input { policy drop \; } # nft chain inet filter forward { policy drop \; }.'
     compliance:
       - cis: ["3.4.2.3"]
       - cis_csc_v8: ["4.4"]
@@ -1982,7 +1982,7 @@ checks:
       - iso_27001-2013: ["A.13.1.1"]
     condition: all
     rules:
-      - "c:rpm -q nftables -> r:nftables-"
+      - "c:rpm -q nftables -> r:^nftables-"
       - "c:nft list ruleset -> r:hook input"
       - "c:nft list ruleset -> r:hook forward"
       - "c:nft list ruleset -> r:hook output"
@@ -2011,9 +2011,8 @@ checks:
     condition: all
     rules:
       - "c:systemctl is-enabled nftables.service -> r:enabled"
-      - "c:nft list ruleset -> r:hook input"
-      - "c:nft list ruleset -> r:hook forward"
-      - "not c:nft list ruleset -> r:policy drop"
+      - "not c:nft list ruleset -> r:hook input && !r:policy drop"
+      - "not c:nft list ruleset -> r:hook forward && !r:policy drop"
 
   ############################################################
   # 4 Logging and Auditing.
