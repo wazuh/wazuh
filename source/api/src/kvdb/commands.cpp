@@ -5,7 +5,7 @@
 #include <fmt/format.h>
 
 #include <eMessages/eMessage.h>
-#include <eMessages/kbdb.pb.h>
+#include <eMessages/kvdb.pb.h>
 #include <json/json.hpp>
 #include <utils/stringUtils.hpp>
 
