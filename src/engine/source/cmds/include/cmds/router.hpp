@@ -27,7 +27,7 @@ void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& nameS
 void runUpdate(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr, int priority);
 void runIngest(std::shared_ptr<apiclnt::Client> client, const std::string& event);
 
-void configure(CLI::App_p app);
+void configure(const CLI::App_p& app);
 } // namespace cmd::router
 
 #endif // _CMD_ROUTER_HPP
