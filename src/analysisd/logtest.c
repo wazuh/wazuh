@@ -1012,6 +1012,7 @@ char * w_logtest_process_request(char * raw_request, w_logtest_connection_t * co
     }
 
     OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+    OSList_SetFreeDataPointer(list_msg, (void (*)(void *))os_analysisd_free_log_msg);
 
     /* Check message and generate a request */
     json_response = cJSON_CreateObject();
@@ -1044,7 +1045,7 @@ char * w_logtest_process_request(char * raw_request, w_logtest_connection_t * co
     str_response = cJSON_PrintUnformatted(json_response);
     cJSON_Delete(json_response);
     cJSON_Delete(json_request);
-    os_free(list_msg);
+    OSList_Destroy(list_msg);
 
     return str_response;
 }
