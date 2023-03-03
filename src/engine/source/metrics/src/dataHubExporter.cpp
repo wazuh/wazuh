@@ -1,11 +1,10 @@
 #include "dataHubExporter.hpp"
 
-#include "dataHub.hpp"
 #include <rapidjson/document.h>
-
 #include <algorithm>
 #include <chrono>
 #include <map>
+
 #include "opentelemetry/exporters/ostream/common_utils.h"
 #include "opentelemetry/sdk/metrics/aggregation/default_aggregation.h"
 #include "opentelemetry/sdk/metrics/aggregation/histogram_aggregation.h"
@@ -54,7 +53,7 @@ namespace metrics
 {
 
 DataHubExporter::DataHubExporter(
-    std::shared_ptr<DataHub> dataHub,
+    std::shared_ptr<DataHubInterface> dataHub,
     sdk::metrics::AggregationTemporality aggregation_temporality) noexcept
     : m_dataHub(dataHub), aggregation_temporality_(aggregation_temporality)
 {}
