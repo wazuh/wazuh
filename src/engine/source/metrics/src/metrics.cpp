@@ -45,6 +45,11 @@ std::unordered_map<std::string, ProcessorsTypes> const PROCESSOR_TYPES =
     {"batch", ProcessorsTypes::Batch}
 };
 
+Metrics::Metrics() 
+{
+    m_dataHub = std::make_shared<DataHub>();
+}
+
 void Metrics::clean()
 {
     std::shared_ptr<opentelemetry::metrics::MeterProvider> noneMeter;
@@ -63,7 +68,7 @@ void Metrics::clean()
 
 std::shared_ptr<DataHub> Metrics::getDataHub()
 {
-    return DataHub::get();
+    return m_dataHub;
 }
 
 nlohmann::json Metrics::loadJson(const std::filesystem::path& file)
