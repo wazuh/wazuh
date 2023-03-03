@@ -124,7 +124,12 @@ void runStart(ConfHandler confManager)
         case 3: logConfig.logLevel = logging::LogLevel::Error; break;
         default: logging::LogLevel::Error;
     }
-    logConfig.header = "{YmdHMSe} {t} {l}: "; // On debug mode, add the thread id, file, function and line
+
+    if (logging::LogLevel::Debug != logConfig.logLevel)
+    {
+        logConfig.header = "{YmdHMSe} {t} {l}: ";
+    }
+
     logConfig.filePath = logOutput.c_str();
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
