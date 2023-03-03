@@ -1,18 +1,10 @@
-#!/usr/bin/env python3
-# Created by Shuffle, AS. <frikky@shuffler.io>.
-# Based on the Slack integration using Webhooks
+#!/usr/bin/env python
+# Copyright (C) 2023, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
-
-# Error Codes:
-#   1 - Module requests not found
-#   2 - Incorrect input arguments
-#   3 - Alert File does not exist
-#   4 - Error getting json_alert
-
 
 import json
 import os
@@ -22,16 +14,15 @@ import time
 try:
     import requests
     from requests.auth import HTTPBasicAuth
-except ModuleNotFoundError as e:
+except Exception as e:
     print("No module 'requests' found. Install: pip install requests")
     sys.exit(1)
 
 # ossec.conf configuration structure
 #  <integration>
-#      <name>shuffle</name>
-#      <hook_url>http://<IP>:3001/api/v1/hooks/<HOOK_ID></hook_url>
-#      <level>3</level>
-#      <alert_format>json</alert_format>\
+#      <name>slack</name>
+#      <hook_url>https://hooks.slack.com/services/XXXXXXXXXXXXXX</hook_url>
+#      <alert_format>json</alert_format>
 #      <options>JSON_OBJ</options>
 #  </integration>
 
@@ -40,16 +31,15 @@ debug_enabled   = False
 debug_console   = True
 pwd             = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert      = {}
+json_options    = {}
 now             = time.strftime("%a %b %d %H:%M:%S %Z %Y")
-SKIP_RULE_IDS   = ["87924", "87900", "87901", "87902", "87903", "87904", "86001", "86002", "86003", "87932",
-                 "80710", "87929", "87928", "5710"]
 
 # Log path
 LOG_FILE        = f'{pwd}/logs/integrations.log'
 
 # Constants
 ALERT_INDEX     = 1
-WEBHOOK_INDEX   = 3
+APIKEY_INDEX    = 2
 
 
 def main(args: list[str]):
@@ -60,11 +50,11 @@ def main(args: list[str]):
         if len(args) >= 4:
             msg = '{0} {1} {2} {3} {4} {5}'.format(
                 now,
-                sys.argv[1],
-                sys.argv[2],
-                sys.argv[3],
-                sys.argv[4] if len(sys.argv) > 4 else '',
-                sys.argv[5] if len(sys.argv) > 5 else ''
+                args[1],
+                args[2],
+                args[3],
+                args[4] if len(args) > 4 else '',
+                args[5] if len(args) > 5 else ''
             )
             debug_enabled = (len(args) > 4 and args[4] == 'debug')
         else:
@@ -78,15 +68,14 @@ def main(args: list[str]):
         if bad_arguments:
             debug("# Exiting: Bad arguments. Inputted: %s" % args)
             sys.exit(2)
-
+        
         # Core function
         process_args(args)
 
     except Exception as e:
         debug(str(e))
-        raise
-
-
+        raise 
+    
 def process_args(args: list[str]) -> None:
     """ 
         This is the core function, creates a message with all valid fields 
@@ -96,30 +85,19 @@ def process_args(args: list[str]) -> None:
         ----------
         args : list[str]
             The argument list from main call
-
-        Raises
-        ------
-        FileNotFoundError
-            If no alert file or optional file are presents.
-        JSONDecodeError
-            If no valid JSON file are used
     """
     debug("# Starting")
-
+    
     # Read args
     alert_file_location:str     = args[ALERT_INDEX]
-    webhook:str                 = args[WEBHOOK_INDEX]
+    apikey:str                  = args[APIKEY_INDEX]
     options_file_location:str   = ''
-    json_options:str            = ''
     
     # Look for options file location
     for idx in range(4,len(args)):
         if(args[idx][-7:] == "options"):
             options_file_location = args[idx]
             break
-
-    debug("# Webhook")
-    debug(webhook)
 
     debug("# Options file location")
     debug(options_file_location)
@@ -140,18 +118,16 @@ def process_args(args: list[str]) -> None:
     debug(json_alert)
 
     debug("# Generating message")
-    msg: str = generate_msg(json_alert,json_options)
-
-    # Check if alert is skipped
-    if isinstance(msg, str):
-        if not msg:
-            return
-
+    msg: any = generate_msg(json_alert, json_options,apikey)
+    
+    if not len(msg):
+        debug("# ERR - Empty message")
+        raise Exception
     debug(msg)
 
     debug("# Sending message")
-    send_msg(msg, webhook)
-    
+    send_msg(msg)
+
 def debug(msg: str) -> None:
     """ 
         Log the message in the log file with the timestamp, if debug flag
@@ -172,56 +148,56 @@ def debug(msg: str) -> None:
         print(msg)
 
 
-# Skips container kills to stop self-recursion
-def filter_msg(alert) -> bool:
-    # SKIP_RULE_IDS need to be filtered because Shuffle starts Docker containers, therefore those alerts are triggered
-
-    return not alert["rule"]["id"] in SKIP_RULE_IDS
-
-
-def generate_msg(alert: any, options: any) -> str:
+def generate_msg(alert: any, options: any,apikey:str) -> str:
     """ 
         Generate the JSON object with the message to be send
-        
+
         Parameters
         ----------
         alert : any
             JSON alert object.
         options: any
             JSON options object.
-        
+
         Returns
         -------
-        
         msg: str
             The JSON message to send
     """
-    if not filter_msg(alert):
-        print("Skipping rule %s" % alert["rule"]["id"])
-        return ""
+    managed_security_url    = 'https://wazuh.com'
+    level                   = alert['rule']['level']
 
-    level = alert['rule']['level']
-
-    if (level <= 4):
-        severity = 1
-    elif (level >= 5 and level <= 7):
-        severity = 2
-    else:
-        severity = 3
-
-    msg = {'severity': severity, 'pretext': "WAZUH Alert",
-           'title': alert['rule']['description'] if 'description' in alert['rule'] else "N/A",
-           'text': alert.get('full_log'),
-           'rule_id': alert["rule"]["id"],
-           'timestamp': alert["timestamp"],
-           'id': alert['id'], "all_fields": alert}
+    severity = 'info'
+    if level >= 7:
+        severity = 'warning'
+    elif level >= 10:
+        severity = 'error'
+    elif level >= 13:
+        severity = 'critical'
+    
+    groups = ', '.join(alert['rule']['groups'])
+        
+    msg = {
+        'routing_key':  apikey,
+        'event_action': 'trigger',
+        'payload': {
+            "summary": alert['rule']['description'] if 'description' in alert['rule'] else "N/A",
+            "timestamp": alert['timestamp'],
+            "source": alert['agent']['location'],
+            "severity": severity,
+            "group": groups,
+            "custom_details": alert
+        },
+        "client": "Wazuh Monitoring Service",
+        "client_url": managed_security_url
+    }
 
     if(options):
         msg.update(options)
-            
+        
     return json.dumps(msg)
 
-def send_msg(msg: str, url: str) -> None:
+def send_msg(msg: any) -> None:
     """ 
         Send the message to the API
 
@@ -230,11 +206,12 @@ def send_msg(msg: str, url: str) -> None:
         msg : str
             JSON message.
         url: str
-            URL of the integration.
+            URL of the API.
     """
     debug("# In send msg")
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-    res = requests.post(url, data=msg, headers=headers, verify=False)
+    url                = 'https://events.pagerduty.com/v2/enqueue'
+    res = requests.post(url, data=msg, headers=headers)
     debug("# After send msg: %s" % res)
     
 def get_json_alert(alert_file_location: str) -> any:
