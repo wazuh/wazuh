@@ -2,9 +2,9 @@
 
 #include <eMessages/router.pb.h>
 
-#include <cmds/apiclnt/client.hpp> // Remove
-#include "utils.hpp"
 #include "defaultSettings.hpp"
+#include "utils.hpp"
+#include <cmds/apiclnt/client.hpp> // Remove
 
 namespace
 {
@@ -13,7 +13,7 @@ struct Options
     std::string apiEndpoint;
     std::string name;
     std::string filterName;
-    int priority;
+    int priority {};
     std::string environment;
     std::string event;
 };
@@ -27,17 +27,17 @@ namespace eEngine = ::com::wazuh::api::engine;
 
 void runGetTable(std::shared_ptr<apiclnt::Client> client)
 {
-    using requestType = eRouter::TableGet_Request;
-    using responseType = eRouter::TableGet_Response;
+    using RequestType = eRouter::TableGet_Request;
+    using ResponseType = eRouter::TableGet_Response;
     const std::string command = "router.table/get";
 
     // Prepare the request
-    requestType eRequest;
+    RequestType eRequest;
 
     // Call the API
-    const auto request = utils::apiAdapter::toWazuhRequest<requestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
     const auto response = client->send(request);
-    const auto eResponse = utils::apiAdapter::fromWazuhResponse<responseType>(response);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
     // Print the table as JSON array of objects (Entry)
     const auto& table = eResponse.table();
@@ -52,18 +52,18 @@ void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr)
         runGetTable(client);
         return;
     }
-    using requestType = eRouter::RouteGet_Request;
-    using responseType = eRouter::RouteGet_Response;
+    using RequestType = eRouter::RouteGet_Request;
+    using ResponseType = eRouter::RouteGet_Response;
     const std::string command = "router.route/get";
 
     // Prepare the request
-    requestType eRequest;
+    RequestType eRequest;
     eRequest.set_name(nameStr);
 
     // Call the API
-    const auto request = utils::apiAdapter::toWazuhRequest<requestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
     const auto response = client->send(request);
-    const auto eResponse = utils::apiAdapter::fromWazuhResponse<responseType>(response);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
     // Print as JSON the entry
     const auto& route = eResponse.rute();
@@ -78,75 +78,73 @@ void runAdd(std::shared_ptr<apiclnt::Client> client,
             const std::string& filterName,
             const std::string& environment)
 {
-    using requestType = eRouter::RoutePost_Request;
-    using responseType = eEngine::GenericStatus_Response;
+    using RequestType = eRouter::RoutePost_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
     const std::string command = "router.route/post";
 
     // Prepare the request
-    requestType eRequest;
+    RequestType eRequest;
     eRequest.mutable_route()->set_name(nameStr);
     eRequest.mutable_route()->set_priority(priority);
     eRequest.mutable_route()->set_filter(filterName);
     eRequest.mutable_route()->set_policy(environment);
 
     // Call the API, any error will throw an cmd::exception
-    const auto request = utils::apiAdapter::toWazuhRequest<requestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
     const auto response = client->send(request);
-    utils::apiAdapter::fromWazuhResponse<responseType>(response); // Validate response
-
+    utils::apiAdapter::fromWazuhResponse<ResponseType>(response); // Validate response
 }
 
 void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr)
 {
-    using requestType = eRouter::RouteDelete_Request;
-    using responseType = eEngine::GenericStatus_Response;
+    using RequestType = eRouter::RouteDelete_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
     const std::string command = "router.route/delete";
 
     // Prepare the request
-    requestType eRequest;
+    RequestType eRequest;
     eRequest.set_name(nameStr);
 
     // Call the API, any error will throw an cmd::exception
-    const auto request = utils::apiAdapter::toWazuhRequest<requestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
     const auto response = client->send(request);
-    const auto eResponse = utils::apiAdapter::fromWazuhResponse<responseType>(response);
-
+    utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
 void runUpdate(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr, int priority)
 {
-    using requestType = eRouter::RoutePatch_Request;
-    using responseType = eEngine::GenericStatus_Response;
+    using RequestType = eRouter::RoutePatch_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
     const std::string command = "router.route/patch";
 
     // Prepare the request
-    requestType eRequest;
+    RequestType eRequest;
     eRequest.mutable_route()->set_name(nameStr);
     eRequest.mutable_route()->set_priority(priority);
 
     // Call the API, any error will throw an cmd::exception
-    const auto request = utils::apiAdapter::toWazuhRequest<requestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
     const auto response = client->send(request);
-    utils::apiAdapter::fromWazuhResponse<responseType>(response);
+    utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
 void runIngest(std::shared_ptr<apiclnt::Client> client, const std::string& event)
 {
-    using requestType = eRouter::QueuePost_Request;
-    using responseType = eEngine::GenericStatus_Response;
+    using RequestType = eRouter::QueuePost_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
     const std::string command = "router.queue/post";
 
     // Prepare the request
-    requestType eRequest;
+    RequestType eRequest;
     eRequest.set_ossec_event(event);
 
     // Call the API, any error will throw an cmd::exception
-    const auto request = utils::apiAdapter::toWazuhRequest<requestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
     const auto response = client->send(request);
-    utils::apiAdapter::fromWazuhResponse<responseType>(response);
+    utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
-void configure(CLI::App_p app)
+void configure(const CLI::App_p& app)
 {
     auto routerApp = app->add_subcommand("router", "Manage the event routing of the policies");
     routerApp->require_subcommand(1);
@@ -167,8 +165,8 @@ void configure(CLI::App_p app)
     getSubcommand->callback([options, client]() { runGet(client, options->name); });
 
     // Add
-    auto addSubcommand =
-        routerApp->add_subcommand("add", "Activate a new route, filter and environment asset must exist in the catalog");
+    auto addSubcommand = routerApp->add_subcommand(
+        "add", "Activate a new route, filter and environment asset must exist in the catalog");
     addSubcommand->add_option("name", options->name, "Name or identifier of the route.")->required();
     addSubcommand->add_option("filter", options->filterName, "Name of the filter to use.")->required();
     addSubcommand->add_option("priority", options->priority, "Priority of the route.")

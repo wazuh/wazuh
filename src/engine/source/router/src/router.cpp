@@ -68,8 +68,7 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
             const auto err = addRoute(name.value(), priority.value(), filter.value(), target.value());
             if (err.has_value())
             {
-                WAZUH_LOG_WARN("Router: couldn't add route " + name.value() + " to the router: {}",
-                               err.value().message);
+                WAZUH_LOG_WARN("Router: couldn't add route '{}' to the router: {}", name.value(), err.value().message);
             }
         }
     }
