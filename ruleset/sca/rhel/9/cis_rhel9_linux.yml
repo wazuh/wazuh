@@ -1983,9 +1983,9 @@ checks:
     condition: all
     rules:
       - "c:rpm -q nftables -> r:^nftables-"
-      - "c:nft list ruleset -> r:hook input"
-      - "c:nft list ruleset -> r:hook forward"
-      - "c:nft list ruleset -> r:hook output"
+      - "c:nft list ruleset -> r:filter hook input"
+      - "c:nft list ruleset -> r:filter hook forward"
+      - "c:nft list ruleset -> r:filter hook output"
 
   # 3.4.2.4 Ensure host based firewall loopback traffic is configured (Automated) - Not implemented
   # 3.4.2.5 Ensure firewalld drops unnecessary services and ports (Manual)
