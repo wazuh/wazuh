@@ -225,7 +225,7 @@ private:
     void initObservableGauge(const std::shared_ptr<MetricsContext> context);
 
 protected:
-    Metrics() = default;
+    Metrics();
     // LCOV_EXCL_START
     virtual ~Metrics() = default;
     // LCOV_EXCL_STOP
@@ -233,6 +233,7 @@ protected:
     Metrics& operator=(const Metrics&) = delete;
 
 private:
+    std::shared_ptr<DataHub> m_dataHub;
     std::string m_moduleName;
     std::vector<std::shared_ptr<MetricsContext>> m_upContext;
     std::vector<std::shared_ptr<ExporterHandler>> m_upExporter;
