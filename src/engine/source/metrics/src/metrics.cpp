@@ -45,7 +45,7 @@ std::unordered_map<std::string, ProcessorsTypes> const PROCESSOR_TYPES =
     {"batch", ProcessorsTypes::Batch}
 };
 
-Metrics::~Metrics()
+void Metrics::clean()
 {
     std::shared_ptr<opentelemetry::metrics::MeterProvider> noneMeter;
     std::shared_ptr<opentelemetry::trace::TracerProvider> noneTracer;
@@ -61,15 +61,10 @@ Metrics::~Metrics()
     }
 }
 
-std::shared_ptr<DataHub> Metrics::dataHub()
+std::shared_ptr<DataHub> Metrics::getDataHub()
 {
-    if ( !m_dataHub )
-    {
-        m_dataHub = std::make_shared<DataHub>();
-    }
-    return m_dataHub;
+    return DataHub::get();
 }
-
 
 nlohmann::json Metrics::loadJson(const std::filesystem::path& file)
 {
@@ -237,7 +232,7 @@ void Metrics::initTracer(const std::shared_ptr<MetricsContext> context)
     m_spProvider = provider->GetTracer(m_moduleName);
 }
 
-void Metrics::setScopeSpam(const std::string& name) const
+void Metrics::setScopeSpan(const std::string& name) const
 {
     opentelemetry::trace::Scope(m_spProvider->StartSpan(name));
 }
