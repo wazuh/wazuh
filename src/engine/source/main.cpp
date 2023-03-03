@@ -9,6 +9,7 @@
 #include <cmds/router.hpp>
 #include <cmds/start.hpp>
 #include <cmds/test.hpp>
+#include <cmds/metrics.hpp>
 
 namespace
 {
@@ -41,6 +42,7 @@ int main(int argc, char* argv[])
     cmd::catalog::configure(app);
     cmd::config::configure(app);
     cmd::router::configure(app);
+    cmd::metrics::configure(app);
 
     try
     {
