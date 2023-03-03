@@ -5,7 +5,7 @@
 #include "opentelemetry/exporters/ostream/metric_exporter.h"
 #include <fstream>
 #include "dataHubExporter.hpp"
-#include "metrics.hpp"
+#include "dataHub.hpp"
 
 std::shared_ptr<MetricsContext> ExporterHandler::handleRequest(std::shared_ptr<MetricsContext> data)
 {
@@ -56,7 +56,7 @@ void ExporterHandler::create(std::shared_ptr<MetricsContext> data)
         {
             if (data->dataHubEnable)
             {
-                auto dataHub = Metrics::dataHub();
+                auto dataHub = DataHub::get();
                 data->metricExporter = std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter>(new opentelemetry::exporter::metrics::DataHubExporter(dataHub));
             }
             else if (!data->outputFile.empty())

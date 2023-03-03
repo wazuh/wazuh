@@ -23,11 +23,18 @@ void DataHub::setResource(const std::string& scope, json::Json object)
     m_resources[scope] = object;
 }
 
-void DataHub::dump() {
+void DataHub::dump()
+{
     const std::lock_guard<std::mutex> lock(m_mutex);
 
     for (auto &r : m_resources) {
         auto &s = r.second;
         std::cout << s.prettyStr() << std::endl;
     }
+}
+
+std::shared_ptr<DataHub> DataHub::get()
+{
+    static std::shared_ptr<DataHub> instance = std::make_shared<DataHub>();
+    return instance;
 }

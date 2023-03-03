@@ -18,7 +18,31 @@
 class Metrics final
 {
 public:
-    ~Metrics();
+    /**
+     * @brief Returns a reference to the created object.
+     *
+     * @return Metrics& Reference to the created object.
+     */
+    // LCOV_EXCL_START
+    static Metrics& instance()
+    {
+        static Metrics s_instance;
+        return s_instance;
+    }
+    // LCOV_EXCL_STOP
+
+    /**
+     * @brief Clean MeterProvider and MeterTrace.
+     */
+    void clean();
+
+    /**
+     * @brief Get dataHub.
+     * @return std::shared_ptr<DataHub> the same handler that has been set as
+     * next
+     */
+    std::shared_ptr<DataHub> getDataHub();
+    
     /**
      * @brief Set the next handle on the chain
      *
@@ -35,7 +59,7 @@ public:
      * @return std::shared_ptr<Handler> the same handler that has been set as
      * next
      */
-    void setScopeSpam(const std::string& spamName) const;
+    void setScopeSpan(const std::string& spanName) const;
 
     /**
      * @brief Set the next handle on the chain
@@ -108,8 +132,6 @@ public:
      * next
      */
     void removeObservableGauge(std::string observableGaugeName, opentelemetry::v1::metrics::ObservableCallbackPtr callback) const;
-
-    static std::shared_ptr<DataHub> dataHub();
 
 private:
     /**
@@ -202,6 +224,14 @@ private:
      */
     void initObservableGauge(const std::shared_ptr<MetricsContext> context);
 
+protected:
+    Metrics() = default;
+    // LCOV_EXCL_START
+    virtual ~Metrics() = default;
+    // LCOV_EXCL_STOP
+    Metrics(const Metrics&) = delete;
+    Metrics& operator=(const Metrics&) = delete;
+
 private:
     std::string m_moduleName;
     std::vector<std::shared_ptr<MetricsContext>> m_upContext;
@@ -221,8 +251,6 @@ private:
     std::unordered_map<std::string, opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObservableInstrument>> m_int64ObservableGauge;
     opentelemetry::context::Context m_context;
     std::unordered_map<std::string, bool> controller;
-
-    inline static std::shared_ptr<DataHub> m_dataHub{nullptr};
 };
 
 #endif // _METRICS_H
