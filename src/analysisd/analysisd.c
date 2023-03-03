@@ -577,7 +577,7 @@ int main_analysisd(int argc, char **argv)
                             merror("%s", msg);
                         }
                         os_free(msg);
-                        os_analysisd_free_log_msg(&data_msg);
+                        os_analysisd_free_log_msg(data_msg);
                         OSList_DeleteCurrentlyNode(list_msg);
                         node_log_msg = OSList_GetFirstNode(list_msg);
                     }
@@ -603,7 +603,7 @@ int main_analysisd(int argc, char **argv)
                     error_exit = 1;
                 }
                 os_free(msg);
-                os_analysisd_free_log_msg(&data_msg);
+                os_analysisd_free_log_msg(data_msg);
                 OSList_DeleteCurrentlyNode(list_msg);
                 node_log_msg = OSList_GetFirstNode(list_msg);
             }
@@ -645,7 +645,7 @@ int main_analysisd(int argc, char **argv)
                             merror("%s", msg);
                         }
                         os_free(msg);
-                        os_analysisd_free_log_msg(&data_msg);
+                        os_analysisd_free_log_msg(data_msg);
                         OSList_DeleteCurrentlyNode(list_msg);
                         node_log_msg = OSList_GetFirstNode(list_msg);
                     }
@@ -704,7 +704,7 @@ int main_analysisd(int argc, char **argv)
                             merror("%s", msg);
                         }
                         os_free(msg);
-                        os_analysisd_free_log_msg(&data_msg);
+                        os_analysisd_free_log_msg(data_msg);
                         OSList_DeleteCurrentlyNode(list_msg);
                         node_log_msg = OSList_GetFirstNode(list_msg);
                     }
