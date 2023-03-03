@@ -61,7 +61,6 @@ TEST_F(MetricsOtlMeterTest, sucessTracerMeter)
         {
             Metrics::instance().addUpDownCounterValue("UpDownCountExample", -2L); // here the counter is at 7 and when restoring 2 there should be a 5.
         }
-        Metrics::instance().getDataHub()->dump();
     }
     Metrics::instance().setScopeSpan("TracerExampleTwo");
 }
