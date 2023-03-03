@@ -5,14 +5,13 @@
 #include "defaultSettings.hpp"
 #include "utils.hpp"
 #include <cmds/apiclnt/client.hpp>
-namespace cmd::kvdb
-{
+
 namespace
 {
 struct Options
 {
     std::string apiEndpoint;
-    bool loaded;
+    bool loaded {false};
     std::string kvdbName;
     std::string kvdbInputFilePath;
     std::string kvdbKey;
@@ -21,175 +20,180 @@ struct Options
 
 } // namespace
 
-namespace details
+namespace cmd::kvdb
 {
-std::string commandName(const std::string& command)
-{
-    return command + "_kvdb";
-}
 
-json::Json getParameters(const std::string& action, const std::string& name, bool loaded)
-{
-    json::Json data {};
-    data.setObject();
-    data.setString(action, "/action");
-    data.setString(name, "/name");
-    data.setBool(loaded, "/mustBeLoaded");
-    return data;
-}
+namespace eKVDB = ::com::wazuh::api::engine::kvdb;
+namespace eEngine = ::com::wazuh::api::engine;
 
-json::Json getParameters(const std::string& action, const std::string& name, const std::string& path)
+void runList(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName, bool loaded)
 {
-    json::Json data {};
-    data.setObject();
-    data.setString(action, "/action");
-    data.setString(name, "/name");
-    data.setString(path, "/path");
-    return data;
-}
+    using RequestType = eKVDB::managerGet_Request;
+    using ResponseType = eKVDB::managerGet_Response;
+    const std::string command = "kvdb.manager/get";
 
-json::Json getParameters(const std::string& action, const std::string& name)
-{
-    json::Json data {};
-    data.setObject();
-    data.setString(action, "/action");
-    data.setString(name, "/name");
-    return data;
-}
-
-json::Json getParametersKey(const std::string& action, const std::string& name, const std::string& key)
-{
-    json::Json data {};
-    data.setObject();
-    data.setString(action, "/action");
-    data.setString(name, "/name");
-    data.setString(key, "/key");
-    return data;
-}
-
-json::Json getParametersKeyValue(const std::string& action,
-                                 const std::string& name,
-                                 const std::string& key,
-                                 const std::string& value)
-{
-    json::Json data {};
-    data.setObject();
-    data.setString(action, "/action");
-    data.setString(name, "/name");
-    data.setString(key, "/key");
-
-    // check if value is a json
-    try
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_must_be_loaded(loaded);
+    if (!kvdbName.empty())
     {
-        json::Json jvalue {value.c_str()};
-        data.set("/value", jvalue);
-    }
-    catch (const std::exception& e)
-    {
-        // If not, set it as a string
-        data.setString(value, "/value");
+        eRequest.set_filter_by_name(kvdbName);
     }
 
-    return data;
-}
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
-void processResponse(const base::utils::wazuhProtocol::WazuhResponse& response)
-{
-    if (response.data().size() > 0)
+    // Print dbs one name by line
+    for (const auto& dbName : eResponse.dbs())
     {
-        std::cout << response.data().str() << std::endl;
-    }
-    else
-    {
-        std::cout << response.message().value_or("") << std::endl;
+        std::cout << dbName << std::endl;
     }
 }
 
-void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, const std::string& apiEndpoint)
+void runCreate(std::shared_ptr<apiclnt::Client> client,
+               const std::string& kvdbName,
+               const std::string& kvdbInputFilePath)
 {
-    try
+    using RequestType = eKVDB::managerPost_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
+    const std::string command = "kvdb.manager/post";
+
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_name(kvdbName);
+    if (!kvdbInputFilePath.empty())
     {
-        apiclnt::Client client {apiEndpoint};
-        const auto response = client.send(request);
-        details::processResponse(response);
+        eRequest.set_path(kvdbInputFilePath);
     }
-    catch (const std::exception& e)
-    {
-        std::cerr << e.what() << std::endl;
-        return;
-    }
+
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
-} // namespace details
-
-void runList(const std::string& apiEndpoint, const std::string& kvdbName, bool loaded)
+void runDump(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName)
 {
-    auto req = base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_LIST_SUBCOMMAND),
-                                         details::ORIGIN_NAME,
-                                         details::getParameters(details::API_KVDB_LIST_SUBCOMMAND, kvdbName, loaded));
+    using RequestType = eKVDB::managerDump_Request;
+    using ResponseType = eKVDB::managerDump_Response;
+    const std::string command = "kvdb.manager/dump";
 
-    details::singleRequest(req, apiEndpoint);
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_name(kvdbName);
+
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    // Print the dump
+    const auto& dump = eResponse.entries();
+    const auto json = eMessage::eRepeatedFieldToJson<eKVDB::Entry>(dump);
+    std::cout << std::get<std::string>(json) << std::endl;
+
+
 }
 
-void runCreate(const std::string& apiEndpoint, const std::string& kvdbName, const std::string& kvdbInputFilePath)
+void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName)
 {
-    auto req = base::utils::wazuhProtocol::WazuhRequest::create(
-        details::commandName(details::API_KVDB_CREATE_SUBCOMMAND),
-        details::ORIGIN_NAME,
-        details::getParameters(details::API_KVDB_CREATE_SUBCOMMAND, kvdbName, kvdbInputFilePath));
+    using RequestType = eKVDB::managerDump_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
+    const std::string command = "kvdb.manager/delete";
 
-    details::singleRequest(req, apiEndpoint);
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_name(kvdbName);
+
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
-void runDump(const std::string& apiEndpoint, const std::string& kvdbName)
+void runGetKV(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName, const std::string& kvdbKey)
 {
-    auto req = base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_DUMP_SUBCOMMAND),
-                                         details::ORIGIN_NAME,
-                                         details::getParameters(details::API_KVDB_DUMP_SUBCOMMAND, kvdbName));
+    using RequestType = eKVDB::dbGet_Request;
+    using ResponseType = eKVDB::dbGet_Response;
+    const std::string command = "kvdb.db/get";
 
-    details::singleRequest(req, apiEndpoint);
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_name(kvdbName);
+    eRequest.set_key(kvdbKey);
+
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    // Print value as json
+    const auto& value = eResponse.value();
+    const auto json = eMessage::eMessageToJson<google::protobuf::Value>(value);
+    std::cout << std::get<std::string>(json) << std::endl;
+
 }
 
-void runDelete(const std::string& apiEndpoint, const std::string& kvdbName)
-{
-    auto req = base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_DELETE_SUBCOMMAND),
-                                         details::ORIGIN_NAME,
-                                         details::getParameters(details::API_KVDB_DELETE_SUBCOMMAND, kvdbName));
-
-    details::singleRequest(req, apiEndpoint);
-}
-
-void runGetKV(const std::string& apiEndpoint, const std::string& kvdbName, const std::string& kvdbKey)
-{
-    auto req =
-        base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_GET_SUBCOMMAND),
-                                  details::ORIGIN_NAME,
-                                  details::getParametersKey(details::API_KVDB_GET_SUBCOMMAND, kvdbName, kvdbKey));
-
-    details::singleRequest(req, apiEndpoint);
-}
-
-void runInsertKV(const std::string& apiEndpoint,
+void runInsertKV(std::shared_ptr<apiclnt::Client> client,
                  const std::string& kvdbName,
                  const std::string& kvdbKey,
                  const std::string& kvdbValue)
 {
-    auto req = base::utils::wazuhProtocol::WazuhRequest::create(
-        details::commandName(details::API_KVDB_INSERT_SUBCOMMAND),
-        details::ORIGIN_NAME,
-        details::getParametersKeyValue(details::API_KVDB_INSERT_SUBCOMMAND, kvdbName, kvdbKey, kvdbValue));
+    using RequestType = eKVDB::dbPut_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
+    const std::string command = "kvdb.db/put";
 
-    details::singleRequest(req, apiEndpoint);
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_name(kvdbName);
+    eRequest.mutable_entry()->set_key(kvdbKey);
+
+    // Convert the value to JSON
+    json::Json jvalue {};
+    try
+    {
+        jvalue = json::Json {kvdbValue.c_str()};
+    }
+    catch (const std::exception& e)
+    {
+        // If not, set it as a string
+        jvalue.setString(kvdbValue);
+    }
+
+    // Convert the value to protobuf value
+    const auto protoVal = eMessage::eMessageFromJson<google::protobuf::Value>(jvalue.str());
+    if (std::holds_alternative<base::Error>(protoVal)) // Should not happen but just in case
+    {
+        const auto msj = std::get<base::Error>(protoVal).message + ". For value " + jvalue.str();
+        throw ::cmd::ClientException(msj, ClientException::Type::PROTOBUFF_SERIALIZE_ERROR);
+    }
+    const auto& value = std::get<google::protobuf::Value>(protoVal);
+    *eRequest.mutable_entry()->mutable_value() = value;
+
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
 }
 
-void runRemoveKV(const std::string& apiEndpoint, const std::string& kvdbName, const std::string& kvdbKey)
+void runRemoveKV(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName, const std::string& kvdbKey)
 {
-    auto req =
-        base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_REMOVE_SUBCOMMAND),
-                                  details::ORIGIN_NAME,
-                                  details::getParametersKey(details::API_KVDB_REMOVE_SUBCOMMAND, kvdbName, kvdbKey));
+    using RequestType = eKVDB::dbDelete_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
+    const std::string command = "kvdb.db/delete";
 
-    details::singleRequest(req, apiEndpoint);
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_name(kvdbName);
+    eRequest.set_key(kvdbKey);
+
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
 void configure(CLI::App_p app)
@@ -200,6 +204,7 @@ void configure(CLI::App_p app)
 
     // Endpoint
     kvdbApp->add_option("-a, --api_socket", options->apiEndpoint, "engine api address")->default_val(ENGINE_API_SOCK);
+    const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
 
     // KVDB list subcommand
     auto list_subcommand = kvdbApp->add_subcommand(details::API_KVDB_LIST_SUBCOMMAND, "List all KVDB availables.");
@@ -207,7 +212,7 @@ void configure(CLI::App_p app)
     list_subcommand
         ->add_option("-n, --name", options->kvdbName, "KVDB name to match the start of the name of the available ones.")
         ->default_val("");
-    list_subcommand->callback([options]() { runList(options->apiEndpoint, options->kvdbName, options->loaded); });
+    list_subcommand->callback([options, client]() { runList(client, options->kvdbName, options->loaded); });
 
     // KVDB create subcommand
     auto create_subcommand =
@@ -223,22 +228,22 @@ void configure(CLI::App_p app)
                      "The file must be a JSON file with the following format: {\"key\": VALUE} "
                      "where VALUE can be any JSON type.")
         ->check(CLI::ExistingFile);
-    create_subcommand->callback([options]()
-                                { runCreate(options->apiEndpoint, options->kvdbName, options->kvdbInputFilePath); });
+    create_subcommand->callback([options, client]()
+                                { runCreate(client, options->kvdbName, options->kvdbInputFilePath); });
 
     // KVDB dump subcommand
     auto dump_subcommand = kvdbApp->add_subcommand(details::API_KVDB_DUMP_SUBCOMMAND,
                                                    "Dumps the full content of a DB named db-name to a JSON.");
     // dump kvdb name
     dump_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be dumped.")->required();
-    dump_subcommand->callback([options]() { runDump(options->apiEndpoint, options->kvdbName); });
+    dump_subcommand->callback([options, client]() { runDump(client, options->kvdbName); });
 
     // KVDB delete subcommand
     auto delete_subcommand =
         kvdbApp->add_subcommand(details::API_KVDB_DELETE_SUBCOMMAND, "Deletes a KeyValueDB named db-name.");
     // delete KVDB name
     delete_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be deleted.")->required();
-    delete_subcommand->callback([options]() { runDelete(options->apiEndpoint, options->kvdbName); });
+    delete_subcommand->callback([options, client]() { runDelete(client, options->kvdbName); });
 
     // KVDB get subcommand
     auto get_subcommand = kvdbApp->add_subcommand(details::API_KVDB_GET_SUBCOMMAND,
@@ -247,7 +252,7 @@ void configure(CLI::App_p app)
     get_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
     // get key
     get_subcommand->add_option("-k, --key", options->kvdbKey, "key name to be obtained.")->required();
-    get_subcommand->callback([options]() { runGetKV(options->apiEndpoint, options->kvdbName, options->kvdbKey); });
+    get_subcommand->callback([options, client]() { runGetKV(client, options->kvdbName, options->kvdbKey); });
 
     // KVDB insert subcommand
     auto insert_subcommand =
@@ -259,8 +264,8 @@ void configure(CLI::App_p app)
     // insert value
     insert_subcommand->add_option("-v, --value", options->kvdbValue, "value to be inserted on key.")
         ->default_val("null");
-    insert_subcommand->callback(
-        [options]() { runInsertKV(options->apiEndpoint, options->kvdbName, options->kvdbKey, options->kvdbValue); });
+    insert_subcommand->callback([options, client]()
+                                { runInsertKV(client, options->kvdbName, options->kvdbKey, options->kvdbValue); });
 
     // KVDB remove subcommand
     auto remove_subcommand = kvdbApp->add_subcommand("remove", "Removes key from db-name.");
@@ -268,7 +273,7 @@ void configure(CLI::App_p app)
     remove_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
     // remove key
     auto key = remove_subcommand->add_option("-k, --key", options->kvdbKey, "key name to be removed.")->required();
-    remove_subcommand->callback([options]() { runRemoveKV(options->apiEndpoint, options->kvdbName, options->kvdbKey); });
+    remove_subcommand->callback([options, client]() { runRemoveKV(client, options->kvdbName, options->kvdbKey); });
 }
 
 } // namespace cmd::kvdb
