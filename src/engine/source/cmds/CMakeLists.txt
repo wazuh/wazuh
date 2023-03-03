@@ -6,6 +6,7 @@ add_library(cmds STATIC
     src/catalog.cpp
     src/config.cpp
     src/router.cpp
+    src/metrics.cpp
 )
 
 target_link_libraries(cmds
@@ -21,6 +22,7 @@ target_link_libraries(cmds
     conf::cliconf
     conf::iconf
     eMessages
+    metrics
 )
 
 target_include_directories(cmds
