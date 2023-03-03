@@ -2120,7 +2120,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     char * end;
                     long value = strtol(children[j]->content, &end, 10);
 
-                    if (*end || value < 1 || value > 1024 * 1024) {
+                    if (*end || value < 10 || value > 1024 * 1024) {
                         merror(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
                         return(OS_INVALID);

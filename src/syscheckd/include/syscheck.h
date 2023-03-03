@@ -41,6 +41,7 @@
 /* Global config */
 extern syscheck_config syscheck;
 extern int sys_debug_level;
+extern int audit_queue_full_reported;
 
 typedef enum fim_event_type {
     FIM_ADD,

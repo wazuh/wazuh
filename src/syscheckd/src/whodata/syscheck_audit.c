@@ -565,7 +565,10 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
                 // Flush cache
                 os_strdup(cache, cache_dup);
                 if (queue_push_ex(audit_queue, cache_dup)) {
-                    mwarn(FIM_FULL_AUDIT_QUEUE);
+                    if (!audit_queue_full_reported) {
+                        mwarn(FIM_FULL_AUDIT_QUEUE);
+                        audit_queue_full_reported = 1;
+                    }
                     os_free(cache_dup);
                 }
                 cache_i = 0;
@@ -632,7 +635,10 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
                     if (!event_too_long_id) {
                         os_strdup(cache, cache_dup);
                         if (queue_push_ex(audit_queue, cache_dup)) {
-                            mwarn(FIM_FULL_AUDIT_QUEUE);
+                            if (!audit_queue_full_reported) {
+                                mwarn(FIM_FULL_AUDIT_QUEUE);
+                                audit_queue_full_reported = 1;
+                            }
                             os_free(cache_dup);
                         }
                     }
@@ -665,7 +671,10 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
         if (eoe_found && !event_too_long_id){
             os_strdup(cache, cache_dup);
             if (queue_push_ex(audit_queue, cache_dup)) {
-                mwarn(FIM_FULL_AUDIT_QUEUE);
+                if (!audit_queue_full_reported) {
+                    mwarn(FIM_FULL_AUDIT_QUEUE);
+                    audit_queue_full_reported = 1;
+                }
                 os_free(cache_dup);
             }
             cache_i = 0;

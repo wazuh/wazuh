@@ -616,6 +616,8 @@ time_t fim_scan() {
     if (isDebug()) {
         fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
+    audit_queue_full_reported = 0;
+
     return end_of_scan;
 }
 

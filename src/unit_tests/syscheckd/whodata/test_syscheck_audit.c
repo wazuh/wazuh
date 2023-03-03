@@ -1033,7 +1033,6 @@ void test_audit_read_events_select_success_recv_success(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mwarn, formatted_msg, FIM_FULL_AUDIT_QUEUE);
-    expect_string(__wrap__mwarn, formatted_msg, FIM_FULL_AUDIT_QUEUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
     will_return(__wrap_atomic_int_get, 0);
