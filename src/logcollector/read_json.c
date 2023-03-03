@@ -101,26 +101,31 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
         const char * jsonErrPtr;
         cJSON * obj = cJSON_ParseWithOpts(str, &jsonErrPtr, 0);
 
+        /* If the parsed event is not an object then it is embedded into the `LOGCOLLECTOR_JSON_EVENT_FIELD` one */
         if (!cJSON_IsObject(obj)) {
-            mdebug2("JSON input is not a json object.");
+            mdebug2("Input is not a JSON object.");
             if (NULL != obj) {
+                /* `obj` is deleted as its current format is not the expected one */
                 cJSON_Delete(obj);
             }
             obj = cJSON_CreateObject();
             W_JSON_AddField(obj, LOGCOLLECTOR_JSON_EVENT_FIELD, str);
         }
 
+        /* At this point `obj` shouldn't be NULL */
         if (NULL == obj) {
             mdebug1("Line '%.*s'%s read from '%s' could not be converted to a JSON object.",
                                             sample_log_length, str, rbytes > sample_log_length ? "..." : "", lf->file);
             continue;
         }
 
+        /* Labels defined in the configuration are added to the json object */
         for (int i = 0; lf->labels && lf->labels[i].key; i++) {
             W_JSON_AddField(obj, lf->labels[i].key, lf->labels[i].value);
         }
 
         char * jsonParsed = cJSON_PrintUnformatted(obj);
+        /* `obj` is not used anymore */
         cJSON_Delete(obj);
 
         mdebug2("Reading json message: '%.*s'%s",
