@@ -144,7 +144,7 @@ void runIngest(std::shared_ptr<apiclnt::Client> client, const std::string& event
     utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
-void configure(const CLI::App_p& app)
+void configure(CLI::App_p app)
 {
     auto routerApp = app->add_subcommand("router", "Manage the event routing of the policies");
     routerApp->require_subcommand(1);
