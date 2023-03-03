@@ -1,27 +1,17 @@
 #include <cmds/kvdb.hpp>
 
-#include <fstream>
-#include <iostream>
+#include <eMessages/kvdb.pb.h>
 
-#include <fmt/format.h>
-
-#include <base/utils/wazuhProtocol/wazuhRequest.hpp>
-#include <base/utils/wazuhProtocol/wazuhResponse.hpp>
-#include <json/json.hpp>
-#include <kvdb/kvdbManager.hpp>
-#include <logging/logging.hpp>
-
-#include <cmds/apiclnt/client.hpp>
-#include "base/utils/getExceptionStack.hpp"
 #include "defaultSettings.hpp"
-
+#include "utils.hpp"
+#include <cmds/apiclnt/client.hpp>
 namespace cmd::kvdb
 {
 namespace
 {
 struct Options
 {
-    std::string socketPath;
+    std::string apiEndpoint;
     bool loaded;
     std::string kvdbName;
     std::string kvdbInputFilePath;
@@ -115,11 +105,11 @@ void processResponse(const base::utils::wazuhProtocol::WazuhResponse& response)
     }
 }
 
-void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, const std::string& socketPath)
+void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, const std::string& apiEndpoint)
 {
     try
     {
-        apiclnt::Client client {socketPath};
+        apiclnt::Client client {apiEndpoint};
         const auto response = client.send(request);
         details::processResponse(response);
     }
@@ -132,54 +122,54 @@ void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, cons
 
 } // namespace details
 
-void runList(const std::string& socketPath, const std::string& kvdbName, bool loaded)
+void runList(const std::string& apiEndpoint, const std::string& kvdbName, bool loaded)
 {
     auto req = base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_LIST_SUBCOMMAND),
                                          details::ORIGIN_NAME,
                                          details::getParameters(details::API_KVDB_LIST_SUBCOMMAND, kvdbName, loaded));
 
-    details::singleRequest(req, socketPath);
+    details::singleRequest(req, apiEndpoint);
 }
 
-void runCreate(const std::string& socketPath, const std::string& kvdbName, const std::string& kvdbInputFilePath)
+void runCreate(const std::string& apiEndpoint, const std::string& kvdbName, const std::string& kvdbInputFilePath)
 {
     auto req = base::utils::wazuhProtocol::WazuhRequest::create(
         details::commandName(details::API_KVDB_CREATE_SUBCOMMAND),
         details::ORIGIN_NAME,
         details::getParameters(details::API_KVDB_CREATE_SUBCOMMAND, kvdbName, kvdbInputFilePath));
 
-    details::singleRequest(req, socketPath);
+    details::singleRequest(req, apiEndpoint);
 }
 
-void runDump(const std::string& socketPath, const std::string& kvdbName)
+void runDump(const std::string& apiEndpoint, const std::string& kvdbName)
 {
     auto req = base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_DUMP_SUBCOMMAND),
                                          details::ORIGIN_NAME,
                                          details::getParameters(details::API_KVDB_DUMP_SUBCOMMAND, kvdbName));
 
-    details::singleRequest(req, socketPath);
+    details::singleRequest(req, apiEndpoint);
 }
 
-void runDelete(const std::string& socketPath, const std::string& kvdbName)
+void runDelete(const std::string& apiEndpoint, const std::string& kvdbName)
 {
     auto req = base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_DELETE_SUBCOMMAND),
                                          details::ORIGIN_NAME,
                                          details::getParameters(details::API_KVDB_DELETE_SUBCOMMAND, kvdbName));
 
-    details::singleRequest(req, socketPath);
+    details::singleRequest(req, apiEndpoint);
 }
 
-void runGetKV(const std::string& socketPath, const std::string& kvdbName, const std::string& kvdbKey)
+void runGetKV(const std::string& apiEndpoint, const std::string& kvdbName, const std::string& kvdbKey)
 {
     auto req =
         base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_GET_SUBCOMMAND),
                                   details::ORIGIN_NAME,
                                   details::getParametersKey(details::API_KVDB_GET_SUBCOMMAND, kvdbName, kvdbKey));
 
-    details::singleRequest(req, socketPath);
+    details::singleRequest(req, apiEndpoint);
 }
 
-void runInsertKV(const std::string& socketPath,
+void runInsertKV(const std::string& apiEndpoint,
                  const std::string& kvdbName,
                  const std::string& kvdbKey,
                  const std::string& kvdbValue)
@@ -189,17 +179,17 @@ void runInsertKV(const std::string& socketPath,
         details::ORIGIN_NAME,
         details::getParametersKeyValue(details::API_KVDB_INSERT_SUBCOMMAND, kvdbName, kvdbKey, kvdbValue));
 
-    details::singleRequest(req, socketPath);
+    details::singleRequest(req, apiEndpoint);
 }
 
-void runRemoveKV(const std::string& socketPath, const std::string& kvdbName, const std::string& kvdbKey)
+void runRemoveKV(const std::string& apiEndpoint, const std::string& kvdbName, const std::string& kvdbKey)
 {
     auto req =
         base::utils::wazuhProtocol::WazuhRequest::create(details::commandName(details::API_KVDB_REMOVE_SUBCOMMAND),
                                   details::ORIGIN_NAME,
                                   details::getParametersKey(details::API_KVDB_REMOVE_SUBCOMMAND, kvdbName, kvdbKey));
 
-    details::singleRequest(req, socketPath);
+    details::singleRequest(req, apiEndpoint);
 }
 
 void configure(CLI::App_p app)
@@ -209,7 +199,7 @@ void configure(CLI::App_p app)
     auto options = std::make_shared<Options>();
 
     // Endpoint
-    kvdbApp->add_option("-a, --api_socket", options->socketPath, "engine api address")->default_val(ENGINE_API_SOCK);
+    kvdbApp->add_option("-a, --api_socket", options->apiEndpoint, "engine api address")->default_val(ENGINE_API_SOCK);
 
     // KVDB list subcommand
     auto list_subcommand = kvdbApp->add_subcommand(details::API_KVDB_LIST_SUBCOMMAND, "List all KVDB availables.");
@@ -217,7 +207,7 @@ void configure(CLI::App_p app)
     list_subcommand
         ->add_option("-n, --name", options->kvdbName, "KVDB name to match the start of the name of the available ones.")
         ->default_val("");
-    list_subcommand->callback([options]() { runList(options->socketPath, options->kvdbName, options->loaded); });
+    list_subcommand->callback([options]() { runList(options->apiEndpoint, options->kvdbName, options->loaded); });
 
     // KVDB create subcommand
     auto create_subcommand =
@@ -234,21 +224,21 @@ void configure(CLI::App_p app)
                      "where VALUE can be any JSON type.")
         ->check(CLI::ExistingFile);
     create_subcommand->callback([options]()
-                                { runCreate(options->socketPath, options->kvdbName, options->kvdbInputFilePath); });
+                                { runCreate(options->apiEndpoint, options->kvdbName, options->kvdbInputFilePath); });
 
     // KVDB dump subcommand
     auto dump_subcommand = kvdbApp->add_subcommand(details::API_KVDB_DUMP_SUBCOMMAND,
                                                    "Dumps the full content of a DB named db-name to a JSON.");
     // dump kvdb name
     dump_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be dumped.")->required();
-    dump_subcommand->callback([options]() { runDump(options->socketPath, options->kvdbName); });
+    dump_subcommand->callback([options]() { runDump(options->apiEndpoint, options->kvdbName); });
 
     // KVDB delete subcommand
     auto delete_subcommand =
         kvdbApp->add_subcommand(details::API_KVDB_DELETE_SUBCOMMAND, "Deletes a KeyValueDB named db-name.");
     // delete KVDB name
     delete_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be deleted.")->required();
-    delete_subcommand->callback([options]() { runDelete(options->socketPath, options->kvdbName); });
+    delete_subcommand->callback([options]() { runDelete(options->apiEndpoint, options->kvdbName); });
 
     // KVDB get subcommand
     auto get_subcommand = kvdbApp->add_subcommand(details::API_KVDB_GET_SUBCOMMAND,
@@ -257,7 +247,7 @@ void configure(CLI::App_p app)
     get_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
     // get key
     get_subcommand->add_option("-k, --key", options->kvdbKey, "key name to be obtained.")->required();
-    get_subcommand->callback([options]() { runGetKV(options->socketPath, options->kvdbName, options->kvdbKey); });
+    get_subcommand->callback([options]() { runGetKV(options->apiEndpoint, options->kvdbName, options->kvdbKey); });
 
     // KVDB insert subcommand
     auto insert_subcommand =
@@ -270,7 +260,7 @@ void configure(CLI::App_p app)
     insert_subcommand->add_option("-v, --value", options->kvdbValue, "value to be inserted on key.")
         ->default_val("null");
     insert_subcommand->callback(
-        [options]() { runInsertKV(options->socketPath, options->kvdbName, options->kvdbKey, options->kvdbValue); });
+        [options]() { runInsertKV(options->apiEndpoint, options->kvdbName, options->kvdbKey, options->kvdbValue); });
 
     // KVDB remove subcommand
     auto remove_subcommand = kvdbApp->add_subcommand("remove", "Removes key from db-name.");
@@ -278,7 +268,7 @@ void configure(CLI::App_p app)
     remove_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
     // remove key
     auto key = remove_subcommand->add_option("-k, --key", options->kvdbKey, "key name to be removed.")->required();
-    remove_subcommand->callback([options]() { runRemoveKV(options->socketPath, options->kvdbName, options->kvdbKey); });
+    remove_subcommand->callback([options]() { runRemoveKV(options->apiEndpoint, options->kvdbName, options->kvdbKey); });
 }
 
 } // namespace cmd::kvdb

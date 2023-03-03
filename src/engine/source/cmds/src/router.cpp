@@ -4,7 +4,7 @@
 
 #include "defaultSettings.hpp"
 #include "utils.hpp"
-#include <cmds/apiclnt/client.hpp> // Remove
+#include <cmds/apiclnt/client.hpp>
 
 namespace
 {
