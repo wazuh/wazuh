@@ -496,11 +496,11 @@ char *__wrap_Eventinfo_to_jsonstr(const Eventinfo *lf, bool force_full_log){
     return mock_type(char *);
 }
 
-void __wrap_os_analysisd_free_log_msg(os_analysisd_log_msg_t ** log_msg) {
-    os_free((*log_msg)->file);
-    os_free((*log_msg)->func);
-    os_free((*log_msg)->msg);
-    os_free(*log_msg);
+void __wrap_os_analysisd_free_log_msg(os_analysisd_log_msg_t * log_msg) {
+    os_free(log_msg->file);
+    os_free(log_msg->func);
+    os_free(log_msg->msg);
+    os_free(log_msg);
     return;
 }
 
