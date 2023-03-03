@@ -202,7 +202,8 @@ api::Handler dbGet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
         const auto protoVal = eMessage::eMessageFromJson<google::protobuf::Value>(std::get<std::string>(rawVal));
         if (std::holds_alternative<base::Error>(protoVal)) // Should not happen but just in case
         {
-            const auto msh = std::get<base::Error>(protoVal).message + ". For value " + std::get<std::string>(rawVal);
+            const auto msj = std::get<base::Error>(protoVal).message + ". For value " + std::get<std::string>(rawVal);
+            return ::api::adapter::genericError<ResponseType>(msj);
         }
 
         ResponseType eResponse;
