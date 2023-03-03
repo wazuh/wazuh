@@ -1014,53 +1014,51 @@ class AWSBucket(WazuhIntegration):
             if self.reparse:
                 debug('++ Reparse mode enabled', 2)
 
-            while True:
-                if 'Contents' not in bucket_files:
-                    message_args = {
-                        'aws_account_id': aws_account_id, 'aws_region': aws_region, **kwargs
-                    }
-                    debug(self.empty_bucket_message_template.format(**message_args), 1)
-                    return
+            if 'Contents' not in bucket_files:
+                message_args = {
+                    'aws_account_id': aws_account_id, 'aws_region': aws_region, **kwargs
+                }
+                debug(self.empty_bucket_message_template.format(**message_args), 1)
+                return
 
-                for bucket_file in bucket_files['Contents']:
-                    if not bucket_file['Key']:
+            for bucket_file in bucket_files['Contents']:
+                if not bucket_file['Key']:
+                    continue
+
+                if bucket_file['Key'][-1] == '/':
+                    # The file is a folder
+                    continue
+
+                if self.check_prefix:
+                    date_match = self.date_regex.search(bucket_file['Key'])
+                    match_start = date_match.span()[0] if date_match else None
+
+                    if not self._same_prefix(match_start, aws_account_id, aws_region):
+                        debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
                         continue
 
-                    if bucket_file['Key'][-1] == '/':
-                        # The file is a folder
+                if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, **kwargs):
+                    if self.reparse:
+                        debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}", 1)
+                    else:
+                        debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
                         continue
 
-                    if self.check_prefix:
-                        date_match = self.date_regex.search(bucket_file['Key'])
-                        match_start = date_match.span()[0] if date_match else None
+                debug(f"++ Found new log: {bucket_file['Key']}", 2)
+                # Get the log file from S3 and decompress it
+                log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
+                self.iter_events(log_json, bucket_file['Key'], aws_account_id)
+                # Remove file from S3 Bucket
+                if self.delete_file:
+                    debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
+                    self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
+                self.mark_complete(aws_account_id, aws_region, bucket_file, **kwargs)
 
-                        if not self._same_prefix(match_start, aws_account_id, aws_region):
-                            debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
-                            continue
+            if bucket_files['IsTruncated']:
+                new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True, **kwargs)
+                new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
+                bucket_files = self.client.list_objects_v2(**new_s3_args)
 
-                    if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, **kwargs):
-                        if self.reparse:
-                            debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}", 1)
-                        else:
-                            debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
-                            continue
-
-                    debug(f"++ Found new log: {bucket_file['Key']}", 2)
-                    # Get the log file from S3 and decompress it
-                    log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                    self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                    # Remove file from S3 Bucket
-                    if self.delete_file:
-                        debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
-                        self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                    self.mark_complete(aws_account_id, aws_region, bucket_file, **kwargs)
-
-                if bucket_files['IsTruncated']:
-                    new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True, **kwargs)
-                    new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
-                    bucket_files = self.client.list_objects_v2(**new_s3_args)
-                else:
-                    break
 
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == 'ThrottlingException':
