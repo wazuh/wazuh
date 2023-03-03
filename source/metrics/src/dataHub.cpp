@@ -1,7 +1,7 @@
 #include "dataHub.hpp"
-#include "dataHubExporter.hpp"
 #include <thread>
 #include <mutex>
+#include <iostream>
 
 json::Json DataHub::getResource(const std::string& scope)
 {
@@ -31,10 +31,4 @@ void DataHub::dump()
         auto &s = r.second;
         std::cout << s.prettyStr() << std::endl;
     }
-}
-
-std::shared_ptr<DataHub> DataHub::get()
-{
-    static std::shared_ptr<DataHub> instance = std::make_shared<DataHub>();
-    return instance;
 }
