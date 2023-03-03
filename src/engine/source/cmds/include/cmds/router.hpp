@@ -6,7 +6,6 @@
 #include <CLI/CLI.hpp>
 #include <cmds/apiclnt/client.hpp>
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
-#include <json/json.hpp>
 
 namespace cmd::router
 {
@@ -14,7 +13,6 @@ namespace cmd::router
 namespace details
 {
 constexpr auto ORIGIN_NAME = "engine_integrated_router_api";
-constexpr auto ROUTER_COMMAND = "router";
 } // namespace details
 
 void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr);
@@ -27,7 +25,7 @@ void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& nameS
 void runUpdate(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr, int priority);
 void runIngest(std::shared_ptr<apiclnt::Client> client, const std::string& event);
 
-void configure(const CLI::App_p& app);
+void configure(CLI::App_p app);
 } // namespace cmd::router
 
 #endif // _CMD_ROUTER_HPP
