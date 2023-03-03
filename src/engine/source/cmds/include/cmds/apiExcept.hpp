@@ -28,7 +28,6 @@ public:
         PROTOBUFF_DESERIALIZE_ERROR,  ///< Protobuff deserialize error
         WRESPONSE_ERROR,              ///< Wazuh protocol response error
         EMESSAGE_ERROR,               ///< Engine protocol error (error in protobuf message)
-
     };
 
     /**
