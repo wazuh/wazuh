@@ -28,7 +28,7 @@ docker-pycreds==0.4.0
 docutils==0.15.2
 ecdsa==0.16.1
 envparse==0.2.0
-Flask==1.1.2
+Flask==2.0.0
 frozenlist==1.2.0
 future==0.18.3
 google-api-core==1.30.0
@@ -44,12 +44,12 @@ grpcio==1.38.1
 hiredis==1.1.0
 idna==2.9
 inflection==0.3.1
-itsdangerous==1.1.0
-Jinja2==2.11.3
+itsdangerous==2.0.0
+Jinja2==3.0.0
 jmespath==0.9.5
 jsonschema==2.6.0
 libcst==0.3.20
-MarkupSafe==1.1.1
+MarkupSafe==2.1.2
 more-itertools==8.2.0
 multidict==5.1.0
 mypy-extensions==0.4.3
@@ -80,6 +80,6 @@ typing-inspect==0.7.1
 urllib3==1.26.5
 uvloop==0.15.2
 websocket-client==0.57.0
-Werkzeug==2.0.2
+Werkzeug==2.2.3
 xmltodict==0.12.0
 yarl==1.6.3
