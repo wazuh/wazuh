@@ -1,10 +1,11 @@
 #ifndef _DATA_HUB_H
 #define _DATA_HUB_H
 
+#include <dataHubInterface.hpp>
 #include <json/json.hpp>
 #include <map>
 #include <mutex>
-class DataHub
+class DataHub : public DataHubInterface
 {
 public:
     /// @brief get a copy of the resource data in json object
@@ -15,7 +16,7 @@ public:
     /// @brief updates the data of the referenced object
     /// @param scope name of the resource scope
     /// @param object json object with updated information
-    void setResource(const std::string& scope, json::Json object);
+    void setResource(const std::string& scope, json::Json object) override;
 
     /// @brief dumps the content of m_resources to standard output
     void dump();
