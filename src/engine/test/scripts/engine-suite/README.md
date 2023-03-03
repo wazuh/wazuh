@@ -1,4 +1,4 @@
-# Engine python suit tools
+# Engine python suite tools
 
 The `engine-suite` python package contains various scripts to help developing content for the Engine.
 
