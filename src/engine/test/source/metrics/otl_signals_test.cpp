@@ -24,50 +24,54 @@ double Measurement::value_ = 0;
 class MetricsOtlMeterTest : public ::testing::Test
 {
 protected:
-    std::shared_ptr<Metrics> m_spMetrics;
     MetricsOtlMeterTest() = default;
     ~MetricsOtlMeterTest() override = default;
-    void SetUp() override
+    void TearDown() override
     {
-        m_spMetrics = std::make_shared<Metrics>();
-        m_spMetrics->initMetrics("test", INPUT_PATH);
+        Metrics::instance().clean();
     }
 };
 
 TEST_F(MetricsOtlMeterTest, invalidValueCounter)
 {
-    EXPECT_ANY_THROW(m_spMetrics->addCounterValue("Sockets", -1UL));
+    Metrics::instance().initMetrics("example", INPUT_PATH);
+    EXPECT_ANY_THROW(Metrics::instance().addCounterValue("Sockets", -1UL));
+}
+
+TEST_F(MetricsOtlMeterTest, repeatedInit)
+{
+    EXPECT_ANY_THROW(Metrics::instance().initMetrics("example", INPUT_PATH));
 }
 
 TEST_F(MetricsOtlMeterTest, nameCounterNotDefined)
 {
-    EXPECT_ANY_THROW(m_spMetrics->addCounterValue("RandomName", 1UL));
+    EXPECT_ANY_THROW(Metrics::instance().addCounterValue("RandomName", 1UL));
 }
 
 TEST_F(MetricsOtlMeterTest, sucessTracerMeter)
 {
-    m_spMetrics->setScopeSpam("TracerExampleOne");
+    Metrics::instance().setScopeSpan("TracerExampleOne");
     for (auto i = 0; i < 10; i ++)
     {
-        m_spMetrics->addCounterValue("CountExample", 1UL);
-        m_spMetrics->addHistogramValue("HistogramExample", 32.7);
-        m_spMetrics->addUpDownCounterValue("UpDownCountExample", 1L);
+        Metrics::instance().addCounterValue("CountExample", 1UL);
+        Metrics::instance().addHistogramValue("HistogramExample", 32.7);
+        Metrics::instance().addUpDownCounterValue("UpDownCountExample", 1L);
         std::this_thread::sleep_for(std::chrono::milliseconds(90));
         if (i == 6)
         {
-            m_spMetrics->addUpDownCounterValue("UpDownCountExample", -2L); // here the counter is at 7 and when restoring 2 there should be a 5.
+            Metrics::instance().addUpDownCounterValue("UpDownCountExample", -2L); // here the counter is at 7 and when restoring 2 there should be a 5.
         }
-        m_spMetrics->dataHub()->dump();
+        Metrics::instance().getDataHub()->dump();
     }
-    m_spMetrics->setScopeSpam("TracerExampleTwo");
+    Metrics::instance().setScopeSpan("TracerExampleTwo");
 }
 
 TEST_F(MetricsOtlMeterTest, sucessMeterGauge)
 {
-    m_spMetrics->addObservableGauge("ObservableGaugeExample", Measurement::Fetcher);
+    Metrics::instance().addObservableGauge("ObservableGaugeExample", Measurement::Fetcher);
     for (uint32_t i = 0; i < 5; ++i)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
-    m_spMetrics->removeObservableGauge("ObservableGaugeExample", Measurement::Fetcher);
+    Metrics::instance().removeObservableGauge("ObservableGaugeExample", Measurement::Fetcher);
 }
