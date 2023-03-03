@@ -872,7 +872,10 @@ LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
 POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
 RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
 JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
+ifneq (,$(filter ${uname_S},Darwin OpenBSD FreeBSD NetBSD))
 LIBINOTIFY_LIB = $(EXTERNAL_LIBINOTIFY).libs/libinotify.a
+endif
+
 
 EXTERNAL_LIBS := $(LIBINOTIFY_LIB) $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
