@@ -233,7 +233,7 @@ ifeq (${uname_S},Darwin)
 		AR_LDFLAGS+=-pthread
 		AR_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../../lib"
 		SHARED=dylib
-		OSSEC_LIBS+=-framework Security -framework CoreFoundation
+		OSSEC_LIBS+=-framework Security -framework CoreFoundation -framework SystemConfiguration
 		PRECOMPILED_OS:=darwin
 else
 ifeq (${uname_S},FreeBSD)
