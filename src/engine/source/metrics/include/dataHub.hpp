@@ -20,6 +20,9 @@ public:
     /// @brief dumps the content of m_resources to standard output
     void dump();
 
+    /// @brief return instance of DataHub
+    static std::shared_ptr<DataHub> get();
+
 private:
     std::map<std::string, json::Json> m_resources;
     std::mutex m_mutex;
