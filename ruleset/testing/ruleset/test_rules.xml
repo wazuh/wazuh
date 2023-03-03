@@ -477,4 +477,46 @@
   <description>Wrong ifsid test.</description>
 </rule>
 
+<!-- Check that no memmory leak appears in nested if_matched_sid -->
+<!-- device="SFW" date=2000-12-01 time=17:19:06 timezone="+01" device_name="XXXX" device_id=1234567 log_id=010101010101 log_type="Firewall" log_component="Firewall Rule" log_subtype="Denied" status="Deny"' -->
+
+<rule id="999280" level="3">
+  <if_sid>70021</if_sid>
+  <field name="device_id">^1234567$</field>
+  <description>Traffic Denied</description>
+  <options>no_full_log</options>
+</rule>
+
+<rule id="999281" level="5" timeframe="3600">
+  <if_matched_sid>999280</if_matched_sid>
+  <description>Traffic Denied (SID level-1)</description>
+</rule>
+
+<rule id="999282" level="7" timeframe="3600">
+  <if_matched_sid>999281</if_matched_sid>
+  <description>Traffic Denied (SID level-2)</description>
+</rule>
+
+<!-- Check that no memmory leak appears in nested if_matched_group -->
+<!-- device="SFW" date=2000-12-01 time=17:19:06 timezone="+01" device_name="XXXX" device_id=12345678 log_id=010101010101 log_type="Firewall" log_component="Firewall Rule" log_subtype="Denied" status="Deny"' -->
+
+<rule id="999283" level="3">
+  <if_sid>70021</if_sid>
+  <field name="device_id">^12345678$</field>
+  <description>Traffic Denied</description>
+  <options>no_full_log</options>
+  <group>test_if_group_1,</group>
+</rule>
+
+<rule id="999284" level="5" timeframe="3600">
+  <if_matched_group>test_if_group_1</if_matched_group>
+  <description>Traffic Denied (group level-1)</description>
+  <group>test_if_group_2,</group>
+</rule>
+
+<rule id="999285" level="7" timeframe="3600">
+  <if_matched_group>test_if_group_2</if_matched_group>
+  <description>Traffic Denied (group level-2)</description>
+</rule>
+
 </group>
