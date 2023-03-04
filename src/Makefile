@@ -19,6 +19,7 @@ uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 ifeq (${TARGET}, winagent)
 WAZUH_LIB_OUTPUT_PATH := win32/
 STRIP_TOOL := i686-w64-mingw32-strip
+DLLTOOL := i686-w64-mingw32-dlltool
 libstdc++_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libstdc++-6.dll 2>/dev/null || echo not')
 LIBSTDCPP_NAME := libstdc++-6.dll
 libgcc_s_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libgcc_s_dw2-1.dll 2>/dev/null || echo not')
@@ -299,9 +300,10 @@ endif # Linux
 else
 		SHARED=dll
 		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
-		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread
-		AR_LDFLAGS+=-pthread
+		OSSEC_CFLAGS+=-Wl,-l:libwinpthread-1.lib -L win32/ -Wl,--allow-multiple-definition -pthread
+		OSSEC_LDFLAGS+=-Wl,-l:libwinpthread-1.lib -L win32/ -Wl,--allow-multiple-definition -pthread
+		OSSEC_LDFLAGS+=-Wl,--allow-multiple-definition
+		AR_LDFLAGS+=-Wl,-l:libwinpthread-1.lib -L win32/ -Wl,--allow-multiple-definition -pthread
 		PRECOMPILED_OS:=windows
 endif # winagent
 
@@ -435,12 +437,14 @@ endif
 endif
 
 ifneq (,$(wildcard /usr/i686-w64-mingw32/lib/libwinpthread-1.dll))
-	WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/lib/libwinpthread-1.dll
+	WIN_PTHREAD_DLL:=/usr/i686-w64-mingw32/lib/libwinpthread-1.dll
 else
 ifneq (,$(wildcard /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll))
-	WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
+	WIN_PTHREAD_DLL:=/usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
 endif
 endif
+WIN_PTHREAD_DEF=libwinpthread-1.def
+WIN_PTHREAD_LIB=libwinpthread-1.lib
 
 endif #winagent
 
@@ -792,7 +796,7 @@ endif
 .PHONY: winagent
 winagent: external win32/libwinpthread-1.dll ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
-	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
+	#${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
@@ -820,7 +824,9 @@ win32/sysinfo: $(WAZUHEXT_LIB)
 win32/syscollector: win32/shared_modules win32/sysinfo
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 
-win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
+win32/libwinpthread-1.dll: ${WIN_PTHREAD_DLL}
+	$(DLLTOOL) ${WIN_PTHREAD_DLL} -z $(WIN_PTHREAD_DEF) --export-all-symbols
+	$(DLLTOOL) --input-def $(WIN_PTHREAD_DEF) --output-delaylib win32/$(WIN_PTHREAD_LIB) --dllname ${WIN_PTHREAD_DLL}
 	cp $< $@
 
 ####################
@@ -1332,7 +1338,12 @@ endif
 ####################
 #### OSSEC Libs ####
 ####################
+ifeq (${TARGET}, winagent)
+WAZUHEXT_LIB = libwazuhext.lib
+WAZUHEXT_LIB_DEF = libwazuhext.def
+else
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
+endif
 WAZUH_LIB = libwazuhshared.$(SHARED)
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 
@@ -1709,8 +1720,15 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
 else
 ifeq (${TARGET}, winagent)
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+$(WAZUHEXT_LIB): libwazuhext.$(SHARED) $(WAZUHEXT_LIB_DEF)
+	$(DLLTOOL) --input-def $(WAZUHEXT_LIB_DEF) --output-delaylib $(WAZUHEXT_LIB) --dllname libwazuhext.$(SHARED)
+
+libwazuhext.$(SHARED): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+
+$(WAZUHEXT_LIB_DEF): libwazuhext.$(SHARED)
+	$(DLLTOOL) libwazuhext.$(SHARED) -z $(WAZUHEXT_LIB_DEF) --export-all-symbols
+
 else
 ifeq (${uname_S},SunOS)
 ifneq ($(uname_R),5.10)
@@ -1927,7 +1945,7 @@ $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 else
 ifeq (${TARGET}, winagent)
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -static-libgcc -Wl,--allow-multiple-definition -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
 ifeq (${uname_S},SunOS)
 ifneq ($(uname_R),5.10)
