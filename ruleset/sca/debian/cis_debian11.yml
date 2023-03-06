@@ -20,7 +20,7 @@ policy:
 
 requirements:
   title: "Check Debian version."
-  description: "Requirements for running the SCA scan against Debian/Ubuntu."
+  description: "Requirements for running the SCA scan against Debian Linux 11."
   condition: all
   rules:
     - "f:/etc/debian_version -> r:11."
@@ -70,14 +70,14 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:findmnt --kernel /tmp -> r:/tmp"
+      - 'c:findmnt --kernel /tmp -> r:^/tmp\s+'
       - "c:systemctl is-enabled tmp.mount -> r:enabled|generated"
 
   # 1.1.2.2 Ensure nodev option set on /tmp partition (Automated)
   - id: 29501
     title: "Ensure nodev option set on /tmp partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
+    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create a block or character special devices in /tmp."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0. Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
     compliance:
       - cis: ["1.1.2.2"]
@@ -221,7 +221,7 @@ checks:
       - mitre_mitigations: ["M1038"]
     condition: all
     rules:
-      - 'c:findmnt --kernel /var -> r:/^var\s+ && r:nosuid'
+      - 'c:findmnt --kernel /var -> r:^/var\s+ && r:nosuid'
 
   ############################################################
   # 1.1.4 Configure /var/tmp
@@ -252,7 +252,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:findmnt --kernel /var/tmp -> r:/var/tmp\s+'
+      - 'c:findmnt --kernel /var/tmp -> r:^/var/tmp\s+'
 
   # 1.1.4.2 Ensure noexec option set on /var/tmp partition (Automated)
   - id: 29508
@@ -329,9 +329,9 @@ checks:
   ############################################################
   # 1.1.5 Configure /var/log
   ############################################################
-  # 1.1.5.1 Ensure separate partition exists for /var/log/ (Automated)
+  # 1.1.5.1 Ensure separate partition exists for /var/log (Automated)
   - id: 29511
-    title: "Ensure separate partition exists for /var/log/."
+    title: "Ensure separate partition exists for /var/log."
     description: "The /var/log directory is used by system services to store log data."
     rationale: "The reasoning for mounting /var/log on a separate partition is as follows. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var/log directory contains log files which can grow quite large, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. - Fine grained control over the mount: Configuring /var/log as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection of log data: As /var/log contains log files, care should be taken to ensure the security and integrity of the data and mount point."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
@@ -350,11 +350,11 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:findmnt --kernel /var/log -> r:/var/log\s+'
+      - 'c:findmnt --kernel /var/log -> r:^/var/log\s+'
 
-  # 1.1.5.2 Ensure nodev option set on /var/log/ partition (Automated)
+  # 1.1.5.2 Ensure nodev option set on /var/log partition (Automated)
   - id: 29512
-    title: "Ensure nodev option set on /var/log/ partition."
+    title: "Ensure nodev option set on /var/log partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/log filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log."
     remediation: "IF the /var/log partition exists, edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
@@ -376,9 +376,9 @@ checks:
     rules:
       - 'c:findmnt --kernel /var/log -> r:^/var/log\s+ && r:nodev'
 
-  # 1.1.5.3 Ensure noexec option set on /var/log/ partition (Automated)
+  # 1.1.5.3 Ensure noexec option set on /var/log partition (Automated)
   - id: 29513
-    title: "Ensure noexec option set on /var/log/ partition."
+    title: "Ensure noexec option set on /var/log partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot run executable binaries from /var/log."
     remediation: "IF the /var/log partition exists, edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
@@ -400,9 +400,9 @@ checks:
     rules:
       - 'c:findmnt --kernel /var/log -> r:^/var/log\s+ && r:noexec'
 
-  # 1.1.5.4 Ensure nosuid option set on /var/log/ partition (Automated)
+  # 1.1.5.4 Ensure nosuid option set on /var/log partition (Automated)
   - id: 29514
-    title: "Ensure nosuid option set on /var/log/ partition."
+    title: "Ensure nosuid option set on /var/log partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot create setuid files in /var/log."
     remediation: "IF the /var/log partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
@@ -449,7 +449,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:findmnt --kernel /var/log/audit -> r:/var/log/audit\s+'
+      - 'c:findmnt --kernel /var/log/audit -> r:^/var/log/audit\s+'
 
   # 1.1.6.2 Ensure noexec option set on /var/log/audit partition (Automated)
   - id: 29516
@@ -552,7 +552,7 @@ checks:
       - mitre_mitigations: ["M1038"]
     condition: all
     rules:
-      - 'c:findmnt --kernel /home -> r:/home\s+'
+      - 'c:findmnt --kernel /home -> r:^/home\s+'
 
   # 1.1.7.2 Ensure nodev option set on /home partition (Automated)
   - id: 29520
