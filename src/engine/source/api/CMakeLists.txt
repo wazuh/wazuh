@@ -25,6 +25,7 @@ add_library(api STATIC
     ${ENGINE_API_SOURCE_DIR}/catalog/catalog.cpp
     ${ENGINE_API_SOURCE_DIR}/catalog/commands.cpp
     ${ENGINE_API_SOURCE_DIR}/kvdb/commands.cpp
+    ${ENGINE_API_SOURCE_DIR}/metrics/commands.cpp
 )
 
 target_include_directories(api
@@ -34,6 +35,7 @@ target_include_directories(api
     ${ENGINE_API_SOURCE_DIR}
     ${ENGINE_API_SOURCE_DIR}/catalog
     ${ENGINE_API_SOURCE_DIR}/kvdb
+    ${ENGINE_API_SOURCE_DIR}/metrics
 )
 
-target_link_libraries(api base json builder::ivalidator store::istore yaml-cpp fmt kvdb)
+target_link_libraries(api base json builder::ivalidator store::istore yaml-cpp fmt kvdb metrics)

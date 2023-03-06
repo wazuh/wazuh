@@ -14,6 +14,7 @@
 #include <api/catalog/commands.hpp>
 #include <api/config/config.hpp>
 #include <api/kvdb/commands.hpp>
+#include <api/metrics/commands.hpp>
 #include <builder/builder.hpp>
 #include <builder/register.hpp>
 #include <cmds/details/stackExecutor.hpp>
@@ -25,6 +26,7 @@
 #include <rxbk/rxFactory.hpp>
 #include <server/engineServer.hpp>
 #include <store/drivers/fileDriver.hpp>
+#include <metrics/include/metrics.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
 #include "defaultSettings.hpp"
@@ -221,6 +223,13 @@ void runStart(ConfHandler confManager)
             router->clear();
             router->addRoute(routeName, routePriority, routeFilter, routeEnvironment);
         }
+
+        // Initialize Metrics Module
+        Metrics::instance().initMetrics("engine-metrics", "/var/ossec/engine/store/metrics/config/0");
+        
+        // Register Metrics commands
+        api::metrics::cmds::registerAllCmds(server->getRegistry());
+        WAZUH_LOG_DEBUG("Metrics API registered.");
 
         // Register Configuration API commands
         api::config::cmds::registerCommands(server->getRegistry(), confManager);
