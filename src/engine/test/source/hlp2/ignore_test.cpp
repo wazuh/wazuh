@@ -23,10 +23,11 @@ TEST(HLP2, ignoreParser)
         TestCase {R"(wazuhwa)", true, {""}, Options {"wazuh"}, fn(R"(null)"), 7},
         TestCase {R"(WAZUH)", true, {""}, Options {"wazuh"}, fn(R"(null)"), 0},
         TestCase {R"()", false, {""}, Options {"wazuh"}, fn(R"(null)"), 0},
+        TestCase {R"(wazuh)", false, {""}, Options {""}, fn(R"(null)"), 0}
     };
 
     for (auto t : testCases)
     {
-        runTest(t, hlp::getIgnoreParser);
+        runTest(t, hlp::getIgnoreParser, "header ", " tail", true);
     }
 }
