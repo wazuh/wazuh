@@ -223,7 +223,7 @@ TEST(UAParser, parser)
 
     for (auto t : testCases)
     {
-        runTest(t, hlp::getUAParser);
+        runTest(t, hlp::getUAParser, "header ", " tail", true);
     }
 }
 
