@@ -28,6 +28,8 @@ public:
         PROTOBUFF_DESERIALIZE_ERROR,  ///< Protobuff deserialize error
         WRESPONSE_ERROR,              ///< Wazuh protocol response error
         EMESSAGE_ERROR,               ///< Engine protocol error (error in protobuf message)
+        PATH_ERROR,                   ///< Path error (invalid path)
+        INVALID_ARGUMENT,             ///< Invalid argument
     };
 
     /**
