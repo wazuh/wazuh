@@ -2,6 +2,7 @@
 #include <thread>
 #include <mutex>
 #include <iostream>
+#include <fmt/format.h>
 
 json::Json DataHub::getResource(const std::string& scope)
 {
@@ -31,4 +32,22 @@ void DataHub::dump()
         auto &s = r.second;
         std::cout << s.prettyStr() << std::endl;
     }
+}
+
+std::variant<json::Json, base::Error> DataHub::dumpCmd()
+{
+    const std::lock_guard<std::mutex> lock(m_mutex);
+    json::Json contentDataHub;
+    contentDataHub.setArray();
+
+    if (m_resources.empty())
+    {
+        return base::Error {fmt::format("DataHub is empty.")};
+    }
+
+    for (auto &r : m_resources) {
+        contentDataHub.appendJson(r.second);
+    }
+
+    return contentDataHub;
 }
