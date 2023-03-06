@@ -321,6 +321,6 @@ TEST(HLP2, AlphanumericParser)
 
     for (auto t : testCases)
     {
-        runTest(t, hlp::getAlphanumericParser);
+        runTest(t, hlp::getAlphanumericParser, "header ", "");
     }
 }
