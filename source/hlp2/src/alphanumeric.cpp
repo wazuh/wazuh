@@ -28,19 +28,16 @@ parsec::Parser<json::Json> getAlphanumericParser(const std::string& name, Stop, 
             return res.value();
         }
 
-        auto begin {text.begin()};
-        std::advance(begin, index);
+        auto end = std::find_if(text.begin() + index, text.end(), [](char const& c) { return !std::isalnum(c); });
 
-        auto it = std::find_if(begin, text.end(), [](char const& c) { return !std::isalnum(c); });
+        auto endPos = end - text.begin();
 
-        if (it == text.end())
+        if (end == text.end())
         {
             json::Json alphaNumeric;
+            alphaNumeric.setString(std::string {text.substr(index, endPos - index)});
 
-            alphaNumeric.setString(std::string {text});
-            index += text.size();
-
-            return parsec::makeSuccess<json::Json>(std::move(alphaNumeric), index);
+            return parsec::makeSuccess<json::Json>(std::move(alphaNumeric), endPos);
         }
         else
         {

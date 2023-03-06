@@ -90,7 +90,7 @@ parsec::Parser<json::Json> getBinaryParser(std::string name, Stop, Options lst)
         }
         json::Json doc;
         // copy can be slow
-        doc.setString(std::string {text.substr(index, endPos)});
+        doc.setString(std::string {text.substr(index, endPos - index)});
         return parsec::makeSuccess<json::Json>(std::move(doc), endPos);
     };
 }
