@@ -23,50 +23,6 @@ private:
     std::shared_ptr<uvw::Loop> m_loop;
     std::shared_ptr<uvw::PipeHandle> m_clientHandle;
 
-    std::variant<std::string, base::Error> doReq(const std::string& request)
-    {
-        std::string error;
-        std::string response;
-        m_clientHandle->on<uvw::ErrorEvent>(
-            [&error](const uvw::ErrorEvent& event, uvw::PipeHandle& handle)
-            {
-                error = "Socket communication error: ";
-                error += event.what();
-                handle.close();
-            });
-
-        m_clientHandle->once<uvw::ConnectEvent>(
-            [&request](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
-            {
-                std::vector<char> buffer {request.begin(), request.end()};
-                handle.write(buffer.data(), buffer.size());
-                handle.read();
-            });
-
-        m_clientHandle->on<uvw::DataEvent>(
-            [&response](const uvw::DataEvent& event, uvw::PipeHandle& handle)
-            {
-                response = std::string(event.data.get() + sizeof(int), event.length - sizeof(int));
-                handle.close();
-            });
-
-        m_clientHandle->once<uvw::EndEvent>([](const uvw::EndEvent&, uvw::PipeHandle& handle) { handle.close(); });
-
-        // Stablish connection
-        m_clientHandle->connect(m_socketPath);
-        m_loop->run();
-
-        // Return response
-        if (error.empty())
-        {
-            return response;
-        }
-        else
-        {
-            return base::Error {error};
-        }
-    }
-
 public:
     Client(const std::string& socketPath)
         : m_socketPath(socketPath)
@@ -88,28 +44,59 @@ public:
         auto requestWithHeader = std::string(buffer.get(), sizeof(length) + length);
 
         // Stablish connection, send request and receive response
-        auto res = doReq(requestWithHeader);
+        auto clientHandle = m_loop->resource<uvw::PipeHandle>();
+        std::string error;
+        std::string response;
+        clientHandle->on<uvw::ErrorEvent>(
+            [&error](const uvw::ErrorEvent& event, uvw::PipeHandle& handle)
+            {
+                error = "Socket communication error: ";
+                error += event.what();
+                handle.close();
+            });
 
-        if (std::holds_alternative<base::Error>(res))
+        clientHandle->once<uvw::ConnectEvent>(
+            [&requestWithHeader](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
+            {
+                std::vector<char> buffer {requestWithHeader.begin(), requestWithHeader.end()};
+                handle.write(buffer.data(), buffer.size());
+                handle.read();
+            });
+
+        clientHandle->on<uvw::DataEvent>(
+            [&response](const uvw::DataEvent& event, uvw::PipeHandle& handle)
+            {
+                response = std::string(event.data.get() + sizeof(int), event.length - sizeof(int));
+                handle.close();
+            });
+
+        clientHandle->once<uvw::EndEvent>([](const uvw::EndEvent&, uvw::PipeHandle& handle) { handle.close(); });
+
+        // Stablish connection
+        clientHandle->connect(m_socketPath);
+        m_loop->run();
+
+        // Return response
+        if (!error.empty())
         {
-            throw ClientException(std::get<base::Error>(res).message, ClientException::Type::SOCKET_COMMUNICATION_ERROR);
+            throw ClientException(error, ClientException::Type::SOCKET_COMMUNICATION_ERROR);
         }
 
         // Parse response
         base::utils::wazuhProtocol::WazuhResponse parsedResponse;
         try
         {
-            parsedResponse = base::utils::wazuhProtocol::WazuhResponse::fromStr(std::get<std::string>(res));
+            parsedResponse = base::utils::wazuhProtocol::WazuhResponse::fromStr(response);
         }
         catch (const std::exception& e)
         {
             throw ClientException("Invalid response from server: " + std::string(e.what()),
-                                     ClientException::Type::INVALID_RESPONSE_FROM_SERVER);
+                                  ClientException::Type::INVALID_RESPONSE_FROM_SERVER);
         }
 
         return parsedResponse;
     }
 };
-} // namespace apiclnt
+} // namespace cmd::apiclnt
 
 #endif // _APICLNT_CLIENT_HPP
