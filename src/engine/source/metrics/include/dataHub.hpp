@@ -5,6 +5,8 @@
 #include <json/json.hpp>
 #include <map>
 #include <mutex>
+#include <variant>
+
 class DataHub : public DataHubInterface
 {
 public:
@@ -20,6 +22,9 @@ public:
 
     /// @brief dumps the content of m_resources to standard output
     void dump();
+
+    /// @brief dumps the content of m_resources to cmd
+    std::variant<json::Json, base::Error> dumpCmd();
 
     /// @brief return instance of DataHub
     static std::shared_ptr<DataHub> get();
