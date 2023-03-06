@@ -1268,8 +1268,7 @@ checks:
     title: "Ensure chrony is running as user _chrony."
     description: "The chrony package is installed with a dedicated user account _chrony. This account is granted the access required by the chronyd service."
     rationale: "The chronyd service should run with only the required privlidges."
-    remediation: "Add or edit the user line to /etc/chrony/chrony.conf or a file ending in .conf in /etc/chrony/conf.d/: user _chrony OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony Default Value: user _chrony."
-    default value: "user _chrony"
+    remediation: "Add or edit the user line to /etc/chrony/chrony.conf or a file ending in .conf in /etc/chrony/conf.d/: user _chrony OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony."
     compliance:
       - cis: ["2.1.2.2"]
       - cis_csc_v8: ["8.4"]
@@ -1282,7 +1281,7 @@ checks:
       - iso_27001-2013: ["A.12.4.4"]
     condition: all
     rules:
-      - "f:/etc/chrony/chrony.conf -> r:^user _chrony"
+      - 'c:sh -c "ps -ef | awk ''(/[c]hronyd/ && $1!=\"_chrony\") { print $1 }''" -> r:\w+'
 
   # 2.1.2.3 Ensure chrony is enabled and running (Automated)
   - id: 29549
@@ -1676,7 +1675,7 @@ checks:
     title: "Ensure IMAP and POP3 server are not installed."
     description: "dovecot-imapd and dovecot-pop3d are an open source IMAP and POP3 server for Linux based systems."
     rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface."
-    remediation: "Run one of the following commands to remove dovecot-imapd and dovecot-pop3d: # apt purge dovecot-imapd dovecot-pop3d"
+    remediation: "Run one of the following commands to remove dovecot-imapd and dovecot-pop3d: # apt purge dovecot-imapd dovecot-pop3d."
     compliance:
       - cis: ["2.2.10"]
       - cis_csc_v8: ["4.8"]
@@ -1700,7 +1699,7 @@ checks:
     title: "Ensure Samba is not installed."
     description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Server Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
     rationale: "If there is no need to mount directories and file systems to Windows systems, then this service should be deleted to reduce the potential attack surface."
-    remediation: "Run the following command to remove samba: # apt purge samba"
+    remediation: "Run the following command to remove samba: # apt purge samba."
     compliance:
       - cis: ["2.2.11"]
       - cis_csc_v8: ["4.8"]
@@ -1722,7 +1721,7 @@ checks:
     title: "Ensure HTTP Proxy Server is not installed."
     description: "Squid is a standard proxy server used in many distributions and environments."
     rationale: "If there is no need for a proxy server, it is recommended that the squid proxy be deleted to reduce the potential attack surface."
-    remediation: "Run the following command to remove squid: # apt purge squid"
+    remediation: "Run the following command to remove squid: # apt purge squid."
     compliance:
       - cis: ["2.2.12"]
       - cis_csc_v8: ["4.8"]
@@ -1744,8 +1743,8 @@ checks:
   - id: 29568
     title: "Ensure SNMP Server is not installed."
     description: 'Simple Network Management Protocol (SNMP) is a widely used protocol for monitoring the health and welfare of network equipment, computer equipment and devices like UPSs. Net-SNMP is a suite of applications used to implement SNMPv1 (RFC 1157), SNMPv2 (RFCs 1901-1908), and SNMPv3 (RFCs 3411-3418) using both IPv4 and IPv6. Support for SNMPv2 classic (a.k.a. "SNMPv2 historic" - RFCs 1441-1452) was dropped with the 4.0 release of the UCD-snmp package. The Simple Network Management Protocol (SNMP) server is used to listen for SNMP commands from an SNMP management system, execute the commands or collect the information and then send results back to the requesting system.'
-    rationale: "The SNMP server can communicate using SNMPv1, which transmits data in the clear and does not require authentication to execute commands. SNMPv3 replaces the simple/clear text password sharing used in SNMPv2 with more securely encoded parameters. If the the SNMP service is not required, the net-snmp package should be removed to reduce the attack surface of the system. Note: If SNMP is required: The server should be configured for SNMP v3 only. User Authentication and Message Encryption should be configured. If SNMP v2 is absolutely necessary, modify the community strings' values."
-    remediation: "Run the following command to remove snmp: # apt purge snmp"
+    rationale: "The SNMP server can communicate using SNMPv1, which transmits data in the clear and does not require authentication to execute commands. SNMPv3 replaces the simple/clear text password sharing used in SNMPv2 with more securely encoded parameters. If the the SNMP service is not required, the net-snmp package should be removed to reduce the attack surface of the system. Note: If SNMP is required: - The server should be configured for SNMP v3 only. User Authentication and Message Encryption should be configured. - If SNMP v2 is absolutely necessary, modify the community strings' values."
+    remediation: "Run the following command to remove snmp: # apt purge snmp."
     compliance:
       - cis: ["2.2.13"]
       - cis_csc_v8: ["4.8"]
