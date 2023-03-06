@@ -472,19 +472,6 @@ class AWSBucket(WazuhIntegration):
                 created_date 'integer' NOT NULL,
                 PRIMARY KEY (bucket_path, aws_account_id, aws_region, log_key));"""
 
-        self.sql_find_last_log_processed = """
-            SELECT
-                created_date
-            FROM
-                {table_name}
-            WHERE
-                bucket_path=:bucket_path AND
-                aws_account_id=:aws_account_id AND
-                aws_region =:aws_region
-            ORDER BY
-                created_date DESC
-            LIMIT 1;"""
-
         self.sql_find_last_key_processed = """
             SELECT
                 log_key
@@ -1234,44 +1221,6 @@ class AWSConfigBucket(AWSLogsBucket):
         self._leading_zero_regex = re.compile(r'/(0)(?P<num>\d)')
         self._extract_date_regex = re.compile(r'\d{4}/\d{1,2}/\d{1,2}')
 
-    def get_days_since_today(self, date):
-        date = datetime.strptime(date, "%Y%m%d")
-        # it is necessary to add one day for processing the current day
-        delta = datetime.utcnow() - date + timedelta(days=1)
-
-        return delta.days
-
-    def get_date_list(self, aws_account_id, aws_region):
-        num_days = self.get_days_since_today(self.get_date_last_log(aws_account_id, aws_region))
-        date_list_time = [datetime.utcnow() - timedelta(days=x) for x in range(0, num_days)]
-
-        return [datetime.strftime(date, "%Y/%-m/%-d") for date in reversed(date_list_time)]
-
-    def get_date_last_log(self, aws_account_id, aws_region):
-        if self.reparse:
-            last_date_processed = self.only_logs_after.strftime('%Y%m%d') if self.only_logs_after else \
-                self.default_date.strftime('%Y%m%d')
-        else:
-            try:
-                query_date_last_log = self.db_connector.execute(
-                    self.sql_find_last_log_processed.format(table_name=self.db_table_name), {
-                        'bucket_path': self.bucket_path,
-                        'aws_account_id': aws_account_id,
-                        'aws_region': aws_region,
-                        'prefix': self.prefix})
-                # query returns an integer
-                db_date = str(query_date_last_log.fetchone()[0])
-                if self.only_logs_after:
-                    last_date_processed = db_date if datetime.strptime(db_date, '%Y%m%d') > self.only_logs_after else \
-                        datetime.strftime(self.only_logs_after, '%Y%m%d')
-                else:
-                    last_date_processed = db_date
-            # if DB is empty
-            except (TypeError, IndexError):
-                last_date_processed = self.only_logs_after.strftime('%Y%m%d') if self.only_logs_after \
-                    else self.default_date.strftime('%Y%m%d')
-        return last_date_processed
-
 
     def _format_created_date(self, date: str) -> str:
         """
@@ -1509,20 +1458,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 log_key DESC
             LIMIT 1;"""
 
-        self.sql_get_date_last_log_processed = """
-            SELECT
-                created_date
-            FROM
-                {table_name}
-            WHERE
-                bucket_path=:bucket_path AND
-                aws_account_id=:aws_account_id AND
-                aws_region = :aws_region AND
-                flow_log_id = :flow_log_id
-            ORDER BY
-                log_key DESC
-            LIMIT 1;"""
-
         self.sql_db_maintenance = """
             DELETE FROM {table_name}
             WHERE
@@ -1609,41 +1544,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             'log_key': downloaded_file})
         return cursor.fetchone()[0] > 0
 
-    def get_days_since_today(self, date):
-        date = datetime.strptime(date, "%Y%m%d")
-        # it is necessary to add one day for processing the current day
-        delta = datetime.utcnow() - date + timedelta(days=1)
-        return delta.days
-
-    def get_date_list(self, aws_account_id, aws_region, flow_log_id):
-        num_days = self.get_days_since_today(self.get_date_last_log(aws_account_id, aws_region, flow_log_id))
-        date_list_time = [datetime.utcnow() - timedelta(days=x) for x in range(0, num_days)]
-        return [datetime.strftime(date, self.date_format) for date in reversed(date_list_time)]
-
-    def get_date_last_log(self, aws_account_id, aws_region, flow_log_id):
-        last_date_processed = self.only_logs_after.strftime('%Y%m%d') if \
-            self.only_logs_after and self.reparse else None
-
-        if not last_date_processed:
-            try:
-                query_date_last_log = self.db_connector.execute(
-                    self.sql_get_date_last_log_processed.format(table_name=self.db_table_name), {
-                        'bucket_path': self.bucket_path,
-                        'aws_account_id': aws_account_id,
-                        'aws_region': aws_region,
-                        'flow_log_id': flow_log_id})
-                # query returns an integer
-                db_date = str(query_date_last_log.fetchone()[0])
-                if self.only_logs_after:
-                    last_date_processed = db_date if datetime.strptime(db_date, '%Y%m%d') > self.only_logs_after else \
-                        datetime.strftime(self.only_logs_after, '%Y%m%d')
-                else:
-                    last_date_processed = db_date
-            # if DB is empty
-            except (TypeError, IndexError) as e:
-                last_date_processed = self.only_logs_after.strftime('%Y%m%d') if self.only_logs_after \
-                    else self.default_date.strftime('%Y%m%d')
-        return last_date_processed
 
     def iter_regions_and_accounts(self, account_id, regions):
         if not account_id:
@@ -1774,18 +1674,6 @@ class AWSCustomBucket(AWSBucket):
                 processed_date 'text' NOT NULL,
                 created_date 'integer' NOT NULL,
                 PRIMARY KEY (bucket_path, aws_account_id, log_key));"""
-
-        self.sql_find_last_log_processed = """
-            SELECT
-                created_date
-            FROM
-                {table_name}
-            WHERE
-                bucket_path=:bucket_path AND
-                aws_account_id=:aws_account_id
-            ORDER BY
-                created_date DESC
-            LIMIT 1;"""
 
         self.sql_find_last_key_processed = """
             SELECT
