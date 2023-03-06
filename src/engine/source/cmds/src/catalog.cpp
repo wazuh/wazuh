@@ -12,12 +12,16 @@
 #include <cmds/details/kbhit.hpp>
 #include <name.hpp>
 
-#include <cmds/apiclnt/client.hpp>
-#include "defaultSettings.hpp"
+#include <eMessages/catalog.pb.h>
 
+#include "defaultSettings.hpp"
+#include "utils.hpp"
+#include <cmds/apiclnt/client.hpp>
 namespace cmd::catalog
 {
 
+namespace eCatalog = ::com::wazuh::api::engine::catalog;
+namespace eEngine = ::com::wazuh::api::engine;
 namespace
 {
 
@@ -25,12 +29,66 @@ struct Options
 {
     std::string apiEndpoint;
     std::string format;
-    int logLevel;
+    int logLevel {};
     std::string name;
     std::string content;
     std::string path;
     bool recursive;
 };
+
+eCatalog::ResourceFormat toResourceFormat(const std::string& format)
+{
+    if (format == "json")
+    {
+        return eCatalog::ResourceFormat::json;
+    }
+    else if (format == "yaml")
+    {
+        return eCatalog::ResourceFormat::yaml;
+    }
+
+    throw std::invalid_argument("Invalid Resource format: " + format);
+}
+/**
+ * @brief Convert a string to a ResourceType.
+ *
+ * decoder, rule, filter, output, environment, schema, collection
+ * @param type
+ * @return eCatalog::ResourceType
+ */
+eCatalog::ResourceType toResourceType(const std::string& type)
+{
+    if (type == "decoder")
+    {
+        return eCatalog::ResourceType::decoder;
+    }
+    else if (type == "rule")
+    {
+        return eCatalog::ResourceType::rule;
+    }
+    else if (type == "filter")
+    {
+        return eCatalog::ResourceType::filter;
+    }
+    else if (type == "output")
+    {
+        return eCatalog::ResourceType::output;
+    }
+    else if (type == "environment")
+    {
+        return eCatalog::ResourceType::environment;
+    }
+    else if (type == "schema")
+    {
+        return eCatalog::ResourceType::schema;
+    }
+    //else if (type == "collection")
+    //{
+    //    return eCatalog::ResourceType::collection;
+    //}
+
+    throw std::invalid_argument("Invalid Resource type: " + type);
+}
 
 void readCinIfEmpty(std::string& content)
 {
@@ -50,6 +108,9 @@ void readCinIfEmpty(std::string& content)
 
 namespace details
 {
+
+
+
 
 std::string commandName(const std::string& command)
 {
@@ -100,53 +161,102 @@ void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, cons
 
 } // namespace details
 
-void runGet(const std::string& socketPath, const std::string& format, const std::string& nameStr)
+void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& format, const std::string& nameStr)
 {
-    auto request = base::utils::wazuhProtocol::WazuhRequest::create(
-        details::commandName("get"), details::ORIGIN_NAME, details::getParameters(format, nameStr));
+    using RequestType = eCatalog::ResourceGet_Request;
+    using ResponseType = eCatalog::ResourceGet_Response;
+    const std::string command = "catalog.resource/get";
 
-    details::singleRequest(request, socketPath);
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_name(nameStr);
+    eRequest.set_format(toResourceFormat(format));
+
+    // Call the API, any error will throw an cmd::exception
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    std::cout << eResponse.content() << std::endl;
 }
 
-void runUpdate(const std::string& socketPath,
+void runUpdate(std::shared_ptr<apiclnt::Client> client,
                const std::string& format,
                const std::string& nameStr,
                const std::string& content)
 {
-    auto request = base::utils::wazuhProtocol::WazuhRequest::create(
-        details::commandName("put"), details::ORIGIN_NAME, details::getParameters(format, nameStr, content));
+    using RequestType = eCatalog::ResourcePut_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
+    const std::string command = "catalog.resource/put";
 
-    details::singleRequest(request, socketPath);
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_name(nameStr);
+    eRequest.set_format(toResourceFormat(format));
+    eRequest.set_content(content);
+
+    // Call the API, any error will throw an cmd::exception
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
-void runCreate(const std::string& socketPath,
+void runCreate(std::shared_ptr<apiclnt::Client> client,
                const std::string& format,
-               const std::string& nameStr,
+               const std::string& resourceTypeStr,
                const std::string& content)
 {
-    auto request = base::utils::wazuhProtocol::WazuhRequest::create(
-        details::commandName("post"), details::ORIGIN_NAME, details::getParameters(format, nameStr, content));
+    using RequestType = eCatalog::ResourcePost_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
+    const std::string command = "catalog.resource/post";
 
-    details::singleRequest(request, socketPath);
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_type(toResourceType(resourceTypeStr));
+    eRequest.set_format(toResourceFormat(format));
+    eRequest.set_content(content);
+
+    // Call the API, any error will throw an cmd::exception
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
-void runDelete(const std::string& socketPath, const std::string& format, const std::string& nameStr)
+void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& format, const std::string& nameStr)
 {
-    auto request = base::utils::wazuhProtocol::WazuhRequest::create(
-        details::commandName("delete"), details::ORIGIN_NAME, details::getParameters(format, nameStr));
+    using RequestType = eCatalog::ResourceDelete_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
+    const std::string command = "catalog.resource/delete";
 
-    details::singleRequest(request, socketPath);
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_name(nameStr);
+
+    // Call the API, any error will throw an cmd::exception
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
-void runValidate(const std::string& socketPath,
+void runValidate(std::shared_ptr<apiclnt::Client> client,
                  const std::string& format,
                  const std::string& nameStr,
                  const std::string& content)
 {
-    auto request = base::utils::wazuhProtocol::WazuhRequest::create(
-        details::commandName("validate"), details::ORIGIN_NAME, details::getParameters(format, nameStr, content));
+    using RequestType = eCatalog::ResourceValidate_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
+    const std::string command = "catalog.resource/validate";
 
-    details::singleRequest(request, socketPath);
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_name(nameStr);
+    eRequest.set_format(toResourceFormat(format));
+    eRequest.set_content(content);
+
+    // Call the API, any error will throw an cmd::exception
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
 void runLoad(const std::string& socketPath,
@@ -266,6 +376,8 @@ void configure(CLI::App_p app)
     catalogApp->add_option("-a, --api_socket", options->apiEndpoint, "Sets the API server socket address.")
         ->default_val(ENGINE_API_SOCK)
         ->check(CLI::ExistingFile);
+     const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
+
 
     // format
     catalogApp->add_option("-f, --format", options->format, "Sets the format of the input/output.")
@@ -291,7 +403,7 @@ void configure(CLI::App_p app)
     auto get_subcommand =
         catalogApp->add_subcommand("get", "get item-type[/item-id[/item-version]]: Get an item or list a collection.");
     get_subcommand->add_option(name, options->name, nameDesc + "collection to list: item-type[/item-id]")->required();
-    get_subcommand->callback([options]() { runGet(options->apiEndpoint, options->format, options->name); });
+    get_subcommand->callback([options, client]() { runGet(client, options->format, options->name); });
 
     // update
     auto update_subcommand =
@@ -300,10 +412,10 @@ void configure(CLI::App_p app)
         ->required();
     update_subcommand->add_option(item, options->content, itemDesc)->default_val("");
     update_subcommand->callback(
-        [options]()
+        [options, client]()
         {
             readCinIfEmpty(options->content);
-            runUpdate(options->apiEndpoint, options->format, options->name, options->content);
+            runUpdate(client, options->format, options->name, options->content);
         });
 
     // create
@@ -313,10 +425,10 @@ void configure(CLI::App_p app)
         ->required();
     create_subcommand->add_option(item, options->content, itemDesc)->default_val("");
     create_subcommand->callback(
-        [options]()
+        [options, client]()
         {
             readCinIfEmpty(options->content);
-            runCreate(options->apiEndpoint, options->format, options->name, options->content);
+            runCreate(client, options->format, options->name, options->content);
         });
 
     // delete
@@ -325,7 +437,7 @@ void configure(CLI::App_p app)
     delete_subcommand
         ->add_option(name, options->name, nameDesc + "item or collection to delete: item-type[/item-id[/version]]")
         ->required();
-    delete_subcommand->callback([options]() { runDelete(options->apiEndpoint, options->format, options->name); });
+    delete_subcommand->callback([options, client]() { runDelete(client, options->format, options->name); });
 
     // validate
     auto validate_subcommand =
@@ -334,10 +446,10 @@ void configure(CLI::App_p app)
         ->required();
     validate_subcommand->add_option(item, options->content, itemDesc)->default_val("");
     validate_subcommand->callback(
-        [options]()
+        [options, client]()
         {
             readCinIfEmpty(options->content);
-            runValidate(options->apiEndpoint, options->format, options->name, options->content);
+            runValidate(client, options->format, options->name, options->content);
         });
 
     // load
