@@ -16,7 +16,9 @@
 
 #include "defaultSettings.hpp"
 #include "utils.hpp"
+#include <cmds/apiExcept.hpp>
 #include <cmds/apiclnt/client.hpp>
+
 namespace cmd::catalog
 {
 
@@ -34,6 +36,7 @@ struct Options
     std::string content;
     std::string path;
     bool recursive;
+    bool abortOnError;
 };
 
 eCatalog::ResourceFormat toResourceFormat(const std::string& format)
@@ -82,10 +85,10 @@ eCatalog::ResourceType toResourceType(const std::string& type)
     {
         return eCatalog::ResourceType::schema;
     }
-    //else if (type == "collection")
+    // else if (type == "collection")
     //{
-    //    return eCatalog::ResourceType::collection;
-    //}
+    //     return eCatalog::ResourceType::collection;
+    // }
 
     throw std::invalid_argument("Invalid Resource type: " + type);
 }
@@ -106,60 +109,6 @@ void readCinIfEmpty(std::string& content)
 
 } // namespace
 
-namespace details
-{
-
-
-
-
-std::string commandName(const std::string& command)
-{
-    return command + "_catalog";
-}
-
-json::Json getParameters(const std::string& format, const std::string& name, const std::string& content)
-{
-    json::Json params;
-    params.setObject();
-    params.setString(format, "/format");
-    params.setString(name, "/name");
-    if (!content.empty())
-    {
-        params.setString(content, "/content");
-    }
-
-    return params;
-}
-
-void processResponse(const base::utils::wazuhProtocol::WazuhResponse& response)
-{
-    auto content = response.data().getString("/content");
-    auto message = response.message();
-    if (content)
-    {
-        std::cout << content.value() << std::endl;
-    }
-    else if (message)
-    {
-        std::cout << message.value() << std::endl;
-    }
-}
-
-void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, const std::string& socketPath)
-{
-    try
-    {
-        apiclnt::Client client(socketPath);
-        auto response = client.send(request);
-        details::processResponse(response);
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << e.what() << '\n';
-    }
-}
-
-} // namespace details
 
 void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& format, const std::string& nameStr)
 {
@@ -240,7 +189,7 @@ void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& forma
 
 void runValidate(std::shared_ptr<apiclnt::Client> client,
                  const std::string& format,
-                 const std::string& nameStr,
+                 const std::string& resourceType,
                  const std::string& content)
 {
     using RequestType = eCatalog::ResourceValidate_Request;
@@ -249,7 +198,7 @@ void runValidate(std::shared_ptr<apiclnt::Client> client,
 
     // Prepare the request
     RequestType eRequest;
-    eRequest.set_name(nameStr);
+    eRequest.set_name(resourceType);
     eRequest.set_format(toResourceFormat(format));
     eRequest.set_content(content);
 
@@ -259,12 +208,17 @@ void runValidate(std::shared_ptr<apiclnt::Client> client,
     utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
-void runLoad(const std::string& socketPath,
-             const std::string& format,
-             const std::string& nameStr,
+void runLoad(std::shared_ptr<apiclnt::Client> client,
+             const std::string& resourceFormatStr,
+             const std::string& resourceTypeStr,
              const std::string& path,
-             bool recursive)
+             bool recursive,
+             bool abortOnError)
 {
+    using RequestType = eCatalog::ResourcePost_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
+    const std::string command = "catalog.resource/post";
+
     // Build and check collection path
     std::error_code ec;
     std::filesystem::path collectionPath;
@@ -275,23 +229,25 @@ void runLoad(const std::string& socketPath,
     }
     catch (const std::exception& e)
     {
-        std::cout << e.what() << std::endl;
-        return;
+        throw ClientException(std::string("Invalid path: ") + e.what(), ClientException::Type::PATH_ERROR);
     }
     if (!std::filesystem::is_directory(collectionPath, ec))
     {
-        std::cout << collectionPath << " is not a directory: " << std::endl;
         ec.clear();
-        return;
+        throw ClientException(collectionPath.string() + " is not a directory: ", ClientException::Type::PATH_ERROR);
     }
 
     // Assert collection name is valid
-    if ("decoder" != nameStr && "rule" != nameStr && "filter" != nameStr && "output" != nameStr && "schema" != nameStr
-        && "environment" != nameStr)
+    eCatalog::ResourceType type;
+    eCatalog::ResourceFormat format;
+    try
     {
-        std::cout << "'" << nameStr << "'"
-                  << " is not valid name" << std::endl;
-        return;
+        type = toResourceType(resourceTypeStr);
+        format = toResourceFormat(resourceFormatStr);
+    }
+    catch (const std::exception& e)
+    {
+        throw ClientException(e.what(), ClientException::Type::INVALID_ARGUMENT);
     }
 
     auto loadEntry = [&](decltype(*std::filesystem::directory_iterator(collectionPath, ec)) dirEntry)
@@ -299,9 +255,13 @@ void runLoad(const std::string& socketPath,
         // If error ignore entry and continue
         if (ec)
         {
-            std::cout << "Ignoring entry " << dirEntry.path() << ": " << ec.message() << std::endl;
-
+            const auto msg = std::string {"Failed to read entry "} + dirEntry.path().string() + ": " + ec.message();
             ec.clear();
+            if (abortOnError)
+            {
+                throw ClientException(msg, ClientException::Type::PATH_ERROR);
+            }
+            std::cerr << msg << std::endl;
             return;
         }
 
@@ -310,14 +270,18 @@ void runLoad(const std::string& socketPath,
             // If error ignore entry and continue
             if (ec)
             {
-                std::cout << "Ignoring entry " << dirEntry.path() << ": " << ec.message() << std::endl;
-                ec.clear();
-                return;
+            const auto msg = std::string {"Failed to read entry "} + dirEntry.path().string() + ": " + ec.message();
+            ec.clear();
+            if (abortOnError)
+            {
+                throw ClientException(msg, ClientException::Type::PATH_ERROR);
+            }
+            std::cerr << msg << std::endl;
+            return;
             }
 
             // Read file content
             std::string content;
-
             try
             {
                 std::ifstream file(dirEntry.path());
@@ -325,19 +289,47 @@ void runLoad(const std::string& socketPath,
             }
             catch (const std::exception& e)
             {
-                std::cout << "Ignoring entry " << dirEntry.path() << ": " << e.what() << std::endl;
+                const auto msg = std::string {"Failed to read entry "} + dirEntry.path().string() + ": " + e.what();
+                ec.clear();
+                if (abortOnError)
+                {
+                throw ClientException(msg, ClientException::Type::PATH_ERROR);
+                }
+                std::cerr << msg << std::endl;
                 return;
             }
 
             // Send request
-            auto request = base::utils::wazuhProtocol::WazuhRequest::create(
-                details::commandName("post"), details::ORIGIN_NAME, details::getParameters(format, nameStr, content));
-            std::cout << dirEntry << " ==> ";
+            RequestType eRequest;
+            eRequest.set_type(type);
+            eRequest.set_format(format);
+            eRequest.set_content(content);
+
             try
             {
-                apiclnt::Client client(socketPath);
-                auto response = client.send(request);
-                details::processResponse(response);
+                const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+                const auto response = client->send(request);
+                utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+            }
+            catch (const ClientException& e)
+            {
+                switch (e.getErrorType())
+                {
+                case ClientException::Type::SOCKET_COMMUNICATION_ERROR:
+                    // Fatal error, stop iterating, rethrow
+                    throw;
+                default:
+                    // Non fatal error, continue iterating
+                    const auto msg = std::string {"Failed to read entry "} + dirEntry.path().string() + ": " + e.what();
+                    ec.clear();
+                    if (abortOnError)
+                    {
+                        throw ClientException(msg, ClientException::Type::PATH_ERROR);
+                    }
+                    std::cerr << msg << std::endl;
+                    break;
+                }
+                return;
             }
             catch (const std::exception& e)
             {
@@ -376,8 +368,7 @@ void configure(CLI::App_p app)
     catalogApp->add_option("-a, --api_socket", options->apiEndpoint, "Sets the API server socket address.")
         ->default_val(ENGINE_API_SOCK)
         ->check(CLI::ExistingFile);
-     const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
-
+    const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
 
     // format
     catalogApp->add_option("-f, --format", options->format, "Sets the format of the input/output.")
@@ -468,8 +459,9 @@ void configure(CLI::App_p app)
         ->required()
         ->check(CLI::ExistingDirectory);
     load_subcommand->add_flag("-r, --recursive", options->recursive, "Recursive loading of the directory.");
+    load_subcommand->add_flag("-a, --abort", options->abortOnError, "Abort on error.");
     load_subcommand->callback(
-        [options]()
-        { runLoad(options->apiEndpoint, options->format, options->name, options->path, options->recursive); });
+        [options, client]()
+        { runLoad(client, options->format, options->name, options->path, options->recursive, options->abortOnError); });
 }
 } // namespace cmd::catalog
