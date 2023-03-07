@@ -130,7 +130,7 @@ def load_rules_from_file(rule_filename: str, rule_relative_path: str, rule_statu
         # Get variables in dict format {varname: value} (will only be used for id and level for now)
         variables = {}
         for vari in root.findall('var'):
-            name = "$"+vari.attrib.get('name')
+            name = "$" + vari.attrib.get('name')
             value = vari.text
             variables[name] = value
 
@@ -142,7 +142,7 @@ def load_rules_from_file(rule_filename: str, rule_relative_path: str, rule_statu
                     if xml_rule.tag.lower() == "rule":
                         groups = list()
 
-                        #Replace values of id and level if variables exist
+                        # Replace values of id and level if variables exist
                         id_value = int(variables.get(xml_rule.attrib['id'], xml_rule.attrib['id']))
                         level_value = int(variables.get(xml_rule.attrib['level'], xml_rule.attrib['level']))
 
