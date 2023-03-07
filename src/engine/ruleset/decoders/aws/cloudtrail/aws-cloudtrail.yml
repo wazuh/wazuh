@@ -107,14 +107,13 @@ normalize:
       # TODO: need a HF to check a string length, used by flattened should be less than 32766
       - aws.cloudtrail.request_parameters: +ef_exists
     map:
-      - aws.cloudtrail.flattened.requestParameters: $~json.aws.requestParameters
-      - aws.cloudtrail.flattened.responseElements: $~json.aws.responseElements
-      - aws.cloudtrail.flattened.additionalEventData: $~json.aws.additionalEventData
-      - aws.cloudtrail.flattened.serviceEventDetails: $~json.aws.serviceEventDetails
-      - aws.cloudtrail.flattened.response_elements.ConsoleLogin: $~json.aws.responseElements.ConsoleLogin
-      - aws.cloudtrail.flattened.additionalEventData.login_to: $~json.aws.additionalEventData.MobileVersion.LoginTo
-      - aws.cloudtrail.flattened.additionalEventData.mobile_version: true
-      - aws.cloudtrail.flattened.additionalEventData.mfa_used: true
+      - aws.cloudtrail.flattened.request_parameters: $~json.aws.requestParameters
+      - aws.cloudtrail.flattened.response_elements: $~json.aws.responseElements
+      - aws.cloudtrail.flattened.additional_eventdata: $~json.aws.additionalEventData
+      - aws.cloudtrail.flattened.service_event_details: $~json.aws.serviceEventDetails
+      - aws.cloudtrail.console_login.login_to: $~json.aws.additionalEventData.MobileVersion.LoginTo
+      - aws.cloudtrail.console_login.mobile_version: true
+      - aws.cloudtrail.console_login.mfa_used: true
       - user.changes.name: $~json.aws.cloudtrail.flattened.request_parameters.newUserName
       - user.target.name: $~json.aws.cloudtrail.flattened.request_parameters.userName
       - group.name: $~json.aws.cloudtrail.flattened.request_parameters.groupName
@@ -124,12 +123,12 @@ normalize:
   - check:
       - ~json.aws.additionalEventData.MobileVersion: No
     map:
-      - aws.cloudtrail.flattened.additionalEventData.mobile_version: false
+      - aws.cloudtrail.console_login.mobile_version: false
 
   - check:
       - ~json.aws.additionalEventData.MobileVersion.MFAUsed: No
     map:
-      - aws.cloudtrail.flattened.additionalEventData.mfa_used: false
+      - aws.cloudtrail.console_login.mfa_used: false
 
   - check: +ef_exists/aws.cloudtrail.error_code OR +ef_exists/aws.cloudtrail.error_message
     map:
