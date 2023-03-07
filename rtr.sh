@@ -1,36 +1,41 @@
 #!/bin/bash
 
-SRC_DIR=`realpath $(dirname "$0")`
-OUTPUT_DIR=`realpath $(mktemp -d -t wazuh-rtr-XXXXXX)`
+SRC_DIR=$(realpath $(dirname "$0"))
+OUTPUT_DIR=$(realpath $(mktemp -d -t wazuh-rtr-XXXXXX))
 CONTAINER_NAME=wazuh-rtr-engine
 RTR_DIR=$SRC_DIR/.rtr
 RTR_BIN=rtr.py
 RTR_CONFIG="rtr_inputs/rtr_cicd.json"
 CURRENT_UID_GID=$(id -u -n):$(id -g -n)
 PERMISSIONS_BACKUP_FILE=/tmp/permissions.acl
-USERNAME=`logname`
-USERID=`id -u $USERNAME`
-GROUPID=`id -g $USERNAME`
+USERNAME=$(logname)
+USERID=$(id -u $USERNAME)
+GROUPID=$(id -g $USERNAME)
 VERBOSE=''
 BUILD_DOCKER="yes"
 
 build() {
-    docker build -f .rtr/Dockerfile -t $CONTAINER_NAME -q . > /dev/null
+
+    if [[ "$VERBOSE" = "-v" ]]; then
+        docker build -f .rtr/Dockerfile -t $CONTAINER_NAME .
+    else
+        docker build -f .rtr/Dockerfile -t $CONTAINER_NAME -q . > /dev/null
+    fi
 }
 
 Help() {
     # Display Help
-    echo "Run RTR on a directory."
+    echo "Run RTR on a directory within a Docker container."
     echo
     echo "Syntax: rtr.sh [-h|o|s|i|v|b]"
-    echo "options:"
-    echo "h     Print this Help."
+    echo "Options:"
+    echo "h     Prints this help message."
     echo "o     Output directory. It creates a temporary directory in '/tmp/wazuh-rtr-XXXXXX' if not specified."
-    echo "s     Source directory. It uses the directory of this scripts if not specified."
+    echo "s     Source directory. It uses the directory of this script if not specified."
     echo "i     RTR input file. By default, it uses 'rtr_inputs/rtr_cicd.json'."
     echo "v     Verbose. Enables debug mode for RTR."
     echo "b     Build docker. By default, it builds the docker image. Set to 'no' to skip the build."
-    echo ""
+    echo
     echo "      Example: ./rtr.sh -i ./rtr_inputs/rtr_ut.json"
     echo "      Example: ./rtr.sh -o /tmp/rtr -s /home/user/wazuh/src/engine -i ./rtr_inputs/rtr_ut.json -v -b no"
 }
@@ -39,8 +44,8 @@ run() {
     echo "Running RTR on '$SRC_DIR'. Output directory: '$OUTPUT_DIR'. RTR input file: '$RTR_CONFIG'"
     jq -c '.steps[]' $RTR_CONFIG | while read step
     do
-        STEP_DESC=`echo $step | jq -r '.description'`
-        STEP_PARAMS=`echo $step | jq -r '.parameters | join(" ")'`
+        STEP_DESC=$(echo $step | jq -r '.description')
+        STEP_PARAMS=$(echo $step | jq -r '.parameters | join(" ")')
         echo "->Step: $STEP_DESC"
         docker run --rm -v $SRC_DIR:/source -v $OUTPUT_DIR:/output -v $RTR_DIR:/rtr $CONTAINER_NAME /rtr/rtr.py $VERBOSE -u $USERID -g $GROUPID -o /output -s /source $STEP_PARAMS
         docker_exit_code=$?
@@ -69,9 +74,11 @@ do
             BUILD_DOCKER=${OPTARG};;
         :) # missing argument
             echo "Error: Missing argument for option '$OPTARG'."
+            Help
             exit;;
         \?) # Invalid option
             echo "Error: Invalid option."
+            Help
             exit;;
     esac
 done
