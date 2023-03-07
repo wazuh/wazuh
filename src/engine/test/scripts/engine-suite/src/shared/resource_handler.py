@@ -16,6 +16,7 @@ except ImportError:
 class Format(Enum):
     JSON = auto()
     YML = auto()
+    TEXT = auto()
 
 
 class ResourceHandler:
@@ -134,3 +135,17 @@ class ResourceHandler:
         if response['message'] != 'OK':
             raise Exception(
                 f'Could not update {name} due to: {response["message"]}')
+
+    def save_plain_text_file(self, path_str: str, name: str, content: str):
+        path = Path(path_str)
+        path.mkdir(parents=True, exist_ok=True)
+        pure_path = PurePath(path / name)
+        Path(pure_path).write_text(content)
+
+    def read_plain_text_file(self, path_str: str) -> str:
+        path = Path(path_str)
+        with path.open(mode='r') as fid:
+            content = fid.read()
+        if not content:
+            raise Exception(f'Failed to read plain text {full_name}')
+        return content
