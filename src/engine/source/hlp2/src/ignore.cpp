@@ -22,14 +22,8 @@ parsec::Parser<json::Json> getIgnoreParser(std::string name, Stop endTokens, Opt
                                  " with the string to match");
     }
 
-    return [repeatStr = lst.at(0), name](std::string_view text, int index)
+    return [repeatStr = lst.at(0)](std::string_view text, int index)
     {
-        auto res = internal::eofError<json::Json>(text, index);
-        if (res.has_value())
-        {
-            return res.value();
-        }
-
         std::size_t repPos {0ul};
         while (index < text.size() && text[index] == repeatStr[repPos])
         {
