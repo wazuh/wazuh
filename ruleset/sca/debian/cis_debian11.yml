@@ -718,9 +718,6 @@ checks:
     description: "AIDE takes a snapshot of filesystem state including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
     rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
     remediation: "Install AIDE using the appropriate package manager or manual installation: # apt install aide aide-common Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Run the following commands to initialize AIDE: # aideinit # mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db."
-    references:
-      - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service
-      - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
     compliance:
       - cis: ["1.3.1"]
       - cis_csc_v8: ["3.14"]
@@ -743,7 +740,7 @@ checks:
     title: "Ensure filesystem integrity is regularly checked."
     description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
     rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
-    remediation: "If cron will be used to schedule and run aide check: Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/bin/aide.wrapper --config /etc/aide/aide.conf --check OR If aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/bin/aide.wrapper --config /etc/aide/aide.conf --check [Install] WantedBy=multi-user.target . Create or edit the file /etc/systemd/system/aidecheck.timer and add the following lines: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target .Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer."
+    remediation: "If cron will be used to schedule and run aide check: Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/bin/aide.wrapper --config /etc/aide/aide.conf --check OR If aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/bin/aide.wrapper --config /etc/aide/aide.conf --check [Install] WantedBy=multi-user.target. Create or edit the file /etc/systemd/system/aidecheck.timer and add the following lines: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target. Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer."
     references:
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
@@ -775,9 +772,8 @@ checks:
     title: "Ensure bootloader password is set."
     description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters."
     rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off AppArmor at boot time)."
-    impact: "If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing 'e' or access the GRUB 2 command line by pressing 'c' If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem You can add --unrestricted to the menu entries to allow the system to boot without entering a password. Password will still be required to edit menu items. More Information - https://help.ubuntu.com/community/Grub2/Passwords."
+    impact: "If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing 'e' or access the GRUB 2 command line by pressing 'c' If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem You can add --unrestricted to the menu entries to allow the system to boot without entering a password. Password will still be required to edit menu items. More Information: https://help.ubuntu.com/community/Grub2/Passwords."
     remediation: 'Create an encrypted password with grub-mkpasswd-pbkdf2: # grub-mkpasswd-pbkdf2 Enter password: <password> Reenter password: <password> PBKDF2 hash of your password is <encrypted-password>. Add the following into a custom /etc/grub.d configuration file: cat <<EOF set superusers="<username>" password_pbkdf2 <username> <encrypted-password> EOF. The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS= Example: CLASS="--class gnu-linux --class gnu --class os --unrestricted". Run the following command to update the grub2 configuration: # update-grub.'
-    default value: "This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment."
     references:
       - https://help.ubuntu.com/community/Grub2/Passwords
     compliance:
@@ -792,7 +788,7 @@ checks:
       - mitre_techniques: ["T1542"]
       - mitre_tactics: ["TA0003"]
       - mitre_mitigations: ["M1046"]
-    condition: any
+    condition: all
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*set superusers'
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*password'
@@ -802,7 +798,7 @@ checks:
     title: "Ensure permissions on bootloader config are configured."
     description: "The grub configuration file contains information on boot settings and passwords for unlocking boot options."
     rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
-    remediation: "Run the following commands to set permissions on your grub configuration: # chown root:root /boot/grub/grub.cfg # chmod u-wx,go-rwx /boot/grub/grub.cfg .Additional Information: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment"
+    remediation: "Run the following commands to set permissions on your grub configuration: # chown root:root /boot/grub/grub.cfg # chmod u-wx,go-rwx /boot/grub/grub.cfg ."
     compliance:
       - cis: ["1.4.2"]
       - cis_csc_v8: ["3.3"]
@@ -879,7 +875,6 @@ checks:
     description: "The Apport Error Reporting Service automatically generates crash reports for debugging."
     rationale: "Apport collects potentially sensitive data, such as core dumps, stack traces, and log files. They can contain passwords, credit card numbers, serial numbers, and other private material."
     remediation: "Edit /etc/default/apport and add or edit the enabled parameter to equal 0: enabled=0 Run the following commands to stop and disable the apport service # systemctl stop apport.service # systemctl --now disable apport.service -- OR -- Run the following command to remove the apport package: # apt purge apport."
-    default value: "enabled=1"
     compliance:
       - cis: ["1.5.3"]
       - cis_csc_v8: ["4.8"]
@@ -890,7 +885,6 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
     condition: all
     rules:
       - "c:systemctl is-active apport.service -> r:inactive"
@@ -900,7 +894,7 @@ checks:
     title: "Ensure core dumps are restricted."
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file. The system provides the ability to set a soft limit for core dumps, but this can be overridden by the user."
     rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5) ). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
-    remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 .Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 .Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 .IF systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 .Run the command: systemctl daemon-reload"
+    remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0. Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0. Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0. IF systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0. Run the command: systemctl daemon-reload."
     compliance:
       - cis: ["1.5.4"]
       - mitre_techniques: ["T1005"]
@@ -921,10 +915,6 @@ checks:
     description: "AppArmor provides Mandatory Access Controls."
     rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
     remediation: "Install AppArmor. # apt install apparmor apparmor-utils."
-    references:
-      - AppArmor Documentation: http://wiki.apparmor.net/index.php/Documentation
-      - Ubuntu AppArmor Documentation: https://help.ubuntu.com/community/AppArmor
-      - SUSE AppArmor Documentation: https://www.suse.com/documentation/apparmor/
     compliance:
       - cis: ["1.6.1.1"]
       - cis_csc_v8: ["3.3"]
@@ -950,10 +940,6 @@ checks:
     description: "Configure AppArmor to be enabled at boot time and verify that it has not been overwritten by the bootloader boot parameters. Note: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
     rationale: "AppArmor must be enabled at boot time in your bootloader configuration to ensure that the controls it provides are not overridden."
     remediation: 'Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line GRUB_CMDLINE_LINUX="apparmor=1 security=apparmor" Run the following command to update the grub2 configuration: # update-grub'
-    references:
-      - AppArmor Documentation: http://wiki.apparmor.net/index.php/Documentation
-      - Ubuntu AppArmor Documentation: https://help.ubuntu.com/community/AppArmor
-      - SUSE AppArmor Documentation: https://www.suse.com/documentation/apparmor/
     compliance:
       - cis: ["1.6.1.2"]
       - cis_csc_v8: ["3.3"]
@@ -970,19 +956,14 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: none
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1'
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor'
-
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:apparmor=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:security=apparmor'
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode (Automated)
   - id: 29536
     title: "Ensure all AppArmor Profiles are in enforce or complain mode."
     description: "AppArmor profiles define what resources applications are able to access."
     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
     remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* OR Run the following command to set all profiles to complain mode: # aa-complain /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
-    references:
-      - AppArmor Documentation: http://wiki.apparmor.net/index.php/Documentation
-      - Ubuntu AppArmor Documentation: https://help.ubuntu.com/community/AppArmor
-      - SUSE AppArmor Documentation: https://www.suse.com/documentation/apparmor/
     compliance:
       - cis: ["1.6.1.3"]
       - cis_csc_v8: ["3.3"]
@@ -1042,11 +1023,9 @@ checks:
       - cis: ["1.7.1"]
       - mitre_techniques: ["T1082", "T1592", "T1592.004"]
       - mitre_tactics: ["TA0007"]
-    references:
-      - http://www.justice.gov/criminal/cybercrime/
-    condition: any
+        condition: any
     rules:
-      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
+      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian|Linux'
       - "not f:/etc/motd"
 
   # 1.7.2 Ensure local login warning banner is configured properly (Automated)
@@ -1055,15 +1034,13 @@ checks:
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a ." command once they have logged in.'
     remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v , or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue"
-    references:
-      - http://www.justice.gov/criminal/cybercrime/
     compliance:
       - cis: ["1.7.2"]
       - mitre_techniques: ["T1082", "T1592", "T1592.004"]
       - mitre_tactics: ["TA0007"]
     condition: none
     rules:
-      - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
+      - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|Debian|Linux'
 
   # 1.7.3 Ensure remote login warning banner is configured properly (Automated)
   - id: 29540
@@ -1071,15 +1048,13 @@ checks:
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a ." command once they have logged in.'
     remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net."
-    references:
-      - http://www.justice.gov/criminal/cybercrime/
     compliance:
       - cis: ["1.7.3"]
       - mitre_techniques: ["T1018", "T1082",  "T1592", "T1592.004"]
       - mitre_tactics: ["TA0007"]
     condition: none
     rules:
-      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian|Linux'
 
   # 1.7.4 Ensure permissions on /etc/motd are configured (Automated)
   - id: 29541
@@ -1088,8 +1063,6 @@ checks:
     rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/motd : # chown root:root $(readlink -e /etc/motd) # chmod u-x,go-wx $(readlink -e /etc/motd) OR run the following command to remove the /etc/motd file: # rm /etc/motd."
     default value: "File doesn't exist"
-    references:
-      - http://www.justice.gov/criminal/cybercrime/
     compliance:
       - cis: ["1.7.4"]
       - cis_csc_v8: ["3.3"]
@@ -1104,10 +1077,10 @@ checks:
       - mitre_techniques: ["T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
-    condition: all
+    condition: any
     rules:
-      - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-
+     - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+     - 'not f: etc/motd'   
   # 1.7.5 Ensure permissions on /etc/issue are configured (Automated)
   - id: 29542
     title: "Ensure permissions on /etc/issue are configured."
@@ -1115,8 +1088,6 @@ checks:
     rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/issue : # chown root:root $(readlink -e /etc/issue) # chmod u-x,go-wx $(readlink -e /etc/issue)"
     default value: "Access: (0644/-rw-r--r--) Uid: ( 0/ root) Gid: ( 0/ root)"
-    references:
-      - http://www.justice.gov/criminal/cybercrime/
     compliance:
       - cis: ["1.7.5"]
       - cis_csc_v8: ["3.3"]
@@ -1142,8 +1113,6 @@ checks:
     rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/issue.net : # chown root:root $(readlink -e /etc/issue.net) # chmod u-x,go-wx $(readlink -e /etc/issue.net)."
     default value: "Access: (0644/-rw-r--r--) Uid: ( 0/ root) Gid: ( 0/ root)"
-    references:
-      - http://www.justice.gov/criminal/cybercrime/
     compliance:
       - cis: ["1.7.6"]
       - cis_csc_v8: ["3.3"]
@@ -1187,7 +1156,7 @@ checks:
       - mitre_tactics: ["TA0002"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' gdm3 -> r: unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' gdm3 -> r:unknown ok not-installed"
 
   # 1.8.2 Ensure GDM login banner is configured (Automated) - Not implemented
 
@@ -1281,8 +1250,8 @@ checks:
       - iso_27001-2013: ["A.12.4.4"]
     condition: all
     rules:
-      - 'c:sh -c "ps -ef | awk ''(/[c]hronyd/ && $1!=\"_chrony\") { print $1 }''" -> r:\w+'
-
+      - 'c:sh -c "ps -ef |grep chronyd | grep -v grep " -> r:chronyd\s'
+      - 'not c:sh -c "ps -ef |grep chronyd | grep -v grep " -> !r:^_chrony && r:chronyd\s'
   # 2.1.2.3 Ensure chrony is enabled and running (Automated)
   - id: 29549
     title: "Ensure chrony is enabled and running."
@@ -2040,7 +2009,7 @@ checks:
     title: "Ensure ufw is installed."
     description: "The Uncomplicated Firewall (ufw) is a frontend for iptables and is particularly well-suited for host-based firewalls. ufw provides a framework for managing netfilter, as well as a command-line interface for manipulating the firewall."
     rationale: "A firewall utility is required to configure the Linux kernel's netfilter framework via the iptables or nftables back-end. The Linux kernel's netfilter framework host-based firewall can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host. Note: Only one firewall utility should be installed and configured. UFW is dependent on the iptables package."
-    remediation: "Run the following command to install Uncomplicated Firewall (UFW): apt install ufw"
+    remediation: "Run the following command to install Uncomplicated Firewall (UFW): apt install ufw."
     compliance:
       - cis: ["3.5.1.1"]
       - cis_csc_v8: ["4.4", "4.5"]
