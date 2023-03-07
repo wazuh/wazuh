@@ -45,7 +45,7 @@ std::optional<Field> getField(std::string_view input,
                 {
                     // Handle opening quote
                     quote_opened = true;
-                    if (strict && (i > 1) && input[i - 1] != delimiter)
+                    if (strict && (1 < i) && input[i - 1] != delimiter)
                     {
                         // Invalid field if strict parsing is enabled and there is no delimiter before opening quote
                         return {};
@@ -58,7 +58,7 @@ std::optional<Field> getField(std::string_view input,
                 else
                 {
                     // Handle closing quote
-                    bool escaped = (last_escape_location + 1 == i) && (i > 1);
+                    bool escaped = (last_escape_location + 1 == i) && (1 < i);
                     isEscaped = isEscaped || escaped;
                     last_escape_location += (i - last_escape_location) * size_t(!escaped);
                     quote_opened = escaped || (input[i + 1] != delimiter);
