@@ -14,6 +14,8 @@
 #include "opentelemetry/metrics/sync_instruments.h"
 #include <filesystem>
 #include "dataHub.hpp"
+#include <fmt/format.h>
+#include <error.hpp>
 
 class Metrics final
 {
@@ -133,6 +135,13 @@ public:
      */
     void removeObservableGauge(std::string observableGaugeName, opentelemetry::v1::metrics::ObservableCallbackPtr callback) const;
 
+    /**
+     * @brief Set the next handle on the chain
+     *
+     * @param instrumentName name of the instrument.
+     * @param state new state of the instrument.
+     */
+    void setEnableInstrument(const std::string& instrumentName, bool state);
 private:
     /**
      * @brief Set the next handle on the chain

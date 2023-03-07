@@ -544,3 +544,15 @@ void Metrics::removeObservableGauge(std::string observableGaugeName, opentelemet
         throw std::runtime_error {"The UpDownCounter" + observableGaugeName + " has not been created."};
     }
 }
+
+void Metrics::setEnableInstrument(const std::string& instrumentName, bool state)
+{
+    if (controller.find(instrumentName) != controller.end())
+    {
+        controller.at(instrumentName) = state;
+    }
+    else
+    {
+        throw std::runtime_error {"The Instrument " + instrumentName + " has not been created."};
+    }
+}

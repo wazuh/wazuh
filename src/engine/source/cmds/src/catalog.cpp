@@ -14,6 +14,7 @@
 
 #include "apiclnt/client.hpp"
 #include "defaultSettings.hpp"
+#include "metrics.hpp"
 
 namespace cmd::catalog
 {
@@ -143,6 +144,7 @@ void runValidate(const std::string& socketPath,
                  const std::string& nameStr,
                  const std::string& content)
 {
+    Metrics::instance().addCounterValue("CountExample", 1UL);
     auto request = api::WazuhRequest::create(
         details::commandName("validate"), details::ORIGIN_NAME, details::getParameters(format, nameStr, content));
 
