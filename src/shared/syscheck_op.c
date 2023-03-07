@@ -1557,6 +1557,8 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
     os_free(str_root_key);
     os_free(subkey);
     w_FreeArray(first_position);
+    os_free(first_position);
+    os_free(matcher);
 }
 
 #endif /* # else (ifndef WIN32) */
