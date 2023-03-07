@@ -784,8 +784,8 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "c:systemctl is-enabled aidecheck.service -> r:enable"
-      - "c:systemctl is-enabled aidecheck.timer -> r:enable"
+      - "c:systemctl is-enabled aidecheck.service -> r:enabled"
+      - "c:systemctl is-enabled aidecheck.timer -> r:enabled"
       - "c:systemctl status aidecheck.timer -> r:active"
 
   # 1.3.3 Ensure cryptographic mechanisms are used to protect the integrity of audit tools (Automated) - Not implemented
