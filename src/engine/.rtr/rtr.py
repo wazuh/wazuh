@@ -39,7 +39,7 @@ def init_argparse():
         dest='version'
     )
     parser.add_argument(
-        "-t", "--test", help='Test to execute. If omitted, all tests will be executed',
+        "-t", "--test", help='Tests to run. If omitted, all tests will be executed',
         action="append",
         dest='tests',
         choices=list(TESTS.keys())
@@ -90,7 +90,7 @@ def init_argparse():
         dest='threads',
     )
     parser.add_argument(
-        "--option", help='Options for Cmake configure',
+        "--option", help='Options for Cmake configuration.',
         action="append",
         dest='options',
     )

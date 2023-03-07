@@ -178,6 +178,8 @@ def configure(params):
         bool: True on success, False otherwise.
     """
     builddir = params.output + BUILDDIR
+    #Adding safe directory in case the user running the command is not root
+    subprocess.run(f"git config --global --add safe.directory '*'", shell=True)
     # Removing cache file
     with contextlib.suppress(FileNotFoundError):
         os.remove(builddir + '/CMakeCache.txt')
@@ -190,7 +192,7 @@ def configure(params):
     logging.debug(f'Executing {command} {args}')
     result = subprocess.run(
         f'{command} {args}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    log(builddir, 'configure', result.stdout, result.stderr)
+    log(params.output, 'configure', result.stdout, result.stderr)
     return bool(not result.returncode)
 
 def setThreads(params):
@@ -217,8 +219,6 @@ def build(params):
         bool: True on success, False otherwise.
     """
     builddir = params.output + BUILDDIR
-    #Adding safe directory in case the user running the command is not root
-    subprocess.run(f"git config --global --add safe.directory '*'", shell=True)
     if configure(params):
         setThreads(params)
 
@@ -244,6 +244,7 @@ def build(params):
             log(params.output, 'build', result.stdout, result.stderr)
         return bool(not result.returncode)
     else:
+        logging.info('BUILDING: configuration failed.')
         return False
 
 def docs(params):
@@ -257,24 +258,28 @@ def docs(params):
     Returns:
         bool: True on success, False otherwise.
     """
-    setThreads(params)
-    command = 'make'
-    args = f'-C {params.output}{BUILDDIR} {DOXYGEN_TARGET} -j{THREADS_DEFAULT}'
-    logging.debug(f'Executing {command} {args}')
-    # Creating a symbolic link to the source folder
-    with contextlib.suppress(FileNotFoundError):
-        os.remove(params.output + params.source)
-    os.symlink(params.source, params.output + params.source, target_is_directory=True)
-    result = subprocess.run(
-        f'{command} {args}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, cwd=params.output)
-    if result.returncode == 0 and not result.stderr:
-        logging.info('DOXYGEN GENERATION: successful')
+    if configure(params):
+        setThreads(params)
+        command = 'make'
+        args = f'-C {params.output}{BUILDDIR} {DOXYGEN_TARGET} -j{THREADS_DEFAULT}'
+        logging.debug(f'Executing {command} {args}')
+        # Creating a symbolic link to the source folder
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(params.output + params.source)
+        os.symlink(params.source, params.output + params.source, target_is_directory=True)
+        result = subprocess.run(
+            f'{command} {args}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, cwd=params.output)
+        if result.returncode == 0 and not result.stderr:
+            logging.info('DOXYGEN GENERATION: successful')
+        else:
+            logging.info('DOXYGEN GENERATION: fail')
+            # TODO: we force the return code to 0 to allow the tool to continue
+            result.returncode = 0
+        log(params.output, 'docs', result.stdout, result.stderr)
+        return bool(not result.returncode)
     else:
-        logging.info('DOXYGEN GENERATION: fail')
-        # TODO: we force the return code to 0 to allow the tool to continue
-        result.returncode = 0
-    log(params.output, 'docs', result.stdout, result.stderr)
-    return bool(not result.returncode)
+        logging.info('DOXYGEN GENERATION: configuration failed')
+        return False
 
 
 def clangtidy(params):
