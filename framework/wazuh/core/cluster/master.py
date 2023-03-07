@@ -666,10 +666,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         await sync_object.sync(start_time=start_time, chunks=local_agent_groups_information)
 
     async def send_agent_groups_information(self, groups_info):
-        """Send the group information to the worker node.
+        """Send group information to the worker node.
 
-        Each time we get data it will be sent.
-        A worker node cannot send two consecutive times the same group information.
+        Parameters
+        ----------
+        groups_info : list
+            Chunks of agent-groups data obtained in local db.
         """
         logger = self.task_loggers['Agent-groups send']
         try:
@@ -678,7 +680,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             await self.agent_groups.sync(start_time=self.send_agent_groups_status['date_start'], chunks=groups_info)
         except Exception as e:
             logger.error(f'Error sending agent-groups information to {self.name}: {e}')
-
 
     def set_date_end_master(self, logger):
         """Store the datetime when Integrity sync is completed and log 'Finished in' message.
