@@ -28,21 +28,19 @@ parsec::Parser<json::Json> getAlphanumericParser(const std::string& name, Stop, 
             return res.value();
         }
 
-        auto end = std::find_if(text.begin() + index, text.end(), [](char const& c) { return !std::isalnum(c); });
+        const auto end = std::find_if(text.begin() + index, text.end(), [](char const& c) { return !std::isalnum(c); });
 
-        auto endPos = end - text.begin();
+        const auto endPos = end - text.begin();
 
-        if (end == text.end())
+        if (endPos == index)
         {
-            json::Json alphaNumeric;
-            alphaNumeric.setString(std::string {text.substr(index, endPos - index)});
+            return parsec::makeError<json::Json>(fmt::format("{}: Nothing to parse", name), endPos);
+        }
 
-            return parsec::makeSuccess<json::Json>(std::move(alphaNumeric), endPos);
-        }
-        else
-        {
-            return parsec::makeError<json::Json>(fmt::format("{}: Expected alphanumeric input", name), index);
-        }
+        json::Json alphaNumeric;
+        alphaNumeric.setString(std::string {text.substr(index, endPos - index)});
+
+        return parsec::makeSuccess<json::Json>(std::move(alphaNumeric), endPos);
     };
 }
 } // namespace hlp

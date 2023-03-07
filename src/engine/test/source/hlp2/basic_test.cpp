@@ -302,10 +302,14 @@ TEST(HLP2, TextParser)
     }
 }
 
-TEST(HLP2, AlphanumericParser)
+TEST(AlphanumericParser, build)
 {
+    ASSERT_NO_THROW(hlp::getAlphanumericParser({}, {}, {}));
     ASSERT_THROW(hlp::getAlphanumericParser({}, {}, {"arg"}), std::runtime_error);
+}
 
+TEST(AlphanumericParser, parser)
+{
     auto fn = [](std::string in) -> json::Json
     {
         json::Json doc;
@@ -313,14 +317,16 @@ TEST(HLP2, AlphanumericParser)
         return doc;
     };
     std::vector<TestCase> testCases {
+        TestCase {"", false, {}, Options(), fn(""), 0},
+        TestCase {"#", false, {}, Options(), fn(""), 0},
         TestCase {"id98A", true, {}, Options(), fn("id98A"), 5},
-        TestCase {"id98A:69", false, {}, Options(), fn("id98A:69"), 0},
+        TestCase {"id98A:69", true, {}, Options(), fn("id98A"), 5},
         TestCase {"idARGbyu", true, {}, Options(), fn("idARGbyu"), 8},
         TestCase {"0123456789", true, {}, Options(), fn("0123456789"), 10},
-        TestCase {"Hello#@$%&/()[]{}!:-+*", false, {}, Options(), fn("Hello#@$%&/()[]{}!:-+*"), 0}};
+        TestCase {"Hello#@$%&/()[]{}!:-+*", true, {}, Options(), fn("Hello"), 5}};
 
     for (auto t : testCases)
     {
-        runTest(t, hlp::getAlphanumericParser, "header ", "");
+        runTest(t, hlp::getAlphanumericParser);
     }
 }

@@ -63,9 +63,9 @@ std::string to_string(const TestCase& testCase)
  *
  * @param t The tuple containing the test case parameters
  * @param parserBuilder The parser builder
- * @header The header to be appended to the input string
- * @tail The tail to be appended to the input string
- * @strictStop The end token is not modified and no tail is added
+ * @param header The header to be appended to the input string
+ * @param tail The tail to be appended to the input string
+ * @param strictStop The end token is not modified and no tail is added
  */
 static void runTest(TestCase t,
                     std::function<parsec::Parser<json::Json>(std::string, Stop, Options)> parserBuilder,
