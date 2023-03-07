@@ -18,6 +18,7 @@ namespace details
 constexpr auto ORIGIN_NAME = "engine_integrated_metrics_api";
 
 constexpr auto API_METRICS_DUMP_SUBCOMMAND {"dump"};
+constexpr auto API_METRICS_ENABLE_SUBCOMMAND {"enable"};
 
 std::string commandName(const std::string& command);
 
@@ -30,6 +31,7 @@ void singleRequest(const api::WazuhRequest& request, const std::string& socketPa
 void configure(CLI::App_p app);
 
 void runDump(const std::string& socketPath);
+void runEnableInstrument(const std::string& socketPath, const std::string& nameInstrument, bool enableState = true);
 
 } // namespace cmd::metrics
 

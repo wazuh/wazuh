@@ -25,6 +25,8 @@ namespace
 struct Options
 {
     std::string socketPath;
+    std::string nameInstrument;
+    bool enableState;
 };
 
 } // namespace
@@ -85,9 +87,17 @@ void configure(CLI::App_p app)
 
     // metrics subcommands
     // list
-    auto dump_subcommand =
-        metricApp->add_subcommand("dump", "Prints all collected metrics.");
+    auto dump_subcommand = metricApp->add_subcommand("dump", "Prints all collected metrics.");
     dump_subcommand->callback([options]() { runDump(options->socketPath); });
+
+    auto enable_subcommand = metricApp->add_subcommand("enable", "Enable some instrument metrics.");
+    enable_subcommand
+        ->add_option("nameInstrument", options->nameInstrument, "Name of the instrument whose status will be modified")
+        ->default_val("");
+    enable_subcommand
+        ->add_option("enableState", options->enableState, "New instrument status")
+        ->default_val(true);
+    enable_subcommand->callback([options]() { runEnableInstrument(options->socketPath, options->nameInstrument, options->enableState); });
 
 }
 
@@ -96,6 +106,24 @@ void runDump(const std::string& socketPath)
     auto req = api::WazuhRequest::create(details::commandName(details::API_METRICS_DUMP_SUBCOMMAND),
                                          details::ORIGIN_NAME,
                                          details::getParameters(details::API_METRICS_DUMP_SUBCOMMAND));
+
+    details::singleRequest(req, socketPath);
+}
+
+void runEnableInstrument(const std::string& socketPath, const std::string& nameInstrument, bool enableState)
+{
+    json::Json params;
+    params.setObject();
+    if (!nameInstrument.empty())
+    {
+        params.setString(nameInstrument, "/nameInstrument");
+    }
+
+    params.setBool(enableState, "/enableState");
+
+    auto req = api::WazuhRequest::create(details::commandName(details::API_METRICS_ENABLE_SUBCOMMAND),
+                                         details::ORIGIN_NAME,
+                                         params);
 
     details::singleRequest(req, socketPath);
 }
