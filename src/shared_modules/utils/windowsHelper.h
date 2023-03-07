@@ -219,7 +219,7 @@ namespace Utils
                         }
                         else
                         {
-                            tm local_time_s { 0 };
+                            tm local_time_s {};
                             local_time_s.tm_year = std::stoi(timestamp1.substr(0, 4)) - REFERENCE_YEAR;
                             local_time_s.tm_mon = std::stoi(timestamp1.substr(4, 2)) - 1;
                             local_time_s.tm_mday = std::stoi(timestamp1.substr(6, 2));
