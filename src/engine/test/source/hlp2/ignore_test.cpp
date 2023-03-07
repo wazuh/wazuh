@@ -5,7 +5,19 @@
 #include <json/json.hpp>
 #include <string>
 
-TEST(HLP2, ignoreParser)
+TEST(IgnoreParser, build)
+{
+    // OK
+    ASSERT_NO_THROW(hlp::getIgnoreParser({}, {}, {"foo"}));
+    // The stop are optional
+    ASSERT_NO_THROW(hlp::getIgnoreParser({}, {""}, {"foo"}));
+
+    // Do not allow options
+    ASSERT_THROW(hlp::getIgnoreParser({}, {}, {""}), std::runtime_error);
+    ASSERT_THROW(hlp::getIgnoreParser({}, {}, {"foo", "bar"}), std::runtime_error);
+}
+
+TEST(IgnoreParser, parser)
 {
 
     auto fn = [](std::string in) -> json::Json
@@ -22,12 +34,12 @@ TEST(HLP2, ignoreParser)
         TestCase {R"(wazuhwazuh)", true, {""}, Options {"wazuh"}, fn(R"(null)"), 10},
         TestCase {R"(wazuhwa)", true, {""}, Options {"wazuh"}, fn(R"(null)"), 7},
         TestCase {R"(WAZUH)", true, {""}, Options {"wazuh"}, fn(R"(null)"), 0},
-        TestCase {R"()", false, {""}, Options {"wazuh"}, fn(R"(null)"), 0},
+        TestCase {R"()", true, {""}, Options {"wazuh"}, fn(R"(null)"), 0},
         TestCase {R"(wazuh)", false, {""}, Options {""}, fn(R"(null)"), 0}
     };
 
     for (auto t : testCases)
     {
-        runTest(t, hlp::getIgnoreParser, "header ", " tail", true);
+        runTest(t, hlp::getIgnoreParser);
     }
 }
