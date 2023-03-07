@@ -9,6 +9,7 @@ namespace api::metrics::cmds
 {
 
 api::CommandFn metricsDumpCmd();
+api::CommandFn metricsEnableCmd();
 
 void registerAllCmds(std::shared_ptr<api::Registry> registry);
 } // namespace api::metrics::cmds
