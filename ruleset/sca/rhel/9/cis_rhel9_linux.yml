@@ -2112,7 +2112,7 @@ checks:
       - pci_dss_3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
       - mitre_techniques: ["T1562", "T1562.006"]
-      - mitre_tactics: ["TA0005"]
+      - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1053"]
     condition: all
     rules:
@@ -2408,7 +2408,7 @@ checks:
   # 4.2.2.1.1 Ensure systemd-journal-remote is installed (Manual)
   - id: 28092
     title: "Ensure systemd-journal-remote is installed."
-    description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
+    description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralized log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Run the following command to install systemd-journal-remote: # dnf install systemd-journal-remote."
     compliance:
@@ -2432,7 +2432,7 @@ checks:
   # 4.2.2.1.3 Ensure systemd-journal-remote is enabled (Manual)
   - id: 28093
     title: "Ensure systemd-journal-remote is enabled."
-    description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
+    description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralized log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Run the following command to enable systemd-journal-remote: # systemctl --now enable systemd-journal-upload.service."
     compliance:
@@ -2549,7 +2549,7 @@ checks:
     title: "Ensure journald is not configured to send logs to rsyslog."
     description: "Data from journald should be kept in the confines of the service and not forwarded on to other services."
     rationale: "IF journald is the method for capturing logs, all logs of the system should be handled by journald and not forwarded to other logging mechanisms. Note: This recommendation only applies if journald is the chosen method for client side logging. Do not apply this recommendation if rsyslog is used."
-    remediation: "Edit the /etc/systemd/journald.conf file and ensure that ForwardToSyslog=yes is removed. Restart the service: # systemctl restart systemd-journal-upload."
+    remediation: "Edit the /etc/systemd/journald.conf file and ensure that ForwardToSyslog=yes is removed. Restart the service: # systemctl restart systemd-journald.service."
     compliance:
       - cis: ["4.2.2.5"]
       - cis_csc_v8: ["8.2", "8.9"]
