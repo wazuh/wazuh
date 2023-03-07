@@ -198,12 +198,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.version = ""
         self.cluster_name = ""
         self.node_type = ""
-        self.agent_group_task = None
+
         # Dictionary to save loggers for each sync task.
         self.task_loggers = {}
         context_tag.set(self.tag)
         self.integrity = None
         self.agent_groups = None
+
         # Maximum zip size allowed when syncing Integrity files.
         self.current_zip_limit = self.cluster_items['intervals']['communication']['max_zip_size']
 
@@ -956,12 +957,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         super().connection_lost(exc)
         self.logger.info("Cancelling pending tasks.")
-
-        # Cancel agent-groups task
-        try:
-            self.agent_group_task.cancel()
-        except AttributeError:
-            pass
 
         # Cancel all pending tasks
         for pending_task in self.sync_tasks.values():
