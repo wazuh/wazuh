@@ -665,7 +665,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         local_agent_groups_information = await sync_object.retrieve_information()
         await sync_object.sync(start_time=start_time, chunks=local_agent_groups_information)
 
-    async def send_agent_groups_information(self, groups_info):
+    async def send_agent_groups_information(self, groups_info: list):
         """Send group information to the worker node.
 
         Parameters
@@ -1010,10 +1010,7 @@ class Master(server.AbstractServer):
                          'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
 
     async def agent_groups_update(self):
-        """Asynchronous task in charge of obtaining data related to agent-groups periodically.
-
-        It updates the local variable agent_groups_control
-        every self.cluster_items['intervals']['master']['sync_agent_groups'] seconds.
+        """Obtain and broadcast agent-groups data periodically.
 
         This information will only be sent to the worker nodes when it contains data.
         It looks like this: ['[{"data":[{"id":1,"group":["default","group1"]}]}]'].
