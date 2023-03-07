@@ -87,6 +87,11 @@ THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to req
                                      " check the following link to learn how to use the Retry configuration to avoid it: " \
                                      f"'{RETRY_CONFIGURATION_URL}'"
 
+ALL_REGIONS = [
+    'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2', 'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-2',
+    'ap-south-1', 'eu-central-1', 'eu-west-1'
+]
+
 
 ################################################################################
 # Classes
@@ -1508,8 +1513,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             return result
 
     def get_ec2_client(self, access_key, secret_key, region, profile_name=None):
-        EC2_SERVICE = 'ec2'
-
         conn_args = {}
         conn_args['region_name'] = region
 
@@ -1521,23 +1524,11 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         boto_session = boto3.Session(**conn_args)
 
-        available_regions = [
-            *boto_session.get_available_regions(
-                service_name=EC2_SERVICE, partition_name='aws',allow_non_regional=True
-            ),
-            *boto_session.get_available_regions(
-                service_name=EC2_SERVICE, partition_name='aws-us-gov',allow_non_regional=True
-            ),
-            *boto_session.get_available_regions(
-                service_name=EC2_SERVICE, partition_name='aws-cn',allow_non_regional=True
-            )
-        ]
-
-        if region not in available_regions:
+        if region not in ALL_REGIONS:
             raise ValueError(f"Invalid region '{region}'")
 
         try:
-            ec2_client = boto_session.client(service_name=EC2_SERVICE, **self.connection_config)
+            ec2_client = boto_session.client(service_name='ec2', **self.connection_config)
         except Exception as e:
             print("Error getting EC2 client: {}".format(e))
             sys.exit(3)
@@ -3308,9 +3299,7 @@ def main(argv):
                     options.regions.append(aws_config.get(aws_profile, "region"))
                 else:
                     debug("+++ Warning: No regions were specified, trying to get events from all regions", 1)
-                    options.regions = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2',
-                                       'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-2', 'ap-south-1',
-                                       'eu-central-1', 'eu-west-1']
+                    options.regions = ALL_REGIONS
 
             for region in options.regions:
                 debug('+++ Getting alerts from "{}" region.'.format(region), 1)
