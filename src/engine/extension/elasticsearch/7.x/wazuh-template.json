@@ -8068,6 +8068,141 @@
                         }
                     }
                 }
+            },
+            "rsa": {
+                "type": "object",
+                "properties": {
+                    "counters": {
+                        "type": "object",
+                        "properties": {
+                            "dclass_c1": {
+                                "type": "long"
+                            },
+                            "dclass_c1_str": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "db": {
+                        "type": "object",
+                        "properties": {
+                            "index": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "internal": {
+                        "type": "object",
+                        "properties": {
+                            "event_desc": {
+                                "type": "keyword"
+                            },
+                            "messageid": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "investigations": {
+                        "type": "object",
+                        "properties": {
+                            "ec_activity": {
+                                "type": "keyword"
+                            },
+                            "ec_subject": {
+                                "type": "keyword"
+                            },
+                            "ec_theme": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "misc": {
+                        "type": "object",
+                        "properties": {
+                            "action": {
+                                "type": "keyword"
+                            },
+                            "category": {
+                                "type": "keyword"
+                            },
+                            "change_attrib": {
+                                "type": "keyword"
+                            },
+                            "change_new": {
+                                "type": "keyword"
+                            },
+                            "client": {
+                                "type": "keyword"
+                            },
+                            "context": {
+                                "type": "keyword"
+                            },
+                            "disposition": {
+                                "type": "keyword"
+                            },
+                            "event_type": {
+                                "type": "keyword"
+                            },
+                            "log_session_id": {
+                                "type": "keyword"
+                            },
+                            "obj_name": {
+                                "type": "keyword"
+                            },
+                            "policy_name": {
+                                "type": "keyword"
+                            },
+                            "result": {
+                                "type": "keyword"
+                            },
+                            "result_code": {
+                                "type": "keyword"
+                            },
+                            "rule_name": {
+                                "type": "keyword"
+                            },
+                            "severity": {
+                                "type": "keyword"
+                            },
+                            "version": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "network": {
+                        "type": "object",
+                        "properties": {
+                            "alias_host": {
+                                "type": "keyword"
+                            },
+                            "network_service": {
+                                "type": "keyword"
+                            },
+                            "vlan": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "time": {
+                        "type": "object",
+                        "properties": {
+                            "event_time": {
+                                "type": "date"
+                            },
+                            "event_time_str": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "web": {
+                        "type": "object",
+                        "properties": {
+                            "fqdn": {
+                                "type": "keyword"
+                            }
+                        }
+                    }
+                }
             }
         }
     },
