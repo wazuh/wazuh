@@ -90,15 +90,17 @@ void configure(CLI::App_p app)
     auto dump_subcommand = metricApp->add_subcommand("dump", "Prints all collected metrics.");
     dump_subcommand->callback([options]() { runDump(options->socketPath); });
 
-    auto enable_subcommand = metricApp->add_subcommand("enable", "Enable some instrument metrics.");
+    auto enable_subcommand = metricApp->add_subcommand("enable", "Enable or disable a specific instrument.");
     enable_subcommand
-        ->add_option("nameInstrument", options->nameInstrument, "Name of the instrument whose status will be modified")
+        ->add_option("nameInstrument", options->nameInstrument, "Name of the instrument whose status will be modified.")
         ->default_val("");
     enable_subcommand
-        ->add_option("enableState", options->enableState, "New instrument status")
+        ->add_option("enableState", options->enableState, "New instrument status.")
         ->default_val(true);
     enable_subcommand->callback([options]() { runEnableInstrument(options->socketPath, options->nameInstrument, options->enableState); });
 
+    auto list_subcommand = metricApp->add_subcommand("list", "Prints name, status and instruments types.");
+    list_subcommand->callback([options]() { runListInstrument(options->socketPath); });
 }
 
 void runDump(const std::string& socketPath)
@@ -124,6 +126,15 @@ void runEnableInstrument(const std::string& socketPath, const std::string& nameI
     auto req = api::WazuhRequest::create(details::commandName(details::API_METRICS_ENABLE_SUBCOMMAND),
                                          details::ORIGIN_NAME,
                                          params);
+
+    details::singleRequest(req, socketPath);
+}
+
+void runListInstrument(const std::string& socketPath)
+{
+    auto req = api::WazuhRequest::create(details::commandName(details::API_METRICS_LIST_SUBCOMMAND),
+                                         details::ORIGIN_NAME,
+                                         details::getParameters(details::API_METRICS_LIST_SUBCOMMAND));
 
     details::singleRequest(req, socketPath);
 }

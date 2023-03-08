@@ -136,12 +136,18 @@ public:
     void removeObservableGauge(std::string observableGaugeName, opentelemetry::v1::metrics::ObservableCallbackPtr callback) const;
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Set the status of any instrument.
      *
      * @param instrumentName name of the instrument.
      * @param state new state of the instrument.
      */
     void setEnableInstrument(const std::string& instrumentName, bool state);
+
+    /**
+     * @brief Obtains information about the list of configured instruments.
+     * @return name, state and type of the instrument.
+     */
+    std::ostringstream getListInstruments();
 private:
     /**
      * @brief Set the next handle on the chain
@@ -243,6 +249,7 @@ protected:
 
 private:
     std::shared_ptr<DataHub> m_dataHub;
+    std::vector<std::string> m_instrumentsTypes;
     std::string m_moduleName;
     std::vector<std::shared_ptr<MetricsContext>> m_upContext;
     std::vector<std::shared_ptr<ExporterHandler>> m_upExporter;
